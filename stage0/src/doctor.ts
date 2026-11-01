@@ -1,0 +1,196 @@
+// wingman doctor: tests the CONFIGURED providers and their fallbacks, the settings, and the offline items of the
+// FAILURES.md section 5 checklist. Ends with READY / READY WITH WARNINGS / NOT READY (exit 1).
+//   pnpm run doctor              everything (mic, system audio, STT sockets, 1-2 small LLM calls per model: costs a few cents)
+//   pnpm run doctor --offline    no audio, no network, no paid calls: settings, keys, packages, files, resources
+import { execFileSync, spawn } from "node:child_process";
+import { readFileSync, statSync, existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { loadKeys, KEYS_FILE, KEY_VARS, DATA, CALLS, type KeyName } from "./env.ts";
+import { SystemSource, MicSource, peakOf } from "./audio.ts";
+import { loadBank } from "./bank.ts";
+import { buildPrefix, runReflex } from "./reflex.ts";
+import { loadSettings, SettingsError, formatSettingsError, expandHome, USER_SETTINGS_FILE, type Settings } from "./settings.ts";
+import { ModelRegistry, parseModelRef, ConfigError, LLM_PROVIDERS } from "./providers/llm.ts";
+import { getSttProvider, sttChain, loadKeyterms } from "./providers/stt/index.ts";
+import { describe, classifyLlmError } from "./providers/errors.ts";
+import { guard } from "./guards.ts";
+import { detect } from "./detector.ts";
+
+const argv = process.argv.slice(2);
+const offline = argv.includes("--offline");
+let blocking: string[] = [], warnings = 0;
+const ok = (m: string) => console.log(`  ✅ ${m}`);
+const bad = (m: string, fix?: string) => { blocking.push(m); console.log(`  ❌ ${m}${fix ? `\n     fix: ${fix}` : ""}`); };
+const warn = (m: string, fix?: string) => { warnings++; console.log(`  ⚠️  ${m}${fix ? `\n     fix: ${fix}` : ""}`); };
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const section = (t: string) => console.log(`\n${t}`);
+
+console.log(`Wingman doctor${offline ? " (offline: no audio, no network, no paid calls)" : ""}`);
+
+// 3. Settings (first: everything else depends on them)
+section("Settings");
+let S: Settings;
+let profile: string | undefined;
+try {
+  const l = loadSettings({ argv, createStarter: true }); S = l.settings; profile = l.profile;
+  ok(`settings valid (defaults + ${existsSync(USER_SETTINGS_FILE) ? "user file" : "no user file"}${profile ? ` + profile ${profile}` : ""}); see: pnpm settings`);
+} catch (e) {
+  if (e instanceof SettingsError) { console.log(formatSettingsError(e)); bad("settings invalid", "fix the key above, then rerun"); }
+  else bad(`settings failed to load: ${(e as Error).message}`);
+  finish();
+}
+S = S!;
+
+section("Keys (present/missing only; values are never shown)");
+const keyFile = expandHome(S.keys.file) || KEYS_FILE;
+if (!existsSync(keyFile)) bad(`keys file missing: ${keyFile}`, `create it with DEEPGRAM_API_KEY=... and ANTHROPIC_API_KEY=...`);
+else {
+  const mode = statSync(keyFile).mode & 0o777;
+  mode === 0o600 ? ok(`keys file mode 600`) : bad(`keys file mode is ${mode.toString(8)}`, `chmod 600 ${keyFile}`);
+}
+const keys = loadKeys(keyFile);
+const llmRefs = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
+const sttIds = sttChain(S);
+const need = (name: KeyName, why: string, required: boolean) =>
+  keys[name] ? ok(`${KEY_VARS[name]} present (${why})`) : required ? bad(`${KEY_VARS[name]} missing (${why})`, `add it to ${keyFile}`) : warn(`${KEY_VARS[name]} missing (${why}); that fallback cannot work`, `add it to ${keyFile}`);
+sttIds.forEach((id, i) => need(id as KeyName, `STT ${i ? "fallback" : "primary"} ${id}`, i === 0));
+if (!S.run.noAi) llmRefs.forEach((r, i) => { try { need(LLM_PROVIDERS[parseModelRef(r).provider].key, `LLM ${i ? "fallback" : "reflex"} ${r}`, i === 0); } catch (e) { bad((e as Error).message); } });
+
+section("Provider packages and models");
+const registry = new ModelRegistry(keys);
+for (const id of sttIds) { const p = getSttProvider(id); ok(`STT adapter ${id}${p.experimental ? " (EXPERIMENTAL: not tested live)" : ""}`); }
+if (!S.run.noAi) for (const [i, r] of llmRefs.entries()) {
+  try { await registry.resolve(r); ok(`model ${r} resolves${registry.capabilities(r).cache ? "" : " (no Anthropic cache/effort options for this provider)"}`); }
+  catch (e) {
+    const m = e instanceof ConfigError ? e.message : (e as Error).message;
+    i === 0 ? bad(m, e instanceof ConfigError ? e.fix : undefined) : warn(`fallback ${r}: ${m}`, e instanceof ConfigError ? e.fix : undefined);
+  }
+}
+
+section("Data and consent");
+try {
+  const bank = loadBank(); const ids = new Set(bank.map((c) => c.id));
+  ids.size === bank.length && bank.length > 0 ? ok(`bank loads: ${bank.length} cards, unique ids`) : bad("bank ids are not unique or bank is empty");
+} catch (e) { bad(`bank failed to load: ${(e as Error).message}`); }
+const terms = loadKeyterms(S);
+S.stt.keyterms.enabled === "off" ? ok("keyterms off by setting") : terms.length ? ok(`${terms.length} keyterms (max ${S.stt.keyterms.max})`) : warn("no keyterms loaded", `check ${S.stt.keyterms.file}`);
+/cloud|בענן/i.test(S.privacy.consentText) ? ok("consent text names cloud processing; start requires Enter" + (S.privacy.requireConsentAck ? "" : " (DISABLED by privacy.requireConsentAck=false)")) : bad("consent text does not mention cloud processing", "edit privacy.consentText");
+!S.privacy.requireConsentAck && warn("privacy.requireConsentAck is false: audio is sent without an Enter confirmation");
+guard("זה עולה 500 ₪").ok === false && guard("נסיים עד יום חמישי").ok === false ? ok("guards block price and date bait (full corpus: pnpm test)") : bad("guards let price/date bait through");
+detect("כמה זה עולה").isQuestion ? ok("detector sanity (full corpus: pnpm detector)") : bad("detector failed a basic question");
+
+section("Tools and resources");
+const run = (cmd: string, a: string[]) => { try { return execFileSync(cmd, a, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch { return ""; } };
+Number(process.versions.node.split(".")[0]) >= 24 ? ok(`Node ${process.versions.node}`) : warn(`Node ${process.versions.node} (24+ expected)`);
+const sw = run("sw_vers", ["-productVersion"]);
+if (sw) { const [a, b] = sw.split(".").map(Number); a > 14 || (a === 14 && b >= 2) ? ok(`macOS ${sw}`) : bad(`macOS ${sw}: system audio tap needs 14.2+`); }
+run("ffmpeg", ["-version"]) ? ok("ffmpeg present") : bad("ffmpeg not found", "brew install ffmpeg");
+const batt = run("pmset", ["-g", "batt"]);
+if (batt) { const pct = Number(batt.match(/(\d+)%/)?.[1]); /AC Power/.test(batt) || pct > 20 ? ok(`power ok (${pct}%${/AC Power/.test(batt) ? ", charging" : ""})`) : warn(`battery ${pct}% and not charging`, "plug in"); }
+const df = run("df", ["-m", "."]).split("\n")[1]?.split(/\s+/); const freeMb = df ? Number(df[3]) : NaN;
+Number.isFinite(freeMb) ? (freeMb > 500 ? ok(`free disk ${Math.round(freeMb / 1024)} GB`) : warn(`free disk ${freeMb} MB`, "free some space")) : null;
+const orphans = run("pgrep", ["-f", "ffmpeg.*avfoundation|audiotee"]);
+orphans ? warn("leftover ffmpeg/audiotee process found", "pkill -f 'ffmpeg.*avfoundation|audiotee'") : ok("no orphan audio processes");
+if (S.overlay.enabled) {
+  const displays = Number(run("sh", ["-c", "system_profiler SPDisplaysDataType 2>/dev/null | grep -c 'Resolution:'"]));
+  displays >= 2 ? ok(`${displays} displays: overlay goes to the second`) : displays === 1 ? (S.overlay.allowPrimary ? warn("one display and overlay.allowPrimary: the overlay will be on the shared screen") : bad("only one display: the overlay would refuse to open", "connect a second screen or set overlay.allowPrimary: true (never share that screen)")) : warn("could not count displays");
+}
+
+section("Budget and data hygiene");
+{
+  let month = 0; const now = new Date(); let old = 0;
+  if (existsSync(CALLS)) for (const d of readdirSync(CALLS)) {
+    const dir = join(CALLS, d); let st; try { st = statSync(dir); } catch { continue; }
+    if (!st.isDirectory()) continue;
+    if (Date.now() - st.mtimeMs > S.privacy.retentionDays * 86400_000) old++;
+    const uf = join(dir, "usage.jsonl");
+    if (existsSync(uf)) for (const line of readFileSync(uf, "utf8").split("\n").filter(Boolean)) {
+      try { const r = JSON.parse(line); if (r.role === "summary" && new Date(r.t).getMonth() === now.getMonth()) month += Number(r.totalUsd) || 0; } catch {}
+    }
+  }
+  S.budget.maxUsdPerMonth === null ? ok(`month-to-date $${month.toFixed(2)} (no monthly cap set)`) : month < S.budget.maxUsdPerMonth ? ok(`month-to-date $${month.toFixed(2)} of $${S.budget.maxUsdPerMonth}`) : warn(`month-to-date $${month.toFixed(2)} reached budget.maxUsdPerMonth $${S.budget.maxUsdPerMonth}`);
+  old ? warn(`${old} saved call(s) older than ${S.privacy.retentionDays} days`, `pnpm purge --older-than ${S.privacy.retentionDays}`) : ok("no calls past retention");
+  const missingPrice = llmRefs.filter((r) => !S.budget.prices.llm[r]);
+  missingPrice.length ? warn(`no price in budget.prices.llm for ${missingPrice.join(", ")}: cost shows $0`) : ok("price table covers the configured models");
+}
+
+if (offline) { console.log("\n(skipped: microphone, system audio, STT sockets, LLM calls, network latency. Run without --offline before a call.)"); finish(); }
+
+section("Microphone (speak for 3 seconds)");
+{
+  const mic = new MicSource(S.audio.mic.device); let peak = 0;
+  console.log(`  device: ${mic.device} (audio.mic.device; avoid AirPods for the first calls)`);
+  if (/airpods|bluetooth/i.test(mic.device)) warn("Bluetooth mic drops to low-quality audio", "use a wired headset");
+  mic.on("pcm", (b: Buffer) => { peak = Math.max(peak, peakOf(b)); });
+  mic.on("error", (e: Error) => bad(`mic: ${e.message}`));
+  await mic.start(); await sleep(3000); await mic.stop();
+  peak > 0.02 ? ok(`mic level ok (peak ${peak.toFixed(2)})`) : bad(`mic silent (peak ${peak.toFixed(3)})`, "grant Microphone to your terminal app (Privacy & Security), restart it, or set audio.mic.device");
+}
+if (process.env.TERM_PROGRAM && process.env.TERM_PROGRAM !== "Apple_Terminal") warn(`Terminal is ${process.env.TERM_PROGRAM}, not Terminal.app: permissions are per app`);
+
+section(`System audio source: ${S.audio.system.source}`);
+if (S.audio.system.source === "off") warn("audio.system.source is off: the client cannot be heard (transcript-only)");
+else {
+  const sys: any = S.audio.system.source === "audiotee" ? new SystemSource() : new MicSource(S.audio.system.device);
+  let err = "", peak = 0;
+  sys.on("error", (e: Error) => { err = e.message; }); sys.on("pcm", (b: Buffer) => { peak = Math.max(peak, peakOf(b)); });
+  try {
+    await sys.start();
+    spawn("afplay", ["/System/Library/Sounds/Glass.aiff"]); await sleep(400);
+    spawn("say", ["-v", "Carmit", "בדיקת שמע"]); await sleep(2600);
+    await sys.stop();
+    peak > 0.01 ? ok(`client audio hears the Mac (peak ${peak.toFixed(2)})`)
+      : bad("client audio is silent", S.audio.system.source === "audiotee" ? "volume up, or grant System Audio Recording to your terminal, restart it" : `route the Mac output to ${S.audio.system.device}`);
+  } catch (e) { bad(`system source failed: ${(e as Error).message || err}`); }
+}
+
+section("STT providers (primary and fallbacks, opened exactly like a call)");
+for (const [i, id] of sttIds.entries()) {
+  const key = keys[id as KeyName], p = getSttProvider(id);
+  if (!key) { i === 0 ? bad(`${id}: no key`) : warn(`${id} (fallback): no key, skipped`); continue; }
+  const base = { apiKey: key, language: S.stt.language, endpointingMs: S.stt.endpointMs, model: S.stt.model };
+  let r = await p.probe({ ...base, keyterms: terms });
+  let note = `${terms.length} keyterms`;
+  if (!r.ok && terms.length && r.error.kind === "bad_request") { const r2 = await p.probe({ ...base, keyterms: [] }); if (r2.ok) { r = r2; note = "opens only WITHOUT keyterms (set stt.keyterms.enabled: off)"; warn(`${id}: keyterms rejected`); } }
+  r.ok ? ok(`${id}${i ? " (fallback)" : ""}: live socket opens (${S.stt.language}, ${note})${p.experimental ? " [experimental]" : ""}`)
+    : (i === 0 ? bad : warn)(`${id}${i ? " (fallback)" : ""}: ${describe(r.error)} [${r.error.kind}] ${r.error.message}`);
+}
+
+if (!S.run.noAi) {
+  section("LLM reflex (primary and fallbacks; the primary is called twice to check the prompt cache)");
+  const prefix = buildPrefix(readFileSync(join(DATA, "house-style.md"), "utf8"), loadBank());
+  for (const [mi, ref] of llmRefs.entries()) {
+    for (const i of mi === 0 && registry.capabilities(ref).cache ? [1, 2] : [1]) {
+      const t0 = Date.now(); let first = 0, tag = "";
+      try {
+        await runReflex({
+          registry, models: [ref], cfg: { ...S.llm.reflex, timeoutMs: 15000 }, prefix, transcript: "them: היי, יש לי שאלה", question: "איך DNS עובד", signal: AbortSignal.timeout(20000),
+          h: {
+            onTag: (t) => { first ||= Date.now() - t0; tag = t.kind; }, onSay() {}, onFacts() {}, onSayComplete() {},
+            onDone: ({ usage, providerMetadata }) => {
+              const u = usage as any, pm = (providerMetadata as any)?.anthropic ?? {};
+              const read = u?.inputTokenDetails?.cacheReadTokens ?? u?.cachedInputTokens ?? pm.cacheReadInputTokens ?? 0;
+              console.log(`  ${ref} call ${i}: first tag ${first} ms (${tag}) · input ${u?.inputTokens} · cache read ${read}`);
+              if (!["SKIP", "STALL", "ANS", "BANK"].includes(tag)) bad(`${ref}: reply had no valid tag`);
+              else if (first > 2000) warn(`${ref}: first tag ${first} ms (> 2 s)`);
+              if (i === 2) read > 0 ? ok("prompt cache works") : warn("cache read is 0 on call 2: the prefix may be under the model's cache minimum", "pad buildPrefix() in src/reflex.ts (safe to ignore in Stage 0)");
+              if (i === 1) ok(`${ref} answers${mi ? " (fallback)" : ""}`);
+            },
+          },
+        });
+      } catch (e) {
+        const pe = classifyLlmError(ref.split(":")[0], e);
+        (mi === 0 ? bad : warn)(`${ref}: ${describe(pe)} [${pe.kind}] ${pe.message}`);
+        break;
+      }
+    }
+  }
+}
+finish();
+
+function finish(): never {
+  console.log("");
+  if (blocking.length) { console.log(`NOT READY: ${blocking[0]}${blocking.length > 1 ? ` (+${blocking.length - 1} more blocking)` : ""}`); process.exit(1); }
+  console.log(warnings ? `READY WITH WARNINGS (${warnings})` : "READY");
+  process.exit(0);
+}

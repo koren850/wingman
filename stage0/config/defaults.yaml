@@ -1,0 +1,122 @@
+# Wingman Stage 0 built-in defaults. This is layer 1 (lowest) and documents EVERY setting.
+# Do not edit for personal changes: put overrides in ~/.config/wingman/settings.yaml
+# (or a profile in stage0/profiles/<name>.yaml, used with --profile <name>).
+# Layers, lowest to highest: this file < user file < profile < env vars < CLI flags.
+# Check the result with: pnpm settings
+# Unknown keys are errors (typos should not pass silently). Secrets (API keys) never go here: use ~/.config/wingman/keys.env.
+
+v: 1                       # schema version
+
+# ---- Speech to text ----
+stt:
+  provider: deepgram       # deepgram | soniox | gladia   (soniox and gladia are EXPERIMENTAL: not tested live)
+  fallback: []             # providers to switch to mid-call on an auth/quota/outage failure, e.g. [soniox]
+  model: nova-3            # model id for the provider (Deepgram: nova-3). Soniox/Gladia use their own default when this is nova-3
+  language: he             # he | en | multi | auto   (auto = multi on Deepgram)
+  endpointMs: 350          # silence (ms) that ends an utterance. Try 700-1000 if questions get split at pauses. Env: WINGMAN_ENDPOINT_MS
+  utteranceEndMs: 1000     # Deepgram utterance_end_ms
+  keepAliveMs: 5000        # socket keep-alive interval (Deepgram closes after ~10 s of silence)
+  flushFallbackMs: 1500    # handle buffered finals if no speech_final arrives within this time
+  keyterms:
+    enabled: auto          # auto | on | off   (off = never send keyterms)
+    file: data/keyterms.txt  # one term per line, relative to stage0/
+    max: 100               # most terms sent
+  circuit:
+    failures: 3            # this many failures ...
+    windowMs: 10000        # ... within this window = "repeated failure": switch to the fallback provider
+
+# ---- Reflex LLM ----
+llm:
+  reflex:
+    model: "anthropic:claude-haiku-5-5"   # provider:model. Providers: anthropic (installed), openai, google, mistral, groq (pnpm add @ai-sdk/<name>)
+    fallbacks: []          # tried in order on auth/quota/rate/overload/network errors, e.g. ["openai:gpt-5-mini"]. Never on a timeout mid-answer
+    timeoutMs: 6000        # hard abort when there is no complete answer by then
+    maxTokens: 200         # max output tokens
+    maxRetries: 0          # SDK retries (0: a late answer is worthless)
+    effort: low            # Anthropic only: low | medium | high
+    thinking: false        # Anthropic only: true = allow extended thinking (slower)
+    cache: 1h              # Anthropic only: prompt cache TTL: off | 5m | 1h
+    slowMs: 1500           # first-tag p50 above this = "AI slow" (reduced AI rung)
+  circuit:
+    failures: 3            # LLM failures within 10 s that open the circuit
+    cooldownMs: 15000      # circuit stays open this long, then a half-open probe
+
+# ---- Reflex behaviour ----
+reflex:
+  stallAfterMs: 1800       # no tag by then: show the stall line and keep streaming
+  dropStaleMs: 4000        # do not show an answer to a question older than this
+  allowAns: true           # false = bank + STALL only (a model ANS answer becomes a stall line). Use false for a first client call
+
+# ---- Cards ----
+cards:
+  maxPerMinute: 3          # at most this many NEW cards shown per window
+  windowMs: 60000          # the window for maxPerMinute
+  lockoutMs: 1500          # min gap between new cards (Stage 0: logged as lockout_would_apply, not enforced)
+  maxOnScreen: 4           # cards kept in the overlay
+  quiet: false             # start in quiet mode (cards are logged, not shown). Key q toggles
+
+# ---- Audio ----
+audio:
+  system:
+    source: audiotee       # audiotee (macOS system tap) | device (an avfoundation input, e.g. BlackHole) | off
+    device: "BlackHole 2ch"  # used when source = device. avfoundation name or ":index" (ffmpeg -f avfoundation -list_devices true -i "")
+  mic:
+    device: ":default"     # avfoundation input for Dan's mic. Env: WINGMAN_MIC
+  watchdog:
+    silentThemMs: 8000     # client audio silent this long while Dan talks = "NOT HEARING THE CLIENT"
+    silentPeak: 0.01       # peak (0-1) above which client audio counts as sound
+    micSilentMs: 10000     # mic silent this long after consent = "MIC SILENT"
+    micPeak: 0.005         # peak (0-1) above which the mic counts as sound
+
+# ---- Health supervisor and degrade ladder ----
+health:
+  tickMs: 1000             # evaluation interval
+  recoverStableMs: 60000   # a rung recovers after this long without trouble (changes only between questions)
+  slowSttMs: 1500          # STT final lag p50 above this shows an amber "STT slow"
+  minSamples: 3            # samples needed before a latency verdict
+
+# ---- Budget (LLM spend is capped, STT is only warned about) ----
+budget:
+  maxUsdPerCall: 2         # LLM spend cap per call: at 100% the ladder drops to bank-only
+  warnAt: 0.8              # fraction of a cap that shows an amber warning
+  maxMinutesPerCall: 90    # warn at warnAt of this; stop STT at the cap is NOT automatic in Stage 0
+  maxUsdPerMonth: null     # null = no monthly cap (used by doctor, from usage.jsonl)
+  # Price table. ESTIMATES: check your provider's pricing page and edit. A model missing here costs $0 and is flagged.
+  prices:
+    llm:                   # USD per million tokens
+      "anthropic:claude-haiku-5-5": { inUsdPerM: 1, outUsdPerM: 5, cacheReadUsdPerM: 0.1, cacheWriteUsdPerM: 2 }
+      "anthropic:claude-sonnet-5-5": { inUsdPerM: 3, outUsdPerM: 15, cacheReadUsdPerM: 0.3, cacheWriteUsdPerM: 6 }
+    stt:                   # USD per hour of audio, per channel
+      deepgram: 0.55
+      soniox: 0.12
+      gladia: 0.61
+
+# ---- Privacy and consent ----
+privacy:
+  requireConsentAck: true  # nothing is sent to the cloud until Dan presses Enter
+  consentText: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך? אם לא, אכבה אותו."
+  storeAudio: false        # audio is never saved (must stay false in Stage 0)
+  retentionDays: 30        # doctor lists saved calls older than this
+
+# ---- Answer window (Electron overlay) ----
+overlay:
+  enabled: true            # false = cards only in the terminal and cards.jsonl
+  display: secondary       # secondary | primary
+  allowPrimary: false      # true = allow the primary screen when there is only one display. Env: WINGMAN_ALLOW_PRIMARY=1
+  contentProtection: true  # hide from screen capture (untested with Zoom). Env: WINGMAN_SHOW_IN_CAPTURE=1 turns it off
+  fontPt: 30               # say-line font size
+  hotkeys:
+    clear: "Control+Alt+C"
+    pause: "Control+Alt+P"
+
+# ---- System and keys ----
+system:
+  caffeinate: true         # keep the Mac awake during a call
+keys:
+  file: "~/.config/wingman/keys.env"   # API keys live here, never in settings
+
+# ---- Per-run options (normally set by CLI flags) ----
+run:
+  file: null               # replay a stereo wav (L = me, R = them). CLI: --file x.wav
+  noAi: false              # bank only, no LLM. CLI: --no-ai
+  discard: false           # delete the call folder at the end. CLI: --discard

@@ -1,0 +1,10 @@
+node_modules/
+stage0/calls/
+stage0/data/gold/recordings/
+stage0/data/gold/report-*.md
+*.env
+.DS_Store
+
+# Generated test audio (rebuild with: cd stage0 && pnpm run synth)
+stage0/data/synthetic/*.wav
+stage0/data/gold/synthetic.wav

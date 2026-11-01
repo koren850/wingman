@@ -1,0 +1,6 @@
+# pnpm call --profile first-client-call
+# Cautious settings for the first real client call: bank + stall lines only (no free-form AI answers).
+reflex:
+  allowAns: false
+cards:
+  maxPerMinute: 2

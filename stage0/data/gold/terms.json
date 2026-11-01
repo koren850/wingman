@@ -1,0 +1,286 @@
+[
+ {
+  "id": "t01",
+  "sentence": "הדומיין מצביע לשרת הישן, צריך לשנות את ה-DNS ב-Cloudflare.",
+  "terms": [
+   "DNS",
+   "Cloudflare"
+  ]
+ },
+ {
+  "id": "t02",
+  "sentence": "האתר מציג אזהרה כי תעודת ה-SSL פגה.",
+  "terms": [
+   "SSL"
+  ]
+ },
+ {
+  "id": "t03",
+  "sentence": "אנחנו עובדים עם WordPress כבר הרבה שנים.",
+  "terms": [
+   "WordPress"
+  ]
+ },
+ {
+  "id": "t04",
+  "sentence": "החנות רצה על WooCommerce והתשלומים לא עוברים.",
+  "terms": [
+   "WooCommerce"
+  ]
+ },
+ {
+  "id": "t05",
+  "sentence": "אפשר להיכנס ל-Plesk ולראות את כל האתרים בשרת.",
+  "terms": [
+   "Plesk"
+  ]
+ },
+ {
+  "id": "t06",
+  "sentence": "את ה-cPanel הזה אני לא מצליח למצוא.",
+  "terms": [
+   "cPanel"
+  ]
+ },
+ {
+  "id": "t07",
+  "sentence": "כדאי להפעיל CDN כדי שהאתר ייטען מהר יותר.",
+  "terms": [
+   "CDN"
+  ]
+ },
+ {
+  "id": "t08",
+  "sentence": "צריך לנקות את ה-cache ואז לרענן את הדף.",
+  "terms": [
+   "cache"
+  ]
+ },
+ {
+  "id": "t09",
+  "sentence": "האתר רץ על PHP ישן ולכן הוא איטי.",
+  "terms": [
+   "PHP"
+  ]
+ },
+ {
+  "id": "t10",
+  "sentence": "מסד הנתונים ב-MySQL התנפח מאוד.",
+  "terms": [
+   "MySQL"
+  ]
+ },
+ {
+  "id": "t11",
+  "sentence": "יש לנו backup יומי, אפשר לשחזר מכל נקודה.",
+  "terms": [
+   "backup"
+  ]
+ },
+ {
+  "id": "t12",
+  "sentence": "נבדוק קודם על staging ואז נעלה לאתר החי.",
+  "terms": [
+   "staging"
+  ]
+ },
+ {
+  "id": "t13",
+  "sentence": "התוסף הזה התנגש עם plugin אחר.",
+  "terms": [
+   "plugin"
+  ]
+ },
+ {
+  "id": "t14",
+  "sentence": "שינינו את ה-theme והאתר נראה אחרת.",
+  "terms": [
+   "theme"
+  ]
+ },
+ {
+  "id": "t15",
+  "sentence": "את העמוד בניתי ב-Elementor אבל הוא לא נטען.",
+  "terms": [
+   "Elementor"
+  ]
+ },
+ {
+  "id": "t16",
+  "sentence": "חסר לך רשומת SPF ולכן המיילים נכנסים לספאם.",
+  "terms": [
+   "SPF"
+  ]
+ },
+ {
+  "id": "t17",
+  "sentence": "צריך להוסיף DKIM ב-DNS של הדומיין.",
+  "terms": [
+   "DKIM"
+  ]
+ },
+ {
+  "id": "t18",
+  "sentence": "מדיניות DMARC עוזרת נגד התחזות למייל שלכם.",
+  "terms": [
+   "DMARC"
+  ]
+ },
+ {
+  "id": "t19",
+  "sentence": "הטופס לא שולח כי חסרה הגדרת SMTP.",
+  "terms": [
+   "SMTP"
+  ]
+ },
+ {
+  "id": "t20",
+  "sentence": "המיילים מגיעים ל-Gmail אבל לא ל-Outlook.",
+  "terms": [
+   "Gmail",
+   "Outlook"
+  ]
+ },
+ {
+  "id": "t21",
+  "sentence": "חיברנו את האתר ל-Google Analytics ול-Search Console.",
+  "terms": [
+   "Google Analytics",
+   "Search Console"
+  ]
+ },
+ {
+  "id": "t22",
+  "sentence": "אני רוצה לשפר SEO לעמודי השירות.",
+  "terms": [
+   "SEO"
+  ]
+ },
+ {
+  "id": "t23",
+  "sentence": "אנחנו מנטרים uptime כל כמה דקות.",
+  "terms": [
+   "uptime"
+  ]
+ },
+ {
+  "id": "t24",
+  "sentence": "ה-firewall חסם את הכתובת שלך בטעות.",
+  "terms": [
+   "firewall"
+  ]
+ },
+ {
+  "id": "t25",
+  "sentence": "מתקינים WAF שחוסם התקפות לפני שהן מגיעות לאתר.",
+  "terms": [
+   "WAF"
+  ]
+ },
+ {
+  "id": "t26",
+  "sentence": "מצאנו malware בתיקיית התוספים.",
+  "terms": [
+   "malware"
+  ]
+ },
+ {
+  "id": "t27",
+  "sentence": "מומלץ להפעיל 2FA לכל משתמשי הניהול.",
+  "terms": [
+   "2FA"
+  ]
+ },
+ {
+  "id": "t28",
+  "sentence": "המערכת מתחברת דרך API לחברת הסליקה.",
+  "terms": [
+   "API"
+  ]
+ },
+ {
+  "id": "t29",
+  "sentence": "ה-server מגיע לעומס גבוה בשעות הצהריים.",
+  "terms": [
+   "server"
+  ]
+ },
+ {
+  "id": "t30",
+  "sentence": "שווה לעבור ל-VPS כשהאתר גדל.",
+  "terms": [
+   "VPS"
+  ]
+ },
+ {
+  "id": "t31",
+  "sentence": "איפה ה-hosting של האתר כרגע?",
+  "terms": [
+   "hosting"
+  ]
+ },
+ {
+  "id": "t32",
+  "sentence": "הדומיין רשום אצל GoDaddy והאחסון במקום אחר.",
+  "terms": [
+   "GoDaddy"
+  ]
+ },
+ {
+  "id": "t33",
+  "sentence": "קנית את ה-domain ב-Namecheap?",
+  "terms": [
+   "domain",
+   "Namecheap"
+  ]
+ },
+ {
+  "id": "t34",
+  "sentence": "העמוד הזה מחזיר שגיאת 404.",
+  "terms": [
+   "404"
+  ]
+ },
+ {
+  "id": "t35",
+  "sentence": "בדף ההזמנה יש שגיאה 500.",
+  "terms": [
+   "500"
+  ]
+ },
+ {
+  "id": "t36",
+  "sentence": "הגדרנו redirect מהכתובת הישנה לחדשה.",
+  "terms": [
+   "redirect"
+  ]
+ },
+ {
+  "id": "t37",
+  "sentence": "הדומיין הישראלי שלכם נרשם דרך ISOC.",
+  "terms": [
+   "ISOC"
+  ]
+ },
+ {
+  "id": "t38",
+  "sentence": "האתר הקודם היה ב-Wix ועכשיו עוברים לוורדפרס.",
+  "terms": [
+   "Wix"
+  ]
+ },
+ {
+  "id": "t39",
+  "sentence": "החנות הקודמת שלכם ישבה על Shopify.",
+  "terms": [
+   "Shopify"
+  ]
+ },
+ {
+  "id": "t40",
+  "sentence": "שימו reCAPTCHA בטופס כדי לחסום ספאם.",
+  "terms": [
+   "reCAPTCHA"
+  ]
+ }
+]

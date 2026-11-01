@@ -1,0 +1,53 @@
+DNS
+SSL
+Let's Encrypt
+HTTPS
+Cloudflare
+WordPress
+WooCommerce
+Plesk
+cPanel
+CDN
+PHP
+MySQL
+staging
+Elementor
+SPF
+DKIM
+DMARC
+SMTP
+Search Console
+Google Analytics
+Google Tag Manager
+WAF
+SFTP
+reCAPTCHA
+Google Workspace
+GoDaddy
+Namecheap
+ISOC
+Wix
+Shopify
+nameservers
+CNAME
+WHOIS
+WebP
+Cardcom
+Tranzila
+PayPlus
+Pelecard
+iCount
+Cloudways
+Hetzner
+Kinsta
+Wordfence
+Yoast
+WP Rocket
+Contact Form 7
+ACF
+Gutenberg
+Mailchimp
+וורדפרס
+קלאודפלר
+וו קומרס
+אלמנטור

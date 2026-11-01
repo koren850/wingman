@@ -1,0 +1,7 @@
+# pnpm start --profile cheap-test --file data/synthetic/call1.wav
+# For replay tests: tight spend cap and short call limit.
+budget:
+  maxUsdPerCall: 0.25
+  maxMinutesPerCall: 10
+overlay:
+  enabled: false

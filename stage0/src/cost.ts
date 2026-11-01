@@ -1,0 +1,50 @@
+// CostMeter: money spent this call, from the settings price table and the ACTUAL usage the providers report.
+// LLM spend is capped (budget.maxUsdPerCall -> bank-only); STT spend is tracked and shown, not capped.
+import type { Settings } from "./settings.ts";
+
+export type LlmUsage = { inputTokens?: number; outputTokens?: number; inputTokenDetails?: { cacheReadTokens?: number; cacheWriteTokens?: number; noCacheTokens?: number } };
+export type RoleTotals = { calls: number; usd: number; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
+export type CostState = "ok" | "warn" | "capped";
+
+export class CostMeter {
+  readonly roles: Record<string, RoleTotals> = {};
+  readonly unpriced = new Set<string>();
+  private sttSeconds: Record<string, number> = {};
+  constructor(private prices: Settings["budget"]["prices"], private budget: Pick<Settings["budget"], "maxUsdPerCall" | "warnAt" | "maxMinutesPerCall">) {}
+
+  /** Cost of one LLM call in USD (also added to the role total). Unknown models cost 0 and are listed in `unpriced`. */
+  addLlm(role: string, modelRef: string, usage: unknown, providerMetadata?: unknown): { usd: number; tokens: Omit<RoleTotals, "calls" | "usd"> } {
+    const u = (usage ?? {}) as LlmUsage, d = u.inputTokenDetails ?? {};
+    const pm = ((providerMetadata as any)?.anthropic ?? {}) as { cacheCreationInputTokens?: number };
+    const input = u.inputTokens ?? 0, output = u.outputTokens ?? 0;
+    const read = d.cacheReadTokens ?? 0, write = d.cacheWriteTokens ?? pm.cacheCreationInputTokens ?? 0;
+    const plain = d.noCacheTokens ?? Math.max(0, input - read - write);
+    const p = this.prices.llm[modelRef];
+    if (!p) this.unpriced.add(modelRef);
+    const usd = p ? (plain * p.inUsdPerM + read * (p.cacheReadUsdPerM ?? p.inUsdPerM) + write * (p.cacheWriteUsdPerM ?? p.inUsdPerM) + output * p.outUsdPerM) / 1e6 : 0;
+    const tokens = { inputTokens: input, outputTokens: output, cacheReadTokens: read, cacheWriteTokens: write };
+    const r = (this.roles[role] ??= { calls: 0, usd: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 });
+    r.calls++; r.usd += usd; for (const k of Object.keys(tokens) as (keyof typeof tokens)[]) r[k] += tokens[k];
+    return { usd, tokens };
+  }
+
+  /** Audio seconds sent so far per STT provider, summed over both channels (set, not added). */
+  setSttSeconds(bySeconds: Record<string, number>) { this.sttSeconds = bySeconds; }
+  get llmUsd() { return Object.values(this.roles).reduce((a, r) => a + r.usd, 0); }
+  get sttUsd() { return Object.entries(this.sttSeconds).reduce((a, [prov, s]) => a + (s / 3600) * (this.prices.stt[prov] ?? 0), 0); }
+  get totalUsd() { return this.llmUsd + this.sttUsd; }
+  get sttMinutes() { return Math.max(0, ...Object.values(this.sttSeconds)) / 60; }   // per-channel minutes ≈ call length
+
+  /** ok / warn (>= warnAt of the cap) / capped (>= cap). A cap of 0 means "no LLM spend allowed". */
+  llmState(): CostState {
+    const cap = this.budget.maxUsdPerCall;
+    if (this.llmUsd >= cap && (cap > 0 || this.llmUsd > 0)) return "capped";
+    if (cap > 0 && this.llmUsd >= cap * this.budget.warnAt) return "warn";
+    return "ok";
+  }
+  minutesState(): CostState {
+    const cap = this.budget.maxMinutesPerCall;
+    return this.sttMinutes >= cap ? "capped" : this.sttMinutes >= cap * this.budget.warnAt ? "warn" : "ok";
+  }
+  line() { return `AI $${this.llmUsd.toFixed(3)} of $${this.budget.maxUsdPerCall} · STT $${this.sttUsd.toFixed(2)}`; }
+}
