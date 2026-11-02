@@ -1,22 +1,29 @@
 <!doctype html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wingman</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header id="top">
-  <nav>
-    <b class="logo">Wingman</b>
-    <button id="nav-list" class="tab on">שיחות</button>
-    <button id="nav-settings" class="tab">הגדרות</button>
-  </nav>
-  <div id="gate"></div>
+  <div class="topin">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span class="wm">Wingman</span></div>
+    <nav aria-label="Main">
+      <button id="nav-list" class="navbtn" type="button"></button>
+      <button id="nav-settings" class="navbtn" type="button"></button>
+    </nav>
+    <span class="grow"></span>
+    <span id="pending-slot"></span>
+  </div>
 </header>
-<main id="main"></main>
+<main id="main" tabindex="-1"></main>
+<div id="live" class="sr" role="status" aria-live="polite"></div>
+<div id="alert" class="sr" role="alert"></div>
+<script src="bidi.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

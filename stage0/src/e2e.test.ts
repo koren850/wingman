@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, existsSync, readlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, existsSync, readlinkSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT, CALLS } from "./env.ts";
@@ -44,6 +44,16 @@ test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, 
     const me = transcript.filter((t) => t.ch === "me").map((t) => t.text);
     assert.ok(me.some((t) => /מדבר דן/.test(t)), "Dan's own words kept");
     assert.ok(!me.some((t) => /נטען ממש לאט/.test(t)), "echo of the client not in Dan's transcript");
+    // Post-call summary (profile e2e: scripted summary model, minWords 20): written before the shutdown ends, price/date sentences replaced.
+    const sumFile = join(dir, "summary.json");
+    assert.ok(existsSync(sumFile), "summary.json written");
+    assert.equal(statSync(sumFile).mode & 0o777, 0o600);
+    const sum = JSON.parse(readFileSync(sumFile, "utf8"));
+    assert.ok(sum.summary.length >= 3 && sum.nextSteps.length >= 1, "summary fields");
+    assert.match(sum.followUpEmail, /\[להשלים: מחיר\]/); assert.doesNotMatch(sum.followUpEmail, /500/);
+    assert.ok(events.some((e) => e.type === "context.snapshot") && events.some((e) => e.type === "summary.done"), "summary events");
+    assert.ok(rows("usage.jsonl").some((u) => u.role === "call-summary"), "summary usage row");
+    assert.ok(rows("usage.jsonl").some((u) => u.role === "summary" && u.roles?.summary?.calls === 1), "call cost includes the summary");
     // The call closes cleanly with a speed summary.
     assert.ok(events.some((e) => e.type === "speed.summary"), "speed summary written");
   } finally {

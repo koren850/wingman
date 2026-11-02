@@ -10,6 +10,9 @@ notes:
   model: "scripted:notes"
   everyMs: 10000
   minNewWords: 5
+summary:
+  model: "scripted:summary"
+  minWords: 20             # the scripted call is short; the default 150 would skip it
 facts:
   file: data/test/entities-fixture.json
 privacy:

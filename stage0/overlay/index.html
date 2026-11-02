@@ -2,121 +2,244 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src file:">
 <title>Wingman</title>
 <style>
-  :root { --bg:#111418; --card:#1b2028; --text:#f2f4f7; --muted:#8a94a6; --bank:#2f9e6b; --ai:#5b8def; --stall:#c9a227; }
-  html,body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system, "SF Hebrew", "Arial Hebrew", sans-serif; -webkit-app-region:drag; }
-  /* Full-height column: answers take the free space (oldest cut off at the bottom), the side rail and notes stay pinned below. */
-  #wrap { padding:16px; display:flex; flex-direction:column; gap:12px; height:100vh; box-sizing:border-box; overflow:hidden; }
-  #cards { flex:1 1 auto; min-height:120px; overflow:hidden; }
-  #rail, #notes { flex:0 0 auto; max-height:38vh; overflow:hidden; }
-  .card { background:var(--card); border-radius:14px; padding:16px 18px; border-inline-start:6px solid var(--ai); transition:opacity .2s; }
-  .card.bank { border-color:var(--bank); } .card.stall { border-color:var(--stall); } .card.info { border-color:#8a94a6; }
-  .card.old { opacity:.45; } .card.dim { opacity:.55; }
-  #health { display:flex; flex-direction:column; gap:8px; }
-  .hb { border-radius:10px; padding:10px 14px; font-size:22px; font-weight:700; color:#fff; background:#b3261e; }
-  .hb.amber { background:#a8620a; } .hb.info { background:#3a4252; font-weight:500; font-size:18px; }
-  #paused { display:none; background:#3a4252; border-radius:10px; padding:8px 14px; font-size:18px; }
-  .q { color:var(--muted); font-size:15px; margin-bottom:6px; }
-  .say { font-size:var(--say-pt, 30px); line-height:1.3; font-weight:650; }
-  ul { margin:10px 0 0; padding-inline-start:22px; font-size:20px; color:#d0d6e0; }
-  /* Cards are Hebrew: force RTL (no "plaintext"), so a line starting with "DNS" still reads right-to-left. */
-  .badge { font-size:13px; color:var(--muted); margin-top:8px; direction:ltr; text-align:left; }
-  #empty { color:var(--muted); font-size:18px; padding:24px; text-align:center; }
-  /* Rewind panel ("what did they say?") and capture box. */
-  #rewind { display:none; background:#1f2733; border:2px solid var(--ai); border-radius:14px; padding:12px 16px; max-height:340px; overflow-y:auto; }
-  #rewind .h { color:var(--muted); font-size:14px; margin-bottom:6px; }
-  #rewind .l { font-size:22px; line-height:1.35; margin:4px 0; }
+  /* Colour meaning: red/amber = a PROBLEM only. Mint = bank answer, blue = AI (unverified), slate = stall, capy tan = start/reminders, violet = facts. */
+  :root {
+    --bg:#0f1620; --card:#18222f; --card2:#141c27; --raised:#1e2a3a; --line:#26344a;
+    --text:#eef2f6; --soft:#c5cedb; --muted:#8e9bb0;
+    --bank:#6fcf9f; --ai:#86a8ff; --stall:#8795a8; --tan:#d2a572; --fact:#a493e0;
+    --red:#e5534b; --red-bg:#3b1816; --amber:#d9a03a; --amber-bg:#352610;
+    --say-pt:30px;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system, "SF Hebrew", "Arial Hebrew", "Helvetica Neue", sans-serif; -webkit-app-region:drag; -webkit-font-smoothing:antialiased; }
+  bdi { unicode-bidi:isolate; }
+  #wrap { padding:12px 16px 10px; display:flex; flex-direction:column; gap:10px; height:100vh; overflow:hidden; }
+
+  /* Top strip: brand mark + live dot + problems/pause. Quiet when all is well. */
+  #top { display:flex; align-items:center; gap:10px; min-height:24px; flex:0 0 auto; }
+  #top img { width:20px; height:25px; opacity:.9; }
+  #top .name { font-size:13px; color:var(--muted); letter-spacing:.04em; direction:ltr; }
+  #dot { width:8px; height:8px; border-radius:50%; background:var(--bank); opacity:.75; animation:breathe 3.2s ease-in-out infinite; }
+  #paused { display:none; margin-inline-start:auto; background:var(--raised); color:var(--soft); border-radius:999px; padding:3px 12px; font-size:15px; }
+  body.paused #dot { background:var(--stall); animation:none; }
+  @keyframes breathe { 50% { opacity:.25; } }
+
+  #health { display:flex; flex-direction:column; gap:6px; flex:0 0 auto; }
+  .hb { display:flex; align-items:center; gap:10px; border-radius:10px; padding:7px 12px; font-size:18px; font-weight:650; line-height:1.25; background:var(--red-bg); border:1px solid var(--red); border-inline-start-width:6px; animation:rise .25s ease-out; }
+  .hb::before { content:""; flex:0 0 auto; width:10px; height:10px; border-radius:50%; background:var(--red); }
+  .hb.amber { background:var(--amber-bg); border-color:var(--amber); } .hb.amber::before { background:var(--amber); }
+  .hb.info { background:var(--card); border-color:var(--line); font-weight:500; font-size:16px; color:var(--soft); } .hb.info::before { background:var(--stall); }
+  .hb .tag { font-size:12px; font-weight:700; letter-spacing:.06em; direction:ltr; opacity:.85; border:1px solid currentColor; border-radius:5px; padding:0 5px; margin-inline-start:auto; white-space:nowrap; }
+
+  /* Stage: answers. Newest = hero (big say line); older = compact rows; bottom edge fades instead of a hard cut. */
+  #stage { position:relative; flex:1 1 auto; min-height:140px; overflow:hidden; }
+  #cards { display:flex; flex-direction:column; gap:10px; max-height:100%; overflow:hidden; }
+  #cards.fade { -webkit-mask-image:linear-gradient(#000 calc(100% - 36px), transparent); mask-image:linear-gradient(#000 calc(100% - 36px), transparent); }
+  .card { background:var(--card); border-radius:14px; border-inline-start:6px solid var(--ai); padding:12px 16px 12px; transition:opacity .25s, background .25s; animation:rise .22s ease-out; }
+  .card.bank { border-color:var(--bank); } .card.ai { border-color:var(--ai); } .card.stall { border-color:var(--stall); } .card.info { border-color:var(--tan); }
+  .card .top { display:flex; align-items:baseline; gap:10px; min-width:0; }
+  .pill { flex:0 0 auto; font-size:13px; font-weight:650; border-radius:999px; padding:1px 10px; background:var(--raised); color:var(--soft); }
+  .bank .pill { color:var(--bank); } .ai .pill { color:var(--ai); } .info .pill { color:var(--tan); }
+  .q { color:var(--muted); font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .say { margin-top:6px; font-size:calc(var(--say-pt) * var(--say-k, 1)); line-height:1.28; font-weight:650; color:var(--text); }
+  .say.split { font-weight:500; color:var(--soft); }
+  .say b { font-weight:700; color:var(--text); }
+  .card.stall .say { font-weight:550; color:var(--soft); }
+  ul { margin:8px 0 0; padding-inline-start:20px; font-size:19px; line-height:1.35; color:var(--soft); }
+  li::marker { color:var(--muted); }
+  .note-line { margin-top:6px; font-size:13px; color:var(--muted); }
+  /* Hero (newest) vs compact (older). */
+  .card.compact { padding:8px 14px; background:var(--card2); opacity:.62; }
+  .card.compact .say { font-size:18px; margin-top:2px; font-weight:500; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card.compact .say b { font-weight:600; color:var(--soft); }
+  .card.compact ul, .card.compact .note-line { display:none; }
+  .card.compact .q { display:none; }
+  .card.compact { display:flex; align-items:center; gap:12px; }
+  .card.compact .say { order:1; flex:1 1 auto; min-width:0; }
+  .card.compact .top { order:2; flex:0 0 auto; }
+  .card.compact .pill { background:transparent; border:1px solid var(--line); }
+  .card.dim { opacity:.7; border-style:dashed; border-inline-start-width:4px; background:var(--card2); }
+  .card.dim.compact { opacity:.45; }
+  .card.live::after { content:""; display:block; width:7px; height:7px; border-radius:50%; background:var(--ai); margin-top:6px; animation:breathe 1s ease-in-out infinite; }
+  /* Consent: the one thing that must be said first. Calm, large, brand tan. */
+  .card.consent { background:#241e19; border-color:var(--tan); padding:16px 20px; }
+  .card.consent .say { font-weight:650; color:var(--text); }
+  .card.consent ul { color:var(--muted); font-size:17px; list-style:none; padding:0; display:flex; flex-direction:column; gap:3px; }
+  @keyframes rise { from { opacity:0; transform:translateY(-6px); } }
+
+  #empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:var(--muted); font-size:19px; }
+  #empty img { width:88px; opacity:.9; }
+  #empty small { font-size:14px; opacity:.7; }
+
+  /* Rewind: a sheet over the answers (never pushes the layout), newest line at the bottom. */
+  #rewind { display:none; position:absolute; inset:0; background:#18222f; border:1px solid var(--tan); border-radius:14px; padding:12px 16px; flex-direction:column; box-shadow:0 8px 28px rgba(0,0,0,.5); animation:rise .15s ease-out; z-index:5; }
+  #rewind .h { color:var(--tan); font-size:14px; margin-bottom:6px; display:flex; justify-content:space-between; flex:0 0 auto; }
+  #rewind .h .k { direction:ltr; color:var(--muted); }
+  #rewind .body { flex:1 1 auto; overflow-y:auto; display:flex; flex-direction:column; }
+  #rewind .body::before { content:""; margin-top:auto; }
+  #rewind .l { font-size:22px; line-height:1.35; margin:5px 0; color:var(--text); }
   #rewind .l.me { color:var(--muted); font-size:17px; }
-  #capture { display:none; flex-wrap:wrap; gap:8px; }
-  .cap { -webkit-app-region:no-drag; cursor:pointer; background:#26303d; border-radius:10px; padding:6px 12px; font-size:20px; direction:ltr; unicode-bidi:isolate; }
-  .cap .k { color:var(--muted); font-size:13px; margin-inline-end:8px; unicode-bidi:isolate; }
-  .cap.copied { background:#2f9e6b; }
-  /* Side rail: fact cards, reminders, live notes (below the answers, smaller). */
-  #rail { display:flex; flex-direction:column; gap:8px; margin-top:6px; }
-  .side { background:#1a1f27; border-radius:12px; padding:10px 14px; border-inline-start:4px solid #8b6fd6; }
-  .side.reminder { border-color:var(--stall); } .side.warn { border-color:#d9534f; } .side.info { border-color:#8a94a6; }
-  .side .t { font-size:20px; font-weight:650; } .side ul { font-size:17px; margin-top:4px; }
-  #notes { display:none; background:#161a20; border-radius:12px; padding:8px 14px; }
-  #notes .h { color:var(--muted); font-size:13px; } #notes li { font-size:17px; color:#c9d1dc; margin:3px 0; }
+  #rewind .who { font-size:12px; font-weight:700; border-radius:999px; padding:0 8px; margin-inline-end:8px; background:var(--raised); color:var(--soft); vertical-align:middle; }
+
+  /* Captured phones / emails / domains: tap-to-copy chips (latest first). */
+  #capture { display:none; flex-wrap:wrap; gap:6px; flex:0 0 auto; }
+  .cap { -webkit-app-region:no-drag; cursor:pointer; background:var(--raised); border-radius:9px; padding:4px 11px; font-size:19px; direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums; transition:background .2s; }
+  .cap .k { color:var(--muted); font-size:12px; margin-inline-end:8px; unicode-bidi:isolate; }
+  .cap.copied { background:#245a41; }
+
+  /* Side rail: facts / reminders in two columns, notes below. Never taller than ~34% so answers keep the room. */
+  #rail { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:8px; flex:0 0 auto; max-height:34vh; overflow:hidden; }
+  #rail:empty { display:none; }
+  .side { background:var(--card2); border-radius:11px; padding:8px 12px; border-inline-start:4px solid var(--fact); min-width:0; animation:rise .22s ease-out; }
+  .side.reminder, .side.info { border-color:var(--tan); }
+  .side.warn { border-color:var(--red); }
+  .side .t { font-size:18px; font-weight:650; }
+  .side.warn .t::after { content:" ⚠"; color:var(--red); }
+  .side ul { font-size:15.5px; margin-top:3px; padding-inline-start:18px; line-height:1.3; }
+  #notes { display:none; flex:0 0 auto; padding:2px 4px; }
+  #notes .h { color:var(--muted); font-size:12px; letter-spacing:.03em; }
+  #notes ul { margin:2px 0 0; padding-inline-start:16px; font-size:15.5px; color:var(--soft); }
+  #notes li { margin:1px 0; }
+  #keys { flex:0 0 auto; display:flex; gap:16px; justify-content:center; color:#5d6b80; font-size:12px; direction:ltr; padding-top:2px; }
 </style>
 </head>
 <body>
-<div id="wrap"><div id="health"></div><div id="paused">⏸ מושהה (Ctrl+Opt+P)</div><div id="rewind"></div><div id="capture"></div><div id="empty">Wingman מקשיב… הכרטיסים יופיעו כאן</div><div id="cards" style="display:flex;flex-direction:column;gap:12px"></div><div id="rail"></div><div id="notes"><div class="h">הערות מהשיחה</div><ul id="notelist"></ul></div></div>
+<div id="wrap">
+  <div id="top"><img src="../../brand/png/mark-night-512.png" alt=""><span class="name">Wingman</span><span id="dot"></span><div id="paused">⏸ מושהה</div></div>
+  <div id="health"></div>
+  <div id="stage">
+    <div id="cards"></div>
+    <div id="empty"><img src="../../brand/png/mark-night-512.png" alt=""><div id="emptyT">מקשיב…</div><small>התשובות יופיעו כאן</small></div>
+    <div id="rewind"></div>
+  </div>
+  <div id="capture"></div>
+  <div id="rail"></div>
+  <div id="notes"><div class="h">הערות AI</div><ul id="notelist"></ul></div>
+  <div id="keys"></div>
+</div>
 <script>
-  const wrap = document.getElementById("wrap");
   const cardsBox = document.getElementById("cards");
   const healthBox = document.getElementById("health");
+  const emptyBox = document.getElementById("empty");
   const cards = new Map(); // id -> element
   const bars = new Map();  // health id -> element
   let MAX = 4;
   let paused = false;
-  function clearCards() { for (const el of cards.values()) el.remove(); cards.clear(); }
+
+  // Mixed Hebrew/English text: every Latin/number run (domains, emails, phones, prices, "API") is an isolated LTR island, so it never flips neighbours.
+  // Built with text nodes + <bdi> only (never innerHTML).
+  const LTR = /[$]?[A-Za-z0-9][A-Za-z0-9._@:\/+%#$&\-]*(?: [A-Za-z0-9][A-Za-z0-9._@:\/+%#$&\-]*)*(?:,\d{3})*/g;
+  function mixed(el, text) {
+    let last = 0; const s = String(text ?? "");
+    for (const m of s.matchAll(LTR)) {
+      let v = m[0].replace(/[.\-:,]+$/, "");           // trailing punctuation belongs to the sentence
+      if (m.index > last) el.append(document.createTextNode(s.slice(last, m.index)));
+      const b = document.createElement("bdi"); b.dir = "ltr"; b.textContent = v; el.append(b);
+      last = m.index + v.length;
+    }
+    if (last < s.length) el.append(document.createTextNode(s.slice(last)));
+    return el;
+  }
+  const div = (cls, dir = "rtl") => { const d = document.createElement("div"); if (cls) d.className = cls; d.dir = dir; return d; };
+
+  function fadeCheck() { requestAnimationFrame(() => cardsBox.classList.toggle("fade", cardsBox.scrollHeight > cardsBox.clientHeight + 2)); }
+  function emptyCheck() { fadeCheck(); emptyBox.style.display = cards.size ? "none" : "flex"; }
+  function clearCards() { for (const el of cards.values()) el.remove(); cards.clear(); emptyCheck(); }
+
   function renderHealth(c) {
     if (c.clear) { bars.get(c.id)?.remove(); bars.delete(c.id); return; }
     let el = bars.get(c.id);
     if (!el) { el = document.createElement("div"); bars.set(c.id, el); healthBox.append(el); }
-    el.className = `hb ${c.level || "red"}`; el.dir = "rtl"; el.textContent = c.say;
+    el.className = `hb ${c.level || "red"}`; el.dir = "rtl"; el.replaceChildren();
+    // "NOT HEARING THE CLIENT – אין שמע": the Hebrew explanation leads (right edge), the English code becomes a small tag.
+    const m = /^([A-Z][A-Z0-9 ()_.,\/]{3,}?)\s[–-]\s(.+)$/.exec(c.say);
+    const body = document.createElement("span"); mixed(body, m ? m[2] : c.say); el.append(body);
+    if (m) { const t = document.createElement("span"); t.className = "tag"; t.textContent = m[1]; el.append(t); }
   }
+
   const rail = document.getElementById("rail"), notesBox = document.getElementById("notes"), noteList = document.getElementById("notelist");
   const sides = new Map();
   function renderSide(c) {
     if (c.badge === "note") {
-      const li = document.createElement("li"); li.dir = "rtl"; li.textContent = c.say; noteList.append(li);
+      const li = document.createElement("li"); li.dir = "rtl"; mixed(li, c.say); noteList.append(li);
       while (noteList.children.length > 8) noteList.firstElementChild.remove();
       notesBox.style.display = "block"; return;
     }
     let el = sides.get(c.id);
     if (!el) { el = document.createElement("div"); sides.set(c.id, el); rail.prepend(el); }
     el.className = `side ${c.badge}${c.warn ? " warn" : ""}`; el.replaceChildren();
-    const t = document.createElement("div"); t.className = "t"; t.dir = "rtl"; t.textContent = c.say; el.append(t);
-    if (c.facts?.length) { const ul = document.createElement("ul"); for (const f of c.facts) { const li = document.createElement("li"); li.dir = "rtl"; li.textContent = f; ul.append(li); } el.append(ul); }
-    while (sides.size > 3) { const [k, v] = sides.entries().next().value; v.remove(); sides.delete(k); }
+    const t = div("t"); mixed(t, c.say); el.append(t);
+    if (c.facts?.length) { const ul = document.createElement("ul"); for (const f of c.facts) { const li = document.createElement("li"); li.dir = "rtl"; mixed(li, f); ul.append(li); } el.append(ul); }
+    while (sides.size > 4) { const [k, v] = sides.entries().next().value; v.remove(); sides.delete(k); }
+  }
+
+  const PILL = { bank: "מהבנק", ai: "AI · לא מאומת", stall: "לקנות זמן", info: "הודעה" };
+  /** Newest = hero, the rest = compact rows. Long answers shrink a little so they still fit in a glance. */
+  function layoutRoles() {
+    const els = [...cards.values()];
+    els.forEach((el, i) => el.classList.toggle("compact", i !== els.length - 1 && !el.classList.contains("consent")));
+    const hero = els[els.length - 1];
+    if (hero) { const n = hero.querySelector(".say")?.textContent.length || 0; hero.style.setProperty("--say-k", n > 260 ? "0.7" : n > 170 ? "0.8" : n > 110 ? "0.9" : "1"); }
+    els.forEach((el) => { if (el !== hero) el.style.removeProperty("--say-k"); });
   }
   function render(c) {
     if (c.health) { renderHealth(c); return; }
     if (c.turnId === "side") { renderSide(c); return; }   // facts/notes/reminders are kept even while paused
-    if (c.withdraw) { cards.get(c.id)?.remove(); cards.delete(c.id); return; }
+    if (c.withdraw) { cards.get(c.id)?.remove(); cards.delete(c.id); layoutRoles(); emptyCheck(); return; }
     if (paused) return;
-    document.getElementById("empty")?.remove();
     let el = cards.get(c.id);
+    const isNew = !el;
     if (!el) {
       el = document.createElement("div");
       cards.set(c.id, el);
       cardsBox.prepend(el);
-      for (const other of cards.values()) if (other !== el) other.classList.add("old");
       while (cards.size > MAX) { const [k, v] = cards.entries().next().value; v.remove(); cards.delete(k); }
     }
-    el.className = `card ${c.badge}${c.dim ? " dim" : ""}`;
+    const consent = c.turnId === "start" || c.id === "consent";
+    el.className = `card ${c.badge}${c.dim ? " dim" : ""}${consent ? " consent" : ""}`;
     el.replaceChildren();
-    const q = document.createElement("div"); q.className = "q"; q.dir = "rtl"; q.textContent = c.question; el.append(q);
-    const s = document.createElement("div"); s.className = "say"; s.dir = "rtl"; s.textContent = c.say; el.append(s);
+    const top = div("top");
+    const pill = document.createElement("span"); pill.className = "pill"; pill.textContent = consent ? "להגיד בתחילת השיחה" : PILL[c.badge] || c.badge; top.append(pill);
+    if (c.question && !consent) { const q = document.createElement("span"); q.className = "q"; q.dir = "rtl"; mixed(q, c.question); top.append(q); }
+    el.append(top);
+    // First sentence in strong weight, the rest softer: a one-second read for long answers.
+    const s = div("say"); const say = String(c.say || "");
+    const cut = say.length > 90 ? say.search(/[.!?]\s/) : -1;
+    if (cut > 15 && cut < say.length - 12) { s.classList.add("split"); const b = document.createElement("b"); mixed(b, say.slice(0, cut + 1)); s.append(b, document.createTextNode(" ")); mixed(s, say.slice(cut + 2)); } else mixed(s, say);
+    el.append(s);
     if (c.facts?.length) {
       const ul = document.createElement("ul");
-      for (const f of c.facts) { const li = document.createElement("li"); li.dir = "rtl"; li.textContent = f; ul.append(li); }
+      for (const f of c.facts) { const li = document.createElement("li"); li.dir = "rtl"; mixed(li, f); ul.append(li); }
       el.append(ul);
     }
-    const b = document.createElement("div"); b.className = "badge";
-    b.textContent = { bank: "bank", ai: "AI · not verified", stall: "stall", info: "reminder" }[c.badge] + (c.dim ? " · low confidence / you were already talking" : "");
-    el.append(b);
+    if (c.dim) { const n = div("note-line"); n.textContent = "ביטחון נמוך או שכבר דיברת"; el.append(n); }
+    // A card re-sent with new text (AI streaming): calm pulse while it grows.
+    if (!isNew && c.badge === "ai") { el.classList.add("live"); clearTimeout(el._live); el._live = setTimeout(() => el.classList.remove("live"), 900); }
+    layoutRoles(); emptyCheck();
   }
+
   // Rewind: keep recent transcript lines; the hotkey shows the last N seconds (auto-hides after 20 s).
-  const lines = []; let REWIND_S = 30, rewindTimer;
+  const lines = []; let REWIND_S = 30, rewindTimer, HK = {};
   const rewindBox = document.getElementById("rewind"), capBox = document.getElementById("capture");
   function showRewind() {
-    if (rewindBox.style.display === "block") { rewindBox.style.display = "none"; return; }
+    if (rewindBox.style.display === "flex") { rewindBox.style.display = "none"; return; }
     const since = Date.now() - REWIND_S * 1000;
+    const fresh = lines.some((l) => l.t >= since);
     let recent = lines.filter((l) => l.t >= since);
     if (!recent.length) recent = lines.slice(-4);   // quiet for a while: show the last few lines anyway
     rewindBox.replaceChildren();
-    const h = document.createElement("div"); h.className = "h"; h.textContent = lines.some((l) => l.t >= since) ? `${REWIND_S} השניות האחרונות` : "השורות האחרונות"; rewindBox.append(h);
-    if (!recent.length) { const e = document.createElement("div"); e.className = "l"; e.textContent = "אין טקסט מהשניות האחרונות"; rewindBox.append(e); }
+    const h = div("h"); const ht = document.createElement("span"); ht.textContent = fresh ? `מה אמרו · ${REWIND_S} השניות האחרונות` : "מה אמרו · השורות האחרונות"; const hk = document.createElement("span"); hk.className = "k"; hk.textContent = (HK.rewind || "").replace(/Control/, "Ctrl").replace(/Alt/, "Opt") + " לסגירה"; h.append(ht, hk); rewindBox.append(h);
+    const body = div("body");
+    if (!recent.length) { const e = div("l"); e.textContent = "אין טקסט מהשניות האחרונות"; body.append(e); }
     for (const l of recent) {
-      const d = document.createElement("div"); d.className = `l ${l.ch}`; d.dir = "rtl";
-      d.textContent = (l.ch === "me" ? "אני: " : "לקוח: ") + l.text; rewindBox.append(d);
+      const d = div(`l ${l.ch}`); const who = document.createElement("span"); who.className = "who"; who.textContent = l.ch === "me" ? "אני" : "לקוח";
+      d.append(who); mixed(d, l.text); body.append(d);
     }
-    rewindBox.style.display = "block"; rewindBox.scrollTop = rewindBox.scrollHeight;
+    rewindBox.append(body);
+    rewindBox.style.display = "flex"; body.scrollTop = body.scrollHeight;
     clearTimeout(rewindTimer); rewindTimer = setTimeout(() => { rewindBox.style.display = "none"; }, 20000);
   }
   window.wingman.onLine((l) => { lines.push(l); while (lines.length > 400) lines.shift(); });
@@ -129,14 +252,21 @@
     const v = document.createElement("span"); v.textContent = c.value;
     el.append(k, v); el.addEventListener("click", () => window.wingman.copy(c.value));
     caps.set(c.value, el); capBox.prepend(el); capBox.style.display = "flex";
-    while (caps.size > 8) { const [key, node] = caps.entries().next().value; node.remove(); caps.delete(key); }
+    while (caps.size > 6) { const [key, node] = caps.entries().next().value; node.remove(); caps.delete(key); }
   });
   window.wingman.onCopied((t) => { const el = caps.get(t); if (el) { el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 1200); } });
-  window.wingman.onConfig((c) => { REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px'); });
+  window.wingman.onConfig((c) => {
+    REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; HK = c.hotkeys || {};
+    document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px');
+    // Hotkey legend (symbols only), built from the configured accelerators.
+    const sym = (a) => String(a || "").replace(/Control\+?/, "⌃").replace(/Alt\+?|Option\+?/, "⌥").replace(/Command\+?|Cmd\+?/, "⌘").replace(/Shift\+?/, "⇧");
+    const keys = document.getElementById("keys"); keys.replaceChildren();
+    for (const [k, label] of [["rewind", "מה אמרו"], ["copy", "העתק"], ["pause", "השהיה"], ["clear", "ניקוי"]]) if (HK[k]) { const s = document.createElement("span"); s.textContent = `${sym(HK[k])}  ${label}`; keys.append(s); }
+  });
   window.wingman.onCard(render);
   window.wingman.onReset(() => { clearCards(); for (const v of sides.values()) v.remove(); sides.clear(); noteList.replaceChildren(); notesBox.style.display = "none"; lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none"; rewindBox.style.display = "none"; for (const el of bars.values()) el.remove(); bars.clear(); });
   window.wingman.onClear(clearCards);
-  window.wingman.onPause(() => { paused = !paused; document.getElementById("paused").style.display = paused ? "block" : "none"; if (paused) clearCards(); });
+  window.wingman.onPause(() => { paused = !paused; document.getElementById("paused").style.display = paused ? "block" : "none"; document.body.classList.toggle("paused", paused); document.getElementById("emptyT").textContent = paused ? "מושהה" : "מקשיב…"; if (paused) clearCards(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") clearCards(); });
 </script>
 </body>

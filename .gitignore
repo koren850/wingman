@@ -11,3 +11,8 @@ stage0/data/gold/synthetic.wav
 
 # Client data snapshots (never committed)
 stage0/data/private/
+
+# Synthetic QA (stage0/qa): rendered audio, TTS cache, QA call folders
+stage0/qa/out/
+stage0/qa/cache/
+stage0/qa/calls/

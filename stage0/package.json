@@ -17,11 +17,13 @@
     "brief": "tsx src/brief.ts",
     "factscheck": "tsx src/facts-check.ts",
     "tag": "tsx src/tag.ts",
+    "summary": "tsx src/summary.ts",
     "dashboard": "electron dashboard/main.cjs",
     "tray": "electron tray/main.cjs",
     "purge": "tsx src/purge.ts",
     "banktest": "tsx src/bank-test.ts",
-    "settings": "tsx src/settings-cli.ts"
+    "settings": "tsx src/settings-cli.ts",
+    "qa": "tsx qa/run-qa.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.94",

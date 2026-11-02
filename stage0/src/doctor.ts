@@ -2,7 +2,7 @@
 // FAILURES.md section 5 checklist. Ends with READY / READY WITH WARNINGS / NOT READY (exit 1).
 //   pnpm run doctor              everything (mic, system audio, STT sockets, 1-2 small LLM calls per model: costs a few cents)
 //   pnpm run doctor --offline    no audio, no network, no paid calls: settings, keys, packages, files, resources
-import { execFileSync, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import { readFileSync, statSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { loadKeys, KEYS_FILE, KEY_VARS, DATA, CALLS, type KeyName } from "./env.ts";
@@ -112,6 +112,20 @@ section("Budget and data hygiene");
   old ? warn(`${old} saved call(s) older than ${S.privacy.retentionDays} days`, `pnpm purge --older-than ${S.privacy.retentionDays}`) : ok("no calls past retention");
   const missingPrice = llmRefs.filter((r) => !S.budget.prices.llm[r]);
   missingPrice.length ? warn(`no price in budget.prices.llm for ${missingPrice.join(", ")}: cost shows $0`) : ok("price table covers the configured models");
+}
+
+section("Screens and audio devices");
+{
+  const { readAudioDevices, bluetoothInUse } = await import("./devices.ts");
+  const bt = bluetoothInUse(await readAudioDevices());
+  bt ? warn(`${bt.device.name} is the ${bt.role === "mic" ? "microphone" : "speaker output"}: Bluetooth call audio lowers transcript quality`, "use the Mac microphone, or wired headphones") : ok("no Bluetooth headset in use");
+  const screens = await new Promise<number>((res) => execFile("system_profiler", ["SPDisplaysDataType", "-json"], { timeout: 5000 }, (e, out) => {
+    try { res(e ? -1 : (JSON.parse(out).SPDisplaysDataType ?? []).flatMap((g: any) => g.spdisplays_ndrvs ?? []).length); } catch { res(-1); }
+  }));
+  if (screens < 0) warn("could not count screens");
+  else if (screens >= 2) ok(`${screens} screens: the answer window opens on the second one`);
+  else if (S.overlay.allowPrimary) warn("only one screen: the answer window opens on it (overlay.allowPrimary). Do NOT share this screen");
+  else warn("only one screen: the answer window will NOT open (it would show when you share your screen)", "connect the second screen before the call");
 }
 
 if (offline) { console.log("\n(skipped: microphone, system audio, STT sockets, LLM calls, network latency. Run without --offline before a call.)"); finish(); }

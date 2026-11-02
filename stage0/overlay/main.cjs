@@ -6,7 +6,9 @@ const path = require("node:path");
 // App icon from brand/ (rebuild with brand/build.sh). Missing file = Electron default icon.
 const BRAND_ICON = path.join(__dirname, "..", "..", "brand", "png", "icon-512.png");
 
-const CALLS = path.join(__dirname, "..", "calls");
+// WINGMAN_CALLS_DIR: point at a temp calls folder (snapshots/tests). WINGMAN_OVERLAY_SNAPSHOT=<png>: render hidden, save, quit.
+const CALLS = process.env.WINGMAN_CALLS_DIR || path.join(__dirname, "..", "calls");
+const SNAP = process.env.WINGMAN_OVERLAY_SNAPSHOT;
 // Settings arrive as JSON from src/overlay.ts (call.ts / pnpm overlay). Defaults here equal config/defaults.yaml.
 const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, maxCards: 4, rewindSeconds: 30, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K" } },
   (() => { try { return JSON.parse(process.env.WINGMAN_OVERLAY || "{}"); } catch { return {}; } })());
@@ -30,18 +32,20 @@ function pickDisplay() {
 }
 
 function create() {
-  const d = pickDisplay();
+  // Snapshot mode needs no second screen: it never shows a window.
+  const d = SNAP ? screen.getPrimaryDisplay() : pickDisplay();
   if (!d) { app.exit(3); return; }
-  const w = Math.min(760, d.workArea.width);
+  if (SNAP && app.dock) app.dock.hide();
+  const w = SNAP ? 760 : Math.min(760, d.workArea.width);
   if (process.platform === "darwin" && app.dock && require("node:fs").existsSync(BRAND_ICON)) app.dock.setIcon(BRAND_ICON);
   win = new BrowserWindow({
-    x: d.workArea.x + d.workArea.width - w - 20, y: d.workArea.y + 40, width: w, height: Math.min(900, d.workArea.height - 80),
+    x: d.workArea.x + d.workArea.width - w - 20, y: d.workArea.y + 40, width: w, height: SNAP ? 900 : Math.min(900, d.workArea.height - 80),
+    show: !SNAP, paintWhenInitiallyHidden: true,
     alwaysOnTop: true, frame: false, transparent: false, backgroundColor: "#111418", focusable: false, skipTaskbar: true,
     icon: BRAND_ICON,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
-  win.setAlwaysOnTop(true, "floating");
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (!SNAP) { win.setAlwaysOnTop(true, "floating"); win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); }
   // Content protection is ON but UNTESTED with Zoom; the second screen is the real protection.
   // overlay.contentProtection: false (WINGMAN_SHOW_IN_CAPTURE=1) turns it off for the Zoom share test.
   if (CFG.contentProtection) win.setContentProtection(true);
@@ -53,6 +57,7 @@ function create() {
     clearInterval(timer); timer = setInterval(poll, 100);
   });
   // S4: focusable:false means Esc never reaches the window, so clear/pause are global shortcuts.
+  if (SNAP) { snapshotMode(); return; }
   const ok1 = globalShortcut.register(CFG.hotkeys.clear, () => win && win.webContents.send("clear"));
   const ok2 = globalShortcut.register(CFG.hotkeys.pause, () => win && win.webContents.send("pause"));
   const ok3 = globalShortcut.register(CFG.hotkeys.rewind, () => win && win.webContents.send("rewind"));
@@ -60,6 +65,15 @@ function create() {
   if (!ok1 || !ok2 || !ok3 || !ok4) console.error("Could not register some global shortcuts (" + Object.entries(CFG.hotkeys).map(([k, v]) => v + " = " + k).join(", ") + ").");
   // Click on a captured item copies it (the window never takes focus).
   ipcMain.on("copy", (_e, text) => { if (typeof text === "string" && text.length < 200) { clipboard.writeText(text); win && win.webContents.send("copied", text); } });
+}
+
+// Snapshot: replay the calls folder, optionally fire hotkey events (WINGMAN_OVERLAY_SNAPSHOT_KEYS="rewind,pause"), wait, save, quit.
+function snapshotMode() {
+  const keys = String(process.env.WINGMAN_OVERLAY_SNAPSHOT_KEYS || "").split(",").filter(Boolean);
+  win.webContents.once("did-finish-load", () => {
+    setTimeout(() => keys.forEach((k) => win.webContents.send(k)), 900);
+    setTimeout(async () => { fs.writeFileSync(SNAP, (await win.webContents.capturePage()).toPNG()); app.quit(); }, 2200);
+  });
 }
 
 function poll() {

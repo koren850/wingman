@@ -16,9 +16,11 @@ export class CostMeter {
   addLlm(role: string, modelRef: string, usage: unknown, providerMetadata?: unknown): { usd: number; tokens: Omit<RoleTotals, "calls" | "usd"> } {
     const u = (usage ?? {}) as LlmUsage, d = u.inputTokenDetails ?? {};
     const pm = ((providerMetadata as any)?.anthropic ?? {}) as { cacheCreationInputTokens?: number };
-    const input = u.inputTokens ?? 0, output = u.outputTokens ?? 0;
-    const read = d.cacheReadTokens ?? 0, write = d.cacheWriteTokens ?? pm.cacheCreationInputTokens ?? 0;
-    const plain = d.noCacheTokens ?? Math.max(0, input - read - write);
+    // A NaN/negative count from a provider must not poison the running total (NaN >= cap is false: the budget cap would never trip).
+    const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x > 0 ? x : 0);
+    const input = n(u.inputTokens), output = n(u.outputTokens);
+    const read = n(d.cacheReadTokens), write = d.cacheWriteTokens !== undefined ? n(d.cacheWriteTokens) : n(pm.cacheCreationInputTokens);
+    const plain = d.noCacheTokens !== undefined ? n(d.noCacheTokens) : Math.max(0, input - read - write);
     const p = this.prices.llm[modelRef];
     if (!p) this.unpriced.add(modelRef);
     const usd = p ? (plain * p.inUsdPerM + read * (p.cacheReadUsdPerM ?? p.inUsdPerM) + write * (p.cacheWriteUsdPerM ?? p.inUsdPerM) + output * p.outUsdPerM) / 1e6 : 0;

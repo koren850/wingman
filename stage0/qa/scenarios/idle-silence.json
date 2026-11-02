@@ -1,0 +1,94 @@
+{
+ "title": "Long silence (invented client: Omer, Nir Locksmith)",
+ "focus": "30 s and 20 s of silence: no phantom cards, the connection survives, questions after silence still work",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "שלום עומר, מדבר דן."
+  },
+  {
+   "speaker": "them",
+   "text": "היי דן. יש לך רגע לשאלה על הדומיין?",
+   "expect": {
+    "question": true,
+    "card": [
+     "domain-renewal",
+     "domain-transfer",
+     "dns-basics",
+     "ai",
+     "stall",
+     "none"
+    ],
+    "note": "generic yes/no question, any outcome fine"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "בטח, אני כאן."
+  },
+  {
+   "speaker": "them",
+   "text": "אני צריך לענות לטלפון, תחכה לי בבקשה.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אין בעיה.",
+   "pauseBeforeMs": 30000
+  },
+  {
+   "speaker": "them",
+   "text": "חזרתי, סליחה. בקשר לגיבוי של האתר, יש לכם גיבוי?",
+   "pauseBeforeMs": 500,
+   "expect": {
+    "question": true,
+    "card": "backups"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "כן, גיבוי אוטומטי."
+  },
+  {
+   "speaker": "them",
+   "text": "אוקיי, רגע, יש לי מישהו בדלת.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אני מחכה.",
+   "pauseBeforeMs": 20000
+  },
+  {
+   "speaker": "them",
+   "text": "שוב אני. אז האתר נפל אתמול בערב, למה זה קרה?",
+   "pauseBeforeMs": 500,
+   "expect": {
+    "question": true,
+    "card": [
+     "site-down",
+     "ai",
+     "stall"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את השרת ואת התוספים."
+  },
+  {
+   "speaker": "them",
+   "text": "תודה, להתראות.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  }
+ ]
+}

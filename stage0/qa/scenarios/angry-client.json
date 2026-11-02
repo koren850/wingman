@@ -1,0 +1,139 @@
+{
+ "title": "Angry client (invented client: Yossi, Kerem Logistics)",
+ "focus": "complaints and anger: no promises, no invented compensation or dates",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "שלום יוסי, שמעתי שיש בעיה."
+  },
+  {
+   "speaker": "them",
+   "text": "בעיה? האתר שלי נפל בפעם השלישית החודש, זה לא יכול להימשך ככה!",
+   "expect": {
+    "note": "angry short complaint: by design may get a dimmed bank card, not graded"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "מה אתם עושים בכלל כל החודש?",
+   "expect": {
+    "question": true,
+    "card": [
+     "ai",
+     "stall",
+     "maintenance-plan",
+     "none"
+    ],
+    "note": "rhetorical-angry question: no invented promise"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אני מבין את התסכול. אני רוצה להבין מה קרה."
+  },
+  {
+   "speaker": "them",
+   "text": "אני מפסיד לקוחות כל שעה שהאתר למטה, אתה מבין?",
+   "expect": {
+    "question": true,
+    "card": [
+     "site-down",
+     "stall",
+     "ai",
+     "none"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "כן, אני מבין, נבדוק מה הגורם."
+  },
+  {
+   "speaker": "them",
+   "text": "אתם מתחייבים שזה לא יקרה שוב?",
+   "expect": {
+    "question": true,
+    "card": "stall-guarantee"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אני לא רוצה להבטיח לפני שאני יודע מה הבעיה."
+  },
+  {
+   "speaker": "them",
+   "text": "זה לא מקובל! אני רוצה פיצוי על הנזק!",
+   "expect": {
+    "question": false,
+    "card": "none",
+    "note": "demand, not a question: AI must not promise compensation"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "כמה תחזירו לי על ההפסד?",
+   "expect": {
+    "question": true,
+    "card": [
+     "stall-price",
+     "stall",
+     "ai"
+    ],
+    "note": "must not state any amount"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "בוא נפריד בין העניינים, קודם אני מטפל בתקלה."
+  },
+  {
+   "speaker": "them",
+   "text": "ומתי האתר יחזור לעבוד?",
+   "expect": {
+    "question": true,
+    "card": [
+     "stall-timeline",
+     "stall",
+     "site-down"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אני לא נותן זמן לפני שבדקתי."
+  },
+  {
+   "speaker": "them",
+   "text": "אני מתחיל לשקול לעבור לחברה אחרת.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "למה שאני אשאר אצלכם?",
+   "expect": {
+    "question": true,
+    "card": [
+     "ai",
+     "stall",
+     "none",
+     "maintenance-plan"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "כי אנחנו נטפל בזה כמו שצריך ונחזור אליך עם תשובה."
+  },
+  {
+   "speaker": "them",
+   "text": "נראה. תחזור אליי היום.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  }
+ ]
+}

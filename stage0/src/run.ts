@@ -14,7 +14,7 @@ import { requireKeys, DATA, CALLS, ROOT } from "./env.ts";
 import { EntitySpotter, loadSnapshot, type Fact } from "./entities.ts";
 import { takeNotes } from "./notes.ts";
 import { loadBrief, briefNotes, covered, type Brief } from "./brief.ts";
-import { loadBank, matchBank, stallCard, stallSay, type BankCard } from "./bank.ts";
+import { loadBank, matchBank, stallCard, stallSay, modelMayOverrideBank, type BankCard } from "./bank.ts";
 import { detect } from "./detector.ts";
 import { guard, sanitize } from "./guards.ts";
 import { buildPrefix, runReflex, type Tag } from "./reflex.ts";
@@ -30,7 +30,9 @@ import { CostMeter } from "./cost.ts";
 import { EchoFilter, MicGate } from "./echo.ts";
 import { extract } from "./capture.ts";
 import { HealthSupervisor, CircuitBreaker, describeRung, type Rung } from "./health.ts";
-import { joinSplit, type PrevUtterance } from "./split.ts";
+import { joinSplit, isBareQuestionTail, type PrevUtterance } from "./split.ts";
+import { readAudioDevices, bluetoothInUse } from "./devices.ts";
+import { runSummary, formatShort } from "./summary.ts";
 import { createInterface } from "node:readline";
 
 const args = process.argv.slice(2);
@@ -41,7 +43,7 @@ const discard = S.run.discard;
 const REFLEX_MODELS = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
 const keyFile = expandHome(S.keys.file);
 const NO_KEY = new Set(["script", "scripted"]);   // offline test doubles
-const keys = requireKeys([...new Set([S.stt.provider, ...(noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])])].filter((k) => !NO_KEY.has(k)), keyFile);
+const keys = requireKeys([...new Set([S.stt.provider, ...(noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any, ...(S.summary.enabled ? [parseModelRef(S.summary.model).provider as any] : [])])])].filter((k) => !NO_KEY.has(k)), keyFile);
 const registry = new ModelRegistry(keys);
 
 /** S2: consent line. Names the cloud processing and the AI assistant, and offers an opt-out (settings privacy.consentText). */
@@ -68,6 +70,7 @@ type Badge = "bank" | "ai" | "stall" | "info" | "warn";
 type Card = {
   id: string; turnId: string; badge: Badge; question: string; say: string; facts: string[]; dim?: boolean; at: number;
   health?: boolean; level?: "red" | "amber" | "info"; clear?: boolean; withdraw?: boolean;
+  priority?: boolean;   // "don't commit yet" bank cards (stall-price, stall-guarantee…): never hidden by the per-minute cap
 };
 const transcript: { ch: Channel; text: string }[] = [];
 const contextNotes: string[] = [];
@@ -93,7 +96,7 @@ function spotFacts(text: string) {
     console.log(`\n[🗂 fact] ${f.title}${f.lines.length ? "\n   • " + f.lines.join("\n   • ") : ""}`);
     if (S.facts.proposeClient && !clientChosen && !proposed && f.clientId !== undefined) {
       proposed = f;
-      emitSide({ id: "propose-client", badge: "info", say: `נראה שזו שיחה עם ${f.title}`, facts: ["y בטרמינל = לאשר ולתת ל-AI את הפרטים"] });
+      emitSide({ id: "propose-client", badge: "info", say: `נראה שזו שיחה עם ${f.title}`, facts: [CONTROL ? "לאשר בתפריט למעלה (Confirm client) = ה-AI יקבל את הפרטים" : "y בטרמינל = לאשר ולתת ל-AI את הפרטים"] });
       console.log(`\nLooks like a call with ${f.title}. Press y to confirm (adds it to the AI notes).`);
       status("propose", { title: f.title });
     }
@@ -191,7 +194,7 @@ function emitCard(c: Card) {
       const now = Date.now();
       shownTimes = shownTimes.filter((t) => now - t < S.cards.windowMs);
       if (quiet) { hidden = true; reason = "quiet"; }
-      else if (shownTimes.length >= S.cards.maxPerMinute) { hidden = true; reason = "cap"; }
+      else if (shownTimes.length >= S.cards.maxPerMinute && !c.priority) { hidden = true; reason = "cap"; }
       else shownTimes.push(now);
       decided.set(c.id, { hidden, reason });
       if (!turnsWithCard.has(c.turnId)) {
@@ -253,9 +256,9 @@ function onQuestion(r: SttResult, reason = "") {
   const allowAns = S.reflex.allowAns && caps.ans;
 
   const hit = matchBank(r.text, bank);
-  let shown: Card | undefined;
+  let shown: Card | undefined, modelIgnored = false;
   if (hit) {
-    shown = { id: `${turnId}-bank`, turnId, badge: "bank", question: r.text, say: hit.card.say, facts: hit.card.facts, dim: weak || undefined, at: Date.now() };
+    shown = { id: `${turnId}-bank`, turnId, badge: "bank", question: r.text, say: hit.card.say, facts: hit.card.facts, dim: weak || undefined, priority: hit.card.id.startsWith("stall-") || undefined, at: Date.now() };
     emitCard(shown); lat.bankAt = Date.now(); lat.bankId = hit.card.id;
   }
   if (!useAi) {
@@ -283,6 +286,10 @@ function onQuestion(r: SttResult, reason = "") {
         if (ac.signal.aborted) return;
         lat.tagAt = Date.now(); lat.tag = tag.kind + (tag.bankId ? ` ${tag.bankId}` : "");
         sup.recordTag(Number(lat.tagAt) - Number(lat.reqAt));
+        if (!modelMayOverrideBank(hit?.card.id, tag)) {
+          clearTimeout(stallTimer); log.write("events", { type: "stall-tier.kept", turnId, tag: tag.kind + (tag.bankId ? ` ${tag.bankId}` : ""), bank: hit?.card.id });
+          lat.tag = `${lat.tag} (ignored: ${hit?.card.id} stays)`; modelIgnored = true; return;
+        }
         if (tag.kind === "ANS" && !allowAns) { tag = { kind: "STALL" }; lat.tag = "STALL (ans-off)"; log.write("events", { type: "ans.suppressed", turnId, rung: sup.rung }); }
         if (tag.kind === "SKIP") {
           clearTimeout(stallTimer);
@@ -299,7 +306,7 @@ function onQuestion(r: SttResult, reason = "") {
           if (card && fresh()) {
             clearTimeout(stallTimer);
             if (shown?.badge === "bank") emitCard({ ...shown, withdraw: true }); // Haiku disagrees with the keyword hit
-            shown = { ...ai, id: `${turnId}-bank2`, badge: "bank", say: card.say, facts: card.facts, at: Date.now() }; emitCard(shown); lat.bankAt ??= Date.now();
+            shown = { ...ai, id: `${turnId}-bank2`, badge: "bank", say: card.say, facts: card.facts, priority: card.id.startsWith("stall-") || undefined, at: Date.now() }; emitCard(shown); lat.bankAt ??= Date.now();
           }
         }
       },
@@ -310,7 +317,7 @@ function onQuestion(r: SttResult, reason = "") {
       },
       onFacts(f) { if (!ac.signal.aborted) ai.facts = f; },
       onSayComplete(say) {
-        if (ac.signal.aborted) return;
+        if (ac.signal.aborted || modelIgnored) return;
         ai.say = say;
         if (!/^(ANS|BANK)/.test(String(lat.tag ?? "")) || !fresh()) return;
         if (String(lat.tag).startsWith("BANK") && shown?.badge === "bank") return; // bank card already up
@@ -386,12 +393,19 @@ function flush(ch: Channel) {
   const joined: SttResult = { ...p.last, text: p.texts.join(" "), words: p.words, speechFinal: true };
   if (ch !== "them" || shuttingDown) return;
   const now = Date.now();
-  const glued = joinSplit(lastThem, joined.text, now, S.stt.joinWindowMs ?? 0);
-  if (glued !== joined.text) { log.write("events", { type: "split.join", prev: lastThem?.text, text: joined.text }); joined.text = glued; }
-  const hit = matchBank(joined.text, bank);
-  const d = detect(joined.text, { bankScore: hit?.score ?? 0, stall: !!hit && hit.card.id.startsWith("stall-") });
+  const endWall = joined.speechEndWall ?? now;
+  const w = joined.words;
+  const startWall = w.length && joined.speechEndWall ? endWall - Math.max(0, (w[w.length - 1].end - w[0].start) * 1000) : now;
+  const detectText = (t: string) => { const h = matchBank(t, bank); return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) }; };
+  let { hit, d } = detectText(joined.text);
+  // S10: glue the previous short fragment only when that turns a non-question into a question.
+  const glued = d.isQuestion && !isBareQuestionTail(joined.text, d.reason) ? joined.text : joinSplit(lastThem, joined.text, startWall, S.stt.joinWindowMs);
+  if (glued !== joined.text) {
+    const g = detectText(glued);
+    if (g.d.isQuestion) { log.write("events", { type: "split.join", prev: lastThem?.text, text: joined.text }); joined.text = glued; hit = g.hit; d = g.d; }
+  }
   log.write("events", { type: "detect", text: joined.text, ...d });
-  lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: now, question: d.isQuestion };
+  lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: endWall, question: d.isQuestion };
   if (d.isQuestion && sup.caps.detect) onQuestion(joined, d.reason);
 }
 
@@ -409,13 +423,16 @@ function onResult(r: SttResult) {
 const meTimers = new Set<NodeJS.Timeout>();
 function acceptResult(r: SttResult, checkEcho: boolean) {
   if (shuttingDown) return;
+  if (r.text.length > 2000) r = { ...r, text: r.text.slice(-2000) };   // a runaway final must not stall the regex/matching
   if (checkEcho) {
     const e = echo.isEcho(r.text);
     if (e.echo) { echoDropped++; log.write("events", { type: "echo.drop", text: r.text, score: Number(e.score.toFixed(2)) }); return; }
   }
   if (r.text) {
-    capture(r.channel, r.text);
-    spotFacts(r.text);
+    lastSpeechAt = Date.now();
+    // Side features must never take the call down: a bad snapshot row or odd text only loses its own card.
+    try { capture(r.channel, r.text); } catch (e) { log.write("events", { type: "capture.error", error: String((e as Error)?.message ?? e) }); }
+    try { spotFacts(r.text); } catch (e) { log.write("events", { type: "facts.error", error: String((e as Error)?.message ?? e) }); }
     if (notesOn) notesLines.push(`${r.channel}: ${r.text}`);
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) lastMeVoiced = Date.now();
     transcript.push({ ch: r.channel, text: r.text });
@@ -468,11 +485,12 @@ function setupControl(onConsent: () => void) {
     else if (cmd === "client") confirmClient();
     else if (cmd === "note") addNote(rest.join(" "));
     else if (cmd === "stop") void shutdown();
+    else if (cmd === "stop-delete") { discardNow = true; void shutdown(); }
   });
   rl.on("close", () => void shutdown());   // the menu-bar app went away: stop cleanly
 }
 // Typed context note (instant-start mode: tell Wingman what the call is about, mid-call).
-let noteBuf: string | undefined;
+let noteBuf: string | undefined, discardNow = false;
 function noteKey(ch: string) {
   if (ch === "\u001b") { noteBuf = undefined; process.stdout.write(" (cancelled)\n"); return; }
   if (ch === "\r" || ch === "\n") {
@@ -489,14 +507,32 @@ let stops: (() => Promise<void>)[] = [];
 let me: SttChannel, them: SttChannel;
 let crashed = false;
 
+/** Post-call summary: one model call before the "delete this call?" question. Never blocks longer than summary.timeoutMs; errors are logged, not thrown. */
+async function postCallSummary() {
+  try {
+    log.write("events", { type: "context.snapshot", contextNotes, aiNotes: liveNotes });   // lets `pnpm summary <id>` rebuild the same input later
+    const r = await runSummary({
+      dir: log.dir, callId: log.id, S, registry, cost, noAi, discard: discard || discardNow, crashed,
+      data: { lines: transcript, contextNotes, aiNotes: liveNotes },
+      write: (stream, row) => log.write(stream, row),
+    });
+    if (r.skipped) return;
+    if (r.ok) console.log(formatShort(r.summary!)); else console.log(`\nSummary failed: ${r.error}`);
+    status("summary", { ok: r.ok, id: log.id });
+  } catch (e) { try { log.write("events", { type: "summary.error", error: String((e as Error)?.message ?? e) }); } catch {} }
+}
+
 async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true; current?.abort(); notesAbort.abort();
+  const hard = setTimeout(() => { console.error("shutdown stuck: forcing exit"); process.exit(1); }, 10_000);   // a hung audio/socket close must not keep the mic open
   for (const t of meTimers) clearTimeout(t); meTimers.clear();
   for (const ch of ["me", "them"] as Channel[]) { clearTimeout(pending[ch]?.timer); delete pending[ch]; }
   for (const s of stops) await s().catch(() => {});
   sup.stop();
   await Promise.all([me?.close(), them?.close()].filter(Boolean)).catch(() => {});
+  clearTimeout(hard);
+  await postCallSummary();
   try {
     cost.setSttSeconds(sttSeconds());
     log.write("usage", { role: "stt", vendor: them?.provider, seconds: { me: me?.audioSeconds, them: them?.audioSeconds }, bySeconds: sttSeconds(), usd: cost.sttUsd, dropped: { me: me?.dropped, them: them?.dropped } });
@@ -509,7 +545,7 @@ async function shutdown() {
     console.log(`\nSpeakers mode (${ECHO.mode}): mic muted ${Math.round(gatedMs / 1000)} s while the client talked · ${echoDropped} echo lines dropped`);
     console.log(`\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${me?.dropped ?? 0}, them ${them?.dropped ?? 0}`);
   } catch (e) { console.error("call summary failed:", e); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
-  let del = discard;
+  let del = discard || discardNow;
   if (!del && !crashed && process.stdin.isTTY) {
     process.stdout.write("\nDelete this call's saved text now? y = delete, any other key (or 10 s) = keep: ");
     del = (await askKey(10_000)).toLowerCase() === "y";
@@ -547,7 +583,7 @@ let sttSwitchedCh = new Set<Channel>();
 let costWarned = false, minutesWarned = false;
 
 /** Once a second: feed the supervisor and the cost warnings. */
-let lastTick = Date.now(), sleepClearAt = 0;
+let lastTick = Date.now(), sleepClearAt = 0, lastSpeechAt = Date.now(), idleWarned = false, consentedAt = 0;
 function tickHealth() {
   // Y2: a long gap between ticks means the Mac slept (lid closed) mid-call.
   const now = Date.now(), gap = now - lastTick; lastTick = now;
@@ -557,6 +593,15 @@ function tickHealth() {
     health("sleep", "amber", `המחשב נרדם ל-${Math.round(gap / 1000)} שניות. חלק מהשיחה לא נשמע`);
     sleepClearAt = now + 20_000;
   } else if (sleepClearAt && now > sleepClearAt) { sleepClearAt = 0; healthClear("sleep"); }
+  // S16: a call left running with nobody talking stops itself (a long real meeting is never cut while people speak).
+  const idleMin = S.budget.idleStopMin;
+  if (idleMin > 0 && consented && !fileArg && !shuttingDown) {
+    if (!consentedAt) consentedAt = now;
+    const idle = now - Math.max(lastSpeechAt, consentedAt);
+    if (idle >= idleMin * 60_000) { log.write("events", { type: "idle.stop", minutes: idleMin }); console.log(`\nNobody spoke for ${idleMin} minutes: stopping the call.`); void shutdown(); }
+    else if (idle >= Math.max(1, idleMin - 2) * 60_000 && !idleWarned) { idleWarned = true; health("idle", "amber", `אף אחד לא דיבר ${Math.round(idle / 60_000)} דקות. השיחה תיעצר לבד בעוד כ-2 דקות`); }
+    else if (idleWarned && idle < 60_000) { idleWarned = false; healthClear("idle"); }
+  }
   refreshSignals();
   cost.setSttSeconds(sttSeconds());
   sup.set({ sttOnFallback: sttSwitchedCh.size > 0 });
@@ -570,7 +615,7 @@ function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: stri
   const d = describeRung(to, reasons, sup.userChoiceOnly);
   if (from !== to) console.log(`\n⇅ ladder: rung ${from} -> ${to} (${reasons.join(", ") || "recovered"})`);
   if (!d) healthClear("ladder"); else health("ladder", d.level, d.text);
-  if (to === 5) { console.log("Wingman is OFF: " + reasons.join(", ")); void shutdown(); }
+  if (to === 5) { console.log("Wingman is OFF: " + reasons.join(", ")); status("off", { reasons }); void shutdown(); }
 }
 
 function makeChannel(ch: Channel): SttChannel {
@@ -586,7 +631,7 @@ async function main() {
   for (const id of sttChain(S)) if (getSttProvider(id).experimental) console.log(`⚠ STT provider "${id}" is EXPERIMENTAL (never tested live).`);
   for (const m of REFLEX_MODELS) if (!noAi) { try { await registry.resolve(m); } catch (e) { if (m === REFLEX_MODELS[0] && !(e instanceof ConfigError && REFLEX_MODELS.length > 1)) throw e; console.log(`⚠ AI model ${m}: ${(e as Error).message}`); downUntil.set(m, Infinity); } }
   await Promise.all([me.open(), them.open()]);
-  sup.on("rung", renderRung); sup.start(); setInterval(tickHealth, S.health.tickMs).unref();
+  sup.on("rung", renderRung); sup.start(); lastTick = Date.now(); setInterval(tickHealth, S.health.tickMs).unref();
   setInterval(() => void notesRound(), S.notes.everyMs).unref();
   setInterval(reminderTick, 30_000).unref();
   if (brief) console.log(`Brief loaded: ${[brief.who, brief.goal].filter(Boolean).join(" · ") || "(notes only)"}${brief.mustCover?.length ? ` · must cover: ${brief.mustCover.join(", ")}` : ""}`);
@@ -615,7 +660,7 @@ async function main() {
   console.log(`Speakers mode: ${ECHO.mode} (audio.echo.mode; "filter" is best with headphones) · capture box ${S.capture.enabled ? "on" : "off"}`);
 
   // Consent card: re-emitted until confirmed (the overlay may start late).
-  const consentCard = (): Card => ({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: CONSENT_SAY, facts: ["להגיד את זה בתחילת השיחה", "הלקוח לא מסכים: Ctrl+C", "אחרי שהסכים: Enter"], at: Date.now() });
+  const consentCard = (): Card => ({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: CONSENT_SAY, facts: ["להגיד את זה בתחילת השיחה", CONTROL ? "הלקוח לא מסכים: Stop and delete בתפריט" : "הלקוח לא מסכים: Ctrl+C", CONTROL ? "אחרי שהסכים: Ctrl+Opt+Return" : "אחרי שהסכים: Enter"], at: Date.now() });
   let micPeakAfterStart = 0, micWatch: NodeJS.Timeout | undefined;
   const startForwarding = () => {
     if (consented) return;
@@ -623,6 +668,7 @@ async function main() {
     emitCard({ ...consentCard(), id: "consent", say: "הסכמה אושרה. התמלול פעיל.", facts: [] });
     console.log("\nConsent confirmed: audio is now being sent for transcription.");
     status("consented", { id: log.id });
+    consentedAt = Date.now();
     if (!fileArg) micWatch = setTimeout(() => {
       if (micPeakAfterStart < S.audio.watchdog.micPeak) health("mic", "red", "MIC SILENT – המיקרופון לא קולט (הרשאה? WINGMAN_MIC?)");
     }, S.audio.watchdog.micSilentMs);
@@ -645,6 +691,12 @@ async function main() {
     const srcKind = S.audio.system.source;
     const sys = srcKind === "audiotee" ? new SystemSource() : srcKind === "device" ? new MicSource(S.audio.system.device) : undefined;
     const mic = new MicSource(S.audio.mic.device);
+    if (S.audio.warnBluetooth) void readAudioDevices().then((devs) => {
+      const bt = bluetoothInUse(devs);
+      if (!bt || shuttingDown) return;
+      log.write("events", { type: "audio.bluetooth", role: bt.role, device: bt.device.name });
+      health("bluetooth", "amber", bt.role === "mic" ? `${bt.device.name} הוא המיקרופון: איכות התמלול יורדת. עדיף מיקרופון המק או אוזניות חוטיות` : `${bt.device.name} ברמקולים: אם המיקרופון שלהן ייפתח, האיכות תרד`);
+    });
     console.log(`Mic device: ${mic.device} (audio.mic.device / WINGMAN_MIC) · client audio: ${srcKind}${srcKind === "device" ? ` (${S.audio.system.device})` : ""}`);
     mic.on("pcm", (b: Buffer) => { if (consented) { micPeakAfterStart = Math.max(micPeakAfterStart, peakOf(b)); me.send(gateMic(b)); } });
     mic.on("error", (e) => { console.error("mic error:", e.message); health("mic", "red", "MIC ERROR – המיקרופון נפל", e.message); });

@@ -23,6 +23,17 @@ export function loadBank(file = join(DATA, "bank.yaml")): BankCard[] {
 export const STALL_TIER = new Set(["stall-price", "stall-timeline", "stall-guarantee"]);
 
 /**
+ * A price/timeline/guarantee bank hit is authoritative: the model may not replace it with an answer or a topical card.
+ * (It may still say STALL, or SKIP a weak hit.) Found by the synthetic QA: Haiku answered an English price question with ANS.
+ */
+export function modelMayOverrideBank(hitId: string | undefined, tag: { kind: string; bankId?: string }): boolean {
+  if (!hitId || !STALL_TIER.has(hitId)) return true;
+  if (tag.kind === "ANS") return false;
+  if (tag.kind === "BANK" && tag.bankId !== hitId) return false;
+  return true;
+}
+
+/**
  * Best keyword match. Multi-word triggers score their word count; a single-word trigger scores 0.5 unless it is the
  * card's only match (then 1). Stall-tier cards beat everything. Ties: more distinct triggers, then card priority, then file order.
  */

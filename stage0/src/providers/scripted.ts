@@ -18,14 +18,18 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
     const file = process.env.WINGMAN_STT_SCRIPT;
     if (!file) throw new Error("stt.provider script needs WINGMAN_STT_SCRIPT=<transcript.json>");
     const gap = Number(process.env.WINGMAN_SCRIPT_GAP_MS ?? 1200);
-    const lines = (JSON.parse(readFileSync(file, "utf8")) as { speaker: string; text: string }[]);
+    // Optional per line: afterMs = time since the previous line (a quick follow-up, e.g. a question split by a pause).
+    const lines = (JSON.parse(readFileSync(file, "utf8")) as { speaker: string; text: string; afterMs?: number }[]);
+    let at = 300;
     lines.forEach((l, i) => {
+      if (i > 0) at += Number.isFinite(l.afterMs) ? Number(l.afterMs) : gap;
+      const when = at;
       if (l.speaker !== this.o.channel) return;
       this.timers.push(setTimeout(() => {
         const now = Date.now();
         const r: SttResult = { channel: this.o.channel, text: l.text, isFinal: true, speechFinal: true, words: [], speechEndWall: now - 300, arrivedAt: now };
         this.emit("result", r);
-      }, 300 + i * gap));
+      }, when));
     });
   }
   send(pcm: Buffer) { this.audioSeconds += pcm.length / 32000; return true; }
@@ -48,7 +52,16 @@ function promptText(o: any): string {
   return (o.prompt ?? []).map((m: any) => (typeof m.content === "string" ? m.content : (m.content ?? []).map((p: any) => p.text ?? "").join(""))).join("\n");
 }
 const bank = loadBank();
+/** Post-call summary double: valid JSON; the email deliberately has a price sentence and a date sentence so tests can see the guards replace them. */
+export const SCRIPTED_SUMMARY = {
+  summary: ["הלקוחה פנתה בגלל אתר שנטען לאט", "שאלה על גיבויים לאתר", "השאירה טלפון ומייל לחזרה"],
+  decisions: ["בודקים את מהירות האתר"],
+  nextSteps: [{ who: "דן", what: "לבדוק את סיבת האיטיות" }, { who: "לקוח", what: "לשלוח גישה לאתר", when: "השבוע" }],
+  openQuestions: ["כמה תעלה החבילה המלאה"],
+  followUpEmail: "שלום דנה,\nתודה על השיחה. דיברנו על מהירות האתר והגיבויים.\nהחבילה עולה 500 ש\"ח לחודש.\nנחזור אליך עד יום שני.\nבברכה,\nדן",
+};
 export function scriptedAnswer(prompt: string): string {
+  if (prompt.includes("You write the post-call summary")) return JSON.stringify(SCRIPTED_SUMMARY);
   if (prompt.includes("You keep short live notes")) return "- הלקוחה רוצה אתר מהיר יותר";
   const q = questionOf(prompt);
   if (/כמה (זה )?עולה|מחיר/.test(q)) return "STALL";

@@ -13,8 +13,10 @@ Dan's name is דן (speech-to-text may misspell it). Rules: Hebrew, at most 2 no
 If there is nothing new worth noting, answer exactly: NONE`;
 
 export function parseNotes(text: string): string[] {
-  if (/^\s*NONE\s*$/i.test(text)) return [];
-  return text.split("\n").map((l) => l.trim()).filter((l) => l.startsWith("- ")).map((l) => l.slice(2).trim()).filter((l) => l.length > 2 && l.length <= 140).slice(0, 2);
+  if (/^\s*NONE\W*$/i.test(text)) return [];
+  // The prompt asks for "- " bullets; models also answer with "•", "*", "–", "1." or "1)": accept those, never silently lose a note.
+  return text.split("\n").map((l) => l.trim()).filter((l) => /^(?:[-•*–—]|\d+[.)])\s+\S/.test(l)).map((l) => l.replace(/^(?:[-•*–—]|\d+[.)])\s+/, "").trim())
+    .map((l) => (l.length > 140 ? l.slice(0, 140).replace(/\s+\S*$/, "") : l)).filter((l) => l.length > 2).slice(0, 2);
 }
 
 /** Drops notes that repeat an existing note (word overlap). */

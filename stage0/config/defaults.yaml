@@ -65,6 +65,7 @@ audio:
     device: "BlackHole 2ch"  # used when source = device. avfoundation name or ":index" (ffmpeg -f avfoundation -list_devices true -i "")
   mic:
     device: ":default"     # avfoundation input for Dan's mic. Env: WINGMAN_MIC
+  warnBluetooth: true      # amber warning when AirPods/Bluetooth are the mic or speakers (the call profile lowers transcript quality)
   watchdog:
     silentThemMs: 8000     # client audio silent this long while Dan talks = "NOT HEARING THE CLIENT"
     silentPeak: 0.01       # peak (0-1) above which client audio counts as sound
@@ -94,6 +95,13 @@ notes:
   minNewWords: 25          # skip a round when less than this was said since the last one
   timeoutMs: 8000
 
+# ---- Post-call summary (one model call when a live call ends; writes calls/<id>/summary.json; redo with: pnpm summary <id>) ----
+summary:
+  enabled: true            # false = no summary at the end of a call (pnpm summary still works)
+  model: "anthropic:claude-haiku-5-5"   # provider:model; must have a price in budget.prices.llm (about $0.002-0.005 per call)
+  minWords: 150            # skip calls with fewer client+Dan words than this (a missed call or a test is not worth a summary)
+  timeoutMs: 20000         # never hold up the end of the call longer than this; on timeout the summary is skipped (summary.error in events)
+
 # ---- Must-cover reminders (from the brief: pnpm brief) ----
 reminders:
   enabled: true
@@ -115,7 +123,8 @@ health:
 budget:
   maxUsdPerCall: 2         # LLM spend cap per call: at 100% the ladder drops to bank-only
   warnAt: 0.8              # fraction of a cap that shows an amber warning
-  maxMinutesPerCall: 90    # warn at warnAt of this; stop STT at the cap is NOT automatic in Stage 0
+  maxMinutesPerCall: 90    # warn at warnAt of this (a long real meeting is never cut)
+  idleStopMin: 15          # stop the call when nobody spoke for this many minutes (a session left running). 0 = off
   maxUsdPerMonth: null     # null = no monthly cap (used by doctor, from usage.jsonl)
   # Price table. ESTIMATES: check your provider's pricing page and edit. A model missing here costs $0 and is flagged.
   prices:
@@ -147,6 +156,7 @@ overlay:
     rewind: "Control+Alt+R"  # "what did they say?": show/hide the last rewindSeconds of the call as text
     copy: "Control+Alt+K"    # copy the newest captured phone/email/domain to the clipboard
   rewindSeconds: 30
+  restartMax: 2            # reopen the answer window this many times if it crashes
 
 # ---- System and keys ----
 system:

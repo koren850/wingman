@@ -41,7 +41,7 @@ ${index}
 }
 
 /** Call text is untrusted: it must not be able to close the <call_transcript> wrapper. */
-export const untag = (s: string) => s.replace(/<\/?\s*call_transcript\s*>/gi, "");
+export const untag = (s: string) => s.replace(/<\s*\/?\s*call_transcript\s*>/gi, "");
 
 export type ReflexConfig = Pick<Settings["llm"]["reflex"], "timeoutMs" | "maxTokens" | "maxRetries" | "effort" | "thinking" | "cache">;
 export type ReflexRun = {
@@ -115,6 +115,13 @@ export function parseReflex(buf: string, final: boolean): { tagLine?: string; sa
   const complete = final ? raw : raw.slice(0, -1);
   const partial = final ? "" : (raw.at(-1) ?? "").trim();
   const ne = complete.map((l) => l.trim()).filter(Boolean);
+  // The model sometimes puts the say-line on the tag line: "ANS: ..." / "BANK dns-basics: ...". Split it.
+  const same = ne[0]?.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[\-–](?=\s))[ \t]*(\S.*)$/i);
+  if (same) ne.splice(0, 1, same[1], same[2]);
+  else if (!final && !ne.length) {
+    const p = partial.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[\-–](?=\s))[ \t]*(\S.*)$/i);
+    if (p) return { tagLine: p[1], say: p[2], sayComplete: false, facts: [] };
+  }
   const tagLine = ne[0];
   let say: string | undefined = ne[1] ?? (ne.length >= 1 && partial ? partial : undefined);
   if (say?.startsWith("- ")) say = undefined; // model skipped the say-line; never show a fact as the say-line

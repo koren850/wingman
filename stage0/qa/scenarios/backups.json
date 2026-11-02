@@ -1,0 +1,135 @@
+{
+ "title": "Backups (invented client: Maya, Studio Tavor)",
+ "focus": "backup and restore questions",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "שלום מאיה, מדבר דן."
+  },
+  {
+   "speaker": "them",
+   "text": "היי דן. רציתי לשאול על גיבויים לאתר של הסטודיו.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "יש לכם גיבוי אוטומטי של האתר?",
+   "expect": {
+    "question": true,
+    "card": "backups"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "כן, אפשר לעבוד עם גיבויים אוטומטיים של הקבצים ושל מסד הנתונים."
+  },
+  {
+   "speaker": "them",
+   "text": "ואם משהו נשבר, אפשר לשחזר?",
+   "expect": {
+    "question": true,
+    "card": "backups"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "בהחלט, משחזרים מהגיבוי האחרון שתקין."
+  },
+  {
+   "speaker": "them",
+   "text": "כל כמה זמן עושים גיבוי?",
+   "expect": {
+    "question": true,
+    "card": [
+     "backups",
+     "ai",
+     "stall"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "זה תלוי במסלול, אני אבדוק מה מתאים לכם."
+  },
+  {
+   "speaker": "them",
+   "text": "והגיבויים נשמרים באותו שרת של האתר?",
+   "expect": {
+    "question": true,
+    "card": [
+     "backups",
+     "ai",
+     "stall",
+     "server-resources"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "כדאי לשמור עותק גם מחוץ לשרת, וזה מה שאנחנו ממליצים."
+  },
+  {
+   "speaker": "them",
+   "text": "הבנתי. לפני חודש היה לנו פרצה קטנה באתר, וזה מדאיג אותי.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "אם האתר נפרץ, מה עושים?",
+   "expect": {
+    "question": true,
+    "card": [
+     "hacked-site",
+     "backups",
+     "ai",
+     "stall"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "קודם מבודדים, מנקים ומשחזרים מגיבוי נקי."
+  },
+  {
+   "speaker": "them",
+   "text": "מצוין, זה מרגיע.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "תוכל לשלוח לי הסבר קצר על זה?",
+   "expect": {
+    "question": true,
+    "card": [
+     "ai",
+     "stall",
+     "none",
+     "hacked-site",
+     "backups"
+    ],
+    "note": "request to send info: any outcome but no invented dates"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "בשמחה, אשלח אחרי השיחה."
+  },
+  {
+   "speaker": "them",
+   "text": "תודה מאיה כאן, יום טוב.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  }
+ ]
+}

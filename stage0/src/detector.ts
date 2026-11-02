@@ -16,11 +16,15 @@ const REQUEST = [
   "תסביר", "תסבירי", "תסבירו", "תגיד", "תגידי", "תגידו", "תבדוק", "תבדקי", "תבדקו", "תעזור", "תעזרי",
   "תראה לי", "תראי לי", "אני רוצה להבין", "רציתי לשאול", "רציתי להבין", "שאלה", "אשמח לדעת", "תעדכן",
   "זה אפשרי", "אפשרי", "אתם עובדים עם",
+  "אני רוצה לדעת", "אני צריך לדעת", "אני צריכה לדעת", "תשלח לי", "תשלחי לי", "שלח לי", "שלחי לי", "תכין לי", "תכיני לי",
+  "אתם עושים", "אתם מטפלים", "אתם מציעים", "אתם נותנים", "אתם מספקים", "אתם בונים",
+  "אשמח לקבל", "אשמח שתשלחו", "אשמח שתשלח", "אשמח שתבדקו", "אשמח שתבדוק",
+  "i have a question", "quick question", "i want to know", "i would like to know", "i need to know", "send me", "give me a quote",
   "explain", "tell me", "check",
 ];
 // Statement openers that look like questions ("I don't know why...", "I already asked...").
 const NEGATIVE = ["מה שלומך", "מה נשמע", "מה קורה", "מה המצב", "אני לא בטוח", "אני לא בטוחה", "אני לא יודע", "אני לא יודעת", "לא יודע למה", "שאלתי", "כבר שאלתי", "אמרתי", "הסברתי"];
-const FILLERS = new Set(["כן", "אוקיי", "אוקי", "אוקיי", "רגע", "אהה", "אה", "טוב", "בסדר", "נכון", "יופי", "סבבה", "מעולה", "ok", "okay", "yes", "yeah", "mm", "אממ", "הממ"]);
+const FILLERS = new Set(["כן", "אוקיי", "אוקי", "אוקיי", "רגע", "אהה", "אה", "טוב", "בסדר", "נכון", "יופי", "סבבה", "מעולה", "ok", "okay", "yes", "yeah", "mm", "אממ", "הממ"].map(normalize));   // normalized: final letters are folded (כן -> כנ), so raw forms never matched
 
 export type Detection = { isQuestion: boolean; reason: string };
 /** Optional bank context: a stall-* hit rescues short cue-less utterances; a strong multi-word hit rescues a problem statement. */
@@ -28,8 +32,13 @@ export type DetectCtx = { bankScore?: number; stall?: boolean };
 
 export function detect(text: string, ctx: DetectCtx = {}): Detection {
   const raw = text.trim();
-  if (raw.includes("?")) return { isQuestion: true, reason: "question-mark" };
   const t = tokens(raw);
+  // A "?" counts, except on nothing or on filler alone ("?", "כן?", "נכון?" are confirmations, not questions). One real word
+  // with "?" ("מחיר?") is still a question.
+  if (raw.includes("?")) {
+    if (!t.some((w) => !FILLERS.has(w))) return { isQuestion: false, reason: t.length ? "filler" : "too-short" };
+    return { isQuestion: true, reason: "question-mark" };
+  }
   if (t.length < MIN_WORDS) return { isQuestion: false, reason: "too-short" };
   if (t.every((w) => FILLERS.has(w))) return { isQuestion: false, reason: "filler" };
   // Request and multi-word cues first: "אני לא יודע, האתר איטי מה אפשר לעשות" is a question.
@@ -41,10 +50,21 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
     if (containsPhrase(first3, n) || (t.length <= 5 && containsPhrase(raw, n))) return { isQuestion: false, reason: `negative:${n}` };
   }
   // Head word in the first three tokens (Hebrew questions usually lead with it).
-  const head = t.slice(0, 3).flatMap(tokenVariants);
-  for (const h of HEAD_NORM) if (head.includes(h)) return { isQuestion: true, reason: `head:${h}` };
+  // "ויש לכם…", "ומה עם…": a glued vav before a short head word (tokenVariants keeps short remainders whole).
+  const NEED = new Set(["צריך", "צריכה", "צריכים"].map(normalize));
+  for (let i = 0; i < Math.min(3, t.length); i++) {
+    const w = t[i];
+    const variants = [...tokenVariants(w), ...(w.length >= 3 && w[0] === "ו" ? [w.slice(1)] : [])];
+    const h = HEAD_NORM.find((x) => variants.includes(x));
+    if (!h) continue;
+    // Statements that open like a question: "יש לנו/לי אתר..." (we/I have), "אני/אנחנו צריך לענות..." (I need to...).
+    if (h === normalize("יש") && ["לנו", "לי"].includes(t[i + 1] ?? "")) continue;
+    if (h === normalize("כמה") && ["שאלות", "שאלה"].includes(t[i + 1] ?? "")) continue;   // "כמה שאלות יש לי" = "a few questions", an opener
+    if (NEED.has(h) && ["אני", "אנחנו"].includes(t[i - 1] ?? "")) continue;
+    return { isQuestion: true, reason: `head:${h}` };
+  }
   if (ctx.stall && t.length < 8) return { isQuestion: true, reason: "stall-bank" };
   // D6: a problem statement ("האתר שלי קורס כל פעם") with a strong bank hit. Bank card only, never an AI answer.
-  if (t.length >= 4 && (ctx.bankScore ?? 0) >= 2) return { isQuestion: true, reason: "problem:bank" };
+  if (t.length >= 3 && (ctx.bankScore ?? 0) >= 2) return { isQuestion: true, reason: "problem:bank" };
   return { isQuestion: false, reason: "no-cue" };
 }

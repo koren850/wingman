@@ -13,6 +13,8 @@ const TLDS = "com|net|org|io|co|il|info|biz|app|dev|me|shop|store|online|site|te
 /** Hebrew spoken forms of "@", "." and common domain words -> symbols/Latin. */
 export function spokenToSymbols(s: string): string {
   return s
+    // English "at ... dot": only when a dot-word follows the host ("dana at gmail dot com"), so "arrive at noon" stays text
+    .replace(/(^|\s)at\s+([A-Za-z0-9-]+)\s+(?:dot|\.)(?=\s|$)/gi, " \u0001 $2 dot")
     .replace(/(^|\s)(שטרודל|כרוכית)(?=\s|$)/g, " \u0001 ")      // spoken "@" (English "at" is too common to trust)
     .replace(/(^|\s)(נקודה|דוט|dot)(?=\s|$)/g, " \u0002 ")
     .replace(/(^|\s)(ג'ימייל|גימייל|ג׳ימייל)(?=\s|$)/g, " gmail ")
@@ -33,7 +35,12 @@ export function digitWords(s: string): string {
   for (const w of words) {
     const bare = w.replace(/^ו/, "").replace(/[,.\-]$/, "");
     if (DIGITS[bare] !== undefined) run += DIGITS[bare];
-    else if (/^\d[\d-]*$/.test(bare)) run += bare.replace(/-/g, "");
+    else if (/^\d[\d-]*$/.test(bare)) {
+      // A token that is already a whole number (9+ digits: "0541234567", "054-1234567") stands alone, so a stray
+      // "אחת" before it or a "3" after it cannot glue onto it and break the phone. Short groups still join words.
+      const d = bare.replace(/-/g, "");
+      if (d.length >= 9) { flush(); out.push(d); } else run += d;
+    }
     else { flush(); out.push(w); }
   }
   flush();
@@ -58,6 +65,7 @@ export function extract(text: string): Capture[] {
   const add = (c: Capture) => { const k = `${c.kind}:${c.value}`; if (!seen.has(k)) { seen.add(k); out.push(c); } };
   // Join spacing only around SPOKEN "@"/"." ("gmail נקודה com" -> "gmail.com"); a written full stop before an
   // English word ("ChatGPT. AI") is a sentence end, not a domain.
+  text = text.replace(/[\u200B-\u200F\u2060\uFEFF\u00AD\u202A-\u202E\u2066-\u2069]/g, "");   // zero-width and bidi marks inside numbers
   const sym = digitWords(spokenToSymbols(text)).replace(/\s*\u0001\s*/g, "@").replace(/\s*\u0002\s*/g, ".");
   for (const p of phones(sym)) add({ kind: "phone", value: p });
   const emailRe = new RegExp(`[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.(?:${TLDS})\\b`, "gi");

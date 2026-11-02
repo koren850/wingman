@@ -14,6 +14,7 @@ export function normalize(s: string): string {
     .normalize("NFKC")
     .replace(NIQQUD, "")
     .replace(/[‎‏‪-‮⁦-⁩]/g, "") // bidi marks
+    .replace(/[\u200B-\u200D\u2060\uFEFF\u00AD]/g, "") // zero-width space/joiners, word joiner, BOM, soft hyphen
     .replace(/[״"׳'`]/g, "")
     .replace(/[-–—_/\\.,!?;:()[\]{}<>]/g, " ")
     .replace(/[ךםןףץ]/g, (c) => FINALS[c])
@@ -27,8 +28,12 @@ export function tokens(s: string): string[] {
 }
 
 /** Token plus every valid prefix-stripped form, so "בדומיין" also matches "דומיין" and "מוויקס" matches "וויקס". */
+// Words where the leading letter belongs to the word: "לעלות" (to go up / go live) must not match the price word "עלות".
+const NO_STRIP = new Set(["לעלות"]);
+
 export function tokenVariants(t: string): string[] {
   const v = [t];
+  if (NO_STRIP.has(t)) return v;
   if (PREFIX_1.has(t[0]) && REMAINDER_OK.test(t.slice(1))) v.push(t.slice(1));
   if (t.length > 2 && PREFIX_2.has(t.slice(0, 2)) && REMAINDER_OK.test(t.slice(2))) v.push(t.slice(2));
   return v;

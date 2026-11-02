@@ -1,0 +1,24 @@
+# Practice call from the menu bar ("Try a practice call"): a pretend client plays from data/demo/demo-call.json.
+# Offline and free: scripted speech-to-text, scripted AI, invented client data. Nothing leaves the Mac.
+stt:
+  provider: script
+  fallback: []
+llm:
+  reflex:
+    model: "scripted:bank"
+    fallbacks: []
+notes:
+  model: "scripted:notes"
+  everyMs: 15000
+  minNewWords: 5
+facts:
+  file: data/test/entities-fixture.json
+privacy:
+  requireConsentAck: false
+system:
+  caffeinate: false
+budget:
+  idleStopMin: 0
+summary:
+  model: "scripted:summary"   # practice stays offline and free
+  minWords: 20

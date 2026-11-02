@@ -13,13 +13,30 @@ requireKeys([S.stt.provider, ...(S.run.noAi ? [] : [parseModelRef(S.llm.reflex.m
 try { rmSync(join(CALLS, "latest"), { force: true }); } catch { /* the overlay must not replay the previous call */ }
 
 const bin = (n: string) => join(ROOT, "node_modules", ".bin", n);
-const overlay = spawnOverlay(S, true);
-overlay?.on("exit", (code, sig) => { if (!stopping) console.log(`(answer window exited: code ${code ?? sig}; still listening, Ctrl+C to stop)`); });
+// U1: the answer window is reopened if it crashes (overlay.restartMax). Exit code 3 = it refused a single shared screen.
+let overlay: ReturnType<typeof spawnOverlay>, restarts = 0;
+const status = (ev: string, data: Record<string, unknown> = {}) => { if (process.env.WINGMAN_CONTROL === "1") process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`); };
+function openOverlay() {
+  overlay = spawnOverlay(S, true);
+  overlay?.on("exit", (code, sig) => {
+    if (stopping) return;
+    if (code !== 3 && code !== 0 && restarts < S.overlay.restartMax) {
+      restarts++; console.log(`(answer window crashed: code ${code ?? sig}; reopening, ${restarts}/${S.overlay.restartMax})`);
+      status("overlay", { ok: false, restarting: true });
+      setTimeout(() => { if (!stopping) openOverlay(); }, 1000);
+    } else {
+      console.log(`(answer window exited: code ${code ?? sig}; still listening, Ctrl+C to stop)`);
+      status("overlay", { ok: false, reason: code === 3 ? "one-screen" : "closed" });
+    }
+  });
+}
+openOverlay();
 const run = spawn(bin("tsx"), [join(ROOT, "src", "run.ts"), ...rest], { cwd: ROOT, stdio: "inherit" });
 
 let stopping = false;
 function stop() {
-  if (stopping) return; stopping = true;
+  if (stopping) { try { run.kill("SIGKILL"); } catch {} return; }   // second stop: the call is stuck, force it
+  stopping = true;
   run.kill("SIGINT"); // run.ts saves the call and prints the speed summary
   setTimeout(() => { try { overlay?.kill(); } catch {} }, 5000); // leave the last cards up briefly
 }

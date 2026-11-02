@@ -58,3 +58,28 @@ test("tray: doctor verdict", () => {
   assert.equal(lib.doctorVerdict("... READY").ok, true);
   assert.equal(lib.doctorVerdict("... NOT READY").ok, false);
 });
+
+test("tray: a crashed call is not a clean end; turning itself off notifies", () => {
+  let s = lib.reduce(lib.initialState(), { ev: "ended", crashed: true });
+  assert.equal(s.endedCleanly, false);
+  s = lib.reduce(lib.initialState(), { ev: "ended", crashed: false });
+  assert.equal(s.endedCleanly, true);
+  assert.equal(lib.notifications(lib.initialState(), s, { ev: "off", reasons: ["stt down"] })[0].title, "Wingman turned itself off");
+});
+test("tray: briefing lists split on ; and new lines only (commas stay inside an item)", () => {
+  const b = lib.briefFrom({ notes: "budget, hosting renewal; second", mustCover: "a\nb" });
+  assert.deepEqual(b.notes, ["budget, hosting renewal", "second"]);
+  assert.deepEqual(b.mustCover, ["a", "b"]);
+});
+test("tray: the menu is rebuilt only when its items change", () => {
+  const s = { ...lib.initialState(), phase: "live", liveAt: 0 };
+  assert.equal(lib.menuKey(s, true), lib.menuKey({ ...s }, true));
+  assert.notEqual(lib.menuKey(s, true), lib.menuKey({ ...s, quiet: true }, true));
+});
+test("tray: practice-call wav header is a valid 16 kHz stereo file of the asked length", () => {
+  const f = join(mkdtempSync(join(tmpdir(), "wm-wav-")), "p.wav");
+  lib.writeSilentWav(f, 3);
+  const b = readFileSync(f);
+  assert.equal(b.toString("ascii", 0, 4), "RIFF"); assert.equal(b.readUInt16LE(22), 2); assert.equal(b.readUInt32LE(24), 16000);
+  assert.equal(b.length, 44 + 16000 * 4 * 3);
+});

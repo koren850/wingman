@@ -1,0 +1,122 @@
+{
+ "title": "Small talk and fillers (invented client: Shir, Lotem Cafe)",
+ "focus": "nothing here may trigger a card, except the two real questions marked",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "שלום שיר, מה נשמע?"
+  },
+  {
+   "speaker": "them",
+   "text": "היי דן, הכל טוב, תודה.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "מה נשמע אצלך?",
+   "expect": {
+    "question": false,
+    "card": "none",
+    "note": "greeting question: should not produce a card"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "מצוין, עמוס קצת אבל טוב."
+  },
+  {
+   "speaker": "them",
+   "text": "אהה, כן, נכון.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "וואו, איזה מזג אוויר היום.",
+   "expect": {
+    "question": false,
+    "card": "none",
+    "note": "exclamation with 'איזה' (known detector limit)"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "כן, חם מאוד בתל אביב."
+  },
+  {
+   "speaker": "them",
+   "text": "אני יושבת עכשיו בבית קפה ליד הים.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "אוקיי, יופי, מעולה.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "רגע, שנייה, אני מחפשת משהו בתיק.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אין בעיה, אני מחכה."
+  },
+  {
+   "speaker": "them",
+   "text": "הנה, מצאתי. סליחה על ההמתנה.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "יש לכם גיבוי של האתר?",
+   "expect": {
+    "question": true,
+    "card": "backups",
+    "note": "the one real question after all the chatter"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "כן, אפשר לעבוד עם גיבויים אוטומטיים."
+  },
+  {
+   "speaker": "them",
+   "text": "מצוין. נכון? כן, זה מה שחשבתי.",
+   "expect": {
+    "question": false,
+    "card": "none",
+    "note": "tag-like 'נכון?' is agreement, not a question"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "טוב, סוף שבוע נעים לך.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "גם לך, להתראות שיר."
+  }
+ ]
+}

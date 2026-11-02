@@ -1,203 +1,749 @@
 "use strict";
-// Renderer: all call text goes in through textContent only (call text is untrusted).
+// Renderer. Every piece of call text goes in through textContent / text nodes only (call text is untrusted).
+// No innerHTML anywhere. Icons are built with createElementNS.
 const api = window.wingman;
 const $ = (id) => document.getElementById(id);
+
+/* ---------- tiny DOM helpers ---------- */
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
-    if (k === "class") el.className = v; else if (k.startsWith("on")) el.addEventListener(k.slice(2), v); else if (v !== false && v != null) el.setAttribute(k, v === true ? "" : String(v));
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) el.setAttribute(k, v === true ? "" : String(v));
   }
-  for (const k of kids.flat()) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(String(k)));
+  for (const k of kids.flat(Infinity)) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(String(k)));
   return el;
 }
+const SVGNS = "http://www.w3.org/2000/svg";
+const ICONS = {
+  search: [["circle", { cx: 11, cy: 11, r: 6.5 }], ["path", { d: "M20 20l-4.2-4.2" }]],
+  copy: [["rect", { x: 9, y: 9, width: 11, height: 11, rx: 2 }], ["path", { d: "M5 15V6a2 2 0 0 1 2-2h9" }]],
+  trash: [["path", { d: "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" }]],
+  refresh: [["path", { d: "M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4" }]],
+  check: [["path", { d: "M5 12.5l4.5 4.5L19 7" }]],
+  x: [["path", { d: "M6 6l12 12M18 6L6 18" }]],
+  warning: [["path", { d: "M12 4l9 16H3zM12 10v4M12 17.5v.01" }]],
+  settings: [["path", { d: "M4 7h9M17 7h3M4 17h3M11 17h9" }], ["circle", { cx: 15, cy: 7, r: 2 }], ["circle", { cx: 9, cy: 17, r: 2 }]],
+  inbox: [["path", { d: "M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5" }]],
+  back: [["path", { d: "M15 6l-6 6 6 6" }]],
+  chevron: [["path", { d: "M9 6l6 6-6 6" }]],
+  follow: [["rect", { x: 3, y: 5, width: 18, height: 14, rx: 2 }], ["path", { d: "M3 7l9 6 9-6" }]],
+  rate: [["circle", { cx: 12, cy: 12, r: 9 }], ["path", { d: "M8 12.5l3 3 5-6" }]],
+  transcript: [["path", { d: "M4 6h16M4 12h16M4 18h10" }]],
+  missed: [["circle", { cx: 12, cy: 12, r: 9 }], ["path", { d: "M9.7 9.5a2.4 2.4 0 1 1 3.4 2.2c-.7.4-1.1.9-1.1 1.8M12 17v.01" }]],
+  details: [["path", { d: "M5 20v-9M12 20V4M19 20v-6" }]],
+  jump: [["path", { d: "M7 17L17 7M9 7h8v8" }]],
+  clock: [["circle", { cx: 12, cy: 12, r: 9 }], ["path", { d: "M12 7v5l3 2" }]],
+};
+function ico(name, cls) {
+  const s = document.createElementNS(SVGNS, "svg");
+  s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "ico" + (cls ? " " + cls : "")); s.setAttribute("aria-hidden", "true"); s.setAttribute("focusable", "false");
+  for (const [t, a] of ICONS[name] || []) { const e = document.createElementNS(SVGNS, t); for (const [k, v] of Object.entries(a)) e.setAttribute(k, String(v)); s.append(e); }
+  return s;
+}
+const chip = (text, variant, opts = {}) => h("span", { class: "chip" + (variant ? " " + variant : "") + (opts.mono ? " mono" : "") }, opts.dot ? h("span", { class: "dot" }) : null, opts.icon ? ico(opts.icon) : null, text);
+const btn = (label, o = {}) => h("button", { type: "button", class: "btn" + (o.cls ? " " + o.cls : ""), onclick: o.onclick, title: o.title, "aria-label": o.aria, id: o.id }, o.icon ? ico(o.icon) : null, label ? h("span", {}, label) : null);
 const ltr = (s) => h("span", { class: "ltr" }, s);
+
+/* ---------- live region / errors ---------- */
+let liveTimer;
+function announce(msg) { const el = $("live"); el.textContent = ""; clearTimeout(liveTimer); liveTimer = setTimeout(() => { el.textContent = msg; }, 40); }
+function fail(msg) { const el = $("alert"); el.textContent = ""; setTimeout(() => { el.textContent = msg; }, 40); }
+
+/* ---------- text: bidi + highlight ---------- */
+// Hebrew anywhere in the line = RTL (an English term at the start must not flip the line); no Hebrew = LTR.
+const HEB = /[֐-׿]/;
+const dirOf = (t) => (HEB.test(String(t)) ? "rtl" : /[A-Za-z]/.test(String(t)) ? "ltr" : "auto");
+const langOf = (t) => (HEB.test(String(t)) ? "he" : null);
+/** Latin/number/email/URL tokens inside Hebrew text keep their own direction (bdi dir=ltr). */
+function rich(text) {
+  const s = String(text);
+  if (!HEB.test(s)) return [s];
+  return window.WingmanBidi.splitBidi(s).map((seg) => (seg.ltr ? h("bdi", { dir: "ltr" }, seg.text) : seg.text));
+}
+function hlNodes(text, q) {
+  const s = String(text), needle = (q || "").trim();
+  if (!needle) return rich(s);
+  const out = []; const lo = s.toLowerCase(), nl = needle.toLowerCase(); let i = 0;
+  for (;;) { const j = lo.indexOf(nl, i); if (j < 0) { out.push(...rich(s.slice(i))); break; } if (j > i) out.push(...rich(s.slice(i, j))); out.push(h("mark", {}, s.slice(j, j + nl.length))); i = j + nl.length; }
+  return out;
+}
+const textEl = (tag, cls, text, q) => h(tag, { class: cls, dir: dirOf(text), lang: langOf(text) }, hlNodes(text, q));
+
+/* ---------- formatting ---------- */
 const pad = (n) => String(n).padStart(2, "0");
-const mmss = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
-const dur = (ms) => { const s = Math.round(ms / 1000); return s >= 3600 ? `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}` : mmss(ms); };
-const dt = (t) => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const mmss = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return s >= 3600 ? `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}` : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const tm = (t) => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const dayStart = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+function dayLabel(t) {
+  const diff = Math.round((dayStart(Date.now()) - dayStart(t)) / 86400000), d = new Date(t);
+  if (diff === 0) return "Today"; if (diff === 1) return "Yesterday";
+  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
+}
+const fullDay = (t) => { const d = new Date(t); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); };
+function mins(ms) { const m = Math.round(ms / 60000); if (ms < 30000) return "<1 min"; if (m < 60) return `${Math.max(1, m)} min`; return `${Math.floor(m / 60)} h ${pad(m % 60)} min`; }
 const usd = (n) => (n < 0.01 ? "$" + n.toFixed(4) : "$" + n.toFixed(2));
-const sec = (ms) => (ms == null || isNaN(ms) ? "-" : (ms / 1000).toFixed(2) + "s");
+const sec = (ms) => (ms == null || isNaN(ms) ? "-" : (ms / 1000).toFixed(2) + " s");
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + "s"}`;
 const pct = (arr, p) => { const a = arr.filter((x) => x != null && !isNaN(x)).sort((x, y) => x - y); if (!a.length) return null; return a[Math.min(a.length - 1, Math.ceil(p * a.length) - 1)]; };
+const tone = (v, good, ok) => (v == null ? "" : v <= good ? "lat-good" : v <= ok ? "lat-ok" : "lat-bad");
+const toneWord = (v, good, ok) => (v == null ? "" : v <= good ? "fast" : v <= ok ? "ok" : "slow");
+const TARGET = 2, GATE_CALLS = 5; // gate: 2+ useful cards per hour, decided after 5 rated live calls
 
-const state = { calls: [], view: "list", id: null, tab: "transcript", detail: null, search: "", hits: null, gen: 0 };
+const meter = (frac, cls, mark) => {
+  const i = h("i", { class: cls || "" }); i.style.width = Math.round(Math.max(0, Math.min(1, frac)) * 100) + "%";
+  const m = h("span", { class: "meter", "aria-hidden": "true" }, i);
+  if (mark != null) { const u = h("u"); u.style.insetInlineStart = Math.round(mark * 100) + "%"; m.append(u); }
+  return m;
+};
 
-function renderGate() {
+const state = { calls: [], view: "inbox", id: null, tab: "followup", sub: "speed", detail: null, search: "", hits: null, sq: 0, gen: 0, filter: "all", sel: null, lastId: null, hl: "", line: null };
+const pendingOf = (c) => Math.max(0, c.cardsTotal - c.rated);
+
+/* ---------- shell: nav + global pending chip ---------- */
+function setNav() {
+  const nl = $("nav-list"), ns = $("nav-settings");
+  nl.textContent = ""; ns.textContent = "";
+  nl.append(ico("inbox"), h("span", { class: "lab" }, "Inbox")); ns.append(ico("settings"), h("span", { class: "lab" }, "System"));
+  nl.setAttribute("aria-label", "Inbox"); ns.setAttribute("aria-label", "System");
+  if (state.view !== "system") nl.setAttribute("aria-current", "page"); else nl.removeAttribute("aria-current");
+  if (state.view === "system") ns.setAttribute("aria-current", "page"); else ns.removeAttribute("aria-current");
+}
+function renderPendingChip() {
+  const slot = $("pending-slot"); slot.textContent = "";
+  const n = state.calls.reduce((a, c) => a + (c.crashed ? 0 : pendingOf(c)), 0);
+  if (!n) return;
+  slot.append(h("button", { type: "button", class: "chip warn", title: "Open the first call with unrated cards", onclick: () => { const c = state.calls.find((x) => !x.crashed && pendingOf(x) > 0); if (c) openCall(c.id, { tab: "rate", filter: "unrated" }); } }, h("span", { class: "dot" }), h("span", { class: "ctr" }, n), (n === 1 ? " card to rate" : " cards to rate")));
+}
+async function loadList() { state.calls = await api.listCalls(); renderPendingChip(); }
+const ready = () => { document.body.dataset.ready = "1"; };
+const busy = () => { document.body.dataset.ready = "0"; };
+function focusTop() { const t = $("main").querySelector("h1"); if (t) { t.setAttribute("tabindex", "-1"); t.focus({ preventScroll: true }); } }
+
+/* ---------- usefulness gate ---------- */
+function gateStats() {
   const live = state.calls.filter((c) => c.mode === "live" && c.rated > 0);
-  const el = $("gate"); el.textContent = "";
-  const hours = live.reduce((a, c) => a + c.hours, 0), useful = live.reduce((a, c) => a + c.useful, 0);
-  const ph = hours ? useful / hours : null;
-  const liveAll = state.calls.filter((c) => c.mode === "live").length;
-  el.append(
-    h("span", { class: "muted" }, "שער התועלת (שיחות חיות)"),
-    h("span", { class: "big" }, ltr(ph == null ? "-" : ph.toFixed(1)), " ", h("span", { class: "muted" }, "שימושיים/שעה")),
-    h("span", { class: "pill " + (ph == null ? "na" : ph >= 2 ? "pass" : "fail") }, ph == null ? "אין דירוגים" : ph >= 2 ? "עובר" : "נכשל", " (מעל 2)"),
-    h("span", { class: "muted" }, `${live.length} מתוך ${liveAll} שיחות חיות מדורגות · ${useful} שימושיים ב-`, ltr(hours.toFixed(2) + "h")),
-    h("span", { class: "muted" }, "הדמיות קובץ לא נספרות"));
+  const hours = live.reduce((a, c) => a + c.hours, 0), useful = live.reduce((a, c) => a + c.useful, 0), rated = live.reduce((a, c) => a + c.rated, 0);
+  return { n: live.length, hours, useful, rated, ph: hours ? useful / hours : null };
+}
+function gateStrip() {
+  const g = gateStats(), ok = g.ph != null && g.ph >= TARGET, none = g.ph == null, final = g.n >= GATE_CALLS;
+  const scale = Math.max(TARGET * 2, Math.ceil((g.ph || 0) * 1.15));
+  const verdict = none ? "No ratings yet" : final ? (ok ? "Passed" : "Not passed") : ok ? "On track (final after 5 calls)" : "Below target so far";
+  const left = Math.max(0, GATE_CALLS - g.n);
+  const tick = TARGET / scale * 100;
+  const lab = h("div", { class: "scale", "aria-hidden": "true" }, h("span", { class: "l" }, "0"), h("span", { class: "t" }, `${TARGET}+ needed`), h("span", { class: "r" }, String(scale)));
+  lab.querySelector(".t").style.insetInlineStart = tick + "%"; lab.querySelector(".l").style.insetInlineStart = "0";
+  return h("section", { class: "gate", "aria-labelledby": "gate-h" },
+    h("div", { class: "stat" }, h("h2", { id: "gate-h", class: "label", style: false }, "Usefulness gate"),
+      h("div", { class: "big " + (none ? "muted" : ok ? "good" : "bad") }, none ? "–" : ltr(g.ph.toFixed(1)), h("small", {}, "useful / hour"))),
+    h("div", { role: "img", "aria-label": none ? "No ratings yet" : `${g.ph.toFixed(1)} useful per hour, target ${TARGET} or more` }, meter(none ? 0 : g.ph / scale, none ? "" : ok ? "good" : "bad", TARGET / scale), lab),
+    h("div", { class: "facts" },
+      h("div", { class: "row1" }, !none && ok ? h("span", { class: "capy", "aria-hidden": "true" }) : null, chip(verdict, none ? "" : ok ? "good" : "bad", { dot: true })),
+      h("span", {}, `${g.n} of ${GATE_CALLS} calls rated · ${g.useful} useful in `, ltr(g.hours.toFixed(1) + " h")),
+      h("span", { class: "faint" }, left ? plural(left, "more call") + " to decide" : "Decision reached")));
 }
 
-async function loadList() {
-  state.calls = await api.listCalls();
-  renderGate();
+/* ---------- inbox ---------- */
+function waitingChips(c) {
+  const out = [], p = pendingOf(c);
+  if (c.crashed) out.push(chip("Crashed", "bad", { dot: true }));
+  if (!c.crashed && p) out.push(h("button", { type: "button", class: "chip warn", "aria-label": `${p} to rate, open on Rate`, onclick: (e) => { e.stopPropagation(); openCall(c.id, { tab: "rate", filter: "unrated" }); } }, h("span", { class: "ctr" }, p), " to rate"));
+  if (!c.crashed && c.hasSummary) out.push(h("button", { type: "button", class: "chip info", "aria-label": "Summary ready, open Follow-up", onclick: (e) => { e.stopPropagation(); openCall(c.id, { tab: "followup" }); } }, "Summary"));
+  return out.length ? out : [h("span", { class: "faint" }, "–")];
 }
-
-function viewList() {
-  state.view = "list"; setNav();
+function callTable(rows, label) {
+  const th = (t, c) => h("th", { scope: "col", class: c || "" }, t);
+  return h("div", { class: "tblwrap" }, h("table", { "aria-label": label },
+    h("thead", {}, h("tr", {}, th("When"), th("Length", "w-len"), th("Waiting"), th("Useful/h", "num w-num"))),
+    h("tbody", {}, rows.map((c) => {
+      const ph = c.rated ? c.perHour : null;
+      const go = () => openCall(c.id, {});
+      const tr = h("tr", { class: "go" + (state.lastId === c.id ? " sel" : ""), "data-id": c.id, onclick: go },
+        h("td", {}, h("button", { type: "button", class: "rowlink", onclick: (e) => { e.stopPropagation(); go(); } }, dayLabel(c.startedAt), h("span", { class: "tm" }, tm(c.startedAt)))),
+        h("td", { class: "w-len" }, c.crashed && c.durationMs < 1000 ? h("span", { class: "faint" }, "–") : mins(c.durationMs)),
+        h("td", {}, h("div", { class: "wait" }, waitingChips(c))),
+        h("td", { class: "num val w-num " + (ph == null ? "faint" : c.mode !== "live" ? "muted" : ph >= TARGET ? "good" : "bad") }, ph == null ? "–" : ltr(ph.toFixed(1))));
+      return tr;
+    }))));
+}
+function nextUpCard() {
+  const c = state.calls.find((x) => !x.crashed && (pendingOf(x) > 0 || x.hasSummary));
+  if (!c) return h("section", { class: "nextup clear", "aria-label": "Next up" }, h("span", { class: "capy", "aria-hidden": "true" }), h("div", {}, h("div", { class: "eyebrow" }, "Next up"), h("div", { class: "title" }, "You're all caught up"), h("div", { class: "sub" }, "No unrated cards and no summaries waiting.")));
+  const p = pendingOf(c);
+  const tab = c.mode === "live" && p ? "rate" : c.hasSummary ? "followup" : "rate";
+  return h("section", { class: "nextup", "aria-label": "Next up" },
+    h("div", { class: "grow" }, h("div", { class: "eyebrow" }, "Next up"),
+      h("div", { class: "title" }, `${dayLabel(c.startedAt)} ${tm(c.startedAt)} · ${mins(c.durationMs)}`),
+      h("div", { class: "why" }, p ? chip(`${plural(p, "card")} to rate`, "warn", { dot: true }) : null, c.hasSummary ? chip("Summary ready", "info", { dot: true }) : null)),
+    h("button", { type: "button", class: "btn primary", onclick: () => openCall(c.id, { tab, filter: tab === "rate" ? "unrated" : undefined }) }, "Review", ico("chevron")));
+}
+function viewInbox(restoreFocus) {
+  state.view = "inbox"; state.gen++; setNav(); busy();
   const main = $("main"); main.textContent = "";
-  const input = h("input", { type: "search", placeholder: "חיפוש בתמלול…", value: state.search });
+  if (!state.calls.length) {
+    main.append(h("h1", { class: "sr" }, "Inbox"), h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No calls yet"), h("span", {}, "Calls show up here after they end. Practice calls too."), h("span", {}, "To start one: ", h("code", {}, "pnpm call")), btn("Refresh", { icon: "refresh", onclick: async () => { await loadList(); viewInbox(); announce("Refreshed"); } })));
+    return ready();
+  }
+  const input = h("input", { type: "search", id: "q", placeholder: "Search transcripts", value: state.search, "aria-label": "Search transcripts", "aria-keyshortcuts": "/" });
+  const out = h("div", { id: "inbox-out" });
+  const count = h("span", { class: "sub", id: "count" });
   let timer;
   input.addEventListener("input", () => {
     clearTimeout(timer);
-    timer = setTimeout(async () => { state.search = input.value; state.hits = state.search.trim() ? new Set(await api.searchCalls(state.search)) : null; draw(); }, 200);
+    timer = setTimeout(async () => {
+      const q = input.value; state.search = q; const my = ++state.sq;
+      if (!q.trim()) { state.hits = null; draw(); return; }
+      let hits = []; try { hits = await api.searchCalls(q); } catch (e) { fail("Search failed: " + e.message); }
+      if (my !== state.sq) return; // stale response
+      state.hits = hits; draw(); announce(plural(hits.length, "call") + " match");
+    }, 200);
   });
-  const body = h("div");
-  main.append(h("div", { class: "bar" }, input, h("button", { onclick: async () => { await loadList(); draw(); } }, "רענון"), h("span", { class: "muted", id: "count" })), body);
+  main.append(
+    h("div", { class: "page-head" }, h("h1", {}, "Inbox")),
+    nextUpCard(), gateStrip(),
+    h("div", { class: "bar" }, h("div", { class: "search" }, ico("search"), input), btn("", { icon: "refresh", cls: "icon ghost", aria: "Refresh calls", title: "Refresh", onclick: async () => { await loadList(); viewInbox(); announce("Refreshed"); } }), count), out);
   function draw() {
-    body.textContent = "";
-    const rows = state.calls.filter((c) => !state.hits || state.hits.has(c.id));
-    $("count").textContent = `${rows.length} שיחות`;
-    if (!rows.length) { body.append(h("div", { class: "empty" }, state.calls.length ? "אין שיחות שמתאימות לחיפוש" : "אין שיחות עדיין. pnpm call")); return; }
-    const th = (t, c) => h("th", { class: c || "" }, t);
-    const tbl = h("table", {}, h("thead", {}, h("tr", {}, th("תאריך"), th("משך"), th("סוג"), th("פרופיל"), th("שאלות", "num"), th("כרטיסים", "num"), th("דורגו/שימושיים", "num"), th("שימושיים/שעה", "num"), th("עלות", "num"), th(""))),
-      h("tbody", {}, rows.map((c) => h("tr", { class: "click", onclick: () => openCall(c.id) },
-        h("td", {}, ltr(dt(c.startedAt))), h("td", {}, ltr(dur(c.durationMs))),
-        h("td", {}, h("span", { class: "tag " + (c.mode === "live" ? "live" : "") }, c.mode === "live" ? "חי" : "קובץ")),
-        h("td", {}, c.profile ? ltr(c.profile) : "", c.noAi ? " (בלי AI)" : ""),
-        h("td", { class: "num" }, c.questions), h("td", { class: "num" }, c.cardsShown),
-        h("td", { class: "num" }, ltr(`${c.rated}/${c.useful}`)), h("td", { class: "num" }, c.rated ? ltr(c.perHour.toFixed(1)) : "-"),
-        h("td", { class: "num" }, ltr(usd(c.costUsd))), h("td", {}, c.crashed ? h("span", { class: "tag crash" }, "קרס") : "")))));
-    body.append(tbl);
+    out.textContent = "";
+    if (state.hits) {
+      const byId = new Map(state.calls.map((c) => [c.id, c]));
+      const hits = state.hits.filter((x) => byId.has(x.id)).sort((a, b) => byId.get(b.id).startedAt - byId.get(a.id).startedAt);
+      count.textContent = plural(hits.length, "call") + " match";
+      if (!hits.length) { out.append(h("div", { class: "tblwrap" }, h("div", { class: "empty" }, "No call matches “" + state.search.trim() + "”"))); return; }
+      out.append(h("div", { class: "results", role: "list", "aria-label": "Search results" }, hits.map((x) => {
+        const c = byId.get(x.id);
+        return h("button", { type: "button", role: "listitem", class: "result", onclick: () => openCall(x.id, { tab: "transcript", line: x.line, hl: state.search.trim() }) },
+          h("span", { class: "when" }, dayLabel(c.startedAt), " ", h("span", { class: "tm" }, tm(c.startedAt))),
+          textEl("span", "snip", x.text, state.search.trim()),
+          h("span", { class: "chip mono" }, mmss(x.at)));
+      })));
+      return;
+    }
+    const live = state.calls.filter((c) => c.mode === "live" || c.crashed), practice = state.calls.filter((c) => c.mode !== "live" && !c.crashed);
+    count.textContent = plural(state.calls.length, "call");
+    out.append(live.length ? callTable(live, "Calls") : h("div", { class: "tblwrap" }, h("div", { class: "empty" }, "No live calls yet")));
+    if (practice.length) {
+      const d = h("details", { class: "collapsed" }, h("summary", {}, ico("chevron"), `Practice calls (${practice.length})`, h("span", { class: "faint" }, "· not counted in the gate")), callTable(practice, "Practice calls"));
+      out.append(d);
+    }
   }
-  draw();
+  draw(); ready();
+  if (restoreFocus && state.lastId) { const r = main.querySelector(`tr[data-id="${state.lastId}"] .rowlink`); if (r) { r.focus(); return; } }
+  focusTop();
 }
 
-async function openCall(id) {
-  state.view = "detail"; state.id = id; state.tab = "transcript"; setNav();
-  const gen = ++state.gen;
-  $("main").textContent = "";
-  const d = await api.getCall(id);
+/* ---------- opening a call ---------- */
+const OLD_TABS = { summary: "followup", cards: "rate", side: "rate", speed: "details", cost: "details", events: "details" };
+const TABS = [["followup", "Follow-up", "follow"], ["rate", "Rate", "rate"], ["transcript", "Transcript", "transcript"], ["missed", "Missed", "missed"], ["details", "Details", "details"]];
+function normTab(t, x) {
+  if (!t) return { tab: null };
+  const o = { tab: OLD_TABS[t] || t };
+  if (t === "side") o.filter = "side"; if (t === "speed" || t === "cost" || t === "events") o.sub = t;
+  if (o.tab === "rate" && (x === "unrated" || x === "side")) o.filter = x;
+  if (o.tab === "transcript" && /^\d+$/.test(x || "")) o.line = +x;
+  if (o.tab === "details" && /^(speed|cost|events)$/.test(x || "")) o.sub = x;
+  if (!TABS.some((x2) => x2[0] === o.tab)) o.tab = null;
+  return o;
+}
+function defaultTab(d) {
+  const s = d.summary;
+  if (s.mode === "live" && pendingOf(s) > 0) return "rate";
+  if (d.callSummary) return "followup";
+  return "transcript";
+}
+async function openCall(id, o = {}) {
+  state.view = "call"; state.id = id; state.lastId = id; state.sel = null; state.hl = o.hl || ""; state.line = o.line == null ? null : o.line;
+  setNav(); busy();
+  const gen = ++state.gen, main = $("main");
+  main.textContent = ""; main.append(h("div", { class: "loading", role: "status" }, "Loading call…"));
+  let d;
+  try { d = await api.getCall(id); } catch (e) { if (gen === state.gen) { main.textContent = ""; main.append(h("div", { class: "empty", role: "alert" }, "Could not load the call: " + e.message)); ready(); } return; }
   if (gen !== state.gen) return;
-  state.detail = d; viewDetail();
+  state.detail = d;
+  const tab = o.tab && TABS.some((t) => t[0] === o.tab) ? o.tab : defaultTab(d);
+  state.filter = o.filter || (tab === "rate" && pendingOf(d.summary) > 0 ? "unrated" : "all");
+  if (o.sub) state.sub = o.sub;
+  renderCall(tab);
 }
 
-const TABS = [["transcript", "תמלול"], ["cards", "כרטיסים"], ["side", "צד"], ["speed", "מהירות"], ["cost", "עלות"], ["events", "אירועים"]];
-function viewDetail() {
+/* ---------- call view shell ---------- */
+const visibleCards = (d) => d.cards.filter((c) => c.turnId !== "side" && !c.health);
+const sideCards = (d) => d.cards.filter((c) => c.turnId === "side" && !c.health);
+const rateable = (c) => c.badge !== "info" && !c.health;
+const firstCard = (l) => { const ts = [l.bankAt, l.stallAt, l.cardAt].filter(Boolean); return ts.length ? Math.min(...ts) : null; };
+const t0Of = (d) => Date.parse(d.meta.startedAt) || (d.transcript[0] && d.transcript[0].t) || 0;
+function allCards(d) { return d.cards.filter((c) => !c.health).map((c, i) => [c, i]).sort((a, b) => (a[0].t || 0) - (b[0].t || 0) || a[1] - b[1]).map((x) => x[0]); }
+
+function renderCall(tab) {
   const d = state.detail, s = d.summary, main = $("main");
   main.textContent = "";
-  main.append(
-    h("div", { class: "head" },
-      h("button", { onclick: async () => { await loadList(); viewList(); } }, "← חזרה"),
-      h("b", {}, ltr(dt(s.startedAt))), h("span", { class: "tag " + (s.mode === "live" ? "live" : "") }, s.mode === "live" ? "חי" : "קובץ"),
-      h("span", { class: "muted" }, "משך ", ltr(dur(s.durationMs)), " · ", `${s.questions} שאלות · `, "עלות ", ltr(usd(s.costUsd)), s.profile ? " · " : "", s.profile ? ltr(s.profile) : ""),
-      h("span", { id: "rsum" }),
-      h("span", { style: "flex:1" }),
-      h("button", { class: "danger", onclick: async () => { if (await api.deleteCall(state.id)) { await loadList(); viewList(); } } }, "מחיקת שיחה")),
-    h("div", { class: "tabs" }, TABS.map(([k, t]) => h("button", { class: state.tab === k ? "on" : "", onclick: () => { state.tab = k; viewDetail(); } }, t))),
-    h("div", { id: "pane" }));
-  updateRsum();
-  const pane = $("pane");
-  ({ transcript: tTranscript, cards: tCards, side: tSide, speed: tSpeed, cost: tCost, events: tEvents })[state.tab](pane, d);
-}
-function updateRsum() {
-  const s = state.detail.summary, el = $("rsum"); if (!el) return;
-  el.textContent = `דורגו ${s.rated}/${s.cardsTotal} · שימושיים ${s.useful} · ${s.perHour.toFixed(1)}/שעה · הבנק ענה ${Math.round(s.bankShare * 100)}%`;
-  el.className = "muted";
-}
-
-function tTranscript(pane, d) {
-  const t0 = Date.parse(d.meta.startedAt) || (d.transcript[0] && d.transcript[0].t) || 0;
-  if (!d.transcript.length) return pane.append(h("div", { class: "empty" }, "אין תמלול"));
-  for (const r of d.transcript) pane.append(h("div", { class: "row " + (r.ch === "me" ? "me" : "them") }, h("span", { class: "ts" }, mmss(r.t - t0)), h("span", { class: "who" }, r.ch === "me" ? "אני" : "הם"), h("span", {}, r.text)));
-}
-
-function cardEl(c) {
-  const rated = state.detail.tags[c.id];
-  const rateable = c.badge !== "info" && !c.health;
-  const rate = h("span", { class: "rate" });
-  if (rateable) {
-    const mk = (v, label) => h("button", { class: v + (rated === v ? " on" : ""), onclick: async () => {
-      const next = state.detail.tags[c.id] === v ? null : v;
-      try { state.detail.summary = await api.setTag(state.id, c.id, next); } catch (e) { alert("שמירה נכשלה: " + e.message); return; }
-      if (next) state.detail.tags[c.id] = next; else delete state.detail.tags[c.id];
-      viewDetail();
-    } }, label);
-    rate.append(mk("y", "שימושי"), " ", mk("n", "לא שימושי"));
+  const empty = !d.transcript.length && !d.events.length && !d.cards.length;
+  const back = btn("Inbox", { icon: "back", cls: "ghost sm", onclick: backToList, title: "Back to Inbox (Esc)" });
+  const delBtn = btn("Delete call", { icon: "trash", cls: "danger sm", onclick: deleteCurrent });
+  const title = `${fullDay(s.startedAt)}, ${tm(s.startedAt)}`;
+  if (s.crashed) {
+    main.append(h("div", { class: "crumb", id: "callview" }, back),
+      h("div", { class: "callcrash" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h1", { class: "sr" }, title), h("h2", {}, "This call crashed"), h("span", {}, "Nothing was saved."), h("span", { class: "faint" }, title), btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent })));
+    ready(); focusTop(); return;
   }
-  return h("div", { class: "card " + c.badge + (c.hidden ? " hidden" : "") },
-    c.question ? h("div", { class: "q" }, c.question) : null, h("div", { class: "say" }, c.say || ""),
-    c.facts && c.facts.length ? h("ul", {}, c.facts.map((f) => h("li", {}, f))) : null,
-    h("div", { class: "meta" }, h("span", { class: "tag" }, c.badge), c.hidden ? h("span", { class: "tag" }, "מוסתר: " + (c.hiddenReason || "")) : null, c.dim ? h("span", { class: "tag" }, "עמום") : null, rate));
+  const chips = h("span", { class: "chips" }, chip(s.mode === "live" ? "Live" : "Practice", s.mode === "live" ? "good" : "", { dot: true }), s.profile ? chip(s.profile, "", { mono: true }) : null, s.noAi ? chip("No AI") : null);
+  main.append(h("div", { id: "callview" },
+    h("div", { class: "crumb" }, back, h("span", { class: "grow" }), empty ? null : delBtn),
+    h("div", { class: "callhead" }, h("h1", {}, title), chips),
+    h("p", { class: "statsline", id: "stats" })));
+  renderStats();
+  if (empty) {
+    $("callview").append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "Nothing to show"), h("span", {}, "This call has no transcript, cards or events."), btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent })));
+    ready(); focusTop(); return;
+  }
+  const tabs = h("div", { class: "tabs", role: "tablist", "aria-label": "Call sections", id: "tabs" }, TABS.map(([k, t, ic], i) => h("button", { type: "button", role: "tab", id: "tab-" + k, "data-tab": k, "aria-controls": "pane", "aria-selected": "false", tabindex: "-1", "aria-keyshortcuts": String(i + 1), onclick: () => setTab(k, {}, true) }, ico(ic), h("span", {}, t), h("span", { class: "n", "aria-hidden": "true" }))));
+  tabs.addEventListener("keydown", (e) => {
+    const ks = TABS.map((t) => t[0]), i = ks.indexOf(state.tab); let j = -1;
+    if (e.key === "ArrowRight") j = (i + 1) % ks.length; else if (e.key === "ArrowLeft") j = (i - 1 + ks.length) % ks.length; else if (e.key === "Home") j = 0; else if (e.key === "End") j = ks.length - 1;
+    if (j >= 0) { e.preventDefault(); setTab(ks[j], {}, true); $("tab-" + ks[j]).focus(); }
+  });
+  $("callview").append(tabs, h("div", { id: "pane", role: "tabpanel", tabindex: "-1" }));
+  setTab(tab, { line: state.line }, false);
+  $("tab-" + tab).focus({ preventScroll: true });
+  ready();
 }
-function tCards(pane, d) {
-  const cs = d.cards.filter((c) => c.turnId !== "side" && !c.health);
-  if (!cs.length) return pane.append(h("div", { class: "empty" }, "אין כרטיסים"));
-  cs.forEach((c) => pane.append(cardEl(c)));
+function backToList() { loadList().then(() => viewInbox(true)); }
+async function deleteCurrent() {
+  const id = state.id; let ok = false;
+  try { ok = await api.deleteCall(id); } catch (e) { fail("Could not delete: " + e.message); return; }
+  if (ok) { state.lastId = null; await loadList(); viewInbox(); announce("Call deleted"); }
 }
-function tSide(pane, d) {
-  const cs = d.cards.filter((c) => c.turnId === "side" && !c.health);
-  pane.append(h("h3", {}, "כרטיסי צד"));
-  cs.length ? cs.forEach((c) => pane.append(cardEl(c))) : pane.append(h("div", { class: "empty" }, "אין"));
-  pane.append(h("h3", {}, "נתפס (טלפון / מייל / דומיין)"));
-  d.captures.length ? pane.append(h("table", {}, h("tbody", {}, d.captures.map((c) => h("tr", {}, h("td", {}, c.kind), h("td", {}, ltr(c.value)))))))
-    : pane.append(h("div", { class: "empty" }, "אין"));
-  pane.append(h("h3", {}, "הערות הקשר ואישורי לקוח"));
+
+function renderStats() {
+  const el = $("stats"); if (!el) return;
+  const d = state.detail, s = d.summary, p = pendingOf(s); el.textContent = "";
+  const parts = [h("b", {}, mins(s.durationMs))];
+  if (s.cardsTotal) parts.push(`${plural(s.cardsTotal, "card")}`, `${s.rated} rated`, `${s.useful} useful`); else parts.push("no cards");
+  parts.forEach((x, i) => { if (i) el.append(h("span", { class: "sep", "aria-hidden": "true" }, "·")); el.append(x); });
+  if (p) el.append(h("button", { type: "button", class: "chip warn", onclick: () => setTab("rate", { filter: "unrated" }, true) }, h("span", { class: "ctr" }, p), " to rate"));
+  // tab badges
+  const set = (k, text, attn) => { const t = $("tab-" + k); if (!t) return; const n = t.querySelector(".n"); n.textContent = text == null ? "" : String(text); n.className = "n" + (attn ? " attn" : ""); };
+  set("followup", d.callSummary ? "✓" : null);
+  set("rate", p || (s.cardsTotal ? "✓" : null), !!p);
+  set("missed", missedItems(d).length || null);
+}
+
+function setTab(k, o = {}, focusPane) {
+  const d = state.detail; if (!d) return;
+  state.tab = k;
+  if (o.filter) state.filter = o.filter; else if (k === "rate" && !o.keep && !document.querySelector("#pane .ratebar")) state.filter = state.filter || "all";
+  if (o.sub) state.sub = o.sub;
+  for (const t of document.querySelectorAll("#tabs [role=tab]")) { const on = t.dataset.tab === k; t.setAttribute("aria-selected", on ? "true" : "false"); t.tabIndex = on ? 0 : -1; }
+  const pane = $("pane"); pane.textContent = ""; pane.setAttribute("aria-labelledby", "tab-" + k);
+  ({ followup: tFollowup, rate: tRate, transcript: tTranscript, missed: tMissed, details: tDetails })[k](pane, d, o);
+  if (focusPane === true && document.activeElement && document.activeElement !== document.body && !document.activeElement.closest("#tabs")) $("tab-" + k).focus({ preventScroll: true });
+}
+
+/* ---------- copy ---------- */
+function copyBtn(label, getText, o = {}) {
+  const lab = h("span", {}, label);
+  const b = h("button", { type: "button", class: "btn" + (o.cls ? " " + o.cls : ""), "aria-label": o.aria || label }, ico("copy"), lab);
+  let timer;
+  b.addEventListener("click", async () => {
+    let ok = false;
+    try { ok = await api.copyText(getText()); } catch { try { await navigator.clipboard.writeText(getText()); ok = true; } catch {} }
+    b.replaceChildren(ico(ok ? "check" : "warning"), lab); lab.textContent = ok ? "Copied" : "Copy failed";
+    if (ok) announce((o.what || "Text") + " copied to the clipboard"); else fail("Copy failed");
+    clearTimeout(timer); timer = setTimeout(() => { b.replaceChildren(ico("copy"), lab); lab.textContent = label; }, 1800);
+  });
+  return b;
+}
+
+/* ---------- Follow-up ---------- */
+const SKIP_WHY = { discard: "The call was deleted", crashed: "The call crashed", "no-ai": "The call ran without AI", disabled: "Summary is off in settings (summary.enabled)", empty: "No transcript", "cost-cap": "The call's cost cap was reached" };
+function summaryWhy(d) {
+  const ev = d.events.filter((e) => e.type === "summary.skipped" || e.type === "summary.error").at(-1);
+  if (!ev) return "";
+  if (ev.type === "summary.error") return "Summary failed: " + String(ev.error || "").slice(0, 160);
+  const r = String(ev.reason || ""); return r.startsWith("short") ? "The call was too short to summarize (summary.minWords)" : (SKIP_WHY[r] || "");
+}
+const PH = /(\[להשלים[^\]\n]*\])/;
+function emailLines(text) {
+  return text.split("\n").map((ln) => {
+    if (!ln.trim()) return h("div", { class: "eline gap" });
+    const kids = ln.split(PH).flatMap((p, i) => (i % 2 ? [h("mark", { class: "ph" }, p)] : rich(p)));
+    return h("div", { class: "eline", dir: dirOf(ln), lang: langOf(ln) }, kids);
+  });
+}
+const stepsKey = (id) => "wm.steps." + id;
+function loadSteps(id) { try { const a = JSON.parse(localStorage.getItem(stepsKey(id)) || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } }
+function saveSteps(id, a) { try { localStorage.setItem(stepsKey(id), JSON.stringify(a)); } catch {} }
+
+function tFollowup(pane, d) {
+  const s = d.callSummary, box = h("div", { class: "pane" }); pane.append(box);
+  const sections = [];
+  if (!s) {
+    const why = summaryWhy(d);
+    box.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No summary for this call"), why ? h("span", {}, why) : null, h("span", {}, "You can make one from Terminal:"), h("span", {}, h("code", {}, "pnpm summary " + state.id), " ", copyBtn("Copy", () => "pnpm summary " + state.id, { cls: "ghost sm", what: "Command", aria: "Copy command" }))));
+  } else {
+    const list = (items) => h("ul", { class: "bul" }, items.map((t) => h("li", { dir: dirOf(t), lang: langOf(t) }, rich(t))));
+    const none = (t) => h("div", { class: "muted" }, t);
+    const sec = (title, body, n) => h("section", {}, h("h2", {}, title, n ? h("span", { class: "n" }, n) : null), body);
+    // next steps checklist, state in localStorage per call
+    const done = loadSteps(state.id);
+    const stepsUl = h("ul", { class: "steps" });
+    const progress = h("span", { class: "n" });
+    const upd = () => { const c = s.nextSteps.filter((_, i) => done[i]).length; progress.textContent = `${c} of ${s.nextSteps.length} done`; };
+    s.nextSteps.forEach((n, i) => {
+      const cb = h("input", { type: "checkbox", id: "step-" + i }); cb.checked = !!done[i];
+      const row = h("label", { class: "step" + (done[i] ? " done" : ""), for: "step-" + i }, cb,
+        chip(n.who === "דן" ? "Dan" : "Client", n.who === "דן" ? "me" : "info"),
+        h("span", { class: "what", dir: dirOf(n.what), lang: langOf(n.what) }, rich(n.what), n.when ? h("span", { class: "when", dir: dirOf(n.when), lang: langOf(n.when) }, n.when) : null));
+      cb.addEventListener("change", () => { done[i] = cb.checked; saveSteps(state.id, done); row.classList.toggle("done", cb.checked); upd(); announce(`${cb.checked ? "Done" : "Reopened"}: ${n.what.slice(0, 60)}`); });
+      stepsUl.append(h("li", {}, row));
+    });
+    upd();
+    const stepsText = () => s.nextSteps.map((n) => `- [ ] ${n.who === "דן" ? "Dan" : "Client"}: ${n.what}${n.when ? " (" + n.when + ")" : ""}`).join("\n");
+    const email = s.followUpEmail || "";
+    const phN = (email.match(/\[להשלים[^\]\n]*\]/g) || []).length || s.guardReplaced || 0;
+    const aside = h("aside", { class: "emailbox", "aria-label": "Follow-up email" },
+      h("div", { class: "eh" }, h("h2", {}, "Follow-up email"), email ? copyBtn("Copy email", () => email, { cls: "primary", what: "Email" }) : null),
+      phN ? h("div", { class: "warnrow" }, chip(`${plural(phN, "placeholder")} to fill`, "warn", { icon: "warning" })) : null,
+      email ? h("div", { class: "email" }, emailLines(email)) : h("div", { class: "email muted" }, "No draft"),
+      h("div", { class: "foot" }, "Draft only, never sent anywhere. ", s.model ? ltr(s.model) : null, s.costUsd ? [" · ", ltr("$" + s.costUsd.toFixed(4))] : null));
+    box.append(h("div", { class: "fu" },
+      h("div", { class: "fu-main" },
+        sec("Summary", s.summary.length ? list(s.summary) : none("None")),
+        h("section", {}, h("div", { class: "rowh" }, h("h2", {}, "Next steps", s.nextSteps.length ? progress : null), h("span", { class: "grow" }), s.nextSteps.length ? copyBtn("Copy next steps", stepsText, { cls: "ghost sm", what: "Next steps" }) : null), s.nextSteps.length ? stepsUl : none("No next steps agreed")),
+        sec("Decisions", s.decisions.length ? list(s.decisions) : none("No decisions"), s.decisions.length || null),
+        sec("Open questions", s.openQuestions.length ? list(s.openQuestions) : none("No open questions"), s.openQuestions.length || null),
+        capturesSection(d)),
+      aside));
+    return;
+  }
+  const cs = capturesSection(d); if (cs) box.append(h("div", { class: "fu-main", style: false }, cs));
+}
+function capturesSection(d) {
   const ev = d.events.filter((e) => e.type === "context.note" || e.type === "client.confirmed");
-  ev.length ? ev.forEach((e) => pane.append(h("div", { class: "row" }, h("span", { class: "tag" }, e.type), h("span", {}, e.text || e.note || JSON.stringify(e, (k, v) => (k === "t" || k === "type" ? undefined : v))))))
-    : pane.append(h("div", { class: "empty" }, "אין"));
+  if (!d.captures.length && !ev.length) return null;
+  const wrap = h("div", {});
+  if (d.captures.length) wrap.append(h("section", {}, h("h2", {}, "Captured on the call", h("span", { class: "n" }, d.captures.length)),
+    h("div", { class: "kv" }, d.captures.map((c) => h("div", { class: "ln" }, chip(c.kind), h("span", { class: "v mono" }, ltr(c.value)), copyBtn("", () => String(c.value), { cls: "ghost sm icon", aria: "Copy " + c.kind + " " + c.value, what: "Value" }))))));
+  if (ev.length) wrap.append(h("section", {}, h("h2", {}, "Notes and confirmations", h("span", { class: "n" }, ev.length)),
+    h("div", { class: "kv" }, ev.map((e) => { const t = e.text || e.note || JSON.stringify(e, (k, v) => (k === "t" || k === "type" ? undefined : v)); return h("div", { class: "ln" }, chip(e.type === "client.confirmed" ? "Confirmed" : "Note", e.type === "client.confirmed" ? "good" : ""), textEl("span", "v", t)); }))));
+  return wrap;
 }
 
-function firstCard(l) { const ts = [l.bankAt, l.stallAt, l.cardAt].filter(Boolean); return ts.length ? Math.min(...ts) : null; }
-function tSpeed(pane, d) {
+/* ---------- Rate ---------- */
+const SRC = { bank: "Bank", ai: "AI", stall: "Stall", warn: "Warning", info: "Info", note: "Note", fact: "Fact", reminder: "Reminder" };
+function filterCards(d) {
+  const f = state.filter, all = allCards(d);
+  return all.filter((c) => f === "all" || (f === "side" ? c.turnId === "side" : rateable(c) && !d.tags[c.id]));
+}
+function ratebar(d) {
+  const all = allCards(d), r = all.filter(rateable);
+  const cnt = { all: all.length, unrated: r.filter((c) => !d.tags[c.id]).length, side: all.filter((c) => c.turnId === "side").length };
+  const seg = h("div", { class: "seg", role: "group", "aria-label": "Filter cards", id: "seg" });
+  for (const [k, t] of [["all", "All"], ["unrated", "Unrated"], ["side", "Side"]]) {
+    seg.append(h("button", { type: "button", "data-f": k, "aria-pressed": state.filter === k ? "true" : "false", onclick: (e) => { state.filter = k; state.sel = null; drawCards(); announce(`${t}: ${cnt[k]} cards`); e.currentTarget.focus(); } }, t, h("span", { class: "c" }, cnt[k])));
+  }
+  return h("div", { class: "ratebar" }, seg, h("span", { class: "grow" }), h("span", { class: "hints", "aria-hidden": "true" }, h("span", {}, h("kbd", {}, "Y"), " useful"), h("span", {}, h("kbd", {}, "N"), " not useful"), h("span", {}, h("kbd", {}, "U"), " clear"), h("span", {}, h("kbd", {}, "J"), h("kbd", {}, "K"), " move")));
+}
+function refreshSeg() {
+  const d = state.detail, seg = $("seg"); if (!seg) return;
+  const all = allCards(d), r = all.filter(rateable);
+  const cnt = { all: all.length, unrated: r.filter((c) => !d.tags[c.id]).length, side: all.filter((c) => c.turnId === "side").length };
+  for (const b of seg.querySelectorAll("button")) b.querySelector(".c").textContent = cnt[b.dataset.f];
+}
+function tRate(pane, d) {
+  const box = h("div", { class: "pane" });
+  if (!allCards(d).length) { pane.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No cards in this call"), h("span", {}, "Cards appear while the call is live."))); return; }
+  box.append(ratebar(d), h("div", { class: "cardlist", id: "cardlist", role: "list", "aria-label": "Cards" }));
+  pane.append(box); drawCards();
+}
+function jumpToCardTime(c) {
+  const d = state.detail, rows = d.transcript; let line = 0;
+  for (let i = 0; i < rows.length; i++) if (rows[i].t <= (c.t || 0)) line = i;
+  setTab("transcript", { line }, true);
+}
+function cardEl(c, d, idx, total) {
+  const t0 = t0Of(d), rt = h("div", { class: "rate" }), say = c.say || "";
+  const first = String(say || c.question || "").slice(0, 60);
+  if (rateable(c)) {
+    const mk = (v, label, key) => h("button", { type: "button", class: v, "data-v": v, "aria-pressed": "false", "aria-label": `${label}: ${first}`, tabindex: "-1", onclick: () => { setCur(c.id, false); doRate(c, v, false); } }, ico(v === "y" ? "check" : "x"), h("span", {}, label), h("kbd", { class: "k", "aria-hidden": "true" }, key));
+    rt.append(mk("y", "Useful", "Y"), mk("n", "Not useful", "N"));
+  }
+  const el = h("article", { class: "card " + c.badge + (c.hidden ? " hidden" : ""), role: "group", "aria-label": `Card ${idx + 1} of ${total}: ${first}`, tabindex: "-1", "data-id": c.id, onclick: (e) => { if (!e.target.closest("button")) setCur(c.id, false); } },
+    h("div", { class: "ch" }, chip(SRC[c.badge] || c.badge, "", { dot: true }),
+      c.hidden ? chip("Hidden" + (c.hiddenReason ? ": " + c.hiddenReason : ""), "") : null, c.dim ? chip("Dimmed") : null,
+      c.t && t0 ? h("button", { type: "button", class: "jump", title: "Show in transcript", "aria-label": `Show in transcript at ${mmss(c.t - t0)}`, onclick: () => jumpToCardTime(c) }, mmss(c.t - t0), ico("jump")) : null,
+      h("span", { class: "verdict" })),
+    c.question ? textEl("div", "q", c.question) : null, textEl("div", "say", say),
+    c.facts && c.facts.length ? h("ul", { dir: "rtl", lang: "he" }, c.facts.map((f) => h("li", { dir: dirOf(f), lang: langOf(f) }, rich(f)))) : null,
+    rateable(c) ? rt : null);
+  const src = el.querySelector(".chip .dot"); if (src) src.style.color = "var(--src)";
+  paintCard(el, c);
+  return el;
+}
+function paintCard(el, c) {
+  const v = state.detail.tags[c.id] || null;
+  for (const b of el.querySelectorAll(".rate button")) b.setAttribute("aria-pressed", b.dataset.v === v ? "true" : "false");
+  const ve = el.querySelector(".verdict"); ve.textContent = "";
+  if (v) { ve.className = "verdict " + (v === "y" ? "good" : "bad"); ve.append(ico(v === "y" ? "check" : "x"), v === "y" ? "Useful" : "Not useful"); } else ve.className = "verdict";
+}
+const cardEls = () => [...document.querySelectorAll("#cardlist .card")];
+function drawCards() {
+  const list = $("cardlist"); if (!list) return;
+  const d = state.detail, cs = filterCards(d), total = cs.length; list.textContent = "";
+  for (const b of document.querySelectorAll("#seg button")) b.setAttribute("aria-pressed", b.dataset.f === state.filter ? "true" : "false");
+  refreshSeg();
+  if (!cs.length) { list.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, state.filter === "unrated" ? "All rated" : "No cards here"), h("span", {}, state.filter === "unrated" ? "Nothing left to rate on this call." : "Nothing matches this filter."))); return; }
+  cs.forEach((c, i) => list.append(cardEl(c, d, i, total)));
+  const firstUn = cs.find((c) => rateable(c) && !d.tags[c.id]) || cs[0];
+  setCur(state.sel && cs.some((c) => c.id === state.sel) ? state.sel : firstUn.id, false);
+}
+function setCur(id, focus) {
+  state.sel = id;
+  for (const el of cardEls()) {
+    const on = el.dataset.id === id; el.classList.toggle("cur", on); el.tabIndex = on ? 0 : -1;
+    for (const b of el.querySelectorAll(".rate button")) b.tabIndex = on ? 0 : -1;
+    if (on && focus) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: "nearest" }); }
+  }
+}
+async function doRate(c, v, advance) {
+  const d = state.detail, prev = d.tags[c.id], next = prev === v ? null : v;
+  let s; try { s = await api.setTag(state.id, c.id, next); } catch (e) { fail("Could not save the rating: " + e.message); return false; }
+  d.summary = s; if (next) d.tags[c.id] = next; else delete d.tags[c.id];
+  const i = state.calls.findIndex((x) => x.id === state.id); if (i >= 0) state.calls[i] = s;
+  const el = document.querySelector(`#cardlist .card[data-id="${CSS.escape(c.id)}"]`); if (el) paintCard(el, c);
+  renderStats(); renderPendingChip(); refreshSeg();
+  const left = pendingOf(s);
+  announce((next === "y" ? "Marked useful" : next === "n" ? "Marked not useful" : "Rating cleared") + ". " + (left ? plural(left, "card") + " left to rate." : "All cards rated."));
+  if (advance && next) {
+    const ids = cardEls().map((x) => x.dataset.id), at = ids.indexOf(c.id);
+    const after = [...ids.slice(at + 1), ...ids.slice(0, at)].find((id) => { const cc = d.cards.find((x) => x.id === id); return cc && rateable(cc) && !d.tags[id]; });
+    if (after) setCur(after, true);
+  }
+  return true;
+}
+
+/* ---------- Transcript ---------- */
+function tTranscript(pane, d, o) {
+  const t0 = t0Of(d);
+  if (!d.transcript.length) return pane.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No transcript"), h("span", {}, "Nothing was transcribed for this call.")));
+  const q = state.hl || "";
+  // markers: cards land after the transcript row that precedes them; questions map to the row with the same text
+  const cardsAt = new Map();
+  for (const c of allCards(d)) { if (!c.t) continue; let line = -1; for (let i = 0; i < d.transcript.length; i++) if (d.transcript[i].t <= c.t) line = i; if (line >= 0) (cardsAt.get(line) || cardsAt.set(line, []).get(line)).push(c); }
+  const qAt = new Map();
+  for (const l of d.latency) { if (!l.text) continue; const i = d.transcript.findIndex((r) => r.ch !== "me" && String(r.text).trim() === String(l.text).trim()); if (i >= 0 && !qAt.has(i)) qAt.set(i, l); }
+  const box = h("div", { class: "chat pane", role: "list", "aria-label": "Transcript" });
+  d.transcript.forEach((r, i) => {
+    const me = r.ch === "me", l = qAt.get(i);
+    const ex = [];
+    if (l) { const cardMs = firstCard(l) && l.speechEnd ? firstCard(l) - l.speechEnd : null; ex.push(!firstCard(l) ? chip("Question · no card", "bad", { dot: true }) : cardMs > 3000 ? chip(`Question · card after ${sec(cardMs)}`, "warn", { dot: true }) : chip("Question", "info")); }
+    box.append(h("div", { class: "row " + (me ? "me" : "them"), role: "listitem", id: "tr-" + i, tabindex: "-1" },
+      h("span", { class: "ts" }, mmss(r.t - t0)), h("span", {}, chip(me ? "Me" : "Client", me ? "me" : "info")),
+      h("div", { class: "tx", dir: dirOf(r.text), lang: langOf(r.text) }, hlNodes(r.text, q)),
+      ex.length ? h("div", { class: "ex" }, ex) : null));
+    for (const c of cardsAt.get(i) || []) {
+      box.append(h("div", { class: "mk", role: "listitem" }, h("button", { type: "button", class: "jump", "aria-label": `Card at ${mmss((c.t || t0) - t0)}: ${String(c.say || "").slice(0, 60)}. Open on Rate`, onclick: () => { state.sel = c.id; setTab("rate", { filter: "all", keep: true }, true); const el = document.querySelector(`#cardlist .card[data-id="${CSS.escape(c.id)}"]`); if (el) setCur(c.id, true); } },
+        chip(SRC[c.badge] || c.badge, c.badge === "bank" ? "good" : c.badge === "ai" ? "info" : c.badge === "stall" ? "warn" : "", { dot: true }), h("span", { class: "t", dir: dirOf(c.say), lang: langOf(c.say) }, c.say || c.question || ""))));
+    }
+  });
+  pane.append(box);
+  const line = o && o.line != null ? o.line : state.line;
+  if (line != null && line >= 0) { const el = $("tr-" + line); if (el) { el.classList.add("target"); requestAnimationFrame(() => { el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); }); } }
+  state.line = null;
+}
+
+/* ---------- Missed ---------- */
+function missedItems(d) {
+  const t0 = t0Of(d), seen = new Set(), out = [];
+  for (const l of d.latency) {
+    const f = firstCard(l), cardMs = f && l.speechEnd ? f - l.speechEnd : null, key = String(l.text || l.turnId);
+    if (!f) { out.push({ t: l.t, text: key, why: "No card", bad: true }); seen.add(key); }
+    else if (cardMs != null && cardMs > 3000) { out.push({ t: l.t, text: key, why: `Card came late (${sec(cardMs)})`, bad: false }); seen.add(key); }
+  }
+  for (const e of d.events) if (e.type === "detect" && e.isQuestion && !seen.has(String(e.text)) && !d.latency.some((l) => l.text === e.text && firstCard(l))) { out.push({ t: e.t, text: String(e.text), why: "No card", bad: true, reason: e.reason }); seen.add(String(e.text)); }
+  return out.sort((a, b) => (a.t || 0) - (b.t || 0)).map((x) => ({ ...x, rel: x.t ? x.t - t0 : null }));
+}
+function tMissed(pane, d) {
+  const items = missedItems(d);
+  if (!items.length) return pane.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, d.latency.length || d.events.length ? "Every question got a card" : "No question data"), h("span", {}, d.latency.length ? "No question was missed or answered late." : "This call has no recorded questions.")));
+  pane.append(h("div", { class: "pane" }, h("div", { class: "section-title" }, h("h2", {}, "Questions with no card, or a late one"), h("span", { class: "sub" }, items.length)),
+    h("div", { class: "missed", role: "list" }, items.map((m) => {
+      const line = d.transcript.findIndex((r) => String(r.text).trim() === m.text.trim());
+      return h("div", { class: "mrow", role: "listitem" },
+        line >= 0 && m.rel != null ? h("button", { type: "button", class: "btn ghost sm mono", title: "Show in transcript", "aria-label": `Show in transcript at ${mmss(m.rel)}`, onclick: () => setTab("transcript", { line }, true) }, mmss(m.rel)) : h("span", { class: "ts" }, m.rel != null ? mmss(m.rel) : ""),
+        h("div", {}, textEl("div", "q", m.text), h("div", { class: "why" }, chip(m.why, m.bad ? "bad" : "warn", { dot: true }), m.reason ? chip(m.reason, "", { mono: true }) : null)),
+        copyBtn("Copy", () => m.text, { cls: "ghost sm", aria: "Copy question: " + m.text.slice(0, 50), what: "Question" }));
+    }))));
+}
+
+/* ---------- Details: speed, cost, events ---------- */
+function callMetrics(d) {
+  const fin = d.latency.map((l) => (l.finalAt && l.speechEnd ? l.finalAt - l.speechEnd : null));
+  const card = d.latency.map((l) => (firstCard(l) && l.speechEnd ? firstCard(l) - l.speechEnd : null));
+  return { finP50: pct(fin, 0.5), cardP50: pct(card, 0.5), cardP95: pct(card, 0.95), noCard: d.latency.filter((l) => !firstCard(l)).length };
+}
+function tDetails(pane, d, o) {
+  const s = d.summary, m = callMetrics(d), p = pendingOf(s), live = s.mode === "live";
+  const st = !s.rated ? "na" : s.perHour >= TARGET ? "pass" : "fail";
+  const kpi = (k, v, sub, cls) => h("div", { class: "kpi" }, h("div", { class: "k" }, k), h("div", { class: "v " + (cls || "") }, v), h("div", { class: "s" }, sub));
+  const box = h("div", { class: "pane" });
+  box.append(h("div", { class: "kpis" },
+    kpi("Useful per hour", [s.rated ? ltr(s.perHour.toFixed(1)) : "–"], live ? (s.rated ? `${s.useful} useful in ${s.hours.toFixed(2)} h` : "No ratings yet") : "Practice, not counted", live && s.rated ? (st === "pass" ? "good" : "bad") : "muted"),
+    kpi("Rated", ltr(`${s.rated}/${s.cardsTotal}`), p ? `${p} still to rate` : s.cardsTotal ? "All rated" : "No cards"),
+    kpi("Bank answered", ltr(Math.round(s.bankShare * 100) + "%"), `${plural(s.questions, "question")}` + (m.noCard ? ` · ${m.noCard} without a card` : "")),
+    kpi("To first card (p50)", [ltr(sec(m.cardP50))], ["p95 ", ltr(sec(m.cardP95)), m.cardP50 != null ? " · " + toneWord(m.cardP50, 1000, 3000) : ""], tone(m.cardP50, 1000, 3000)),
+    kpi("Cost", ltr(usd(s.costUsd)), `length ${mins(s.durationMs)}`)));
+  const content = h("div", { id: "sub-out" });
+  const seg = h("div", { class: "seg subnav", role: "group", "aria-label": "Detail section" });
+  const subs = [["speed", "Speed"], ["cost", "Cost"], ["events", "Events"]];
+  const draw = (k) => { state.sub = k; for (const b of seg.querySelectorAll("button")) b.setAttribute("aria-pressed", b.dataset.k === k ? "true" : "false"); content.textContent = ""; ({ speed: subSpeed, cost: subCost, events: subEvents })[k](content, d); };
+  for (const [k, t] of subs) seg.append(h("button", { type: "button", "data-k": k, "aria-pressed": "false", onclick: (e) => { draw(k); e.currentTarget.focus(); } }, t));
+  box.append(seg, content); pane.append(box); draw(state.sub || "speed");
+}
+function subSpeed(out, d) {
   const rows = d.latency.map((l) => ({ l, fin: l.finalAt && l.speechEnd ? l.finalAt - l.speechEnd : null, card: firstCard(l) && l.speechEnd ? firstCard(l) - l.speechEnd : null, tag: l.tagAt && l.speechEnd ? l.tagAt - l.speechEnd : null }));
+  if (!rows.length) return out.append(h("div", { class: "empty" }, "No speed data"));
+  const def = [["fin", "Speech end → final", 600, 1200], ["card", "→ First card", 1000, 3000], ["tag", "→ Haiku tag", 3000, 5000]];
   const stat = (k) => { const a = rows.map((r) => r[k]); return [pct(a, 0.5), pct(a, 0.95)]; };
-  if (!rows.length) pane.append(h("div", { class: "empty" }, "אין נתוני מהירות"));
-  else pane.append(h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "שאלה"), h("th", { class: "num" }, "סוף דיבור → סופי"), h("th", { class: "num" }, "→ כרטיס ראשון"), h("th", { class: "num" }, "→ תג Haiku"), h("th", {}, "תג"))),
-    h("tbody", {}, rows.map((r) => h("tr", {}, h("td", {}, r.l.text || r.l.turnId), h("td", { class: "num" }, ltr(sec(r.fin))), h("td", { class: "num" }, ltr(r.card == null ? "ללא כרטיס" : sec(r.card))), h("td", { class: "num" }, ltr(sec(r.tag))), h("td", {}, r.l.tag ? ltr(r.l.tag) : "")))),
-    h("tfoot", {}, ["p50", "p95"].map((p, i) => h("tr", {}, h("th", {}, p), ["fin", "card", "tag"].map((k) => h("th", { class: "num" }, ltr(sec(stat(k)[i])))), h("th", {}))))));
-  pane.append(h("h3", {}, "למה אין כרטיס? (זיהוי שאלות)"));
-  const lat = d.latency;
-  const det = d.events.filter((e) => e.type === "detect");
-  const noCard = det.filter((e) => { const l = lat.find((x) => x.text === e.text); return !l || !firstCard(l); });
-  if (!noCard.length) return pane.append(h("div", { class: "empty" }, "לכל מה שזוהה יש כרטיס"));
-  pane.append(h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "טקסט"), h("th", {}, "שאלה?"), h("th", {}, "סיבה"))),
-    h("tbody", {}, noCard.map((e) => h("tr", {}, h("td", {}, e.text), h("td", {}, e.isQuestion ? "כן (בלי כרטיס)" : "לא"), h("td", {}, ltr(e.reason || "")))))));
+  out.append(h("div", { class: "tblwrap" }, h("table", { "aria-label": "Latency per question" },
+    h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Question"), def.map(([, label]) => h("th", { scope: "col", class: "num" }, label)), h("th", { scope: "col" }, "Tag"))),
+    h("tbody", {}, rows.map((r) => h("tr", {}, h("td", { dir: dirOf(r.l.text), lang: langOf(r.l.text) }, r.l.text || r.l.turnId),
+      def.map(([k, , g, o]) => h("td", { class: "num " + (k === "card" && r[k] == null ? "lat-bad" : tone(r[k], g, o)) }, k === "card" && r[k] == null ? "no card" : [ltr(sec(r[k])), r[k] != null && tone(r[k], g, o) === "lat-bad" ? h("span", { class: "sr" }, " (slow)") : null])),
+      h("td", {}, r.l.tag ? chip(r.l.tag, "", { mono: true }) : "")))),
+    h("tfoot", {}, [["p50", 0], ["p95", 1]].map(([lab, ix]) => h("tr", {}, h("td", {}, lab), def.map(([k, , g, o]) => { const v = stat(k)[ix]; return h("td", { class: "num " + tone(v, g, o) }, ltr(sec(v))); }), h("td")))))));
 }
-
-function tCost(pane, d) {
-  const sum = d.usage.filter((u) => u.role === "summary").at(-1);
-  const byRole = {};
+function subCost(out, d) {
+  const sum = d.usage.filter((u) => u.role === "summary").at(-1), byRole = {};
   for (const u of d.usage) if (u.role !== "summary") { const r = (byRole[u.role] ||= { n: 0, usd: 0 }); r.n++; r.usd += u.usd || 0; }
-  if (!Object.keys(byRole).length && !sum) return pane.append(h("div", { class: "empty" }, "אין נתוני עלות"));
-  pane.append(h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "תפקיד"), h("th", { class: "num" }, "קריאות"), h("th", { class: "num" }, "עלות"))),
-    h("tbody", {}, Object.entries(byRole).map(([k, r]) => h("tr", {}, h("td", {}, ltr(k)), h("td", { class: "num" }, r.n), h("td", { class: "num" }, ltr(usd(r.usd))))))));
-  if (sum) pane.append(h("p", {}, "סה״כ ", h("b", {}, ltr(usd(sum.totalUsd))), h("span", { class: "muted" }, " (LLM ", ltr(usd(sum.llmUsd || 0)), " · STT ", ltr(usd(sum.sttUsd || 0)), ")")));
+  if (!Object.keys(byRole).length && !sum) return out.append(h("div", { class: "empty" }, "No cost data"));
+  const total = sum ? sum.totalUsd : Object.values(byRole).reduce((a, r) => a + r.usd, 0), hrs = Math.max(d.summary.durationMs / 3_600_000, 1 / 60);
+  out.append(h("div", { class: "kpis" },
+    h("div", { class: "kpi" }, h("div", { class: "k" }, "Total"), h("div", { class: "v" }, ltr(usd(total))), h("div", { class: "s" }, ltr(usd(total / hrs)), " per hour")),
+    sum ? h("div", { class: "kpi" }, h("div", { class: "k" }, "LLM"), h("div", { class: "v" }, ltr(usd(sum.llmUsd || 0)))) : null,
+    sum ? h("div", { class: "kpi" }, h("div", { class: "k" }, "STT"), h("div", { class: "v" }, ltr(usd(sum.sttUsd || 0)))) : null));
+  const maxUsd = Math.max(...Object.values(byRole).map((r) => r.usd), 1e-9);
+  out.append(h("div", { class: "tblwrap" }, h("table", { "aria-label": "Cost per role" }, h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Role"), h("th", { scope: "col", class: "num w-num" }, "Calls"), h("th", { scope: "col", class: "num" }, "Cost"))),
+    h("tbody", {}, Object.entries(byRole).map(([k, r]) => h("tr", {}, h("td", {}, h("span", { class: "mono" }, k)), h("td", { class: "num w-num" }, r.n), h("td", { class: "num" }, h("div", { class: "share" }, meter(r.usd / maxUsd), ltr(usd(r.usd))))))))));
 }
-
-function tEvents(pane, d) {
-  const f = h("input", { type: "text", placeholder: "סינון לפי סוג או טקסט…" });
-  const list = h("div");
+function subEvents(out, d) {
+  const t0 = t0Of(d);
+  const evs = d.events.map((e) => ({ e, s: (e.type + " " + JSON.stringify(e)).toLowerCase() })); // precomputed once
+  const f = h("input", { type: "text", placeholder: "Filter by type or text", "aria-label": "Filter events" });
+  const list = h("div", { class: "evs" }), note = h("span", { class: "sub" }, `${d.events.length} events`);
   const draw = () => {
     list.textContent = ""; const q = f.value.trim().toLowerCase();
-    const evs = d.events.filter((e) => !q || (e.type + " " + JSON.stringify(e)).toLowerCase().includes(q)).slice(0, 1000);
-    evs.forEach((e) => list.append(h("div", { class: "ev" }, `${mmss(e.t - (Date.parse(d.meta.startedAt) || d.events[0].t))} ${e.type} ${JSON.stringify(e, (k, v) => (k === "t" || k === "type" ? undefined : v))}`)));
+    const all = evs.filter((x) => !q || x.s.includes(q));
+    all.slice(0, 1000).forEach(({ e }) => list.append(h("div", { class: "ev" }, mmss(e.t - t0) + " ", h("b", {}, e.type), " " + JSON.stringify(e, (k, v) => (k === "t" || k === "type" ? undefined : v)))));
+    if (all.length > 1000) list.append(h("div", { class: "empty" }, `Showing 1000 of ${all.length}. Narrow it with the filter.`));
+    if (!all.length) list.append(h("div", { class: "empty" }, "No events"));
+    note.textContent = q ? `${all.length} of ${d.events.length} events` : `${d.events.length} events`;
   };
-  f.addEventListener("input", draw); draw();
-  pane.append(h("details", {}, h("summary", {}, `אירועים גולמיים (${d.events.length})`), h("div", { class: "bar" }, f), list));
+  let timer; f.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(draw, 150); });
+  draw(); out.append(h("div", { class: "bar" }, h("div", { class: "search" }, ico("search"), f), note), list);
 }
 
-async function viewSettings() {
-  state.view = "settings"; setNav();
+/* ---------- System: doctor first, then settings ---------- */
+function parseDoctor(text) {
+  const groups = []; let cur = null, verdict = "", note = "";
+  for (const raw of String(text).split("\n")) {
+    const line = raw.replace(/\s+$/, ""); if (!line.trim()) continue;
+    const m = /^\s+(\S+)\s+(.*)$/.exec(line);
+    if (m && !/^[A-Za-z0-9(]/.test(m[1])) { if (!cur) groups.push((cur = { name: "General", items: [] })); cur.items.push({ lvl: m[1] === "✅" ? "ok" : /^⚠/.test(m[1]) ? "warn" : "bad", text: m[2] }); }
+    else if (/^(NOT READY|READY)\b/.test(line.trim())) verdict = line.trim();
+    else if (line.startsWith("(")) note = line.trim();
+    else if (!/^\s/.test(line) && !line.startsWith("Wingman doctor")) { cur = { name: line.trim(), items: [] }; groups.push(cur); }
+  }
+  return { groups: groups.filter((g) => g.items.length), verdict, note };
+}
+function parseSettings(text) {
+  const groups = new Map(), raw = []; let head = "";
+  for (const line of String(text).split("\n")) {
+    const m = /^(\S+)\s{2,}(.*?)\s+\[([^\]]+)\]\s*$/.exec(line);
+    if (m) { const g = m[1].includes(".") ? m[1].split(".")[0] : "general"; (groups.get(g) || groups.set(g, []).get(g)).push({ k: m[1], v: m[2], src: m[3] }); }
+    else if (line.trim()) { if (!head && /^Effective/.test(line)) head = line.trim(); else raw.push(line); }
+  }
+  return { groups, head, raw };
+}
+function doctorCard(r) {
+  const p = parseDoctor(r.text);
+  if (!p.groups.length) return h("section", { class: "doctor", "aria-label": "Doctor" }, h("div", { class: "top" }, h("div", { class: "verdict bad" }, ico("warning"), "Doctor did not run")), h("pre", { class: "err" }, r.text.trim() || "(no output)"));
+  const all = p.groups.flatMap((g) => g.items), bad = all.filter((i) => i.lvl === "bad"), warn = all.filter((i) => i.lvl === "warn"), okN = all.length - bad.length - warn.length;
+  const isOk = !bad.length && (p.verdict ? p.verdict === "READY" : true);
+  const issues = [...bad, ...warn];
+  return h("section", { class: "doctor", "aria-labelledby": "doc-h" },
+    h("div", { class: "top" }, h("h2", { id: "doc-h", class: "verdict " + (isOk ? "good" : "bad") }, ico(isOk ? "check" : "warning"), isOk ? "Ready" : "Not ready", h("span", { class: "sr" }, " (doctor, offline)")),
+      chip(`${okN} passed`, "good"), warn.length ? chip(`${warn.length} warning${warn.length > 1 ? "s" : ""}`, "warn") : null, bad.length ? chip(`${bad.length} failed`, "bad") : null,
+      h("span", { class: "grow" }), h("span", { class: "sub" }, "Offline check: no audio, no network, no paid calls")),
+    issues.length ? h("ul", { class: "issues" }, issues.map((i) => h("li", {}, ico("warning", i.lvl === "bad" ? "bad" : "warnc"), i.text))) : null,
+    h("details", {}, h("summary", {}, "All checks"), h("div", { class: "checks" }, p.groups.map((g) => h("section", {}, h("h3", {}, g.name), h("ul", {}, g.items.map((i) => h("li", {}, ico(i.lvl === "ok" ? "check" : "warning", i.lvl === "ok" ? "" : i.lvl === "warn" ? "w" : "b"), i.text))))), p.note ? h("p", { class: "sub" }, p.note) : null)));
+}
+function settingsBlock(r) {
+  const p = parseSettings(r.text);
+  const wrap = h("div", {});
+  if (!p.groups.size) return h("pre", { class: r.ok ? "" : "err" }, r.text.trim() || "(no output)");
+  const over = [...p.groups.values()].flat().filter((x) => x.src !== "default").length;
+  wrap.append(h("div", { class: "section-title" }, h("h2", {}, "Settings"), h("span", { class: "sub" }, over ? `${plural(over, "value")} changed from the defaults` : "All values are defaults"), h("span", { class: "grow" }), btn("pnpm settings", { cls: "ghost sm", icon: "settings", onclick: () => { announce("Run pnpm settings in Terminal to edit"); } , title: "Settings are edited in Terminal: pnpm settings" })));
+  const cfg = h("div", { class: "cfg" });
+  for (const [g, rows] of p.groups) cfg.append(h("section", {}, h("h3", {}, g), h("table", { "aria-label": g + " settings" }, h("tbody", {}, rows.map((x) => { const ov = x.src !== "default"; return h("tr", { class: ov ? "ov" : "" }, h("td", { class: "k" }, ov ? h("span", { class: "odot", title: "Overridden by " + x.src }) : null, x.k.includes(".") ? x.k.slice(x.k.indexOf(".") + 1) : x.k), h("td", { class: "v" }, ltr(x.v), h("span", { class: "chip src " + (ov ? "warn" : "") + " mono" }, ov ? x.src : "default"))); })))));
+  wrap.append(cfg);
+  wrap.append(h("details", { class: "rawfold" }, h("summary", {}, "Raw output"), h("pre", {}, r.text.trim())));
+  if (p.head) wrap.prepend(h("p", { class: "sub", style: false }, p.head));
+  return wrap;
+}
+async function viewSystem() {
+  state.view = "system"; state.gen++; setNav(); busy();
   const main = $("main"); main.textContent = "";
-  const out = h("pre", {}, "טוען…");
-  const run = async (fn) => { out.textContent = "מריץ…"; try { const r = await fn(); out.textContent = r.text.trim() || "(אין פלט)"; } catch (e) { out.textContent = "שגיאה: " + e.message; } };
-  main.append(h("div", { class: "bar" }, h("button", { onclick: () => run(api.settingsText) }, "pnpm settings"), h("button", { onclick: () => run(api.doctorOffline) }, "Doctor (offline)"), h("span", { class: "muted" }, "קריאה בלבד · מפתחות לא מוצגים")), out);
-  run(api.settingsText);
+  const body = h("div", { class: "sys" }, h("div", { class: "loading" }, "Running checks…"));
+  const rerun = btn("Re-run checks", { icon: "refresh", cls: "sm", onclick: () => viewSystem().then(() => announce("Checks finished")) });
+  main.append(h("div", { class: "page-head" }, h("h1", {}, "System"), h("span", { class: "grow" }), rerun), body);
+  focusTop();
+  const safe = (fn) => fn().catch((e) => ({ ok: false, text: "Error: " + e.message }));
+  const [doc, set] = await Promise.all([safe(api.doctorOffline), safe(api.settingsText)]);
+  if (state.view !== "system") return;
+  body.textContent = ""; body.append(doctorCard(doc), settingsBlock(set)); ready();
 }
 
-function setNav() { $("nav-list").className = "tab" + (state.view !== "settings" ? " on" : ""); $("nav-settings").className = "tab" + (state.view === "settings" ? " on" : ""); }
-$("nav-list").addEventListener("click", async () => { await loadList(); viewList(); });
-$("nav-settings").addEventListener("click", viewSettings);
+/* ---------- keyboard ---------- */
+const typingIn = (t) => t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (e.key === "Escape") { if (typingIn(t)) { t.blur(); return; } if (state.view === "call") backToList(); return; }
+  if (typingIn(t)) return;
+  const inMain = t === document.body || $("main").contains(t); // never from the header nav (WCAG 2.1.4: shortcuts only inside the view)
+  if (!inMain) return;
+  // e.code, not e.key: works on the Hebrew keyboard layout too.
+  if (state.view === "inbox" && e.code === "Slash") { const q = $("q"); if (q) { e.preventDefault(); q.focus(); } return; }
+  if (state.view !== "call" || !state.detail || !$("tabs")) return;
+  const dig = /^Digit([1-5])$/.exec(e.code);
+  if (dig) { e.preventDefault(); const k = TABS[+dig[1] - 1][0]; setTab(k, {}, false); $("tab-" + k).focus({ preventScroll: true }); return; }
+  if (state.tab !== "rate" || !$("cardlist")) return;
+  const els = cardEls(); if (!els.length) return;
+  const ids = els.map((x) => x.dataset.id), i = Math.max(0, ids.indexOf(state.sel));
+  const inList = $("cardlist").contains(t);
+  if (e.code === "KeyJ" || (inList && e.key === "ArrowDown")) { e.preventDefault(); setCur(ids[Math.min(ids.length - 1, i + 1)], true); }
+  else if (e.code === "KeyK" || (inList && e.key === "ArrowUp")) { e.preventDefault(); setCur(ids[Math.max(0, i - 1)], true); }
+  else if (e.code === "KeyY" || e.code === "KeyN" || e.code === "KeyU") {
+    if (t.closest && t.closest(".rate") && t.tagName === "BUTTON" && (e.code === "KeyY" || e.code === "KeyN")) { /* still rate */ }
+    const c = state.detail.cards.find((x) => x.id === state.sel); if (!c || !rateable(c)) return;
+    e.preventDefault();
+    if (e.code === "KeyU") { const cur = state.detail.tags[c.id]; if (cur) doRate(c, cur, false); }
+    else doRate(c, e.code === "KeyY" ? "y" : "n", true);
+  }
+});
+
+/* ---------- boot ---------- */
+$("nav-list").addEventListener("click", () => { loadList().then(() => viewInbox()); });
+$("nav-settings").addEventListener("click", viewSystem);
+// Theme override only for screenshots/tests (?theme=light|dark); normally follows the system.
+{ const th = new URLSearchParams(location.search).get("theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; }
+setNav();
 loadList().then(() => {
-  const q = new URLSearchParams(location.search); // dev aid for screenshots: ?call=<id>&tab=cards
-  if (q.get("call")) { state.tab = q.get("tab") || "transcript"; return openCall(q.get("call")).then(() => { if (q.get("tab")) { state.tab = q.get("tab"); viewDetail(); } }); }
-  viewList();
-}).catch((e) => { $("main").textContent = "שגיאה בטעינה: " + e.message; });
+  const q = new URLSearchParams(location.search); // screenshot aids: ?call=<id>&tab=rate&x=unrated  |  ?view=system
+  const view = q.get("view");
+  if (view === "settings" || view === "system") return viewSystem();
+  if (q.get("call")) { const n = normTab(q.get("tab"), q.get("x")); return openCall(q.get("call"), { tab: n.tab || undefined, filter: n.filter, line: n.line, sub: n.sub }); }
+  viewInbox();
+}).catch((e) => { $("main").textContent = "Could not load: " + e.message; ready(); });

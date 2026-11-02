@@ -1,13 +1,14 @@
 // Loads API keys from ~/.config/wingman/keys.env (never from the repo). Process env wins over the file.
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const KEYS_FILE = join(homedir(), ".config", "wingman", "keys.env");
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const DATA = join(ROOT, "data");
-export const CALLS = join(ROOT, "calls");
+/** WINGMAN_CALLS_DIR redirects every call folder (the synthetic QA harness writes to qa/calls/, never into Dan's real calls/). */
+export const CALLS = process.env.WINGMAN_CALLS_DIR ? resolve(process.env.WINGMAN_CALLS_DIR) : join(ROOT, "calls");
 
 /** provider id -> env var holding its key. */
 export const KEY_VARS = {
@@ -27,7 +28,20 @@ export function parseKeysFile(text: string): Record<string, string> {
   return out;
 }
 
+/** C5: the keys file must be readable by Dan only. Too-open permissions are fixed (chmod 600) and reported once. */
+let permsChecked = false;
+export function securePerms(file: string): "ok" | "fixed" | "missing" {
+  if (!existsSync(file)) return "missing";
+  const mode = statSync(file).mode & 0o777;
+  if ((mode & 0o077) === 0) return "ok";
+  chmodSync(file, 0o600);
+  if (!permsChecked) console.error(`⚠ ${file} was readable by other users (mode ${mode.toString(8)}): fixed to 600.`);
+  permsChecked = true;
+  return "fixed";
+}
+
 export function loadKeys(file = KEYS_FILE, env: NodeJS.ProcessEnv = process.env): Keys {
+  try { securePerms(file); } catch { /* read-only file system: loading still works */ }
   const fromFile = existsSync(file) ? parseKeysFile(readFileSync(file, "utf8")) : {};
   const keys: Keys = {};
   for (const [name, v] of Object.entries(KEY_VARS)) { const val = env[v]?.trim() || fromFile[v]; if (val) keys[name as KeyName] = val; }

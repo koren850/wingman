@@ -1,0 +1,16 @@
+# Synthetic QA (qa/run-qa.ts): real Deepgram + real Haiku over a rendered WAV. No overlay (run.ts has none), no facts snapshot (never reads data/private).
+notes:
+  enabled: false           # not graded, saves a few Haiku calls
+facts:
+  enabled: false
+summary:
+  minWords: 20
+privacy:
+  requireConsentAck: false
+system:
+  caffeinate: false
+audio:
+  echo:
+    mode: filter           # headphones-style: "me" talking over the client is still transcribed
+budget:
+  idleStopMin: 0

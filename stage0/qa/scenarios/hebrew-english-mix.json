@@ -1,0 +1,125 @@
+{
+ "title": "Hebrew with English tech words (invented client: Daniel, Orbit Apps)",
+ "focus": "WordPress, Cloudflare, DNS, WooCommerce, PHP spoken inside Hebrew sentences",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "היי דניאל, מה שלומך?"
+  },
+  {
+   "speaker": "them",
+   "text": "היי דן. יש לנו אתר WordPress עם WooCommerce והוא נהיה איטי.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "אתה חושב שזה קשור לגרסה של PHP?",
+   "expect": {
+    "question": true,
+    "card": [
+     "php-version",
+     "site-slow",
+     "ai",
+     "stall"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אפשרי, נבדוק איזו גרסה רצה על השרת."
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו רוצים להעביר את ה DNS ל Cloudflare, זה בטוח?",
+   "expect": {
+    "question": true,
+    "card": [
+     "cdn-cloudflare",
+     "dns-basics"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "כן, מנהלים שם את הרשומות ומקבלים גם CDN."
+  },
+  {
+   "speaker": "them",
+   "text": "מה קורה אם plugin אחד מתנגש עם השני?",
+   "expect": {
+    "question": true,
+    "card": [
+     "plugin-conflicts",
+     "ai",
+     "stall"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "מכבים תוספים בזה אחר זה כדי לאתר את הבעייתי."
+  },
+  {
+   "speaker": "them",
+   "text": "אפשר לעבוד עם staging לפני שמעלים שינויים?",
+   "expect": {
+    "question": true,
+    "card": [
+     "staging",
+     "ai"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "בהחלט, זה מומלץ."
+  },
+  {
+   "speaker": "them",
+   "text": "ואיך מגדירים SSL על הדומיין החדש?",
+   "expect": {
+    "question": true,
+    "card": "ssl-basics"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "בדרך כלל התעודה מתחדשת אוטומטית דרך Cloudflare או השרת."
+  },
+  {
+   "speaker": "them",
+   "text": "מה עם cache, צריך תוסף?",
+   "expect": {
+    "question": true,
+    "card": [
+     "caching",
+     "ai",
+     "site-slow"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "יש כמה אפשרויות, נבחר את המתאימה."
+  },
+  {
+   "speaker": "them",
+   "text": "מעולה, האתר שלנו הוא orbit apps dot io.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "תודה דן.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  }
+ ]
+}

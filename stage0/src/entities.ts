@@ -72,9 +72,12 @@ export class EntitySpotter {
     const norm = normalize(text);
     const words = new Set(norm.split(" "));
     for (const v of captured) { const d = this.byDomain.get(v.toLowerCase()); if (d) out.set(`d:${d.domain}`, this.domainFact(d)); }
-    for (const [base, d] of this.byBase) if (words.has(base)) out.set(`d:${d.domain}`, this.domainFact(d));
+    const padded = ` ${norm} `;
+    // normalize() turns "-" into a space, so a hyphenated base ("my-store") is matched as its spoken words ("my store").
+    for (const [base, d] of this.byBase) if (words.has(base) || (base.includes("-") && padded.includes(` ${normalize(base)} `))) out.set(`d:${d.domain}`, this.domainFact(d));
     for (const c of this.snap.clients) {
-      const hit = c.aliases.some((a) => {
+      const hit = (c.aliases ?? []).some((a) => {
+        if (typeof a !== "string") return false;
         const n = normalize(a);
         if (n.replace(/\s/g, "").length < this.o.minAliasLen) return false;
         if (!n.includes(" ") && GENERIC.has(n)) return false;

@@ -60,7 +60,7 @@ function summarize(callsDir, id) {
   const ended = Date.parse(meta.endedAt) || (events.length ? Math.max(...events.map((e) => e.t || 0)) : started);
   return {
     id, startedAt: started, durationMs: Math.max(0, ended - started), mode: meta.mode || "?", profile: meta.profile || "", noAi: !!meta.noAi,
-    crashed: !!meta.crashed, questions: lat.length, cardsShown: cards.filter((c) => !c.hidden).length, cardsTotal: cards.length,
+    crashed: !!meta.crashed, hasSummary: !!readSummary(dir), questions: lat.length, cardsShown: cards.filter((c) => !c.hidden).length, cardsTotal: cards.length,
     rated: g.rated, useful: g.useful, hours: g.hours, perHour: g.perHour, bankShare: g.bankShare, costUsd: costOf(usage),
   };
 }
@@ -76,6 +76,21 @@ function listCalls(callsDir) {
   return out.sort((a, b) => b.startedAt - a.startedAt || (a.id < b.id ? 1 : -1));
 }
 
+/** summary.json (written by src/summary.ts), re-validated: the renderer only ever gets plain strings and short arrays. Null when missing or unreadable. */
+function readSummary(dir) {
+  const o = readJson(dir, "summary.json");
+  if (!o || typeof o !== "object" || Array.isArray(o) || o.v !== 1) return null;
+  const strs = (x, n) => (Array.isArray(x) ? x : []).filter((v) => typeof v === "string" && v).slice(0, n).map((v) => v.slice(0, 600));
+  const steps = (Array.isArray(o.nextSteps) ? o.nextSteps : []).filter((n) => n && typeof n.what === "string" && n.what).slice(0, 12)
+    .map((n) => ({ who: n.who === "לקוח" ? "לקוח" : "דן", what: n.what.slice(0, 400), when: typeof n.when === "string" && n.when ? n.when.slice(0, 80) : undefined }));
+  return {
+    generatedAt: typeof o.generatedAt === "string" ? o.generatedAt : "", model: typeof o.model === "string" ? o.model.slice(0, 80) : "",
+    summary: strs(o.summary, 6), decisions: strs(o.decisions, 12), nextSteps: steps, openQuestions: strs(o.openQuestions, 12),
+    followUpEmail: typeof o.followUpEmail === "string" ? o.followUpEmail.slice(0, 3000) : "",
+    guardReplaced: o.guard && Number.isFinite(o.guard.replaced) ? o.guard.replaced : 0, costUsd: Number.isFinite(o.costUsd) ? o.costUsd : 0,
+  };
+}
+
 function getCall(callsDir, id) {
   const dir = callDir(callsDir, id);
   const rows = read(dir, "cards.jsonl");
@@ -88,7 +103,7 @@ function getCall(callsDir, id) {
   const tags = {};
   for (const t of read(dir, "tags.jsonl")) if (t && t.id && (t.useful === "y" || t.useful === "n")) tags[t.id] = t.useful;
   return {
-    summary: summarize(callsDir, id), meta: readJson(dir, "call.json"),
+    summary: summarize(callsDir, id), meta: readJson(dir, "call.json"), callSummary: readSummary(dir),
     transcript: read(dir, "transcript.jsonl").map((r) => ({ t: r.t, ch: r.ch, text: r.text })),
     cards: [...final.values()], captures: rows.filter((c) => c.type === "capture"),
     events: read(dir, "events.jsonl"), latency: read(dir, "latency.jsonl"),
@@ -112,15 +127,25 @@ function setTag(callsDir, id, cardId, useful) {
   return summarize(callsDir, id);
 }
 
-/** Ids of calls whose transcript contains the query (case-insensitive). */
+/** One hit per call whose transcript contains the query (case-insensitive): {id, line, at, ch, text}. text is a snippet around the match; at is ms from call start. Newest call first. */
 function searchCalls(callsDir, q) {
   if (typeof q !== "string") throw new Error("bad query");
   const needle = q.trim().toLowerCase();
   if (!needle || needle.length > 200) return [];
   const hits = [];
-  for (const n of fs.readdirSync(callsDir)) {
+  for (const n of fs.readdirSync(callsDir).sort().reverse()) {
     if (!ID_RE.test(n)) continue;
-    try { const dir = callDir(callsDir, n); if (read(dir, "transcript.jsonl").some((r) => String(r.text).toLowerCase().includes(needle))) hits.push(n); } catch {}
+    try {
+      const dir = callDir(callsDir, n);
+      const rows = read(dir, "transcript.jsonl");
+      const line = rows.findIndex((r) => String(r.text).toLowerCase().includes(needle));
+      if (line < 0) continue;
+      const meta = readJson(dir, "call.json");
+      const t0 = Date.parse(meta.startedAt) || (rows[0] && rows[0].t) || 0;
+      const text = String(rows[line].text), i = text.toLowerCase().indexOf(needle);
+      const from = Math.max(0, i - 60), to = Math.min(text.length, i + needle.length + 100);
+      hits.push({ id: n, line, at: Math.max(0, (rows[line].t || t0) - t0), ch: rows[line].ch === "me" ? "me" : "them", text: (from ? "…" : "") + text.slice(from, to) + (to < text.length ? "…" : "") });
+    } catch {}
   }
   return hits;
 }
