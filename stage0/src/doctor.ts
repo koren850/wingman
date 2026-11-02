@@ -70,15 +70,14 @@ if (!S.run.noAi) for (const [i, r] of llmRefs.entries()) {
   }
 }
 
-section("Data and consent");
+section("Data");
 try {
   const bank = loadBank(); const ids = new Set(bank.map((c) => c.id));
   ids.size === bank.length && bank.length > 0 ? ok(`bank loads: ${bank.length} cards, unique ids`) : bad("bank ids are not unique or bank is empty");
 } catch (e) { bad(`bank failed to load: ${(e as Error).message}`); }
 const terms = loadKeyterms(S);
 S.stt.keyterms.enabled === "off" ? ok("keyterms off by setting") : terms.length ? ok(`${terms.length} keyterms (max ${S.stt.keyterms.max})`) : warn("no keyterms loaded", `check ${S.stt.keyterms.file}`);
-/cloud|בענן/i.test(S.privacy.consentText) ? ok("consent text names cloud processing; start requires Enter" + (S.privacy.requireConsentAck ? "" : " (DISABLED by privacy.requireConsentAck=false)")) : bad("consent text does not mention cloud processing", "edit privacy.consentText");
-!S.privacy.requireConsentAck && warn("privacy.requireConsentAck is false: audio is sent without an Enter confirmation");
+S.privacy.requireConsentAck && ok("\"Ask me before listening starts\" is on: listening starts after you confirm");
 guard("זה עולה 500 ₪").ok === false && guard("נסיים עד יום חמישי").ok === false ? ok("guards block price and date bait (full corpus: pnpm test)") : bad("guards let price/date bait through");
 detect("כמה זה עולה").isQuestion ? ok("detector sanity (full corpus: pnpm detector)") : bad("detector failed a basic question");
 

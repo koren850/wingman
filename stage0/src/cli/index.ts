@@ -13,7 +13,7 @@ import { live } from "./live.ts";
 
 type Cmd = (ctx: Ctx, args: string[]) => Promise<Result>;
 const COMMANDS: Record<string, Cmd> = {
-  status, doctor, plan, prepare: plan, start, stop, consent, client, quiet, note, ask, live, calls, settings, keys, app,
+  status, doctor, plan, prepare: plan, start, stop, consent, confirm: consent, client, quiet, note, ask, live, calls, settings, keys, app,
   help: async (_c, a) => ({ data: { help: HELP }, text: HELP.trimEnd() + (a.length ? "" : "") }),
 };
 

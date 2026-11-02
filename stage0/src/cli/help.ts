@@ -5,7 +5,7 @@ HOW TO USE IT (for an AI agent)
   1. Run \`wingman status --json\` first. It tells you if the app is running, whether a call is live (call.phase), health problems and readiness.
   2. Add --json to ANY command for machine-readable output: {"ok":true,...} on success, {"ok":false,"error":{"code","message","hint"}} on failure.
      Read the exit code, then the "hint" text; it says what to do next.
-  3. start / stop / ask / note / consent drive the RUNNING menu-bar app, so the call shows in its windows. This CLI never starts a second engine.
+  3. start / stop / ask / note / confirm drive the RUNNING menu-bar app, so the call shows in its windows. This CLI never starts a second engine.
      If the app is not running the exit code is 3: tell Dan, or (only if he agrees) run \`wingman app open\`. The CLI never opens the app by itself.
   4. Call content is private: never paste transcripts or cards anywhere except Dan's own terminal. Never try to read keys.
 
@@ -14,7 +14,7 @@ TYPICAL FLOWS
                               --must "price" --must "downtime window" --note "She prefers WhatsApp"
              wingman plan attach --file ~/notes/offer.md        (or --text "..." or --stdin)      wingman plan show
   Run:       wingman doctor            then   wingman start       (or: wingman start --practice  = offline pretend client, free)
-             wingman status            phase "waiting" = waiting for CONSENT (see below); "live" = listening
+             wingman status            phase "live" = listening ("waiting" only if the optional "Ask me before listening starts" setting is on)
   During:    wingman live [--follow]   transcript + answer cards          wingman ask "what did we say the price was?"
              wingman note "she is the owner"     wingman quiet on|off     wingman client   (confirm the proposed client)
   Finish:    wingman stop   (or: wingman stop --delete --yes)     wingman calls summary latest     wingman calls email latest
@@ -33,8 +33,8 @@ COMMANDS
   plan detach <file id>        plan clear      Remove one background file / the whole plan.
   start [--practice] [--no-ai] [--no-wait]    Start a call in the app. --practice = offline pretend client. --no-ai = bank cards only.
   stop [--delete --yes] [--no-wait]           Stop and save. --delete erases the call and needs --yes.
-  consent --yes                Confirms the other person agreed to the assistant. Until then nothing is sent to the cloud. This is a
-                               legal/privacy step: do it ONLY when Dan told you in this session that consent was given.
+  confirm --yes                Only when the optional "Ask me before listening starts" setting is on (off by default): starts listening
+                               on a call that is waiting. Do it only when Dan asked. (Old name: consent.)
   client                       Confirm the proposed client (the AI may then use their details).
   quiet on|off                 Hide cards from the answer window (they are still saved).
   note "<text>"                Add a context note for the AI (max 300 characters; \`-\` reads stdin).
@@ -56,6 +56,6 @@ EXIT CODES
 
 SAFETY
   - The app listens on an owner-only socket (~/.config/wingman/run/control.sock, mode 600). Only a fixed list of commands is accepted.
-  - Output never contains API keys. Destructive commands (stop --delete, calls purge, consent) need --yes.
-  - Do not start a real call, or confirm consent, unless Dan asked for it in this session. Use --practice to test.
+  - Output never contains API keys. Destructive commands (stop --delete, calls purge, confirm) need --yes.
+  - Do not start a real call unless Dan asked for it in this session. Use --practice to test.
 `;

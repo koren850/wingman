@@ -4,7 +4,7 @@ Wingman is a live meeting AI assistant. It listens to a call or meeting (any kin
 
 **Ask Wingman:** press **Ctrl+Opt+A**, then say your question within 10 s; the answer appears in a violet "For you" card. With `assist.answerMe: always` (default) it also answers questions you ask out loud that are clearly for it ("כמה זה 36 ועוד 42?", "מה ההבדל בין CDN ל-DNS?"), and stays quiet when you ask the other person ("מה התקציב שלכם?"). Arithmetic is computed locally, no AI.
 
-Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Use only on synthetic, self, friend or consented calls: Stage 0 live calls are for consented parties only. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
+Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Personal use. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
 
 ## Setup (once)
 1. Keys: open the Wingman app, **Settings → Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; makes a mode-600 backup first). Never put keys in this repo.
@@ -21,7 +21,7 @@ Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Use only on synthe
 | `pnpm tag` | After a call: rate each card y/n (about 2 min). Prints useful cards/hour and how often the bank answered (usefulness gate) |
 | `pnpm dashboard` | The Wingman app: menu bar plus a window with Home (start or plan a call, run it, readiness, what is waiting), Calls (calls list with the usefulness gate across live calls, call detail (transcript, cards with useful/not-useful rating written to `tags.jsonl`, side items, speed, cost, events), delete call), Settings (13 plain-words options, Advanced list). Local only, no network |
 | `pnpm overlay` | Answer window on the second screen. Content protection is on but **untested with Zoom; use the second screen**. With one display it refuses to open unless `WINGMAN_ALLOW_PRIMARY=1`. Ctrl+Opt+C = clear, Ctrl+Opt+P = pause, Ctrl+Opt+R = last 30 s as text, Ctrl+Opt+K = copy the newest captured phone/email/domain |
-| `pnpm start` | Live call: system audio = the other side, mic = you. Wear headphones. **Nothing is sent to the cloud until you press Enter (consent confirmed).** Keys: `Enter` start, `q` quiet on/off (cards logged, not shown), `a` ask Wingman (same as Ctrl+Opt+A in the app), Ctrl+C stop. Max ~3 new cards per 60 s |
+| `pnpm start` | Live call: system audio = the other side, mic = you. Wear headphones. Listening starts right away (turn on "Ask me before listening starts" in Settings to confirm with `Enter` first). Keys: `q` quiet on/off (cards logged, not shown), `a` ask Wingman (same as Ctrl+Opt+A in the app), Ctrl+C stop. Max ~3 new cards per 60 s |
 | `pnpm start --discard` | Delete the call folder when the call ends (without it, Ctrl+C asks) |
 | `pnpm purge <id>` / `--older-than N` / `--all` | Delete saved calls (transcripts and cards; audio is never saved) |
 | `pnpm banktest` | Bank top-1 accuracy on 40 held-out utterances |

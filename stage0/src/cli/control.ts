@@ -8,7 +8,7 @@ import { CliError, EXIT, parse, usage, mmss, type Ctx, type Result } from "./com
 
 const APP_PATH = "/Applications/Wingman.app";
 const PHASE_TEXT: Record<string, string> = {
-  starting: "starting", waiting: "waiting for consent (nothing is sent to the cloud yet)", live: "live and listening", stopping: "stopping and saving", idle: "no call",
+  starting: "starting", waiting: "waiting for your OK to start listening", live: "live and listening", stopping: "stopping and saving", idle: "no call",
 };
 
 async function waitFor(ctx: Ctx, ok: (s: any) => boolean, ms: number) {
@@ -32,7 +32,7 @@ export async function start(ctx: Ctx, args: string[]): Promise<Result> {
   return {
     data: { started: true, practice: !!values.practice, noAi: !!values["no-ai"], phase: st.phase, callId: st.callId || "", consentNeeded },
     text: `Call started (${PHASE_TEXT[st.phase] ?? st.phase}).${st.callId ? ` id ${st.callId}` : ""}` +
-      (consentNeeded ? "\nIt listens only after consent. Say the consent line to the other person; once they agree, Dan confirms in the app, or (only if Dan said so) `wingman consent --yes`." : "") +
+      (consentNeeded ? "\n\"Ask me before listening starts\" is on: it listens after Dan clicks Start listening in the app, or (only if Dan asked) `wingman confirm --yes`." : "") +
       (st.phase === "starting" ? "\nStill starting. Check: wingman status" : ""),
   };
 }
@@ -54,9 +54,9 @@ export async function stop(ctx: Ctx, args: string[]): Promise<Result> {
 
 export async function consent(ctx: Ctx, args: string[]): Promise<Result> {
   const { values } = parse(args, { yes: { type: "boolean" } });
-  if (!values.yes) throw new CliError("needs_yes", "Consent starts sending audio to the cloud. Only Dan can decide that the other person agreed. If he told you so in this session, add --yes.", EXIT.NEEDS_YES);
+  if (!values.yes) throw new CliError("needs_yes", "This starts listening on the waiting call. Only do it when Dan asked; then add --yes.", EXIT.NEEDS_YES);
   await call(ctx, "consent");
-  return { data: { consented: true }, text: "Consent recorded: the call is listening now." };
+  return { data: { consented: true }, text: "Listening started." };
 }
 
 export async function quiet(ctx: Ctx, args: string[]): Promise<Result> {
