@@ -49,3 +49,52 @@ test("capture: no false hits on plain talk, prices or short numbers", () => {
   assert.deepEqual(extract("גרסה 5.5 של וורדפרס"), []);
   assert.deepEqual(extract("שבע שנים אנחנו איתכם"), []);
 });
+
+import { EntitySpotter, daysUntil } from "./entities.ts";
+import { parseNotes, dedupeNotes } from "./notes.ts";
+import { covered, briefNotes } from "./brief.ts";
+
+const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+const snap = {
+  clients: [
+    { id: 1, name: "אקמה בע\"מ", aliases: ["אקמה", "acme"] },
+    { id: 2, name: "ica", aliases: ["ica"] },
+  ],
+  domains: [
+    { domain: "acme.co.il", clientId: 1, server: "s1", cms: "wordpress", cmsVersion: "6.8", php: "8.2", sslExpires: soon },
+    { domain: "example-b.co.il", clientId: null, server: "s2", cms: null, php: "8.1", sslExpires: "2027-06-01" },
+  ],
+};
+test("facts: client by alias (Hebrew prefix), domain by name or base word, SSL warning", () => {
+  const s = new EntitySpotter(snap as any, { sslWarnDays: 30, minAliasLen: 4 });
+  const f = s.spot("אני מתקשר מאקמה לגבי האתר");
+  assert.equal(f.length, 1); assert.equal(f[0].kind, "client"); assert.ok(f[0].warn);
+  assert.match(f[0].lines[0], /acme\.co\.il · wordpress 6\.8 · PHP 8\.2 · ⚠ SSL פג בעוד \d+ ימים/);
+  const d = s.spot("יש בעיה באתר example-b");
+  assert.equal(d[0].key, "d:example-b.co.il"); assert.ok(!d[0].warn);
+  assert.equal(s.spot("כן, acme.co.il").length, 1, "domain of a spotted client is folded into the client card");
+  assert.deepEqual(s.spot("ica"), [], "aliases shorter than minAliasLen never match");
+  assert.deepEqual(s.spot("שלום מה שלומך"), []);
+  assert.ok(daysUntil(soon) <= 10);
+});
+test("notes: parse, NONE, dedupe", () => {
+  assert.deepEqual(parseNotes("NONE"), []);
+  assert.deepEqual(parseNotes("- תקציב בערך 20 אלף\n- רוצים לפני פסח\nסתם שורה"), ["תקציב בערך 20 אלף", "רוצים לפני פסח"]);
+  assert.equal(parseNotes("- הערה אחת\n- הערה שתיים\n- הערה שלוש").length, 2, "at most 2 per round");
+  assert.deepEqual(dedupeNotes(["תקציב בערך 20 אלף שקל", "האתר על וויקס"], ["תקציב בערך 20 אלף"]), ["האתר על וויקס"]);
+});
+test("brief: notes and must-cover coverage", () => {
+  assert.deepEqual(briefNotes({ who: "דנה מאקמה", goal: "הצעת מחיר לחנות", notes: ["לקוחה חדשה"] }), ["On this call: דנה מאקמה", "Goal of the call: הצעת מחיר לחנות", "לקוחה חדשה"]);
+  assert.ok(covered("תקציב", "ומה התקציב שלכם לפרויקט"));
+  assert.ok(covered("חידוש אחסון", "צריך לדבר על חידוש האחסון בדצמבר"));
+  assert.ok(!covered("לוח זמנים", "דיברנו על התקציב"));
+  assert.ok(covered("גיבויים", "אני רוצה לדעת אם יש לכם גיבוי של האתר"));
+  assert.ok(!covered("גיבויים", "האתר איטי"));
+});
+import { domainBase, aliasMatch } from "./entities.ts";
+test("facts: domain base and exact alias matching", () => {
+  assert.equal(domainBase("staging.example-c.com"), "example-c");
+  assert.equal(domainBase("tender.example-b.co.il"), "example-b");
+  assert.ok(aliasMatch("אני מתקשר מסייפלט", "סייפלט"));
+  assert.ok(!aliasMatch("CDN שמגן על האתר", "המגן"), "no prefix stripping on the alias side");
+});

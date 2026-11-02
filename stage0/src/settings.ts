@@ -44,6 +44,9 @@ export const schema = z.strictObject({
     echo: z.strictObject({ mode: z.enum(["gate", "filter", "both", "off"]), gatePeak: z.number().min(0).max(1), gateHangoverMs: int(0, 3000), filterWindowMs: int(500, 10000), filterThreshold: z.number().min(0.3).max(1), filterDelayMs: int(0, 3000) }),
   }),
   capture: z.strictObject({ enabled: z.boolean() }),
+  facts: z.strictObject({ enabled: z.boolean(), file: z.string().min(1), sslWarnDays: int(0, 365), minAliasLen: int(2, 10), proposeClient: z.boolean() }),
+  notes: z.strictObject({ enabled: z.boolean(), model: modelRef, everyMs: int(10000, 600000), minNewWords: int(5, 500), timeoutMs: int(2000, 30000) }),
+  reminders: z.strictObject({ enabled: z.boolean(), firstAfterMin: int(1, 120), everyMin: int(1, 120) }),
   health: z.strictObject({ tickMs: int(200, 10000), recoverStableMs: int(1000, 600000), slowSttMs: int(200, 10000), minSamples: int(1, 20) }),
   budget: z.strictObject({
     maxUsdPerCall: z.number().min(0), warnAt: z.number().min(0).max(1), maxMinutesPerCall: int(1, 600), maxUsdPerMonth: z.number().min(0).nullable(),

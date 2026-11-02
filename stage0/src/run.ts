@@ -8,7 +8,10 @@
 import { readFileSync, rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join } from "node:path";
-import { requireKeys, DATA, CALLS } from "./env.ts";
+import { requireKeys, DATA, CALLS, ROOT } from "./env.ts";
+import { EntitySpotter, loadSnapshot, type Fact } from "./entities.ts";
+import { takeNotes } from "./notes.ts";
+import { loadBrief, briefNotes, covered, type Brief } from "./brief.ts";
 import { loadBank, matchBank, stallCard, stallSay, type BankCard } from "./bank.ts";
 import { detect } from "./detector.ts";
 import { guard, sanitize } from "./guards.ts";
@@ -58,6 +61,75 @@ type Card = {
 };
 const transcript: { ch: Channel; text: string }[] = [];
 const contextNotes: string[] = [];
+// Prepared start: a brief saved by `pnpm brief` (last 6 h), or --brief <file>; --no-brief skips it.
+const briefArg = args.includes("--brief") ? args[args.indexOf("--brief") + 1] : undefined;
+const brief: Brief | undefined = args.includes("--no-brief") ? undefined : loadBrief(briefArg);
+if (brief) contextNotes.push(...briefNotes(brief));
+// Fact cards from the local client/domain snapshot.
+const snapshot = S.facts.enabled ? loadSnapshot(join(ROOT, S.facts.file)) : undefined;
+const spotter = snapshot ? new EntitySpotter(snapshot, { sslWarnDays: S.facts.sslWarnDays, minAliasLen: S.facts.minAliasLen }) : undefined;
+const factsShown = new Set<string>();
+let clientChosen = !!brief?.who, proposed: Fact | undefined;
+function emitSide(row: Record<string, unknown>) {
+  log.write("cards", { type: "card", turnId: "side", question: "", at: Date.now(), ...row });
+}
+function spotFacts(text: string) {
+  if (!spotter) return;
+  for (const f of spotter.spot(text, extract(text).filter((c) => c.kind === "domain").map((c) => c.value))) {
+    if (factsShown.has(f.key)) continue;
+    factsShown.add(f.key);
+    emitSide({ id: `fact-${f.key}`, badge: "fact", say: f.title, facts: f.lines, warn: f.warn || undefined });
+    console.log(`\n[🗂 fact] ${f.title}${f.lines.length ? "\n   • " + f.lines.join("\n   • ") : ""}`);
+    if (S.facts.proposeClient && !clientChosen && !proposed && f.clientId !== undefined) {
+      proposed = f;
+      emitSide({ id: "propose-client", badge: "info", say: `נראה שזו שיחה עם ${f.title}`, facts: ["y בטרמינל = לאשר ולתת ל-AI את הפרטים"] });
+      console.log(`\nLooks like a call with ${f.title}. Press y to confirm (adds it to the AI notes).`);
+    }
+  }
+}
+function confirmClient() {
+  if (!proposed || clientChosen) return;
+  clientChosen = true;
+  contextNotes.push(`Client on this call: ${proposed.title}. ${proposed.lines.join("; ")}`.slice(0, 400));
+  log.write("events", { type: "client.confirmed", key: proposed.key });
+  emitSide({ id: "propose-client", badge: "info", say: `✓ ${proposed.title}`, facts: [] });
+  console.log(`\n✓ client confirmed: ${proposed.title}`);
+}
+// Live notes: key things said, every notes.everyMs.
+const liveNotes: string[] = [];
+let notesLines: string[] = [], notesBusy = false;
+async function notesRound() {
+  if (!S.notes.enabled || noAi || notesBusy || !consented || shuttingDown || !sup.caps.llm || cost.llmState() === "capped") return;
+  const words = notesLines.join(" ").split(/\s+/).length;
+  if (words < S.notes.minNewWords) return;
+  const lines = notesLines; notesLines = []; notesBusy = true;
+  try {
+    const r = await takeNotes({ registry, model: S.notes.model, existing: liveNotes, lines, signal: new AbortController().signal, timeoutMs: S.notes.timeoutMs });
+    const c = cost.addLlm("notes", S.notes.model, r.usage, r.providerMetadata);
+    log.write("usage", { role: "notes", model: S.notes.model, usage: r.usage, usd: c.usd });
+    for (const n of r.notes) {
+      liveNotes.push(n);
+      emitSide({ id: `note-${liveNotes.length}`, badge: "note", say: n, facts: [] });
+      console.log(`\n[📝 note] ${n}`);
+    }
+  } catch (e) { log.write("events", { type: "notes.error", error: String((e as Error)?.message ?? e) }); }
+  finally { notesBusy = false; }
+}
+// Must-cover reminders from the brief.
+const callStart = Date.now();
+let lastReminderAt = 0, reminderSeq = 0;
+const allText = () => transcript.map((l) => l.text).join(" ");
+function uncovered(): string[] { return (brief?.mustCover ?? []).filter((i) => !covered(i, allText())); }
+function reminderTick() {
+  if (!S.reminders.enabled || !brief?.mustCover?.length || !consented || shuttingDown) return;
+  const min = (Date.now() - callStart) / 60000;
+  if (min < S.reminders.firstAfterMin || Date.now() - lastReminderAt < S.reminders.everyMin * 60000) return;
+  const left = uncovered();
+  if (!left.length) return;
+  lastReminderAt = Date.now();
+  emitSide({ id: `reminder-${++reminderSeq}`, badge: "reminder", say: "עוד לא דיברתם על:", facts: left });
+  console.log(`\n[⏰ reminder] not covered yet: ${left.join(", ")}`);
+}
 // Speakers mode (PLAN §0.4): mic gate + echo text filter.
 const ECHO = S.audio.echo;
 const useGate = ECHO.mode === "gate" || ECHO.mode === "both";
@@ -315,6 +387,8 @@ function acceptResult(r: SttResult, checkEcho: boolean) {
   }
   if (r.text) {
     capture(r.channel, r.text);
+    spotFacts(r.text);
+    notesLines.push(`${r.channel}: ${r.text}`);
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) lastMeVoiced = Date.now();
     transcript.push({ ch: r.channel, text: r.text });
     log.write("transcript", { ch: r.channel, text: r.text, words: r.words });
@@ -335,6 +409,7 @@ function setupKeys(onEnter: () => void) {
       if (keyWaiter) { const w = keyWaiter; keyWaiter = undefined; w(ch); continue; }
       if (ch === "\u0003") { void shutdown(); return; }
       if (noteBuf !== undefined) { noteKey(ch); continue; }
+      if ((ch === "y" || ch === "Y") && proposed && !clientChosen) { confirmClient(); continue; }
       if (ch === "n" || ch === "N") { noteBuf = ""; process.stdout.write("\nNote for the AI (Enter = add, Esc = cancel): "); continue; }
       if (ch === "\r" || ch === "\n") onEnter();
       if (ch === "q" || ch === "Q") {
@@ -374,6 +449,7 @@ async function shutdown() {
   try {
     cost.setSttSeconds(sttSeconds());
     log.write("usage", { role: "stt", vendor: them?.provider, seconds: { me: me?.audioSeconds, them: them?.audioSeconds }, bySeconds: sttSeconds(), usd: cost.sttUsd, dropped: { me: me?.dropped, them: them?.dropped } });
+    if (brief?.mustCover?.length) { const left = uncovered(); log.write("events", { type: "mustcover.summary", left }); if (left.length) console.log(`\nNot covered in this call: ${left.join(", ")}`); }
     log.write("events", { type: "echo.summary", mode: ECHO.mode, gatedSeconds: Math.round(gatedMs / 1000), echoDropped });
     log.write("usage", { role: "summary", llmUsd: cost.llmUsd, sttUsd: cost.sttUsd, totalUsd: cost.totalUsd, roles: cost.roles, unpriced: [...cost.unpriced] });
     const summary = speedSummary();
@@ -450,6 +526,10 @@ async function main() {
   for (const m of REFLEX_MODELS) if (!noAi) { try { await registry.resolve(m); } catch (e) { if (m === REFLEX_MODELS[0] && !(e instanceof ConfigError && REFLEX_MODELS.length > 1)) throw e; console.log(`⚠ AI model ${m}: ${(e as Error).message}`); downUntil.set(m, Infinity); } }
   await Promise.all([me.open(), them.open()]);
   sup.on("rung", renderRung); sup.start(); setInterval(tickHealth, S.health.tickMs).unref();
+  setInterval(() => void notesRound(), S.notes.everyMs).unref();
+  setInterval(reminderTick, 30_000).unref();
+  if (brief) console.log(`Brief loaded: ${[brief.who, brief.goal].filter(Boolean).join(" · ") || "(notes only)"}${brief.mustCover?.length ? ` · must cover: ${brief.mustCover.join(", ")}` : ""}`);
+  console.log(spotter ? `Fact cards: ${spotter.size.clients} clients, ${spotter.size.domains} domains (snapshot ${snapshot?.generatedAt?.slice(0, 10) ?? "?"})` : "Fact cards: off (no snapshot at facts.file)");
   sup.tick();
   for (const s of [me, them]) {
     const ch = s === me ? "me" : "them";
@@ -470,7 +550,7 @@ async function main() {
     });
   }
   console.log(`Wingman Stage 0 · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} bank cards${noAi ? " · bank only" : ""}${discard ? " · --discard" : ""}`);
-  console.log(`Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = consent confirmed · q = quiet · n = add a note for the AI · Ctrl+C = stop.`);
+  console.log(`Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = consent confirmed · q = quiet · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`);
   console.log(`Speakers mode: ${ECHO.mode} (audio.echo.mode; "filter" is best with headphones) · capture box ${S.capture.enabled ? "on" : "off"}`);
 
   // Consent card: re-emitted until confirmed (the overlay may start late).

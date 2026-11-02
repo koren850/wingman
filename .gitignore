@@ -8,3 +8,6 @@ stage0/data/gold/report-*.md
 # Generated test audio (rebuild with: cd stage0 && pnpm run synth)
 stage0/data/synthetic/*.wav
 stage0/data/gold/synthetic.wav
+
+# Client data snapshots (never committed)
+stage0/data/private/

@@ -7,7 +7,10 @@
 <style>
   :root { --bg:#111418; --card:#1b2028; --text:#f2f4f7; --muted:#8a94a6; --bank:#2f9e6b; --ai:#5b8def; --stall:#c9a227; }
   html,body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system, "SF Hebrew", "Arial Hebrew", sans-serif; -webkit-app-region:drag; }
-  #wrap { padding:16px; display:flex; flex-direction:column; gap:12px; }
+  /* Full-height column: answers take the free space (oldest cut off at the bottom), the side rail and notes stay pinned below. */
+  #wrap { padding:16px; display:flex; flex-direction:column; gap:12px; height:100vh; box-sizing:border-box; overflow:hidden; }
+  #cards { flex:1 1 auto; min-height:120px; overflow:hidden; }
+  #rail, #notes { flex:0 0 auto; max-height:38vh; overflow:hidden; }
   .card { background:var(--card); border-radius:14px; padding:16px 18px; border-inline-start:6px solid var(--ai); transition:opacity .2s; }
   .card.bank { border-color:var(--bank); } .card.stall { border-color:var(--stall); } .card.info { border-color:#8a94a6; }
   .card.old { opacity:.45; } .card.dim { opacity:.55; }
@@ -30,10 +33,17 @@
   .cap { -webkit-app-region:no-drag; cursor:pointer; background:#26303d; border-radius:10px; padding:6px 12px; font-size:20px; direction:ltr; unicode-bidi:isolate; }
   .cap .k { color:var(--muted); font-size:13px; margin-inline-end:8px; unicode-bidi:isolate; }
   .cap.copied { background:#2f9e6b; }
+  /* Side rail: fact cards, reminders, live notes (below the answers, smaller). */
+  #rail { display:flex; flex-direction:column; gap:8px; margin-top:6px; }
+  .side { background:#1a1f27; border-radius:12px; padding:10px 14px; border-inline-start:4px solid #8b6fd6; }
+  .side.reminder { border-color:var(--stall); } .side.warn { border-color:#d9534f; } .side.info { border-color:#8a94a6; }
+  .side .t { font-size:20px; font-weight:650; } .side ul { font-size:17px; margin-top:4px; }
+  #notes { display:none; background:#161a20; border-radius:12px; padding:8px 14px; }
+  #notes .h { color:var(--muted); font-size:13px; } #notes li { font-size:17px; color:#c9d1dc; margin:3px 0; }
 </style>
 </head>
 <body>
-<div id="wrap"><div id="health"></div><div id="paused">⏸ מושהה (Ctrl+Opt+P)</div><div id="rewind"></div><div id="capture"></div><div id="empty">Wingman מקשיב… הכרטיסים יופיעו כאן</div><div id="cards" style="display:flex;flex-direction:column;gap:12px"></div></div>
+<div id="wrap"><div id="health"></div><div id="paused">⏸ מושהה (Ctrl+Opt+P)</div><div id="rewind"></div><div id="capture"></div><div id="empty">Wingman מקשיב… הכרטיסים יופיעו כאן</div><div id="cards" style="display:flex;flex-direction:column;gap:12px"></div><div id="rail"></div><div id="notes"><div class="h">הערות מהשיחה</div><ul id="notelist"></ul></div></div>
 <script>
   const wrap = document.getElementById("wrap");
   const cardsBox = document.getElementById("cards");
@@ -49,8 +59,24 @@
     if (!el) { el = document.createElement("div"); bars.set(c.id, el); healthBox.append(el); }
     el.className = `hb ${c.level || "red"}`; el.dir = "rtl"; el.textContent = c.say;
   }
+  const rail = document.getElementById("rail"), notesBox = document.getElementById("notes"), noteList = document.getElementById("notelist");
+  const sides = new Map();
+  function renderSide(c) {
+    if (c.badge === "note") {
+      const li = document.createElement("li"); li.dir = "rtl"; li.textContent = c.say; noteList.append(li);
+      while (noteList.children.length > 8) noteList.firstElementChild.remove();
+      notesBox.style.display = "block"; return;
+    }
+    let el = sides.get(c.id);
+    if (!el) { el = document.createElement("div"); sides.set(c.id, el); rail.prepend(el); }
+    el.className = `side ${c.badge}${c.warn ? " warn" : ""}`; el.replaceChildren();
+    const t = document.createElement("div"); t.className = "t"; t.dir = "rtl"; t.textContent = c.say; el.append(t);
+    if (c.facts?.length) { const ul = document.createElement("ul"); for (const f of c.facts) { const li = document.createElement("li"); li.dir = "rtl"; li.textContent = f; ul.append(li); } el.append(ul); }
+    while (sides.size > 3) { const [k, v] = sides.entries().next().value; v.remove(); sides.delete(k); }
+  }
   function render(c) {
     if (c.health) { renderHealth(c); return; }
+    if (c.turnId === "side") { if (!paused) renderSide(c); return; }
     if (c.withdraw) { cards.get(c.id)?.remove(); cards.delete(c.id); return; }
     if (paused) return;
     document.getElementById("empty")?.remove();
@@ -108,7 +134,7 @@
   window.wingman.onCopied((t) => { const el = caps.get(t); if (el) { el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 1200); } });
   window.wingman.onConfig((c) => { REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px'); });
   window.wingman.onCard(render);
-  window.wingman.onReset(() => { clearCards(); lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none"; rewindBox.style.display = "none"; for (const el of bars.values()) el.remove(); bars.clear(); });
+  window.wingman.onReset(() => { clearCards(); for (const v of sides.values()) v.remove(); sides.clear(); noteList.replaceChildren(); notesBox.style.display = "none"; lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none"; rewindBox.style.display = "none"; for (const el of bars.values()) el.remove(); bars.clear(); });
   window.wingman.onClear(clearCards);
   window.wingman.onPause(() => { paused = !paused; document.getElementById("paused").style.display = paused ? "block" : "none"; if (paused) clearCards(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") clearCards(); });

@@ -75,6 +75,28 @@ audio:
     filterThreshold: 0.6   # share of the "me" line's words found in a client line = echo
     filterDelayMs: 700     # "me" lines wait this long so the matching client line can arrive first
 
+# ---- Fact cards (a known client or domain is mentioned) ----
+facts:
+  enabled: true            # needs the snapshot file below; without it fact cards are simply off
+  file: data/private/entities.json   # built before the call from the domains dashboard + client-kb (git-ignored)
+  sslWarnDays: 30          # SSL expiring within this many days is flagged on the card
+  minAliasLen: 4           # client name variants shorter than this (letters) never match (avoids false hits)
+  proposeClient: true      # first client spotted when no brief names one: "looks like X, press y" adds it to the AI notes
+
+# ---- Live notes (key things said, every ~30 s) ----
+notes:
+  enabled: true
+  model: "anthropic:claude-haiku-5-5"
+  everyMs: 30000           # how often to look at new speech
+  minNewWords: 25          # skip a round when less than this was said since the last one
+  timeoutMs: 8000
+
+# ---- Must-cover reminders (from the brief: pnpm brief) ----
+reminders:
+  enabled: true
+  firstAfterMin: 15        # first reminder of uncovered items after this many minutes
+  everyMin: 10             # then at most this often
+
 # ---- Capture box ----
 capture:
   enabled: true            # phone numbers, emails and domains spoken in the call show in the answer window (copy: overlay.hotkeys.copy)

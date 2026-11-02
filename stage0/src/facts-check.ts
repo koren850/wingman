@@ -1,0 +1,19 @@
+// pnpm factscheck: false-hit check of the client/domain snapshot against ordinary call speech (gold sentences, question corpus, bank, synthetic call).
+import { DATA } from "./env.ts";
+import { readFileSync } from "node:fs";
+import YAML from "yaml";
+import { EntitySpotter, loadSnapshot } from "./entities.ts";
+const snap = loadSnapshot(DATA + "/private/entities.json")!;
+const s = new EntitySpotter(snap, { sslWarnDays: 30, minAliasLen: 4 });
+const D = DATA + "/";
+const texts: string[] = [
+  ...JSON.parse(readFileSync(D + "gold/terms.json", "utf8")).map((x: any) => x.sentence),
+  ...readFileSync(D + "questions.tsv", "utf8").split("\n").map((l) => l.split("\t")[0]),
+  ...(YAML.parse(readFileSync(D + "bank.yaml", "utf8")) as any[]).flatMap((c) => [c.say, ...c.facts, ...c.triggers]),
+  ...JSON.parse(readFileSync(D + "synthetic/call1.json", "utf8")).turns?.map((t: any) => t.text) ?? [],
+];
+let hits = 0;
+for (const t of texts) for (const f of s.spot(t ?? "")) { hits++; console.log("HIT", f.key, "|", f.title, "|", t); }
+console.log(`${texts.length} ordinary lines, ${hits} hits`);
+const real = ["אני מתקשר מאקמה", "זה מהסטודיו, יש בעיה באתר", "היי, מדבר מהמועצה המקומית", "האתר של העירייה לא עולה"];
+for (const t of real) console.log("REAL", t, "=>", s.spot(t).map((f) => f.title + " | " + (f.lines[0] ?? "(no domains)")).join(" ;; ") || "none");

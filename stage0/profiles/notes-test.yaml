@@ -1,0 +1,5 @@
+reminders:
+  firstAfterMin: 1
+  everyMin: 1
+notes:
+  everyMs: 25000
