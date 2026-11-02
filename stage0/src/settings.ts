@@ -24,9 +24,10 @@ export const schema = z.strictObject({
   stt: z.strictObject({
     provider: sttName, fallback: z.array(sttName), model: z.string().min(1),
     language: z.enum(["he", "en", "multi", "auto"]),
-    endpointMs: int(100, 2000), utteranceEndMs: int(500, 3000), keepAliveMs: int(2000, 8000), flushFallbackMs: int(300, 5000),
+    endpointMs: int(100, 2000), utteranceEndMs: int(500, 3000), keepAliveMs: int(2000, 8000), flushFallbackMs: int(300, 5000), joinWindowMs: int(0, 5000),
     keyterms: z.strictObject({ enabled: z.enum(["auto", "on", "off"]), file: z.string().min(1), max: int(0, 100) }),
     circuit: z.strictObject({ failures: int(1, 10), windowMs: int(1000, 120000) }),
+    reconnect: z.strictObject({ ringMs: int(0, 10000) }),
   }),
   llm: z.strictObject({
     reflex: z.strictObject({
@@ -58,7 +59,7 @@ export const schema = z.strictObject({
     hotkeys: z.strictObject({ clear: z.string().min(1), pause: z.string().min(1), rewind: z.string().min(1), copy: z.string().min(1) }),
     rewindSeconds: int(5, 300),
   }),
-  system: z.strictObject({ caffeinate: z.boolean() }),
+  system: z.strictObject({ caffeinate: z.boolean(), sleepGapMs: int(0, 600000) }),
   keys: z.strictObject({ file: z.string().min(1) }),
   run: z.strictObject({ file: z.string().nullable(), noAi: z.boolean(), discard: z.boolean() }),
 });

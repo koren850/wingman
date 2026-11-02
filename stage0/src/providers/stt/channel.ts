@@ -2,7 +2,7 @@
 // a failure is non-retryable (auth, quota, spend cap) or repeats (circuit: N failures in windowMs).
 import { EventEmitter } from "node:events";
 import { classifySttError, type ProviderError } from "../errors.ts";
-import type { Channel, SttOptions, SttProvider, SttStreamLike } from "./types.ts";
+import type { Channel, SttOptions, SttProvider, SttResult, SttStreamLike } from "./types.ts";
 
 export type ChannelOpts = {
   channel: Channel;
@@ -11,6 +11,7 @@ export type ChannelOpts = {
   base: Omit<SttOptions, "apiKey" | "channel">;
   baseUrls?: Record<string, string>;                      // tests: point an adapter at a mock server
   circuit: { failures: number; windowMs: number };
+  ringMs?: number;                                        // S4: audio kept while the socket is down, flushed on reopen (0/undefined = drop, old behaviour)
   now?: () => number;
 };
 
@@ -22,11 +23,19 @@ export class SttChannel extends EventEmitter {
   private switching = false;
   private seconds: Record<string, number> = {};
   private droppedOld = 0;
+  private ring: Buffer[] = [];          // S4 ring: most recent ringMs of audio while the socket is not open
+  private ringBytes = 0;
+  private ringDropped = 0;              // chunks that fell off the ring (counted in `dropped`)
+  private flushedBytes = 0;
+  private flushEndSec = 0;              // flushed audio occupies [0, flushEndSec] of the current connection's audio clock
+  private everOpened = false;
   constructor(private o: ChannelOpts) { super(); }
 
   get provider() { return this.o.chain[this.idx].id; }
   get isOpen() { return !!this.stream?.isOpen; }
-  get dropped() { return this.droppedOld + (this.stream?.dropped ?? 0); }
+  get dropped() { return this.droppedOld + this.ringDropped + (this.stream?.dropped ?? 0); }
+  /** ms of audio replayed from the ring after a reconnect / provider switch */
+  get flushedMs() { return this.flushedBytes / 32; }
   get audioSeconds() { return Object.values(this.audioSecondsByProvider()).reduce((a, b) => a + b, 0); }
   audioSecondsByProvider() { return { ...this.seconds, [this.provider]: (this.seconds[this.provider] ?? 0) + (this.stream?.audioSeconds ?? 0) }; }
   private now() { return (this.o.now ?? Date.now)(); }
@@ -54,12 +63,40 @@ export class SttChannel extends EventEmitter {
     this.wire(s);
     await s.open();
     this.stream = s;
+    this.everOpened = true;
+    this.flushRing(s);
+  }
+
+  /** Replay buffered audio, oldest first, right after a (re)open. Each connection re-anchors its audio clock at open,
+   *  so flushed audio sits at [0, flushEndSec]; results ending inside it get no speechEndWall (sent in a burst, not real time). */
+  private flushRing(s: SttStreamLike) {
+    this.flushEndSec = 0;
+    if (!this.ring.length) return;
+    const chunks = this.ring; this.ring = []; this.ringBytes = 0;
+    let sent = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      if (s.send(chunks[i])) { sent += chunks[i].length; this.flushedBytes += chunks[i].length; }
+      else { this.ringDropped += chunks.length - i; break; }   // socket went down again mid-flush: the rest is lost
+    }
+    this.flushEndSec = sent / 32000;
+  }
+
+  private buffer(pcm: Buffer) {
+    const cap = (this.o.ringMs ?? 0) * 32;   // 16 kHz s16le mono = 32 bytes/ms
+    this.ring.push(pcm); this.ringBytes += pcm.length;
+    while (this.ring.length && this.ringBytes > cap) { this.ringBytes -= this.ring.shift()!.length; this.ringDropped++; }
   }
 
   private wire(s: SttStreamLike) {
-    s.on("result", (r) => { if (s === this.stream || !this.stream) this.emit("result", r); });
+    s.on("result", (r: SttResult) => {
+      if (s !== this.stream && this.stream) return;
+      // S4: a result that ends inside flushed audio would get a lag inflated by the burst: drop its wall-clock anchor
+      const end = r.words?.at(-1)?.end;
+      if (this.flushEndSec > 0 && r.speechEndWall !== undefined && (end === undefined || end <= this.flushEndSec + 0.05)) r = { ...r, speechEndWall: undefined };
+      this.emit("result", r);
+    });
     s.on("keyterms_off", (e) => this.emit("keyterms_off", e));
-    s.on("reconnected", (d) => { if (s !== this.stream) return; this.failures = []; this.emit("reconnected", d); });
+    s.on("reconnected", (d) => { if (s !== this.stream) return; this.failures = []; this.flushRing(s); this.emit("reconnected", d); });
     s.on("disconnected", (d) => { if (s !== this.stream) return; this.emit("disconnected", d); this.onFailure(d.error ?? classifySttError(this.provider, d)); });
     s.on("error", (e) => { if (s !== this.stream && this.stream) return; const err = classifySttError(this.provider, e); this.emit("stt_error", err); this.onFailure(err); });
   }
@@ -92,6 +129,12 @@ export class SttChannel extends EventEmitter {
     } finally { this.switching = false; }
   }
 
-  send(pcm: Buffer): boolean { return this.stream ? this.stream.send(pcm) : (this.droppedOld++, false); }
+  send(pcm: Buffer): boolean {
+    const ringing = (this.o.ringMs ?? 0) > 0 && this.everOpened;
+    if (ringing && !this.stream?.isOpen) { this.buffer(pcm); return false; }
+    if (!this.stream) { this.droppedOld++; return false; }
+    if (this.ring.length) this.flushRing(this.stream);   // reopened without a 'reconnected' event: keep order
+    return this.stream.send(pcm);
+  }
   async close() { await this.stream?.close(); }
 }

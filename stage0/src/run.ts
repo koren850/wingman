@@ -5,6 +5,8 @@
 //   pnpm start --discard       delete the call folder when the call ends
 //   Keys while running: Enter = consent confirmed (start sending audio) · q = quiet on/off (cards logged, not shown)
 //                       n = type a context note for the AI ("this is about the shop migration"), Enter to add · Ctrl+C = stop
+//   WINGMAN_CONTROL=1         remote control for the menu-bar app: line commands on stdin (consent, quiet, client, note <text>, stop)
+//                             and "@@wingman {json}" status lines on stdout. Consent is still required (no auto-start).
 import { readFileSync, rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join } from "node:path";
@@ -28,6 +30,8 @@ import { CostMeter } from "./cost.ts";
 import { EchoFilter, MicGate } from "./echo.ts";
 import { extract } from "./capture.ts";
 import { HealthSupervisor, CircuitBreaker, describeRung, type Rung } from "./health.ts";
+import { joinSplit, type PrevUtterance } from "./split.ts";
+import { createInterface } from "node:readline";
 
 const args = process.argv.slice(2);
 const { settings: S, profile } = loadSettingsOrExit(args);
@@ -42,6 +46,11 @@ const registry = new ModelRegistry(keys);
 
 /** S2: consent line. Names the cloud processing and the AI assistant, and offers an opt-out (settings privacy.consentText). */
 export const CONSENT_SAY = S.privacy.consentText;
+const CONTROL = process.env.WINGMAN_CONTROL === "1";
+/** Status line for the menu-bar app (only in control mode). */
+function status(ev: string, data: Record<string, unknown> = {}) {
+  if (CONTROL) process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`);
+}
 
 const bank = loadBank();
 const stall = stallCard(bank);
@@ -86,6 +95,7 @@ function spotFacts(text: string) {
       proposed = f;
       emitSide({ id: "propose-client", badge: "info", say: `נראה שזו שיחה עם ${f.title}`, facts: ["y בטרמינל = לאשר ולתת ל-AI את הפרטים"] });
       console.log(`\nLooks like a call with ${f.title}. Press y to confirm (adds it to the AI notes).`);
+      status("propose", { title: f.title });
     }
   }
 }
@@ -96,6 +106,7 @@ function confirmClient() {
   log.write("events", { type: "client.confirmed", key: proposed.key });
   emitSide({ id: "propose-client", badge: "info", say: `✓ ${proposed.title}`, facts: [] });
   console.log(`\n✓ client confirmed: ${proposed.title}`);
+  status("client", { title: proposed.title });
 }
 // Live notes: key things said, every notes.everyMs.
 const liveNotes: string[] = [];
@@ -199,11 +210,13 @@ function emitCard(c: Card) {
 /** S4: persistent health bar in the overlay. Clears when healthy. */
 function health(id: string, level: "red" | "amber" | "info", text: string, note?: string) {
   console.log(`\n${level === "red" ? "🔴" : level === "amber" ? "🟠" : "ℹ️ "} ${text}`);
+  status("health", { id, level, text });
   log.write("events", { type: "health", id, level, text, note });
   emitCard({ id: `health-${id}`, turnId: "health", badge: "warn", health: true, level, question: "", say: text, facts: [], at: Date.now() });
 }
 function healthClear(id: string) {
   log.write("events", { type: "health.clear", id });
+  status("health.clear", { id });
   emitCard({ id: `health-${id}`, turnId: "health", badge: "warn", health: true, clear: true, question: "", say: "", facts: [], at: Date.now() });
 }
 
@@ -366,14 +379,19 @@ function refreshSignals() {
 // C2: buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer).
 type Pending = { texts: string[]; words: Word[]; last: SttResult; timer?: NodeJS.Timeout };
 const pending: Partial<Record<Channel, Pending>> = {};
+let lastThem: PrevUtterance | undefined;   // S10: the previous client utterance, for split questions
 function flush(ch: Channel) {
   const p = pending[ch]; if (!p) return;
   clearTimeout(p.timer); delete pending[ch];
   const joined: SttResult = { ...p.last, text: p.texts.join(" "), words: p.words, speechFinal: true };
   if (ch !== "them" || shuttingDown) return;
+  const now = Date.now();
+  const glued = joinSplit(lastThem, joined.text, now, S.stt.joinWindowMs ?? 0);
+  if (glued !== joined.text) { log.write("events", { type: "split.join", prev: lastThem?.text, text: joined.text }); joined.text = glued; }
   const hit = matchBank(joined.text, bank);
   const d = detect(joined.text, { bankScore: hit?.score ?? 0, stall: !!hit && hit.card.id.startsWith("stall-") });
   log.write("events", { type: "detect", text: joined.text, ...d });
+  lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: now, question: d.isQuestion };
   if (d.isQuestion && sup.caps.detect) onQuestion(joined, d.reason);
 }
 
@@ -422,13 +440,36 @@ function setupKeys(onEnter: () => void) {
       if ((ch === "y" || ch === "Y") && proposed && !clientChosen) { confirmClient(); continue; }
       if (ch === "n" || ch === "N") { noteBuf = ""; process.stdout.write("\nNote for the AI (Enter = add, Esc = cancel): "); continue; }
       if (ch === "\r" || ch === "\n") onEnter();
-      if (ch === "q" || ch === "Q") {
-        quiet = !quiet; log.write("events", { type: "quiet", on: quiet });
-        quiet ? health("quiet", "info", "מצב שקט: הכרטיסים נרשמים אבל לא מוצגים (q לחזרה)") : healthClear("quiet");
-        console.log(`\nquiet ${quiet ? "ON: cards are logged, not shown" : "OFF"}`);
-      }
+      if (ch === "q" || ch === "Q") toggleQuiet();
     }
   });
+}
+function toggleQuiet(on = !quiet) {
+  if (on === quiet) return;
+  quiet = on; log.write("events", { type: "quiet", on: quiet });
+  quiet ? health("quiet", "info", "מצב שקט: הכרטיסים נרשמים אבל לא מוצגים (q לחזרה)") : healthClear("quiet");
+  console.log(`\nquiet ${quiet ? "ON: cards are logged, not shown" : "OFF"}`);
+  status("quiet", { on: quiet });
+}
+function addNote(text: string) {
+  const note = text.trim();
+  if (!note) return;
+  contextNotes.push(note.slice(0, 300)); log.write("events", { type: "context.note", note });
+  console.log(`\n✓ note added (${contextNotes.length})`);
+  status("note", { count: contextNotes.length });
+}
+/** Menu-bar app commands (WINGMAN_CONTROL=1): one per line on stdin. */
+function setupControl(onConsent: () => void) {
+  const rl = createInterface({ input: process.stdin });
+  rl.on("line", (line) => {
+    const [cmd, ...rest] = line.trim().split(" ");
+    if (cmd === "consent") onConsent();
+    else if (cmd === "quiet") toggleQuiet(rest[0] === "on" ? true : rest[0] === "off" ? false : undefined);
+    else if (cmd === "client") confirmClient();
+    else if (cmd === "note") addNote(rest.join(" "));
+    else if (cmd === "stop") void shutdown();
+  });
+  rl.on("close", () => void shutdown());   // the menu-bar app went away: stop cleanly
 }
 // Typed context note (instant-start mode: tell Wingman what the call is about, mid-call).
 let noteBuf: string | undefined;
@@ -436,8 +477,7 @@ function noteKey(ch: string) {
   if (ch === "\u001b") { noteBuf = undefined; process.stdout.write(" (cancelled)\n"); return; }
   if (ch === "\r" || ch === "\n") {
     const note = (noteBuf ?? "").trim(); noteBuf = undefined;
-    if (note) { contextNotes.push(note.slice(0, 300)); log.write("events", { type: "context.note", note }); process.stdout.write(`\n✓ note added (${contextNotes.length})\n`); }
-    else process.stdout.write("\n");
+    if (note) addNote(note); else process.stdout.write("\n");
     return;
   }
   if (ch === "\u007f" || ch === "\b") { if (noteBuf) { noteBuf = [...noteBuf].slice(0, -1).join(""); process.stdout.write("\b \b"); } return; }
@@ -478,6 +518,7 @@ async function shutdown() {
     try { rmSync(log.dir, { recursive: true, force: true }); if (!existsSync(join(CALLS, "latest"))) rmSync(join(CALLS, "latest"), { force: true }); } catch {}
     console.log(`\nDeleted ${log.dir}`);
   } else console.log(`\nSaved ${log.dir}\nRate the cards: pnpm tag · delete later: pnpm purge ${log.id}`);
+  status("ended", { id: log.id, deleted: del, crashed });
   try { if (process.stdin.isTTY) process.stdin.setRawMode(false); } catch {}
   process.exit(crashed ? 1 : 0);
 }
@@ -506,7 +547,16 @@ let sttSwitchedCh = new Set<Channel>();
 let costWarned = false, minutesWarned = false;
 
 /** Once a second: feed the supervisor and the cost warnings. */
+let lastTick = Date.now(), sleepClearAt = 0;
 function tickHealth() {
+  // Y2: a long gap between ticks means the Mac slept (lid closed) mid-call.
+  const now = Date.now(), gap = now - lastTick; lastTick = now;
+  const gapMs = S.system.sleepGapMs ?? 0;
+  if (gapMs > 0 && gap > gapMs + S.health.tickMs) {
+    log.write("events", { type: "sleep.gap", ms: gap });
+    health("sleep", "amber", `המחשב נרדם ל-${Math.round(gap / 1000)} שניות. חלק מהשיחה לא נשמע`);
+    sleepClearAt = now + 20_000;
+  } else if (sleepClearAt && now > sleepClearAt) { sleepClearAt = 0; healthClear("sleep"); }
   refreshSignals();
   cost.setSttSeconds(sttSeconds());
   sup.set({ sttOnFallback: sttSwitchedCh.size > 0 });
@@ -527,7 +577,7 @@ function makeChannel(ch: Channel): SttChannel {
   return new SttChannel({
     channel: ch, chain: sttChain(S).map(getSttProvider), keyOf: (id) => (NO_KEY.has(id) ? "none" : (keys as Record<string, string | undefined>)[id]),
     base: { language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
-    circuit: S.stt.circuit,
+    circuit: S.stt.circuit, ringMs: S.stt.reconnect.ringMs,
   });
 }
 
@@ -572,15 +622,17 @@ async function main() {
     consented = true; clearInterval(reemit); log.write("events", { type: "consent.confirmed" });
     emitCard({ ...consentCard(), id: "consent", say: "הסכמה אושרה. התמלול פעיל.", facts: [] });
     console.log("\nConsent confirmed: audio is now being sent for transcription.");
+    status("consented", { id: log.id });
     if (!fileArg) micWatch = setTimeout(() => {
       if (micPeakAfterStart < S.audio.watchdog.micPeak) health("mic", "red", "MIC SILENT – המיקרופון לא קולט (הרשאה? WINGMAN_MIC?)");
     }, S.audio.watchdog.micSilentMs);
   };
   emitCard(consentCard());
   const reemit = setInterval(() => { if (!consented) emitCard(consentCard()); }, 20_000);
-  if (fileArg || !process.stdin.isTTY || !S.privacy.requireConsentAck) startForwarding();
-  setupKeys(startForwarding);
-  if (!consented) console.log("\nWaiting for consent: nothing is sent to the cloud until you press Enter.");
+  if (fileArg || (!process.stdin.isTTY && !CONTROL) || !S.privacy.requireConsentAck) startForwarding();
+  if (CONTROL) setupControl(startForwarding); else setupKeys(startForwarding);
+  if (consented) status("consented", { id: log.id, auto: true });   // replay or consent off: already sending
+  if (!consented) { console.log(`\nWaiting for consent: nothing is sent to the cloud until you ${CONTROL ? "click \"Consent given\" in the menu bar" : "press Enter"}.`); status("waiting", { id: log.id }); }
 
   if (fileArg) {
     const f = new FileSource(fileArg);

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<title>Wingman</title>
+<style>
+  :root { --bg: #FEF7EC; --ink: #3B2414; --muted: #6B5240; --line: #E5D6C2; --accent: #F59E0B; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 18px 20px; background: var(--bg); color: var(--ink); font: 15px -apple-system, "Segoe UI", Arial, sans-serif; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+  input, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; }
+  textarea { height: 64px; resize: none; }
+  .row { display: flex; gap: 8px; justify-content: flex-start; margin-top: 14px; }
+  button { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  [hidden] { display: none; }
+</style>
+</head>
+<body>
+  <form id="note" hidden>
+    <h1>הערה ל-AI</h1>
+    <p>על מה השיחה? למשל: "זה לקוח של החנות, מדברים על מעבר שרת"</p>
+    <input id="noteText" maxlength="300" autocomplete="off">
+    <div class="row"><button class="primary" type="submit">הוסף</button><button type="button" class="cancel">ביטול</button></div>
+  </form>
+  <form id="brief" hidden>
+    <h1>תדריך לשיחה הבאה</h1>
+    <p>דקה אחת. אפשר לדלג על כל שדה. נשמר לשיחה הבאה ב-6 השעות הקרובות.</p>
+    <label for="who">מי בשיחה?</label><input id="who" maxlength="120" autocomplete="off">
+    <label for="goal">מטרת השיחה?</label><input id="goal" maxlength="200" autocomplete="off">
+    <label for="notes">הערות ל-AI (מופרדות ב-;)</label><textarea id="notes" maxlength="600"></textarea>
+    <label for="mustCover">חייב לכסות (מופרד ב-;) למשל: תקציב; לוח זמנים</label><input id="mustCover" maxlength="600" autocomplete="off">
+    <div class="row"><button class="primary" type="submit">שמור</button><button type="button" class="cancel">ביטול</button></div>
+  </form>
+  <script src="prompt.js"></script>
+</body>
+</html>

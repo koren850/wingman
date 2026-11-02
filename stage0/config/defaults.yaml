@@ -17,6 +17,7 @@ stt:
   utteranceEndMs: 1000     # Deepgram utterance_end_ms
   keepAliveMs: 5000        # socket keep-alive interval (Deepgram closes after ~10 s of silence)
   flushFallbackMs: 1500    # handle buffered finals if no speech_final arrives within this time
+  joinWindowMs: 1200       # a short client fragment without an end mark is glued to the next one within this time (split questions). 0 = off
   keyterms:
     enabled: auto          # auto | on | off   (off = never send keyterms)
     file: data/keyterms.txt  # one term per line, relative to stage0/
@@ -24,6 +25,8 @@ stt:
   circuit:
     failures: 3            # this many failures ...
     windowMs: 10000        # ... within this window = "repeated failure": switch to the fallback provider
+  reconnect:
+    ringMs: 2000           # audio kept while the socket is down and replayed on reopen/switch (0 = drop it, old behaviour)
 
 # ---- Reflex LLM ----
 llm:
@@ -148,6 +151,7 @@ overlay:
 # ---- System and keys ----
 system:
   caffeinate: true         # keep the Mac awake during a call
+  sleepGapMs: 5000         # a gap longer than this between health ticks = the Mac slept; shows a warning. 0 = off
 keys:
   file: "~/.config/wingman/keys.env"   # API keys live here, never in settings
 

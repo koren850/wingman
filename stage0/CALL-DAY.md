@@ -5,7 +5,7 @@
 - `pnpm run doctor` is all green. Do Not Disturb on. Wired headphones (not AirPods). Set `WINGMAN_MIC` if needed.
 - Second screen connected; Zoom share-mode test done (window, primary, secondary, all screens). Never share the primary screen with the overlay on it.
 - Deepgram and Anthropic spend limits set. Consider `--no-ai` for call one.
-- Run `pnpm call`. Say the consent line first (it is the first card), wait for a clear yes, then press Enter.
+- Run `pnpm tray` (menu bar) and click **Start call**, or run `pnpm call` in Terminal. Say the consent line first (it is the first card), wait for a clear yes, then click **✅ Consent given** (or press Enter in Terminal).
 
 ## During
 - Cards are hints, not scripts: read, rephrase, never quote prices, dates or promises.
