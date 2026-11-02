@@ -18,7 +18,7 @@ const once = <T = any>(e: EventEmitter, ev: string) => new Promise<T>((r) => e.o
 const listen = (srv: Server) => new Promise<number>((r) => srv.listen(0, "127.0.0.1", () => r((srv.address() as any).port)));
 
 test("registry and chain", () => {
-  assert.deepEqual(Object.keys(STT_PROVIDERS).sort(), ["deepgram", "gladia", "soniox"]);
+  assert.deepEqual(Object.keys(STT_PROVIDERS).sort(), ["deepgram", "gladia", "script", "soniox"]);   // script = offline test double
   assert.equal(getSttProvider("deepgram").experimental, false); assert.equal(getSttProvider("soniox").experimental, true); assert.equal(getSttProvider("gladia").experimental, true);
   assert.throws(() => getSttProvider("whisper"), /Unknown STT provider/);
   const s2 = { ...S, stt: { ...S.stt, provider: "soniox" as const, fallback: ["deepgram" as const, "soniox" as const] } };

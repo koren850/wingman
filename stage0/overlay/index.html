@@ -76,7 +76,7 @@
   }
   function render(c) {
     if (c.health) { renderHealth(c); return; }
-    if (c.turnId === "side") { if (!paused) renderSide(c); return; }
+    if (c.turnId === "side") { renderSide(c); return; }   // facts/notes/reminders are kept even while paused
     if (c.withdraw) { cards.get(c.id)?.remove(); cards.delete(c.id); return; }
     if (paused) return;
     document.getElementById("empty")?.remove();

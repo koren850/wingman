@@ -17,7 +17,7 @@ const allItems = JSON.parse(readFileSync(join(DATA, "gold", "terms.json"), "utf8
 const argv = process.argv.slice(2);
 const flag = (n: string) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : undefined);
 const countArg = flag("--count"), idsArg = flag("--ids");
-const language = (flag("--language") ?? "he") as "he" | "multi" | "en";   // --language multi = Hebrew+English code-switching
+const language = (flag("--language") ?? "multi") as "he" | "multi" | "en";   // default = the production stt.language   // --language multi = Hebrew+English code-switching
 const items = idsArg ? allItems.filter((i) => idsArg.split(",").map((x) => x.trim()).includes(i.id))
   : countArg ? allItems.slice(0, Math.max(1, Number(countArg) || allItems.length)) : allItems;
 const useKeyterms = !argv.includes("--no-keyterms");

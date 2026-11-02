@@ -42,8 +42,12 @@ function create() {
   // overlay.contentProtection: false (WINGMAN_SHOW_IN_CAPTURE=1) turns it off for the Zoom share test.
   if (CFG.contentProtection) win.setContentProtection(true);
   win.loadFile(path.join(__dirname, "index.html"));
-  win.webContents.on("did-finish-load", () => win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys }));
-  timer = setInterval(poll, 100);
+  // Poll only after the page has its listeners; a reload replays the call files from the start.
+  win.webContents.on("did-finish-load", () => {
+    win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
+    tails.cards = { file: undefined, offset: 0 }; tails.transcript = { file: undefined, offset: 0 };
+    clearInterval(timer); timer = setInterval(poll, 100);
+  });
   // S4: focusable:false means Esc never reaches the window, so clear/pause are global shortcuts.
   const ok1 = globalShortcut.register(CFG.hotkeys.clear, () => win && win.webContents.send("clear"));
   const ok2 = globalShortcut.register(CFG.hotkeys.pause, () => win && win.webContents.send("pause"));

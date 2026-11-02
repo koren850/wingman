@@ -36,7 +36,8 @@ const noAi = S.run.noAi;
 const discard = S.run.discard;
 const REFLEX_MODELS = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
 const keyFile = expandHome(S.keys.file);
-const keys = requireKeys([...new Set([S.stt.provider, ...(noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])])], keyFile);
+const NO_KEY = new Set(["script", "scripted"]);   // offline test doubles
+const keys = requireKeys([...new Set([S.stt.provider, ...(noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])])].filter((k) => !NO_KEY.has(k)), keyFile);
 const registry = new ModelRegistry(keys);
 
 /** S2: consent line. Names the cloud processing and the AI assistant, and offers an opt-out (settings privacy.consentText). */
@@ -63,7 +64,8 @@ const transcript: { ch: Channel; text: string }[] = [];
 const contextNotes: string[] = [];
 // Prepared start: a brief saved by `pnpm brief` (last 6 h), or --brief <file>; --no-brief skips it.
 const briefArg = args.includes("--brief") ? args[args.indexOf("--brief") + 1] : undefined;
-const brief: Brief | undefined = args.includes("--no-brief") ? undefined : loadBrief(briefArg);
+// A replay (--file) never consumes latest.yaml; it uses a brief only when --brief is given.
+const brief: Brief | undefined = args.includes("--no-brief") || (fileArg && !briefArg) ? undefined : loadBrief(briefArg);
 if (brief) contextNotes.push(...briefNotes(brief));
 // Fact cards from the local client/domain snapshot.
 const snapshot = S.facts.enabled ? loadSnapshot(join(ROOT, S.facts.file)) : undefined;
@@ -97,14 +99,17 @@ function confirmClient() {
 }
 // Live notes: key things said, every notes.everyMs.
 const liveNotes: string[] = [];
+const notesOn = S.notes.enabled && !noAi;
+const notesAbort = new AbortController();   // aborted in shutdown(): no notes call outlives the call
 let notesLines: string[] = [], notesBusy = false;
 async function notesRound() {
-  if (!S.notes.enabled || noAi || notesBusy || !consented || shuttingDown || !sup.caps.llm || cost.llmState() === "capped") return;
+  if (!notesOn || notesBusy || !consented || shuttingDown || !sup.caps.llm || cost.llmState() === "capped") return;
   const words = notesLines.join(" ").split(/\s+/).length;
   if (words < S.notes.minNewWords) return;
   const lines = notesLines; notesLines = []; notesBusy = true;
   try {
-    const r = await takeNotes({ registry, model: S.notes.model, existing: liveNotes, lines, signal: new AbortController().signal, timeoutMs: S.notes.timeoutMs });
+    const r = await takeNotes({ registry, model: S.notes.model, existing: liveNotes, lines, signal: notesAbort.signal, timeoutMs: S.notes.timeoutMs });
+    if (shuttingDown) return;
     const c = cost.addLlm("notes", S.notes.model, r.usage, r.providerMetadata);
     log.write("usage", { role: "notes", model: S.notes.model, usage: r.usage, usd: c.usd });
     for (const n of r.notes) {
@@ -377,10 +382,15 @@ function onResult(r: SttResult) {
   log.write("events", { type: "stt", ch: r.channel, final: true, speechFinal: r.speechFinal, text: r.text, speechEndWall: r.speechEndWall });
   if (r.channel === "them" && r.text) echo.noteThem(r.text, r.arrivedAt);
   // "me" lines wait briefly so the client line they may echo has arrived, then go through the echo filter.
-  if (r.channel === "me" && r.text && useFilter && !shuttingDown) { setTimeout(() => acceptResult(r, true), ECHO.filterDelayMs); return; }
+  if (r.channel === "me" && r.text && useFilter && !shuttingDown) {
+    const t = setTimeout(() => { meTimers.delete(t); acceptResult(r, true); }, ECHO.filterDelayMs);
+    meTimers.add(t); return;
+  }
   acceptResult(r, false);
 }
+const meTimers = new Set<NodeJS.Timeout>();
 function acceptResult(r: SttResult, checkEcho: boolean) {
+  if (shuttingDown) return;
   if (checkEcho) {
     const e = echo.isEcho(r.text);
     if (e.echo) { echoDropped++; log.write("events", { type: "echo.drop", text: r.text, score: Number(e.score.toFixed(2)) }); return; }
@@ -388,7 +398,7 @@ function acceptResult(r: SttResult, checkEcho: boolean) {
   if (r.text) {
     capture(r.channel, r.text);
     spotFacts(r.text);
-    notesLines.push(`${r.channel}: ${r.text}`);
+    if (notesOn) notesLines.push(`${r.channel}: ${r.text}`);
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) lastMeVoiced = Date.now();
     transcript.push({ ch: r.channel, text: r.text });
     log.write("transcript", { ch: r.channel, text: r.text, words: r.words });
@@ -441,7 +451,8 @@ let crashed = false;
 
 async function shutdown() {
   if (shuttingDown) return;
-  shuttingDown = true; current?.abort();
+  shuttingDown = true; current?.abort(); notesAbort.abort();
+  for (const t of meTimers) clearTimeout(t); meTimers.clear();
   for (const ch of ["me", "them"] as Channel[]) { clearTimeout(pending[ch]?.timer); delete pending[ch]; }
   for (const s of stops) await s().catch(() => {});
   sup.stop();
@@ -457,7 +468,7 @@ async function shutdown() {
     log.update({ endedAt: new Date().toISOString(), crashed });
     console.log(`\nSpeakers mode (${ECHO.mode}): mic muted ${Math.round(gatedMs / 1000)} s while the client talked · ${echoDropped} echo lines dropped`);
     console.log(`\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${me?.dropped ?? 0}, them ${them?.dropped ?? 0}`);
-  } catch { /* best effort */ }
+  } catch (e) { console.error("call summary failed:", e); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
   let del = discard;
   if (!del && !crashed && process.stdin.isTTY) {
     process.stdout.write("\nDelete this call's saved text now? y = delete, any other key (or 10 s) = keep: ");
@@ -514,7 +525,7 @@ function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: stri
 
 function makeChannel(ch: Channel): SttChannel {
   return new SttChannel({
-    channel: ch, chain: sttChain(S).map(getSttProvider), keyOf: (id) => (keys as Record<string, string | undefined>)[id],
+    channel: ch, chain: sttChain(S).map(getSttProvider), keyOf: (id) => (NO_KEY.has(id) ? "none" : (keys as Record<string, string | undefined>)[id]),
     base: { language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
     circuit: S.stt.circuit,
   });

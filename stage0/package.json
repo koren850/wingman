@@ -17,6 +17,7 @@
     "brief": "tsx src/brief.ts",
     "factscheck": "tsx src/facts-check.ts",
     "tag": "tsx src/tag.ts",
+    "dashboard": "electron dashboard/main.cjs",
     "purge": "tsx src/purge.ts",
     "banktest": "tsx src/bank-test.ts",
     "settings": "tsx src/settings-cli.ts"

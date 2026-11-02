@@ -13,8 +13,8 @@ const TLDS = "com|net|org|io|co|il|info|biz|app|dev|me|shop|store|online|site|te
 /** Hebrew spoken forms of "@", "." and common domain words -> symbols/Latin. */
 export function spokenToSymbols(s: string): string {
   return s
-    .replace(/(^|\s)(שטרודל|כרוכית|at)(?=\s|$)/g, " @ ")
-    .replace(/(^|\s)(נקודה|דוט|dot)(?=\s|$)/g, " . ")
+    .replace(/(^|\s)(שטרודל|כרוכית)(?=\s|$)/g, " \u0001 ")      // spoken "@" (English "at" is too common to trust)
+    .replace(/(^|\s)(נקודה|דוט|dot)(?=\s|$)/g, " \u0002 ")
     .replace(/(^|\s)(ג'ימייל|גימייל|ג׳ימייל)(?=\s|$)/g, " gmail ")
     .replace(/(^|\s)(הוטמייל)(?=\s|$)/g, " hotmail ")
     .replace(/(^|\s)(קום)(?=\s|$)/g, " com ")
@@ -43,7 +43,7 @@ export function digitWords(s: string): string {
 /** Israeli phone: 05X + 7 digits, 0[2-9] + 7 digits, 07X + 7 digits, or +972 forms. */
 function phones(s: string): string[] {
   const found: string[] = [];
-  for (const m of s.matchAll(/(?:\+?972[\s-]?|0)(?:5\d|7\d|[2-489])[\s-]?\d{3}[\s-]?\d{4}(?!\d)/g)) {
+  for (const m of s.matchAll(/(?<![\d+])(?:\+?972[\s-]?|0)(?:5\d|7\d|[2-489])[\s-]?\d{3}[\s-]?\d{4}(?!\d)/g)) {
     let d = m[0].replace(/[^\d]/g, "");
     if (d.startsWith("972")) d = "0" + d.slice(3);
     if (d.length === 10) found.push(`${d.slice(0, 3)}-${d.slice(3)}`);
@@ -56,8 +56,9 @@ export function extract(text: string): Capture[] {
   const out: Capture[] = [];
   const seen = new Set<string>();
   const add = (c: Capture) => { const k = `${c.kind}:${c.value}`; if (!seen.has(k)) { seen.add(k); out.push(c); } };
-  // Join "x . y" and "a @ b" spacing so "gmail . com" becomes "gmail.com".
-  const sym = digitWords(spokenToSymbols(text)).replace(/\s*([.@])\s*/g, "$1");
+  // Join spacing only around SPOKEN "@"/"." ("gmail נקודה com" -> "gmail.com"); a written full stop before an
+  // English word ("ChatGPT. AI") is a sentence end, not a domain.
+  const sym = digitWords(spokenToSymbols(text)).replace(/\s*\u0001\s*/g, "@").replace(/\s*\u0002\s*/g, ".");
   for (const p of phones(sym)) add({ kind: "phone", value: p });
   const emailRe = new RegExp(`[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.(?:${TLDS})\\b`, "gi");
   const emails = [...sym.matchAll(emailRe)].map((m) => m[0].toLowerCase());

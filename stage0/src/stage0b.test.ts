@@ -8,14 +8,14 @@ test("echo: overlap counts the mic line's words found in the client line", () =>
   assert.equal(overlap("אני חושב שזה בסדר", "כמה עולה האחסון"), 0);
 });
 test("echo filter drops a repeat of the client within the window, keeps Dan's own words", () => {
-  const f = new EchoFilter({ windowMs: 2500, threshold: 0.6 });
+  const f = new EchoFilter({ windowMs: 2500, threshold: 0.8 });
   f.noteThem("כמה עולה האחסון אצלכם לחודש", 1000);
   assert.ok(f.isEcho("כמה עולה האחסון אצלכם", 2000).echo);
   assert.ok(!f.isEcho("זה תלוי בגודל האתר", 2000).echo);
   assert.ok(!f.isEcho("כמה עולה האחסון אצלכם", 5000).echo, "outside the window");
-  assert.ok(!f.isEcho("כן", 1500).echo, "one word needs full overlap");
+  assert.ok(!f.isEcho("אתה שואל כמה עולה אחסון", 2000).echo, "Dan repeating the question back is kept");
   f.noteThem("כן", 1500);
-  assert.ok(f.isEcho("כן", 1600).echo);
+  assert.ok(!f.isEcho("כן", 1600).echo, "short lines are never dropped");
 });
 test("mic gate closes while the client is voiced, plus the hangover", () => {
   const g = new MicGate({ hangoverMs: 400, peak: 0.02 });
@@ -29,7 +29,7 @@ test("capture: Hebrew digit words become digits", () => {
   assert.equal(digitWords("אפס חמש שתיים 123 4567"), "0521234567");
 });
 test("capture: spoken @ and dot", () => {
-  assert.match(spokenToSymbols("דן שטרודל ג'ימייל נקודה קום"), /@\s+gmail\s+\.\s+com/);
+  assert.match(spokenToSymbols("דן שטרודל ג'ימייל נקודה קום"), /\u0001\s+gmail\s+\u0002\s+com/);
 });
 test("capture: phones (digits, words, +972), emails and domains", () => {
   const v = (t: string) => extract(t).map((c) => `${c.kind}:${c.value}`);
@@ -48,6 +48,12 @@ test("capture: no false hits on plain talk, prices or short numbers", () => {
   assert.deepEqual(extract("יש לי שתי שאלות על האתר"), []);
   assert.deepEqual(extract("גרסה 5.5 של וורדפרס"), []);
   assert.deepEqual(extract("שבע שנים אנחנו איתכם"), []);
+  assert.deepEqual(extract("meet at shop.co.il tomorrow").map((c) => c.kind), ["domain"], "English 'at' is not an email");
+  assert.deepEqual(extract("אני משתמש ב ChatGPT. AI זה טוב"), [], "a full stop is not a domain dot");
+  assert.deepEqual(extract("ok. me and you"), []);
+  assert.deepEqual(extract("7770541234567"), [], "no phone inside a longer number");
+  assert.deepEqual(extract("4500 8000 2000"), [], "prices are not a phone");
+  assert.deepEqual(extract("5 0 8 1 2 3 4 5 6 7"), [], "a spaced ID is not a phone");
 });
 
 import { EntitySpotter, daysUntil } from "./entities.ts";
@@ -90,6 +96,10 @@ test("brief: notes and must-cover coverage", () => {
   assert.ok(!covered("לוח זמנים", "דיברנו על התקציב"));
   assert.ok(covered("גיבויים", "אני רוצה לדעת אם יש לכם גיבוי של האתר"));
   assert.ok(!covered("גיבויים", "האתר איטי"));
+  assert.ok(covered("מחירים", "מה המחיר של זה"));
+  assert.ok(covered("שרתים", "על איזה שרת האתר"));
+  assert.ok(!covered("UX", "דיברנו על התקציב"), "short items are not auto-covered");
+  assert.ok(covered("UX", "ה UX של האתר"));
 });
 import { domainBase, aliasMatch } from "./entities.ts";
 test("facts: domain base and exact alias matching", () => {

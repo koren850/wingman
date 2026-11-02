@@ -9,7 +9,7 @@ import { spawnOverlay } from "./overlay.ts";
 
 const rest = process.argv.slice(2);
 const { settings: S } = loadSettingsOrExit(rest);   // exits with code 2 and a clear message when settings are invalid
-requireKeys([S.stt.provider, ...(S.run.noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])], expandHome(S.keys.file));
+requireKeys([S.stt.provider, ...(S.run.noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])].filter((k) => k !== "script" && k !== "scripted"), expandHome(S.keys.file));
 try { rmSync(join(CALLS, "latest"), { force: true }); } catch { /* the overlay must not replay the previous call */ }
 
 const bin = (n: string) => join(ROOT, "node_modules", ".bin", n);

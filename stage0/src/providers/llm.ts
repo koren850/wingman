@@ -6,13 +6,14 @@ import { classifyLlmError, ProviderError } from "./errors.ts";
 
 export class ConfigError extends Error { constructor(m: string, public fix?: string) { super(m); this.name = "ConfigError"; } }
 
-export type ProviderSpec = { pkg: string; factory: string; key: KeyName };
+export type ProviderSpec = { pkg: string; factory: string; key?: KeyName };
 export const LLM_PROVIDERS: Record<string, ProviderSpec> = {
   anthropic: { pkg: "@ai-sdk/anthropic", factory: "createAnthropic", key: "anthropic" },
   openai: { pkg: "@ai-sdk/openai", factory: "createOpenAI", key: "openai" },
   google: { pkg: "@ai-sdk/google", factory: "createGoogleGenerativeAI", key: "google" },
   mistral: { pkg: "@ai-sdk/mistral", factory: "createMistral", key: "mistral" },
   groq: { pkg: "@ai-sdk/groq", factory: "createGroq", key: "groq" },
+  scripted: { pkg: "./scripted.ts", factory: "createScripted" },   // offline test double, no key
 };
 
 export function parseModelRef(ref: string): { provider: string; model: string } {
@@ -47,8 +48,8 @@ export class ModelRegistry {
       }
       const factory = mod[spec.factory];
       if (typeof factory !== "function") throw new ConfigError(`${spec.pkg} has no ${spec.factory} export (unexpected version)`);
-      const apiKey = this.keys[spec.key];
-      if (!apiKey) throw new ConfigError(`${KEY_VARS[spec.key]} is missing for "${ref}"`, `add it to ~/.config/wingman/keys.env`);
+      const apiKey = spec.key ? this.keys[spec.key] : "none";
+      if (!apiKey) throw new ConfigError(`${KEY_VARS[spec.key!]} is missing for "${ref}"`, `add it to ~/.config/wingman/keys.env`);
       make = factory({ apiKey }); this.factories.set(provider, make);
     }
     return make(model) as LanguageModel;

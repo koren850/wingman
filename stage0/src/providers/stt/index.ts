@@ -6,9 +6,10 @@ import { STAGE0 } from "../../settings.ts";
 import { deepgram } from "./deepgram.ts";
 import { soniox } from "./soniox.ts";
 import { gladia } from "./gladia.ts";
+import { script } from "../scripted.ts";
 import type { SttProvider } from "./types.ts";
 
-export const STT_PROVIDERS: Record<string, SttProvider> = { deepgram, soniox, gladia };
+export const STT_PROVIDERS: Record<string, SttProvider> = { deepgram, soniox, gladia, script };
 export function getSttProvider(id: string): SttProvider {
   const p = STT_PROVIDERS[id];
   if (!p) throw new Error(`Unknown STT provider "${id}". Available: ${Object.keys(STT_PROVIDERS).join(", ")}`);

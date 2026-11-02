@@ -5,7 +5,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { normalize, tokens, tokenVariants } from "./normalize.ts";
 
 /** Single words that are client aliases but also everyday speech: they only match as part of a longer alias. */
-const GENERIC = new Set(["אתרים", "אתר", "תחנה", "נמל", "נחלה", "עתיד", "staging", "dev", "test"].map(normalize));
+const GENERIC = new Set(["אתרים", "אתר", "תחנה", "נמל", "נחלה", "עתיד", "staging", "dev", "test",
+  "design", "studio", "online", "digital", "media", "group", "travel", "energy", "health", "global", "systems", "solutions", "store", "shop", "hosting", "server", "cloud", "website"].map(normalize));
 /** Subdomain labels that say nothing about the client. */
 const SUBDOMAIN_NOISE = new Set(["www", "staging", "stage", "dev", "test", "old", "new", "mail", "api", "onboarding", "beta", "admin", "shop", "app", "m", "en", "he"]);
 /** Second-level-ish name of a domain: "staging.example-c.com" -> "example-c", "example-b.co.il" -> "example-b". */

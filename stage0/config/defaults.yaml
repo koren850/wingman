@@ -70,9 +70,9 @@ audio:
   echo:                    # speakers mode: no headphones needed (the mic also hears the client from the speakers)
     mode: both             # gate | filter | both | off. gate = mic sends silence while the client talks; filter = drop "me" lines that repeat the client. With headphones, "filter" keeps your words when you talk over the client. Env: WINGMAN_ECHO
     gatePeak: 0.02         # client audio peak (0-1) that closes the mic gate
-    gateHangoverMs: 400    # gate stays closed this long after the client's last sound (room echo tail)
+    gateHangoverMs: 250    # gate stays closed this long after the client's last sound (room echo tail). Longer clips your first words
     filterWindowMs: 2500   # a "me" line is compared with client lines from this far back
-    filterThreshold: 0.6   # share of the "me" line's words found in a client line = echo
+    filterThreshold: 0.8   # share of the "me" line's words found in a client line = echo (lines under 3 words are never dropped)
     filterDelayMs: 700     # "me" lines wait this long so the matching client line can arrive first
 
 # ---- Fact cards (a known client or domain is mentioned) ----

@@ -21,12 +21,16 @@ export class EchoFilter {
     this.recent.push({ text, at });
     this.recent = this.recent.filter((r) => at - r.at <= this.o.windowMs * 4);
   }
-  /** True when the mic line is an echo of what the client said within the window. Short mic lines (1 word) need full overlap. */
+  /**
+   * True when the mic line is an echo of what the client said within the window. Lines under 3 words are never
+   * dropped (Dan's "כן" or "אחסון" right after the client is real speech); a real echo is a near-copy, so the
+   * threshold is high (default 0.8): Dan repeating part of the question back ("אתה שואל כמה עולה אחסון") stays.
+   */
   isEcho(meText: string, at = Date.now()): { echo: boolean; score: number } {
+    if (tokens(meText).length < 3) return { echo: false, score: 0 };
     let best = 0;
     for (const r of this.recent) if (at - r.at <= this.o.windowMs) best = Math.max(best, overlap(meText, r.text));
-    const short = tokens(meText).length < 2;
-    return { echo: short ? best >= 1 : best >= this.o.threshold, score: best };
+    return { echo: best >= this.o.threshold, score: best };
   }
 }
 

@@ -16,7 +16,7 @@ export const expandHome = (p: string) => (p.startsWith("~/") ? join(homedir(), p
 
 const int = (min: number, max: number) => z.number().int().min(min).max(max);
 const modelRef = z.string().regex(/^[a-z0-9_-]+:.+$/i, "expected provider:model, e.g. anthropic:claude-haiku-5-5");
-const sttName = z.enum(["deepgram", "soniox", "gladia"]);
+const sttName = z.enum(["deepgram", "soniox", "gladia", "script"]);   // script = offline test double (src/providers/scripted.ts)
 const price = z.strictObject({ inUsdPerM: z.number().min(0), outUsdPerM: z.number().min(0), cacheReadUsdPerM: z.number().min(0).optional(), cacheWriteUsdPerM: z.number().min(0).optional() });
 
 export const schema = z.strictObject({

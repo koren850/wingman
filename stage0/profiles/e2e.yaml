@@ -1,0 +1,18 @@
+# Offline end-to-end test (src/e2e.test.ts): scripted STT + scripted AI, no network, no keys.
+stt:
+  provider: script
+  fallback: []
+llm:
+  reflex:
+    model: "scripted:bank"
+    fallbacks: []
+notes:
+  model: "scripted:notes"
+  everyMs: 10000
+  minNewWords: 5
+facts:
+  file: data/test/entities-fixture.json
+privacy:
+  requireConsentAck: false
+system:
+  caffeinate: false

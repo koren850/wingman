@@ -53,8 +53,8 @@ const llmRefs = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
 const sttIds = sttChain(S);
 const need = (name: KeyName, why: string, required: boolean) =>
   keys[name] ? ok(`${KEY_VARS[name]} present (${why})`) : required ? bad(`${KEY_VARS[name]} missing (${why})`, `add it to ${keyFile}`) : warn(`${KEY_VARS[name]} missing (${why}); that fallback cannot work`, `add it to ${keyFile}`);
-sttIds.forEach((id, i) => need(id as KeyName, `STT ${i ? "fallback" : "primary"} ${id}`, i === 0));
-if (!S.run.noAi) llmRefs.forEach((r, i) => { try { need(LLM_PROVIDERS[parseModelRef(r).provider].key, `LLM ${i ? "fallback" : "reflex"} ${r}`, i === 0); } catch (e) { bad((e as Error).message); } });
+sttIds.filter((id) => id !== "script").forEach((id, i) => need(id as KeyName, `STT ${i ? "fallback" : "primary"} ${id}`, i === 0));
+if (!S.run.noAi) llmRefs.forEach((r, i) => { try { const k = LLM_PROVIDERS[parseModelRef(r).provider].key; if (k) need(k, `LLM ${i ? "fallback" : "reflex"} ${r}`, i === 0); else ok(`${r} needs no key (offline test double)`); } catch (e) { bad((e as Error).message); } });
 
 section("Provider packages and models");
 const registry = new ModelRegistry(keys);
