@@ -97,11 +97,11 @@ test("circuit breaker: open after N failures in the window, half-open probe afte
 });
 
 test("CostMeter math from the price table and actual usage", () => {
-  const m = new CostMeter(S.budget.prices, S.budget);   // haiku: in 1, out 5, cache read 0.1, cache write 2 USD per M
+  const m = new CostMeter(S.budget.prices, S.budget);   // haiku: in 0.1, out 0.5, cache read 0.01, cache write 0.2 USD per M
   const a = m.addLlm("reflex", "anthropic:claude-haiku-5-5", { inputTokens: 10_000, outputTokens: 100, inputTokenDetails: { cacheReadTokens: 8000, cacheWriteTokens: 0, noCacheTokens: 2000 } });
-  assert.ok(Math.abs(a.usd - (2000 * 1 + 8000 * 0.1 + 100 * 5) / 1e6) < 1e-12);
+  assert.ok(Math.abs(a.usd - (2000 * 0.1 + 8000 * 0.01 + 100 * 0.5) / 1e6) < 1e-12);
   const b = m.addLlm("reflex", "anthropic:claude-haiku-5-5", { inputTokens: 5000, outputTokens: 50, inputTokenDetails: { cacheWriteTokens: 4000 } });   // noCache inferred = 1000
-  assert.ok(Math.abs(b.usd - (1000 * 1 + 4000 * 2 + 50 * 5) / 1e6) < 1e-12);
+  assert.ok(Math.abs(b.usd - (1000 * 0.1 + 4000 * 0.2 + 50 * 0.5) / 1e6) < 1e-12);
   assert.equal(m.roles.reflex.calls, 2); assert.equal(m.roles.reflex.cacheReadTokens, 8000);
   m.addLlm("summarizer", "mystery:model", { inputTokens: 100, outputTokens: 100 });
   assert.equal(m.roles.summarizer.usd, 0); assert.ok(m.unpriced.has("mystery:model"));

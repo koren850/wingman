@@ -84,8 +84,8 @@ budget:
   # Price table. ESTIMATES: check your provider's pricing page and edit. A model missing here costs $0 and is flagged.
   prices:
     llm:                   # USD per million tokens
-      "anthropic:claude-haiku-5-5": { inUsdPerM: 1, outUsdPerM: 5, cacheReadUsdPerM: 0.1, cacheWriteUsdPerM: 2 }
-      "anthropic:claude-sonnet-5-5": { inUsdPerM: 3, outUsdPerM: 15, cacheReadUsdPerM: 0.3, cacheWriteUsdPerM: 6 }
+      "anthropic:claude-haiku-5-5": { inUsdPerM: 0.1, outUsdPerM: 0.5, cacheReadUsdPerM: 0.01, cacheWriteUsdPerM: 0.2 }   # list price 2026-10; 1h cache write = 2x input
+      "anthropic:claude-sonnet-5-5": { inUsdPerM: 2, outUsdPerM: 10, cacheReadUsdPerM: 0.2, cacheWriteUsdPerM: 4 }
     stt:                   # USD per hour of audio, per channel
       deepgram: 0.55
       soniox: 0.12
