@@ -12,7 +12,7 @@ stt:
   provider: deepgram       # deepgram | soniox | gladia   (soniox and gladia are EXPERIMENTAL: not tested live)
   fallback: []             # providers to switch to mid-call on an auth/quota/outage failure, e.g. [soniox]
   model: nova-3            # model id for the provider (Deepgram: nova-3). Soniox/Gladia use their own default when this is nova-3
-  language: he             # he | en | multi | auto   (auto = multi on Deepgram)
+  language: multi          # he | en | multi | auto (auto = multi). multi = Hebrew+English mixing: 52% vs 18% English-term recall on the synthetic gate, 2 Nov. Re-check on real voice
   endpointMs: 350          # silence (ms) that ends an utterance. Try 700-1000 if questions get split at pauses. Env: WINGMAN_ENDPOINT_MS
   utteranceEndMs: 1000     # Deepgram utterance_end_ms
   keepAliveMs: 5000        # socket keep-alive interval (Deepgram closes after ~10 s of silence)

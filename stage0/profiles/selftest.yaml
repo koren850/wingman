@@ -1,0 +1,3 @@
+# Unattended live self-test: no consent key (synthetic audio only, never a real call).
+privacy:
+  requireConsentAck: false
