@@ -9,6 +9,7 @@ const dir = arg ? join(CALLS, arg) : existsSync(join(CALLS, "latest")) ? realpat
 const read = (f: string) => existsSync(join(dir, f)) ? readFileSync(join(dir, f), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
 const cardsById = new Map<string, any>();
 for (const c of read("cards.jsonl")) {
+  if (c.type === "capture" || !c.id) continue;
   if (c.withdraw) { cardsById.delete(c.id); continue; }
   if (c.badge !== "info" && !c.health) cardsById.set(c.id, c); // last version of each card wins
 }

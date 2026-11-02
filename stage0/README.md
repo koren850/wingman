@@ -15,7 +15,7 @@ Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Use only on synthe
 |---|---|
 | **`pnpm call`** | **Start a call: opens the answer window and starts listening. Ctrl+C stops, saves the call and prints a speed summary** |
 | `pnpm tag` | After a call: rate each card y/n (about 2 min). Prints useful cards/hour and how often the bank answered (usefulness gate) |
-| `pnpm overlay` | Answer window on the second screen. Content protection is on but **untested with Zoom; use the second screen**. With one display it refuses to open unless `WINGMAN_ALLOW_PRIMARY=1`. Ctrl+Opt+C = clear, Ctrl+Opt+P = pause |
+| `pnpm overlay` | Answer window on the second screen. Content protection is on but **untested with Zoom; use the second screen**. With one display it refuses to open unless `WINGMAN_ALLOW_PRIMARY=1`. Ctrl+Opt+C = clear, Ctrl+Opt+P = pause, Ctrl+Opt+R = last 30 s as text, Ctrl+Opt+K = copy the newest captured phone/email/domain |
 | `pnpm start` | Live call: system audio = client, mic = you. Wear headphones. **Nothing is sent to the cloud until you press Enter (consent confirmed).** Keys: `Enter` start, `q` quiet on/off (cards logged, not shown), Ctrl+C stop. Max ~3 new cards per 60 s |
 | `pnpm start --discard` | Delete the call folder when the call ends (without it, Ctrl+C asks) |
 | `pnpm purge <id>` / `--older-than N` / `--all` | Delete saved calls (transcripts and cards; audio is never saved) |

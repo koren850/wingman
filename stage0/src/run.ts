@@ -3,7 +3,8 @@
 //   pnpm start --file x.wav    replay a recording in real time
 //   pnpm start --no-ai         bank only (no Haiku)
 //   pnpm start --discard       delete the call folder when the call ends
-//   Keys while running: Enter = consent confirmed (start sending audio) · q = quiet on/off (cards logged, not shown) · Ctrl+C = stop
+//   Keys while running: Enter = consent confirmed (start sending audio) · q = quiet on/off (cards logged, not shown)
+//                       n = type a context note for the AI ("this is about the shop migration"), Enter to add · Ctrl+C = stop
 import { readFileSync, rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join } from "node:path";
@@ -21,6 +22,8 @@ import { SystemSource, MicSource, FileSource, peakOf } from "./audio.ts";
 import { CallLog } from "./log.ts";
 import { loadSettingsOrExit, expandHome } from "./settings.ts";
 import { CostMeter } from "./cost.ts";
+import { EchoFilter, MicGate } from "./echo.ts";
+import { extract } from "./capture.ts";
 import { HealthSupervisor, CircuitBreaker, describeRung, type Rung } from "./health.ts";
 
 const args = process.argv.slice(2);
@@ -54,6 +57,34 @@ type Card = {
   health?: boolean; level?: "red" | "amber" | "info"; clear?: boolean; withdraw?: boolean;
 };
 const transcript: { ch: Channel; text: string }[] = [];
+const contextNotes: string[] = [];
+// Speakers mode (PLAN §0.4): mic gate + echo text filter.
+const ECHO = S.audio.echo;
+const useGate = ECHO.mode === "gate" || ECHO.mode === "both";
+const useFilter = ECHO.mode === "filter" || ECHO.mode === "both";
+const gate = new MicGate({ hangoverMs: ECHO.gateHangoverMs, peak: ECHO.gatePeak });
+const echo = new EchoFilter({ windowMs: ECHO.filterWindowMs, threshold: ECHO.filterThreshold });
+let gatedMs = 0, echoDropped = 0;
+/** Mic audio passes through the gate: while the client is voiced, the mic sends silence (keeps the stream timing). */
+function gateMic(b: Buffer): Buffer {
+  if (!useGate || !gate.closed()) return b;
+  gatedMs += (b.length / 32000) * 1000;
+  return Buffer.alloc(b.length);
+}
+// Capture box: phones, emails, domains. The last two finals per channel are joined so a number split across finals is found.
+const lastFinals: Partial<Record<Channel, string[]>> = {};
+const captured = new Set<string>();
+function capture(ch: Channel, text: string) {
+  if (!S.capture.enabled) return;
+  const lf = (lastFinals[ch] ??= []); lf.push(text); if (lf.length > 2) lf.shift();
+  for (const c of extract(lf.join(" "))) {
+    const k = `${c.kind}:${c.value}`;
+    if (captured.has(k)) continue;
+    captured.add(k);
+    log.write("cards", { type: "capture", ch, ...c });
+    console.log(`\n[📋 ${c.kind}] ${c.value}`);
+  }
+}
 let lastCardAt = 0, lastMeVoiced = 0, turnSeq = 0;
 let current: AbortController | undefined;
 let quiet = S.cards.quiet, consented = !!fileArg || !S.privacy.requireConsentAck, shuttingDown = false;
@@ -153,7 +184,7 @@ function onQuestion(r: SttResult, reason = "") {
   const recent = transcript.slice(-12).map((l) => `${l.ch}: ${l.text}`).join("\n");
   lat.reqAt = Date.now();
   runReflex({
-    registry, models: usable, cfg: S.llm.reflex, prefix, transcript: recent, question: r.text, signal: ac.signal,
+    registry, models: usable, cfg: S.llm.reflex, prefix, transcript: recent, question: r.text, context: contextNotes, signal: ac.signal,
     onFail: (model, err) => llmFailed(model, err),
     onSwitch: (from, to, err) => { log.write("events", { type: "llm.switch", turnId, from, to, kind: err.kind }); console.log(`\n↪ AI ${from} -> ${to} (${describe(err)})`); },
     h: {
@@ -272,7 +303,18 @@ function flush(ch: Channel) {
 function onResult(r: SttResult) {
   if (!r.isFinal) return;
   log.write("events", { type: "stt", ch: r.channel, final: true, speechFinal: r.speechFinal, text: r.text, speechEndWall: r.speechEndWall });
+  if (r.channel === "them" && r.text) echo.noteThem(r.text, r.arrivedAt);
+  // "me" lines wait briefly so the client line they may echo has arrived, then go through the echo filter.
+  if (r.channel === "me" && r.text && useFilter && !shuttingDown) { setTimeout(() => acceptResult(r, true), ECHO.filterDelayMs); return; }
+  acceptResult(r, false);
+}
+function acceptResult(r: SttResult, checkEcho: boolean) {
+  if (checkEcho) {
+    const e = echo.isEcho(r.text);
+    if (e.echo) { echoDropped++; log.write("events", { type: "echo.drop", text: r.text, score: Number(e.score.toFixed(2)) }); return; }
+  }
   if (r.text) {
+    capture(r.channel, r.text);
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) lastMeVoiced = Date.now();
     transcript.push({ ch: r.channel, text: r.text });
     log.write("transcript", { ch: r.channel, text: r.text, words: r.words });
@@ -292,6 +334,8 @@ function setupKeys(onEnter: () => void) {
     for (const ch of b.toString()) {
       if (keyWaiter) { const w = keyWaiter; keyWaiter = undefined; w(ch); continue; }
       if (ch === "\u0003") { void shutdown(); return; }
+      if (noteBuf !== undefined) { noteKey(ch); continue; }
+      if (ch === "n" || ch === "N") { noteBuf = ""; process.stdout.write("\nNote for the AI (Enter = add, Esc = cancel): "); continue; }
       if (ch === "\r" || ch === "\n") onEnter();
       if (ch === "q" || ch === "Q") {
         quiet = !quiet; log.write("events", { type: "quiet", on: quiet });
@@ -300,6 +344,19 @@ function setupKeys(onEnter: () => void) {
       }
     }
   });
+}
+// Typed context note (instant-start mode: tell Wingman what the call is about, mid-call).
+let noteBuf: string | undefined;
+function noteKey(ch: string) {
+  if (ch === "\u001b") { noteBuf = undefined; process.stdout.write(" (cancelled)\n"); return; }
+  if (ch === "\r" || ch === "\n") {
+    const note = (noteBuf ?? "").trim(); noteBuf = undefined;
+    if (note) { contextNotes.push(note.slice(0, 300)); log.write("events", { type: "context.note", note }); process.stdout.write(`\n✓ note added (${contextNotes.length})\n`); }
+    else process.stdout.write("\n");
+    return;
+  }
+  if (ch === "\u007f" || ch === "\b") { if (noteBuf) { noteBuf = [...noteBuf].slice(0, -1).join(""); process.stdout.write("\b \b"); } return; }
+  if (ch >= " ") { noteBuf += ch; process.stdout.write(ch); }
 }
 const askKey = (ms: number) => new Promise<string>((res) => { const t = setTimeout(() => { keyWaiter = undefined; res(""); }, ms); keyWaiter = (k) => { clearTimeout(t); res(k); }; });
 
@@ -317,10 +374,12 @@ async function shutdown() {
   try {
     cost.setSttSeconds(sttSeconds());
     log.write("usage", { role: "stt", vendor: them?.provider, seconds: { me: me?.audioSeconds, them: them?.audioSeconds }, bySeconds: sttSeconds(), usd: cost.sttUsd, dropped: { me: me?.dropped, them: them?.dropped } });
+    log.write("events", { type: "echo.summary", mode: ECHO.mode, gatedSeconds: Math.round(gatedMs / 1000), echoDropped });
     log.write("usage", { role: "summary", llmUsd: cost.llmUsd, sttUsd: cost.sttUsd, totalUsd: cost.totalUsd, roles: cost.roles, unpriced: [...cost.unpriced] });
     const summary = speedSummary();
     log.write("events", { type: "speed.summary", summary });
     log.update({ endedAt: new Date().toISOString(), crashed });
+    console.log(`\nSpeakers mode (${ECHO.mode}): mic muted ${Math.round(gatedMs / 1000)} s while the client talked · ${echoDropped} echo lines dropped`);
     console.log(`\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${me?.dropped ?? 0}, them ${them?.dropped ?? 0}`);
   } catch { /* best effort */ }
   let del = discard;
@@ -411,7 +470,8 @@ async function main() {
     });
   }
   console.log(`Wingman Stage 0 · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} bank cards${noAi ? " · bank only" : ""}${discard ? " · --discard" : ""}`);
-  console.log(`Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = consent confirmed · q = quiet · Ctrl+C = stop.`);
+  console.log(`Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = consent confirmed · q = quiet · n = add a note for the AI · Ctrl+C = stop.`);
+  console.log(`Speakers mode: ${ECHO.mode} (audio.echo.mode; "filter" is best with headphones) · capture box ${S.capture.enabled ? "on" : "off"}`);
 
   // Consent card: re-emitted until confirmed (the overlay may start late).
   const consentCard = (): Card => ({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: CONSENT_SAY, facts: ["להגיד את זה בתחילת השיחה", "הלקוח לא מסכים: Ctrl+C", "אחרי שהסכים: Enter"], at: Date.now() });
@@ -433,7 +493,7 @@ async function main() {
 
   if (fileArg) {
     const f = new FileSource(fileArg);
-    f.on("pcm-me", (b) => me.send(b)); f.on("pcm-them", (b) => them.send(b));
+    f.on("pcm-them", (b) => { gate.noteThemPeak(peakOf(b)); them.send(b); }); f.on("pcm-me", (b) => me.send(gateMic(b)));
     f.on("end", () => setTimeout(() => void shutdown(), 4000));
     await f.start(); stops.push(() => f.stop());
   } else {
@@ -443,11 +503,11 @@ async function main() {
     const sys = srcKind === "audiotee" ? new SystemSource() : srcKind === "device" ? new MicSource(S.audio.system.device) : undefined;
     const mic = new MicSource(S.audio.mic.device);
     console.log(`Mic device: ${mic.device} (audio.mic.device / WINGMAN_MIC) · client audio: ${srcKind}${srcKind === "device" ? ` (${S.audio.system.device})` : ""}`);
-    mic.on("pcm", (b: Buffer) => { if (consented) { me.send(b); micPeakAfterStart = Math.max(micPeakAfterStart, peakOf(b)); } });
+    mic.on("pcm", (b: Buffer) => { if (consented) { micPeakAfterStart = Math.max(micPeakAfterStart, peakOf(b)); me.send(gateMic(b)); } });
     mic.on("error", (e) => { console.error("mic error:", e.message); health("mic", "red", "MIC ERROR – המיקרופון נפל", e.message); });
     mic.on("log", (m: string) => console.log(m));
     if (sys) {
-      sys.on("pcm", (b: Buffer) => { if (consented) them.send(b); });
+      sys.on("pcm", (b: Buffer) => { gate.noteThemPeak(peakOf(b)); if (consented) them.send(b); });
       sys.on("error", (e: Error) => { console.error("system audio error:", e.message); health("sys", "red", "SYSTEM AUDIO ERROR – לא שומעים את הלקוח", e.message); });
       sys.on("log", (m: string) => console.log(m));
       await sys.start();

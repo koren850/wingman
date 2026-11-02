@@ -42,7 +42,7 @@ ${index}
 
 export type ReflexConfig = Pick<Settings["llm"]["reflex"], "timeoutMs" | "maxTokens" | "maxRetries" | "effort" | "thinking" | "cache">;
 export type ReflexRun = {
-  registry: ModelRegistry; models: string[]; cfg: ReflexConfig; prefix: string; transcript: string; question: string; signal: AbortSignal; h: ReflexHandlers;
+  registry: ModelRegistry; models: string[]; cfg: ReflexConfig; prefix: string; transcript: string; question: string; context?: string[]; signal: AbortSignal; h: ReflexHandlers;
   /** called when a model fails and the next one is tried */
   onSwitch?: (from: string, to: string, err: ProviderError) => void;
   /** called for every failed attempt (feed circuit breakers) */
@@ -73,7 +73,7 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
     // ai 7: system text goes through `instructions` (a system message inside `messages` throws InvalidPromptError).
     instructions: { role: "system", content: o.prefix, ...(cacheOptionsFor(ref, o.cfg.cache) ? { providerOptions: cacheOptionsFor(ref, o.cfg.cache) } : {}) },
     messages: [
-      { role: "user", content: `<call_transcript>\n${o.transcript}\n</call_transcript>\n\nThe client just said: <call_transcript>${o.question}</call_transcript>\nRespond in the exact format.` },
+      { role: "user", content: `${o.context?.length ? `Dan's own notes for this call (trusted, typed by Dan):\n${o.context.map((c) => `- ${c}`).join("\n")}\n\n` : ""}<call_transcript>\n${o.transcript}\n</call_transcript>\n\nThe client just said: <call_transcript>${o.question}</call_transcript>\nRespond in the exact format.` },
     ],
   } as any);
 

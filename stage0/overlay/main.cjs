@@ -1,14 +1,16 @@
 // Stage 0 answer window: watches calls/latest/cards.jsonl and shows the newest cards.
 // No network, no listener; content is local text only. Opens on the second display if one exists.
-const { app, BrowserWindow, screen, globalShortcut } = require("electron");
+const { app, BrowserWindow, screen, globalShortcut, clipboard, ipcMain } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const CALLS = path.join(__dirname, "..", "calls");
 // Settings arrive as JSON from src/overlay.ts (call.ts / pnpm overlay). Defaults here equal config/defaults.yaml.
-const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, maxCards: 4, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P" } },
+const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, maxCards: 4, rewindSeconds: 30, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K" } },
   (() => { try { return JSON.parse(process.env.WINGMAN_OVERLAY || "{}"); } catch { return {}; } })());
-let win, watchedFile, offset = 0, timer;
+let win, timer, lastCapture;
+// Tailed files of calls/latest: cards.jsonl (cards + captures) and transcript.jsonl (for the rewind panel).
+const tails = { cards: { file: undefined, offset: 0 }, transcript: { file: undefined, offset: 0 } };
 
 // S3: with a single display the overlay would sit on the shared screen. Refuse unless overlay.allowPrimary (WINGMAN_ALLOW_PRIMARY=1).
 function pickDisplay() {
@@ -40,32 +42,46 @@ function create() {
   // overlay.contentProtection: false (WINGMAN_SHOW_IN_CAPTURE=1) turns it off for the Zoom share test.
   if (CFG.contentProtection) win.setContentProtection(true);
   win.loadFile(path.join(__dirname, "index.html"));
-  win.webContents.on("did-finish-load", () => win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt }));
+  win.webContents.on("did-finish-load", () => win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys }));
   timer = setInterval(poll, 100);
   // S4: focusable:false means Esc never reaches the window, so clear/pause are global shortcuts.
   const ok1 = globalShortcut.register(CFG.hotkeys.clear, () => win && win.webContents.send("clear"));
   const ok2 = globalShortcut.register(CFG.hotkeys.pause, () => win && win.webContents.send("pause"));
-  if (!ok1 || !ok2) console.error("Could not register global shortcuts (" + CFG.hotkeys.clear + " = clear, " + CFG.hotkeys.pause + " = pause).");
+  const ok3 = globalShortcut.register(CFG.hotkeys.rewind, () => win && win.webContents.send("rewind"));
+  const ok4 = globalShortcut.register(CFG.hotkeys.copy, () => { if (lastCapture) { clipboard.writeText(lastCapture); win && win.webContents.send("copied", lastCapture); } });
+  if (!ok1 || !ok2 || !ok3 || !ok4) console.error("Could not register some global shortcuts (" + Object.entries(CFG.hotkeys).map(([k, v]) => v + " = " + k).join(", ") + ").");
+  // Click on a captured item copies it (the window never takes focus).
+  ipcMain.on("copy", (_e, text) => { if (typeof text === "string" && text.length < 200) { clipboard.writeText(text); win && win.webContents.send("copied", text); } });
 }
 
 function poll() {
-  let target;
-  try { target = path.join(fs.realpathSync(path.join(CALLS, "latest")), "cards.jsonl"); } catch { return; }
-  if (target !== watchedFile) { watchedFile = target; offset = 0; win.webContents.send("reset"); }
+  let dir;
+  try { dir = fs.realpathSync(path.join(CALLS, "latest")); } catch { return; }
+  const cardsFile = path.join(dir, "cards.jsonl");
+  if (cardsFile !== tails.cards.file) { tails.cards = { file: cardsFile, offset: 0 }; tails.transcript = { file: path.join(dir, "transcript.jsonl"), offset: 0 }; lastCapture = undefined; win.webContents.send("reset"); }
+  for (const c of readNew(tails.cards)) {
+    if (c.type === "capture") { lastCapture = c.value; win.webContents.send("capture", c); }
+    else if (!c.hidden) win.webContents.send("card", c);
+  }
+  for (const l of readNew(tails.transcript)) win.webContents.send("line", { t: l.t, ch: l.ch, text: l.text });
+}
+
+/** New complete JSONL rows since the last read. */
+function readNew(tail) {
   let size;
-  try { size = fs.statSync(target).size; } catch { return; }
-  if (size <= offset) return;
-  const fd = fs.openSync(target, "r");
-  const buf = Buffer.alloc(size - offset);
-  fs.readSync(fd, buf, 0, buf.length, offset);
+  try { size = fs.statSync(tail.file).size; } catch { return []; }
+  if (size <= tail.offset) return [];
+  const fd = fs.openSync(tail.file, "r");
+  const buf = Buffer.alloc(size - tail.offset);
+  fs.readSync(fd, buf, 0, buf.length, tail.offset);
   fs.closeSync(fd);
   const text = buf.toString("utf8");
   const lastNl = text.lastIndexOf("\n");
-  if (lastNl < 0) return;
-  offset += Buffer.byteLength(text.slice(0, lastNl + 1));
-  for (const line of text.slice(0, lastNl).split("\n")) {
-    try { const c = JSON.parse(line); if (!c.hidden) win.webContents.send("card", c); } catch {}
-  }
+  if (lastNl < 0) return [];
+  tail.offset += Buffer.byteLength(text.slice(0, lastNl + 1));
+  const rows = [];
+  for (const line of text.slice(0, lastNl).split("\n")) { try { rows.push(JSON.parse(line)); } catch {} }
+  return rows;
 }
 
 app.whenReady().then(create);

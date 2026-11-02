@@ -21,10 +21,19 @@
   /* Cards are Hebrew: force RTL (no "plaintext"), so a line starting with "DNS" still reads right-to-left. */
   .badge { font-size:13px; color:var(--muted); margin-top:8px; direction:ltr; text-align:left; }
   #empty { color:var(--muted); font-size:18px; padding:24px; text-align:center; }
+  /* Rewind panel ("what did they say?") and capture box. */
+  #rewind { display:none; background:#1f2733; border:2px solid var(--ai); border-radius:14px; padding:12px 16px; max-height:340px; overflow-y:auto; }
+  #rewind .h { color:var(--muted); font-size:14px; margin-bottom:6px; }
+  #rewind .l { font-size:22px; line-height:1.35; margin:4px 0; }
+  #rewind .l.me { color:var(--muted); font-size:17px; }
+  #capture { display:none; flex-wrap:wrap; gap:8px; }
+  .cap { -webkit-app-region:no-drag; cursor:pointer; background:#26303d; border-radius:10px; padding:6px 12px; font-size:20px; direction:ltr; unicode-bidi:isolate; }
+  .cap .k { color:var(--muted); font-size:13px; margin-inline-end:8px; unicode-bidi:isolate; }
+  .cap.copied { background:#2f9e6b; }
 </style>
 </head>
 <body>
-<div id="wrap"><div id="health"></div><div id="paused">⏸ מושהה (Ctrl+Opt+P)</div><div id="empty">Wingman מקשיב… הכרטיסים יופיעו כאן</div><div id="cards" style="display:flex;flex-direction:column;gap:12px"></div></div>
+<div id="wrap"><div id="health"></div><div id="paused">⏸ מושהה (Ctrl+Opt+P)</div><div id="rewind"></div><div id="capture"></div><div id="empty">Wingman מקשיב… הכרטיסים יופיעו כאן</div><div id="cards" style="display:flex;flex-direction:column;gap:12px"></div></div>
 <script>
   const wrap = document.getElementById("wrap");
   const cardsBox = document.getElementById("cards");
@@ -66,9 +75,40 @@
     b.textContent = { bank: "bank", ai: "AI · not verified", stall: "stall", info: "reminder" }[c.badge] + (c.dim ? " · low confidence / you were already talking" : "");
     el.append(b);
   }
-  window.wingman.onConfig((c) => { MAX = c.maxCards; document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px'); });
+  // Rewind: keep recent transcript lines; the hotkey shows the last N seconds (auto-hides after 20 s).
+  const lines = []; let REWIND_S = 30, rewindTimer;
+  const rewindBox = document.getElementById("rewind"), capBox = document.getElementById("capture");
+  function showRewind() {
+    if (rewindBox.style.display === "block") { rewindBox.style.display = "none"; return; }
+    const since = Date.now() - REWIND_S * 1000;
+    let recent = lines.filter((l) => l.t >= since);
+    if (!recent.length) recent = lines.slice(-4);   // quiet for a while: show the last few lines anyway
+    rewindBox.replaceChildren();
+    const h = document.createElement("div"); h.className = "h"; h.textContent = lines.some((l) => l.t >= since) ? `${REWIND_S} השניות האחרונות` : "השורות האחרונות"; rewindBox.append(h);
+    if (!recent.length) { const e = document.createElement("div"); e.className = "l"; e.textContent = "אין טקסט מהשניות האחרונות"; rewindBox.append(e); }
+    for (const l of recent) {
+      const d = document.createElement("div"); d.className = `l ${l.ch}`; d.dir = "rtl";
+      d.textContent = (l.ch === "me" ? "אני: " : "לקוח: ") + l.text; rewindBox.append(d);
+    }
+    rewindBox.style.display = "block"; rewindBox.scrollTop = rewindBox.scrollHeight;
+    clearTimeout(rewindTimer); rewindTimer = setTimeout(() => { rewindBox.style.display = "none"; }, 20000);
+  }
+  window.wingman.onLine((l) => { lines.push(l); while (lines.length > 400) lines.shift(); });
+  window.wingman.onRewind(showRewind);
+  const caps = new Map();
+  window.wingman.onCapture((c) => {
+    if (caps.has(c.value)) return;
+    const el = document.createElement("div"); el.className = "cap";
+    const k = document.createElement("span"); k.className = "k"; k.textContent = { phone: "טלפון", email: "מייל", domain: "דומיין" }[c.kind] || c.kind;
+    const v = document.createElement("span"); v.textContent = c.value;
+    el.append(k, v); el.addEventListener("click", () => window.wingman.copy(c.value));
+    caps.set(c.value, el); capBox.prepend(el); capBox.style.display = "flex";
+    while (caps.size > 8) { const [key, node] = caps.entries().next().value; node.remove(); caps.delete(key); }
+  });
+  window.wingman.onCopied((t) => { const el = caps.get(t); if (el) { el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 1200); } });
+  window.wingman.onConfig((c) => { REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px'); });
   window.wingman.onCard(render);
-  window.wingman.onReset(() => { clearCards(); for (const el of bars.values()) el.remove(); bars.clear(); });
+  window.wingman.onReset(() => { clearCards(); lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none"; rewindBox.style.display = "none"; for (const el of bars.values()) el.remove(); bars.clear(); });
   window.wingman.onClear(clearCards);
   window.wingman.onPause(() => { paused = !paused; document.getElementById("paused").style.display = paused ? "block" : "none"; if (paused) clearCards(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") clearCards(); });

@@ -41,7 +41,9 @@ export const schema = z.strictObject({
     system: z.strictObject({ source: z.enum(["audiotee", "device", "off"]), device: z.string().min(1) }),
     mic: z.strictObject({ device: z.string().min(1) }),
     watchdog: z.strictObject({ silentThemMs: int(3000, 60000), silentPeak: z.number().min(0).max(1), micSilentMs: int(3000, 60000), micPeak: z.number().min(0).max(1) }),
+    echo: z.strictObject({ mode: z.enum(["gate", "filter", "both", "off"]), gatePeak: z.number().min(0).max(1), gateHangoverMs: int(0, 3000), filterWindowMs: int(500, 10000), filterThreshold: z.number().min(0.3).max(1), filterDelayMs: int(0, 3000) }),
   }),
+  capture: z.strictObject({ enabled: z.boolean() }),
   health: z.strictObject({ tickMs: int(200, 10000), recoverStableMs: int(1000, 600000), slowSttMs: int(200, 10000), minSamples: int(1, 20) }),
   budget: z.strictObject({
     maxUsdPerCall: z.number().min(0), warnAt: z.number().min(0).max(1), maxMinutesPerCall: int(1, 600), maxUsdPerMonth: z.number().min(0).nullable(),
@@ -50,7 +52,8 @@ export const schema = z.strictObject({
   privacy: z.strictObject({ requireConsentAck: z.boolean(), consentText: z.string().min(10), storeAudio: z.literal(false), retentionDays: int(1, 365) }),
   overlay: z.strictObject({
     enabled: z.boolean(), display: z.enum(["secondary", "primary"]), allowPrimary: z.boolean(), contentProtection: z.boolean(), fontPt: int(18, 60),
-    hotkeys: z.strictObject({ clear: z.string().min(1), pause: z.string().min(1) }),
+    hotkeys: z.strictObject({ clear: z.string().min(1), pause: z.string().min(1), rewind: z.string().min(1), copy: z.string().min(1) }),
+    rewindSeconds: int(5, 300),
   }),
   system: z.strictObject({ caffeinate: z.boolean() }),
   keys: z.strictObject({ file: z.string().min(1) }),
@@ -114,6 +117,7 @@ export function parseScalar(raw: string, def: unknown): unknown {
 const ENV_MAP: { env: string; key: string; map?: (v: string) => unknown }[] = [
   { env: "WINGMAN_ENDPOINT_MS", key: "stt.endpointMs" },
   { env: "WINGMAN_MIC", key: "audio.mic.device", map: (v) => v },
+  { env: "WINGMAN_ECHO", key: "audio.echo.mode" },
   { env: "WINGMAN_ALLOW_PRIMARY", key: "overlay.allowPrimary", map: (v) => v === "1" || v === "true" },
   { env: "WINGMAN_SHOW_IN_CAPTURE", key: "overlay.contentProtection", map: (v) => !(v === "1" || v === "true") },
   { env: "WINGMAN_STT_PROVIDER", key: "stt.provider" },

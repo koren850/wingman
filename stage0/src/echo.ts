@@ -1,0 +1,39 @@
+// Speakers mode (PLAN §0.4): without headphones the mic also hears the client from the speakers.
+// Two cheap layers: (1) mic gate: while the client channel is voiced, the mic sends silence instead of sound;
+// (2) echo text filter: a "me" final whose words mostly repeat a recent "them" final is dropped as echo.
+import { tokens } from "./normalize.ts";
+
+export type EchoMode = "gate" | "filter" | "both" | "off";
+
+/** Share of the mic line's words that also appear in the client line (0-1). */
+export function overlap(meText: string, themText: string): number {
+  const me = tokens(meText);
+  if (!me.length) return 0;
+  const them = new Set(tokens(themText));
+  return me.filter((t) => them.has(t)).length / me.length;
+}
+
+export class EchoFilter {
+  private recent: { text: string; at: number }[] = [];
+  constructor(private o: { windowMs: number; threshold: number }) {}
+  /** Remember a client final (call for every "them" final). */
+  noteThem(text: string, at = Date.now()) {
+    this.recent.push({ text, at });
+    this.recent = this.recent.filter((r) => at - r.at <= this.o.windowMs * 4);
+  }
+  /** True when the mic line is an echo of what the client said within the window. Short mic lines (1 word) need full overlap. */
+  isEcho(meText: string, at = Date.now()): { echo: boolean; score: number } {
+    let best = 0;
+    for (const r of this.recent) if (at - r.at <= this.o.windowMs) best = Math.max(best, overlap(meText, r.text));
+    const short = tokens(meText).length < 2;
+    return { echo: short ? best >= 1 : best >= this.o.threshold, score: best };
+  }
+}
+
+/** Mic gate: true while the client was voiced within the hangover. */
+export class MicGate {
+  private lastThemVoiced = -Infinity;
+  constructor(private o: { hangoverMs: number; peak: number }) {}
+  noteThemPeak(peak: number, at = Date.now()) { if (peak > this.o.peak) this.lastThemVoiced = at; }
+  closed(at = Date.now()): boolean { return at - this.lastThemVoiced < this.o.hangoverMs; }
+}

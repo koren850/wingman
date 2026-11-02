@@ -9,7 +9,9 @@
 
 ## During
 - Cards are hints, not scripts: read, rephrase, never quote prices, dates or promises.
-- `q` = quiet (cards logged, not shown). Ctrl+Opt+C clears the window, Ctrl+Opt+P pauses it.
+- `q` = quiet (cards logged, not shown). `n` = type a note for the AI ("this is about the shop migration"), Enter adds it.
+- Ctrl+Opt+R = "what did they say?" (last 30 s as text). Ctrl+Opt+K = copy the newest captured phone/email/domain (or click it). Ctrl+Opt+C clears the window, Ctrl+Opt+P pauses it.
+- Headphones are optional: speakers mode (`audio.echo.mode: both`) mutes the mic while the client talks and drops echo lines. With headphones, `WINGMAN_ECHO=filter` keeps your words when you talk over the client.
 - Red bar = STT/mic/system audio down. Abort rule: three wrong or late cards in a row, go quiet. Ctrl+C, one restart, then continue without Wingman.
 - Consent withdrawn: Ctrl+C and answer `y` to delete.
 
