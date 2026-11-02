@@ -13,6 +13,10 @@ const PRICE = [
   // free / discount are price statements too
   /(בחינם|חינם|הנחה|הנחות|ללא עלות|בלי עלות|ללא תשלום|בלי תשלום)(?![א-ת])/,
   /\b(for free|free of charge|at no (extra )?(cost|charge)|no charge|discount)\b/i,
+  /\b(it'?s|that'?s|that will be|it will be|it'?ll be|will be|would be)\s+(totally |completely |absolutely |entirely )?free\b|\bcomplimentary\b|\b(no|zero) (extra )?(cost|fee|fees)\b|\bon the house\b/i,
+  // English number words before a currency: "five hundred shekels", "two thousand dollars"
+  /\b(hundred|thousand|million|(?:ten|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|one|two|three|four|five|six|seven|eight|nine)(?:[- ]\w+)?)\s+(?:\w+\s+){0,2}(shekels?|nis|dollars?|euros?|bucks|usd|eur)\b/i,
+  /\b(costs?|prices?|priced|charge[sd]?|fees?|rates?)\s+(of\s+|at\s+|is\s+|are\s+|about\s+|around\s+)?(\d|a hundred|hundreds?|thousands?)/i,
 ];
 const MONTHS = "ינואר|פברואר|מרץ|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר";
 const DATE = [
@@ -26,10 +30,38 @@ const DATE = [
   /בעוד\s(שעה|שעתיים|יום|יומיים|שבוע|שבועיים|חודש|חודשיים)(?![א-ת])/,
   /(עוד היום|עד היום|(נטפל|נסיים|נסדר|נעלה|נעביר|נתקן|נחזור)[^.\n]{0,25}היום)(?![א-ת])/,
   /\b(tomorrow|by (monday|tuesday|wednesday|thursday|friday)|next week|within \d+ (hours|days))\b/i,
+  // relative dates and clock times: "בעוד שלושה ימים", "בעוד 3 ימים", "בעוד כמה שעות", "ב-14:30", "in 3 days", "next Monday", "on Friday"
+  /בעוד\s+(?:\S+\s+){0,2}?(שניות|דקות|דקה|שעות|שעה|שעתיים|ימים|יום|יומיים|שבועות|שבוע|שבועיים|חודשים|חודש|חודשיים|שנים|שנה|שנתיים)(?![א-ת])/,
+  /(ימים|שבועות|חודשים|שעות|דקות|יומיים|שבועיים|חודשיים|שעתיים)\s+(מהיום|מעכשיו|מחר)(?![א-ת])/,
+  /(?<![\d:.])\d{1,2}:\d{2}(?![\d:])/,
+  /(?:\d{1,2}|אחת|שתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר|אחת עשרה|שתים עשרה)\s*(?:בבוקר|בצהריים|בערב|בלילה|אחר הצהריים|אחה"צ)/,
+  /(?:\d{1,2}|אחד|שניים|שלושה|ארבעה|חמישה|שישה|שבעה|שמונה|תשעה|עשרה|עשר|עשרים|שלושים)\s+ב?ל?חודש(?![א-ת])/,
+  /(?<![א-ת])(בתחילת|בתחילתו|באמצע|בסוף|בראשית|לקראת|עד)\s(ה)?(חודש|שבוע|שנה|רבעון)(?![א-ת])/,
+  /(?<![א-ת])(עד|לקראת|ב|אחרי|לפני)\s?(חג\s|ראש השנה|יום כיפור|סוכות|חנוכה|פורים|פסח|שבועות|הפסח)/,
+  /(?<![\d.,])(?:ב-?|עד\s|בשנת\s)?20[2-4]\d(?![\d.,])/,
+  /\bin\s+(?:\d+|an?|one|two|three|four|five|six|seven|eight|nine|ten|a few|a couple of|a couple|several|\w+teen)\s+(?:more\s+)?(minutes?|hours?|days?|weeks?|months?|years?)\b/i,
+  /\b(?:next|this coming|coming)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|year|weekend)\b/i,
+  /\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b/i,
+  /\b(?:at|by|before|after)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b\d{1,2}:\d{2}\b/i,
+  /\b(?:eod|eow|end of (?:the )?(?:day|week|month|quarter)|tonight|this (?:evening|afternoon|weekend))\b/i,
 ];
-const PROMISE = [/(?<!לא\s)(?<![א-ת])(אני\s)?בטוח ש/, /(?<![א-ת])בטוחה ש/,/(אפס|ללא|בלי)\s(השבתה|סיכון)/, /(אני\s)?(מבטיח|מבטיחה|מתחייב|מתחייבת|מובטח|אחריות מלאה|100\s?%|בוודאות)/, /\b(guarantee|promise|100%)\b/i];
+// Promises are first-person: "אני מבטיח", "נבטיח", "אפשר להבטיח". A definition ("SLA: הספק מתחייב לזמינות") or a hedge ("אי אפשר להבטיח", "אני לא מבטיח") is fine.
+const PROMISE = [
+  /(?<!לא\s)(?<![א-ת])(אני\s)?בטוח ש/, /(?<![א-ת])בטוחה ש/,
+  /(אפס|ללא|בלי)\s(שום\s)?(השבתה|סיכון)/, /(?<![א-ת])אין\s(שום\s)?(סיכון|סיכוי\sש|בעיה\sש)/, /(?<![א-ת])(שום סיכון|אל\s(תדאג|תדאגו|תדאגי|תחשוש))(?![א-ת])/,
+  /(?<![א-ת])ש?(אני|אנחנו|אנו|אתה|את|אתם|אתן)\s(?!לא\s)(?:\S+\s)?(?!לא\s)(מבטיח|מבטיחה|מבטיחים|מתחייב|מתחייבת|מתחייבים|ערב|ערבה|ערבים)(?![א-ת])/,
+  /(?<![א-ת])(נבטיח|אבטיח|נתחייב|אתחייב|מובטח|מובטחת|אחריות מלאה|בוודאות|100\s?%)(?![א-ת])/,
+  /(?<!(?:לא|אי|אין)\s(?:\S+\s){0,2})(?<![א-ת])(אפשר|ניתן|אוכל|נוכל|אני יכול|אני יכולה|אנחנו יכולים|יכול|יכולים)\s(ל)?הבטיח(?![א-ת])/, /(?<!(?:לא|אי|אין)\s(?:\S+\s){0,2})(?<![א-ת])להבטיח(?![א-ת])/,
+  /\b(?:i|we)(?:'ll| will|'d| would| can| do)?\s+(?:\w+\s)?(?:guarantee|promise|assure)\b/i, /\b(?:fully |100% |totally )?guaranteed\b(?! to be)/i, /\b(?:100\s?%|no risk|zero risk|risk[- ]free|without (?:any )?risk|no chance (?:of|that))\b/i,
+];
 
 export type GuardResult = { ok: boolean; rule?: string };
+
+/** Promises only (a promise is never allowed, even where a price or a date is: guardMe checks this first). */
+export function guardPromise(text: string): GuardResult {
+  for (const r of PROMISE) if (r.test(text)) return { ok: false, rule: "promise" };
+  return { ok: true };
+}
 
 export function guard(text: string): GuardResult {
   for (const r of PRICE) if (r.test(text)) return { ok: false, rule: "price" };

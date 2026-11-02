@@ -10,9 +10,15 @@ const BRAND_ICON = path.join(__dirname, "..", "..", "brand", "png", "icon-512.pn
 const CALLS = process.env.WINGMAN_CALLS_DIR || path.join(__dirname, "..", "calls");
 const SNAP = process.env.WINGMAN_OVERLAY_SNAPSHOT;
 // Settings arrive as JSON from src/overlay.ts (call.ts / pnpm overlay). Defaults here equal config/defaults.yaml.
-const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, maxCards: 4, rewindSeconds: 30, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K" } },
+const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, showLastLine: true, maxCards: 4, rewindSeconds: 30, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K", checklist: "Control+Alt+L" } },
   (() => { try { return JSON.parse(process.env.WINGMAN_OVERLAY || "{}"); } catch { return {}; } })());
 let win, timer, lastCapture;
+// Orphan guard: when the engine (call.ts) that opened this window dies, even by SIGKILL, its stdin pipe closes and its pid disappears: quit.
+if (process.env.WINGMAN_WATCH_PARENT === "1") {
+  const parent = process.ppid, bye = () => { try { globalShortcut.unregisterAll(); } catch {} app.exit(0); };
+  process.stdin.on("end", bye); process.stdin.on("close", bye); process.stdin.on("error", bye); process.stdin.resume();
+  setInterval(() => { try { process.kill(parent, 0); } catch { bye(); } if (process.ppid !== parent) bye(); }, 2000).unref();
+}
 // Tailed files of calls/latest: cards.jsonl (cards + captures) and transcript.jsonl (for the rewind panel).
 const tails = { cards: { file: undefined, offset: 0 }, transcript: { file: undefined, offset: 0 } };
 
@@ -52,7 +58,7 @@ function create() {
   win.loadFile(path.join(__dirname, "index.html"));
   // Poll only after the page has its listeners; a reload replays the call files from the start.
   win.webContents.on("did-finish-load", () => {
-    win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
+    win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, showLastLine: CFG.showLastLine !== false, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
     tails.cards = { file: undefined, offset: 0 }; tails.transcript = { file: undefined, offset: 0 };
     clearInterval(timer); timer = setInterval(poll, 100);
   });
@@ -62,7 +68,8 @@ function create() {
   const ok2 = globalShortcut.register(CFG.hotkeys.pause, () => win && win.webContents.send("pause"));
   const ok3 = globalShortcut.register(CFG.hotkeys.rewind, () => win && win.webContents.send("rewind"));
   const ok4 = globalShortcut.register(CFG.hotkeys.copy, () => { if (lastCapture) { clipboard.writeText(lastCapture); win && win.webContents.send("copied", lastCapture); } });
-  if (!ok1 || !ok2 || !ok3 || !ok4) console.error("Could not register some global shortcuts (" + Object.entries(CFG.hotkeys).map(([k, v]) => v + " = " + k).join(", ") + ").");
+  const ok5 = !CFG.hotkeys.checklist || globalShortcut.register(CFG.hotkeys.checklist, () => win && win.webContents.send("checklist"));
+  if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5) console.error("Could not register some global shortcuts (" + Object.entries(CFG.hotkeys).map(([k, v]) => v + " = " + k).join(", ") + ").");
   // Click on a captured item copies it (the window never takes focus).
   ipcMain.on("copy", (_e, text) => { if (typeof text === "string" && text.length < 200) { clipboard.writeText(text); win && win.webContents.send("copied", text); } });
 }
@@ -83,6 +90,8 @@ function poll() {
   if (cardsFile !== tails.cards.file) { tails.cards = { file: cardsFile, offset: 0 }; tails.transcript = { file: path.join(dir, "transcript.jsonl"), offset: 0 }; lastCapture = undefined; win.webContents.send("reset"); }
   for (const c of readNew(tails.cards)) {
     if (c.type === "capture") { lastCapture = c.value; win.webContents.send("capture", c); }
+    else if (c.type === "ask") win.webContents.send("ask", { on: !!c.on, until: Number(c.until) || 0 });
+    else if (c.type === "frame") { if (c.frame && typeof c.frame === "object") win.webContents.send("frame", c.frame); }
     else if (!c.hidden) win.webContents.send("card", c);
   }
   for (const l of readNew(tails.transcript)) win.webContents.send("line", { t: l.t, ch: l.ch, text: l.text });

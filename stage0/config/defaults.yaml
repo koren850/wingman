@@ -12,21 +12,23 @@ stt:
   provider: deepgram       # deepgram | soniox | gladia   (soniox and gladia are EXPERIMENTAL: not tested live)
   fallback: []             # providers to switch to mid-call on an auth/quota/outage failure, e.g. [soniox]
   model: nova-3            # model id for the provider (Deepgram: nova-3). Soniox/Gladia use their own default when this is nova-3
-  language: multi          # he | en | multi | auto (auto = multi). multi = Hebrew+English mixing: 52% vs 18% English-term recall on the synthetic gate, 2 Nov. Re-check on real voice
-  endpointMs: 350          # silence (ms) that ends an utterance. Try 700-1000 if questions get split at pauses. Env: WINGMAN_ENDPOINT_MS
-  utteranceEndMs: 1000     # Deepgram utterance_end_ms
+  language: multi          # he = Hebrew only (Nova-3 supports "he"; fewer foreign-script mistakes, weaker on English words) | en | multi | auto (auto = multi). multi = Hebrew+English mixing: 52% vs 18% English-term recall on the synthetic gate, 2 Nov. Re-check on real voice
+  endpointMs: 200          # silence (ms) that ends an utterance. Measured 2 Nov (TTS, real Deepgram): 350 -> final lag p50 0.51 s, 200 -> ~0.4, 100 -> 0.27. Real speech pauses more than TTS: raise to 350-700 if questions get split. Env: WINGMAN_ENDPOINT_MS
+  utteranceEndMs: 1000     # Deepgram utterance_end_ms (docs: min 1000, needs interim_results; the app does not act on UtteranceEnd, so this does not change lag)
   keepAliveMs: 5000        # socket keep-alive interval (Deepgram closes after ~10 s of silence)
   flushFallbackMs: 1500    # handle buffered finals if no speech_final arrives within this time
-  joinWindowMs: 1200       # a short client fragment without an end mark is glued to the next one within this time (split questions). 0 = off
+  joinWindowMs: 1500       # a short client fragment without an end mark is glued to the next one within this time (split questions). 0 = off
   keyterms:
     enabled: auto          # auto | on | off   (off = never send keyterms)
     file: data/keyterms.txt  # one term per line, relative to stage0/
     max: 100               # most terms sent
   circuit:
     failures: 3            # this many failures ...
-    windowMs: 10000        # ... within this window = "repeated failure": switch to the fallback provider
+    windowMs: 10000        # ... within this window = "repeated failure": switch to the fallback provider.
+                           # With no fallback left, Wingman keeps reopening the same provider (backoff up to 10 s, red bar); only 401/402/quota ends the call.
   reconnect:
     ringMs: 2000           # audio kept while the socket is down and replayed on reopen/switch (0 = drop it, old behaviour)
+  dropForeignScript: true  # drop finals that are mostly not Hebrew/Latin/digits (Telugu, Persian... hallucinated on short clips). Counted in events.jsonl (foreign.summary)
 
 # ---- Reflex LLM ----
 llm:
@@ -49,6 +51,17 @@ reflex:
   stallAfterMs: 1800       # no tag by then: show the stall line and keep streaming
   dropStaleMs: 4000        # do not show an answer to a question older than this
   allowAns: true           # false = bank + STALL only (a model ANS answer becomes a stall line). Use false for a first client call
+
+# ---- Answering Dan's own questions (the "me" channel) ----
+assist:
+  answerMe: always         # always = answer a question Dan asks the assistant (not one he asks the other person) | hotkey = only after the ask key | off = never (the ask key still works)
+  askWindowMs: 10000       # after the ask key (Ctrl+Opt+A) the next thing Dan says, within this time, is a question for Wingman
+  model: "anthropic:claude-haiku-5-5"   # decides "asking Wingman or asking the other person?" when the local rules are unsure (one word out, about $0.0002). Must have a price in budget.prices.llm
+  classifyTimeoutMs: 3000
+  themQuietMs: 4000        # still unsure: answer only if the other side has been silent this long, or the call is solo
+  minGapMs: 4000           # at least this long between two unasked answers (the ask key is exempt)
+  maxPerMin: 6             # at most this many unasked answers a minute
+  protectThemMs: 15000     # never show an answer for Dan within this long after a card for the other side's question
 
 # ---- Cards ----
 cards:
@@ -108,6 +121,29 @@ reminders:
   firstAfterMin: 15        # first reminder of uncovered items after this many minutes
   everyMin: 10             # then at most this often
 
+# ---- Call frame: what is this call about? (kind, topic, goal, people, a checklist for this kind of call) ----
+frame:
+  enabled: true            # false = no frame: answers and tips do not know what the call is about
+  model: "anthropic:claude-haiku-5-5"   # must have a price in budget.prices.llm (about $0.0005 per update)
+  everyMs: 60000           # look again at most this often
+  minNewWords: 40          # ... and only when at least this many new words were said
+  windowMin: 3             # the AI reads the last N minutes of the call
+  timeoutMs: 10000
+
+# ---- Live tips: at most one short tip now and then (a question to ask, a term, a reminder) ----
+tips:
+  enabled: true
+  model: "anthropic:claude-haiku-5-5"
+  minGapMs: 120000         # at most one tip per this long
+  afterAnswerMs: 20000     # never within this long after an answer card
+  talkRatio: true          # local tip when you talk more than 75% of the last 5 minutes (no AI)
+  wrapUpAfterMin: 20       # missed must-cover items are nudged once at a wrap-up phrase or after this many minutes
+  timeoutMs: 10000
+
+# ---- Background files from "Plan a call" (text the AI may read as background) ----
+attachments:
+  maxChars: 40000          # at most this many characters in total (the Plan form refuses more); 0 = ignore attachments
+
 # ---- Capture box ----
 capture:
   enabled: true            # phone numbers, emails and domains spoken in the call show in the answer window (copy: overlay.hotkeys.copy)
@@ -138,7 +174,7 @@ budget:
 
 # ---- Privacy and consent ----
 privacy:
-  requireConsentAck: true  # nothing is sent to the cloud until Dan presses Enter
+  requireConsentAck: false # personal use: listening starts with the call. true = wait for a "consent given" click first
   consentText: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך? אם לא, אכבה אותו."
   storeAudio: false        # audio is never saved (must stay false in Stage 0)
   retentionDays: 30        # doctor lists saved calls older than this
@@ -150,11 +186,13 @@ overlay:
   allowPrimary: false      # true = allow the primary screen when there is only one display. Env: WINGMAN_ALLOW_PRIMARY=1
   contentProtection: true  # hide from screen capture (untested with Zoom). Env: WINGMAN_SHOW_IN_CAPTURE=1 turns it off
   fontPt: 30               # say-line font size
+  showLastLine: true       # thin muted strip above the answers with what the client just said (so you see what the card answers)
   hotkeys:
     clear: "Control+Alt+C"
     pause: "Control+Alt+P"
     rewind: "Control+Alt+R"  # "what did they say?": show/hide the last rewindSeconds of the call as text
     copy: "Control+Alt+K"    # copy the newest captured phone/email/domain to the clipboard
+    checklist: "Control+Alt+L"  # show/hide the call checklist (also opens when you hover the 3/6 chip)
   rewindSeconds: 30
   restartMax: 2            # reopen the answer window this many times if it crashes
 

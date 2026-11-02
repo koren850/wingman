@@ -51,3 +51,44 @@ Mailchimp
 קלאודפלר
 וו קומרס
 אלמנטור
+STAR method
+stakeholder
+Fastly
+HSTS
+SLA
+uptime
+Core Web Vitals
+PageSpeed
+Lighthouse
+TTFB
+Redis
+Varnish
+Nginx
+Apache
+Docker
+GitHub
+Bitbucket
+Jira
+Slack
+Figma
+Notion
+HubSpot
+Zapier
+API
+webhook
+CMS
+SEO
+MVP
+CRM
+KPI
+OKR
+roadmap
+onboarding
+sprint
+deadline
+retainer
+rollback
+deployment
+DevOps
+backup
+migration

@@ -1,0 +1,11 @@
+[
+{"speaker":"them","text":"היי דן, מדברת דנה מהחברה"},
+{"speaker":"them","text":"ఇది తెలుగు వచనం మాత్రమే","afterMs":200},
+{"speaker":"me","text":"כמה זה 36 ועוד 42?","afterMs":600},
+{"speaker":"me","text":"מה התקציב שלכם?","afterMs":1100},
+{"speaker":"me","text":"מה ההבדל בין CDN ל-DNS?","afterMs":1100},
+{"speaker":"me","text":"תוכל לספר לי על הטיסה לטוקיו","afterMs":3500},
+{"speaker":"them","text":"כמה זה 12 כפול 3?","afterMs":1500},
+{"speaker":"them","text":"ועוד שאלה, כמה זה עולה לאתר חנות כזה","afterMs":1500},
+{"speaker":"me","text":"מה הבירה של אוסטרליה?","afterMs":1500}
+]

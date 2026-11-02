@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+const feedLib = require("./livefeed.js");
 const ID_RE = /^[0-9A-Z]{26}$/;
 const read = (dir, f) => {
   try {
@@ -82,13 +83,20 @@ function readSummary(dir) {
   if (!o || typeof o !== "object" || Array.isArray(o) || o.v !== 1) return null;
   const strs = (x, n) => (Array.isArray(x) ? x : []).filter((v) => typeof v === "string" && v).slice(0, n).map((v) => v.slice(0, 600));
   const steps = (Array.isArray(o.nextSteps) ? o.nextSteps : []).filter((n) => n && typeof n.what === "string" && n.what).slice(0, 12)
-    .map((n) => ({ who: n.who === "לקוח" ? "לקוח" : "דן", what: n.what.slice(0, 400), when: typeof n.when === "string" && n.when ? n.when.slice(0, 80) : undefined }));
+    .map((n) => ({ who: n.who === "לקוח" ? "לקוח" : typeof n.who === "string" && n.who && n.who !== "דן" ? n.who.replace(/[\u0000-\u001f\u202a-\u202e]/g, "").slice(0, 40) : "דן", what: n.what.slice(0, 400), when: typeof n.when === "string" && n.when ? n.when.slice(0, 80) : undefined }));
   return {
     generatedAt: typeof o.generatedAt === "string" ? o.generatedAt : "", model: typeof o.model === "string" ? o.model.slice(0, 80) : "",
     summary: strs(o.summary, 6), decisions: strs(o.decisions, 12), nextSteps: steps, openQuestions: strs(o.openQuestions, 12),
     followUpEmail: typeof o.followUpEmail === "string" ? o.followUpEmail.slice(0, 3000) : "",
     guardReplaced: o.guard && Number.isFinite(o.guard.replaced) ? o.guard.replaced : 0, costUsd: Number.isFinite(o.costUsd) ? o.costUsd : 0,
   };
+}
+
+/** The last call frame logged in events.jsonl, cleaned, with its checklist result: {frame, done, total, missed[]} or null. */
+function readFrame(events) {
+  const last = events.filter((e) => e && e.type === "frame").at(-1);
+  const frame = last ? feedLib.cleanFrame(last) : null;
+  return frame ? { frame, ...feedLib.frameProgress(frame) } : null;
 }
 
 function getCall(callsDir, id) {
@@ -103,7 +111,7 @@ function getCall(callsDir, id) {
   const tags = {};
   for (const t of read(dir, "tags.jsonl")) if (t && t.id && (t.useful === "y" || t.useful === "n")) tags[t.id] = t.useful;
   return {
-    summary: summarize(callsDir, id), meta: readJson(dir, "call.json"), callSummary: readSummary(dir),
+    summary: summarize(callsDir, id), meta: readJson(dir, "call.json"), callSummary: readSummary(dir), callFrame: readFrame(read(dir, "events.jsonl")),
     transcript: read(dir, "transcript.jsonl").map((r) => ({ t: r.t, ch: r.ch, text: r.text })),
     cards: [...final.values()], captures: rows.filter((c) => c.type === "capture"),
     events: read(dir, "events.jsonl"), latency: read(dir, "latency.jsonl"),
@@ -155,4 +163,4 @@ function deleteCall(callsDir, id) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-module.exports = { ID_RE, callDir, ratableCards, gateNumbers, listCalls, getCall, setTag, searchCalls, deleteCall };
+module.exports = { readFrame, ID_RE, callDir, ratableCards, gateNumbers, listCalls, getCall, setTag, searchCalls, deleteCall };

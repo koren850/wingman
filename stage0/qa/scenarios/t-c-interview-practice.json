@@ -1,0 +1,84 @@
+{
+ "title": "Job-interview practice: Dan asks and answers (invented: Dana, hiring manager at Lumo)",
+ "focus": "Dan's own questions/answers; general-question answers for him; no bank cards",
+ "turns": [
+  {
+   "speaker": "them",
+   "text": "שלום דן, תודה שבאת. ספר לי קצת על עצמך.",
+   "expect": {
+    "question": true,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אני מפתח אתרים עם עשר שנות ניסיון, מנהל סוכנות קטנה."
+  },
+  {
+   "speaker": "them",
+   "text": "מה הייתה האתגר הגדול ביותר שלך בשנה האחרונה?",
+   "expect": {
+    "question": true,
+    "card": "none"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "מעבר של חנות גדולה לשרת חדש בלי השבתה.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "me",
+   "text": "רגע, מה זה STAR method?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 4000
+  },
+  {
+   "speaker": "them",
+   "text": "איך אתה מתמודד עם לחץ ועם דד ליין?",
+   "expect": {
+    "question": true,
+    "card": "none"
+   },
+   "pauseBeforeMs": 4000
+  },
+  {
+   "speaker": "me",
+   "text": "אני מחלק למשימות קטנות ומתעדף.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "me",
+   "text": "איך אומרים stakeholder בעברית?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 5000
+  },
+  {
+   "speaker": "me",
+   "text": "מה השכר הממוצע למפתח בכיר בישראל?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "them",
+   "text": "יש לך שאלות אלינו?",
+   "expect": {
+    "question": true,
+    "card": "none"
+   },
+   "pauseBeforeMs": 3000
+  },
+  {
+   "speaker": "me",
+   "text": "כן, איך נראה יום טיפוסי בצוות?",
+   "pauseBeforeMs": 1500
+  }
+ ]
+}

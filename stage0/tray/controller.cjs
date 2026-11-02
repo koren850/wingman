@@ -1,0 +1,143 @@
+// One call controller, shared by the menu bar and the Wingman window.
+// Spawns src/call.ts with WINGMAN_CONTROL=1, writes ONLY the fixed stdin commands below, reads "@@wingman {json}" lines.
+// No electron import: it is unit-tested with a fake child process (src/controller.test.ts).
+const nodeFs = require("node:fs");
+const nodePath = require("node:path");
+const defaultLib = require("./lib.cjs");
+
+/** The complete list of things that can ever be written to a call's stdin. Notes are cleaned and capped before they get here. */
+const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "ask", "stop", "stop-delete"]);
+
+function createController(o) {
+  const lib = o.lib || defaultLib, fs = o.fs || nodeFs, path = o.path || nodePath;
+  const root = o.root, bin = o.bin || ((n) => path.join(root, "node_modules", ".bin", n));
+  const logPath = o.logPath, tmpDir = o.tmpDir || require("node:os").tmpdir();
+  const st = o.setTimeout || setTimeout, killProc = o.kill || ((pid, sig) => process.kill(pid, sig));
+  const logLine = (s) => { if (!logPath) return; try { fs.appendFileSync(logPath, `${new Date().toISOString()} ${s}\n`, { mode: 0o600 }); } catch { /* calls/ may not exist yet */ } };
+  const appEnv = () => (process.versions.electron ? { WINGMAN_APP: "1" } : {});   // doctor/engine word permission hints for the installed app, not a terminal
+  const notify = o.notify || (() => {});
+  let doctorProc;
+  const DOCTOR_TIMEOUT_MS = o.doctorTimeoutMs || 90_000;
+  let child, lingering, state = lib.initialState();
+  const finished = new WeakSet();   // children whose end ("ended" line or process exit) has been handled
+  const change = () => { try { o.onChange && o.onChange(); } catch { /* a listener must never break the call */ } };
+  const set = (ev) => { const before = state; state = lib.reduce(state, ev); return before; };
+
+  /** The engine is done and call.ts only lingers to keep the answer window up: a new call replaces it (its overlay is closed now). */
+  function dropLingering() { if (lingering) { const l = lingering; lingering = undefined; killGroup(l, "SIGTERM"); st(() => killGroup(l, "SIGKILL"), 3000); } }
+  function finish(c, code) {
+    if (finished.has(c)) return;
+    finished.add(c);
+    if (child === c) { child = undefined; lingering = c; }
+    set({ ev: "exit", code });
+    if (code && code !== 0 && !state.endedCleanly && !state.offReason) notify("Wingman stopped", state.lastError ? state.lastError.slice(0, 120) : `exit code ${code}. Details: calls/tray.log`);
+    change();
+  }
+
+  function startCall(extraArgs = [], extraEnv = {}) {
+    if (child) return false;
+    dropLingering();
+    set({ ev: "starting", practice: !!extraEnv.WINGMAN_STT_SCRIPT });
+    const env = { ...(o.env || process.env), WINGMAN_CONTROL: "1", FORCE_COLOR: "0", ...appEnv(), ...extraEnv };
+    if (logPath) try { fs.writeFileSync(logPath, "", { mode: 0o600 }); fs.chmodSync(logPath, 0o600); } catch { /* best effort */ }
+    // detached: call.ts leads its own process group, so a stuck call can be force-killed with everything under it.
+    const c = o.spawn(bin("tsx"), [path.join(root, "src", "call.ts"), ...extraArgs], { cwd: root, env, stdio: ["pipe", "pipe", "pipe"], detached: true });
+    child = c;
+    c.on("error", (e) => { logLine("ERR spawn " + e.message); notify("Wingman could not start", e.message); if (child === c) child = undefined; set({ ev: "stderr", text: e.message }); finished.add(c); set({ ev: "exit", code: 1 }); change(); });
+    c.stdin.on("error", () => { /* the call already ended */ });
+    let buf = "";
+    c.stdout.on("data", (d) => {
+      buf += d.toString();
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        const msg = lib.parseStatus(line);
+        if (!msg) continue;
+        logLine(line.trim());
+        const before = set(msg);
+        for (const n of lib.notifications(before, state, msg)) notify(n.title, n.body);
+        change();
+        if (msg.ev === "ended") finish(c, msg.crashed ? 1 : 0);   // saved: Start is allowed again while call.ts lingers 5 s for the answer window
+      }
+    });
+    c.stderr.on("data", (d) => { logLine("ERR " + d.toString().trimEnd()); set({ ev: "stderr", text: d.toString() }); change(); });
+    c.on("exit", (code) => {
+      if (lingering === c) lingering = undefined;
+      finish(c, code);
+    });
+    change();
+    return true;
+  }
+
+  /** Practice call: a pretend client plays into the real call loop with scripted AI. File mode: no mic, no system audio, no network, no cost. */
+  function practice() {
+    if (child) return false;
+    dropLingering();
+    const script = path.join(root, "data", "demo", "demo-call.json"), gapMs = 4500;
+    let lines = 16; try { lines = JSON.parse(fs.readFileSync(script, "utf8")).length; } catch { /* default */ }
+    const wav = path.join(tmpDir, "wingman-practice.wav");
+    lib.writeSilentWav(wav, Math.ceil((lines * gapMs) / 1000) + 12);
+    const ok = startCall(["--profile", "demo", "--file", wav, "--no-brief"], { WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: String(gapMs) });
+    if (ok) notify("Practice call", "A pretend caller is talking. Watch the answer window on your second screen. Nothing is sent anywhere.");
+    return ok;
+  }
+
+  function send(cmd) {
+    if (!child) return false;
+    if (!COMMANDS.includes(cmd) && !/^(note|ask) [^\n\r]{1,300}$/.test(cmd)) return false;
+    try { if (child.stdin.writable) { child.stdin.write(cmd + "\n"); return true; } } catch { /* ended */ }
+    return false;
+  }
+  function killGroup(c, sig) { try { killProc(-c.pid, sig); } catch { try { c.kill(sig); } catch { /* gone */ } } }
+  function stop(del = false) {
+    if (!child || state.phase === "stopping") return false;
+    const c = child;
+    send(del ? "stop-delete" : "stop");
+    if (del) set({ ev: "stopdelete" });
+    set({ ev: "stopping" }); change();
+    st(() => { if (child === c) killGroup(c, "SIGINT"); }, 12000);      // call.ts: graceful stop
+    st(() => { if (child === c) killGroup(c, "SIGKILL"); }, 20000);     // stuck: force everything off (mic included)
+    return true;
+  }
+
+  const api = {
+    getState: () => ({ ...state, health: { ...state.health }, running: !!child }),
+    isRunning: () => !!child,
+    start: (o2 = {}) => startCall(o2.noAi ? ["--no-ai"] : []),
+    practice,
+    consent: () => !!child && state.phase === "waiting" && send("consent"),
+    setQuiet: (on) => !!child && state.phase === "live" && send(on ? "quiet on" : "quiet off"),
+    /** "The next thing I say is for you": Ctrl+Opt+A. Works whenever the call is listening. */
+    askWingman: () => !!child && state.phase === "live" && send("ask"),
+    confirmClient: () => !!child && !!state.proposed && !state.client && send("client"),
+    note: (text) => { const t = lib.cleanText(text, 300); return !!child && state.phase !== "stopping" && !!t && send("note " + t); },
+    /** A typed question for the live call (the CLI's `wingman ask`; the `ask <text>` stdin command in run.ts). */
+    ask: (text) => { const t = lib.cleanText(text, 300); return !!child && state.phase === "live" && !!t && send("ask " + t); },
+    stop: () => stop(false),
+    stopDelete: () => stop(true),
+    briefSaved: () => { set({ ev: "brief" }); change(); },
+    briefCleared: () => { set({ ev: "boot", briefReady: false }); change(); },
+    boot: (briefReady) => { set({ ev: "boot", briefReady }); change(); },
+    /** Full doctor (microphone, audio, Deepgram, Haiku). Refused while a call runs. Resolves to lib.doctorSummary. */
+    runDoctor: (opts = {}) => new Promise((resolve) => {
+      if (child) return resolve({ ran: false, ok: false, verdict: "BUSY", failing: [{ text: "A call is running. Check again after it ends.", fix: "" }], warnings: [], at: Date.now() });
+      if (state.doctorRunning) return resolve(state.doctor);
+      const p = o.spawn(bin("tsx"), [path.join(root, "src", "doctor.ts"), ...(opts.offline ? ["--offline"] : [])], { cwd: root, env: { ...(o.env || process.env), FORCE_COLOR: "0", ...appEnv() }, detached: true });
+      doctorProc = p;
+      let out = "";
+      p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (out += d));
+      set({ ev: "doctor.start" }); change();
+      let done = false, timer;
+      const fin = () => { if (done) return; done = true; if (timer) clearTimeout(timer); if (doctorProc === p) doctorProc = undefined; const r = lib.doctorSummary(out); set({ ev: "doctor.end", result: r }); change(); resolve(r); };
+      // A hung doctor (mic prompt, dead network) must not leave "Checking…" forever.
+      timer = st(() => { if (done) return; out += "\nDoctor timed out after " + Math.round(DOCTOR_TIMEOUT_MS / 1000) + " s."; killGroup(p, "SIGKILL"); fin(); }, DOCTOR_TIMEOUT_MS);
+      p.on("error", fin); p.on("exit", fin);
+    }),
+    /** App is quitting: ask the call to stop, force it off a bit later. */
+    shutdown: () => { if (doctorProc) killGroup(doctorProc, "SIGKILL"); dropLingering(); if (!child) return; send("stop"); const c = child; st(() => killGroup(c, "SIGKILL"), 8000); },
+    logLine,
+  };
+  return api;
+}
+
+module.exports = { createController, COMMANDS };

@@ -59,3 +59,16 @@ export function containsPhrase(text: string, phrase: string): boolean {
   }
   return false;
 }
+
+/** Index of the whitespace-separated raw word where `phrase` starts in `text` (same matching as containsPhrase), or -1. */
+export function phraseWordIndex(text: string, phrase: string): number {
+  const tt: { v: string[]; raw: number }[] = [];
+  text.trim().split(/\s+/).forEach((w, raw) => { for (const t of tokens(w)) if (!STOP.has(t)) tt.push({ v: tokenVariants(t), raw }); });
+  const pt = tokens(phrase).filter((w) => !STOP.has(w));
+  if (!pt.length) return -1;
+  outer: for (let i = 0; i <= tt.length - pt.length; i++) {
+    for (let j = 0; j < pt.length; j++) if (!tt[i + j].v.some((v) => tokenVariants(pt[j]).includes(v))) continue outer;
+    return tt[i].raw;
+  }
+  return -1;
+}

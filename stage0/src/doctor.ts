@@ -5,7 +5,7 @@
 import { execFile, execFileSync, spawn } from "node:child_process";
 import { readFileSync, statSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { loadKeys, KEYS_FILE, KEY_VARS, DATA, CALLS, type KeyName } from "./env.ts";
+import { loadKeysWithSources, KEYS_FILE, KEY_VARS, DATA, CALLS, type KeyName } from "./env.ts";
 import { SystemSource, MicSource, peakOf } from "./audio.ts";
 import { loadBank } from "./bank.ts";
 import { buildPrefix, runReflex } from "./reflex.ts";
@@ -13,9 +13,12 @@ import { loadSettings, SettingsError, formatSettingsError, expandHome, USER_SETT
 import { ModelRegistry, parseModelRef, ConfigError, LLM_PROVIDERS } from "./providers/llm.ts";
 import { getSttProvider, sttChain, loadKeyterms } from "./providers/stt/index.ts";
 import { describe, classifyLlmError } from "./providers/errors.ts";
+import { realKeychain } from "./keychain.ts";
 import { guard } from "./guards.ts";
 import { detect } from "./detector.ts";
 
+// Running inside the installed Wingman app (Electron runtime, or the env var the tray sets): permissions belong to Wingman, not a terminal.
+const IS_APP = !!process.versions.electron || process.env.WINGMAN_APP === "1";
 const argv = process.argv.slice(2);
 const offline = argv.includes("--offline");
 let blocking: string[] = [], warnings = 0;
@@ -33,7 +36,7 @@ let S: Settings;
 let profile: string | undefined;
 try {
   const l = loadSettings({ argv, createStarter: true }); S = l.settings; profile = l.profile;
-  ok(`settings valid (defaults + ${existsSync(USER_SETTINGS_FILE) ? "user file" : "no user file"}${profile ? ` + profile ${profile}` : ""}); see: pnpm settings`);
+  ok(`settings valid (defaults + ${existsSync(process.env.WINGMAN_USER_SETTINGS || USER_SETTINGS_FILE) ? "user file" : "no user file"}${profile ? ` + profile ${profile}` : ""}); see: pnpm settings`);
 } catch (e) {
   if (e instanceof SettingsError) { console.log(formatSettingsError(e)); bad("settings invalid", "fix the key above, then rerun"); }
   else bad(`settings failed to load: ${(e as Error).message}`);
@@ -41,18 +44,18 @@ try {
 }
 S = S!;
 
-section("Keys (present/missing only; values are never shown)");
+section("Keys (source and last 4 characters only; values are never shown)");
 const keyFile = expandHome(S.keys.file) || KEYS_FILE;
-if (!existsSync(keyFile)) bad(`keys file missing: ${keyFile}`, `create it with DEEPGRAM_API_KEY=... and ANTHROPIC_API_KEY=...`);
-else {
+if (existsSync(keyFile)) {
   const mode = statSync(keyFile).mode & 0o777;
   mode === 0o600 ? ok(`keys file mode 600`) : bad(`keys file mode is ${mode.toString(8)}`, `chmod 600 ${keyFile}`);
 }
-const keys = loadKeys(keyFile);
+const { keys, sources } = loadKeysWithSources(keyFile, process.env, realKeychain());
 const llmRefs = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
 const sttIds = sttChain(S);
+const srcLabel = (n: KeyName) => ({ keychain: "Keychain", file: "file", env: "environment" } as const)[sources[n]!];
 const need = (name: KeyName, why: string, required: boolean) =>
-  keys[name] ? ok(`${KEY_VARS[name]} present (${why})`) : required ? bad(`${KEY_VARS[name]} missing (${why})`, `add it to ${keyFile}`) : warn(`${KEY_VARS[name]} missing (${why}); that fallback cannot work`, `add it to ${keyFile}`);
+  keys[name] ? ok(`${KEY_VARS[name]} present, source: ${srcLabel(name)}, ends ...${keys[name]!.slice(-4)} (${why})`) : required ? bad(`${KEY_VARS[name]} missing (${why})`, `Settings → Keys, or pnpm keys set ${name}`) : warn(`${KEY_VARS[name]} missing (${why}); that fallback cannot work`, `Settings → Keys, or pnpm keys set ${name}`);
 sttIds.filter((id) => id !== "script").forEach((id, i) => need(id as KeyName, `STT ${i ? "fallback" : "primary"} ${id}`, i === 0));
 if (!S.run.noAi) llmRefs.forEach((r, i) => { try { const k = LLM_PROVIDERS[parseModelRef(r).provider].key; if (k) need(k, `LLM ${i ? "fallback" : "reflex"} ${r}`, i === 0); else ok(`${r} needs no key (offline test double)`); } catch (e) { bad((e as Error).message); } });
 
@@ -138,9 +141,9 @@ section("Microphone (speak for 3 seconds)");
   mic.on("pcm", (b: Buffer) => { peak = Math.max(peak, peakOf(b)); });
   mic.on("error", (e: Error) => bad(`mic: ${e.message}`));
   await mic.start(); await sleep(3000); await mic.stop();
-  peak > 0.02 ? ok(`mic level ok (peak ${peak.toFixed(2)})`) : bad(`mic silent (peak ${peak.toFixed(3)})`, "grant Microphone to your terminal app (Privacy & Security), restart it, or set audio.mic.device");
+  peak > 0.02 ? ok(`mic level ok (peak ${peak.toFixed(2)})`) : bad(`mic silent (peak ${peak.toFixed(3)})`, IS_APP ? "System Settings → Privacy & Security → Microphone: allow Microphone for Wingman, then restart Wingman (or set audio.mic.device)" : "grant Microphone to your terminal app (Privacy & Security), restart it, or set audio.mic.device");
 }
-if (process.env.TERM_PROGRAM && process.env.TERM_PROGRAM !== "Apple_Terminal") warn(`Terminal is ${process.env.TERM_PROGRAM}, not Terminal.app: permissions are per app`);
+if (!IS_APP && process.env.TERM_PROGRAM && process.env.TERM_PROGRAM !== "Apple_Terminal") warn(`Terminal is ${process.env.TERM_PROGRAM}, not Terminal.app: permissions are per app`);
 
 section(`System audio source: ${S.audio.system.source}`);
 if (S.audio.system.source === "off") warn("audio.system.source is off: the client cannot be heard (transcript-only)");
@@ -154,7 +157,7 @@ else {
     spawn("say", ["-v", "Carmit", "בדיקת שמע"]); await sleep(2600);
     await sys.stop();
     peak > 0.01 ? ok(`client audio hears the Mac (peak ${peak.toFixed(2)})`)
-      : bad("client audio is silent", S.audio.system.source === "audiotee" ? "volume up, or grant System Audio Recording to your terminal, restart it" : `route the Mac output to ${S.audio.system.device}`);
+      : bad("client audio is silent", S.audio.system.source === "audiotee" ? (IS_APP ? "volume up, or System Settings → Privacy & Security → allow System Audio Recording for Wingman, then restart Wingman" : "volume up, or grant System Audio Recording to your terminal, restart it") : `route the Mac output to ${S.audio.system.device}`);
   } catch (e) { bad(`system source failed: ${(e as Error).message || err}`); }
 }
 

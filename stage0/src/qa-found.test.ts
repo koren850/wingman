@@ -79,3 +79,47 @@ test("qa: 'היי דן, כמה שאלות מהירות' is an opener, 'כמה ש
   assert.equal(detect("היי דן כמה שאלות מהירות").isQuestion, false);
   assert.equal(detect("כמה זה עולה").isQuestion, true);
 });
+
+// Round 2 (QA replay fixes, 2 Nov).
+import { splitMulti, joinSplit as joinSplit2 } from "./split.ts";
+import { bankStarts as bankStarts2, matchBank as matchBank2, loadBank as loadBank2 } from "./bank.ts";
+import { detect as detect2 } from "./detector.ts";
+const bank2 = loadBank2();
+const isQ2 = (s: string) => { const h = matchBank2(s, bank2); return detect2(s, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }).isQuestion; };
+import { splitMergedQuestions } from "./multiq.ts";
+const cut = (s: string) => splitMergedQuestions(s, bank2);
+
+test("qa2: fast questions merged into one final are cut, one card each", () => {
+  const parts = cut("יש לכם גיבוי כמה זה עולה האתר איתי מה עושים");
+  assert.deepEqual(parts, ["יש לכם גיבוי", "כמה זה עולה", "האתר איתי מה עושים"]);   // the slow-site question gets its own card, not the price stall
+  assert.deepEqual(parts.map((p) => matchBank2(p, bank2)?.card.id), ["backups", "stall-price", "site-slow"]);
+  assert.deepEqual(cut("יש לכם גיבוי? כמה זה עולה? האתר איטי, מה עושים?"), ["יש לכם גיבוי?", "כמה זה עולה?", "האתר איטי, מה עושים?"]);
+});
+test("qa2: a problem plus one question stays whole", () => {
+  assert.deepEqual(cut("האתר איטי, כמה זה יעלה לתקן?"), ["האתר איטי, כמה זה יעלה לתקן?"]);
+  assert.deepEqual(cut("אנחנו רוצים להעביר את הדומיין, איך עושים את זה?"), ["אנחנו רוצים להעביר את הדומיין, איך עושים את זה?"]);
+  for (const q of ["כמה עולה חנות כזאת?", "אני מבינה, אבל תגיד לי מספר בערך. כמה זה יעלה.", "בסדר. ומה אם התחזוקה חודשית כמה זה יוצא בחודש?", "ומתי החנות תהיה מוכנה", "אתם מתחייבים שזה יהיה מוכן בזמן?"]) assert.deepEqual(cut(q), [q]);
+  for (const q of ["The site is really slow lately. Why is that happening?", "Do you have a backup of the site?", "What about the SSL certificate? Is it included?", "Can you move our domain to Cloudflare?"]) assert.deepEqual(cut(q), [q]);
+});
+test("qa2: STT 'תעודת הבטחה' is an SSL question, not a guarantee stall", () => {
+  assert.equal(matchBank2("ומה עם תעודת הבטחה", bank2)?.card.id, "ssl-basics");
+  assert.equal(matchBank2("אתם נותנים הבטחה שזה יעבוד?", bank2)?.card.id, "stall-guarantee");
+});
+test("qa2: certificate renewal gets the SSL card", () => {
+  assert.equal(matchBank2("איך מחדשים את התעודה של האתר מי עושה את זה", bank2)?.card.id, "ssl-basics");
+});
+test("qa2: detector edge cases from the replay", () => {
+  assert.equal(detect2("וואו איזה מזג אוויר היום").isQuestion, false);
+  assert.equal(detect2("מצוין. נכון. כן, זה מה שחשבתי.").isQuestion, false);
+  assert.equal(detect2("לא מה שהוא, האתר של המשרד נפל לבוקר.").isQuestion, false);
+  assert.equal(detect2("אנחנו רוצים להעביר את הDNS Cloudflare, זה בטוח.").isQuestion, true);
+  assert.equal(detect2("נכון שאתם עושים גם אחסון").isQuestion, true);
+  assert.equal(detect2("אני לא בטוח").isQuestion, false);
+  assert.equal(detect2("ואם מה שהוא נשבר, אפשר לשחזר").isQuestion, true);
+  assert.equal(detect2("בדקתי את זה אתמול, כמובן שזה עבד").isQuestion, false);
+  assert.equal(detect2("זה קצת מסובך אבל אני לא בטוח").isQuestion, false);
+});
+test("qa2: a two-word head that Deepgram ended with '?' still glues to its tail", () => {
+  assert.equal(joinSplit2({ text: "כמה זה?", at: 1000, question: true }, "עולה לחודש?", 2000, 1500), "כמה זה? עולה לחודש?");
+  assert.equal(joinSplit2({ text: "כמה זה עולה?", at: 1000, question: true }, "ומה עם אחסון", 1500, 1500), "ומה עם אחסון");
+});

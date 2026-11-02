@@ -18,10 +18,20 @@ export type Expect = {
   card?: string | string[];       // bank id | "stall" (stall line or any stall-* card) | "ai" | "none"; an array = any of these
   joinWith?: "prev";              // this turn completes a question started by the previous client turn (split question)
   part?: "head";                  // first fragment of a split question: not graded on its own
+  forMe?: "answer" | "none";      // a "me" turn: Dan asks Wingman (a "For you" card is expected) or asks the other person / thinks aloud (no card)
   note?: string;
 };
 export type Turn = { speaker: "me" | "them"; text: string; pauseBeforeMs?: number; rate?: number; overlapMs?: number; voice?: string; expect?: Expect };
-export type Scenario = { name?: string; title: string; focus?: string; voices?: { me?: string; them?: string }; turns: Turn[] };
+/** What the call frame and the tips should look like for this scenario (graded by qa/grade.ts). Only scenarios with a `frame` block are graded on it. */
+export type FrameExpect = {
+  kind: string | string[];        // accepted final frame kinds
+  topicAny?: string[];            // at least one of these words in the final topic / goal / entities / checklist
+  minChecklist?: number;          // checklist items the frame should have at the end
+  minTips?: number;               // tip cards shown during the call
+  tipAny?: string[];              // at least one tip mentions one of these words (a cheap relevance check; the tips are printed for a human to read)
+  allowBank?: string[];           // bank card ids that are fine on this call
+};
+export type Scenario = { name?: string; title: string; focus?: string; voices?: { me?: string; them?: string }; frame?: FrameExpect; turns: Turn[] };
 export type TimelineTurn = { i: number; speaker: "me" | "them"; text: string; startMs: number; endMs: number };
 
 export function loadScenario(name: string): Scenario & { name: string } {

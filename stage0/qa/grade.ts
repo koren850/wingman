@@ -2,7 +2,8 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { guard } from "../src/guards.ts";
-import { loadBank } from "../src/bank.ts";
+import { loadBank, STALL_TIER } from "../src/bank.ts";
+import { isAgencyKind } from "../src/frame.ts";
 import type { Scenario, TimelineTurn } from "./render.ts";
 
 export type Row = Record<string, any>;
@@ -26,7 +27,17 @@ export function wordEdits(ref: string[], hyp: string[]): number {
 
 export type Failure = { turn: number; kind: string; heard: string; script: string; expected: string; got: string };
 export type TurnResult = { i: number; text: string; heard: string; q: boolean; outcome?: string; ok: boolean; reasons: string[]; latencyMs?: number; hidden?: string };
+/** Frame and tips of one call. `graded`: the scenario has a frame block. */
+export type FrameGrade = {
+  graded: boolean; frames: number; kind?: string; firstKind?: string; kindFlips: number; topic?: string; checklistN: number; checklistDone: number;
+  kindOk: boolean; topicOk: boolean; checklistOk: boolean; tips: { type: string; text: string; source?: string }[]; tipsOk: boolean; tipRelevant: boolean;
+  irrelevantBank: string[]; tipLeaks: string[]; frameUsd: number; tipsUsd: number;
+};
+/** Answers for Dan's own questions: graded "me" turns, how many got the expected result, and "For you" cards that no turn asked for. */
+export type MeGrade = { graded: number; ok: number; answers: number; unexpected: string[] };
 export type Grade = {
+  me?: MeGrade;
+  frame: FrameGrade;
   scenario: string; durationS: number;
   falseCards: number; questionsAsked: number; expectedQ: number; detectedQ: number; tp: number; fp: number; fn: number; recall: number; precision: number;
   cardGraded: number; cardOk: number; cardAcc: number;
@@ -54,12 +65,13 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
 
   // 1. Assign every STT word to the script turn it overlaps most (stream-relative word times vs the rendered timeline).
   //    A final can span several turns (Deepgram merges fast speech); its words are split between them.
-  type Fin = { ch: "me" | "them"; text: string; turns: Set<number> };
+  type Fin = { ch: "me" | "them"; text: string; turns: Set<number>; wordTurns: number[] };
   const finals: Fin[] = [];
   const wordsOfTurn = new Map<number, string[]>();
   for (const r of transcript) {
     const w: any[] = r.words ?? [];
     const turns = new Set<number>();
+    const wordTurns: number[] = [];
     for (const x of w) {
       const s0 = x.start * 1000, e0 = x.end * 1000;
       let best = -1, bestOv = 0;
@@ -68,9 +80,10 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
         const ov = Math.min(e0, t.endMs + 300) - Math.max(s0, t.startMs - 300);
         if (ov > bestOv) { bestOv = ov; best = t.i; }
       }
+      wordTurns.push(best);
       if (best >= 0) { turns.add(best); (wordsOfTurn.get(best) ?? wordsOfTurn.set(best, []).get(best)!).push(String(x.word)); }
     }
-    finals.push({ ch: r.ch, text: r.text, turns });
+    finals.push({ ch: r.ch, text: r.text, turns, wordTurns });
   }
   const heardOf = (i: number) => (wordsOfTurn.get(i) ?? []).join(" ");
 
@@ -83,10 +96,27 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
   const themFinals = finals.filter((f) => f.ch === "them");
   type Det = { text: string; isQuestion: boolean; reason?: string; turns: Set<number>; glued: boolean; q?: Row; };
   const dets: Det[] = [];
-  let ptr = 0;
+  let ptr = 0, multiWords: number[] = [], multiGlue: Set<number> | undefined;
   for (let k = 0; k < events.length; k++) {
     const e = events[k];
     if (e.type !== "detect") continue;
+    // split.multi: one merged final cut into several questions; each piece takes the turns of its own words.
+    if (typeof e.part === "number") {
+      if (e.part === 0) {
+        const wc = (x: unknown) => String(x ?? "").trim().split(/\s+/).filter(Boolean).length;
+        const glued0 = events[k - 2]?.type === "split.join";
+        const full = wc(events[k - 1]?.text ?? e.text), total = glued0 ? wc(events[k - 2].text) : full;
+        multiWords = Array(full - total).fill(-1);   // the glued head fragment's words belong to the previous detect
+        let got = 0;
+        while (got < total && ptr < themFinals.length) { multiWords.push(...themFinals[ptr].wordTurns); got += themFinals[ptr].text.trim().split(/\s+/).filter(Boolean).length; ptr++; }
+        if (glued0 && dets.length) multiGlue = dets[dets.length - 1].turns; else multiGlue = undefined;
+      }
+      const n = String(e.text).trim().split(/\s+/).filter(Boolean).length;
+      const turns = new Set<number>(multiWords.splice(0, n).filter((x) => x >= 0));
+      if (e.part === 0 && multiGlue) for (const t of multiGlue) turns.add(t);
+      dets.push({ text: e.text, isQuestion: !!e.isQuestion, reason: e.reason, turns, glued: false });
+      continue;
+    }
     const glued = events[k - 1]?.type === "split.join";
     const rem = (glued ? String(events[k - 1].text) : String(e.text)).trim().split(/\s+/).filter(Boolean).length;
     const turns = new Set<number>();
@@ -117,7 +147,7 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
   let falseCards = 0, tp = 0, fp = 0, fn = 0, cardGraded = 0, cardOk = 0, priceTurns = 0, priceOk = 0, splitTested = 0, splitOk = 0, hiddenByCap = 0;
   const lats: number[] = [];
   const aiGuardLeaks: string[] = [];
-  for (const c of cards) if (c.type === "card" && c.badge === "ai" && !c.withdraw) { const g = guard(`${c.say} ${(c.facts ?? []).join(" ")}`); if (!g.ok) aiGuardLeaks.push(`${c.turnId}: ${g.rule}: ${c.say}`); }
+  for (const c of cards) if (c.type === "card" && (c.badge === "ai" || c.badge === "tip") && !c.withdraw) { const g = guard(`${c.say} ${(c.facts ?? []).join(" ")}`); if (!g.ok) aiGuardLeaks.push(`${c.turnId}: ${g.rule}: ${c.say}`); }
 
   for (const t of tl) {
     const exp = sc.turns[t.i].expect;
@@ -168,6 +198,26 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
     turns.push({ i: t.i, text: t.text, heard, q: isQ, outcome, ok: reasons.length === 0, reasons, latencyMs, hidden });
   }
 
+  // 6b. "me" turns: did Dan's question for Wingman get a "For you" card, and did a question for the other person (or thinking aloud) get none?
+  const meById = new Map<string, Row>();
+  for (const c of cards) if (c.type === "card" && c.badge === "me") { if (c.withdraw) meById.delete(c.id); else meById.set(c.id, c); }
+  const meCards = [...meById.values()].filter((c) => !c.hidden);
+  const overlap = (a: string[], b: string[]) => { const sb = new Set(b); return a.length ? a.filter((w) => sb.has(w)).length / a.length : 0; };
+  const meGrade: MeGrade = { graded: 0, ok: 0, answers: meCards.length, unexpected: [] };
+  const matched = new Set<string>();
+  for (const t of tl) {
+    const exp = sc.turns[t.i].expect;
+    if (t.speaker !== "me" || !exp?.forMe) continue;
+    const heardW = normWords(heardOf(t.i));
+    const hit = heardW.length ? meCards.find((c) => overlap(heardW, normWords(String(c.question ?? ""))) >= 0.6) : undefined;
+    if (hit && exp.forMe === "answer") matched.add(hit.id);
+    meGrade.graded++;
+    const ok = exp.forMe === "answer" ? !!hit : !hit;
+    if (ok) meGrade.ok++;
+    else failures.push({ turn: t.i, kind: exp.forMe === "answer" ? "no For-you answer" : "unwanted For-you answer", heard: heardOf(t.i) || "(nothing transcribed)", script: t.text, expected: exp.forMe === "answer" ? "a For-you card" : "no card for Dan", got: hit ? `${hit.source ?? "ai"}: ${String(hit.say).slice(0, 70)}` : "no card" });
+  }
+  for (const c of meCards) if (!matched.has(c.id)) meGrade.unexpected.push(`${c.turnId}: "${String(c.question).slice(0, 60)}" -> ${String(c.say).slice(0, 50)}`);
+
   // 7. Summary.
   const sumFile = join(dir, "summary.json");
   let summary: Grade["summary"] = { present: false, guardOk: true, replaced: 0, emailLeaks: [], otherLeaks: [] };
@@ -186,7 +236,11 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
   const crashed = events.some((e) => e.type === "crash" || e.type === "shutdown.error");
 
   const expectedQ = tp + fn, detectedQ = tp + fp;
+  const fg = gradeFrame(sc, events, cards, usage, cardsByTurn, sayToId);
+  for (const [kind, expected, got] of fg.problems) failures.push({ turn: -1, kind, heard: "(call frame)", script: sc.frame ? `${[sc.frame.kind].flat().join("|")}` : "", expected, got });
   return {
+    me: meGrade,
+    frame: fg.grade,
     scenario: sc.name, durationS: (tl.at(-1)?.endMs ?? 0) / 1000,
     falseCards, questionsAsked: dets.filter((d) => d.isQuestion).length, expectedQ, detectedQ, tp, fp, fn, recall: expectedQ ? tp / expectedQ : 1, precision: detectedQ ? tp / detectedQ : 1,
     cardGraded, cardOk, cardAcc: cardGraded ? cardOk / cardGraded : 1, priceTurns, priceOk, splitTested, splitOk,
@@ -194,4 +248,52 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
     summary, aiGuardLeaks, costUsd: sumRow?.totalUsd ?? 0, sttUsd: sumRow?.sttUsd ?? 0, llmUsd: sumRow?.llmUsd ?? 0,
     hiddenByCap, crashed, failures, turns,
   };
+}
+
+type CardRows = Map<string, Row[]>;
+/** Frame + tips: what the call turned into, and whether it fits the scenario's `frame` block. Pure over the JSONL rows. */
+export function gradeFrame(sc: Scenario & { name: string }, events: Row[], cards: Row[], usage: Row[], cardsByTurn: CardRows, sayToId: Map<string, string>): { grade: FrameGrade; problems: [string, string, string][] } {
+  const exp = sc.frame;
+  const frames = events.filter((e) => e.type === "frame" && e.frame);
+  const last = frames.at(-1)?.frame, first = frames[0]?.frame;
+  const kinds = frames.map((e) => e.frame.kind);
+  let kindFlips = 0; for (let i = 1; i < kinds.length; i++) if (kinds[i] !== kinds[i - 1]) kindFlips++;
+  const checklist: Row[] = last?.checklist ?? [];
+  const tips = cards.filter((c) => c.type === "card" && c.badge === "tip" && !c.withdraw && !c.hidden).map((c) => ({ type: String(c.tipType ?? "?"), text: String(c.say ?? "") }));
+  const tipSources = events.filter((e) => e.type === "tip").map((e) => String(e.source ?? ""));
+  tips.forEach((t, i) => { (t as any).source = tipSources[i]; });
+  const blob = [last?.topic, last?.goal, ...(last?.entities ?? []), ...checklist.map((c) => c.item)].join(" ").toLowerCase();
+  const wantKinds = exp ? [exp.kind].flat() : [];
+  // Irrelevant agency bank cards: any bank card that stayed on screen on a call that is not a client / support call, except the price / timeline / guarantee stall tier.
+  const nonAgency = exp ? !wantKinds.some((k) => isAgencyKind(k)) : !!last && !isAgencyKind(last.kind);
+  const irrelevantBank: string[] = [];
+  if (nonAgency) for (const [turnId, rows] of cardsByTurn) {
+    const withdrawn = new Set(rows.filter((r) => r.withdraw).map((r) => r.id));
+    const byId = new Map<string, Row>(); for (const r of rows) if (!r.withdraw && !withdrawn.has(r.id)) byId.set(r.id, r);
+    for (const c of byId.values()) {
+      if (c.badge !== "bank" || c.hidden) continue;
+      const id = sayToId.get(String(c.say).replace(/[*_#`>]+/g, "").trim()) ?? "bank?";
+      if (!STALL_TIER.has(id) && !(exp?.allowBank ?? []).includes(id)) irrelevantBank.push(`${turnId}: ${id}${c.dim ? " (dimmed)" : ""}`);
+    }
+  }
+  const tipLeaks = tips.filter((t) => !guard(t.text).ok).map((t) => t.text);
+  const sum = usage.filter((u) => u.role === "summary" && u.roles).at(-1);
+  const grade: FrameGrade = {
+    graded: !!exp, frames: frames.length, kind: last?.kind, firstKind: first?.kind, kindFlips, topic: last?.topic, checklistN: checklist.length, checklistDone: checklist.filter((c) => c.done).length,
+    kindOk: !exp || wantKinds.includes(last?.kind), topicOk: !exp?.topicAny?.length || exp.topicAny.some((w) => blob.includes(w.toLowerCase())),
+    checklistOk: !exp || checklist.length >= (exp.minChecklist ?? 0), tips,
+    tipsOk: !exp || tips.length >= (exp.minTips ?? 0), tipRelevant: !exp?.tipAny?.length || tips.length === 0 || tips.some((t) => exp.tipAny!.some((w) => t.text.toLowerCase().includes(w.toLowerCase()))),
+    irrelevantBank, tipLeaks, frameUsd: sum?.roles?.frame?.usd ?? 0, tipsUsd: sum?.roles?.tips?.usd ?? 0,
+  };
+  const problems: [string, string, string][] = [];
+  if (exp) {
+    if (!grade.kindOk) problems.push(["frame kind", wantKinds.join(" | "), String(last?.kind ?? "no frame was produced")]);
+    if (!grade.topicOk) problems.push(["frame topic", `one of: ${exp.topicAny!.join(", ")}`, `topic "${last?.topic ?? ""}", goal "${last?.goal ?? ""}"`]);
+    if (!grade.checklistOk) problems.push(["frame checklist", `at least ${exp.minChecklist} items`, `${checklist.length}`]);
+    if (!grade.tipsOk) problems.push(["no tip", `at least ${exp.minTips} tip(s)`, `${tips.length}`]);
+    else if (!grade.tipRelevant) problems.push(["tip not on topic", `a tip mentioning one of: ${exp.tipAny!.join(", ")}`, tips.map((t) => t.text).join(" / ")]);
+    if (irrelevantBank.length) problems.push(["irrelevant agency bank card", "no agency bank card on a non-client call", irrelevantBank.join(", ")]);
+  }
+  for (const l of tipLeaks) problems.push(["tip guard leak", "no price / date / promise", l]);
+  return { grade, problems };
 }

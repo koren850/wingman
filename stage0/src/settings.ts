@@ -28,6 +28,7 @@ export const schema = z.strictObject({
     keyterms: z.strictObject({ enabled: z.enum(["auto", "on", "off"]), file: z.string().min(1), max: int(0, 100) }),
     circuit: z.strictObject({ failures: int(1, 10), windowMs: int(1000, 120000) }),
     reconnect: z.strictObject({ ringMs: int(0, 10000) }),
+    dropForeignScript: z.boolean(),
   }),
   llm: z.strictObject({
     reflex: z.strictObject({
@@ -38,6 +39,10 @@ export const schema = z.strictObject({
   }),
   reflex: z.strictObject({ stallAfterMs: int(800, 5000), dropStaleMs: int(1500, 10000), allowAns: z.boolean() })
     .refine((r) => r.stallAfterMs < r.dropStaleMs, { path: ["stallAfterMs"], message: "must be smaller than reflex.dropStaleMs, otherwise the stall line is always judged too late to show" }),
+  assist: z.strictObject({
+    answerMe: z.enum(["always", "hotkey", "off"]), askWindowMs: int(3000, 30000), model: modelRef, classifyTimeoutMs: int(500, 10000),
+    themQuietMs: int(1000, 30000), minGapMs: int(0, 60000), maxPerMin: int(1, 20), protectThemMs: int(0, 60000),
+  }),
   cards: z.strictObject({ maxPerMinute: int(1, 20), windowMs: int(5000, 600000), lockoutMs: int(0, 5000), maxOnScreen: int(1, 8), quiet: z.boolean() }),
   audio: z.strictObject({
     system: z.strictObject({ source: z.enum(["audiotee", "device", "off"]), device: z.string().min(1) }),
@@ -51,6 +56,9 @@ export const schema = z.strictObject({
   notes: z.strictObject({ enabled: z.boolean(), model: modelRef, everyMs: int(10000, 600000), minNewWords: int(5, 500), timeoutMs: int(2000, 30000) }),
   summary: z.strictObject({ enabled: z.boolean(), model: modelRef, minWords: int(0, 100000), timeoutMs: int(2000, 120000) }),
   reminders: z.strictObject({ enabled: z.boolean(), firstAfterMin: int(1, 120), everyMin: int(1, 120) }),
+  frame: z.strictObject({ enabled: z.boolean(), model: modelRef, everyMs: int(10000, 600000), minNewWords: int(5, 500), windowMin: int(1, 10), timeoutMs: int(2000, 30000) }),
+  tips: z.strictObject({ enabled: z.boolean(), model: modelRef, minGapMs: int(10000, 1800000), afterAnswerMs: int(0, 120000), talkRatio: z.boolean(), wrapUpAfterMin: int(5, 240), timeoutMs: int(2000, 30000) }),
+  attachments: z.strictObject({ maxChars: int(0, 40000) }),
   health: z.strictObject({ tickMs: int(200, 10000), recoverStableMs: int(1000, 600000), slowSttMs: int(200, 10000), minSamples: int(1, 20) }),
   budget: z.strictObject({
     maxUsdPerCall: z.number().min(0), warnAt: z.number().min(0).max(1), maxMinutesPerCall: int(1, 600), idleStopMin: int(0, 240), maxUsdPerMonth: z.number().min(0).nullable(),
@@ -58,8 +66,8 @@ export const schema = z.strictObject({
   }),
   privacy: z.strictObject({ requireConsentAck: z.boolean(), consentText: z.string().min(10), storeAudio: z.literal(false), retentionDays: int(1, 365) }),
   overlay: z.strictObject({
-    enabled: z.boolean(), display: z.enum(["secondary", "primary"]), allowPrimary: z.boolean(), contentProtection: z.boolean(), fontPt: int(18, 60),
-    hotkeys: z.strictObject({ clear: z.string().min(1), pause: z.string().min(1), rewind: z.string().min(1), copy: z.string().min(1) }),
+    enabled: z.boolean(), display: z.enum(["secondary", "primary"]), allowPrimary: z.boolean(), contentProtection: z.boolean(), fontPt: int(18, 60), showLastLine: z.boolean(),
+    hotkeys: z.strictObject({ clear: z.string().min(1), pause: z.string().min(1), rewind: z.string().min(1), copy: z.string().min(1), checklist: z.string().min(1) }),
     rewindSeconds: int(5, 300), restartMax: int(0, 5),
   }),
   system: z.strictObject({ caffeinate: z.boolean(), sleepGapMs: int(0, 600000) }),
@@ -162,7 +170,7 @@ export type LoadOptions = { argv?: string[]; env?: NodeJS.ProcessEnv; userFile?:
 export type Loaded = { settings: Settings; sources: Record<string, Source>; profile?: string; userFile: string };
 
 export function loadSettings(o: LoadOptions = {}): Loaded {
-  const env = o.env ?? process.env, userFile = o.userFile ?? USER_SETTINGS_FILE;
+  const env = o.env ?? process.env, userFile = o.userFile ?? (env.WINGMAN_USER_SETTINGS || USER_SETTINGS_FILE);
   const defaults = readYaml(o.defaultsFile ?? DEFAULTS_FILE, "defaults");
   if (o.createStarter && !existsSync(userFile)) {
     try { mkdirSync(dirname(userFile), { recursive: true, mode: 0o700 }); writeFileSync(userFile, STARTER, { mode: 0o600 }); } catch { /* read-only home: ignore */ }
@@ -233,13 +241,15 @@ export const STARTER = `# Wingman personal settings (layer 2). Everything here i
 # stt:
 #   provider: deepgram          # deepgram | soniox | gladia (experimental)
 #   fallback: []                # e.g. [soniox]
-#   endpointMs: 350             # 700-1000 if questions get split at pauses
+#   endpointMs: 200             # 700-1000 if questions get split at pauses
 # llm:
 #   reflex:
 #     model: "anthropic:claude-haiku-5-5"    # or "openai:gpt-5-mini" after: pnpm add @ai-sdk/openai
 #     fallbacks: []
 # reflex:
 #   allowAns: true              # false = bank + stall only (good for a first client call)
+# assist:
+#   answerMe: always            # always | hotkey | off: answers to questions you ask Wingman (Ctrl+Opt+A always works)
 # audio:
 #   mic:
 #     device: ":default"        # ffmpeg -f avfoundation -list_devices true -i ""

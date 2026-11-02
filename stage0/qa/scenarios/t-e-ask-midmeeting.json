@@ -1,0 +1,118 @@
+{
+ "title": "Mid-meeting: Dan asks Wingman while the other side is present (invented: Gil from Orbit Logistics)",
+ "focus": "questions to assistant answered, questions to the other person NO card",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "שלום גיל, מה שלומך?",
+   "expect": {
+    "forMe": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "טוב, תודה. אנחנו חברת לוגיסטיקה ורוצים לחדש את האתר.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "מה התקציב שלכם?",
+   "expect": {
+    "forMe": "none"
+   },
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "עוד לא החלטנו, אנחנו בודקים כמה הצעות.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 1000
+  },
+  {
+   "speaker": "me",
+   "text": "מתי אתם רוצים להתחיל?",
+   "expect": {
+    "forMe": "none"
+   },
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "בערך בעוד חודשיים.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 1000
+  },
+  {
+   "speaker": "me",
+   "text": "רגע, וינגמן, כמה זה 12 כפול 45?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 5000
+  },
+  {
+   "speaker": "them",
+   "text": "אתם עובדים עם וורדפרס?",
+   "expect": {
+    "question": true,
+    "card": [
+     "builder-vs-wordpress",
+     "ai",
+     "stall"
+    ]
+   },
+   "pauseBeforeMs": 3000
+  },
+  {
+   "speaker": "me",
+   "text": "מה היעד הרצוי שלכם בשביל האתר?",
+   "expect": {
+    "forMe": "none"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "them",
+   "text": "שיהיה מהיר ומודרני.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 1000
+  },
+  {
+   "speaker": "me",
+   "text": "מה זה HSTS בעצם?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "me",
+   "text": "כמה אנשים יש אצלכם בצוות השיווק?",
+   "expect": {
+    "forMe": "none"
+   },
+   "pauseBeforeMs": 7000
+  },
+  {
+   "speaker": "them",
+   "text": "שלושה.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 1000
+  }
+ ]
+}

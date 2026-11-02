@@ -1,0 +1,88 @@
+{
+ "title": "Fast back-and-forth, interruptions, two questions in one turn (invented: Maya, Pearl Studio)",
+ "focus": "merged questions, overlaps",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "היי מאיה."
+  },
+  {
+   "speaker": "them",
+   "text": "היי, כמה שאלות. יש לכם גיבוי והאתר שלי איטי, מה עושים?",
+   "expect": {
+    "question": true,
+    "card": [
+     "backups",
+     "site-slow"
+    ]
+   },
+   "pauseBeforeMs": 600
+  },
+  {
+   "speaker": "them",
+   "text": "וכמה זה עולה לתחזק?",
+   "expect": {
+    "question": true,
+    "card": [
+     "stall-price",
+     "maintenance-plan"
+    ]
+   },
+   "pauseBeforeMs": 300
+  },
+  {
+   "speaker": "me",
+   "text": "רגע, בוא...",
+   "pauseBeforeMs": 200,
+   "overlapMs": 0
+  },
+  {
+   "speaker": "them",
+   "text": "ומה עם SSL ועם הדומיין, מי הבעלים שלו?",
+   "expect": {
+    "question": true,
+    "card": [
+     "ssl-basics",
+     "domain-owner"
+    ]
+   },
+   "pauseBeforeMs": 300,
+   "overlapMs": 500
+  },
+  {
+   "speaker": "them",
+   "text": "וגם אם האתר נפל, מי מקבל התראה?",
+   "expect": {
+    "question": true,
+    "card": [
+     "uptime-monitoring",
+     "site-down"
+    ]
+   },
+   "pauseBeforeMs": 250
+  },
+  {
+   "speaker": "me",
+   "text": "אחד אחד בבקשה.",
+   "pauseBeforeMs": 300
+  },
+  {
+   "speaker": "them",
+   "text": "סליחה. איך מעבירים דומיין?",
+   "expect": {
+    "question": true,
+    "card": "domain-transfer"
+   },
+   "pauseBeforeMs": 500
+  },
+  {
+   "speaker": "them",
+   "text": "ומה זה DNS בעצם?",
+   "expect": {
+    "question": true,
+    "card": "dns-basics"
+   },
+   "pauseBeforeMs": 250
+  }
+ ]
+}

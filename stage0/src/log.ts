@@ -11,6 +11,9 @@ export class CallLog {
   readonly id = ulid();
   readonly dir = join(CALLS, this.id);
   private meta: Record<string, unknown>;
+  /** Failed appends so far (disk full, folder removed...). The call keeps running; run.ts shows one amber warning via onWriteFail. */
+  writeFailures = 0;
+  onWriteFail?: (err: Error, count: number) => void;
   constructor(meta: Record<string, unknown>) {
     mkdirSync(this.dir, { recursive: true, mode: 0o700 });
     this.meta = { id: this.id, startedAt: new Date().toISOString(), ...meta };
@@ -23,6 +26,11 @@ export class CallLog {
   /** Merge fields into call.json (e.g. endedAt). */
   update(fields: Record<string, unknown>) { Object.assign(this.meta, fields); try { this.writeMeta(); } catch { /* best effort */ } }
   write(stream: "events" | "transcript" | "cards" | "latency" | "usage", row: Record<string, unknown>) {
-    appendFileSync(join(this.dir, `${stream}.jsonl`), JSON.stringify({ t: Date.now(), ...row }) + "\n", { mode: 0o600 });
+    try { appendFileSync(join(this.dir, `${stream}.jsonl`), JSON.stringify({ t: Date.now(), ...row }) + "\n", { mode: 0o600 }); }
+    catch (e) {
+      // Best effort: a full disk or a vanished folder must not end the call.
+      this.writeFailures++;
+      if (this.writeFailures === 1) { try { this.onWriteFail?.(e as Error, 1); } catch { /* never throw from the logger */ } }
+    }
   }
 }

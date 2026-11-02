@@ -13,6 +13,13 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   dropped = 0;             // chunks dropped because the socket was not open
   private keepAlive?: NodeJS.Timeout;
   keytermsDropped = false; // true when the open had to be retried without keyterms
+  // Stall guard (measured 2 Nov): on language=multi Deepgram sometimes never sends speech_final / a final after an utterance
+  // (the transcript sits on an unresolved last word) until ~5.4 s later. We watch the audio we send: when voiced audio is
+  // followed by finalizeSilenceMs of near-silence and no speech_final has come, send {"type":"Finalize"}. The reply
+  // (from_finalize) is reported as speechFinal. 0 = off. Normal speech_final (endpointing, 100-700 ms) always wins, so this only fires on a stall.
+  private voicedSince = false;     // voiced audio sent since the last speech_final / Finalize
+  private silentBytes = 0;         // consecutive near-silent bytes sent
+  private finalizeSent = false;
   constructor(private opts: SttOptions) { super(); }
 
   /** The query string the connection will use (for debugging and the local probe). */
@@ -25,11 +32,14 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
       // S8: a 400 while keyterms were sent may be the keyterm param itself: retry once without and say so.
       if (err.kind === "bad_request" && this.opts.keyterms?.length && this.opts.keytermRetry !== false) {
         this.keytermsDropped = true; this.emit("keyterms_off", err);
-        try { this.conn?.close?.(); } catch {}
-        await this.openOnce([]).catch((e2) => { throw classifySttError("deepgram", e2); });
-      } else throw err;
+        this.dropConn();
+        await this.openOnce([]).catch((e2) => { this.dropConn(); throw classifySttError("deepgram", e2); });
+      } else { this.dropConn(); throw err; }
     }
   }
+
+  /** A failed open must close its client, or the SDK keeps reconnecting it in the background (one leaked socket per retry). */
+  private dropConn() { try { this.conn?.close?.(); } catch {} this.conn = undefined as any; }
 
   private async openOnce(keyterms: string[]) {
     this.opens = 0;
@@ -77,7 +87,21 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
     if (!this.conn || this.conn.readyState !== 1) { this.dropped++; return false; }
     try { this.conn.sendMedia(pcm); } catch { this.dropped++; return false; }
     this.connBytes += pcm.length; this.totalBytes += pcm.length;
+    this.watchSilence(pcm);
     return true;
+  }
+
+  private watchSilence(pcm: Buffer) {
+    const ms = this.opts.finalizeSilenceMs ?? 900;
+    if (!(ms > 0)) return;
+    let peak = 0;
+    for (let i = 0; i + 1 < pcm.length; i += 8) { const v = Math.abs(pcm.readInt16LE(i)); if (v > peak) peak = v; }
+    if (peak >= 1500) { this.voicedSince = true; this.silentBytes = 0; this.finalizeSent = false; return; }
+    this.silentBytes += pcm.length;
+    if (this.voicedSince && !this.finalizeSent && this.silentBytes / 32 >= ms) {
+      this.finalizeSent = true;
+      try { if (this.conn?.readyState === 1) this.conn.sendFinalize({ type: "Finalize" }); } catch {}
+    }
   }
 
   /** seconds of audio sent so far (for cost) */
@@ -91,8 +115,10 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
     const words: Word[] = (alt?.words ?? []).map((w: any) => ({ word: w.punctuated_word ?? w.word, start: w.start, end: w.end, speaker: w.speaker, confidence: w.confidence }));
     const last = words.at(-1);
     const arrivedAt = Date.now();
+    const speechFinal = !!m.speech_final || (!!m.is_final && !!m.from_finalize);
+    if (speechFinal) this.voicedSince = false;
     const r: SttResult = {
-      channel: this.opts.channel, text, isFinal: !!m.is_final, speechFinal: !!m.speech_final, words, confidence: alt?.confidence,
+      channel: this.opts.channel, text, isFinal: !!m.is_final, speechFinal, words, confidence: alt?.confidence,
       speechEndWall: last ? speechEndWall(arrivedAt, this.connBytes / 32000, last.end) : undefined, arrivedAt,
     };
     this.emit("result", r);

@@ -19,7 +19,7 @@ test("ladder: signals map to rungs, worst wins", () => {
   assert.equal(decide(sig({ themDead: true, llmDown: true })).rung, 4);
   assert.equal(decide(sig({ bankFailed: true })).rung, 4);
   assert.equal(decide(sig({ fatal: "STT down", themDead: true })).rung, 5);
-  assert.deepEqual(capabilities(1), { detect: true, bank: true, llm: true, ans: false, listening: true });
+  assert.deepEqual(capabilities(1), { detect: true, bank: true, llm: true, ans: false, listening: true, meAns: true });
   assert.equal(capabilities(3).llm, false); assert.equal(capabilities(4).detect, false); assert.equal(capabilities(5).listening, false);
 });
 

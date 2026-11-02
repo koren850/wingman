@@ -1,0 +1,82 @@
+{
+ "title": "Vendor call: Dan asks Wingman mid-call (invented: Roi from HostCo)",
+ "focus": "questions for the assistant vs questions for the other side in the same call; no agency bank card on the supplier's own offer",
+ "frame": {
+  "kind": "vendor",
+  "topicAny": [
+   "אחסון",
+   "שרת",
+   "גיבוי",
+   "חוזה",
+   "hosting"
+  ],
+  "minChecklist": 4,
+  "allowBank": [
+   "backups",
+   "server-resources"
+  ]
+ },
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "שלום רועי, תודה שקבעת איתי. רציתי לדבר על הגיבויים של השרת שלנו אצלכם.",
+   "expect": {
+    "forMe": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "היי דן, בטח. אנחנו מציעים גיבוי יומי וגם גיבוי אינקרמנטלי על השרת הייעודי."
+  },
+  {
+   "speaker": "me",
+   "text": "מה זה גיבוי אינקרמנטלי בעצם?",
+   "pauseBeforeMs": 1200,
+   "expect": {
+    "forMe": "answer"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "אני אסביר בהמשך. קודם, אפשר לדעת כמה אתרים יש לכם על השרת היום?",
+   "pauseBeforeMs": 9000,
+   "expect": {
+    "question": true
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "בערך ארבעים אתרים. מה התקציב שלכם לשדרוג כזה?",
+   "pauseBeforeMs": 800,
+   "expect": {
+    "forMe": "none"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו גמישים בתמחור, נשמח לשמוע מה בדיוק אתם צריכים.",
+   "pauseBeforeMs": 800
+  },
+  {
+   "speaker": "me",
+   "text": "כמה זה 40 כפול 12?",
+   "pauseBeforeMs": 18000,
+   "expect": {
+    "forMe": "answer"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "וינגמן, איך אומרים uptime בעברית?",
+   "pauseBeforeMs": 6000,
+   "expect": {
+    "forMe": "answer"
+   }
+  },
+  {
+   "speaker": "them",
+   "text": "מעולה, אז אני אשלח לך הצעה בכתב ונדבר.",
+   "pauseBeforeMs": 9000
+  }
+ ]
+}

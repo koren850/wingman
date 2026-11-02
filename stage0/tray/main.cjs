@@ -1,184 +1,147 @@
-// Wingman menu-bar app: start/stop a call, consent, client, notes, quiet, briefing, dashboard, check.
-// Runs `src/call.ts` (answer window + listening) with WINGMAN_CONTROL=1 and talks to it over stdin/stdout.
-// No network of its own, no listener. Start: pnpm tray.
-const { app, Tray, Menu, BrowserWindow, Notification, nativeImage, ipcMain, dialog, shell, globalShortcut } = require("electron");
+// Wingman app: the menu bar (quick control) plus the Wingman window (home, calls, settings), one process, ONE call controller.
+// The menu and the window both talk to tray/controller.cjs, which runs `src/call.ts` with WINGMAN_CONTROL=1 (stdin commands, @@wingman status lines).
+// No network of its own; the only listener is the owner-only control socket for the CLI (tray/control-socket.cjs). Start: pnpm tray (menu bar only) or pnpm dashboard (menu bar + window).
+// Snapshot mode (WINGMAN_DASHBOARD_SNAPSHOT): hidden window only, no Tray, no global shortcuts, no call is ever spawned.
+const { app, Tray, Menu, BrowserWindow, Notification, nativeImage, ipcMain, dialog, shell, globalShortcut, screen, clipboard, nativeTheme } = require("electron");
+app.setName("Wingman");   // menu bar app name, About box and notifications (the Dock name comes from .app/Wingman.app)
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const lib = require("./lib.cjs");
+const { createController } = require("./controller.cjs");
+const windowHost = require("../dashboard/window.cjs");
+const { createControlServer } = require("./control-socket.cjs");
 
 const ROOT = path.join(__dirname, "..");
-const BIN = (n) => path.join(ROOT, "node_modules", ".bin", n);
 const ICON = path.join(ROOT, "..", "brand", "png", "trayTemplate.png");
 const LOGS = path.join(ROOT, "calls", "tray.log");
+const BRIEF_FILE = path.join(process.env.WINGMAN_BRIEFS_DIR || path.join(ROOT, "data", "private", "briefs"), "latest.yaml");
+const SNAPSHOT = !!process.env.WINGMAN_DASHBOARD_SNAPSHOT;
+const WANT_WINDOW = SNAPSHOT || process.argv.includes("--open-window") || process.env.WINGMAN_OPEN_WINDOW === "1";
 
-let tray, call, state = lib.initialState(), clock, promptWin, lastMenuKey = "";
+let tray, clock, promptWin, lastMenuKey = "", host, ctl, controlServer;
 
-app.dock && app.dock.hide();                      // menu-bar only, never in the Dock or the app switcher
-if (!app.requestSingleInstanceLock()) app.quit();  // one menu-bar icon only
-
-// Only status lines and errors are logged (never card text, client names or notes). Private file, fresh per call.
-function logLine(s) { try { fs.appendFileSync(LOGS, `${new Date().toISOString()} ${s}\n`, { mode: 0o600 }); } catch { /* calls/ may not exist yet */ } }
-function notify(title, body) { try { new Notification({ title, body, silent: true }).show(); } catch { /* notifications off */ } }
-
-function startCall(extraArgs = [], extraEnv = {}) {
-  if (call) return;
-  state = lib.reduce(lib.initialState(), { ev: "starting", practice: !!extraEnv.WINGMAN_STT_SCRIPT });
-  const env = { ...process.env, WINGMAN_CONTROL: "1", FORCE_COLOR: "0", ...extraEnv };
-  try { fs.writeFileSync(LOGS, "", { mode: 0o600 }); fs.chmodSync(LOGS, 0o600); } catch { /* best effort */ }
-  // detached: call.ts leads its own process group, so a stuck call can be force-killed with everything under it.
-  call = spawn(BIN("tsx"), [path.join(ROOT, "src", "call.ts"), ...extraArgs], { cwd: ROOT, env, stdio: ["pipe", "pipe", "pipe"], detached: true });
-  call.on("error", (e) => { logLine("ERR spawn " + e.message); notify("Wingman could not start", e.message); call = undefined; state = lib.reduce(state, { ev: "exit", code: 1 }); refresh(); });
-  call.stdin.on("error", () => { /* the call already ended */ });
-  let buf = "";
-  const onData = (d) => {
-    buf += d.toString();
-    let i;
-    while ((i = buf.indexOf("\n")) >= 0) {
-      const line = buf.slice(0, i); buf = buf.slice(i + 1);
-      const msg = lib.parseStatus(line);
-      if (!msg) continue;
-      logLine(line.trim());
-      const before = state;
-      state = lib.reduce(state, msg);
-      for (const n of lib.notifications(before, state, msg)) notify(n.title, n.body);
-    }
-  };
-  call.stdout.on("data", onData);
-  call.stderr.on("data", (d) => { logLine("ERR " + d.toString().trimEnd()); state = lib.reduce(state, { ev: "stderr", text: d.toString() }); });
-  call.on("exit", (code) => {
-    call = undefined;
-    state = lib.reduce(state, { ev: "exit", code });
-    if (code && code !== 0 && !state.endedCleanly && !state.offReason) notify("Wingman stopped", state.lastError ? state.lastError.slice(0, 120) : `exit code ${code}. Details: calls/tray.log`);
-    refresh();
-  });
-  refresh();
+let gotLock = true;
+if (!SNAPSHOT) {
+  app.dock && app.dock.hide();                      // menu-bar first: in the Dock only while the window is open
+  gotLock = app.requestSingleInstanceLock();        // a second launch hands over to the first one (second-instance below) and exits
+  if (!gotLock) app.quit();
 }
 
-// Practice call: a pretend client (data/demo/demo-call.json) plays into the real call loop with scripted AI.
-// File mode: no mic, no system audio, no network, no cost. Lets Dan try the answer window and the keys.
-function practiceCall() {
-  const script = path.join(ROOT, "data", "demo", "demo-call.json");
-  const gapMs = 4500;
-  let lines = 16; try { lines = JSON.parse(fs.readFileSync(script, "utf8")).length; } catch { /* default */ }
-  const wav = path.join(app.getPath("temp"), "wingman-practice.wav");
-  lib.writeSilentWav(wav, Math.ceil((lines * gapMs) / 1000) + 12);
-  startCall(["--profile", "demo", "--file", wav, "--no-brief"], { WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: String(gapMs) });
-  notify("Practice call", "A pretend client is talking. Watch the answer window on your second screen. Nothing is sent anywhere.");
+function notify(title, body, go) {
+  try {
+    if (SNAPSHOT) return;
+    const n = new Notification({ title, body, silent: true });
+    if (go) n.on("click", () => openWindow(go));
+    n.show();
+  } catch { /* notifications off */ }
 }
+const logLine = (s) => ctl && ctl.logLine(s);
+const state = () => ctl.getState();
 
-function send(cmd) { try { if (call && call.stdin.writable) call.stdin.write(cmd + "\n"); } catch { /* ended */ } }
-function killGroup(sig) { try { process.kill(-call.pid, sig); } catch { try { call.kill(sig); } catch { /* gone */ } } }
-function stopCall(cmd = "stop") {
-  if (!call) return;
-  send(cmd); state = lib.reduce(state, { ev: "stopping" }); refresh();
-  const c = call;
-  setTimeout(() => { if (call === c) killGroup("SIGINT"); }, 12000);      // call.ts: graceful stop
-  setTimeout(() => { if (call === c) killGroup("SIGKILL"); }, 20000);     // stuck: force everything off (mic included)
-}
+function openWindow(o) { return host && host.open(o); }
+function onChange() { refresh(); host && host.push(); }
 
-// Small input window for a note or a briefing (the only windows that take focus, because Dan opened them).
-function ask(kind) {
+// Small input window for a quick note (global shortcut). It is the only extra window; it takes focus because Dan asked for it.
+function ask() {
   if (promptWin) { promptWin.focus(); return; }
   promptWin = new BrowserWindow({
-    width: 460, height: kind === "brief" ? 470 : 230, resizable: false, minimizable: false, maximizable: false, alwaysOnTop: true,
-    title: kind === "brief" ? "Wingman · briefing" : "Wingman · note for the AI", backgroundColor: "#FEF7EC",
+    width: 460, height: 230, resizable: false, minimizable: false, maximizable: false, alwaysOnTop: true,
+    title: "Wingman · note for the AI", backgroundColor: "#FEF7EC",
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   promptWin.setContentProtection(true);
   promptWin.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   promptWin.webContents.on("will-navigate", (e) => e.preventDefault());
-  promptWin.loadFile(path.join(__dirname, "prompt.html"), { query: { kind } });
+  promptWin.loadFile(path.join(__dirname, "prompt.html"), { query: { kind: "note" } });
   promptWin.on("closed", () => { promptWin = undefined; });
 }
 ipcMain.handle("prompt:submit", (e, kind, data) => {
   if (!promptWin || e.sender !== promptWin.webContents) throw new Error("denied");
-  if (kind === "note") { const t = lib.cleanText(data && data.text, 300); if (t) send("note " + t); }
-  if (kind === "brief") {
-    const b = lib.briefFrom(data);
-    if (b) { lib.writeBrief(path.join(ROOT, "data", "private", "briefs"), b); notify("Briefing saved", "The next call in the next 6 hours uses it."); state = lib.reduce(state, { ev: "brief" }); }
-  }
+  if (kind === "note" && data && typeof data.text === "string") ctl.note(data.text);
   promptWin && promptWin.close();
-  refresh();
   return true;
 });
 
-function runDoctor() {
-  const p = spawn(BIN("tsx"), [path.join(ROOT, "src", "doctor.ts")], { cwd: ROOT, env: { ...process.env, FORCE_COLOR: "0" } });
-  let out = "";
-  p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (out += d));
-  state = lib.reduce(state, { ev: "doctor.start" }); refresh();
-  p.on("exit", () => {
-    state = lib.reduce(state, { ev: "doctor.end" });
-    const verdict = lib.doctorVerdict(out);
-    dialog.showMessageBox({ type: verdict.ok ? "info" : "warning", title: "Wingman check", message: verdict.ok ? "READY for a call" : "NOT READY", detail: lib.tail(out, 1800), buttons: ["OK"] });
-    refresh();
-  });
-}
-
-function openDashboard() {
-  spawn(BIN("electron"), [path.join(ROOT, "dashboard", "main.cjs")], { cwd: ROOT, stdio: "ignore", detached: true }).unref();
-}
-
-// Global keys while a call runs (the answer window owns Ctrl+Opt+C/P/R/K).
-const KEYS = { consent: "Control+Alt+Return", note: "Control+Alt+N" };
-function consent() { if (call && state.phase === "waiting") send("consent"); }
+// Global keys while a call runs (the answer window owns Ctrl+Opt+C/P/R/K/L). Ctrl+Opt+A = ask Wingman (the next sentence, within 10 s, is a question for it).
+const KEYS = { consent: "Control+Alt+Return", note: "Control+Alt+N", ask: "Control+Alt+A" };
 function registerKeys() {
   const bad = [];
-  if (!globalShortcut.register(KEYS.consent, consent)) bad.push(KEYS.consent);
-  if (!globalShortcut.register(KEYS.note, () => { if (call && state.phase !== "stopping") ask("note"); })) bad.push(KEYS.note);
+  if (!globalShortcut.register(KEYS.consent, () => ctl.consent())) bad.push(KEYS.consent);
+  if (!globalShortcut.register(KEYS.note, () => { if (ctl.isRunning() && state().phase !== "stopping") ask(); })) bad.push(KEYS.note);
+  if (!globalShortcut.register(KEYS.ask, () => ctl.askWingman())) bad.push(KEYS.ask);
   if (bad.length) logLine(`could not register ${bad.join(", ")}`);
 }
 
 function refresh() {
   if (!tray) return;
-  const v = lib.view(state, Date.now());
+  const s = state(), running = ctl.isRunning();
+  const v = lib.view(s, Date.now());
   tray.setTitle(v.title, { fontType: "monospacedDigit" });
   tray.setToolTip(v.tooltip);
-  const key = lib.menuKey(state, !!call) + v.statusLine.replace(/\d+:\d\d/, "");
+  const key = lib.menuKey(s, running) + v.statusLine.replace(/\d+:\d\d/, "");
   if (key === lastMenuKey) return;   // rebuilding an open menu every second would close it
   lastMenuKey = key;
   const items = [
+    { label: "Open Wingman", click: () => openWindow({ view: "home" }) },
+    { type: "separator" },
     { label: v.statusLine, enabled: false },
     ...(v.healthLines.map((h) => ({ label: h, enabled: false }))),
     { type: "separator" },
   ];
-  if (!call) {
-    items.push({ label: "Start call", accelerator: "", click: () => startCall() });
-    items.push({ label: "Start call without AI (bank cards only)", click: () => startCall(["--no-ai"]) });
-    items.push({ label: state.briefReady ? "Briefing ready ✓ (edit…)" : "Prepare a briefing…", click: () => ask("brief") });
+  if (!running) {
+    items.push({ label: "Start call", click: () => ctl.start({}) });
+    items.push({ label: "Start call without AI (bank cards only)", click: () => ctl.start({ noAi: true }) });
+    items.push({ label: s.briefReady ? "Plan a call: briefing ready \u2713 (edit\u2026)" : "Plan a call\u2026", click: () => openWindow({ view: "home", focus: "plan" }) });
     items.push({ type: "separator" });
-    items.push({ label: "Try a practice call (offline, free)", click: practiceCall });
+    items.push({ label: "Try a practice call (offline, free)", click: () => ctl.practice() });
   } else {
-    if (state.phase === "waiting") items.push({ label: "✅  Consent given: start listening", accelerator: KEYS.consent, registerAccelerator: false, click: consent });
-    if (state.proposed && !state.client) items.push({ label: `Confirm client: ${state.proposed}`, click: () => send("client") });
-    items.push({ label: "Add a note for the AI…", accelerator: KEYS.note, registerAccelerator: false, enabled: state.phase !== "stopping", click: () => ask("note") });
-    items.push({ label: "Quiet mode (hide cards)", type: "checkbox", checked: !!state.quiet, enabled: state.phase === "live", click: (mi) => send(`quiet ${mi.checked ? "on" : "off"}`) });
+    if (s.phase === "waiting") items.push({ label: "\u2705  Consent given: start listening", accelerator: KEYS.consent, registerAccelerator: false, click: () => ctl.consent() });
+    if (s.proposed && !s.client) items.push({ label: `Confirm client: ${s.proposed}`, click: () => ctl.confirmClient() });
+    items.push({ label: "Ask Wingman: my next sentence is for you", accelerator: KEYS.ask, registerAccelerator: false, enabled: s.phase === "live", click: () => ctl.askWingman() });
+    items.push({ label: "Add a note for the AI\u2026", accelerator: KEYS.note, registerAccelerator: false, enabled: s.phase !== "stopping", click: () => ask() });
+    items.push({ label: "Quiet mode (hide cards)", type: "checkbox", checked: !!s.quiet, enabled: s.phase === "live", click: (mi) => ctl.setQuiet(mi.checked) });
     items.push({ type: "separator" });
-    items.push({ label: state.phase === "stopping" ? "Stopping…" : "Stop call", enabled: state.phase !== "stopping", click: () => stopCall() });
-    items.push({ label: "Stop and delete this call", enabled: state.phase !== "stopping", click: () => stopCall("stop-delete") });
+    items.push({ label: s.phase === "stopping" ? "Stopping\u2026" : "Stop call", enabled: s.phase !== "stopping", click: () => ctl.stop() });
+    items.push({ label: "Stop and delete this call", enabled: s.phase !== "stopping", click: () => ctl.stopDelete() });
   }
   items.push({ type: "separator" });
-  items.push({ label: "Open dashboard", click: openDashboard });
-  items.push({ label: state.doctorRunning ? "Checking…" : "Check everything (doctor)", enabled: !state.doctorRunning && !call, click: runDoctor });
+  items.push({ label: s.doctorRunning ? "Checking\u2026" : "Check everything (doctor)", enabled: !s.doctorRunning && !running, click: () => { openWindow({ view: "home" }); ctl.runDoctor(); } });
   items.push({ label: "Show log", click: () => shell.openPath(LOGS) });
   items.push({ type: "separator" });
-  items.push({ label: "Quit Wingman", click: () => { if (call) { stopCall(); setTimeout(() => app.quit(), 9000); } else app.quit(); } });
+  items.push({ label: "Quit Wingman", click: () => { if (running) { ctl.stop(); setTimeout(() => app.quit(), 9000); } else app.quit(); } });
   tray.setContextMenu(Menu.buildFromTemplate(items));
 }
 
+app.on("second-instance", (_e, argv) => { host && host.open({ view: "home" }); });
+
 app.whenReady().then(() => {
-  fs.mkdirSync(path.join(ROOT, "calls"), { recursive: true });
-  const img = fs.existsSync(ICON) ? nativeImage.createFromPath(ICON) : nativeImage.createEmpty();
-  img.setTemplateImage(true);
-  tray = new Tray(img);
-  if (img.isEmpty()) tray.setTitle("Wingman");
-  state = lib.reduce(state, { ev: "boot", briefReady: lib.briefReady(path.join(ROOT, "data", "private", "briefs", "latest.yaml")) });
-  refresh();
-  registerKeys();
-  clock = setInterval(refresh, 1000);
+  if (!gotLock) return;
+  if (!SNAPSHOT) fs.mkdirSync(path.join(ROOT, "calls"), { recursive: true });
+  ctl = createController({
+    // Snapshot mode can never start anything: the spawn function itself refuses.
+    spawn: SNAPSHOT ? () => { throw new Error("snapshot mode never spawns a process"); } : spawn,
+    root: ROOT, logPath: SNAPSHOT ? "" : LOGS, tmpDir: app.getPath("temp"), notify: (t, b) => notify(t, b, /summary ready/i.test(t) ? { view: "call", id: ctl.getState().callId, tab: "followup" } : undefined), onChange,
+  });
+  host = windowHost.create({ app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller: ctl });
+  ctl.boot(lib.briefReady(BRIEF_FILE));
+  // Local control channel for the `wingman` CLI: owner-only Unix socket, fixed command list (tray/control-socket.cjs). Never in snapshot mode.
+  if (!SNAPSHOT) {
+    controlServer = createControlServer({ controller: ctl, lib, briefFile: BRIEF_FILE, log: logLine, info: () => ({ pid: process.pid, version: app.getVersion() }) });
+    controlServer.start().catch((e) => logLine("control socket not started: " + e.message));
+  }
+  if (!SNAPSHOT) {
+    const img = fs.existsSync(ICON) ? nativeImage.createFromPath(ICON) : nativeImage.createEmpty();
+    img.setTemplateImage(true);
+    tray = new Tray(img);
+    if (img.isEmpty()) tray.setTitle("Wingman");
+    refresh();
+    registerKeys();
+    clock = setInterval(() => { refresh(); const b = lib.briefReady(BRIEF_FILE); if (b !== state().briefReady && !ctl.isRunning()) ctl.boot(b); }, 1000);
+  }
+  if (WANT_WINDOW) host.open({ view: "home" });
 });
-app.on("window-all-closed", (e) => e.preventDefault());   // closing the note window must not quit the menu-bar app
-app.on("will-quit", () => globalShortcut.unregisterAll());
-app.on("before-quit", () => { clearInterval(clock); if (call) { send("stop"); setTimeout(() => call && killGroup("SIGKILL"), 8000).unref(); } });
+app.on("window-all-closed", (e) => { if (SNAPSHOT) app.quit(); else e.preventDefault(); });   // closing a window must not quit the menu-bar app
+app.on("will-quit", () => { globalShortcut.unregisterAll(); controlServer && controlServer.stop(); });
+app.on("before-quit", () => { clearInterval(clock); ctl && ctl.shutdown(); });
 process.on("uncaughtException", (e) => { logLine("ERR tray " + (e && e.stack || e)); });

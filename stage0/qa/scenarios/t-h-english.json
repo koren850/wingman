@@ -1,0 +1,118 @@
+{
+ "title": "English-only call (invented: Sarah from Brightline)",
+ "focus": "English detection and answers",
+ "frame": {
+  "kind": [
+   "client",
+   "sales",
+   "support"
+  ],
+  "topicAny": [
+   "website",
+   "hosting",
+   "site",
+   "ssl"
+  ],
+  "minChecklist": 2
+ },
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "Hi Sarah, thanks for joining.",
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "them",
+   "text": "Hi Dan. We are Brightline, a small design studio, and we want a new website.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "them",
+   "text": "How much would a site like that cost?",
+   "expect": {
+    "question": true,
+    "card": "stall-price"
+   },
+   "pauseBeforeMs": 1500,
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "me",
+   "text": "It depends on scope, I will put together a quote.",
+   "pauseBeforeMs": 1200,
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "them",
+   "text": "Do you handle hosting and backups?",
+   "expect": {
+    "question": true,
+    "card": [
+     "backups",
+     "server-resources",
+     "hosting-vs-domain"
+    ]
+   },
+   "pauseBeforeMs": 1500,
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "me",
+   "text": "Yes, we do.",
+   "pauseBeforeMs": 1000,
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "them",
+   "text": "What is an SSL certificate, and do we need one?",
+   "expect": {
+    "question": true,
+    "card": "ssl-basics"
+   },
+   "pauseBeforeMs": 2000,
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "me",
+   "text": "Yes, it encrypts traffic.",
+   "pauseBeforeMs": 1000,
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "them",
+   "text": "When could you launch it?",
+   "expect": {
+    "question": true,
+    "card": [
+     "stall-timeline",
+     "stall"
+    ]
+   },
+   "pauseBeforeMs": 2000,
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "me",
+   "text": "Wingman, what is 15 percent of 2400?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 2000,
+   "voice": "Samantha"
+  },
+  {
+   "speaker": "them",
+   "text": "Great, send me an email.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 2000,
+   "voice": "Samantha"
+  }
+ ]
+}

@@ -1,9 +1,13 @@
 # Wingman Stage 0 (dogfood tool)
 
+Wingman is a live meeting AI assistant. It listens to a call or meeting (any kind, or just you thinking aloud), answers questions the other side asks, answers questions **you** ask it, and notes, tips and summarises. It is not a sales or marketing tool. The agency answer bank is one knowledge source, used when the call is about web/hosting work.
+
+**Ask Wingman:** press **Ctrl+Opt+A**, then say your question within 10 s; the answer appears in a violet "For you" card. With `assist.answerMe: always` (default) it also answers questions you ask out loud that are clearly for it ("כמה זה 36 ועוד 42?", "מה ההבדל בין CDN ל-DNS?"), and stays quiet when you ask the other person ("מה התקציב שלכם?"). Arithmetic is computed locally, no AI.
+
 Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Use only on synthetic, self, friend or consented calls: Stage 0 live calls are for consented parties only. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
 
 ## Setup (once)
-1. Keys: fill in `~/.config/wingman/keys.env` (DEEPGRAM_API_KEY, ANTHROPIC_API_KEY). Never put keys in this repo.
+1. Keys: open the Wingman app, **Settings → Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; makes a mode-600 backup first). Never put keys in this repo.
 2. `pnpm install`
 3. `pnpm run doctor` checks keys, mic, system audio, Deepgram and Haiku (incl. prompt cache).
    macOS will ask your terminal app for **Microphone** and **System Audio Recording**. Allow both, then quit and reopen the terminal.
@@ -15,9 +19,9 @@ Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Use only on synthe
 |---|---|
 | **`pnpm call`** | **Start a call: opens the answer window and starts listening. Ctrl+C stops, saves the call and prints a speed summary** |
 | `pnpm tag` | After a call: rate each card y/n (about 2 min). Prints useful cards/hour and how often the bank answered (usefulness gate) |
-| `pnpm dashboard` | Review window: calls list with the usefulness gate across live calls, call detail (transcript, cards with useful/not-useful rating written to `tags.jsonl`, side items, speed, cost, events), delete call, settings and offline doctor. Local only, no network |
+| `pnpm dashboard` | The Wingman app: menu bar plus a window with Home (start or plan a call, run it, readiness, what is waiting), Calls (calls list with the usefulness gate across live calls, call detail (transcript, cards with useful/not-useful rating written to `tags.jsonl`, side items, speed, cost, events), delete call), Settings (13 plain-words options, Advanced list). Local only, no network |
 | `pnpm overlay` | Answer window on the second screen. Content protection is on but **untested with Zoom; use the second screen**. With one display it refuses to open unless `WINGMAN_ALLOW_PRIMARY=1`. Ctrl+Opt+C = clear, Ctrl+Opt+P = pause, Ctrl+Opt+R = last 30 s as text, Ctrl+Opt+K = copy the newest captured phone/email/domain |
-| `pnpm start` | Live call: system audio = client, mic = you. Wear headphones. **Nothing is sent to the cloud until you press Enter (consent confirmed).** Keys: `Enter` start, `q` quiet on/off (cards logged, not shown), Ctrl+C stop. Max ~3 new cards per 60 s |
+| `pnpm start` | Live call: system audio = the other side, mic = you. Wear headphones. **Nothing is sent to the cloud until you press Enter (consent confirmed).** Keys: `Enter` start, `q` quiet on/off (cards logged, not shown), `a` ask Wingman (same as Ctrl+Opt+A in the app), Ctrl+C stop. Max ~3 new cards per 60 s |
 | `pnpm start --discard` | Delete the call folder when the call ends (without it, Ctrl+C asks) |
 | `pnpm purge <id>` / `--older-than N` / `--all` | Delete saved calls (transcripts and cards; audio is never saved) |
 | `pnpm banktest` | Bank top-1 accuracy on 40 held-out utterances |
@@ -41,9 +45,12 @@ Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Use only on synthe
 
 ## Each call is saved to `calls/<id>/`
 `events.jsonl`, `transcript.jsonl`, `cards.jsonl`, `latency.jsonl` (speech end → bank card / tag / first words), `usage.jsonl` (tokens, STT seconds).
-Files are user-only (umask 077). Delete calls you don't need with `pnpm purge`; no encryption yet (interim privacy policy). Env (still work, mapped onto settings): `WINGMAN_ENDPOINT_MS` (= `stt.endpointMs`, default 350; try 700-1000 if questions get split at pauses), `WINGMAN_SHOW_IN_CAPTURE=1` (= `overlay.contentProtection: false`, for the Zoom share test), `WINGMAN_MIC`, `WINGMAN_ALLOW_PRIMARY=1`.
+Files are user-only (umask 077). Delete calls you don't need with `pnpm purge`; no encryption yet (interim privacy policy). Env (still work, mapped onto settings): `WINGMAN_ENDPOINT_MS` (= `stt.endpointMs`, default 200; try 700-1000 if questions get split at pauses), `WINGMAN_SHOW_IN_CAPTURE=1` (= `overlay.contentProtection: false`, for the Zoom share test), `WINGMAN_MIC`, `WINGMAN_ALLOW_PRIMARY=1`.
 
 Decision rule: client call only if the gate passes (term recall >= 85% after one alias/keyterm rerun, or the miss is understood and accepted); otherwise self-call with `--no-ai`.
+
+## It works for any kind of call
+Wingman does not assume a client call and is not a sales tool. About once a minute a small model writes the **call frame** (kind: client, support, vendor, team, consult, personal or other; topic; goal; people; a checklist of what this kind of call should cover): `src/frame.ts`, settings `frame.*`. The frame feeds the answers, the **live tips** (`src/tips.ts`, settings `tips.*`: at most one small tip per two minutes), the summary (its sections follow the kind) and the answer window / dashboard (header line, `3/6` checklist). On a call that is not with a client, agency bank cards are weak (dimmed, the model may drop them); price / timeline / guarantee stall cards stay. "Plan a call" also takes background files (.txt, .md, pasted text; .pdf when `pdftotext` is installed): `tray/attachments.cjs`. QA for this: `pnpm qa vendor-hosting team-planning consult-accountant personal-casual`.
 
 ## Settings and providers
 
@@ -56,7 +63,7 @@ Everything tunable is a setting; providers are swapped by setting, not by editin
 4. Environment variables: `WINGMAN_ENDPOINT_MS`, `WINGMAN_MIC`, `WINGMAN_ALLOW_PRIMARY`, `WINGMAN_SHOW_IN_CAPTURE`, `WINGMAN_STT_PROVIDER`, `WINGMAN_STT_FALLBACK`, `WINGMAN_LLM_MODEL`, `WINGMAN_LLM_FALLBACKS`, `WINGMAN_PROFILE`.
 5. CLI flags: `--file`, `--no-ai`, `--discard`, `--quiet`, `--profile`, `--stt`, `--stt-fallback a,b`, `--model`, `--endpoint-ms`, and the generic `--set key=value` (repeatable).
 
-Invalid settings stop the start with the file, the key and the allowed values, exit code 2. `pnpm settings` shows what is in force and where each value came from. API keys are never settings: they stay in `~/.config/wingman/keys.env` (`DEEPGRAM_API_KEY`, `ANTHROPIC_API_KEY`, and optionally `SONIOX_API_KEY`, `GLADIA_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
+Invalid settings stop the start with the file, the key and the allowed values, exit code 2. `pnpm settings` shows what is in force and where each value came from. API keys are never settings. Load order: process env, then the macOS Keychain (Deepgram, Anthropic), then the legacy `~/.config/wingman/keys.env` (`DEEPGRAM_API_KEY`, `ANTHROPIC_API_KEY`, and optionally `SONIOX_API_KEY`, `GLADIA_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
 
 **Switch the speech-to-text provider**
 ```yaml
@@ -81,3 +88,26 @@ Model strings are `provider:model`. Only Anthropic is installed. For others run 
 **Cautious first call**: `pnpm call --profile first-client-call` (bank + stall lines only, 2 new cards a minute).
 
 **Health bar and degrade ladder.** The overlay shows one persistent bar for the current mode: full -> reduced AI (bank + stall only; AI slow or rate-limited) -> provider switch (running on a fallback) -> bank-only (no usable AI, or `budget.maxUsdPerCall` reached) -> transcript-only (client audio or bank down) -> off. The mode changes only between questions and recovers after `health.recoverStableMs` of calm. Transitions are logged as `ladder` rows; spend per role is logged as `usage` rows with USD, using the editable price table in `budget.prices` (estimates: check your provider's prices).
+
+## Keys (security)
+- Storage: macOS Keychain, generic passwords, service `wingman`, accounts `DEEPGRAM_API_KEY` / `ANTHROPIC_API_KEY`. All access goes through `src/keychain.cjs` (wraps `/usr/bin/security`, no shell). Writes use `security -i` with the command on stdin, so a key is never in `ps` output or the environment, and every write is read back and compared.
+- Keys live in memory only. They are never written to `calls/`, `tray.log`, events, settings or snapshots. `run.ts` removes key variables from its own environment after loading, and the answer window, ffmpeg and caffeinate are started without them.
+- Settings → Keys: write-only password box (cleared on Save), status "Saved in Keychain · …a9F2" / "In file · …a9F2" / "Missing", Test (one tiny authenticated request, answers only ok/invalid/network), Remove (native confirm). The page only ever sees the last 4 characters. IPC: main window only, provider allow-list, format checks, 5 Save/Test per minute.
+- `pnpm keys status|set <provider>|remove <provider>|migrate`. `pnpm run doctor` shows source (Keychain/file/environment) and last 4 only.
+- Migration (`pnpm keys migrate` or the Settings button, never automatic): backup `keys.env.bak-<date>` (600), write + verify each key in the Keychain, then remove that line from keys.env (atomic, 600). Delete the backup once calls work.
+- Tests use a mocked `security` runner and fake keys (`src/keys.test.ts`); the real runner refuses to run under the test runner.
+
+## Answers for you (assist.*)
+| Setting | Default | What it does |
+|---|---|---|
+| `assist.answerMe` | `always` | `always`: a question you ask out loud that is for Wingman gets a "For you" card. `hotkey`: only after Ctrl+Opt+A. `off`: never, except after the key. Settings → Answers → "Answer my own questions". |
+| `assist.askWindowMs` | 10000 | After Ctrl+Opt+A the next thing you say within this time is for Wingman, whatever the setting. The overlay shows "Listening for your question…". |
+| `assist.themQuietMs`, `minGapMs`, `maxPerMin`, `protectThemMs` | 4 s, 4 s, 6, 15 s | Unsure cases answer only when the other side was silent 4 s (or the call is solo). At most 6 unasked answers a minute, 4 s apart. A "For you" card never lands within 15 s after a card for the other side (an asked-for answer waits instead). |
+
+How it decides (`src/assist.ts`): local cues first (math, "what does X mean", "אתם / שלכם" = the other side, the ask key), then, only if unsure, one tiny Haiku call (ASSIST / OTHER / NEITHER, about $0.0002) with the call frame as context. Arithmetic ("36 ועוד 42", "15% of 200", Hebrew and English number words) is computed locally by `src/calc.ts`: no AI, instant. The same evaluator keeps arithmetic and non-service prices ("כמה עולה דולר") away from the price stall line; real "כמה זה עולה" about services still stalls. Guards: answers for you never contain promises; prices and dates are blocked only when the question is about your own business.
+
+Test it offline: `WINGMAN_CONTROL=1` plus the stdin command `ask` (see `src/me-answers.test.ts`).
+
+**Only you on the line.** When the other side's audio is silent while you talk: a calm line (no call app open: "I only hear you. To get answers for the other side, join the call or play its audio. Ask me anything: Ctrl+Opt+A.") or, when Zoom/Teams/FaceTime/etc. is running, the red NOT HEARING THE OTHER SIDE bar. Either way answers for you keep working; only cards for the other side pause (`WINGMAN_CALL_APP=none|zoom` forces the check in tests).
+
+**Language.** `stt.language: he` is "Hebrew only" (Nova-3 supports Hebrew; steadier on short clips). With `multi`, a final whose letters are mostly not Hebrew/Latin (Telugu, Persian, Arabic...) is dropped and counted (`stt.dropForeignScript`, `foreign.summary` in events.jsonl).

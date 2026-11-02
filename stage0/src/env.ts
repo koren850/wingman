@@ -3,6 +3,8 @@ import { readFileSync, existsSync, statSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { realKeychain, ACCOUNTS, type Keychain } from "./keychain.ts";
+export { childEnv } from "./keychain.ts";
 
 export const KEYS_FILE = join(homedir(), ".config", "wingman", "keys.env");
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,19 +42,33 @@ export function securePerms(file: string): "ok" | "fixed" | "missing" {
   return "fixed";
 }
 
-export function loadKeys(file = KEYS_FILE, env: NodeJS.ProcessEnv = process.env): Keys {
+/** Where each loaded key came from (never the value). */
+export type KeySources = Partial<Record<KeyName, "env" | "keychain" | "file">>;
+
+/** Order: process env, then the macOS Keychain (Deepgram + Anthropic only), then keys.env (legacy fallback). Keys live in memory only.
+ *  `keychain` is opt-in: null (default) means no Keychain lookup, so tests and tools that pass a file never reach the real one. */
+export function loadKeysWithSources(file = KEYS_FILE, env: NodeJS.ProcessEnv = process.env, keychain: Keychain | null = null): { keys: Keys; sources: KeySources } {
   try { securePerms(file); } catch { /* read-only file system: loading still works */ }
   const fromFile = existsSync(file) ? parseKeysFile(readFileSync(file, "utf8")) : {};
-  const keys: Keys = {};
-  for (const [name, v] of Object.entries(KEY_VARS)) { const val = env[v]?.trim() || fromFile[v]; if (val) keys[name as KeyName] = val; }
-  return keys;
+  const keys: Keys = {}, sources: KeySources = {};
+  for (const [name, v] of Object.entries(KEY_VARS)) {
+    const n = name as KeyName;
+    let val = env[v]?.trim(), src: "env" | "keychain" | "file" = "env";
+    if (!val && keychain && n in ACCOUNTS) { try { val = keychain.get(n as "deepgram" | "anthropic") || undefined; } catch { val = undefined; } src = "keychain"; }
+    if (!val && fromFile[v]) { val = fromFile[v]; src = "file"; }
+    if (val) { keys[n] = val; sources[n] = src; }
+  }
+  return { keys, sources };
+}
+export function loadKeys(file = KEYS_FILE, env: NodeJS.ProcessEnv = process.env, keychain: Keychain | null = null): Keys {
+  return loadKeysWithSources(file, env, keychain).keys;
 }
 
-export function requireKeys<K extends KeyName>(which: K[], file = KEYS_FILE) {
-  const k = loadKeys(file);
+export function requireKeys<K extends KeyName>(which: K[], file = KEYS_FILE, keychain: Keychain | null = realKeychain()) {
+  const k = loadKeys(file, process.env, keychain);
   const missing = which.filter((w) => !k[w]);
   if (missing.length) {
-    console.error(`Missing key(s): ${missing.map((m) => KEY_VARS[m]).join(", ")}. Add them to ${file}`);
+    console.error(`Missing key(s): ${missing.map((m) => KEY_VARS[m]).join(", ")}. Save them in Wingman: Settings → Keys (or pnpm keys set <provider>). Legacy fallback: ${file}`);
     process.exit(2);
   }
   return k as Record<K, string> & Keys;

@@ -6,24 +6,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wingman</title>
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="skins.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header id="top">
   <div class="topin">
-    <div class="brand"><span class="mark" aria-hidden="true"></span><span class="wm">Wingman</span></div>
+    <button id="brand" class="brand" type="button" aria-label="Wingman home" title="Home"><span class="mark" aria-hidden="true"></span><span class="wm">Wingman</span></button>
     <nav aria-label="Main">
+      <button id="nav-home" class="navbtn" type="button"></button>
       <button id="nav-list" class="navbtn" type="button"></button>
       <button id="nav-settings" class="navbtn" type="button"></button>
     </nav>
     <span class="grow"></span>
+    <span id="call-slot"></span>
     <span id="pending-slot"></span>
   </div>
 </header>
 <main id="main" tabindex="-1"></main>
+<div id="pop-slot"></div>
 <div id="live" class="sr" role="status" aria-live="polite"></div>
 <div id="alert" class="sr" role="alert"></div>
 <script src="bidi.js"></script>
+<script src="livefeed.js"></script>
 <script src="app.js"></script>
+<script src="home.js"></script>
+<script src="live.js"></script>
+<script src="settings.js"></script>
+<script src="boot.js"></script>
 </body>
 </html>

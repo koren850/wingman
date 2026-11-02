@@ -1,0 +1,85 @@
+{
+ "title": "Solo: Dan asks Wingman math and facts",
+ "focus": "math latency/correctness, fillers, opinion questions",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "אוקיי, בואו נעשה חישובים קצרים.",
+   "expect": {
+    "forMe": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "וכמה איזה 7 כפול 350?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 4500
+  },
+  {
+   "speaker": "me",
+   "text": "15 אחוז מ 2400",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "me",
+   "text": "כמה זה 1200 חלקי 8?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "me",
+   "text": "כמה זה 18 אחוז מע\"מ על 3500?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "me",
+   "text": "מה אתה חושב על Cloudflare מול Fastly?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "me",
+   "text": "מה אתה חושב על מעבר לאחסון ענן?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "me",
+   "text": "מה בירת אוסטרליה?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  },
+  {
+   "speaker": "me",
+   "text": "אני צריך לסיים את ההצעה היום.",
+   "expect": {
+    "forMe": "none"
+   },
+   "pauseBeforeMs": 5000
+  },
+  {
+   "speaker": "me",
+   "text": "כמה זה 2500 ועוד 17 אחוז?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 6000
+  }
+ ]
+}

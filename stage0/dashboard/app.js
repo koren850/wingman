@@ -35,6 +35,15 @@ const ICONS = {
   details: [["path", { d: "M5 20v-9M12 20V4M19 20v-6" }]],
   jump: [["path", { d: "M7 17L17 7M9 7h8v8" }]],
   clock: [["circle", { cx: 12, cy: 12, r: 9 }], ["path", { d: "M12 7v5l3 2" }]],
+  home: [["path", { d: "M4 11l8-7 8 7M6 10v9h12v-9M10 19v-5h4v5" }]],
+  help: [["circle", { cx: 12, cy: 12, r: 9 }], ["path", { d: "M9.7 9.5a2.4 2.4 0 1 1 3.4 2.2c-.7.4-1.1.9-1.1 1.8M12 17v.01" }]],
+  phone: [["path", { d: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" }]],
+  play: [["path", { d: "M8 5l11 7-11 7z" }]],
+  stop: [["rect", { x: 6, y: 6, width: 12, height: 12, rx: 2 }]],
+  plan: [["rect", { x: 4, y: 5, width: 16, height: 15, rx: 2 }], ["path", { d: "M8 3v4M16 3v4M4 10h16" }]],
+  mic: [["rect", { x: 9, y: 3, width: 6, height: 11, rx: 3 }], ["path", { d: "M5 11a7 7 0 0 0 14 0M12 18v3" }]],
+  folder: [["path", { d: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }]],
+  undo: [["path", { d: "M9 7L4 12l5 5M4 12h10a6 6 0 0 1 0 8" }]],
 };
 function ico(name, cls) {
   const s = document.createElementNS(SVGNS, "svg");
@@ -43,8 +52,14 @@ function ico(name, cls) {
   return s;
 }
 const chip = (text, variant, opts = {}) => h("span", { class: "chip" + (variant ? " " + variant : "") + (opts.mono ? " mono" : "") }, opts.dot ? h("span", { class: "dot" }) : null, opts.icon ? ico(opts.icon) : null, text);
+/** A chip that does something: bordered, pointer, hover/pressed, trailing arrow. Plain chips (no arrow) are labels only. */
+const linkChip = (kids, variant, onclick, aria, title) => h("button", { type: "button", class: "chip go" + (variant ? " " + variant : ""), onclick, "aria-label": aria, title }, kids, ico("chevron"));
 const btn = (label, o = {}) => h("button", { type: "button", class: "btn" + (o.cls ? " " + o.cls : ""), onclick: o.onclick, title: o.title, "aria-label": o.aria, id: o.id }, o.icon ? ico(o.icon) : null, label ? h("span", {}, label) : null);
 const ltr = (s) => h("span", { class: "ltr" }, s);
+/** Visual skin: "" = the original look; "a" | "b" | "c" = the design directions (set on <html data-skin> by boot.js). */
+const SK = () => document.documentElement.dataset.skin || "";
+/** Small "?" that carries the long explanation (hover, focus or screen reader) so it does not sit on the page as grey text. */
+const tip = (text, end) => h("button", { type: "button", class: "tip" + (end ? " end" : ""), "aria-label": text, "data-tip": text, onclick: (e) => e.stopPropagation() }, "?");
 
 /* ---------- live region / errors ---------- */
 let liveTimer;
@@ -99,23 +114,23 @@ const meter = (frac, cls, mark) => {
   return m;
 };
 
-const state = { calls: [], view: "inbox", id: null, tab: "followup", sub: "speed", detail: null, search: "", hits: null, sq: 0, gen: 0, filter: "all", sel: null, lastId: null, hl: "", line: null };
+const state = { calls: [], view: "home", call: null, view0: "home", id: null, tab: "followup", sub: "speed", detail: null, search: "", hits: null, sq: 0, gen: 0, filter: "all", sel: null, lastId: null, hl: "", line: null };
 const pendingOf = (c) => Math.max(0, c.cardsTotal - c.rated);
 
 /* ---------- shell: nav + global pending chip ---------- */
 function setNav() {
-  const nl = $("nav-list"), ns = $("nav-settings");
-  nl.textContent = ""; ns.textContent = "";
-  nl.append(ico("inbox"), h("span", { class: "lab" }, "Inbox")); ns.append(ico("settings"), h("span", { class: "lab" }, "System"));
-  nl.setAttribute("aria-label", "Inbox"); ns.setAttribute("aria-label", "System");
-  if (state.view !== "system") nl.setAttribute("aria-current", "page"); else nl.removeAttribute("aria-current");
-  if (state.view === "system") ns.setAttribute("aria-current", "page"); else ns.removeAttribute("aria-current");
+  const defs = [["nav-home", "home", "Home", "home"], ["nav-list", "inbox", "Calls", "inbox"], ["nav-settings", "settings", "Settings", "settings"]];
+  const cur = state.view === "call" ? "inbox" : state.view;
+  for (const [id, v, label, icon] of defs) {
+    const b = $(id); b.textContent = ""; b.append(ico(icon), h("span", { class: "lab" }, label)); b.setAttribute("aria-label", label);
+    if (cur === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  }
 }
 function renderPendingChip() {
   const slot = $("pending-slot"); slot.textContent = "";
   const n = state.calls.reduce((a, c) => a + (c.crashed ? 0 : pendingOf(c)), 0);
   if (!n) return;
-  slot.append(h("button", { type: "button", class: "chip warn", title: "Open the first call with unrated cards", onclick: () => { const c = state.calls.find((x) => !x.crashed && pendingOf(x) > 0); if (c) openCall(c.id, { tab: "rate", filter: "unrated" }); } }, h("span", { class: "dot" }), h("span", { class: "ctr" }, n), (n === 1 ? " card to rate" : " cards to rate")));
+  slot.append(linkChip([h("span", { class: "dot" }), h("span", { class: "ctr" }, n), (n === 1 ? " card to rate" : " cards to rate")], "warn", () => { const c = state.calls.find((x) => !x.crashed && pendingOf(x) > 0); if (c) openCall(c.id, { tab: "rate", filter: "unrated" }); }, `${n} ${n === 1 ? "card" : "cards"} to rate, open the first call`, "Open the first call with unrated cards"));
 }
 async function loadList() { state.calls = await api.listCalls(); renderPendingChip(); }
 const ready = () => { document.body.dataset.ready = "1"; };
@@ -131,27 +146,56 @@ function gateStats() {
 function gateStrip() {
   const g = gateStats(), ok = g.ph != null && g.ph >= TARGET, none = g.ph == null, final = g.n >= GATE_CALLS;
   const scale = Math.max(TARGET * 2, Math.ceil((g.ph || 0) * 1.15));
-  const verdict = none ? "No ratings yet" : final ? (ok ? "Passed" : "Not passed") : ok ? "On track (final after 5 calls)" : "Below target so far";
+  const S = SK();
+  const verdict = none ? "No ratings yet" : S && !final ? (ok ? "On track" : "Below target") : final ? (ok ? "Passed" : "Not passed") : ok ? "On track (final after 5 calls)" : "Below target so far";
   const left = Math.max(0, GATE_CALLS - g.n);
   const tick = TARGET / scale * 100;
   const lab = h("div", { class: "scale", "aria-hidden": "true" }, h("span", { class: "l" }, "0"), h("span", { class: "t" }, `${TARGET}+ needed`), h("span", { class: "r" }, String(scale)));
   lab.querySelector(".t").style.insetInlineStart = tick + "%"; lab.querySelector(".l").style.insetInlineStart = "0";
-  return h("section", { class: "gate", "aria-labelledby": "gate-h" },
+  const el = h("section", { class: "gate go", "aria-labelledby": "gate-h" },
     h("div", { class: "stat" }, h("h2", { id: "gate-h", class: "label", style: false }, "Usefulness gate"),
       h("div", { class: "big " + (none ? "muted" : ok ? "good" : "bad") }, none ? "–" : ltr(g.ph.toFixed(1)), h("small", {}, "useful / hour"))),
     h("div", { role: "img", "aria-label": none ? "No ratings yet" : `${g.ph.toFixed(1)} useful per hour, target ${TARGET} or more` }, meter(none ? 0 : g.ph / scale, none ? "" : ok ? "good" : "bad", TARGET / scale), lab),
     h("div", { class: "facts" },
       h("div", { class: "row1" }, !none && ok ? h("span", { class: "capy", "aria-hidden": "true" }) : null, chip(verdict, none ? "" : ok ? "good" : "bad", { dot: true })),
       h("span", {}, `${g.n} of ${GATE_CALLS} calls rated · ${g.useful} useful in `, ltr(g.hours.toFixed(1) + " h")),
-      h("span", { class: "faint" }, left ? plural(left, "more call") + " to decide" : "Decision reached")));
+      S ? null : h("span", { class: "faint" }, left ? plural(left, "more call") + " to decide" : "Decision reached")),
+    h("button", { type: "button", class: "btn ghost sm gate-why" + (S ? " icon" : ""), "aria-haspopup": "dialog", "aria-expanded": "false", "aria-controls": "gate-pop", "aria-label": S ? "What is the usefulness gate?" : null, title: S ? "What is this?" : null }, ico("help"), S ? null : "What is this?"));
+  const why = el.querySelector(".gate-why");
+  const toggle = (e) => { if (e) e.stopPropagation(); gatePopover(el, why, g, ok, none); };
+  why.addEventListener("click", toggle);
+  el.addEventListener("click", (e) => { if (!e.target.closest("button")) toggle(); });
+  return el;
+}
+function closePopover(restore) {
+  const p = $("gate-pop"); if (!p) return;
+  const t = p._trigger; p.remove(); if (t) t.setAttribute("aria-expanded", "false");
+  document.removeEventListener("pointerdown", p._outside, true);
+  if (restore && t) t.focus();
+}
+function gatePopover(anchor, trigger, g, ok, none) {
+  if ($("gate-pop")) { closePopover(true); return; }
+  const first = state.calls.find((c) => !c.crashed && pendingOf(c) > 0);
+  const pop = h("div", { id: "gate-pop", class: "popover", role: "dialog", "aria-label": "How the usefulness gate works", tabindex: "-1" },
+    h("h3", {}, "How the usefulness gate works"),
+    h("p", {}, `Wingman only gets built further if its cards help on real calls. After each call you mark every card Useful or Not useful. The gate counts useful cards per hour of live calls. It needs ${TARGET} or more, measured over ${GATE_CALLS} rated live calls.`),
+    h("p", { class: "sub" }, none ? "Nothing is rated yet, so there is no number." : `Right now: ${g.useful} useful in ${g.hours.toFixed(1)} h = ${g.ph.toFixed(1)} per hour, ${ok ? "above" : "below"} the target. Practice calls are not counted.`),
+    h("div", { class: "actions" }, first ? btn("Rate the next card", { cls: "primary sm", onclick: () => { closePopover(); openCall(first.id, { tab: "rate", filter: "unrated" }); } }) : null, btn("Close", { cls: "sm", onclick: () => closePopover(true) })));
+  pop._trigger = trigger; trigger.setAttribute("aria-expanded", "true");
+  anchor.after(pop);
+  pop._outside = (e) => { if (!pop.contains(e.target) && !anchor.contains(e.target)) closePopover(false); };
+  document.addEventListener("pointerdown", pop._outside, true);
+  pop.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); closePopover(true); } });
+  pop.focus({ preventScroll: true });
 }
 
 /* ---------- inbox ---------- */
 function waitingChips(c) {
   const out = [], p = pendingOf(c);
-  if (c.crashed) out.push(chip("Crashed", "bad", { dot: true }));
-  if (!c.crashed && p) out.push(h("button", { type: "button", class: "chip warn", "aria-label": `${p} to rate, open on Rate`, onclick: (e) => { e.stopPropagation(); openCall(c.id, { tab: "rate", filter: "unrated" }); } }, h("span", { class: "ctr" }, p), " to rate"));
-  if (!c.crashed && c.hasSummary) out.push(h("button", { type: "button", class: "chip info", "aria-label": "Summary ready, open Follow-up", onclick: (e) => { e.stopPropagation(); openCall(c.id, { tab: "followup" }); } }, "Summary"));
+  const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
+  if (c.crashed) out.push(linkChip([h("span", { class: "dot" }), "Crashed"], "bad", stop(() => openCall(c.id, {})), "Crashed call, open details"));
+  if (!c.crashed && p) out.push(linkChip([h("span", { class: "ctr" }, p), " to rate"], "warn", stop(() => openCall(c.id, { tab: "rate", filter: "unrated" })), `${p} to rate, open on Rate`));
+  if (!c.crashed && c.hasSummary) out.push(linkChip("Summary", "info", stop(() => openCall(c.id, { tab: "followup" })), "Summary ready, open Follow-up"));
   return out.length ? out : [h("span", { class: "faint" }, "–")];
 }
 function callTable(rows, label) {
@@ -171,20 +215,25 @@ function callTable(rows, label) {
 }
 function nextUpCard() {
   const c = state.calls.find((x) => !x.crashed && (pendingOf(x) > 0 || x.hasSummary));
-  if (!c) return h("section", { class: "nextup clear", "aria-label": "Next up" }, h("span", { class: "capy", "aria-hidden": "true" }), h("div", {}, h("div", { class: "eyebrow" }, "Next up"), h("div", { class: "title" }, "You're all caught up"), h("div", { class: "sub" }, "No unrated cards and no summaries waiting.")));
+  if (!c) return h("section", { class: "nextup clear", "aria-label": "Next up" }, h("span", { class: "capy", "aria-hidden": "true" }), h("div", {}, h("div", { class: "eyebrow" }, "Next up"), h("div", { class: "title" }, "You're all caught up"), h("div", { class: "sub" }, SK() ? "" : "No unrated cards and no summaries waiting.")));
   const p = pendingOf(c);
   const tab = c.mode === "live" && p ? "rate" : c.hasSummary ? "followup" : "rate";
-  return h("section", { class: "nextup", "aria-label": "Next up" },
+  const go = () => openCall(c.id, { tab, filter: tab === "rate" ? "unrated" : undefined });
+  return h("section", { class: "nextup go", "aria-label": "Next up", onclick: (e) => { if (!e.target.closest("button")) go(); } },
     h("div", { class: "grow" }, h("div", { class: "eyebrow" }, "Next up"),
       h("div", { class: "title" }, `${dayLabel(c.startedAt)} ${tm(c.startedAt)} · ${mins(c.durationMs)}`),
       h("div", { class: "why" }, p ? chip(`${plural(p, "card")} to rate`, "warn", { dot: true }) : null, c.hasSummary ? chip("Summary ready", "info", { dot: true }) : null)),
-    h("button", { type: "button", class: "btn primary", onclick: () => openCall(c.id, { tab, filter: tab === "rate" ? "unrated" : undefined }) }, "Review", ico("chevron")));
+    h("button", { type: "button", class: "btn primary", onclick: go }, "Review", ico("chevron")));
+}
+function callsHead() {
+  const n = state.calls.reduce((a, c) => a + (c.crashed ? 0 : pendingOf(c)), 0), live = state.calls.filter((c) => c.mode === "live").length;
+  return h("div", { class: "page-head ph2" }, h("div", {}, h("div", { class: "hh-date" }, `${plural(state.calls.length, "call")} · ${live} live`), h("h1", {}, n ? `${plural(n, "card")} waiting for your rating` : "All caught up")));
 }
 function viewInbox(restoreFocus) {
-  state.view = "inbox"; state.gen++; setNav(); busy();
+  state.view = "inbox"; closePopover(false); state.gen++; setNav(); busy();
   const main = $("main"); main.textContent = "";
   if (!state.calls.length) {
-    main.append(h("h1", { class: "sr" }, "Inbox"), h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No calls yet"), h("span", {}, "Calls show up here after they end. Practice calls too."), h("span", {}, "To start one: ", h("code", {}, "pnpm call")), btn("Refresh", { icon: "refresh", onclick: async () => { await loadList(); viewInbox(); announce("Refreshed"); } })));
+    main.append(h("h1", { class: "sr" }, "Calls"), h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No calls yet"), h("span", {}, "Calls show up here after they end. Practice calls too."), btn("Go to Home to start one", { icon: "home", cls: "primary", onclick: () => viewHome() }), btn("Refresh", { icon: "refresh", onclick: async () => { await loadList(); viewInbox(); announce("Refreshed"); } })));
     return ready();
   }
   const input = h("input", { type: "search", id: "q", placeholder: "Search transcripts", value: state.search, "aria-label": "Search transcripts", "aria-keyshortcuts": "/" });
@@ -202,7 +251,7 @@ function viewInbox(restoreFocus) {
     }, 200);
   });
   main.append(
-    h("div", { class: "page-head" }, h("h1", {}, "Inbox")),
+    SK() ? callsHead() : h("div", { class: "page-head" }, h("h1", {}, "Calls")),
     nextUpCard(), gateStrip(),
     h("div", { class: "bar" }, h("div", { class: "search" }, ico("search"), input), btn("", { icon: "refresh", cls: "icon ghost", aria: "Refresh calls", title: "Refresh", onclick: async () => { await loadList(); viewInbox(); announce("Refreshed"); } }), count), out);
   function draw() {
@@ -241,7 +290,7 @@ function normTab(t, x) {
   if (!t) return { tab: null };
   const o = { tab: OLD_TABS[t] || t };
   if (t === "side") o.filter = "side"; if (t === "speed" || t === "cost" || t === "events") o.sub = t;
-  if (o.tab === "rate" && (x === "unrated" || x === "side")) o.filter = x;
+  if (o.tab === "rate" && /^(unrated|side|rated|useful)$/.test(x || "")) o.filter = x;
   if (o.tab === "transcript" && /^\d+$/.test(x || "")) o.line = +x;
   if (o.tab === "details" && /^(speed|cost|events)$/.test(x || "")) o.sub = x;
   if (!TABS.some((x2) => x2[0] === o.tab)) o.tab = null;
@@ -254,7 +303,7 @@ function defaultTab(d) {
   return "transcript";
 }
 async function openCall(id, o = {}) {
-  state.view = "call"; state.id = id; state.lastId = id; state.sel = null; state.hl = o.hl || ""; state.line = o.line == null ? null : o.line;
+  closePopover(false); state.view = "call"; state.id = id; state.lastId = id; state.sel = null; state.hl = o.hl || ""; state.line = o.line == null ? null : o.line;
   setNav(); busy();
   const gen = ++state.gen, main = $("main");
   main.textContent = ""; main.append(h("div", { class: "loading", role: "status" }, "Loading call…"));
@@ -280,7 +329,7 @@ function renderCall(tab) {
   const d = state.detail, s = d.summary, main = $("main");
   main.textContent = "";
   const empty = !d.transcript.length && !d.events.length && !d.cards.length;
-  const back = btn("Inbox", { icon: "back", cls: "ghost sm", onclick: backToList, title: "Back to Inbox (Esc)" });
+  const back = btn("Calls", { icon: "back", cls: "ghost sm", onclick: backToList, title: "Back to Calls (Esc)" });
   const delBtn = btn("Delete call", { icon: "trash", cls: "danger sm", onclick: deleteCurrent });
   const title = `${fullDay(s.startedAt)}, ${tm(s.startedAt)}`;
   if (s.crashed) {
@@ -319,10 +368,11 @@ async function deleteCurrent() {
 function renderStats() {
   const el = $("stats"); if (!el) return;
   const d = state.detail, s = d.summary, p = pendingOf(s); el.textContent = "";
+  const stat = (text, filter, aria) => h("button", { type: "button", class: "statlink", onclick: () => setTab("rate", { filter }, true), "aria-label": aria }, text);
   const parts = [h("b", {}, mins(s.durationMs))];
-  if (s.cardsTotal) parts.push(`${plural(s.cardsTotal, "card")}`, `${s.rated} rated`, `${s.useful} useful`); else parts.push("no cards");
+  if (s.cardsTotal) parts.push(stat(plural(s.cardsTotal, "card"), "all", `${plural(s.cardsTotal, "card")}, open Rate`), stat(`${s.rated} rated`, "rated", `${s.rated} rated, open Rate filtered to rated cards`), stat(`${s.useful} useful`, "useful", `${s.useful} useful, open Rate filtered to useful cards`)); else parts.push("no cards");
   parts.forEach((x, i) => { if (i) el.append(h("span", { class: "sep", "aria-hidden": "true" }, "·")); el.append(x); });
-  if (p) el.append(h("button", { type: "button", class: "chip warn", onclick: () => setTab("rate", { filter: "unrated" }, true) }, h("span", { class: "ctr" }, p), " to rate"));
+  if (p) el.append(linkChip([h("span", { class: "ctr" }, p), " to rate"], "warn", () => setTab("rate", { filter: "unrated" }, true), `${p} to rate, open Rate`));
   // tab badges
   const set = (k, text, attn) => { const t = $("tab-" + k); if (!t) return; const n = t.querySelector(".n"); n.textContent = text == null ? "" : String(text); n.className = "n" + (attn ? " attn" : ""); };
   set("followup", d.callSummary ? "✓" : null);
@@ -394,13 +444,13 @@ function tFollowup(pane, d) {
     s.nextSteps.forEach((n, i) => {
       const cb = h("input", { type: "checkbox", id: "step-" + i }); cb.checked = !!done[i];
       const row = h("label", { class: "step" + (done[i] ? " done" : ""), for: "step-" + i }, cb,
-        chip(n.who === "דן" ? "Dan" : "Client", n.who === "דן" ? "me" : "info"),
+        chip(n.who === "דן" ? "Dan" : n.who === "לקוח" ? "Client" : n.who, n.who === "דן" ? "me" : "info"),
         h("span", { class: "what", dir: dirOf(n.what), lang: langOf(n.what) }, rich(n.what), n.when ? h("span", { class: "when", dir: dirOf(n.when), lang: langOf(n.when) }, n.when) : null));
       cb.addEventListener("change", () => { done[i] = cb.checked; saveSteps(state.id, done); row.classList.toggle("done", cb.checked); upd(); announce(`${cb.checked ? "Done" : "Reopened"}: ${n.what.slice(0, 60)}`); });
       stepsUl.append(h("li", {}, row));
     });
     upd();
-    const stepsText = () => s.nextSteps.map((n) => `- [ ] ${n.who === "דן" ? "Dan" : "Client"}: ${n.what}${n.when ? " (" + n.when + ")" : ""}`).join("\n");
+    const stepsText = () => s.nextSteps.map((n) => `- [ ] ${n.who === "דן" ? "Dan" : n.who === "לקוח" ? "Client" : n.who}: ${n.what}${n.when ? " (" + n.when + ")" : ""}`).join("\n");
     const email = s.followUpEmail || "";
     const phN = (email.match(/\[להשלים[^\]\n]*\]/g) || []).length || s.guardReplaced || 0;
     const aside = h("aside", { class: "emailbox", "aria-label": "Follow-up email" },
@@ -410,6 +460,7 @@ function tFollowup(pane, d) {
       h("div", { class: "foot" }, "Draft only, never sent anywhere. ", s.model ? ltr(s.model) : null, s.costUsd ? [" · ", ltr("$" + s.costUsd.toFixed(4))] : null));
     box.append(h("div", { class: "fu" },
       h("div", { class: "fu-main" },
+        frameSection(d),
         sec("Summary", s.summary.length ? list(s.summary) : none("None")),
         h("section", {}, h("div", { class: "rowh" }, h("h2", {}, "Next steps", s.nextSteps.length ? progress : null), h("span", { class: "grow" }), s.nextSteps.length ? copyBtn("Copy next steps", stepsText, { cls: "ghost sm", what: "Next steps" }) : null), s.nextSteps.length ? stepsUl : none("No next steps agreed")),
         sec("Decisions", s.decisions.length ? list(s.decisions) : none("No decisions"), s.decisions.length || null),
@@ -418,7 +469,23 @@ function tFollowup(pane, d) {
       aside));
     return;
   }
-  const cs = capturesSection(d); if (cs) box.append(h("div", { class: "fu-main", style: false }, cs));
+  const cs = capturesSection(d), fs = frameSection(d); if (cs || fs) box.append(h("div", { class: "fu-main", style: false }, fs, cs));
+}
+/** What the call turned out to be about, and how much of its checklist was covered (6/8, with the missed items). */
+const KIND_EN = { client: "Client", support: "Support", vendor: "Vendor", team: "Team", consult: "Consult", personal: "Personal", other: "Other" };
+function frameSection(d) {
+  const cf = d.callFrame; if (!cf) return null;
+  const f = cf.frame, all = cf.total > 0 && cf.done === cf.total;
+  const head = h("div", { class: "rowh" }, h("h2", {}, "About the call"), h("span", { class: "grow" }),
+    cf.total ? h("span", { class: "chip " + (all ? "good" : "warn") }, `${cf.done}/${cf.total} covered`) : null);
+  const topic = f.topic || "";
+  const body = h("div", { class: "fr-sum" },
+    h("div", { class: "fr-line" }, chip(KIND_EN[f.kind] || "Other", "info", { dot: true }), h("span", { class: "fr-topic", dir: dirOf(topic), lang: langOf(topic) }, rich(topic))),
+    f.goal ? h("div", { class: "fr-goal muted", dir: dirOf(f.goal), lang: langOf(f.goal) }, rich(f.goal)) : null,
+    cf.total ? h("ul", { class: "fr-list", "aria-label": "Checklist result" }, f.checklist.map((c) => h("li", { class: c.done ? "fr-done" : "fr-miss" },
+      chip(c.done ? "Covered" : "Missed", c.done ? "good" : "warn"), h("span", { dir: dirOf(c.item), lang: langOf(c.item) }, rich(c.item))))) : null,
+    cf.missed.length ? h("div", { class: "muted fr-note" }, "Missed must-cover items are added to Open questions.") : null);
+  return h("section", {}, head, body);
 }
 function capturesSection(d) {
   const ev = d.events.filter((e) => e.type === "context.note" || e.type === "client.confirmed");
@@ -432,24 +499,25 @@ function capturesSection(d) {
 }
 
 /* ---------- Rate ---------- */
-const SRC = { bank: "Bank", ai: "AI", stall: "Stall", warn: "Warning", info: "Info", note: "Note", fact: "Fact", reminder: "Reminder" };
+const SRC = { me: "For you", bank: "Bank", ai: "AI", stall: "Stall", tip: "Tip", warn: "Warning", info: "Info", note: "Note", fact: "Fact", reminder: "Reminder" };
 function filterCards(d) {
   const f = state.filter, all = allCards(d);
-  return all.filter((c) => f === "all" || (f === "side" ? c.turnId === "side" : rateable(c) && !d.tags[c.id]));
+  return all.filter((c) => f === "all" || (f === "side" ? c.turnId === "side" : f === "rated" ? rateable(c) && !!d.tags[c.id] : f === "useful" ? rateable(c) && d.tags[c.id] === "y" : rateable(c) && !d.tags[c.id]));
 }
+function filterCounts(d, all, r) { return { all: all.length, unrated: r.filter((c) => !d.tags[c.id]).length, rated: r.filter((c) => d.tags[c.id]).length, useful: r.filter((c) => d.tags[c.id] === "y").length, side: all.filter((c) => c.turnId === "side").length }; }
 function ratebar(d) {
   const all = allCards(d), r = all.filter(rateable);
-  const cnt = { all: all.length, unrated: r.filter((c) => !d.tags[c.id]).length, side: all.filter((c) => c.turnId === "side").length };
+  const cnt = filterCounts(d, all, r);
   const seg = h("div", { class: "seg", role: "group", "aria-label": "Filter cards", id: "seg" });
-  for (const [k, t] of [["all", "All"], ["unrated", "Unrated"], ["side", "Side"]]) {
+  for (const [k, t] of [["all", "All"], ["unrated", "Unrated"], ["rated", "Rated"], ["useful", "Useful"], ["side", "Side"]]) {
     seg.append(h("button", { type: "button", "data-f": k, "aria-pressed": state.filter === k ? "true" : "false", onclick: (e) => { state.filter = k; state.sel = null; drawCards(); announce(`${t}: ${cnt[k]} cards`); e.currentTarget.focus(); } }, t, h("span", { class: "c" }, cnt[k])));
   }
-  return h("div", { class: "ratebar" }, seg, h("span", { class: "grow" }), h("span", { class: "hints", "aria-hidden": "true" }, h("span", {}, h("kbd", {}, "Y"), " useful"), h("span", {}, h("kbd", {}, "N"), " not useful"), h("span", {}, h("kbd", {}, "U"), " clear"), h("span", {}, h("kbd", {}, "J"), h("kbd", {}, "K"), " move")));
+  return h("div", { class: "ratebar" }, seg, SK() ? tip("Keys: Y useful, N not useful, U clear, J and K move between cards.") : null, h("span", { class: "grow" }), h("span", { class: "hints", "aria-hidden": "true" }, h("span", {}, h("kbd", {}, "Y"), " useful"), h("span", {}, h("kbd", {}, "N"), " not useful"), h("span", {}, h("kbd", {}, "U"), " clear"), h("span", {}, h("kbd", {}, "J"), h("kbd", {}, "K"), " move")));
 }
 function refreshSeg() {
   const d = state.detail, seg = $("seg"); if (!seg) return;
   const all = allCards(d), r = all.filter(rateable);
-  const cnt = { all: all.length, unrated: r.filter((c) => !d.tags[c.id]).length, side: all.filter((c) => c.turnId === "side").length };
+  const cnt = filterCounts(d, all, r);
   for (const b of seg.querySelectorAll("button")) b.querySelector(".c").textContent = cnt[b.dataset.f];
 }
 function tRate(pane, d) {
@@ -494,7 +562,7 @@ function drawCards() {
   const d = state.detail, cs = filterCards(d), total = cs.length; list.textContent = "";
   for (const b of document.querySelectorAll("#seg button")) b.setAttribute("aria-pressed", b.dataset.f === state.filter ? "true" : "false");
   refreshSeg();
-  if (!cs.length) { list.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, state.filter === "unrated" ? "All rated" : "No cards here"), h("span", {}, state.filter === "unrated" ? "Nothing left to rate on this call." : "Nothing matches this filter."))); return; }
+  if (!cs.length) { list.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, state.filter === "unrated" ? "All rated" : "No cards here"), h("span", {}, state.filter === "unrated" ? "Nothing left to rate on this call." : "Nothing matches this filter."), state.filter !== "all" ? btn("Show all cards", { cls: "sm", onclick: () => { state.filter = "all"; drawCards(); } }) : null)); return; }
   cs.forEach((c, i) => list.append(cardEl(c, d, i, total)));
   const firstUn = cs.find((c) => rateable(c) && !d.tags[c.id]) || cs[0];
   setCur(state.sel && cs.some((c) => c.id === state.sel) ? state.sel : firstUn.id, false);
@@ -538,9 +606,14 @@ function tTranscript(pane, d, o) {
   d.transcript.forEach((r, i) => {
     const me = r.ch === "me", l = qAt.get(i);
     const ex = [];
-    if (l) { const cardMs = firstCard(l) && l.speechEnd ? firstCard(l) - l.speechEnd : null; ex.push(!firstCard(l) ? chip("Question · no card", "bad", { dot: true }) : cardMs > 3000 ? chip(`Question · card after ${sec(cardMs)}`, "warn", { dot: true }) : chip("Question", "info")); }
+    if (l) {
+      const cardMs = firstCard(l) && l.speechEnd ? firstCard(l) - l.speechEnd : null, toMissed = () => setTab("missed", {}, true);
+      ex.push(!firstCard(l) ? linkChip([h("span", { class: "dot" }), "Question · no card"], "bad", toMissed, "Question with no card, open Missed")
+        : cardMs > 3000 ? linkChip([h("span", { class: "dot" }), `Question · card after ${sec(cardMs)}`], "warn", toMissed, "Question answered late, open Missed")
+        : chip("Question", "info"));
+    }
     box.append(h("div", { class: "row " + (me ? "me" : "them"), role: "listitem", id: "tr-" + i, tabindex: "-1" },
-      h("span", { class: "ts" }, mmss(r.t - t0)), h("span", {}, chip(me ? "Me" : "Client", me ? "me" : "info")),
+      h("span", { class: "ts" }, mmss(r.t - t0)), h("span", {}, chip(me ? "Me" : "Them", me ? "me" : "info")),
       h("div", { class: "tx", dir: dirOf(r.text), lang: langOf(r.text) }, hlNodes(r.text, q)),
       ex.length ? h("div", { class: "ex" }, ex) : null));
     for (const c of cardsAt.get(i) || []) {
@@ -571,8 +644,9 @@ function tMissed(pane, d) {
   pane.append(h("div", { class: "pane" }, h("div", { class: "section-title" }, h("h2", {}, "Questions with no card, or a late one"), h("span", { class: "sub" }, items.length)),
     h("div", { class: "missed", role: "list" }, items.map((m) => {
       const line = d.transcript.findIndex((r) => String(r.text).trim() === m.text.trim());
-      return h("div", { class: "mrow", role: "listitem" },
-        line >= 0 && m.rel != null ? h("button", { type: "button", class: "btn ghost sm mono", title: "Show in transcript", "aria-label": `Show in transcript at ${mmss(m.rel)}`, onclick: () => setTab("transcript", { line }, true) }, mmss(m.rel)) : h("span", { class: "ts" }, m.rel != null ? mmss(m.rel) : ""),
+      const go = line >= 0 ? () => setTab("transcript", { line }, true) : null;
+      return h("div", { class: "mrow" + (go ? " go" : ""), role: "listitem", onclick: go ? (e) => { if (!e.target.closest("button")) go(); } : null },
+        line >= 0 && m.rel != null ? h("button", { type: "button", class: "btn ghost sm mono", title: "Show in transcript", "aria-label": `Show in transcript at ${mmss(m.rel)}`, onclick: go }, mmss(m.rel)) : h("span", { class: "ts" }, m.rel != null ? mmss(m.rel) : ""),
         h("div", {}, textEl("div", "q", m.text), h("div", { class: "why" }, chip(m.why, m.bad ? "bad" : "warn", { dot: true }), m.reason ? chip(m.reason, "", { mono: true }) : null)),
         copyBtn("Copy", () => m.text, { cls: "ghost sm", aria: "Copy question: " + m.text.slice(0, 50), what: "Question" }));
     }))));
@@ -609,9 +683,9 @@ function subSpeed(out, d) {
   const stat = (k) => { const a = rows.map((r) => r[k]); return [pct(a, 0.5), pct(a, 0.95)]; };
   out.append(h("div", { class: "tblwrap" }, h("table", { "aria-label": "Latency per question" },
     h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Question"), def.map(([, label]) => h("th", { scope: "col", class: "num" }, label)), h("th", { scope: "col" }, "Tag"))),
-    h("tbody", {}, rows.map((r) => h("tr", {}, h("td", { dir: dirOf(r.l.text), lang: langOf(r.l.text) }, r.l.text || r.l.turnId),
+    h("tbody", {}, rows.map((r) => { const line = d.transcript.findIndex((x) => String(x.text).trim() === String(r.l.text || "").trim()), go = line >= 0 ? () => setTab("transcript", { line }, true) : null; return h("tr", { class: go ? "go" : "", onclick: go }, h("td", { dir: dirOf(r.l.text), lang: langOf(r.l.text) }, go ? h("button", { type: "button", class: "rowlink q", title: "Show in transcript", onclick: (e) => { e.stopPropagation(); go(); } }, r.l.text || r.l.turnId) : (r.l.text || r.l.turnId)),
       def.map(([k, , g, o]) => h("td", { class: "num " + (k === "card" && r[k] == null ? "lat-bad" : tone(r[k], g, o)) }, k === "card" && r[k] == null ? "no card" : [ltr(sec(r[k])), r[k] != null && tone(r[k], g, o) === "lat-bad" ? h("span", { class: "sr" }, " (slow)") : null])),
-      h("td", {}, r.l.tag ? chip(r.l.tag, "", { mono: true }) : "")))),
+      h("td", {}, r.l.tag ? chip(r.l.tag, "", { mono: true }) : ""));})),
     h("tfoot", {}, [["p50", 0], ["p95", 1]].map(([lab, ix]) => h("tr", {}, h("td", {}, lab), def.map(([k, , g, o]) => { const v = stat(k)[ix]; return h("td", { class: "num " + tone(v, g, o) }, ltr(sec(v))); }), h("td")))))));
 }
 function subCost(out, d) {
@@ -644,67 +718,6 @@ function subEvents(out, d) {
   draw(); out.append(h("div", { class: "bar" }, h("div", { class: "search" }, ico("search"), f), note), list);
 }
 
-/* ---------- System: doctor first, then settings ---------- */
-function parseDoctor(text) {
-  const groups = []; let cur = null, verdict = "", note = "";
-  for (const raw of String(text).split("\n")) {
-    const line = raw.replace(/\s+$/, ""); if (!line.trim()) continue;
-    const m = /^\s+(\S+)\s+(.*)$/.exec(line);
-    if (m && !/^[A-Za-z0-9(]/.test(m[1])) { if (!cur) groups.push((cur = { name: "General", items: [] })); cur.items.push({ lvl: m[1] === "✅" ? "ok" : /^⚠/.test(m[1]) ? "warn" : "bad", text: m[2] }); }
-    else if (/^(NOT READY|READY)\b/.test(line.trim())) verdict = line.trim();
-    else if (line.startsWith("(")) note = line.trim();
-    else if (!/^\s/.test(line) && !line.startsWith("Wingman doctor")) { cur = { name: line.trim(), items: [] }; groups.push(cur); }
-  }
-  return { groups: groups.filter((g) => g.items.length), verdict, note };
-}
-function parseSettings(text) {
-  const groups = new Map(), raw = []; let head = "";
-  for (const line of String(text).split("\n")) {
-    const m = /^(\S+)\s{2,}(.*?)\s+\[([^\]]+)\]\s*$/.exec(line);
-    if (m) { const g = m[1].includes(".") ? m[1].split(".")[0] : "general"; (groups.get(g) || groups.set(g, []).get(g)).push({ k: m[1], v: m[2], src: m[3] }); }
-    else if (line.trim()) { if (!head && /^Effective/.test(line)) head = line.trim(); else raw.push(line); }
-  }
-  return { groups, head, raw };
-}
-function doctorCard(r) {
-  const p = parseDoctor(r.text);
-  if (!p.groups.length) return h("section", { class: "doctor", "aria-label": "Doctor" }, h("div", { class: "top" }, h("div", { class: "verdict bad" }, ico("warning"), "Doctor did not run")), h("pre", { class: "err" }, r.text.trim() || "(no output)"));
-  const all = p.groups.flatMap((g) => g.items), bad = all.filter((i) => i.lvl === "bad"), warn = all.filter((i) => i.lvl === "warn"), okN = all.length - bad.length - warn.length;
-  const isOk = !bad.length && (p.verdict ? p.verdict === "READY" : true);
-  const issues = [...bad, ...warn];
-  return h("section", { class: "doctor", "aria-labelledby": "doc-h" },
-    h("div", { class: "top" }, h("h2", { id: "doc-h", class: "verdict " + (isOk ? "good" : "bad") }, ico(isOk ? "check" : "warning"), isOk ? "Ready" : "Not ready", h("span", { class: "sr" }, " (doctor, offline)")),
-      chip(`${okN} passed`, "good"), warn.length ? chip(`${warn.length} warning${warn.length > 1 ? "s" : ""}`, "warn") : null, bad.length ? chip(`${bad.length} failed`, "bad") : null,
-      h("span", { class: "grow" }), h("span", { class: "sub" }, "Offline check: no audio, no network, no paid calls")),
-    issues.length ? h("ul", { class: "issues" }, issues.map((i) => h("li", {}, ico("warning", i.lvl === "bad" ? "bad" : "warnc"), i.text))) : null,
-    h("details", {}, h("summary", {}, "All checks"), h("div", { class: "checks" }, p.groups.map((g) => h("section", {}, h("h3", {}, g.name), h("ul", {}, g.items.map((i) => h("li", {}, ico(i.lvl === "ok" ? "check" : "warning", i.lvl === "ok" ? "" : i.lvl === "warn" ? "w" : "b"), i.text))))), p.note ? h("p", { class: "sub" }, p.note) : null)));
-}
-function settingsBlock(r) {
-  const p = parseSettings(r.text);
-  const wrap = h("div", {});
-  if (!p.groups.size) return h("pre", { class: r.ok ? "" : "err" }, r.text.trim() || "(no output)");
-  const over = [...p.groups.values()].flat().filter((x) => x.src !== "default").length;
-  wrap.append(h("div", { class: "section-title" }, h("h2", {}, "Settings"), h("span", { class: "sub" }, over ? `${plural(over, "value")} changed from the defaults` : "All values are defaults"), h("span", { class: "grow" }), btn("pnpm settings", { cls: "ghost sm", icon: "settings", onclick: () => { announce("Run pnpm settings in Terminal to edit"); } , title: "Settings are edited in Terminal: pnpm settings" })));
-  const cfg = h("div", { class: "cfg" });
-  for (const [g, rows] of p.groups) cfg.append(h("section", {}, h("h3", {}, g), h("table", { "aria-label": g + " settings" }, h("tbody", {}, rows.map((x) => { const ov = x.src !== "default"; return h("tr", { class: ov ? "ov" : "" }, h("td", { class: "k" }, ov ? h("span", { class: "odot", title: "Overridden by " + x.src }) : null, x.k.includes(".") ? x.k.slice(x.k.indexOf(".") + 1) : x.k), h("td", { class: "v" }, ltr(x.v), h("span", { class: "chip src " + (ov ? "warn" : "") + " mono" }, ov ? x.src : "default"))); })))));
-  wrap.append(cfg);
-  wrap.append(h("details", { class: "rawfold" }, h("summary", {}, "Raw output"), h("pre", {}, r.text.trim())));
-  if (p.head) wrap.prepend(h("p", { class: "sub", style: false }, p.head));
-  return wrap;
-}
-async function viewSystem() {
-  state.view = "system"; state.gen++; setNav(); busy();
-  const main = $("main"); main.textContent = "";
-  const body = h("div", { class: "sys" }, h("div", { class: "loading" }, "Running checks…"));
-  const rerun = btn("Re-run checks", { icon: "refresh", cls: "sm", onclick: () => viewSystem().then(() => announce("Checks finished")) });
-  main.append(h("div", { class: "page-head" }, h("h1", {}, "System"), h("span", { class: "grow" }), rerun), body);
-  focusTop();
-  const safe = (fn) => fn().catch((e) => ({ ok: false, text: "Error: " + e.message }));
-  const [doc, set] = await Promise.all([safe(api.doctorOffline), safe(api.settingsText)]);
-  if (state.view !== "system") return;
-  body.textContent = ""; body.append(doctorCard(doc), settingsBlock(set)); ready();
-}
-
 /* ---------- keyboard ---------- */
 const typingIn = (t) => t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
 document.addEventListener("keydown", (e) => {
@@ -734,16 +747,3 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-/* ---------- boot ---------- */
-$("nav-list").addEventListener("click", () => { loadList().then(() => viewInbox()); });
-$("nav-settings").addEventListener("click", viewSystem);
-// Theme override only for screenshots/tests (?theme=light|dark); normally follows the system.
-{ const th = new URLSearchParams(location.search).get("theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; }
-setNav();
-loadList().then(() => {
-  const q = new URLSearchParams(location.search); // screenshot aids: ?call=<id>&tab=rate&x=unrated  |  ?view=system
-  const view = q.get("view");
-  if (view === "settings" || view === "system") return viewSystem();
-  if (q.get("call")) { const n = normTab(q.get("tab"), q.get("x")); return openCall(q.get("call"), { tab: n.tab || undefined, filter: n.filter, line: n.line, sub: n.sub }); }
-  viewInbox();
-}).catch((e) => { $("main").textContent = "Could not load: " + e.message; ready(); });

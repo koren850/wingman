@@ -54,6 +54,16 @@ test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, 
     assert.ok(events.some((e) => e.type === "context.snapshot") && events.some((e) => e.type === "summary.done"), "summary events");
     assert.ok(rows("usage.jsonl").some((u) => u.role === "call-summary"), "summary usage row");
     assert.ok(rows("usage.jsonl").some((u) => u.role === "summary" && u.roles?.summary?.calls === 1), "call cost includes the summary");
+    // Call frame (scripted:frame): logged as an event and sent to the overlay as a cards.jsonl row; checklist ticks follow the transcript; cost is in the call total.
+    const fr = events.filter((e) => e.type === "frame");
+    assert.ok(fr.length >= 1 && fr.at(-1).frame.kind === "client" && fr.at(-1).frame.checklist.length >= 4, "frame event");
+    assert.ok(fr.at(-1).frame.checklist.some((c: any) => c.done), "some checklist item covered");
+    assert.ok(cards.some((c) => c.type === "frame" && c.frame?.topic), "frame row for the overlay");
+    assert.ok(events.some((e) => e.type === "frame.summary"), "checklist result logged");
+    assert.ok(rows("usage.jsonl").some((u) => u.role === "frame") && rows("usage.jsonl").some((u) => u.role === "summary" && u.roles?.frame?.calls >= 1), "frame cost in the call total");
+    // A live tip (scripted:tips): a distinct small card, never counted as an answer.
+    const tips = cards.filter((c) => c.type === "card" && c.badge === "tip");
+    assert.ok(tips.length >= 1 && tips.every((c) => c.turnId === "tips" && c.say.length <= 140), `a live tip (${tips.length})`);
     // The call closes cleanly with a speed summary.
     assert.ok(events.some((e) => e.type === "speed.summary"), "speed summary written");
   } finally {

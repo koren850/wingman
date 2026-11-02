@@ -7,7 +7,10 @@ contextBridge.exposeInMainWorld("wingman", {
   onRewind: (fn) => ipcRenderer.on("rewind", () => fn()),
   onCopied: (fn) => ipcRenderer.on("copied", (_e, t) => fn(t)),
   onReset: (fn) => ipcRenderer.on("reset", () => fn()),
+  onFrame: (fn) => ipcRenderer.on("frame", (_e, f) => fn(f)),
+  onChecklist: (fn) => ipcRenderer.on("checklist", () => fn()),
   onClear: (fn) => ipcRenderer.on("clear", () => fn()),
+  onAsk: (fn) => ipcRenderer.on("ask", (_e, a) => fn(a)),
   onPause: (fn) => ipcRenderer.on("pause", () => fn()),
   copy: (text) => ipcRenderer.send("copy", String(text)),
 });

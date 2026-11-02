@@ -129,6 +129,19 @@ export class SttChannel extends EventEmitter {
     } finally { this.switching = false; }
   }
 
+  /** After "exhausted" with no fallback left: open a fresh socket on the CURRENT provider. Throws (classified) on failure. The old stream stays
+   *  as this.stream until the new one is open, so a failing new socket cannot trigger another switch. */
+  async reopen(): Promise<void> {
+    const old = this.stream, prov = this.provider;
+    await this.openCurrent().catch((e) => { throw classifySttError(prov, e); });
+    this.failures = [];
+    if (old && old !== this.stream) {
+      this.seconds[prov] = (this.seconds[prov] ?? 0) + old.audioSeconds; this.droppedOld += old.dropped;
+      void old.close().catch(() => {});
+    }
+    this.emit("reconnected", { channel: this.o.channel, reopened: true });
+  }
+
   send(pcm: Buffer): boolean {
     const ringing = (this.o.ringMs ?? 0) > 0 && this.everOpened;
     if (ringing && !this.stream?.isOpen) { this.buffer(pcm); return false; }

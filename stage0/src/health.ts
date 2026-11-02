@@ -24,7 +24,7 @@ export const NO_SIGNALS: Signals = { noAi: false, llmDown: false, llmOnFallback:
 /** Which rung the signals ask for, and why (worst wins). */
 export function decide(s: Signals): { rung: Rung; reasons: string[] } {
   if (s.fatal) return { rung: 5, reasons: [s.fatal] };
-  const r4 = [s.themDead && "client audio/STT down", s.bankFailed && "bank or detector failed"].filter(Boolean) as string[];
+  const r4 = [s.themDead && "other side not heard", s.bankFailed && "bank or detector failed"].filter(Boolean) as string[];
   if (r4.length) return { rung: 4, reasons: r4 };
   const r3 = [s.noAi && "AI off (--no-ai)", s.llmDown && "no LLM provider usable", s.costCapped && "LLM budget cap reached"].filter(Boolean) as string[];
   if (r3.length) return { rung: 3, reasons: r3 };
@@ -37,7 +37,8 @@ export function decide(s: Signals): { rung: Rung; reasons: string[] } {
 
 /** What each rung allows the call loop to do. */
 export function capabilities(r: Rung) {
-  return { detect: r <= 3, bank: r <= 3, llm: r <= 2, ans: r === 0 || r === 2, listening: r <= 4 };
+  // meAns: answers for Dan's own questions (assist.*) do not depend on the other side being heard, so they survive the transcript-only rung (4).
+  return { detect: r <= 3, bank: r <= 3, llm: r <= 2, ans: r === 0 || r === 2, listening: r <= 4, meAns: r <= 4 };
 }
 
 /** Dan-facing bar text (Hebrew) and level. noAi alone is the user's own choice: info, not a warning. */
@@ -48,7 +49,7 @@ export function describeRung(r: Rung, reasons: string[], userChoiceOnly = false)
     case 1: return { level: "amber", text: `AI מופחת: בנק ותשובת עצירה בלבד${why}` };
     case 2: return { level: "amber", text: `עברנו לספק גיבוי${why}` };
     case 3: return userChoiceOnly ? { level: "info", text: "מצב בנק בלבד (בלי AI)" } : { level: "red", text: `בנק בלבד: ה-AI לא זמין${why}` };
-    case 4: return { level: "red", text: `תמלול בלבד: אין כרטיסים${why}` };
+    case 4: return { level: "red", text: `אין כרטיסים לצד השני${why}. תשובות אליך (Ctrl+Opt+A) עדיין פועלות` };
     case 5: return { level: "red", text: `Wingman כבוי${why}` };
   }
 }
@@ -76,7 +77,7 @@ export class CircuitBreaker {
   }
 }
 
-export type HealthConfig = { tickMs: number; recoverStableMs: number; slowMs: number; slowSttMs: number; minSamples: number; troubleHoldMs?: number };
+export type HealthConfig = { tickMs: number; recoverStableMs: number; slowMs: number; slowSttMs: number; minSamples: number; troubleHoldMs?: number; fastRecoverMs?: number };
 
 export class HealthSupervisor extends EventEmitter {
   rung: Rung = 0;
@@ -87,12 +88,17 @@ export class HealthSupervisor extends EventEmitter {
   private tags: number[] = [];
   private lags: number[] = [];
   private troubleUntil = 0;
+  private fastRecover = false;   // the other side was heard again: leave "other side not heard" after fastRecoverMs, not recoverStableMs
   private timer?: NodeJS.Timeout;
   constructor(private cfg: HealthConfig, private now: () => number = Date.now) { super(); }
 
   start() { this.timer = setInterval(() => this.tick(), this.cfg.tickMs); this.timer.unref(); }
   stop() { clearInterval(this.timer); }
-  set(patch: Partial<Signals>) { Object.assign(this.sig, patch); if (patch.fatal) this.tick(); }
+  set(patch: Partial<Signals>) {
+    if (patch.themDead === false && this.sig.themDead) this.fastRecover = true;
+    Object.assign(this.sig, patch);
+    if (patch.fatal || (this.fastRecover && patch.themDead === false)) this.tick();
+  }
   beginQuestion() { this.busy++; }
   endQuestion() { this.busy = Math.max(0, this.busy - 1); if (!this.busy) this.tick(); }
   get idle() { return this.busy === 0; }
@@ -113,7 +119,8 @@ export class HealthSupervisor extends EventEmitter {
     if (want.rung > this.rung) { this.betterSince = null; return this.apply(want.rung, want.reasons); }
     if (want.rung < this.rung) {
       this.betterSince ??= t;
-      if (t - this.betterSince >= this.cfg.recoverStableMs) { this.tags = []; this.lags = []; this.sig.llmSlow = false; this.sig.sttSlow = false; return this.apply(want.rung, want.reasons); }
+      const need = this.fastRecover && this.reasons.length > 0 && this.reasons.every((r) => r === "other side not heard") ? (this.cfg.fastRecoverMs ?? 2000) : this.cfg.recoverStableMs;
+      if (t - this.betterSince >= need) { this.tags = []; this.lags = []; this.sig.llmSlow = false; this.sig.sttSlow = false; return this.apply(want.rung, want.reasons); }
       return;
     }
     this.betterSince = null;
@@ -121,7 +128,7 @@ export class HealthSupervisor extends EventEmitter {
   }
 
   private apply(to: Rung, reasons: string[]) {
-    const from = this.rung; this.rung = to; this.reasons = reasons; this.betterSince = null;
+    const from = this.rung; this.rung = to; this.reasons = reasons; this.betterSince = null; this.fastRecover = false;
     this.emit("rung", { from, to, reasons });
   }
   /** True when the only reason for bank-only is the user's own --no-ai. */

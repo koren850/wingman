@@ -16,3 +16,5 @@ stage0/data/private/
 stage0/qa/out/
 stage0/qa/cache/
 stage0/qa/calls/
+stage0/qa/report-replay.*
+stage0/.app/

@@ -11,7 +11,7 @@ const load = (o: Parameters<typeof loadSettings>[0] = {}) => loadSettings({ env:
 
 test("defaults.yaml is complete and valid; legacy behaviour constants are the defaults", () => {
   const { settings: s, sources } = load();
-  assert.equal(s.stt.endpointMs, 350); assert.equal(s.reflex.stallAfterMs, 1800); assert.equal(s.reflex.dropStaleMs, 4000);
+  assert.equal(s.stt.endpointMs, 200); assert.equal(s.reflex.stallAfterMs, 1800); assert.equal(s.reflex.dropStaleMs, 4000);
   assert.equal(s.cards.maxPerMinute, 3); assert.equal(s.cards.windowMs, 60000); assert.equal(s.cards.lockoutMs, 1500);
   assert.equal(s.stt.flushFallbackMs, 1500); assert.equal(s.llm.reflex.maxTokens, 200); assert.equal(s.llm.reflex.model, "anthropic:claude-haiku-5-5");
   assert.equal(s.audio.watchdog.silentThemMs, 8000); assert.equal(s.audio.watchdog.micSilentMs, 10000); assert.equal(s.audio.mic.device, ":default");

@@ -18,12 +18,16 @@
     "factscheck": "tsx src/facts-check.ts",
     "tag": "tsx src/tag.ts",
     "summary": "tsx src/summary.ts",
-    "dashboard": "electron dashboard/main.cjs",
-    "tray": "electron tray/main.cjs",
+    "dashboard": "scripts/wingman.sh --open-window",
+    "tray": "scripts/wingman.sh",
     "purge": "tsx src/purge.ts",
     "banktest": "tsx src/bank-test.ts",
     "settings": "tsx src/settings-cli.ts",
-    "qa": "tsx qa/run-qa.ts"
+    "keys": "tsx src/keys-cli.ts",
+    "wingman": "tsx src/cli/index.ts",
+    "qa": "tsx qa/run-qa.ts",
+    "make-app": "scripts/make-app.sh",
+    "postinstall": "scripts/make-app.sh || true"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.94",

@@ -9,7 +9,7 @@
   :root {
     --bg:#0f1620; --card:#18222f; --card2:#141c27; --raised:#1e2a3a; --line:#26344a;
     --text:#eef2f6; --soft:#c5cedb; --muted:#8e9bb0;
-    --bank:#6fcf9f; --ai:#86a8ff; --stall:#8795a8; --tan:#d2a572; --fact:#a493e0;
+    --bank:#6fcf9f; --me:#b79cff; --me-bg:#1f1b33; --ai:#86a8ff; --stall:#8795a8; --tan:#d2a572; --fact:#a493e0;
     --red:#e5534b; --red-bg:#3b1816; --amber:#d9a03a; --amber-bg:#352610;
     --say-pt:30px;
   }
@@ -23,6 +23,8 @@
   #top img { width:20px; height:25px; opacity:.9; }
   #top .name { font-size:13px; color:var(--muted); letter-spacing:.04em; direction:ltr; }
   #dot { width:8px; height:8px; border-radius:50%; background:var(--bank); opacity:.75; animation:breathe 3.2s ease-in-out infinite; }
+  #ask { display:none; align-items:center; gap:8px; background:var(--me-bg); color:var(--me); border:1px solid var(--me); border-radius:999px; padding:2px 14px; font-size:15px; font-weight:650; direction:ltr; animation:rise .2s ease-out; }
+  #ask::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--me); animation:breathe 1s ease-in-out infinite; }
   #paused { display:none; margin-inline-start:auto; background:var(--raised); color:var(--soft); border-radius:999px; padding:3px 12px; font-size:15px; }
   body.paused #dot { background:var(--stall); animation:none; }
   @keyframes breathe { 50% { opacity:.25; } }
@@ -34,11 +36,17 @@
   .hb.info { background:var(--card); border-color:var(--line); font-weight:500; font-size:16px; color:var(--soft); } .hb.info::before { background:var(--stall); }
   .hb .tag { font-size:12px; font-weight:700; letter-spacing:.06em; direction:ltr; opacity:.85; border:1px solid currentColor; border-radius:5px; padding:0 5px; margin-inline-start:auto; white-space:nowrap; }
 
+  /* "Client just said": one thin muted line above the answers, so the card below is read against its question. */
+  #last { display:none; flex:0 0 auto; margin:-4px 0 -2px; font-size:15px; line-height:20px; color:var(--muted); gap:8px; align-items:baseline; min-width:0; }
+  #last .who { flex:0 0 auto; font-size:12px; letter-spacing:.02em; opacity:.8; }
+  #last .txt { flex:1 1 auto; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
+
   /* Stage: answers. Newest = hero (big say line); older = compact rows; bottom edge fades instead of a hard cut. */
   #stage { position:relative; flex:1 1 auto; min-height:140px; overflow:hidden; }
   #cards { display:flex; flex-direction:column; gap:10px; max-height:100%; overflow:hidden; }
   #cards.fade { -webkit-mask-image:linear-gradient(#000 calc(100% - 36px), transparent); mask-image:linear-gradient(#000 calc(100% - 36px), transparent); }
   .card { background:var(--card); border-radius:14px; border-inline-start:6px solid var(--ai); padding:12px 16px 12px; transition:opacity .25s, background .25s; animation:rise .22s ease-out; }
+  .card.me { border-color:var(--me); background:var(--me-bg); } .me .pill { color:var(--me); background:#2a2447; }
   .card.bank { border-color:var(--bank); } .card.ai { border-color:var(--ai); } .card.stall { border-color:var(--stall); } .card.info { border-color:var(--tan); }
   .card .top { display:flex; align-items:baseline; gap:10px; min-width:0; }
   .pill { flex:0 0 auto; font-size:13px; font-weight:650; border-radius:999px; padding:1px 10px; background:var(--raised); color:var(--soft); }
@@ -103,18 +111,44 @@
   #notes .h { color:var(--muted); font-size:12px; letter-spacing:.03em; }
   #notes ul { margin:2px 0 0; padding-inline-start:16px; font-size:15.5px; color:var(--soft); }
   #notes li { margin:1px 0; }
+  /* Call frame: one line ("שיחה: לקוח · topic"), a done/total chip, and a checklist that opens on hover or with the checklist key. */
+  #frame { display:none; position:relative; flex:0 0 auto; align-items:center; gap:10px; margin:-2px 0 -4px; -webkit-app-region:no-drag; }
+  #frame .fl { font-size:15px; color:var(--muted); white-space:nowrap; }
+  #frame .ft { flex:1 1 auto; min-width:0; font-size:17px; color:var(--soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; unicode-bidi:plaintext; }
+  #frame .ft b { color:var(--text); font-weight:650; }
+  #chip { flex:0 0 auto; font-size:15px; font-weight:650; font-variant-numeric:tabular-nums; direction:ltr; border-radius:999px; padding:1px 11px; background:var(--raised); color:var(--soft); border:1px solid var(--line); cursor:default; }
+  #chip.all { color:var(--bank); border-color:var(--bank); }
+  #cl { display:none; position:absolute; inset-inline:0; top:100%; margin-top:6px; z-index:7; background:#18222f; border:1px solid var(--tan); border-radius:12px; padding:10px 14px; box-shadow:0 8px 28px rgba(0,0,0,.5); animation:rise .15s ease-out; }
+  #frame:hover #cl, #frame.open #cl { display:block; }
+  #cl .goal { font-size:15px; color:var(--muted); margin-bottom:6px; }
+  #cl ul { list-style:none; margin:0; padding:0; font-size:18px; display:flex; flex-direction:column; gap:4px; }
+  #cl li { display:flex; align-items:baseline; gap:10px; color:var(--text); }
+  #cl li::before { content:""; flex:0 0 auto; width:11px; height:11px; border-radius:50%; border:2px solid var(--muted); align-self:center; }
+  #cl li.done { color:var(--muted); text-decoration:line-through; text-decoration-color:#5d6b80; }
+  #cl li.done::before { background:var(--bank); border-color:var(--bank); }
+  #cl .must { font-size:11px; color:var(--tan); border:1px solid var(--tan); border-radius:5px; padding:0 4px; margin-inline-start:auto; }
+  #cl li.done .must { display:none; }
+  /* Tips: small and muted, under the hero answer. Never the biggest thing on the screen. */
+  #tips { display:flex; flex-direction:column; gap:6px; flex:0 0 auto; }
+  .tip { display:flex; align-items:baseline; gap:9px; background:var(--card2); border-radius:10px; padding:6px 12px; border-inline-start:3px solid var(--line); font-size:17px; line-height:1.3; color:var(--soft); animation:rise .22s ease-out; }
+  .tip svg { flex:0 0 auto; width:14px; height:14px; align-self:center; fill:none; stroke:var(--muted); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .tip .k { flex:0 0 auto; font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:0 7px; }
+  .tip .tx { min-width:0; unicode-bidi:plaintext; }
   #keys { flex:0 0 auto; display:flex; gap:16px; justify-content:center; color:#5d6b80; font-size:12px; direction:ltr; padding-top:2px; }
 </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><img src="../../brand/png/mark-night-512.png" alt=""><span class="name">Wingman</span><span id="dot"></span><div id="paused">⏸ מושהה</div></div>
+  <div id="top"><img src="../../brand/png/mark-night-512.png" alt=""><span class="name">Wingman</span><span id="dot"></span><div id="ask">Listening for your question…</div><div id="paused">⏸ מושהה</div></div>
   <div id="health"></div>
+  <div id="frame" dir="rtl"><span class="fl">שיחה:</span><span class="ft"></span><span id="chip"></span><div id="cl"></div></div>
+  <div id="last" dir="rtl"><span class="who">הצד השני</span><span class="txt"></span></div>
   <div id="stage">
     <div id="cards"></div>
     <div id="empty"><img src="../../brand/png/mark-night-512.png" alt=""><div id="emptyT">מקשיב…</div><small>התשובות יופיעו כאן</small></div>
     <div id="rewind"></div>
   </div>
+  <div id="tips"></div>
   <div id="capture"></div>
   <div id="rail"></div>
   <div id="notes"><div class="h">הערות AI</div><ul id="notelist"></ul></div>
@@ -153,7 +187,7 @@
     if (c.clear) { bars.get(c.id)?.remove(); bars.delete(c.id); return; }
     let el = bars.get(c.id);
     if (!el) { el = document.createElement("div"); bars.set(c.id, el); healthBox.append(el); }
-    el.className = `hb ${c.level || "red"}`; el.dir = "rtl"; el.replaceChildren();
+    el.className = `hb ${c.level || "red"}`; el.dir = /[A-Za-z]/.test(c.say) && !/[\u0590-\u05FF]/.test(c.say) ? "ltr" : "rtl"; el.replaceChildren();
     // "NOT HEARING THE CLIENT – אין שמע": the Hebrew explanation leads (right edge), the English code becomes a small tag.
     const m = /^([A-Z][A-Z0-9 ()_.,\/]{3,}?)\s[–-]\s(.+)$/.exec(c.say);
     const body = document.createElement("span"); mixed(body, m ? m[2] : c.say); el.append(body);
@@ -176,7 +210,7 @@
     while (sides.size > 4) { const [k, v] = sides.entries().next().value; v.remove(); sides.delete(k); }
   }
 
-  const PILL = { bank: "מהבנק", ai: "AI · לא מאומת", stall: "לקנות זמן", info: "הודעה" };
+  const PILL = { bank: "מהבנק", ai: "AI · לא מאומת", stall: "לקנות זמן", info: "הודעה", me: "בשבילך" };
   /** Newest = hero, the rest = compact rows. Long answers shrink a little so they still fit in a glance. */
   function layoutRoles() {
     const els = [...cards.values()];
@@ -185,7 +219,43 @@
     if (hero) { const n = hero.querySelector(".say")?.textContent.length || 0; hero.style.setProperty("--say-k", n > 260 ? "0.7" : n > 170 ? "0.8" : n > 110 ? "0.9" : "1"); }
     els.forEach((el) => { if (el !== hero) el.style.removeProperty("--say-k"); });
   }
+  // ---- call frame header + checklist ----
+  const KIND_HE = { client: "לקוח", support: "תמיכה", vendor: "ספק", team: "צוות", consult: "ייעוץ", personal: "אישית", other: "אחר" };
+  const frameBox = document.getElementById("frame"), frameTxt = frameBox.querySelector(".ft"), chipEl = document.getElementById("chip"), clBox = document.getElementById("cl");
+  function renderFrame(f) {
+    if (!f || typeof f !== "object") return;
+    const list = Array.isArray(f.checklist) ? f.checklist.filter((c) => c && typeof c.item === "string").slice(0, 12) : [];
+    const kind = KIND_HE[f.kind] || KIND_HE.other, topic = typeof f.topic === "string" ? f.topic : "";
+    frameTxt.replaceChildren(); const b = document.createElement("b"); b.textContent = kind; frameTxt.append(b);
+    if (topic) { frameTxt.append(document.createTextNode(" · ")); mixed(frameTxt, topic); }
+    const done = list.filter((c) => c.done).length;
+    chipEl.style.display = list.length ? "" : "none"; chipEl.textContent = `${done}/${list.length}`; chipEl.classList.toggle("all", list.length > 0 && done === list.length);
+    clBox.replaceChildren();
+    if (f.goal) { const g = div("goal"); g.textContent = "מטרה: "; mixed(g, f.goal); clBox.append(g); }
+    const ul = document.createElement("ul");
+    for (const c of list) { const li = document.createElement("li"); li.dir = "rtl"; if (c.done) li.className = "done"; const t = document.createElement("span"); mixed(t, c.item); li.append(t); if (c.must) { const m = document.createElement("span"); m.className = "must"; m.textContent = "חובה"; li.append(m); } ul.append(li); }
+    clBox.append(ul);
+    frameBox.style.display = "flex";
+  }
+  window.wingman.onFrame(renderFrame);
+  window.wingman.onChecklist(() => { frameBox.classList.toggle("open"); clearTimeout(frameBox._t); if (frameBox.classList.contains("open")) frameBox._t = setTimeout(() => frameBox.classList.remove("open"), 15000); });
+
+  // ---- tips ----
+  const tipsBox = document.getElementById("tips"), tipEls = new Map();
+  const TIP_KIND = { ask: "לשאול", clarify: "לדייק", term: "מונח", remind: "להזכיר", note: "הערה" };
+  const SVG = "http://www.w3.org/2000/svg";
+  function tipIcon() { const s = document.createElementNS(SVG, "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true"); const p = document.createElementNS(SVG, "path"); p.setAttribute("d", "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"); s.append(p); return s; }
+  function renderTip(c) {
+    if (paused) return;
+    let el = tipEls.get(c.id);
+    if (!el) { el = div("tip"); tipEls.set(c.id, el); tipsBox.append(el); while (tipEls.size > 2) { const [k, v] = tipEls.entries().next().value; v.remove(); tipEls.delete(k); } setTimeout(() => { el.remove(); tipEls.delete(c.id); }, 90000); }
+    el.replaceChildren(tipIcon());
+    const k = document.createElement("span"); k.className = "k"; k.textContent = TIP_KIND[c.tipType] || "טיפ"; el.append(k);
+    const t = document.createElement("span"); t.className = "tx"; mixed(t, c.say); el.append(t);
+  }
+
   function render(c) {
+    if (c.badge === "tip") { renderTip(c); return; }
     if (c.health) { renderHealth(c); return; }
     if (c.turnId === "side") { renderSide(c); return; }   // facts/notes/reminders are kept even while paused
     if (c.withdraw) { cards.get(c.id)?.remove(); cards.delete(c.id); layoutRoles(); emptyCheck(); return; }
@@ -202,7 +272,7 @@
     el.className = `card ${c.badge}${c.dim ? " dim" : ""}${consent ? " consent" : ""}`;
     el.replaceChildren();
     const top = div("top");
-    const pill = document.createElement("span"); pill.className = "pill"; pill.textContent = consent ? "להגיד בתחילת השיחה" : PILL[c.badge] || c.badge; top.append(pill);
+    const pill = document.createElement("span"); pill.className = "pill"; pill.textContent = consent ? "להגיד בתחילת השיחה" : (c.badge === "ai" && c.source === "calc") ? "חישוב" : PILL[c.badge] || c.badge; top.append(pill);
     if (c.question && !consent) { const q = document.createElement("span"); q.className = "q"; q.dir = "rtl"; mixed(q, c.question); top.append(q); }
     el.append(top);
     // First sentence in strong weight, the rest softer: a one-second read for long answers.
@@ -235,14 +305,22 @@
     const body = div("body");
     if (!recent.length) { const e = div("l"); e.textContent = "אין טקסט מהשניות האחרונות"; body.append(e); }
     for (const l of recent) {
-      const d = div(`l ${l.ch}`); const who = document.createElement("span"); who.className = "who"; who.textContent = l.ch === "me" ? "אני" : "לקוח";
+      const d = div(`l ${l.ch}`); const who = document.createElement("span"); who.className = "who"; who.textContent = l.ch === "me" ? "אני" : "הצד השני";
       d.append(who); mixed(d, l.text); body.append(d);
     }
     rewindBox.append(body);
     rewindBox.style.display = "flex"; body.scrollTop = body.scrollHeight;
     clearTimeout(rewindTimer); rewindTimer = setTimeout(() => { rewindBox.style.display = "none"; }, 20000);
   }
-  window.wingman.onLine((l) => { lines.push(l); while (lines.length > 400) lines.shift(); });
+  // "Client just said" strip: the newest client line (overlay.showLastLine). Text nodes only; me-lines never replace it.
+  let SHOW_LAST = true;
+  const lastBox = document.getElementById("last"), lastTxt = lastBox.querySelector(".txt");
+  function showLast(text) {
+    if (!SHOW_LAST || !text) { lastBox.style.display = "none"; return; }
+    lastTxt.replaceChildren(); mixed(lastTxt, String(text).replace(/\s+/g, " ").trim().slice(0, 220));
+    lastBox.style.display = "flex";
+  }
+  window.wingman.onLine((l) => { lines.push(l); while (lines.length > 400) lines.shift(); if (l.ch === "them") showLast(l.text); });
   window.wingman.onRewind(showRewind);
   const caps = new Map();
   window.wingman.onCapture((c) => {
@@ -256,17 +334,27 @@
   });
   window.wingman.onCopied((t) => { const el = caps.get(t); if (el) { el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 1200); } });
   window.wingman.onConfig((c) => {
-    REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; HK = c.hotkeys || {};
+    SHOW_LAST = c.showLastLine !== false; if (!SHOW_LAST) lastBox.style.display = "none";
+    REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
     document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px');
     // Hotkey legend (symbols only), built from the configured accelerators.
     const sym = (a) => String(a || "").replace(/Control\+?/, "⌃").replace(/Alt\+?|Option\+?/, "⌥").replace(/Command\+?|Cmd\+?/, "⌘").replace(/Shift\+?/, "⇧");
     const keys = document.getElementById("keys"); keys.replaceChildren();
-    for (const [k, label] of [["rewind", "מה אמרו"], ["copy", "העתק"], ["pause", "השהיה"], ["clear", "ניקוי"]]) if (HK[k]) { const s = document.createElement("span"); s.textContent = `${sym(HK[k])}  ${label}`; keys.append(s); }
+    for (const [k, label] of [["ask", "שאל אותי"], ["rewind", "מה אמרו"], ["checklist", "רשימה"], ["copy", "העתק"], ["pause", "השהיה"], ["clear", "ניקוי"]]) if (HK[k]) { const s = document.createElement("span"); s.textContent = `${sym(HK[k])}  ${label}`; keys.append(s); }
+  });
+  // "Listening for your question…": shown from the ask key until Dan has spoken or `until` passes.
+  const askEl = document.getElementById("ask"); let askTimer;
+  window.wingman.onAsk((a) => {
+    clearTimeout(askTimer);
+    const left = a && a.on ? (a.until || 0) - Date.now() : 0;
+    // a row replayed from an old call (window reloaded) has `until` in the past: no indicator
+    askEl.style.display = left > 0 ? "flex" : "none";
+    if (left > 0) askTimer = setTimeout(() => { askEl.style.display = "none"; }, left + 200);
   });
   window.wingman.onCard(render);
-  window.wingman.onReset(() => { clearCards(); for (const v of sides.values()) v.remove(); sides.clear(); noteList.replaceChildren(); notesBox.style.display = "none"; lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none"; rewindBox.style.display = "none"; for (const el of bars.values()) el.remove(); bars.clear(); });
+  window.wingman.onReset(() => { askEl.style.display = "none"; frameBox.style.display = "none"; frameBox.classList.remove("open"); for (const v of tipEls.values()) v.remove(); tipEls.clear(); lastBox.style.display = "none"; clearCards(); for (const v of sides.values()) v.remove(); sides.clear(); noteList.replaceChildren(); notesBox.style.display = "none"; lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none"; rewindBox.style.display = "none"; for (const el of bars.values()) el.remove(); bars.clear(); });
   window.wingman.onClear(clearCards);
-  window.wingman.onPause(() => { paused = !paused; document.getElementById("paused").style.display = paused ? "block" : "none"; document.body.classList.toggle("paused", paused); document.getElementById("emptyT").textContent = paused ? "מושהה" : "מקשיב…"; if (paused) clearCards(); });
+  window.wingman.onPause(() => { paused = !paused; document.getElementById("paused").style.display = paused ? "block" : "none"; document.body.classList.toggle("paused", paused); document.getElementById("emptyT").textContent = paused ? "מושהה" : "מקשיב…"; if (paused) { clearCards(); for (const v of tipEls.values()) v.remove(); tipEls.clear(); } });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") clearCards(); });
 </script>
 </body>

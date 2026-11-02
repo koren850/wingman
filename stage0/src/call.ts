@@ -33,19 +33,37 @@ function openOverlay() {
 openOverlay();
 const run = spawn(bin("tsx"), [join(ROOT, "src", "run.ts"), ...rest], { cwd: ROOT, stdio: "inherit" });
 
-let stopping = false;
+let stopping = false, runExited = false, exiting = false;
+/** SIGTERM the answer window, SIGKILL it 2 s later if it hangs. */
+function closeOverlay() {
+  const o = overlay;
+  if (!o || o.exitCode !== null || o.signalCode) return;
+  try { o.kill("SIGTERM"); } catch {}
+  setTimeout(() => { try { if (o.exitCode === null && !o.signalCode) o.kill("SIGKILL"); } catch {} }, 2000).unref();
+}
+/** Close the window (escalating) and leave; never waits longer than 2.5 s for it. */
+function finalExit(code: number) {
+  if (exiting) return;
+  exiting = true;
+  const o = overlay;
+  closeOverlay();
+  if (!o || o.exitCode !== null || o.signalCode) return process.exit(code);
+  const t = setTimeout(() => process.exit(code), 2500);
+  o.once("exit", () => { clearTimeout(t); process.exit(code); });
+}
 function stop() {
+  if (runExited) return finalExit(0);   // the call is over and only the window lingers: a stop (new call starting, quit) closes it now
   if (stopping) { try { run.kill("SIGKILL"); } catch {} return; }   // second stop: the call is stuck, force it
   stopping = true;
   run.kill("SIGINT"); // run.ts saves the call and prints the speed summary
-  setTimeout(() => { try { overlay?.kill(); } catch {} }, 5000); // leave the last cards up briefly
+  setTimeout(closeOverlay, 5000); // leave the last cards up briefly
 }
 // Ctrl+C reaches the whole foreground group; the overlay is detached so it survives the 5 s grace.
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 process.on("SIGHUP", stop);
 run.on("exit", (code) => {
-  stopping = true;
-  setTimeout(() => { try { overlay?.kill(); } catch {} process.exit(code ?? 0); }, 5000);
+  stopping = true; runExited = true;
+  setTimeout(() => finalExit(code ?? 0), 5000);
   console.log("(answer window closes in 5 s)");
 });

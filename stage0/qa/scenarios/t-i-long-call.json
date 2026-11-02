@@ -1,0 +1,434 @@
+{
+ "title": "Long call ~10 min: onboarding clothing brand (invented: Vered, Noam Fashion)",
+ "focus": "frame/tips/summary over time",
+ "frame": {
+  "kind": [
+   "client",
+   "sales",
+   "support"
+  ],
+  "topicAny": [
+   "אתר",
+   "חנות",
+   "website",
+   "מותג"
+  ],
+  "minChecklist": 3,
+  "minTips": 1
+ },
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "שלום ורד, תודה שהצטרפת לפגישת האפיון."
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו מותג בגדים קטן, כרגע מוכרים באינסטגרם.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "הבנתי, ספרי עוד.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "כמה זה יעלה לנו?",
+   "expect": {
+    "question": true,
+    "card": "stall-price"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "הצוות שלנו קטן, אני אחראית על השיווק.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "יש לנו כמאתיים מוצרים ושלושה מחסנים.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "מעולה, זה עוזר.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "מתי נוכל להתחיל?",
+   "expect": {
+    "question": true,
+    "card": [
+     "stall-timeline",
+     "stall"
+    ]
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "me",
+   "text": "כמה זה 3 כפול 450?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 5000
+  },
+  {
+   "speaker": "them",
+   "text": "יש לנו מעצבת שתספק את העיצוב.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו רוצים אתר בעברית ובאנגלית.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "רשמתי לי.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "האתר שלנו איטי, מה אפשר לעשות?",
+   "expect": {
+    "question": true,
+    "card": "site-slow"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "המשלוחים נעשים דרך חברת שליחויות חיצונית.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "הצוות שלנו קטן, אני אחראית על השיווק.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "הבנתי, ספרי עוד.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "איך מעבירים אתר לשרת אחר?",
+   "expect": {
+    "question": true,
+    "card": "migration"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו רוצים אינטגרציה עם מערכת המלאי.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "יש לנו מעצבת שתספק את העיצוב.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "מעולה, זה עוזר.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "האם צריך תעודת SSL?",
+   "expect": {
+    "question": true,
+    "card": "ssl-basics"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "me",
+   "text": "כמה זה 3 כפול 450?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 5000
+  },
+  {
+   "speaker": "them",
+   "text": "הלקוחות שלנו בעיקר נשים בגילאי עשרים עד ארבעים.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "המשלוחים נעשים דרך חברת שליחויות חיצונית.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "רשמתי לי.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "יש לכם גיבוי אוטומטי?",
+   "expect": {
+    "question": true,
+    "card": "backups"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו מותג בגדים קטן, כרגע מוכרים באינסטגרם.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו רוצים אינטגרציה עם מערכת המלאי.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "הבנתי, ספרי עוד.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "מה זה סביבת staging?",
+   "expect": {
+    "question": true,
+    "card": "staging"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "יש לנו כמאתיים מוצרים ושלושה מחסנים.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "הלקוחות שלנו בעיקר נשים בגילאי עשרים עד ארבעים.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "מעולה, זה עוזר.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "איך מקבלים תשלום בכרטיס אשראי בחנות?",
+   "expect": {
+    "question": true,
+    "card": "woo-payments"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "me",
+   "text": "כמה זה 3 כפול 450?",
+   "expect": {
+    "forMe": "answer"
+   },
+   "pauseBeforeMs": 5000
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו רוצים אתר בעברית ובאנגלית.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "אנחנו מותג בגדים קטן, כרגע מוכרים באינסטגרם.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "רשמתי לי.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "מה עם SEO?",
+   "expect": {
+    "question": true,
+    "card": "seo-basics"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "הצוות שלנו קטן, אני אחראית על השיווק.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "יש לנו כמאתיים מוצרים ושלושה מחסנים.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 9000
+  },
+  {
+   "speaker": "me",
+   "text": "הבנתי, ספרי עוד.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "האם יש אחריות על האתר?",
+   "expect": {
+    "question": true,
+    "card": [
+     "stall-guarantee",
+     "stall"
+    ]
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "me",
+   "text": "נבדוק את זה ונחזור אליך.",
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "יש לנו מעצבת שתספק את העיצוב.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 11000
+  },
+  {
+   "speaker": "them",
+   "text": "תודה, נדבר בשבוע הבא.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 8000
+  }
+ ]
+}

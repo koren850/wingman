@@ -1,0 +1,30 @@
+# Offline end-to-end test for answers to Dan's own questions (src/me-answers.test.ts): scripted STT + scripted AI, no network, no keys.
+stt:
+  provider: script
+  fallback: []
+llm:
+  reflex:
+    model: "scripted:bank"
+    fallbacks: []
+assist:
+  model: "scripted:bank"
+  minGapMs: 0              # the rate limit is unit-tested (MeGate); here every answer should show
+  maxPerMin: 20
+notes:
+  enabled: false
+summary:
+  model: "scripted:summary"
+  minWords: 20
+facts:
+  enabled: false
+privacy:
+  requireConsentAck: false
+system:
+  caffeinate: false
+frame:
+  enabled: false
+tips:
+  enabled: false
+audio:
+  echo:
+    mode: filter

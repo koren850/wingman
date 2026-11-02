@@ -5,6 +5,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { AudioTee } from "audiotee";
+import { childEnv } from "./env.ts";
 
 export interface Source extends EventEmitter { start(): Promise<void>; stop(): Promise<void>; }
 
@@ -31,7 +32,7 @@ export class MicSource extends EventEmitter implements Source {
   async start() {
     // ":default" = default input device; list devices with: ffmpeg -f avfoundation -list_devices true -i ""
     // Set audio.mic.device (or WINGMAN_MIC) to ":1" (index) or a name. Avoid AirPods for the first calls.
-    this.p = spawn("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "avfoundation", "-i", this.device, "-ac", "1", "-ar", "16000", "-f", "s16le", "-"]);
+    this.p = spawn("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "avfoundation", "-i", this.device, "-ac", "1", "-ar", "16000", "-f", "s16le", "-"], { env: childEnv() });
     this.p.stdout!.on("data", (b: Buffer) => this.emit("pcm", b));
     this.p.stderr!.on("data", (b: Buffer) => this.emit("log", `mic: ${b.toString().trim()}`));
     this.p.on("error", (e) => this.emit("error", new Error(`ffmpeg mic: ${e.message}`)));
@@ -61,7 +62,7 @@ export class FileSource extends EventEmitter {
 
 export function decode(file: string, channels: 1 | 2): Promise<Buffer> {
   return new Promise((res, rej) => {
-    const p = spawn("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", file, "-ac", String(channels), "-ar", "16000", "-f", "s16le", "-"]);
+    const p = spawn("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", file, "-ac", String(channels), "-ar", "16000", "-f", "s16le", "-"], { env: childEnv() });
     const out: Buffer[] = [];
     p.stdout.on("data", (b) => out.push(b));
     p.on("error", (e) => rej(new Error(`ffmpeg not runnable: ${e.message}`)));

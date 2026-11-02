@@ -1,0 +1,79 @@
+{
+ "title": "Noise and fillers (invented: Ron)",
+ "focus": "fillers and thinking sounds must not make cards",
+ "turns": [
+  {
+   "speaker": "me",
+   "text": "אממ... כאילו, שלום רון."
+  },
+  {
+   "speaker": "them",
+   "text": "אממ, רגע, כאילו, תן לי רגע.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "me",
+   "text": "אממ כאילו כן, בטח.",
+   "expect": {
+    "forMe": "none"
+   },
+   "pauseBeforeMs": 800
+  },
+  {
+   "speaker": "them",
+   "text": "אה... אוקיי. טוב. כאילו, נו.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "me",
+   "text": "רגע רגע, אני מחפש את הקובץ... אממ...",
+   "expect": {
+    "forMe": "none"
+   },
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "הממ. כן. אוקיי אז...",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 2500
+  },
+  {
+   "speaker": "them",
+   "text": "אה, רגע, האתר איטי לפעמים, כאילו, אממ, מה אפשר לעשות?",
+   "expect": {
+    "question": true,
+    "card": "site-slow"
+   },
+   "pauseBeforeMs": 2000
+  },
+  {
+   "speaker": "me",
+   "text": "אממ, יפה.",
+   "expect": {
+    "forMe": "none"
+   },
+   "pauseBeforeMs": 1500
+  },
+  {
+   "speaker": "them",
+   "text": "טוב, נדבר. ביי.",
+   "expect": {
+    "question": false,
+    "card": "none"
+   },
+   "pauseBeforeMs": 2500
+  }
+ ]
+}

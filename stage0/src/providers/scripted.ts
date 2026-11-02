@@ -19,15 +19,19 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
     if (!file) throw new Error("stt.provider script needs WINGMAN_STT_SCRIPT=<transcript.json>");
     const gap = Number(process.env.WINGMAN_SCRIPT_GAP_MS ?? 1200);
     // Optional per line: afterMs = time since the previous line (a quick follow-up, e.g. a question split by a pause).
-    const lines = (JSON.parse(readFileSync(file, "utf8")) as { speaker: string; text: string; afterMs?: number }[]);
+    // QA replay lines (qa/run-qa.ts --replay) also carry atMs (absolute time since start), words and speechFinal,
+    // so a saved Deepgram run plays back exactly as it was heard.
+    type Line = { speaker: string; text: string; afterMs?: number; atMs?: number; words?: SttResult["words"]; speechFinal?: boolean; endLagMs?: number };
+    const lines = (JSON.parse(readFileSync(file, "utf8")) as Line[]);
     let at = 300;
     lines.forEach((l, i) => {
-      if (i > 0) at += Number.isFinite(l.afterMs) ? Number(l.afterMs) : gap;
+      if (Number.isFinite(l.atMs)) at = Number(l.atMs);
+      else if (i > 0) at += Number.isFinite(l.afterMs) ? Number(l.afterMs) : gap;
       const when = at;
       if (l.speaker !== this.o.channel) return;
       this.timers.push(setTimeout(() => {
         const now = Date.now();
-        const r: SttResult = { channel: this.o.channel, text: l.text, isFinal: true, speechFinal: true, words: [], speechEndWall: now - 300, arrivedAt: now };
+        const r: SttResult = { channel: this.o.channel, text: l.text, isFinal: true, speechFinal: l.speechFinal ?? true, words: l.words ?? [], speechEndWall: now - (l.endLagMs ?? 300), arrivedAt: now };
         this.emit("result", r);
       }, when));
     });
@@ -43,10 +47,30 @@ export const script: SttProvider = {
   probe: async () => ({ ok: true }),
 };
 
-/** The reflex prompt ends with: The client just said: <call_transcript>QUESTION</call_transcript> */
+/** The reflex prompt ends with: The other side just said: <call_transcript>QUESTION</call_transcript>  (or, for Dan's own questions: Dan is asking you ... : <call_transcript>…) */
 function questionOf(prompt: string): string {
-  const m = prompt.match(/The client just said: <call_transcript>([\s\S]*?)<\/call_transcript>/);
+  const m = prompt.match(/(?:The other side just said|The client just said|Dan is asking you[^<]*?): <call_transcript>([\s\S]*?)<\/call_transcript>/);
   return m?.[1] ?? "";
+}
+/** Answers for Dan's own questions (model "scripted:*" in me-mode). Invented, deterministic. */
+const ME_ANSWERS: [RegExp, string][] = [
+  [/בירה.*אוסטרליה|capital of australia/i, "הבירה של אוסטרליה היא קנברה."],
+  [/ההבדל.*(cdn|dns)|difference/i, "CDN מפיץ עותקים של האתר לשרתים קרובים לגולש, ו-DNS רק מתרגם שם דומיין לכתובת."],
+  [/מה זה dns|what is dns/i, "DNS הוא ספר הטלפונים של האינטרנט: הוא מתרגם שם דומיין לכתובת השרת."],
+  [/טוקיו|tokyo|טיסה/i, "טיסה ישירה מתל אביב לטוקיו אין, עם עצירה זה בערך 14 עד 17 שעות."],
+  [/פורטוגל|portugal/i, "הכלכלה של פורטוגל מבוססת בעיקר על שירותים ותיירות."],
+  [/ווינגמן|wingman/i, "אני כאן. מה לבדוק?"],
+];
+function meAnswer(q: string): string {
+  const hit = ME_ANSWERS.find(([re]) => re.test(q));
+  return hit ? `ANS\n${hit[1]}` : "SKIP";
+}
+/** Audience classifier double (CLASSIFY_SYSTEM in src/assist.ts): ASSIST for knowledge questions, OTHER for anything aimed at the other side. */
+export function scriptedClassify(prompt: string): string {
+  const said = prompt.match(/Dan just said: <call_transcript>([\s\S]*?)<\/call_transcript>/)?.[1] ?? "";
+  if (/(אתם|שלכם|לכם|אצלכם|your|you guys|תקציב|דעתך|תוכל)/i.test(said)) return "OTHER";
+  if (/(בירה|הבדל|difference|capital|dns|cdn|טוקיו|טיסה|תרגם|מה זה|מה זאת)/i.test(said)) return "ASSIST";
+  return "NEITHER";
 }
 function promptText(o: any): string {
   return (o.prompt ?? []).map((m: any) => (typeof m.content === "string" ? m.content : (m.content ?? []).map((p: any) => p.text ?? "").join(""))).join("\n");
@@ -60,10 +84,29 @@ export const SCRIPTED_SUMMARY = {
   openQuestions: ["כמה תעלה החבילה המלאה"],
   followUpEmail: "שלום דנה,\nתודה על השיחה. דיברנו על מהירות האתר והגיבויים.\nהחבילה עולה 500 ש\"ח לחודש.\nנחזור אליך עד יום שני.\nבברכה,\nדן",
 };
+/** Call-frame double (model "scripted:frame"): an invented client call; checklist items tick off when their keyword is in the transcript. */
+const FRAME_ITEMS: [string, RegExp, boolean][] = [
+  ["להבין למה האתר איטי", /איטי|לאט/, true], ["לשאול על גיבויים", /גיבוי/, true], ["לקבל טלפון ומייל לחזרה", /טלפון|מייל|dana@/i, true],
+  ["לבדוק אם יש חנות WooCommerce", /ווקומרס|woocommerce/i, false], ["להסכים על הצעד הבא", /הצעה|נחזור|נדבר/, false],
+];
+export function scriptedFrame(prompt: string): string {
+  const said = prompt.slice(prompt.indexOf("<call_transcript>"));
+  return JSON.stringify({ kind: "client", topic: "אתר איטי וגיבויים", goal: "להבין את הבעיה ולהציע בדיקה", people: [{ who: "דנה", role: "לקוחה" }], entities: ["WooCommerce"],
+    checklist: FRAME_ITEMS.map(([item, re, must]) => ({ item, done: re.test(said), must })) });
+}
+/** Live-tip double (model "scripted:tips"): one tip once backups come up, NONE otherwise. */
+export function scriptedTip(prompt: string): string {
+  const said = prompt.slice(prompt.indexOf("<call_transcript>"));
+  return /גיבוי/.test(said) && !/Tips already given[^]*גיבויים נשמרים/.test(prompt) ? JSON.stringify({ type: "ask", text: "כדאי לשאול איפה הגיבויים נשמרים היום ומי אחראי עליהם." }) : "NONE";
+}
 export function scriptedAnswer(prompt: string): string {
-  if (prompt.includes("You write the post-call summary")) return JSON.stringify(SCRIPTED_SUMMARY);
+  if (prompt.includes("You build the call frame")) return scriptedFrame(prompt);
+  if (prompt.includes("You write at most one live tip")) return scriptedTip(prompt);
+  if (prompt.includes("write the post-call summary")) return JSON.stringify(SCRIPTED_SUMMARY);
   if (prompt.includes("You keep short live notes")) return "- הלקוחה רוצה אתר מהיר יותר";
+  if (prompt.includes("You decide who Dan is talking to")) return scriptedClassify(prompt);
   const q = questionOf(prompt);
+  if (prompt.includes("Dan is asking you (the assistant) himself")) return meAnswer(q);
   if (/כמה (זה )?עולה|מחיר/.test(q)) return "STALL";
   const hit = matchBank(q, bank);
   return hit ? `BANK ${hit.card.id}` : "SKIP";

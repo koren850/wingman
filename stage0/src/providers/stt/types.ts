@@ -13,7 +13,7 @@ export type SttResult = {
 
 export type SttOptions = {
   apiKey: string; channel: Channel; language?: string; keyterms?: string[]; endpointingMs?: number; utteranceEndMs?: number;
-  keepAliveMs?: number; diarize?: boolean; model?: string; baseUrl?: string; debug?: boolean;
+  keepAliveMs?: number; finalizeSilenceMs?: number; diarize?: boolean; model?: string; baseUrl?: string; debug?: boolean;
   /** retry once without keyterms if the provider rejects the open (FAILURES S8). Default true. */
   keytermRetry?: boolean;
 };
