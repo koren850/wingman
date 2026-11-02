@@ -3,6 +3,8 @@
 const { app, BrowserWindow, screen, globalShortcut, clipboard, ipcMain } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
+// App icon from brand/ (rebuild with brand/build.sh). Missing file = Electron default icon.
+const BRAND_ICON = path.join(__dirname, "..", "..", "brand", "png", "icon-512.png");
 
 const CALLS = path.join(__dirname, "..", "calls");
 // Settings arrive as JSON from src/overlay.ts (call.ts / pnpm overlay). Defaults here equal config/defaults.yaml.
@@ -31,9 +33,11 @@ function create() {
   const d = pickDisplay();
   if (!d) { app.exit(3); return; }
   const w = Math.min(760, d.workArea.width);
+  if (process.platform === "darwin" && app.dock && require("node:fs").existsSync(BRAND_ICON)) app.dock.setIcon(BRAND_ICON);
   win = new BrowserWindow({
     x: d.workArea.x + d.workArea.width - w - 20, y: d.workArea.y + 40, width: w, height: Math.min(900, d.workArea.height - 80),
     alwaysOnTop: true, frame: false, transparent: false, backgroundColor: "#111418", focusable: false, skipTaskbar: true,
+    icon: BRAND_ICON,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   win.setAlwaysOnTop(true, "floating");

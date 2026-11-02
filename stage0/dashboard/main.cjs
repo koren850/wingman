@@ -2,6 +2,8 @@
 const { app, BrowserWindow, ipcMain, dialog, screen } = require("electron");
 const { execFile } = require("node:child_process");
 const path = require("node:path");
+// App icon from brand/ (rebuild with brand/build.sh). Missing file = Electron default icon.
+const BRAND_ICON = path.join(__dirname, "..", "..", "brand", "png", "icon-512.png");
 const lib = require("./lib.cjs");
 
 const ROOT = path.join(__dirname, "..");
@@ -11,12 +13,14 @@ let win;
 
 function create() {
   const d = screen.getPrimaryDisplay();
+  if (process.platform === "darwin" && app.dock && require("node:fs").existsSync(BRAND_ICON)) app.dock.setIcon(BRAND_ICON);
   win = new BrowserWindow({
     x: d.workArea.x + Math.max(0, Math.round((d.workArea.width - 1200) / 2)), y: d.workArea.y + 30,
     width: Math.min(1200, d.workArea.width), height: Math.min(800, d.workArea.height - 40),
     backgroundColor: "#111418", title: "Wingman dashboard",
     // Snapshot mode (tests/docs): render hidden, save a PNG, quit. Never steals focus from the user's screen.
     show: !process.env.WINGMAN_DASHBOARD_SNAPSHOT, paintWhenInitiallyHidden: true,
+    icon: BRAND_ICON,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   // Calls hold client conversations: hide from screen share unless explicitly disabled (for screenshots).
