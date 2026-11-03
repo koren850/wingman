@@ -11,8 +11,7 @@ export const MIN_WORDS = 2;
 const HEAD_WORDS = [
   "כמה", "יש", "אפשר", "מתי", "האם", "איך", "למה", "מה", "מי", "איפה", "לאן", "מאיפה", "כמה זמן",
   "מדוע", "איזה", "איזו", "אילו", "יכול", "יכולה", "יכולים", "צריך", "צריכה", "צריכים",
-  "what", "how", "why", "when", "can", "is", "does", "do", "should", "where", "which",
-];
+];   // English heads live in enQuestion() below: they only count at the start of a sentence ("That is a good idea" is a statement).
 // Head words are matched after normalize() (final letters folded), so normalize the list once.
 const HEAD_NORM = HEAD_WORDS.filter((h) => !h.includes(" ")).map(normalize);
 const MULTI = [
@@ -63,6 +62,59 @@ const INTERJECTIONS = new Set(["וואו", "ואו", "וואי", "יואו", "י
 // Confirmation words that make a question only at the edges: "נכון שאתם…", "בטוח שזה עובד", "…זה בטוח", "…זה נכון".
 const CONFIRM = new Set(["נכון", "בטוח"].map(normalize));
 
+// ---- English (and French-accented English, and Hebrew with English mixed in) ----
+const EN_WH = new Set(["what", "how", "why", "when", "where", "who", "whom", "whose", "which"]);
+const EN_AUX = new Set(["is", "are", "am", "was", "were", "do", "does", "did", "have", "has", "had", "can", "could", "will", "would", "shall", "should", "may", "might", "must",
+  "isn't", "aren't", "wasn't", "weren't", "don't", "doesn't", "didn't", "haven't", "hasn't", "can't", "couldn't", "won't", "wouldn't", "shouldn't"]);
+const EN_OPENERS = new Set(["and", "so", "but", "okay", "ok", "well", "yes", "yeah", "then", "also", "um", "uh", "hmm", "like", "now", "alright", "sorry", "actually", "just", "maybe", "perhaps", "right", "oh", "hi", "hello", "Dan", "kor"]);
+const EN_PRON = new Set(["i", "we", "you", "they", "he", "she", "it"]);
+/** Phrases that make an English utterance a question wherever they appear (indirect questions and polite requests). */
+const EN_PHRASES = ["i was wondering", "i am wondering", "i'm wondering", "i wonder", "would like to know", "'d like to know", "like to understand", "want to understand", "wanna understand", "want to know", "wanna know",
+  "need to understand", "need to know", "let me ask", "can i ask", "could i ask", "may i ask", "quick question", "a question", "any idea", "any chance", "do you know", "walk me through", "tell me", "explain",
+  "what about", "how about", "what if", "is it possible", "would it be possible", "could it be possible", "is there", "are there", "do you think", "can you", "could you", "would you", "will you", "can we", "could we", "should we", "shall we",
+  "is it ok", "is it okay", "is that ok", "is that okay", "i'm not sure whether", "not sure if", "curious", "clarify", "confirm that", "make sure that"];
+/** Tag questions without a "?": "We keep the same URLs, right". */
+const EN_TAG = /,\s*(right|correct|no|yes|yeah|okay|ok|isn't it|aren't they|don't you|doesn't it|won't it|wouldn't it|can you|will you|is that right|is that correct|am I right)\s*$/i;
+/** French-accented English as speech-to-text often writes it ("ze", "zis", "wat"): fold to plain English before matching. */
+const FR_ACCENT: [RegExp, string][] = [[/\bze\b/g, "the"], [/\bzis\b/g, "this"], [/\bzat\b/g, "that"], [/\bzese\b/g, "these"], [/\bzose\b/g, "those"], [/\bzey\b/g, "they"], [/\bzem\b/g, "them"],
+  [/\bzere\b/g, "there"], [/\bzen\b/g, "then"], [/\bwat\b/g, "what"], [/\beez\b/g, "is"], [/\beet\b/g, "it"], [/\bwiz\b/g, "with"], [/\bwich\b/g, "which"], [/\bzer\b/g, "their"]];
+/** English question detection on the Latin part of an utterance. Returns the rule name, or "" when it is not a question. */
+export function enQuestion(raw: string): string {
+  if (!/[a-z]{2}/i.test(raw)) return "";
+  let s = raw.toLowerCase().replace(/[’`]/g, "'");
+  for (const [re, to] of FR_ACCENT) s = s.replace(re, to);
+  const flat = " " + s.replace(/[^a-z0-9'\u0590-\u05ff\s]/g, " ").replace(/\s+/g, " ") + " ";
+  for (const p of EN_PHRASES) {
+    if (!flat.includes(p.startsWith("'") ? p : " " + p)) continue;
+    // Statements that carry the phrase: "I will explain later", "I'm curious but..." are rare; the model can SKIP the rest.
+    return `en-phrase:${p.trim()}`;
+  }
+  if (EN_TAG.test(s.trim())) return "en-tag";
+  for (const sentence of s.split(/[.!;?]+/)) {
+    for (const clause of sentence.split(/,/)) {
+      let w = clause.replace(/[^a-z0-9'\s]/g, " ").trim().split(/\s+/).filter(Boolean);
+      if (!w.length) continue;
+      while (w.length > 3 && EN_OPENERS.has(w[0])) w = w.slice(1);
+      const [a, b, c] = w;
+      if (w.length < 3 && !(w.length === 2 && EN_WH.has(a))) continue;
+      const base = a.replace(/'s$|'re$|'ll$|'d$/, "");
+      if (EN_WH.has(base)) {
+        // "what I mean is...", "when we start" are relative clauses; "how/why we" still ask.
+        if (["what", "who", "whom", "which", "when", "where"].includes(base) && EN_PRON.has(b ?? "") && !["do", "does"].includes(b ?? "")) continue;
+        if (base === "what" && ["i", "we"].includes(b ?? "")) continue;
+        return `en-wh:${base}`;
+      }
+      if (EN_AUX.has(a)) {
+        if (["not", "n't"].includes(b ?? "")) continue;
+        if (/^(have|has|had)$/.test(a) && b === "a" && ["nice", "great", "good", "lovely", "look", "chat", "moment", "second", "minute"].includes(c ?? "")) continue;   // "have a nice day"
+        if (a === "do" && b && !EN_PRON.has(b) && !["the", "this", "that", "these", "those", "any", "all", "we", "there", "my", "our", "your", "their", "a", "an"].includes(b) && !/^[a-z]+s$/.test(b)) continue;   // imperative: "do whatever you want"
+        return `en-aux:${a}`;
+      }
+    }
+  }
+  return "";
+}
+
 export type Detection = { isQuestion: boolean; reason: string };
 /** Optional bank context: a stall-* hit rescues short cue-less utterances; a strong multi-word hit rescues a problem statement. */
 export type DetectCtx = { bankScore?: number; stall?: boolean };
@@ -97,12 +149,15 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
   // Statement openers apply to short utterances, or when the phrase opens the utterance.
   const first3 = t.slice(0, 3).join(" ");
   for (const n of NEGATIVE) {
+    if ((n === "מה קורה" || n === "מה המצב") && containsPhrase(raw, `${n} עם`)) continue;   // "מה קורה עם הכתובות הישנות" asks about something; "מה קורה?" is a greeting
     if (containsPhrase(first3, n) || (t.length <= 5 && containsPhrase(raw, n))) return { isQuestion: false, reason: `negative:${n}` };
   }
   // "ואם משהו נשבר אפשר לשחזר": an if-clause that asks (STT often drops the "?")
   if ((t[0] === normalize("אם") || t[0] === normalize("ואם")) && t.length >= 4 && t.slice(1).some((w) => ["אפשר", "מה", "איך", "מי", "האם", "יש", "תעשו", "עושים"].map(normalize).includes(w))) return { isQuestion: true, reason: "if-open" };
   // "הבאת לה כבר מתנה": a past-tense "already" check on the listener
   if (/(^|\s)\S+ת\s+(לו\s|לה\s|לי\s|להם\s)?כבר(\s|$)/.test(normalize(raw)) && t.length >= 4) return { isQuestion: true, reason: "already-past" };
+  const en = enQuestion(raw);
+  if (en) return { isQuestion: true, reason: en };
   if (INTERJECTIONS.has(t[0])) return { isQuestion: false, reason: "interjection" };
   if (CONFIRM.has(t[0]) && t.length >= 3) return { isQuestion: true, reason: "confirm-open" };
   if (CONFIRM.has(t[t.length - 1]) && t.length >= 3 && t[t.length - 2] !== "לא") return { isQuestion: true, reason: "confirm-tail" };
@@ -123,6 +178,8 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
     if (h === normalize("מה") && /^ש/.test(t[i + 1] ?? "")) continue;   // "מה שאמרת", "לא מה שהוא": a relative clause, not "what?"
     return { isQuestion: true, reason: `head:${h}` };
   }
+  // "האם" later in the utterance ("רציתי לדעת בקשר לטפסים האם הם יעברו"): STT often drops the "?" and the lead-in is longer than three words.
+  if (t.slice(3).some((w) => w === normalize("האם") || w === normalize("והאם"))) return { isQuestion: true, reason: "head:האם-late" };
   // A question that opens a later clause: "ואם משהו נשבר, אפשר לשחזר", "זה עובד ככה, למה?" (strong question words only).
   const CLAUSE_HEADS = new Set(["אפשר", "כמה", "מתי", "איך", "למה", "האם", "איפה"].map(normalize));
   for (const clause of raw.split(/[,،;]/).slice(1)) {

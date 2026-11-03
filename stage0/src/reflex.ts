@@ -3,7 +3,7 @@
 // before the reply ends. Cost/latency caps come from llm.reflex (maxTokens, timeoutMs, maxRetries); fallbacks via withFallbacks().
 // The call text is untrusted: untag() keeps it from closing the <call_transcript> wrapper (prompt-injection guard).
 import { streamText } from "ai";
-import type { BankCard } from "./bank.ts";
+import { localizeCard, englishCardIds, questionLang, type BankCard } from "./bank.ts";
 import type { Settings } from "./settings.ts";
 import { ModelRegistry, providerOptionsFor, cacheOptionsFor, withFallbacks } from "./providers/llm.ts";
 import { classifyFinish, classifyLlmError, ProviderError } from "./providers/errors.ts";
@@ -56,7 +56,7 @@ ${houseStyle}
 ${profileText ? `\nClient profile:\n${profileText}\n` : ""}
 Answer bank (id: title). Reply "BANK <id>" and nothing else when one of these answers the question:
 ${index}
-${background ? `\n${background}\n` : ""}`;
+${background ? `\nUsing the background files: when a THEM question asks about facts that the background files state (scope, counts, content types, names, what was agreed or dropped), answer ANS with one short line built only from those facts, in the language of the question. If the question is about the customer's own site or content and the background does not say, never guess: reply STALL on a client call (SKIP otherwise). Never state a price, date or promise even if the background mentions one.\n${background}\n` : ""}`;
 }
 
 /** Call text is untrusted: it must not be able to close the <call_transcript> wrapper. */
@@ -125,6 +125,7 @@ export function reflexUserMessage(o: Pick<ReflexRun, "frame" | "weakBank" | "con
     o.weakBank ? `A keyword match suggests the bank card "${o.weakBank}", but this is not a customer call: use it only if it truly answers the question, otherwise SKIP or ANS.\n\n` : "",
     o.context?.length ? `Dan's own notes for this call (trusted, typed by Dan):\n${o.context.map((c) => `- ${c}`).join("\n")}\n\n` : "",
     me ? `Now: ${nowText(o.now)}.\nSame moment elsewhere: ${worldClock(o.now)}.\n${o.solo ? "Dan is alone (nobody else is on this call): every question he asks is for you.\n" : ""}\n` : "",
+    !me && questionLang(o.question) === "en" ? `The other side is speaking ENGLISH (possibly with a French or other accent, so the transcript may contain small mishearings: decode by sound and context). Write the say-line and facts in plain, natural, short spoken English (not Hebrew), the way Dan would say it aloud. The house-style rules (no prices, dates, deadlines, promises or guarantees) apply in English exactly as in Hebrew. For BANK use only these ids, which have English cards: ${englishCardIds().join(", ") || "(none)"}; for any other topic reply ANS with an English say-line (or STALL / SKIP).\n\n` : "",
     `<call_transcript>\n${untag(o.transcript)}\n</call_transcript>\n\n`,
     me ? `Dan is asking you (the assistant) himself, not the other side: <call_transcript>${untag(o.question)}</call_transcript>\nAnswer him directly: tag ANS and ONE line of at most 15 words in the language of his question, no facts lines. Or SKIP.`
        : `The other side just said: <call_transcript>${untag(o.question)}</call_transcript>`,
@@ -222,7 +223,7 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
 export function resolveBankId(id: string | undefined, bank: BankCard[]): BankCard | undefined {
   if (!id) return undefined;
   const exact = bank.find((c) => c.id === id);
-  if (exact) return exact;
+  if (exact) return localizeCard(exact);   // English turn: the English text, or nothing when the card has none
   const stop = new Set(["basics", "vs", "the", "and", "stall"]);
   const toks = (x: string) => x.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !stop.has(t));
   const want = new Set(toks(id));
