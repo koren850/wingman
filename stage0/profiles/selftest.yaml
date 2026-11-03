@@ -1,3 +1,5 @@
 # Unattended live self-test: no consent key (synthetic audio only, never a real call).
 privacy:
   requireConsentAck: false
+cards:
+  focus: false            # tests count every card; "important only" is tested on its own

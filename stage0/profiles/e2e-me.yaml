@@ -28,3 +28,5 @@ tips:
 audio:
   echo:
     mode: filter
+cards:
+  focus: false            # tests count every card; "important only" is tested on its own

@@ -29,7 +29,7 @@ export class CallLog {
   /** Merge fields into call.json (e.g. endedAt, and run.ts's phase/liveAt: the answer window polls this file). Whole-file rewrite, best effort. */
   update(fields: Record<string, unknown>) { Object.assign(this.meta, fields); try { this.writeMeta(); } catch { /* best effort */ } }
   /** Appends one JSON line (with a `t` epoch-ms timestamp) to <stream>.jsonl. Never throws. */
-  write(stream: "events" | "transcript" | "cards" | "latency" | "usage", row: Record<string, unknown>) {
+  write(stream: "events" | "transcript" | "cards" | "latency" | "usage" | "live", row: Record<string, unknown>) {
     try { appendFileSync(join(this.dir, `${stream}.jsonl`), JSON.stringify({ t: Date.now(), ...row }) + "\n", { mode: 0o600 }); }
     catch (e) {
       // Best effort: a full disk or a vanished folder must not end the call.

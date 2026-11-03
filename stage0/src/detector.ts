@@ -197,3 +197,12 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
   if (t.length >= 3 && (ctx.bankScore ?? 0) >= 2) return { isQuestion: true, reason: "problem:bank" };
   return { isQuestion: false, reason: "no-cue" };
 }
+
+// "Important cards only" (cards.focus): is this detected line a clear question to the user? The weak cue "head" (a question word
+// at the start; 124 of 225 detections in a real 70-minute call, mostly statements) counts only when the line speaks to the user.
+const STRONG = /^(question-mark|request|stall-bank|confirm-tail|multi|math|clause-head|about)/;   // clause-head / about: real questions whose "?" STT dropped
+const TO_YOU = /(^|[\s,])(לכם|לך|אתם|אתה|תוכל|תוכלו|אפשר|you|your)(?![\p{L}])/iu;
+const NAME_RE = /(^|[\s,])(דן|Dan)(?![\p{L}])/iu;   // the user addressed by name
+export function isClearQuestion(text: string, reason: string): boolean {
+  return STRONG.test(reason) || (/^head/.test(reason) && TO_YOU.test(text)) || NAME_RE.test(text);
+}

@@ -47,7 +47,7 @@ export const schema = z.strictObject({
     answerMe: z.enum(["always", "hotkey", "off"]), askWindowMs: int(3000, 30000), model: modelRef, classifyTimeoutMs: int(500, 10000),
     themQuietMs: int(1000, 30000), minGapMs: int(0, 60000), maxPerMin: int(1, 20), protectThemMs: int(0, 60000),
   }),
-  cards: z.strictObject({ maxPerMinute: int(1, 20), windowMs: int(5000, 600000), lockoutMs: int(0, 5000), maxOnScreen: int(1, 8), quiet: z.boolean() }),
+  cards: z.strictObject({ focus: z.boolean(), maxPerMinute: int(1, 20), windowMs: int(5000, 600000), lockoutMs: int(0, 5000), maxOnScreen: int(1, 8), quiet: z.boolean() }),
   audio: z.strictObject({
     system: z.strictObject({ source: z.enum(["audiotee", "device", "off"]), device: z.string().min(1) }),
     mic: z.strictObject({ device: z.string().min(1) }),

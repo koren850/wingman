@@ -346,15 +346,15 @@ test("settings: list/get/set use the app's catalog and validation; keys.* is off
   const r = await rig();
   try {
     const l = await r.run("settings", "list", "--json");
-    assert.ok(l.json.settings.some((s: any) => s.key === "cards.maxPerMinute"));
-    assert.equal((await r.run("settings", "set", "cards.maxPerMinute", "7", "--json")).code, 0);
-    assert.equal((await r.run("settings", "get", "cards.maxPerMinute", "--json")).json.setting.value, 7);
-    assert.equal((await r.run("settings", "set", "cards.maxPerMinute", "0", "--json")).code, 2);
+    assert.ok(l.json.settings.some((s: any) => s.key === "overlay.liveTextPt"));
+    assert.equal((await r.run("settings", "set", "overlay.liveTextPt", "20", "--json")).code, 0);
+    assert.equal((await r.run("settings", "get", "overlay.liveTextPt", "--json")).json.setting.value, 20);
+    assert.equal((await r.run("settings", "set", "overlay.liveTextPt", "0", "--json")).code, 2);
     assert.equal((await r.run("settings", "set", "run.noAi", "off", "--json")).code, 0);
     assert.equal((await r.run("settings", "get", "run.noAi", "--json")).json.setting.value, false);
     assert.equal((await r.run("settings", "set", "stt.language", "klingon", "--json")).code, 2);
-    assert.equal((await r.run("settings", "set", "cards.maxPerMinute", "default", "--json")).code, 0);
-    assert.equal((await r.run("settings", "get", "cards.maxPerMinute", "--json")).json.setting.changed, false);
+    assert.equal((await r.run("settings", "set", "overlay.liveTextPt", "default", "--json")).code, 0);
+    assert.equal((await r.run("settings", "get", "overlay.liveTextPt", "--json")).json.setting.changed, false);
     assert.equal((await r.run("settings", "set", "keys.file", "/tmp/x", "--advanced", "--json")).code, 4);
     assert.equal((await r.run("settings", "set", "audio.mic.device", ":1", "--json")).code, 5, "not in the catalog without --advanced");
     assert.equal((await r.run("settings", "set", "nope.nothing", "1", "--advanced", "--json")).code, 5);

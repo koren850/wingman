@@ -27,3 +27,5 @@ tips:
   model: "scripted:tips"
   minGapMs: 10000
   afterAnswerMs: 2000
+cards:
+  focus: false            # tests count every card; "important only" is tested on its own

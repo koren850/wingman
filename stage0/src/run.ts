@@ -41,7 +41,7 @@ import { evalMath, looksArithmetic } from "./calc.ts";
 import { checkScript } from "./lang.ts";
 import { callAppRunning } from "./callapp.ts";
 import { audienceByCues, classify, decideAudience, MeGate, guardMe } from "./assist.ts";
-import { detect } from "./detector.ts";
+import { detect, isClearQuestion } from "./detector.ts";
 import { guard, sanitize } from "./guards.ts";
 import { buildPrefix, runReflex, resolveBankId, leakedTag, type Tag } from "./reflex.ts";
 import type { SttResult, Channel, Word } from "./providers/stt/types.ts";
@@ -336,6 +336,12 @@ const turnsWithCard = new Set<string>();
 
 /** The single exit for every card. Sanitizes text, decides hidden (quiet mode, or the per-minute cap unless priority), appends to cards.jsonl
  *  (hidden cards are logged too, flagged) and prints to the terminal. Health/info/tip cards are never hidden or counted. */
+// "Important cards only" (cards.focus): 2 cards per 2 minutes, and only for clear questions. The detector's weaker cues ("head": a
+// question word at the start, 124 of 225 detections on 3 Nov, mostly statements) do not count; price/date cards and cards about
+// what the user said are not affected.
+const capMax = () => (S.cards.focus ? Math.min(2, S.cards.maxPerMinute) : S.cards.maxPerMinute);
+const capWindow = () => (S.cards.focus ? 120_000 : S.cards.windowMs);
+function focusWorthy(text: string, reason: string): boolean { return isClearQuestion(text, reason) || !!matchBankFor(text, bank)?.card.id.startsWith("stall-"); }
 function emitCard(c: Card) {
   c.say = sanitize(c.say); c.facts = c.facts.map(sanitize);
   const special = c.health || c.badge === "info" || c.badge === "tip";
@@ -347,10 +353,10 @@ function emitCard(c: Card) {
     if (prev) { hidden = prev.hidden; reason = prev.reason; }
     else {
       const now = Date.now();
-      shownTimes = shownTimes.filter((s) => now - s.t < S.cards.windowMs);
+      shownTimes = shownTimes.filter((s) => now - s.t < Math.max(S.cards.windowMs, capWindow()));
       if (quiet) { hidden = true; reason = "quiet"; }
       else if (forMe || c.badge === "careful" || c.badge === "fix" || c.badge === "stall") { /* no cap, not counted */ }
-      else if (shownTimes.length >= S.cards.maxPerMinute && !c.priority) { hidden = true; reason = "cap"; }
+      else if (shownTimes.filter((s) => now - s.t < capWindow()).length >= capMax() && !c.priority) { hidden = true; reason = "cap"; }
       else shownTimes.push({ id: c.id, t: now });
       decided.set(c.id, { hidden, reason });
       if (!turnsWithCard.has(c.turnId)) {
@@ -405,6 +411,7 @@ let lastAgencyTopicAt = 0;
  *     (BANK / ANS / STALL / SKIP) that can confirm, replace or withdraw the card, then the answer text, which passes the guards.
  *  A newer question aborts this one (`current`). Answers older than reflex.dropStaleMs are never shown (`fresh`). `reason` is the detector's reason string. */
 function onQuestion(r: SttResult, reason = "") {
+  if (S.cards.focus && !focusWorthy(r.text, reason)) { log.write("events", { type: "focus.skip", reason, text: r.text.slice(0, 120) }); return; }
   const turnId = `q${++turnSeq}`;
   const speechEnd = r.speechEndWall ?? r.arrivedAt;
   const lat: Record<string, number | string> = { turnId, speechEnd, finalAt: r.arrivedAt, text: r.text };
@@ -849,9 +856,21 @@ function flush(ch: Channel) {
   if (d.isQuestion && sup.caps.detect) onQuestion(joined, d.reason);
 }
 
+// Words while they are spoken: interim STT text goes to live.jsonl (at most 4 rows a second per channel) for the answer window's
+// live strip. The final line in transcript.jsonl replaces it. live.jsonl is deleted when the call ends (the transcript has it all).
+const lastPartialAt: Partial<Record<Channel, number>> = {};
+function livePartial(r: SttResult) {
+  if (!r.text || !consented || shuttingDown || !S.overlay.showLastLine) return;
+  const now = Date.now();
+  if (now - (lastPartialAt[r.channel] ?? 0) < 250) return;
+  if (S.stt.dropForeignScript && !checkScript(r.text).ok) return;
+  lastPartialAt[r.channel] = now;
+  log.write("live", { ch: r.channel, text: r.text.slice(-300) });
+}
+
 /** Every STT result (both channels). Only finals matter. Drops foreign-script junk, logs, then routes "me" lines through the echo filter delay. */
 function onResult(r: SttResult) {
-  if (!r.isFinal) return;
+  if (!r.isFinal) { livePartial(r); return; }
   // Hebrew + English mixing sometimes hallucinates Telugu / Persian / Arabic on short clips: such a final triggers nothing.
   if (S.stt.dropForeignScript && r.text) {
     const sc = checkScript(r.text);
@@ -978,7 +997,7 @@ let me: SttChannel, them: SttChannel;
 let crashed = false;
 
 /** Skip the summary for this stop: aborts the model call if it is running, and shutdown() moves on. The call stays saved (write it later with `wingman calls summary <id> --generate`). */
-let summarySkipped = false;
+let summarySkipped = false, summaryDone = false;
 const summaryAbort = new AbortController();
 let wakeSkip: () => void = () => {};
 const summarySkipWait = new Promise<void>((res) => { wakeSkip = res; });
@@ -998,6 +1017,7 @@ async function postCallSummary() {
       write: (stream, row) => log.write(stream, row),
     });
     if (summarySkipped) { status("summary", { ok: false, skipped: true }); return; }
+    summaryDone = true;
     if (r.skipped) return;
     if (r.ok) console.log(formatShort(r.summary!)); else console.log(`\nSummary failed: ${r.error}`);
     status("summary", { ok: r.ok, id: log.id });
@@ -1061,7 +1081,20 @@ async function shutdown() {
   if (del) {
     try { rmSync(log.dir, { recursive: true, force: true }); if (!existsSync(join(CALLS, "latest"))) rmSync(join(CALLS, "latest"), { force: true }); } catch {}
     console.log(`\nDeleted ${log.dir}`);
-  } else console.log(`\nSaved ${log.dir}\nRate the cards: pnpm tag · delete later: pnpm purge ${log.id}`);
+  } else {
+    console.log(`\nSaved ${log.dir}\nRate the cards: pnpm tag · delete later: pnpm purge ${log.id}`);
+    // A long call's summary does not fit the ~12 s stop budget (3 Nov: 70 minutes, no summary). It is finished by a separate
+    // background process that outlives this one (same code as `wingman calls summary <id> --generate`).
+    if (!summaryDone && !summarySkipped && !crashed && !noAi && S.summary.enabled) {
+      summaryAbort.abort();
+      try {
+        spawn(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "summary.ts"), log.id], { cwd: ROOT, detached: true, stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
+        log.write("events", { type: "summary.background" });
+        status("summary", { ok: false, background: true, id: log.id });
+      } catch { /* the user can still run: wingman calls summary <id> --generate */ }
+    }
+  }
+  if (!del) try { rmSync(join(log.dir, "live.jsonl"), { force: true }); } catch { /* best effort */ }
   status("stopphase", { phase: "done" });
   status("ended", { id: log.id, deleted: del, crashed });
   try { if (process.stdin.isTTY) process.stdin.setRawMode(false); } catch {}
@@ -1235,6 +1268,7 @@ async function main() {
 
   // Consent card: re-emitted every 20 s until confirmed (the answer window may start late and would miss a single one).
   const consentCard = (): Card => ({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: CONSENT_SAY, facts: ["אפשר להגיד את זה בתחילת השיחה", CONTROL ? "לא רוצים להקליט: עצור ומחק מהתפריט" : "לא רוצים להקליט: Ctrl+C", CONTROL ? "להתחלת האזנה: Ctrl+Opt+Return" : "להתחלת האזנה: Enter"], at: Date.now() });
+  const MIC_LONG_SILENT_MS = 5 * 60_000;
   let micPeakAfterStart = 0, micPeakWin = 0, micSilentShown = false, micWatch: NodeJS.Timeout | undefined;
   // privacy.requireConsentAck ("Ask me before listening starts", default off): wait for Start listening before any audio leaves the Mac.
   const needAck = S.privacy.requireConsentAck && !fileArg && (process.stdin.isTTY || CONTROL);
@@ -1245,10 +1279,18 @@ async function main() {
     status("consented", { id: log.id });
     consentedAt = Date.now();
     setPhase("live", { liveAt: consentedAt });
-    // Mic watchdog. Periodic: checks the last micSilentMs of audio each time, shows the red banner when silent and clears it as soon as the mic is heard.
-    if (!fileArg) { micPeakWin = 0; micWatch = setInterval(() => {
+    // Mic watchdog. Silence is normal while the user listens (3 Nov: a quiet Bluetooth mic raised "mic not picking up" about 20 times).
+    // Red only when the mic was NEVER heard since listening started (permission, wrong device). Once it was heard, only a long silence
+    // (micLongSilentMs) gives one calm amber line, cleared as soon as the mic is heard again.
+    if (!fileArg) { micPeakWin = 0; let silentSince = Date.now(); micWatch = setInterval(() => {
       if (shuttingDown) return;
-      if (micPeakWin < S.audio.watchdog.micPeak) { if (!micSilentShown) { micSilentShown = true; health("mic", "red", "המיקרופון לא קולט. בדוק הרשאת מיקרופון ב-Settings ובחירת מיקרופון, ואז הרץ בדיקת מוכנות"); } }
+      const now = Date.now();
+      if (micPeakWin >= S.audio.watchdog.micPeak) silentSince = now;
+      if (micPeakAfterStart < S.audio.watchdog.micPeak) {
+        if (!micSilentShown) { micSilentShown = true; health("mic", "red", "המיקרופון לא קולט. בדוק הרשאת מיקרופון ב-Settings ובחירת מיקרופון, ואז הרץ בדיקת מוכנות"); }
+      } else if (now - silentSince >= MIC_LONG_SILENT_MS && !micSilentShown) {
+        micSilentShown = true; health("mic", "amber", "לא שמעתי אותך כמה דקות. אם דיברת, בדוק את המיקרופון");
+      }
       micPeakWin = 0;
     }, S.audio.watchdog.micSilentMs); micWatch.unref(); }
   };
@@ -1323,6 +1365,7 @@ async function main() {
       clearThemBanner();
     });
     const deadFrameMs = Math.max(W.silentThemMs, 8000);
+    const ONLY_YOU_MS = Math.max(W.silentThemMs, 45_000); let lastOnlyYouAt = 0;
     setInterval(() => {
       if (!sys || !consented || shuttingDown) return;
       if (Date.now() - lastSysFrame > deadFrameMs) {
@@ -1334,11 +1377,14 @@ async function main() {
         return;
       }
       if (shownKind || checking) return;
-      if (!(Date.now() - lastThemSound > W.silentThemMs && Date.now() - lastMeVoiced < 3000)) return;
+      // "I only hear you" only after a long one-sided stretch: the other side is silent while the user talks for a while in any call
+      // (3 Nov: shown 8 times while Zoom audio worked). At most once every 10 minutes.
+      if (!(Date.now() - lastThemSound > ONLY_YOU_MS && Date.now() - lastMeVoiced < 3000 && Date.now() - lastOnlyYouAt > 10 * 60_000)) return;
       checking = true;
       void callAppRunning().then((app) => {
         checking = false;
-        if (shuttingDown || shownKind || Date.now() - lastThemSound <= W.silentThemMs) return;
+        if (shuttingDown || shownKind || Date.now() - lastThemSound <= ONLY_YOU_MS) return;
+        lastOnlyYouAt = Date.now();
         log.write("events", { type: "watchdog.silent-them", callApp: app ?? null });
         shownKind = "calm"; health("only-you", "info", ONLY_YOU_TEXT);
       });

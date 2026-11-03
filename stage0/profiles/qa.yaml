@@ -19,3 +19,5 @@ frame:
   minNewWords: 30
 tips:
   minGapMs: 60000          # ... and allow a tip every minute, so a short scripted call can show one or two
+cards:
+  focus: false            # tests count every card; "important only" is tested on its own

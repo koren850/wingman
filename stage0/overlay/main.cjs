@@ -25,7 +25,7 @@ if (process.env.WINGMAN_WATCH_PARENT === "1") {
   setInterval(() => { try { process.kill(parent, 0); } catch { bye(); } if (process.ppid !== parent) bye(); }, 2000).unref();
 }
 // Tailed files of calls/latest: cards.jsonl (cards + captures) and transcript.jsonl (for the rewind panel).
-const tails = { cards: { file: undefined, offset: 0 }, transcript: { file: undefined, offset: 0 } };
+const tails = { cards: { file: undefined, offset: 0 }, transcript: { file: undefined, offset: 0 }, live: { file: undefined, offset: 0 } };
 
 // With a single display the overlay would sit on the shared screen. Refuse unless overlay.allowPrimary (WINGMAN_ALLOW_PRIMARY=1).
 function pickDisplay() {
@@ -65,7 +65,7 @@ function create() {
   // Poll only after the page has its listeners; a reload replays the call files from the start.
   win.webContents.on("did-finish-load", () => {
     win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, showLastLine: CFG.showLastLine !== false, liveTextPt: CFG.liveTextPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
-    tails.cards = { file: undefined, offset: 0 }; tails.transcript = { file: undefined, offset: 0 }; capList = []; phaseKey = "";
+    tails.cards = { file: undefined, offset: 0 }; tails.transcript = { file: undefined, offset: 0 }; tails.live = { file: undefined, offset: 0 }; capList = []; phaseKey = "";
     clearInterval(timer); timer = setInterval(poll, 100);
   });
   // focusable:false means Esc never reaches the window, so clear/pause are global shortcuts.
@@ -101,13 +101,15 @@ function poll() {
   let dir;
   try { dir = fs.realpathSync(path.join(CALLS, "latest")); } catch { return; }
   const cardsFile = path.join(dir, "cards.jsonl");
-  if (cardsFile !== tails.cards.file) { tails.cards = { file: cardsFile, offset: 0 }; tails.transcript = { file: path.join(dir, "transcript.jsonl"), offset: 0 }; lastCapture = undefined; capList = []; phaseKey = ""; endedSent = false; win.webContents.send("reset"); }
+  if (cardsFile !== tails.cards.file) { tails.cards = { file: cardsFile, offset: 0 }; tails.transcript = { file: path.join(dir, "transcript.jsonl"), offset: 0 }; tails.live = { file: path.join(dir, "live.jsonl"), offset: 0 }; lastCapture = undefined; capList = []; phaseKey = ""; endedSent = false; win.webContents.send("reset"); }
   for (const c of readNew(tails.cards)) {
     if (c.type === "capture") { lastCapture = c.value; capList = pushCapture(capList, c.value); win.webContents.send("capture", c); }
     else if (c.type === "ask") win.webContents.send("ask", { on: !!c.on, until: Number(c.until) || 0 });
     else if (c.type === "frame") { if (c.frame && typeof c.frame === "object") win.webContents.send("frame", c.frame); }
     else if (!c.hidden) win.webContents.send("card", c);
   }
+  const partials = readNew(tails.live); const p = partials[partials.length - 1];   // only the newest words matter
+  if (p) win.webContents.send("partial", { t: p.t, ch: p.ch, text: p.text });
   for (const l of readNew(tails.transcript)) win.webContents.send("line", { t: l.t, ch: l.ch, text: l.text });
   // call.json: the real call phase (starting / waiting / live / ended). Sent when it changes; {phase:null} = no phase written, the page falls back to its timer.
   if (!endedSent && Date.now() - endedCheckAt > 1000) {

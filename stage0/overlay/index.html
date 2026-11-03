@@ -56,6 +56,8 @@
   #last.me .who { color:var(--t-me); }
   #last .txt { flex:1 1 auto; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
   #last.fresh .txt { animation:livein .25s ease-out; }
+  #last.partial .txt { color:var(--soft); }
+  #last.partial .who::after { content:" …"; }
   @keyframes livein { from { opacity:.35; } }
 
   /* Stage: the newest answer (hero) owns at least half the window. Older answers are small rows (max 2). */
@@ -462,17 +464,21 @@
   // A short "me" line (< 3 words: "כן", "אוקיי") does not replace the other side's sentence, so the question stays readable.
   let SHOW_LAST = true;
   const lastBox = document.getElementById("last"), lastTxt = lastBox.querySelector(".txt"), lastWho = lastBox.querySelector(".who");
-  function showLast(text, ch) {
+  // partial = words still being spoken (live.jsonl); the final line replaces them. A partial never re-triggers the fade-in.
+  function showLast(text, ch, partial) {
     if (!SHOW_LAST || !text) { lastBox.style.display = "none"; return; }
     const clean = String(text).replace(/\s+/g, " ").trim();
     if (ch === "me" && clean.split(" ").length < 3 && lastBox.style.display === "flex") return;
+    lastBox.classList.toggle("partial", !!partial);
     lastTxt.replaceChildren(); mixed(lastTxt, clean.slice(-220));
     lastWho.textContent = ch === "me" ? "אני" : "הצד השני";
     lastBox.classList.toggle("me", ch === "me");
-    lastBox.classList.remove("fresh"); void lastBox.offsetWidth; lastBox.classList.add("fresh");
+    if (!partial && !lastBox._wasPartial) { lastBox.classList.remove("fresh"); void lastBox.offsetWidth; lastBox.classList.add("fresh"); }
+    lastBox._wasPartial = !!partial;
     lastBox.style.display = "flex";
   }
   window.wingman.onLine((l) => { if (phase === "ended") return; listening(); lines.push(l); while (lines.length > 400) lines.shift(); showLast(l.text, l.ch); });
+  window.wingman.onPartial((l) => { if (phase === "ended") return; listening(); showLast(l.text, l.ch, true); });
   window.wingman.onRewind(showRewind);
   const caps = new Map();   // value -> chip, newest first (same order as main.cjs: chip N = Ctrl+Opt+N)
   const numberChips = () => [...capBox.children].forEach((el, i) => { el.querySelector(".n").textContent = String(i + 1); el.setAttribute("aria-label", `${el.dataset.kind} ${el.dataset.value}, ${fmtKey("Control+Alt+" + (i + 1))}`); });
