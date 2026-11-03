@@ -144,7 +144,7 @@ export function guardEmail(email: string): { text: string; replaced: number; rul
 }
 
 // ---------- inputs ----------
-export type CallData = { lines: { ch: "me" | "them"; text: string }[]; contextNotes: string[]; aiNotes: string[]; frame?: Frame };
+export type CallData = { lines: { ch: "me" | "them"; text: string; who?: string }[]; contextNotes: string[]; aiNotes: string[]; frame?: Frame };
 const WHO = { me: "דן", them: "לקוח" } as const;
 /** The label of the other side in the transcript: "לקוח" only on a client call (or when the kind is not known). */
 const themLabel = (f: Frame | undefined): string => (!f || isAgencyKind(f.kind) ? WHO.them : otherName(f));
@@ -154,7 +154,7 @@ const MAX_CHARS = 200_000;   // ~90+ min of Hebrew; longer calls keep the start 
 /** User message: call frame, trusted notes, AI notes and the transcript. A transcript over MAX_CHARS keeps its first and last halves (the middle is cut, marked in Hebrew). */
 export function buildPrompt(d: CallData): string {
   const them = themLabel(d.frame);
-  let t = d.lines.map((l) => `${l.ch === "me" ? WHO.me : them}: ${l.text}`).join("\n");
+  let t = d.lines.map((l) => `${l.ch === "me" ? WHO.me : l.who ? `${them} (${l.who})` : them}: ${l.text}`).join("\n");
   if (t.length > MAX_CHARS) t = `${t.slice(0, MAX_CHARS / 2)}\n[... חלק מהשיחה הושמט ...]\n${t.slice(-MAX_CHARS / 2)}`;
   const list = (xs: string[]) => xs.map((x) => `- ${x.replace(/\s+/g, " ").slice(0, 400)}`).join("\n") || "(none)";
   const fr = d.frame ? `Call frame (generated during the call by a small model; the kind may be wrong, trust the transcript):\n${frameText(d.frame)}\nChecklist: ${d.frame.checklist.map((c) => `[${c.done ? "x" : " "}] ${c.item}`).join("; ") || "(none)"}\n\n` : "";
@@ -268,7 +268,7 @@ const readRows = (dir: string, f: string): any[] => {
 
 /** Rebuilds the model input of a saved call. Uses the context.snapshot event written at the end of the call when there is one. */
 export function loadCallData(dir: string): CallData {
-  const lines = readRows(dir, "transcript.jsonl").filter((r) => (r.ch === "me" || r.ch === "them") && typeof r.text === "string" && r.text.trim()).map((r) => ({ ch: r.ch as "me" | "them", text: String(r.text) }));
+  const lines = readRows(dir, "transcript.jsonl").filter((r) => (r.ch === "me" || r.ch === "them") && typeof r.text === "string" && r.text.trim()).map((r) => ({ ch: r.ch as "me" | "them", text: String(r.text), ...(r.ch === "them" && (r.name || typeof r.spk === "number") ? { who: typeof r.name === "string" && r.name ? r.name : `Speaker ${r.spk}` } : {}) }));
   const events = readRows(dir, "events.jsonl"), cards = readRows(dir, "cards.jsonl");
   const frame = parseFrame(events.filter((e) => e.type === "frame").at(-1)?.frame);
   const snap = events.filter((e) => e.type === "context.snapshot").at(-1);

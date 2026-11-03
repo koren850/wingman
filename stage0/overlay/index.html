@@ -453,7 +453,7 @@
     const body = div("body");
     if (!recent.length) { const e = div("l"); e.textContent = "אין טקסט מהשניות האחרונות"; body.append(e); }
     for (const l of recent) {
-      const d = div(`l ${l.ch}`); const who = document.createElement("span"); who.className = "who"; who.textContent = l.ch === "me" ? "אני" : "הצד השני";
+      const d = div(`l ${l.ch}`); const who = document.createElement("span"); who.className = "who"; who.textContent = whoLabel(l);
       d.append(who); mixed(d, l.text); body.append(d);
     }
     rContent.append(body);
@@ -465,20 +465,22 @@
   let SHOW_LAST = true;
   const lastBox = document.getElementById("last"), lastTxt = lastBox.querySelector(".txt"), lastWho = lastBox.querySelector(".who");
   // partial = words still being spoken (live.jsonl); the final line replaces them. A partial never re-triggers the fade-in.
-  function showLast(text, ch, partial) {
+  // Who said it: "אני", the name, "דובר 2" when the voices are told apart, else "הצד השני". Text only (names come from the call).
+  const whoLabel = (l) => l.ch === "me" ? "אני" : (typeof l.name === "string" && l.name) ? l.name.slice(0, 40) : Number.isInteger(l.spk) ? `דובר ${l.spk}` : "הצד השני";
+  function showLast(text, ch, partial, who) {
     if (!SHOW_LAST || !text) { lastBox.style.display = "none"; return; }
     const clean = String(text).replace(/\s+/g, " ").trim();
     if (ch === "me" && clean.split(" ").length < 3 && lastBox.style.display === "flex") return;
     lastBox.classList.toggle("partial", !!partial);
     lastTxt.replaceChildren(); mixed(lastTxt, clean.slice(-220));
-    lastWho.textContent = ch === "me" ? "אני" : "הצד השני";
+    lastWho.textContent = who || (ch === "me" ? "אני" : "הצד השני");
     lastBox.classList.toggle("me", ch === "me");
     if (!partial && !lastBox._wasPartial) { lastBox.classList.remove("fresh"); void lastBox.offsetWidth; lastBox.classList.add("fresh"); }
     lastBox._wasPartial = !!partial;
     lastBox.style.display = "flex";
   }
-  window.wingman.onLine((l) => { if (phase === "ended") return; listening(); lines.push(l); while (lines.length > 400) lines.shift(); showLast(l.text, l.ch); });
-  window.wingman.onPartial((l) => { if (phase === "ended") return; listening(); showLast(l.text, l.ch, true); });
+  window.wingman.onLine((l) => { if (phase === "ended") return; listening(); lines.push(l); while (lines.length > 400) lines.shift(); showLast(l.text, l.ch, false, whoLabel(l)); });
+  window.wingman.onPartial((l) => { if (phase === "ended") return; listening(); showLast(l.text, l.ch, true, whoLabel(l)); });
   window.wingman.onRewind(showRewind);
   const caps = new Map();   // value -> chip, newest first (same order as main.cjs: chip N = Ctrl+Opt+N)
   const numberChips = () => [...capBox.children].forEach((el, i) => { el.querySelector(".n").textContent = String(i + 1); el.setAttribute("aria-label", `${el.dataset.kind} ${el.dataset.value}, ${fmtKey("Control+Alt+" + (i + 1))}`); });

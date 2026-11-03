@@ -77,9 +77,9 @@ function liveChrome() {
 
 /** One transcript line (Me / Them, mm:ss from the call start). Text via rich() only; dir is set per line for Hebrew with English terms. */
 function liveLineEl(l, t0) {
-  const me = l.ch === "me";
-  return h("div", { class: "lf-row " + (me ? "me" : "them"), dir: dirOf(l.text), role: "article", "aria-label": `${me ? "Me" : "Other side"} at ${WingmanLive.stamp(l.t, t0)}` },
-    h("div", { class: "lf-meta" }, chip(me ? "Me" : "Them", me ? "me" : "info"), h("span", { class: "lf-ts" }, WingmanLive.stamp(l.t, t0))),
+  const me = l.ch === "me", who = me ? "Me" : speakerName(l);
+  return h("div", { class: "lf-row " + (me ? "me" : "them"), dir: dirOf(l.text), role: "article", "aria-label": `${me ? "Me" : who} at ${WingmanLive.stamp(l.t, t0)}` },
+    h("div", { class: "lf-meta" }, chip(who, me ? "me" : "info"), h("span", { class: "lf-ts" }, WingmanLive.stamp(l.t, t0))),
     h("div", { class: "lf-tx", dir: dirOf(l.text), lang: langOf(l.text) }, rich(l.text)));
 }
 /** One answer card under its line. _sig lets liveRender replace it only when its text or dim state changed (AI cards stream in as new versions). */

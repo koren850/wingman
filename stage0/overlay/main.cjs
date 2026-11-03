@@ -109,8 +109,8 @@ function poll() {
     else if (!c.hidden) win.webContents.send("card", c);
   }
   const partials = readNew(tails.live); const p = partials[partials.length - 1];   // only the newest words matter
-  if (p) win.webContents.send("partial", { t: p.t, ch: p.ch, text: p.text });
-  for (const l of readNew(tails.transcript)) win.webContents.send("line", { t: l.t, ch: l.ch, text: l.text });
+  if (p) win.webContents.send("partial", { t: p.t, ch: p.ch, text: p.text, spk: p.spk, name: p.name });
+  for (const l of readNew(tails.transcript)) win.webContents.send("line", { t: l.t, ch: l.ch, text: l.text, spk: l.spk, name: l.name });
   // call.json: the real call phase (starting / waiting / live / ended). Sent when it changes; {phase:null} = no phase written, the page falls back to its timer.
   if (!endedSent && Date.now() - endedCheckAt > 1000) {
     endedCheckAt = Date.now();

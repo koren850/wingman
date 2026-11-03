@@ -29,7 +29,8 @@
     if (!r || typeof r !== "object" || (r.ch !== "me" && r.ch !== "them")) return null;
     const text = str(r.text, MAX_TEXT).trim();
     if (!text || !Number.isFinite(r.t) || r.t < 0 || r.t > 4e12) return null;
-    return { t: Math.round(r.t), ch: r.ch, text };
+    const who = r.ch === "them" ? (typeof r.name === "string" && r.name ? { name: r.name.slice(0, 40) } : Number.isInteger(r.spk) ? { spk: r.spk } : {}) : {};
+    return { t: Math.round(r.t), ch: r.ch, text, ...who };
   }
 
   /** cards.jsonl row -> { id, badge, question, say, t, dim } | { id, withdraw: true } | null. Only bank / AI / stall answers and the "For you" answers (me) are shown. */

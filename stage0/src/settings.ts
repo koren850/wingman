@@ -26,7 +26,7 @@ const price = z.strictObject({ inUsdPerM: z.number().min(0), outUsdPerM: z.numbe
 export const schema = z.strictObject({
   v: z.literal(1),
   stt: z.strictObject({
-    provider: sttName, fallback: z.array(sttName), model: z.string().min(1),
+    provider: sttName, fallback: z.array(sttName), model: z.string().min(1), speakers: z.boolean(),
     language: z.enum(["he", "en", "multi", "auto"]),
     endpointMs: int(100, 2000), utteranceEndMs: int(500, 3000), keepAliveMs: int(2000, 8000), flushFallbackMs: int(300, 5000), joinWindowMs: int(0, 5000),
     keyterms: z.strictObject({ enabled: z.enum(["auto", "on", "off"]), file: z.string().min(1), max: int(0, 100) }),

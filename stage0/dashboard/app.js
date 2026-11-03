@@ -147,6 +147,8 @@ const fullDay = (t) => { const d = new Date(t); return `${DAYS[d.getDay()]} ${d.
 /** Duration as "<1 min", "12 min" or "1 h 05 min". */
 function mins(ms) { const m = Math.round(ms / 60000); if (ms < 30000) return "<1 min"; if (m < 60) return `${Math.max(1, m)} min`; return `${Math.floor(m / 60)} h ${pad(m % 60)} min`; }
 const usd = (n) => (n < 0.01 ? "$" + n.toFixed(4) : "$" + n.toFixed(2));
+/** The other side's label: their name, "Speaker 2" when voices are told apart (stt.speakers), else "Them". */
+const speakerName = (l) => (typeof l?.name === "string" && l.name ? l.name.slice(0, 40) : Number.isInteger(l?.spk) ? `Speaker ${l.spk}` : "Them");
 const sec = (ms) => (ms == null || isNaN(ms) ? "-" : (ms / 1000).toFixed(2) + " s");
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + "s"}`;
 // Nearest-rank percentile of the numbers in arr (nulls/NaN ignored); null when empty.
@@ -702,7 +704,7 @@ function tTranscript(pane, d, o) {
         : chip("Question", "info"));
     }
     box.append(h("div", { class: "row " + (me ? "me" : "them"), role: "listitem", id: "tr-" + i, tabindex: "-1" },
-      h("span", { class: "ts" }, mmss(r.t - t0)), h("span", {}, chip(me ? "Me" : "Them", me ? "me" : "info")),
+      h("span", { class: "ts" }, mmss(r.t - t0)), h("span", {}, chip(me ? "Me" : speakerName(r), me ? "me" : "info")),
       h("div", { class: "tx", dir: dirOf(r.text), lang: langOf(r.text) }, hlNodes(r.text, q)),
       ex.length ? h("div", { class: "ex" }, ex) : null));
     for (const c of cardsAt.get(i) || []) {

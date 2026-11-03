@@ -42,6 +42,7 @@ import { checkScript } from "./lang.ts";
 import { callAppRunning } from "./callapp.ts";
 import { audienceByCues, classify, decideAudience, MeGate, guardMe } from "./assist.ts";
 import { detect, isClearQuestion } from "./detector.ts";
+import { SpeakerBook, lineLabel, type SpeakerInfo } from "./speakers.ts";
 import { guard, sanitize } from "./guards.ts";
 import { buildPrefix, runReflex, resolveBankId, leakedTag, type Tag } from "./reflex.ts";
 import type { SttResult, Channel, Word } from "./providers/stt/types.ts";
@@ -125,7 +126,9 @@ type Card = {
   forMe?: boolean; source?: "calc" | "ai";   // badge "me": an answer for the user (their own question). source "calc" on an "ai" card: local arithmetic, no model
   priority?: boolean;   // "don't commit yet" bank cards (stall-price, stall-guarantee…): never hidden by the per-minute cap
 };
-const transcript: (TimedLine & { ch: Channel })[] = [];
+const transcript: (TimedLine & { ch: Channel; who?: SpeakerInfo })[] = [];
+const speakers = new SpeakerBook();   // the other side's voices (stt.speakers), numbered per call
+const lineOf = (l: { ch: Channel; text: string; who?: SpeakerInfo }) => `${lineLabel(l.ch, l.who)}: ${l.text}`;
 const contextNotes: string[] = [];
 // Prepared start: a brief saved by `pnpm brief` (last 6 h), or --brief <file>; --no-brief skips it.
 // A replay (--file) never consumes latest.yaml; it uses a brief only when --brief is given.
@@ -217,7 +220,7 @@ const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
 /** The last `minutes` of the call as "me: …/them: …" lines, newest at the end, at most ~6000 characters. */
 function recentTranscript(minutes: number, maxLines = 80): string {
   const now = Date.now();
-  const t = transcript.filter((l) => now - l.at <= minutes * 60_000).slice(-maxLines).map((l) => `${l.ch}: ${l.text}`).join("\n");
+  const t = transcript.filter((l) => now - l.at <= minutes * 60_000).slice(-maxLines).map(lineOf).join("\n");
   return t.length > 6000 ? t.slice(-6000) : t;
 }
 const framePct = (f: Frame) => { const p = progress(f); return `${p.done}/${p.total}`; };
@@ -477,7 +480,7 @@ function onQuestion(r: SttResult, reason = "") {
   }, S.reflex.stallAfterMs);
 
   const ai: Card = { id: `${turnId}-ai`, turnId, badge: "ai", question: r.text, say: "", facts: [], at: 0 };
-  const recent = transcript.slice(-12).map((l) => `${l.ch}: ${l.text}`).join("\n");
+  const recent = transcript.slice(-12).map(lineOf).join("\n");
   lat.reqAt = Date.now();
   runReflex({
     registry, models: usable, cfg: S.llm.reflex, prefix, transcript: recent, question: r.text, context: contextNotes, signal: ac.signal,
@@ -759,7 +762,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
   const usable = usableModels();
   let tag: Tag | undefined, said = "", facts: string[] = [], shownOnce = false;
   await runReflex({
-    registry, models: usable, cfg: S.llm.reflex, prefix, transcript: transcript.slice(-12).map((l) => `${l.ch}: ${l.text}`).join("\n"), question: text, context: contextNotes, signal: ac.signal,
+    registry, models: usable, cfg: S.llm.reflex, prefix, transcript: transcript.slice(-12).map(lineOf).join("\n"), question: text, context: contextNotes, signal: ac.signal,
     frame: frameText(tracker.current) || undefined, asker: "me", solo, maxTokens: Math.min(S.llm.reflex.maxTokens, 100),
     onFail: (model, err) => llmFailed(model, err),
     onSwitch: (from, to, err) => { log.write("events", { type: "llm.switch", turnId, from, to, kind: err.kind }); },
@@ -816,9 +819,9 @@ function refreshSignals() {
 
 // Buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer, stt.flushFallbackMs,
 // for when the end-of-speech mark never arrives).
-type Pending = { texts: string[]; words: Word[]; last: SttResult; timer?: NodeJS.Timeout };
+type Pending = { texts: string[]; words: Word[]; last: SttResult; timer?: NodeJS.Timeout; spk?: number };
 const pending: Partial<Record<Channel, Pending>> = {};
-let lastThem: PrevUtterance | undefined;   // S10: the previous client utterance, for split questions
+let lastThem: (PrevUtterance & { spk?: number }) | undefined;   // S10: the previous client utterance, for split questions
 /** Handles one buffered utterance: "me" -> handleMe; "them" -> glue split questions, split merged ones, detect, onQuestion. */
 function flush(ch: Channel) {
   const p = pending[ch]; if (!p) return;
@@ -835,12 +838,14 @@ function flush(ch: Channel) {
   const detectText = (t: string) => { const h = matchBankFor(t, bank); return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) }; };
   let { hit, d } = detectText(joined.text);
   // Glue the previous short fragment only when that turns a non-question into a question (a split question: "כמה זה" ... "עולה לחודש?").
-  const glued = d.isQuestion && !isBareQuestionTail(joined.text, d.reason) ? joined.text : joinSplit(lastThem, joined.text, startWall, S.stt.joinWindowMs);
+  // Never glue two different voices: one person's fragment is not the start of another person's question.
+  const otherVoice = p.spk !== undefined && lastThem?.spk !== undefined && p.spk !== lastThem.spk;
+  const glued = otherVoice || (d.isQuestion && !isBareQuestionTail(joined.text, d.reason)) ? joined.text : joinSplit(lastThem, joined.text, startWall, S.stt.joinWindowMs);
   if (glued !== joined.text) {
     const g = detectText(glued);
     if (g.d.isQuestion) { log.write("events", { type: "split.join", prev: lastThem?.text, text: joined.text }); joined.text = glued; hit = g.hit; d = g.d; }
   }
-  lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: endWall, question: d.isQuestion };
+  lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: endWall, question: d.isQuestion, spk: p.spk };
   // Fast back-to-back questions merged into one final: one question (and one card) per piece.
   const parts = d.isQuestion ? splitMergedQuestions(joined.text, bank) : [joined.text];
   if (parts.length > 1) {
@@ -865,7 +870,8 @@ function livePartial(r: SttResult) {
   if (now - (lastPartialAt[r.channel] ?? 0) < 250) return;
   if (S.stt.dropForeignScript && !checkScript(r.text).ok) return;
   lastPartialAt[r.channel] = now;
-  log.write("live", { ch: r.channel, text: r.text.slice(-300) });
+  const who = r.channel === "them" && S.stt.speakers ? speakers.of(r.words) : undefined;
+  log.write("live", { ch: r.channel, text: r.text.slice(-300), ...(who ? { spk: who.spk, ...(who.name ? { name: who.name } : {}) } : {}) });
 }
 
 /** Every STT result (both channels). Only finals matter. Drops foreign-script junk, logs, then routes "me" lines through the echo filter delay. */
@@ -906,12 +912,16 @@ function acceptResult(r: SttResult, checkEcho: boolean) {
     // Side features must never take the call down: a bad snapshot row or odd text only loses its own card.
     try { capture(r.channel, r.text); } catch (e) { log.write("events", { type: "capture.error", error: String((e as Error)?.message ?? e) }); }
     try { spotFacts(r.text); } catch (e) { log.write("events", { type: "facts.error", error: String((e as Error)?.message ?? e) }); }
-    if (notesOn) notesLines.push(`${r.channel}: ${r.text}`);
+    const who = r.channel === "them" && S.stt.speakers ? speakers.of(r.words) : undefined;
+    if (notesOn) notesLines.push(lineOf({ ch: r.channel, text: r.text, who }));
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) lastMeVoiced = Date.now();
-    transcript.push({ ch: r.channel, text: r.text, at: Date.now() });
+    transcript.push({ ch: r.channel, text: r.text, at: Date.now(), ...(who ? { who } : {}) });
     { const n = wordCount(r.text); frameWords += n; tipWords += n; }
-    log.write("transcript", { ch: r.channel, text: r.text, words: r.words });
+    log.write("transcript", { ch: r.channel, text: r.text, words: r.words, ...(who ? { spk: who.spk, ...(who.name ? { name: who.name } : {}) } : {}) });
+    // A different voice starts a new turn: never glue two people's words into one question.
+    if (who && pending[r.channel] && pending[r.channel]!.spk !== undefined && pending[r.channel]!.spk !== who.spk) flush(r.channel);
     const p = (pending[r.channel] ??= { texts: [], words: [], last: r });
+    if (who) p.spk = who.spk;
     p.texts.push(r.text); p.words.push(...r.words); p.last = r;
     clearTimeout(p.timer); p.timer = setTimeout(() => flush(r.channel), S.stt.flushFallbackMs);
     // The user's own question: do not wait for the end-of-speech mark or the fallback timer when the text already ends in "?" or is a sum.
@@ -1013,7 +1023,7 @@ async function postCallSummary() {
     log.write("events", { type: "context.snapshot", contextNotes, aiNotes: liveNotes });   // lets `pnpm summary <id>` rebuild the same input later
     const r = await runSummary({
       dir: log.dir, callId: log.id, S, registry, cost, noAi, signal: summaryAbort.signal, discard: discard || discardNow, crashed,
-      data: { lines: transcript.map((l) => ({ ch: l.ch, text: l.text })), contextNotes, aiNotes: liveNotes, frame: tracker.current },
+      data: { lines: transcript.map((l) => ({ ch: l.ch, text: l.text, ...(l.who ? { who: l.who.name ?? `Speaker ${l.who.spk}` } : {}) })), contextNotes, aiNotes: liveNotes, frame: tracker.current },
       write: (stream, row) => log.write(stream, row),
     });
     if (summarySkipped) { status("summary", { ok: false, skipped: true }); return; }
@@ -1167,7 +1177,7 @@ function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: stri
 function makeChannel(ch: Channel): SttChannel {
   return new SttChannel({
     channel: ch, chain: sttChain(S).map(getSttProvider), keyOf: (id) => (NO_KEY.has(id) ? "none" : (keys as Record<string, string | undefined>)[id]),
-    base: { language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
+    base: { diarize: ch === "them" && S.stt.speakers, language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
     circuit: S.stt.circuit, ringMs: S.stt.reconnect.ringMs,
   });
 }
