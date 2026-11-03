@@ -277,3 +277,14 @@ test("reducer: macOS Electron chatter on stderr is not kept as the last error", 
   s = lib.reduce(s, { ev: "stderr", text: "Error: real failure" });
   assert.equal(s.lastError, "Error: real failure");
 });
+
+test("menu bar: Start prepared meeting lists ready meetings soonest first; the menu is rebuilt when the list changes", () => {
+  const now = new Date(2026, 10, 3, 9, 0).getTime(), at = (h: number) => new Date(2026, 10, 3, h).getTime();
+  const m = (id: string, who: string, atMs = 0, extra: object = {}) => ({ id, who, title: "", goal: "", topic: "", at: atMs, createdAt: now, updatedAt: now, usedAt: 0, ...extra });
+  const menu = lib.planMenu([m("c", "No time"), m("b", "Noam, Beta", at(16)), m("a", "Dana, Acme", at(14)), m("u", "Used", at(11), { usedAt: now })], now);
+  assert.deepEqual(menu.map((x: any) => x.planId), ["a", "b", "c"]);
+  assert.equal(menu[0].label, "Dana, Acme (Today 14:00)"); assert.equal(menu[2].label, "No time");
+  assert.deepEqual(lib.planMenu([], now), []);
+  const s1 = lib.reduce(lib.initialState(), { ev: "boot", briefReady: true, plansKey: "one" });
+  assert.notEqual(lib.menuKey(s1, false), lib.menuKey(lib.reduce(s1, { ev: "boot", briefReady: true, plansKey: "two" }), false));
+});

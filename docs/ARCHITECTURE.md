@@ -48,12 +48,13 @@ Everything is plain files. There is no database and no server.
 - `main.cjs`: Electron main process. Tray icon and menu, global shortcuts, notifications, the single window.
 - `controller.cjs`: the one call controller. Starts and stops the engine child process, tracks the call phase, rate-limits start/stop, handles Quit during a call. Unit-tested with a fake child process.
 - `control-socket.cjs`: the local control socket (see below).
-- `attachments.cjs`: background files for the Plan (`.txt`, `.md`, pasted text, `.pdf` only if `pdftotext` is already installed).
+- `attachments.cjs`: background files for a Plan (`.txt`, `.md`, pasted text, `.pdf` only if `pdftotext` is already installed). One store per prepared meeting.
+- `plans.cjs` and `../shared/plans.js`: the **prepared meetings** store and its pure rules. Several Plans can wait at once, each in `data/private/briefs/plans/<id>/` (`meeting.json`, `files/`, and `brief.yaml` written for the engine when a call starts). A meeting has an optional title and time. Expiry: a meeting with a time stays until 6 h after it, one without a time 14 days after its last edit, a used one is kept 7 days (so Calls can show which Plan a call used) and its background files are dropped when it is used. The single Plan of earlier versions (`latest.yaml` plus flat `attachments/`) becomes one meeting the first time the store is opened (`migrate()`, idempotent). A call starts either **quick** (the engine gets `--no-brief`, nothing is used up) or with **one chosen meeting** (`--brief <its brief.yaml>` and `WINGMAN_ATTACH_DIR=<its files>`); the controller marks that meeting used when the call goes live, never for a practice call.
 - `settings-catalog.cjs`: the plain-words Settings page definitions (13 options and an Advanced list).
 
 ### Window (`stage0/dashboard/`)
 
-A local-only HTML/JS UI (no framework, no network, strict Content-Security-Policy, sandboxed, no navigation). Pages: **Home** (start, Plan, readiness, what is waiting, live call panel), **Calls** (list, call review, ratings, summary and follow-up), **Settings** (including Keys). It talks to the main process through a preload bridge with an allow-list.
+A local-only HTML/JS UI (no framework, no network, strict Content-Security-Policy, sandboxed, no navigation). Pages: **Home** (readiness, Start with a Quick call and the Prepared meetings list, the Plan editor, what is waiting, live call panel), **Calls** (list, call review, ratings, summary and follow-up), **Settings** (including Keys). It talks to the main process through a preload bridge with an allow-list.
 
 ### Answer window (`stage0/overlay/`)
 
@@ -61,7 +62,7 @@ A frameless, always-on-top, non-focusable Electron window on the second screen (
 
 ### Control socket and CLI
 
-The app listens on `~/.config/wingman/run/control.sock` (directory mode 700, socket mode 600, owner check). Only a fixed list of commands is accepted. The CLI (`stage0/src/cli/`, `wingman` command, exit codes 0 to 9) sends commands such as `status`, `start`, `stop`, `ask`, `note`, `plan`, `calls` and `settings`. It never starts a second engine, never prints keys, and destructive commands need `--yes`. It was built so that an AI coding agent can drive Wingman safely, with `--json` output on every command.
+The app listens on `~/.config/wingman/run/control.sock` (directory mode 700, socket mode 600, owner check). Only a fixed list of commands is accepted. The CLI (`stage0/src/cli/`, `wingman` command, exit codes 0 to 9) sends commands such as `status`, `start` (`--quick`, or `--plan <id>` for a prepared meeting; plain `start` never guesses, see ADR 37), `stop`, `ask`, `note`, `plan` (list, new, set --id, attach, delete), `calls` and `settings`. It never starts a second engine, never prints keys, and destructive commands need `--yes`. It was built so that an AI coding agent can drive Wingman safely, with `--json` output on every command.
 
 ### Shared tokens (`stage0/shared/`)
 

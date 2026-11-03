@@ -19,7 +19,7 @@ A live meeting assistant for macOS. It listens to your call (the other side on s
 | **Math** | Arithmetic ("36 plus 42", "15% of 200", Hebrew and English number words) is computed locally. No AI, instant. |
 | **Tip** cards | At most one short tip every two minutes (a question to ask, a reminder), never during an answer. |
 | **Call checklist** | Wingman works out what the call is about (client, support, vendor, team, consult, personal) and keeps a checklist for that kind of call. |
-| **Plan** | A one-minute briefing before the call: who, goal, notes, must-cover items, background files. Used for one call. |
+| **Quick call and prepared meetings** | Start a **quick call** right now with no context, or save several **prepared meetings** (a Plan each: who, goal, notes, must-cover checklist, background files, optional time) and pick one at Start. A prepared meeting is used up by the call you start with it. |
 | **Fact cards** | If you build a local snapshot of your clients and domains, a mention of a known client or domain shows what you already know. No network lookups during the call. |
 | **Capture chips** | Phone numbers, emails and domains spoken in the call appear as copyable chips. |
 | **Summary** | After the call: summary, decisions, next steps, open questions and a follow-up email draft. Prices, dates and promises become `[להשלים: ...]` placeholders. |
@@ -72,7 +72,7 @@ pnpm run doctor              # the Readiness check. Allow Microphone + System Au
 pnpm dashboard               # opens the menu-bar app and its window
 ```
 
-In the window: **Home -> Run check** until it says READY, optionally **Plan a call**, then try **Practice call (offline, free)**. A pretend client plays through the real call loop and the real answer window, and nothing leaves your Mac. When you are ready, press **Start call**.
+In the window: **Home -> Run check** until it says READY, optionally **Prepare a meeting**, then try **Practice call (offline, free)**. A pretend client plays through the real call loop and the real answer window, and nothing leaves your Mac. When you are ready, press **Quick call**, or **Start** on a prepared meeting.
 
 Notes:
 - `pnpm run doctor`, not `pnpm doctor` (the second one is pnpm's own command).
@@ -88,6 +88,7 @@ cd stage0
 pnpm -s wingman help         # full help
 pnpm -s wingman status       # is the app running, is a call live
 pnpm -s wingman start --practice
+pnpm -s wingman start --quick           # no Plan; or: wingman plan list, then wingman start --plan <id>
 ```
 
 The `wingman` command talks to the running menu-bar app over an owner-only local socket. It cannot read API keys.
@@ -104,7 +105,7 @@ Full details: [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) and [
 
 ## Project status
 
-A personal tool, built and used by one person. It is at "Stage 0": the live call loop, the app, the CLI, the summary and the QA harness are built and tested (about 355 unit tests, plus a synthetic QA harness that plays invented scenarios through real Deepgram and Haiku). It has been verified with synthetic and test calls; the real-call hand tests still open are listed in [docs/ROADMAP.md](docs/ROADMAP.md). Signed installers, Windows, plugins and a setup wizard are not built and will wait until a second real user needs them.
+A personal tool, built and used by one person. It is at "Stage 0": the live call loop, the app, the CLI, the summary and the QA harness are built and tested (about 380 unit tests, plus a synthetic QA harness that plays invented scenarios through real Deepgram and Haiku). It has been verified with synthetic and test calls; the real-call hand tests still open are listed in [docs/ROADMAP.md](docs/ROADMAP.md). Signed installers, Windows, plugins and a setup wizard are not built and will wait until a second real user needs them.
 
 ## Repo map
 

@@ -476,3 +476,17 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 **Alternatives.** None built.
 
 **Consequences.** Wingman knows only what it is told (Plan, bank, snapshot) plus what the model knows.
+
+## ADR 37: Quick call and several prepared meetings
+
+**Context.** There was one saved Plan. Any real Start silently used it, so a Plan written for the 14:30 meeting could be used up by an unrelated spontaneous call, and a second meeting could not be prepared until the first was used or expired (6 h).
+
+**Decision.** Starting a call is now an explicit choice. A **Quick call** has no Plan (the engine gets `--no-brief`) and never uses up or changes a prepared meeting. **Prepared meetings** are saved Plans, as many as 30, each with its own fields, background files, an optional title and an optional scheduled time; a call starts with one only when it is picked (window, menu bar submenu, `wingman start --plan <id>`). Expiry: a meeting with a time stays until 6 h after that time; one without a time stays 14 days after its last edit (the cap); a meeting a real call used is marked used, hidden from the list, its background files are dropped, and the record is kept 7 days so Calls can show which Plan a call used (the call log also records a `plan.used` event with the id). A practice call may use the next meeting without using it up. Plain `wingman start` (no flag): no prepared meetings means a quick call; exactly one meeting scheduled within 30 minutes of now is used; anything else is refused with exit 2 and a list of `--quick` / `--plan <id>`, and the JSON reply says which was used and why.
+
+**Migration.** The first time the store is opened, `latest.yaml` and the flat `attachments/` folder become one prepared meeting (same who, goal, notes, kind, topic, must-cover, files; no time; created at the old file time), then the old files are removed. The meeting id comes from the file time, so a crash in the middle cannot create a copy.
+
+**Why.** A Plan is context for one specific call, so choosing the call and the context together removes the surprise. A refusal is cheaper than starting a real call (which sends audio to a paid service) with the wrong Plan; for an AI agent driving the CLI it also forces a deliberate choice. 14 days keeps a meeting prepared for next week without keeping stale client notes forever.
+
+**Alternatives.** Keep one Plan and add a Quick button (does not allow two meetings in one day). Pick the next meeting automatically on plain `start` (guesses wrong when two meetings are close). Delete a used meeting at once (loses which Plan a call had).
+
+**Consequences.** `wingman plan set` without `--id` edits only when exactly one meeting exists (it creates the first one when none exist, and refuses with several). `plan clear` works only with one meeting. The control socket `start` and `practice` commands take `quick` / `planId`; `brief_refresh` keeps its name and now re-reads the meetings.

@@ -203,7 +203,7 @@ function create(ctx) {
 
   // ---- prepared meetings ("Plan"): several can wait; a call uses one only when it is started with it ----
   // The page gets names, times, counts and the plan fields it edits; background file CONTENT never leaves the main process.
-  const meetingOut = (m) => ({ id: m.id, title: m.title, who: m.who, goal: m.goal, kind: m.kind, topic: m.topic, notes: m.notes.join("\n"), mustCover: m.mustCover.join("\n"), mustCount: m.mustCover.length, at: m.at, atInput: Plans.toInputValue(m.at), status: m.status, expiresAt: m.expiresAt, files: m.files, fileList: m.fileList });
+  const meetingOut = (m) => ({ id: m.id, title: m.title, who: m.who, goal: m.goal, kind: m.kind, topic: m.topic, notes: m.notes.join("\n"), mustCover: m.mustCover.join("\n"), mustCount: m.mustCover.length, at: m.at, atInput: Plans.toInputValue(m.at), createdAt: m.createdAt, updatedAt: m.updatedAt, usedAt: m.usedAt, status: m.status, expiresAt: m.expiresAt, files: m.files, fileList: m.fileList });
   handle("plans:list", () => plans.list().map(meetingOut));
   // Recent plans (same private folder, owner-only file): so a repeat call can reuse the text of an earlier one.
   const RECENT = path.join(BRIEFS, "recent.json");
