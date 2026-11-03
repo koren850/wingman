@@ -10,6 +10,8 @@ export const trayLib = req("../../tray/lib.cjs");
 export const dataLib = req("../../dashboard/lib.cjs");
 export const feedLib = req("../../dashboard/livefeed.js");
 export const attachments = req("../../tray/attachments.cjs");
+export const plansLib = req("../../tray/plans.cjs");
+export const Plans = req("../../shared/plans.js");
 export const catalog = req("../../tray/settings-catalog.cjs");
 export const controlSocket = req("../../tray/control-socket.cjs") as { socketPath(env?: NodeJS.ProcessEnv): string };
 

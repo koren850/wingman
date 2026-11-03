@@ -18,6 +18,7 @@ const req = createRequire(import.meta.url);
 const { createController } = req("../tray/controller.cjs");
 const { createControlServer } = req("../tray/control-socket.cjs");
 const trayLib = req("../tray/lib.cjs");
+const { createPlanStore } = req("../tray/plans.cjs");
 
 const tmp = (n: string) => mkdtempSync(join(tmpdir(), `wm-cli-${n}-`));
 
@@ -40,10 +41,11 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string } 
   const logs: string[] = [];
   let clock = 5_000_000;   // each rate-limit check advances 2 s unless a test passes its own clock
   const f = fakeSpawn();
-  const ctl = createController({ spawn: opts.spawn ?? f.spawnFn, root: ROOT, tmpDir: dir, setTimeout: () => 0, kill: () => {}, logPath: "" });
+  const plans = createPlanStore({ dir: join(dir, "briefs"), pdftotext: "" });   // the same folder the CLI reads (WINGMAN_BRIEFS_DIR below)
+  const ctl = createController({ spawn: opts.spawn ?? f.spawnFn, root: ROOT, tmpDir: dir, setTimeout: () => 0, kill: () => {}, logPath: "", plans });
   const env = { ...process.env, WINGMAN_CONTROL_SOCKET: sock, WINGMAN_CALLS_DIR: opts.callsDir ?? join(dir, "calls"), WINGMAN_BRIEFS_DIR: join(dir, "briefs"), WINGMAN_USER_SETTINGS: join(dir, "settings.yaml") };
   mkdirSync(opts.callsDir ?? join(dir, "calls"), { recursive: true });
-  const server = createControlServer({ controller: ctl, lib: trayLib, briefFile: join(dir, "briefs", "latest.yaml"), socketPath: sock, log: (s: string) => logs.push(s), now: opts.now ?? (() => (clock += 2000)), info: () => ({ pid: 1, version: "t" }) });
+  const server = createControlServer({ controller: ctl, lib: trayLib, plans, socketPath: sock, log: (s: string) => logs.push(s), now: opts.now ?? (() => (clock += 2000)), info: () => ({ pid: 1, version: "t" }) });
   await server.start();
   const run = async (...argv: string[]) => {
     let out = "", err = "";
@@ -51,7 +53,7 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string } 
     return { code, out, err, json: (() => { try { return JSON.parse(out.trim().split("\n")[0]); } catch { return undefined; } })() };
   };
   const raw = (line: string) => new Promise<any>((res) => { const s = net.createConnection(sock); let b = ""; s.on("connect", () => s.write(line)); s.on("data", (d) => (b += d)); s.on("close", () => res(JSON.parse(b))); });
-  return { dir, sock, ctl, server, logs, f, env, run, raw, done: async () => { await server.stop(); rmSync(dir, { recursive: true, force: true }); } };
+  return { dir, sock, ctl, plans, server, logs, f, env, run, raw, done: async () => { await server.stop(); rmSync(dir, { recursive: true, force: true }); } };
 }
 
 test("socket: owner-only permissions (folder 700, socket 600)", async () => {
@@ -164,37 +166,140 @@ test("cli: app not running -> exit 3 with a hint, and nothing is opened", async 
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("plan: create, edit, attach, list, clear (same files the app uses)", async () => {
+test("plan: new, list, show, edit by --id, attach, detach, delete (several meetings, same files the app uses)", async () => {
   const r = await rig();
   try {
-    const a = await r.run("plan", "set", "--who", "Dana Levi", "--kind", "vendor", "--topic", "hosting move", "--goal", "agree a date", "--must", "price", "--must", "downtime", "--note", "prefers WhatsApp; calls after 5", "--json");
-    assert.equal(a.code, 0, a.out + a.err);
-    const file = join(r.dir, "briefs", "latest.yaml");
-    assert.equal(statSync(file).mode & 0o777, 0o600);
-    const b = trayLib.readBrief(file);
-    assert.equal(b.who, "Dana Levi"); assert.deepEqual(b.mustCover, ["price", "downtime"]);
-    assert.ok(b.notes.includes("Call kind: vendor") && b.notes.includes("Topic: hosting move"));
-    const e = await r.run("prepare", "--add-must", "backups", "--goal", "new goal", "--json");   // prepare = plan set when flags come first
+    const a = await r.run("plan", "new", "--title", "Hosting move", "--who", "Dana Levi", "--kind", "vendor", "--topic", "hosting move", "--goal", "agree a date", "--must", "price", "--must", "downtime", "--note", "prefers WhatsApp; calls after 5", "--json");
+    assert.equal(a.code, 0, a.out + a.err); assert.equal(a.json.created, true);
+    const id = a.json.plan.id;
+    assert.equal(a.json.plan.kind, "vendor"); assert.deepEqual(a.json.plan.mustCover, ["price", "downtime"]); assert.equal(a.json.plan.name, "Hosting move");
+    assert.equal(statSync(join(r.dir, "briefs", "plans", id, "meeting.json")).mode & 0o777, 0o600);
+    const b = await r.run("plan", "new", "--who", "Noam Beta", "--at", "23:59", "--json");
+    assert.equal(b.code, 0, b.out + b.err); assert.ok(b.json.plan.at.length > 0 && b.json.plan.atText.endsWith("23:59"));
+    const list = await r.run("plan", "list", "--json");
+    assert.equal(list.json.count, 2); assert.equal(list.json.plans[0].who, "Noam Beta", "timed meetings come first");
+    assert.match((await r.run("plan", "list")).out, /wingman start --plan <id>/);
+    // several meetings: nothing is edited or attached by guesswork
+    const amb = await r.run("plan", "set", "--goal", "x", "--json");
+    assert.equal(amb.code, 2, amb.out); assert.match(amb.json.error.message, /2 prepared meetings/);
+    assert.equal((await r.run("plan", "attach", "--text", "hello", "--json")).code, 2);
+    const e = await r.run("plan", "set", "--id", id, "--add-must", "backups", "--goal", "new goal", "--json");
     assert.equal(e.code, 0, e.out);
-    assert.equal(e.json.plan.who, "Dana Levi", "untouched fields are kept"); assert.equal(e.json.plan.goal, "new goal");
-    assert.deepEqual(e.json.plan.mustCover, ["price", "downtime", "backups"]);
-    assert.equal(e.json.plan.kind, "vendor");
-    assert.equal((await r.run("plan", "set", "--kind", "wizard", "--json")).code, 2);
-    const att = await r.run("plan", "attach", "--text", "Invented background: Levi Studio runs 12 WordPress sites.", "--json");
+    assert.equal(e.json.plan.who, "Dana Levi", "untouched fields are kept"); assert.equal(e.json.plan.goal, "new goal"); assert.deepEqual(e.json.plan.mustCover, ["price", "downtime", "backups"]); assert.equal(e.json.plan.kind, "vendor"); assert.equal(e.json.created, false);
+    assert.equal((await r.run("plan", "set", "--id", id, "--kind", "wizard", "--json")).code, 2);
+    assert.equal((await r.run("plan", "set", "--id", id, "--at", "yesterday-ish", "--json")).code, 2);
+    assert.equal((await r.run("plan", "set", "--id", id, "--new", "--who", "x", "--json")).code, 2);
+    assert.equal((await r.run("plan", "set", "--id", "mnope0000", "--goal", "x", "--json")).code, 5);
+    const att = await r.run("plan", "attach", "--id", id, "--text", "Invented background: Levi Studio runs 12 WordPress sites.", "--json");
     assert.equal(att.code, 0, att.out);
     const md = join(r.dir, "offer.md"); writeFileSync(md, "# Offer\nHosting 49 per month (invented).");
-    const att2 = await r.run("plan", "attach", "--file", md, "--json");
-    assert.equal(att2.json.attachments.length, 2);
-    assert.equal((await r.run("plan", "attach", "--file", join(r.dir, "x.exe"), "--json")).code, 5);
-    writeFileSync(join(r.dir, "bin.dat"), "x"); assert.equal((await r.run("plan", "attach", "--file", join(r.dir, "bin.dat"), "--json")).code, 1);
-    const show = await r.run("plan", "show", "--json");
+    const att2 = await r.run("plan", "attach", "--id", id.slice(0, 9), "--file", md, "--json");
+    assert.equal(att2.json.attachments.length, 2, "a unique id prefix works");
+    assert.equal((await r.run("plan", "attach", "--id", id, "--file", join(r.dir, "x.exe"), "--json")).code, 5);
+    writeFileSync(join(r.dir, "bin.dat"), "x"); assert.equal((await r.run("plan", "attach", "--id", id, "--file", join(r.dir, "bin.dat"), "--json")).code, 1);
+    const show = await r.run("plan", "show", id, "--json");
     assert.equal(show.json.plan.attachments.length, 2);
     assert.ok(!JSON.stringify(show.json).includes("Levi Studio runs"), "background text is not echoed");
-    assert.equal((await r.run("plan", "detach", att.json.id, "--json")).code, 0);
+    assert.equal((await r.run("plan", "show", "--json")).json.plan.ready, false, "several meetings and no id: the list, not one plan");
+    assert.equal((await r.run("plan", "detach", att.json.id, "--json")).code, 0, "the file id finds its meeting");
     assert.equal((await r.run("plan", "detach", att.json.id, "--json")).code, 5);
+    assert.equal((await r.run("plan", "delete", id, "--json")).code, 6, "needs --yes");
+    assert.equal((await r.run("plan", "clear", "--json")).code, 2, "the old clear refuses when there are several");
+    assert.equal((await r.run("plan", "delete", id, "--yes", "--json")).code, 0);
+    assert.equal(existsSync(join(r.dir, "briefs", "plans", id)), false);
+    assert.equal((await r.run("plan", "show", id, "--json")).code, 5);
+    // exactly one left: the old single-plan commands keep working
+    const one = await r.run("plan", "set", "--goal", "only one", "--json");
+    assert.equal(one.code, 0, one.out); assert.equal(one.json.plan.who, "Noam Beta"); assert.equal(one.json.created, false);
+    assert.equal((await r.run("plan", "show", "--json")).json.plan.goal, "only one");
     assert.equal((await r.run("plan", "clear", "--json")).code, 0);
     assert.equal((await r.run("plan", "show", "--json")).json.plan.ready, false);
-    assert.equal(existsSync(file), false);
+    const first = await r.run("prepare", "--who", "Back again", "--json");   // prepare = plan set when flags come first; none exist, so it makes one
+    assert.equal(first.json.created, true);
+  } finally { await r.done(); }
+});
+
+test("start: --quick starts with no Plan and leaves every prepared meeting alone", async () => {
+  const r = await rig();
+  try {
+    const m = r.plans.create({ who: "Dana, Acme", at: Date.now() + 600_000 }).meeting;
+    const s = await r.run("start", "--quick", "--json", "--no-wait");
+    assert.equal(s.code, 0, s.out + s.err); assert.equal(s.json.mode, "quick"); assert.equal(s.json.plan, null);
+    assert.ok(r.f.spawned[0].args.includes("--no-brief") && !r.f.spawned[0].args.includes("--brief"));
+    r.f.spawned[0].say("consented", { id: "Q1" });
+    assert.equal(r.plans.get(m.id).status, "ready", "a quick call does not use the meeting up");
+    const st = await r.run("status", "--json"); assert.equal(st.json.call.mode, "quick"); assert.equal(st.json.plans.length, 1); assert.equal(st.json.liveCallPlan, null);
+  } finally { await r.done(); }
+});
+
+test("start: --plan <id> starts with that meeting, which is used up when the call goes live (and only that one)", async () => {
+  const r = await rig();
+  try {
+    const a = r.plans.create({ who: "Dana, Acme", mustCover: ["price"] }).meeting, b = r.plans.create({ who: "Noam, Beta" }).meeting;
+    assert.equal((await r.run("start", "--plan", "mnope0000", "--json")).code, 5);
+    assert.equal((await r.run("start", "--plan", a.id, "--quick", "--json")).code, 2);
+    assert.equal(r.f.spawned.length, 0);
+    const s = await r.run("start", "--plan", a.id, "--json", "--no-wait");
+    assert.equal(s.code, 0, s.out + s.err); assert.equal(s.json.mode, "plan"); assert.equal(s.json.plan.id, a.id);
+    const args = r.f.spawned[0].args;
+    assert.equal(args[args.indexOf("--brief") + 1], r.plans.dirOf(a.id) + "/brief.yaml");
+    assert.equal(r.f.spawned[0].opts.env.WINGMAN_ATTACH_DIR, r.plans.dirOf(a.id) + "/files");
+    const st = await r.run("status", "--json"); assert.equal(st.json.call.planId, a.id); assert.equal(st.json.liveCallPlan.name, "Dana, Acme");
+    r.f.spawned[0].say("consented", { id: "R1" });
+    assert.equal(r.plans.get(a.id).status, "used"); assert.equal(r.plans.get(b.id).status, "ready");
+    assert.equal((await r.run("status", "--json")).json.plans.length, 1, "the used meeting leaves the list");
+    r.f.spawned[0].emit("exit", 0);
+    assert.equal((await r.run("start", "--plan", a.id, "--json")).code, 4, "a used meeting cannot start again");
+  } finally { await r.done(); }
+});
+
+test("start: plain `wingman start` never guesses a Plan (no meetings = quick; one due within 30 min = that one; otherwise refused with the list)", async () => {
+  const r = await rig();
+  try {
+    const none = await r.run("start", "--json", "--no-wait");   // nothing prepared: same as before the feature
+    assert.equal(none.code, 0, none.out); assert.equal(none.json.mode, "quick"); assert.match(none.json.reason, /no prepared meetings/);
+    r.f.spawned[0].emit("exit", 0);
+    const soon = r.plans.create({ who: "Dana, Acme", at: Date.now() + 10 * 60_000 }).meeting;
+    r.plans.create({ who: "Noam, Beta", at: Date.now() + 5 * 3600_000 });
+    r.plans.create({ who: "No time" });
+    const one = await r.run("start", "--json", "--no-wait");
+    assert.equal(one.code, 0, one.out + one.err); assert.equal(one.json.mode, "plan"); assert.equal(one.json.plan.id, soon.id);
+    r.f.spawned[1].emit("exit", 0);
+    const two = r.plans.create({ who: "Also due", at: Date.now() + 20 * 60_000 }).meeting;
+    const amb = await r.run("start", "--json");
+    assert.equal(amb.code, 2, amb.out); assert.equal(amb.json.error.code, "choose_plan");
+    assert.match(amb.json.error.message, new RegExp(soon.id)); assert.match(amb.json.error.message, new RegExp(two.id)); assert.match(amb.json.error.hint, /--quick/);
+    assert.equal(r.f.spawned.length, 2, "nothing was started");
+    r.plans.remove(soon.id); r.plans.remove(two.id);
+    const far = await r.run("start", "--json");   // meetings exist but none is due now
+    assert.equal(far.code, 2); assert.match(far.json.error.message, /none is due within 30 minutes/);
+    assert.equal((await r.run("start", "--quick", "--json", "--no-wait")).code, 0, "--quick always works");
+  } finally { await r.done(); }
+});
+
+test("start --practice: uses the next meeting, --plan <id>, or none with --quick, and never uses a meeting up", async () => {
+  const r = await rig();
+  try {
+    const m = r.plans.create({ who: "Dana", at: Date.now() + 3600_000 }).meeting;
+    const p = await r.run("start", "--practice", "--json", "--no-wait");
+    assert.equal(p.code, 0, p.out + p.err); assert.equal(p.json.plan.id, m.id);
+    assert.ok(r.f.spawned[0].args.includes("--brief"));
+    r.f.spawned[0].say("consented", { id: "P1" }); assert.equal(r.plans.get(m.id).status, "ready");
+    r.f.spawned[0].emit("exit", 0);
+    const q = await r.run("start", "--practice", "--quick", "--json", "--no-wait");
+    assert.equal(q.json.mode, "quick"); assert.ok(r.f.spawned[1].args.includes("--no-brief"));
+  } finally { await r.done(); }
+});
+
+test("socket: start/practice arguments are validated", async () => {
+  const r = await rig();
+  try {
+    assert.equal((await r.raw('{"v":1,"cmd":"start","args":{"quick":true,"planId":"mabc12345"}}\n')).code, "bad_args");
+    assert.equal((await r.raw('{"v":1,"cmd":"start","args":{"planId":5}}\n')).code, "bad_args");
+    assert.equal((await r.raw('{"v":1,"cmd":"start","args":{"planId":"x","cmd":"rm"}}\n')).code, "bad_args");
+    assert.equal((await r.raw(JSON.stringify({ v: 1, cmd: "start", args: { planId: "m".repeat(41) } }) + "\n")).code, "bad_args");
+    assert.equal((await r.raw('{"v":1,"cmd":"practice","args":{"x":1}}\n')).code, "bad_args");
+    assert.equal((await r.raw('{"v":1,"cmd":"start","args":{"planId":"mnope0000"}}\n')).code, "not_found");
   } finally { await r.done(); }
 });
 

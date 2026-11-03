@@ -25,17 +25,28 @@ async function waitFor(ctx: Ctx, ok: (s: any) => boolean, ms: number) {
   return last;
 }
 
+/**
+ * wingman start [--quick | --plan <id>] [--practice] [--no-ai] [--no-wait]
+ * --quick: a call with NO Plan (never uses up a prepared meeting). --plan <id>: with that prepared meeting (used up when the call goes live).
+ * Neither: the app decides safely. No prepared meetings = a quick call; exactly one meeting scheduled within 30 minutes of now = that one;
+ * anything else is refused (exit 2) with the list, so a Plan is never picked by guesswork. --practice: offline pretend client; it uses the
+ * given meeting, the next one when none is given, or none with --quick; it never uses a meeting up.
+ */
 export async function start(ctx: Ctx, args: string[]): Promise<Result> {
-  const { values } = parse(args, { practice: { type: "boolean" }, "no-ai": { type: "boolean" }, "no-wait": { type: "boolean" } });
+  const { values } = parse(args, { practice: { type: "boolean" }, "no-ai": { type: "boolean" }, "no-wait": { type: "boolean" }, quick: { type: "boolean" }, plan: { type: "string" } });
   if (values.practice && values["no-ai"]) throw usage("--practice is always offline with scripted answers; --no-ai does not apply.");
+  if (values.quick && values.plan) throw usage("Choose one: --quick (no Plan) or --plan <id>.");
+  if (values.plan !== undefined && !/^[A-Za-z0-9]{1,40}$/.test(values.plan)) throw usage("--plan needs a prepared meeting id (wingman plan list).");
   await needApp(ctx);
-  await call(ctx, values.practice ? "practice" : "start", values.practice ? undefined : { noAi: !!values["no-ai"] });
+  const pick = { ...(values.quick ? { quick: true } : {}), ...(values.plan ? { planId: values.plan } : {}) };
+  const reply = await call(ctx, values.practice ? "practice" : "start", values.practice ? (Object.keys(pick).length ? pick : undefined) : { noAi: !!values["no-ai"], ...pick });
   const s = values["no-wait"] ? await appStatus(ctx) : await waitFor(ctx, (st) => st.phase !== "starting", 20_000);
   const st = s?.state ?? {};
   const consentNeeded = st.phase === "waiting";
+  const plan = reply.plan ?? null, mode: string = reply.mode ?? (plan ? "plan" : "quick");
   return {
-    data: { started: true, practice: !!values.practice, noAi: !!values["no-ai"], phase: st.phase, callId: st.callId || "", consentNeeded },
-    text: `Call started (${PHASE_TEXT[st.phase] ?? st.phase}).${st.callId ? ` id ${st.callId}` : ""}` +
+    data: { started: true, practice: !!values.practice, noAi: !!values["no-ai"], mode, plan, reason: reply.reason ?? "", phase: st.phase, callId: st.callId || "", consentNeeded },
+    text: `Call started (${PHASE_TEXT[st.phase] ?? st.phase}).${st.callId ? ` id ${st.callId}` : ""}\n${plan ? `Plan: ${plan.name} [${plan.id}]` : "Quick call: no Plan."}` +
       (consentNeeded ? "\n\"Ask me before listening starts\" is on: it listens after Dan clicks Start listening in the app, or (only if Dan asked) `wingman confirm --yes`." : "") +
       (st.phase === "starting" ? "\nStill starting. Check: wingman status" : ""),
   };

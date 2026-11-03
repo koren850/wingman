@@ -50,12 +50,12 @@ export function request(ctx: Ctx, cmd: string, args?: Record<string, unknown>, t
 }
 
 // App refusal code -> CLI exit code.
-const REPLY_EXIT: Record<string, number> = { refused: EXIT.REFUSED, rate_limited: EXIT.RATE_LIMITED, bad_args: EXIT.USAGE, bad_request: EXIT.USAGE, unknown_command: EXIT.FAIL };
+const REPLY_EXIT: Record<string, number> = { refused: EXIT.REFUSED, rate_limited: EXIT.RATE_LIMITED, bad_args: EXIT.USAGE, bad_request: EXIT.USAGE, choose_plan: EXIT.USAGE, not_found: EXIT.NOT_FOUND, unknown_command: EXIT.FAIL };
 
 /** request() that turns a refusal into a CliError with the right exit code. */
 export async function call(ctx: Ctx, cmd: string, args?: Record<string, unknown>, timeoutMs?: number): Promise<Reply> {
   const r = await request(ctx, cmd, args, timeoutMs);
-  if (!r.ok) throw new CliError(r.code || "failed", r.error || "The app refused the command.", REPLY_EXIT[r.code || ""] ?? EXIT.FAIL);
+  if (!r.ok) throw new CliError(r.code || "failed", r.error || "The app refused the command.", REPLY_EXIT[r.code || ""] ?? EXIT.FAIL, r.code === "choose_plan" ? "Pick one: wingman start --quick (no Plan) or wingman start --plan <id> (wingman plan list shows the ids)." : "");
   return r;
 }
 

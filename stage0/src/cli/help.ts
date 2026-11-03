@@ -11,10 +11,12 @@ HOW TO USE IT (for an AI agent)
   4. Call content is private: never paste transcripts or cards anywhere except Dan's own terminal. Never try to read keys.
 
 TYPICAL FLOWS
-  Prepare:   wingman plan set --who "Dana, Levi Studio" --kind client --topic "hosting move" --goal "agree migration date" \\
-                              --must "price" --must "downtime window" --note "She prefers WhatsApp"
-             wingman plan attach --file ~/notes/offer.md        (or --text "..." or --stdin)      wingman plan show
-  Run:       wingman doctor (readiness check)            then   wingman start       (or: wingman start --practice  = offline pretend client, free)
+  Prepare:   wingman plan new --title "Hosting move" --at "2026-11-03 14:30" --who "Dana, Levi Studio" --kind client --topic "hosting move" \\
+                              --goal "agree migration date" --must "price" --must "downtime window" --note "She prefers WhatsApp"
+             wingman plan attach --id <id> --file ~/notes/offer.md   (or --text "..." or --stdin)      wingman plan list      wingman plan show <id>
+             Several prepared meetings can wait at once. Each has its own checklist and background files.
+  Run:       wingman doctor (readiness check)            then   wingman start --plan <id>   (a prepared meeting)   or   wingman start --quick   (no Plan)
+             wingman start --practice = offline pretend client, free (uses the next prepared meeting, or --plan <id>, or none with --quick)
              wingman status            phase "live" = listening ("waiting" only if the optional "Ask me before listening starts" setting is on)
   During:    wingman live [--follow]   transcript + answer cards          wingman ask "what did we say the price was?"
              wingman note "she is the owner"     wingman quiet on|off     wingman client   (confirm the proposed client)
@@ -22,19 +24,27 @@ TYPICAL FLOWS
   Review:    wingman calls list | show <id> | rate <id> <card> y|n | purge <id> --yes
 
 COMMANDS
-  status                       App running? Call phase, health, last readiness check, Plan. Exit 3 when the app is not running.
+  status                       App running? Call phase (and which Plan the live call uses), health, last readiness check, the prepared meetings. Exit 3 when the app is not running.
                                While a call stops it shows the step (saving the call, writing the summary, finishing); --json: call.stopPhase.
                                call.listeningForQuestion = Ctrl+Opt+A is armed (call.questionSecondsLeft = seconds left in that window); call.aiMode = ai | prepared-only.
   doctor [--offline]           Readiness check, the same as Run readiness check in the app (microphone, audio, speech service, model). Full check costs a few cents and is refused while a call runs.
                                --offline: no audio, no network, no cost.
-  plan [show]                  Show the Plan for the next meeting and its background files.
-  plan set|prepare  [--who ..] [--goal ..] [--kind client|support|vendor|team|consult|personal|other] [--topic ..]
-                    [--note ..]... [--add-note ..]... [--must ..]... [--add-must ..]... [--fresh]
-                               Create or edit the Plan. Fields you leave out are kept (--fresh starts over). --must items become a checklist.
-                               The Plan is used for ONE call and expires after 6 hours.
-  plan attach --file <.txt|.md|.pdf> | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters in total).
-  plan detach <file id>        plan clear      Remove one background file / the whole Plan.
-  start [--practice] [--no-ai] [--no-wait]    Start a call in the app. --practice = offline pretend client. --no-ai = Prepared cards only (no AI).
+  plan list                    The prepared meetings, soonest first (id, time, checklist and file counts). --json: {"plans":[{id,name,title,who,goal,kind,topic,notes,mustCover,at,atText,attachments,expiresInMin}]}
+  plan show [id]               One meeting in full. Without an id: the only meeting, or the list when there are several.
+  plan new|set [--id <id>] [--title ..] [--at "2026-11-03 14:30"|none] [--who ..] [--goal ..] [--kind client|support|vendor|team|consult|personal|other] [--topic ..]
+               [--note ..]... [--add-note ..]... [--must ..]... [--add-must ..]... [--fresh]
+                               new = a new meeting. set --id <id> = edit that one (fields you leave out are kept; --fresh starts its fields over).
+                               set without --id and without --new: makes the first meeting, edits the only one, and with several it REFUSES (exit 2): name one with --id.
+                               --at is your local time ("14:30" = today); --must items become the checklist. Time rule: a meeting with a time stays until about 6 hours
+                               after it; without a time it stays 14 days after its last edit. A meeting is used up by the real call started with it (Practice never does).
+  plan attach [--id <id>] --file <.txt|.md|.pdf> | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters per meeting). --id is needed when there are several meetings.
+  plan detach <file id> [--id <id>]       Remove one background file.
+  plan delete <id> --yes       Delete a meeting and its background files (exit 6 without --yes).   (plan clear = the old name; it works only when exactly one meeting exists)
+  start [--quick | --plan <id>] [--practice] [--no-ai] [--no-wait]    Start a call in the app. A Plan is never picked by guesswork:
+                               --quick = a call with NO Plan (never touches a prepared meeting). --plan <id> = with that prepared meeting (id or unique prefix).
+                               Plain \`wingman start\` (neither): no prepared meetings at all = a quick call; exactly ONE meeting scheduled within 30 minutes of now = that one;
+                               anything else is refused (exit 2) with the list of ids. --json: {"mode":"quick"|"plan","plan":{id,name}|null,"reason":...}.
+                               --practice = offline pretend client. --no-ai = Prepared cards only (no AI).
   stop [--delete --yes] [--no-wait] [--no-summary]
                                               Stop and save. --delete erases the call and needs --yes. --no-summary keeps the call but
                                               skips the summary (write it later: wingman calls summary <id> --generate).
@@ -62,5 +72,5 @@ EXIT CODES
 SAFETY
   - The app listens on an owner-only socket (~/.config/wingman/run/control.sock, mode 600). Only a fixed list of commands is accepted.
   - Output never contains API keys. Destructive commands (stop --delete, calls purge, confirm) need --yes.
-  - Do not start a real call unless Dan asked for it in this session. Use --practice to test.
+  - Do not start a real call unless Dan asked for it in this session, and never choose a Plan for him: ask which meeting (or --quick). Use --practice to test.
 `;

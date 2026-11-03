@@ -3,7 +3,7 @@
 import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { call, appStatus, appProcessRunning, NO_APP_HINT } from "./client.ts";
-import { readPlan } from "./plan.ts";
+import { readPlans, store, toMeeting } from "./plan.ts";
 import { CliError, EXIT, trayLib, parse, usage, ago, type Ctx, type Result } from "./common.ts";
 import { keyStatus, realKeychain, ACCOUNTS, PROVIDERS, type Keychain } from "../keychain.ts";
 import { loadSettings, expandHome } from "../settings.ts";
@@ -32,7 +32,7 @@ function readiness(running: boolean, health: any[], doctor: Doc | null, phase: s
 export async function status(ctx: Ctx, args: string[]): Promise<Result> {
   parse(args, {});
   const a = await appStatus(ctx);
-  const plan = readPlan(ctx);
+  const plans = readPlans(ctx);
   const st = a?.state;
   const health = a?.health ?? [];
   const doctor: Doc | null = a?.doctor ?? null;
@@ -42,13 +42,14 @@ export async function status(ctx: Ctx, args: string[]): Promise<Result> {
   const now = Date.now();
   const call_ = {
     active: !!st?.running, live: phase === "live", phase, practice: !!st?.practice, callId: st?.callId || "", client: st?.client || "", proposedClient: st?.proposed || "",
-    quiet: !!st?.quiet, stopPhase: st?.stopPhase || "", listeningForQuestion: !!st?.askArmed, questionSecondsLeft: st?.askArmed ? askSecondsLeft(st?.askUntil, now) : null, aiMode: st?.noAi ? "prepared-only" : "ai", notes: st?.notes ?? 0, elapsedSec: st?.liveAt ? Math.round((now - st.liveAt) / 1000) : 0,
+    quiet: !!st?.quiet, stopPhase: st?.stopPhase || "", listeningForQuestion: !!st?.askArmed, questionSecondsLeft: st?.askArmed ? askSecondsLeft(st?.askUntil, now) : null, aiMode: st?.noAi ? "prepared-only" : "ai", notes: st?.notes ?? 0, mode: !st?.running ? "" : st?.planId ? "plan" : "quick", planId: st?.running ? st?.planId || "" : "", planName: "", elapsedSec: st?.liveAt ? Math.round((now - st.liveAt) / 1000) : 0,
   };
+  if (call_.planId) { const m = store(ctx).get(call_.planId); call_.planName = m ? toMeeting(m).name : ""; }   // the meeting the live call uses (it is marked used once the call is live)
   const hint = a ? "" : proc ? "The app is running but has no control socket (started before the CLI existed). Dan: Quit Wingman from the menu bar and open it again." : NO_APP_HINT;
   const data = {
     app: { running: !!a, controlSocket: !!a, processRunning: proc ?? null, pid: a?.pid ?? null, version: a?.version ?? "", hint },
     call: call_, health, overlayDown: a?.overlayDown || "", offReason: a?.offReason || "", lastError: a?.lastError || "",
-    doctor, readiness: r, plan: { ready: plan.ready, who: plan.who, goal: plan.goal, kind: plan.kind, topic: plan.topic, expiresInMin: plan.expiresInMin, attachments: plan.attachments.length },
+    doctor, readiness: r, plans: plans.map((p) => ({ id: p.id, name: p.name, title: p.title, who: p.who, goal: p.goal, at: p.at, atText: p.atText, expiresInMin: p.expiresInMin, checklist: p.mustCover.length, attachments: p.attachments.length })), liveCallPlan: call_.planId ? { id: call_.planId, name: call_.planName } : null,
   };
   const L: string[] = [];
   L.push(a ? `App: running (pid ${a.pid})` : `App: NOT running${proc ? " (process found, but no control socket)" : ""}`);
@@ -60,7 +61,8 @@ export async function status(ctx: Ctx, args: string[]): Promise<Result> {
     if (data.offReason) L.push(`  Wingman turned itself off: ${data.offReason}`);
     L.push(`Readiness check: ${doctor && doctor.ran ? `${doctor.verdict} (${ago(now - doctor.at)} ago)` : "not run since the app started (run: wingman doctor)"}`);
   } else L.push(hint);
-  L.push(`Plan: ${plan.ready ? `ready · ${[plan.who, plan.goal].filter(Boolean).join(" · ") || "(notes only)"} · expires in ${ago(plan.expiresInMin * 60000)}${plan.attachments.length ? ` · ${plan.attachments.length} file(s)` : ""}` : "none"}`);
+  if (call_.mode) L.push(`Live call uses: ${call_.planId ? `prepared meeting ${call_.planName || ""} [${call_.planId}]` : "no Plan (quick call)"}`);
+  L.push(plans.length ? `Prepared meetings (${plans.length}, soonest first):\n${plans.map((p) => `  ${p.id}  ${(p.atText || "no time").padEnd(16)} ${p.name}${p.mustCover.length ? ` · ${p.mustCover.length} to cover` : ""}${p.attachments.length ? ` · ${p.attachments.length} file(s)` : ""}`).join("\n")}` : "Prepared meetings: none");
   L.push(`Readiness: ${r.level.toUpperCase().replace("_", " ")}${r.reasons.length ? "\n  - " + r.reasons.join("\n  - ") : ""}`);
   return { data, text: L.join("\n"), exit: a ? EXIT.OK : EXIT.NO_APP };
 }
