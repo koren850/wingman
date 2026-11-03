@@ -180,6 +180,8 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
   }
   // "האם" later in the utterance ("רציתי לדעת בקשר לטפסים האם הם יעברו"): STT often drops the "?" and the lead-in is longer than three words.
   if (t.slice(3).some((w) => w === normalize("האם") || w === normalize("והאם"))) return { isQuestion: true, reason: "head:האם-late" };
+  // "טוב, נחזור לעברית, מה קורה עם הטפסים": "what about X" after a lead-in of any length (STT often drops the "?").
+  for (const p of ["מה קורה עם", "מה המצב עם", "מה לגבי"]) if (containsPhrase(raw, p) && !containsPhrase(raw, `לא יודע ${p}`)) return { isQuestion: true, reason: `about:${p}` };
   // A question that opens a later clause: "ואם משהו נשבר, אפשר לשחזר", "זה עובד ככה, למה?" (strong question words only).
   const CLAUSE_HEADS = new Set(["אפשר", "כמה", "מתי", "איך", "למה", "האם", "איפה"].map(normalize));
   for (const clause of raw.split(/[,،;]/).slice(1)) {
