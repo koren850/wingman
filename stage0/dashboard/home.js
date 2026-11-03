@@ -6,7 +6,7 @@
 const HL = window.WingmanHome;
 // Home view state. panelKey/sideKey are "what was drawn last": a re-render happens only when they change, so typing is never wiped.
 // (H.timer and H.fullAt are not read anywhere.)
-const H = { attach: null, panelKey: "", timer: null, brief: undefined, editing: false, planOpen: false, draft: null, dismissed: "", doctorBusy: false, tickBound: false, lastHealth: "",
+const H = { attach: null, panelKey: "", timer: null, plans: [], editId: "", editing: false, planOpen: false, draft: null, dismissed: "", doctorBusy: false, tickBound: false, lastHealth: "",
   showConv: false, keys: null, ai: null, recent: [], compose: "note", autoChecked: false, quickAt: 0, fullAt: 0, stopAt: 0 };
 const isRunning = () => !!(state.call && state.call.running);
 const phaseOf = () => (state.call ? state.call.phase : "idle");
@@ -33,8 +33,12 @@ function onCallState(s) {
   renderCallSlot();
   if (state.view === "home") {
     updateCallPanel();
-    const k = `${!!s.doctorRunning}|${s.doctor ? s.doctor.at : 0}|${!!s.briefReady}|${!!s.running}`;
-    if (k !== H.sideKey) { const first = H.sideKey === undefined; H.sideKey = k; if (!first && !document.querySelector("#main form :focus")) renderSide(); }
+    const k = `${!!s.doctorRunning}|${s.doctor ? s.doctor.at : 0}|${s.plansKey || ""}|${!!s.running}`;
+    if (k !== H.sideKey) {
+      const first = H.sideKey === undefined; H.sideKey = k;
+      // The prepared meetings changed (saved here, by the CLI, used by a call or expired): read them again, then redraw (not while a form field has focus).
+      if (!first && !document.querySelector("#main form :focus")) api.plansList().then((l) => { H.plans = l; if (state.view === "home") renderSide(); }).catch(() => renderSide());
+    }
   }
 }
 /** Header chip while a call runs (clock, colour by health). Click goes to Home. */
@@ -71,8 +75,8 @@ async function viewHome(focus) {
   H.panelKey = ""; H.sideKey = undefined;
   ensureTick();
   if (!state.call) { try { state.call = await api.callState(); } catch { state.call = null; } }
-  H.brief = await api.getBrief().catch(() => null);
-  H.attach = await api.attachList().catch(() => null);
+  H.plans = await api.plansList().catch(() => []);
+  H.attach = null; H.editId = "";
   H.keys = await api.keysStatus().then((r) => (r && r.ok ? r : null)).catch(() => null);
   loadAiMode();
   H.recent = await api.recentPlans().catch(() => []);
@@ -80,7 +84,7 @@ async function viewHome(focus) {
   if (state.view !== "home") return;
   renderCallSlot(); updateCallPanel(true); renderSide();
   ready();
-  if (focus === "plan") { H.planOpen = !H.brief; renderSide(); const f = $("plan-who") || $("plan-edit"); if (f) { f.scrollIntoView({ block: "center" }); f.focus({ preventScroll: true }); } } else focusTop();
+  if (focus === "plan") { H.planOpen = true; H.editId = ""; renderSide(); const f = $("plan-who") || $("plan-edit"); if (f) { f.scrollIntoView({ block: "center" }); f.focus({ preventScroll: true }); } } else focusTop();
   autoCheck();
 }
 
@@ -91,9 +95,9 @@ function renderSide() {
   keepFocus(() => {
     side.textContent = ""; slot.textContent = "";
     if (isRunning()) { side.append(liveFeedPanel()); return; }
-    // Before a call, Home reads as a sequence: 1 Plan (optional), 2 Readiness check, 3 Start.
+    // Before a call, Home reads as a sequence: 1 Readiness check, 2 Start (a quick call, or one of the prepared meetings). The Plan editor opens above when it is in use.
     const sc = setupCard();
-    slot.append(h("div", { class: "hcol seqcol" }, sc, planCard(), readinessCard(), idleCard()));
+    slot.append(h("div", { class: "hcol seqcol" }, sc, editorCard(), readinessCard(), idleCard()));
     side.append(waitingCard());
   });
 }
@@ -109,7 +113,7 @@ function updateCallPanel(force) {
   const s = state.call || { phase: "idle", health: {} };
   const running = isRunning();
   const after = !running && s.callId && s.callId !== H.dismissed ? (s.deleted ? "deleted" : "after") : "";
-  const key = (running ? s.phase : "idle") + "|" + after + "|" + (H.brief ? "b" : "") + "|" + !!s.practice;
+  const key = (running ? s.phase : "idle") + "|" + after + "|" + !!s.practice;
   if (force || key !== H.panelKey) {
     const wasRunning = H.panelKey && /^(starting|waiting|live|stopping)/.test(H.panelKey);
     H.panelKey = key; H.lastHealth = "";
@@ -126,66 +130,101 @@ function updateCallPanel(force) {
 const shortcutsBtn = () => h("button", { type: "button", class: "btn ghost sm", id: "kb-open", title: "Every keyboard shortcut (press ? on this page)", onclick: () => openShortcuts() }, ico("keyboard"), h("span", {}, "Shortcuts"));
 const doc = () => (state.call && state.call.doctor) || null;
 const checking = () => !!(state.call && state.call.doctorRunning) || H.doctorBusy;
-/** 1 Plan (optional), 2 Readiness check, 3 Start: which one needs the user now. */
+/** 1 Readiness check, 2 Start: which one needs the user now. */
 function curStep() {
-  if (H.editing || H.planOpen) return 1;
   const d = doc();
-  return !d || !d.ok || checking() ? 2 : 3;
+  return !d || !d.ok || checking() ? 1 : 2;
 }
 const seqCls = (n) => "seq" + (curStep() === n ? " cur" : "");
 const stepHead = (n, id, title, why, ...rest) => h("div", { class: "rhead" }, h("span", { class: "stepn", "aria-hidden": "true" }, String(n)), h("h2", { id }, title), why ? tip(why) : null, curStep() === n ? chip("Next", "warn") : null, ...rest);
 
-/** Step 3: the Start card (start, start without AI, practice) with the AI-mode line and the plan note. */
+/** Step 2: the Start card. Two clear paths: Quick call (no Plan) and the Prepared meetings list (pick one). Practice and the AI-mode line sit below. */
 function idleCard() {
-  const startBtn = h("button", { type: "button", class: "btn lg primary", id: "start-call", onclick: () => startFlow(false, false) }, ico("phone"), h("span", {}, "Start call"));
-  const noAi = btn("Start without AI", { icon: "play", cls: "", id: "start-noai", onclick: () => startFlow(true, false) });
-  const usePlan = HL.planReady(H.brief, state.call);
-  const prac = btn(HL.practiceLabel(usePlan), { icon: "play", cls: "", id: "practice", onclick: () => act(api.practice, "Practice call") });
-  return h("section", { class: "card-big startcard " + seqCls(3), "aria-labelledby": "start-h" },
-    stepHead(3, "start-h", "Start", "Start listening to a real call. You can start even when the readiness check failed; Wingman warns you first."),
-    startBtn,
+  const now = Date.now(), paths = HL.startPaths(H.plans, now);
+  const quick = h("button", { type: "button", class: "btn lg primary", id: "start-call", onclick: () => startFlow({ noAi: false }) }, ico("phone"), h("span", {}, "Quick call"));
+  const noAi = btn("Quick call without AI", { icon: "play", cls: "", id: "start-noai", onclick: () => startFlow({ noAi: true }) });
+  const target = HL.practiceTarget(H.plans, now);
+  const prac = btn(HL.practiceLabel(target), { icon: "play", cls: "", id: "practice", onclick: () => act(() => api.practice(target ? { planId: target.id } : { quick: true }), "Practice call") });
+  const nm = (r) => ({ dir: dirOf(r.name), lang: langOf(r.name) });
+  const row = (r) => h("li", { class: "pm" + (r.isNext ? " next" : ""), "data-id": r.id },
+    h("div", { class: "pm-main" }, h("b", { class: "pm-t", ...nm(r) }, r.name), r.sub ? h("span", { class: "faint pm-s", dir: dirOf(r.sub), lang: langOf(r.sub) }, r.sub) : null),
+    h("div", { class: "pm-meta" }, r.time ? chip(r.time, r.isNext ? "warn" : "info") : chip("no time", ""), r.must ? chip(plural(r.must, "item") + " to cover", "") : null, r.files ? chip(plural(r.files, "file"), "") : null),
+    h("div", { class: "pm-act" },
+      btn("Start", { id: "pm-start-" + r.id, cls: "primary sm", aria: r.startLabel, onclick: () => startFlow({ planId: r.id }) }),
+      btn("", { id: "pm-edit-" + r.id, icon: "pencil", cls: "ghost sm icon", aria: "Edit " + r.name, title: "Edit", onclick: () => openEditor(r.id) }),
+      btn("", { id: "pm-del-" + r.id, icon: "trash", cls: "ghost sm icon", aria: "Delete " + r.name, title: "Delete", onclick: () => deletePlan(r.id, r.name) })));
+  const nextBar = paths.next ? h("div", { class: "nextbar", id: "next-meeting", role: "group", "aria-label": "Next prepared meeting" }, ico("clock"), h("div", { class: "grow" }, h("b", { ...nm(paths.next) }, HL.nextText(paths.next))), btn("Start", { id: "next-start", cls: "primary", aria: paths.next.startLabel, onclick: () => startFlow({ planId: paths.next.id }) })) : null;
+  return h("section", { class: "card-big startcard " + seqCls(2), "aria-labelledby": "start-h" },
+    stepHead(2, "start-h", "Start", "Start listening to a real call. Choose a quick call with no Plan, or one of your prepared meetings. You can start even when the readiness check failed; Wingman warns you first."),
+    nextBar,
+    h("div", { class: "path" }, h("h3", {}, "Quick call"), h("p", { class: "briefnote faint" }, "Start now with no Plan. Your prepared meetings are left alone."), quick),
     h("div", { id: "start-gate" }),
     H.ai ? h("p", { class: "aimode" + (H.ai.on ? "" : " off"), id: "ai-mode" }, ico(H.ai.on ? "check" : "warning"), h("span", {}, H.ai.text, " "), h("button", { type: "button", class: "linkbtn", id: "ai-change", onclick: () => viewSettings() }, "Change")) : null,
-    H.brief ? h("p", { class: "briefnote" }, chip("Plan ready", "good", { dot: true }), " ", H.brief.who ? `for ${H.brief.who}` : "for this call", " will be used.") : h("p", { class: "briefnote faint" }, "No plan: fine, the AI still helps. A plan (step 1) gives it context."),
+    h("div", { class: "path prepared", role: "group", "aria-labelledby": "pm-h" },
+      h("div", { class: "rhead" }, h("h3", { id: "pm-h" }, "Prepared meetings"), paths.rows.length ? chip(String(paths.rows.length), "") : null, tip("A prepared meeting is a Plan for one specific call: who it is with, what you want, a checklist and background files. Pick one to start with it. Starting one uses it up; a quick call never does."), h("span", { class: "grow" }), btn("Prepare a meeting…", { id: "plan-open", icon: "plan", onclick: () => openEditor("") })),
+      paths.rows.length ? h("ul", { class: "pmlist", "aria-labelledby": "pm-h" }, paths.rows.map(row)) : h("p", { class: "briefnote faint", id: "pm-empty" }, "None yet. Prepare a meeting to give the AI context for a call: who it is with, your goal, notes and background files.")),
     h("p", { class: "briefnote faint" }, "Wingman listens to any call or meeting and helps live. During a call press ", h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "A"), " and ask it anything."),
     h("div", { class: "startmore" },
       h("div", { class: "opt" }, noAi, h("p", {}, "Prepared cards only. Nothing goes to Anthropic; no summary is written.")),
-      h("div", { class: "opt" }, prac, h("p", {}, usePlan ? "A pretend call plays through the real answer window, with your saved plan. No cost, nothing leaves the Mac. Always allowed." : "A pretend call plays through the real answer window on your second screen. No cost, nothing leaves the Mac. Always allowed."))));
+      h("div", { class: "opt" }, prac, h("p", {}, target ? "A pretend call plays through the real answer window, with that Plan. It is not used up. No cost, nothing leaves the Mac. Always allowed." : "A pretend call plays through the real answer window on your second screen. No cost, nothing leaves the Mac. Always allowed."))));
 }
 
-/** Plan edits that were typed but not saved. Saved before the call starts, never dropped. */
+/** Plan edits that were typed but not saved. Kept while the page redraws, never dropped. */
 function captureDraft() {
   if (!$("plan-form")) return;
   const g = (id) => { const e = $(id); return e ? e.value : ""; };
-  H.draft = { who: g("plan-who"), goal: g("plan-goal"), notes: g("plan-notes"), mustCover: g("plan-must") };
+  H.draft = { title: g("plan-title"), at: g("plan-at"), who: g("plan-who"), goal: g("plan-goal"), notes: g("plan-notes"), mustCover: g("plan-must") };
 }
-/** Save plan text typed but not saved before starting. True means go on; false means saving failed (error shown in the form) and the call must not start. */
-async function savePlanFirst() {
-  const f = $("plan-form"); if (!f) return true;
+/** Opens the Plan editor: id "" = a new prepared meeting, else edit that one. Loads the meeting's background files. */
+async function openEditor(id) {
+  H.editId = id; H.editing = true; H.planOpen = true; H.draft = null; H.attach = null;
+  H.attach = await api.attachList(id).catch(() => null);
+  renderSide();
+  const f = $("plan-title") || $("plan-who"); if (f) { f.scrollIntoView({ block: "center" }); f.focus({ preventScroll: true }); }
+}
+/** Closes the editor. discard: an unsaved new meeting's background files are thrown away. */
+function closeEditor(discard) {
+  if (discard && !H.editId) api.discardDraft().catch(() => {});
+  H.editing = false; H.planOpen = false; H.draft = null; H.editId = ""; H.attach = null; renderSide();
+}
+async function deletePlan(id, name) {
+  let r; try { r = await api.deletePlan(id); } catch (e) { fail("Could not delete: " + e.message); return; }
+  if (r && r.cancelled) return;
+  if (!r || !r.ok) { fail(r && r.error === "preview" ? "This is a preview, nothing was deleted." : "That meeting could not be deleted."); return; }
+  H.plans = await api.plansList().catch(() => H.plans.filter((m) => m.id !== id));
+  if (H.editId === id) closeEditor(false); else renderSide();
+  announce(`Deleted ${name}`);
+  const o = $("plan-open"); if (o) o.focus();
+}
+/** Starting the meeting whose editor is open saves its unsaved edits first. True means go on; false means saving failed (error shown in the form) and the call must not start. */
+async function savePlanFirst(planId) {
+  const f = $("plan-form"); if (!f || !planId || H.editId !== planId) return true;
   const g = (id) => { const e = $(id); return e ? e.value : ""; };
-  const v = { who: g("plan-who"), goal: g("plan-goal"), notes: g("plan-notes"), mustCover: g("plan-must") }, b = H.brief || {};
-  const filled = Object.values(v).some((x) => x.trim()), changed = Object.keys(v).some((k) => v[k].trim() !== String(b[k] || "").trim());
-  if (!filled || !changed) return true;
-  let r; try { r = await api.saveBrief(v); } catch { r = null; }
+  const v = { id: planId, title: g("plan-title"), at: g("plan-at"), who: g("plan-who"), goal: g("plan-goal"), notes: g("plan-notes"), mustCover: g("plan-must") }, b = H.plans.find((m) => m.id === planId) || {};
+  const changed = ["title", "who", "goal", "notes", "mustCover"].some((k) => v[k].trim() !== String(b[k] || "").trim()) || v.at !== String(b.atInput || "");
+  if (!changed) return true;
+  let r; try { r = await api.savePlan(v); } catch { r = null; }
   if (!r || !r.ok) { const e = $("plan-err"); if (e) e.textContent = (r && r.error) || "Could not save the plan, so the call did not start. Fix it or press Cancel, then start."; const w = $("plan-who"); if (w) w.focus(); fail("The plan was not saved, so the call did not start."); return false; }
-  H.brief = r.brief; H.editing = false; H.planOpen = false; H.draft = null; renderSide(); announce("Plan saved first");
+  H.plans = await api.plansList().catch(() => H.plans); closeEditor(false); announce("Plan saved first");
   return true;
 }
 const blockedBy = () => HL.blockedBy(doc());
-const setStartBusy = (on) => { for (const id of ["start-call", "start-noai"]) { const b = $(id); if (b) b.disabled = on; } };
-/** Start: save plan edits first, warn when the last readiness check failed (Start anyway is always there). Practice never goes through here. */
-async function startFlow(noAi, anyway) {
+const setStartBusy = (on) => { for (const b of document.querySelectorAll("#start-call, #start-noai, #next-start, .pm-act .primary")) b.disabled = on; };
+/** Start. t: { planId?, noAi? }: no planId is a quick call (no Plan). Warns when the last readiness check failed (Start anyway is always there). Practice never goes through here. */
+async function startFlow(t, anyway) {
   const g = $("start-gate"); if (g) g.textContent = "";
   setStartBusy(true);
   try {
-    if (!(await savePlanFirst())) return;
+    if (!(await savePlanFirst(t.planId))) return;
     const d = anyway ? null : blockedBy();
-    if (d) { showStartGate(d, noAi); return; }
-    await act(noAi ? api.startNoAi : api.start, noAi ? "Start without AI" : "Start");
+    if (d) { showStartGate(d, t); return; }
+    const m = t.planId ? H.plans.find((x) => x.id === t.planId) : null;
+    const what = t.planId ? "Start " + (m ? m.title || m.who || "prepared meeting" : "prepared meeting") : t.noAi ? "Quick call without AI" : "Quick call";
+    await act(() => (t.noAi ? api.startNoAi(t.planId) : api.start(t.planId)), what);
   } finally { setStartBusy(false); }
 }
 /** Warning under Start when the last readiness check failed: run it again, or start anyway. */
-function showStartGate(d, noAi) {
+function showStartGate(d, t) {
   const slot = $("start-gate") || $("main"); slot.textContent = "";
   slot.append(h("div", { class: "startgate", role: "alert" },
     h("div", { class: "sg-h" }, ico("warning"), h("b", {}, "Not ready for a call")),
@@ -193,7 +232,7 @@ function showStartGate(d, noAi) {
     issueList(d.failing.map((x) => ["bad", x])),
     h("div", { class: "actions" },
       btn("Run readiness check", { id: "gate-check", icon: "refresh", cls: "primary", onclick: () => runCheck(false) }),
-      btn("Start anyway", { id: "gate-anyway", cls: "danger", onclick: () => startFlow(noAi, true) }),
+      btn("Start anyway", { id: "gate-anyway", cls: "danger", onclick: () => startFlow(t, true) }),
       btn("Cancel", { cls: "ghost", onclick: () => { slot.textContent = ""; } }))));
   const c = $("gate-check"); if (c) c.focus();
 }
@@ -339,53 +378,44 @@ function setupCard() {
   return h("section", { class: "card-big setup", "aria-labelledby": "setup-h" }, h("div", { class: "rhead" }, h("h2", { id: "setup-h" }, "Set up Wingman"), chip(`${n} of 3 done`, n === 3 ? "good" : "warn"), h("span", { class: "grow" })), h("ul", { class: "setuplist" }, items));
 }
 
-/* ---------- Plan ---------- */
-/** Step 1: the plan card in its three states: saved plan summary, empty with recent plans, and the edit form. All plan text is set with value/textContent. */
-function planCard() {
-  const sec = h("section", { class: "card-big plan " + seqCls(1), "aria-labelledby": "plan-h" });
-  const optional = chip("optional", "");
-  const head = () => h("div", { class: "rhead" }, h("span", { class: "stepn", "aria-hidden": "true" }, "1"), h("h2", { id: "plan-h" }, "Plan"), tip("Who the call is with and what you want from it. The AI uses it for answers, tips and the summary. Optional; it expires after 6 hours."), optional, curStep() === 1 ? chip("Next", "warn") : null);
-  if (H.brief && !H.editing) {
-    const b = H.brief;
-    const line = (k, v) => v ? h("div", { class: "pl" }, h("span", { class: "k" }, k), h("span", { class: "v", dir: dirOf(v), lang: langOf(v) }, v)) : null;
-    sec.append(head(),
-      h("div", { class: "briefready", role: "status" }, ico("check"), h("span", {}, h("b", {}, "Plan ready for your next call"), ` (expires in ${hrs(b.expiresInMs)})`)),
-      h("div", { class: "plsum" }, line("Who", b.who), line("Goal", b.goal), line("Notes", b.notes.split("\n").join(" · ")), line("Must cover", b.mustCover.split("\n").join(" · "))),
-      h("div", { class: "actions" }, btn("Edit", { id: "plan-edit", icon: "plan", onclick: () => { H.editing = true; renderSide(); const f = $("plan-who"); if (f) f.focus(); } }),
-        btn("Clear", { id: "plan-clear", icon: "x", cls: "ghost", onclick: async () => { await api.clearBrief(); H.brief = null; H.attach = null; H.editing = false; H.planOpen = false; H.draft = null; renderSide(); updateCallPanel(true); announce("Plan cleared"); } })));
-    return sec;
-  }
-  if (!H.brief && !H.editing && !H.planOpen) {
-    sec.append(head(), h("p", { class: "sub" }, "Tell the AI who the call is with and what you want from it. You can skip this."),
-      h("div", { class: "actions" }, btn("Write a plan", { id: "plan-open", icon: "plan", onclick: () => { H.planOpen = true; renderSide(); const f = $("plan-who"); if (f) f.focus(); } })));
-    if (H.recent.length) sec.append(h("div", { class: "recent" }, h("div", { class: "label" }, "Reuse a recent plan"),
-      h("ul", {}, H.recent.slice(0, 3).map((p, i) => { const t = [p.who, p.goal].filter(Boolean).join(" · ") || p.notes.split("\n")[0] || "Plan"; return h("li", {}, h("button", { type: "button", class: "btn sm", "data-fk": "recent-" + i, title: "Fill the form with this plan", onclick: () => { H.draft = { ...p }; H.planOpen = true; renderSide(); const f = $("plan-who"); if (f) f.focus(); } }, ico("plan"), h("span", { dir: dirOf(t), lang: langOf(t) }, t))); })),
-      h("button", { type: "button", class: "linkbtn", id: "recent-forget", onclick: async () => { H.recent = await api.forgetRecentPlans().catch(() => []); renderSide(); announce("Recent plans forgotten"); } }, "Forget recent plans")));
-    return sec;
-  }
-  sec.append(head());
+/* ---------- Plan editor ---------- */
+/** The Plan editor for one prepared meeting (a new one, or H.editId). Only drawn while it is open. All plan text is set with value/textContent. */
+function editorCard() {
+  if (!H.editing && !H.planOpen) return null;
+  const cur = H.editId ? H.plans.find((m) => m.id === H.editId) : null;
+  const sec = h("section", { class: "card-big plan seq cur", "aria-labelledby": "plan-h" });
+  sec.append(h("div", { class: "rhead" }, h("h2", { id: "plan-h" }, cur ? "Plan: edit prepared meeting" : "Plan: new prepared meeting"), tip("Who the call is with and what you want from it. The AI uses it for answers, tips and the summary. It is used by the call you start with it, and kept until about 6 hours after the meeting time (or 14 days if it has no time).")));
   const f = (id, label, help, el) => h("div", { class: "field" }, h("label", { for: id }, label), el, help ? h("p", { class: "help", id: id + "-h" }, help) : null);
-  const b = H.draft || H.brief || { who: "", goal: "", notes: "", mustCover: "" };
+  const b = H.draft || cur || { title: "", atInput: "", at: "", who: "", goal: "", notes: "", mustCover: "" };
+  const title = h("input", { type: "text", id: "plan-title", maxlength: "80", autocomplete: "off", value: b.title || "", placeholder: "e.g. Hosting move with Dana", "aria-describedby": "plan-title-h" });
+  const at = h("input", { type: "datetime-local", id: "plan-at", value: b.atInput != null ? b.atInput : b.at || "", "aria-describedby": "plan-at-h" });
   const who = h("input", { type: "text", id: "plan-who", maxlength: "120", autocomplete: "off", value: b.who, placeholder: "Who is on the call?", "aria-describedby": "plan-who-h" });
   const goal = h("input", { type: "text", id: "plan-goal", maxlength: "200", autocomplete: "off", value: b.goal, placeholder: "What do you want out of it?", "aria-describedby": "plan-goal-h" });
   const notes = h("textarea", { id: "plan-notes", maxlength: "600", rows: "2", placeholder: "One per line, e.g. they run a WooCommerce shop on old hosting", "aria-describedby": "plan-notes-h" }); notes.value = b.notes;
   const must = h("textarea", { id: "plan-must", maxlength: "600", rows: "2", placeholder: "One per line, e.g. budget, timeline", "aria-describedby": "plan-must-h" }); must.value = b.mustCover;
   const err = h("div", { class: "formerr", role: "alert", id: "plan-err" });
-  const group = (title, ...kids) => h("fieldset", { class: "fgroup" }, h("legend", {}, title), ...kids);
+  const group = (t, ...kids) => h("fieldset", { class: "fgroup" }, h("legend", {}, t), ...kids);
   const form = h("form", { id: "plan-form", novalidate: true },
+    group("The meeting", h("div", { class: "frow" }, f("plan-title", "Title (optional)", "A name for the list. Without one the list shows who it is with.", title), f("plan-at", "When (optional)", "Date and time, e.g. from your calendar. It shows in the list and the menu bar, and the meeting stays until about 6 hours after it.", at))),
     group("The call", h("div", { class: "frow" }, f("plan-who", "Who is on the call", "Name of the person or company.", who), f("plan-goal", "Goal", "The one outcome that makes this call a success.", goal))),
     group("For the AI", f("plan-notes", "Notes", "Background it should know. It never reads these out loud.", notes), f("plan-must", "Must cover", "You get a reminder in the answer window if one of these has not come up after 15 minutes.", must)),
     group("Background files", attachField()),
     err,
-    h("div", { class: "actions stick" }, h("button", { type: "submit", class: "btn primary", id: "plan-save" }, ico("check"), h("span", {}, "Save plan")), btn("Cancel", { onclick: () => { H.editing = false; H.planOpen = false; H.draft = null; renderSide(); } }), h("span", { class: "sub" }, "Used by the next call that starts within 6 hours. Start also saves it.")));
+    h("div", { class: "actions stick" }, h("button", { type: "submit", class: "btn primary", id: "plan-save" }, ico("check"), h("span", {}, "Save plan")), btn("Cancel", { id: "plan-cancel", onclick: () => closeEditor(true) }), h("span", { class: "sub" }, "Saving does not start a call: pick it under Prepared meetings.")));
   form.addEventListener("submit", async (e) => {
     e.preventDefault(); err.textContent = "";
-    let r; try { r = await api.saveBrief({ who: who.value, goal: goal.value, notes: notes.value, mustCover: must.value }); } catch (x) { err.textContent = "Could not save: " + x.message; return; }
-    if (!r.ok) { err.textContent = r.error || "Could not save."; return; }
-    H.brief = r.brief; H.editing = false; H.planOpen = false; H.draft = null; api.recentPlans().then((l) => { H.recent = l; }).catch(() => {}); renderSide(); updateCallPanel(true); announce("Plan saved for your next call");
-    const ed = $("plan-edit"); if (ed) ed.focus();
+    let r; try { r = await api.savePlan({ id: H.editId, title: title.value, at: at.value, who: who.value, goal: goal.value, notes: notes.value, mustCover: must.value }); } catch (x) { err.textContent = "Could not save: " + x.message; return; }
+    if (!r.ok) { err.textContent = r.error === "preview" ? "This is a preview, nothing was saved." : r.error || "Could not save."; return; }
+    const id = r.plan.id;
+    H.plans = await api.plansList().catch(() => H.plans);
+    api.recentPlans().then((l) => { H.recent = l; }).catch(() => {});
+    closeEditor(false); updateCallPanel(true); announce("Plan saved");
+    const sb = $("pm-start-" + id); if (sb) sb.focus();
   });
   sec.append(form);
+  if (!H.editId && H.recent.length) sec.append(h("div", { class: "recent" }, h("div", { class: "label" }, "Start from a recent plan"),
+    h("ul", {}, H.recent.slice(0, 3).map((p, i) => { const t = [p.who, p.goal].filter(Boolean).join(" · ") || p.notes.split("\n")[0] || "Plan"; return h("li", {}, h("button", { type: "button", class: "btn sm", id: "recent-" + i, title: "Fill the form with this plan", onclick: () => { captureDraft(); H.draft = { ...(H.draft || {}), ...p }; renderSide(); const w = $("plan-who"); if (w) w.focus(); } }, ico("plan"), h("span", { dir: dirOf(t), lang: langOf(t) }, t))); })),
+    h("button", { type: "button", class: "linkbtn", id: "recent-forget", onclick: async () => { H.recent = await api.forgetRecentPlans().catch(() => []); renderSide(); announce("Recent plans forgotten"); } }, "Forget recent plans")));
   return sec;
 }
 
@@ -400,9 +430,9 @@ function issueList(list) {
 function readinessCard() {
   const d = doc(), running = checking();
   const quick = !!d && d.at === H.quickAt;
-  const sec = h("section", { class: "card-big ready " + seqCls(2), "aria-labelledby": "ready-h", id: "ready-card" });
+  const sec = h("section", { class: "card-big ready " + seqCls(1), "aria-labelledby": "ready-h", id: "ready-card" });
   const verdict = running ? chip("Checking…", "warn", { dot: true }) : !d ? chip("Not checked yet", "") : d.ok ? chip(d.verdict === "READY" ? "Ready" : "Ready, with warnings", "good", { dot: true }) : chip(d.verdict === "BUSY" ? "Busy" : "Not ready", d.verdict === "BUSY" ? "warn" : "bad", { dot: true });
-  sec.append(stepHead(2, "ready-h", "Readiness check", "A test of the microphone, system audio, your keys, the speech service and the AI. Run it before a call.", verdict, h("span", { class: "grow" }),
+  sec.append(stepHead(1, "ready-h", "Readiness check", "A test of the microphone, system audio, your keys, the speech service and the AI. Run it before a call.", verdict, h("span", { class: "grow" }),
     h("button", { type: "button", class: "btn", id: "recheck", disabled: running, onclick: () => runCheck(false) }, ico("refresh"), h("span", {}, running ? "Checking…" : !d ? "Run readiness check" : quick ? "Run full check" : "Re-check"))));
   if (running) sec.append(h("p", { class: "sub" }, "Testing the microphone, system audio, the speech service and the AI. About 20 seconds, a few cents."));
   else if (!d) sec.append(h("p", { class: "sub" }, "Run this before a call. It tests the microphone, system audio, your keys, the speech service and the AI."));
@@ -451,7 +481,7 @@ function waitingCard() {
   return sec;
 }
 
-/** Background files and pasted text for the next call. Added right away (not with Save); the AI reads them as background only. */
+/** Background files and pasted text for this prepared meeting. Added right away (not with Save); the AI reads them as background only. */
 function attachField() {
   const list = h("ul", { class: "att-list", "aria-label": "Background files" });
   const meter = h("div", { class: "sub", id: "att-meter" });
@@ -464,23 +494,23 @@ function attachField() {
     file.accept = st.pdf ? ".txt,.md,.pdf,text/plain,text/markdown,application/pdf" : ".txt,.md,text/plain,text/markdown";
     list.textContent = "";
     for (const a of st.files) list.append(h("li", {}, h("span", { class: "att-name", dir: dirOf(a.name), lang: langOf(a.name) }, a.name), h("span", { class: "faint att-n" }, `${a.chars.toLocaleString("en")} characters`),
-      h("button", { type: "button", class: "btn ghost sm", "aria-label": "Remove " + a.name, onclick: async () => { try { draw(await api.attachRemove(a.id)); msg.textContent = ""; announce("File removed"); } catch (x) { msg.textContent = "Could not remove: " + x.message; } } }, ico("x"), h("span", {}, "Remove"))));
+      h("button", { type: "button", class: "btn ghost sm", "aria-label": "Remove " + a.name, onclick: async () => { try { draw(await api.attachRemove(H.editId, a.id)); msg.textContent = ""; announce("File removed"); } catch (x) { msg.textContent = "Could not remove: " + x.message; } } }, ico("x"), h("span", {}, "Remove"))));
     const used = st.files.reduce((n, a) => n + a.chars, 0);
-    meter.textContent = `${used.toLocaleString("en")} of ${st.maxChars.toLocaleString("en")} characters used. They expire with the plan (6 hours).${st.pdf ? "" : " PDF needs the pdftotext tool, which this Mac does not have: paste the text instead."}`;
+    meter.textContent = `${used.toLocaleString("en")} of ${st.maxChars.toLocaleString("en")} characters used. They stay with this meeting and are dropped once a call has used it.${st.pdf ? "" : " PDF needs the pdftotext tool, which this Mac does not have: paste the text instead."}`;
   };
   const report = (r, what) => { if (!r.ok) { msg.textContent = r.error === "preview" ? "Not available in a preview." : (r.error || "Could not add that."); return; } msg.textContent = r.truncated ? `${what} was cut to fit the limit.` : ""; announce(`${what} added`); };
   file.addEventListener("change", async () => {
     for (const f of [...file.files]) {
       if (f.size > 2 * 1024 * 1024) { msg.textContent = `${f.name}: files can be 2 MB at most.`; continue; }
-      try { const r = await api.attachAdd(f.name, new Uint8Array(await f.arrayBuffer())); draw(r.state); report(r, f.name); } catch (x) { msg.textContent = "Could not add: " + x.message; }
+      try { const r = await api.attachAdd(H.editId, f.name, new Uint8Array(await f.arrayBuffer())); draw(r.state); report(r, f.name); } catch (x) { msg.textContent = "Could not add: " + x.message; }
     }
     file.value = "";
   });
   const addPaste = async () => {
     if (!paste.value.trim()) return;
-    try { const r = await api.attachPaste(paste.value); draw(r.state); report(r, "Text"); if (r.ok) paste.value = ""; } catch (x) { msg.textContent = "Could not add: " + x.message; }
+    try { const r = await api.attachPaste(H.editId, paste.value); draw(r.state); report(r, "Text"); if (r.ok) paste.value = ""; } catch (x) { msg.textContent = "Could not add: " + x.message; }
   };
-  if (H.attach) draw(H.attach); else api.attachList().then(draw).catch(() => {});
+  if (H.attach) draw(H.attach); else api.attachList(H.editId).then(draw).catch(() => {});
   return h("div", { class: "field attach" },
     h("label", { for: "att-paste", class: "sr" }, "Pasted text"), h("p", { class: "help" }, "Notes, an offer or an email the AI should know about. It uses them only as background for answers, tips and the call summary; it never reads them out."),
     list, meter,

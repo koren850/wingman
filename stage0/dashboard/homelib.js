@@ -31,9 +31,28 @@
   /** The last readiness result when it says NOT READY (BUSY and "not checked" never block). */
   const blockedBy = (d) => (d && !d.ok && d.verdict === "NOT READY" ? d : null);
 
-  /** Practice uses the saved plan when one is ready (contract D). */
-  const planReady = (brief, call) => !!brief || !!(call && call.briefReady);
-  const practiceLabel = (ready) => (ready ? "Practice call · uses your plan" : "Practice call (offline, free)");
+  /** Prepared meetings (shared/plans.js): require() under node, window.WingmanPlans in the page. */
+  const Plans = typeof module !== "undefined" && module.exports ? require("../shared/plans.js") : root.WingmanPlans;
+
+  /**
+   * What the Start card shows for the prepared meetings (list from the main process, already ready ones only, soonest first):
+   * { next, rows } where next is the "Next: <who> at 14:30" meeting (timed, not long past) or null, and each row has the texts of one line.
+   */
+  function startPaths(list, now) {
+    const ready = Plans.ready(list || [], now);
+    const next = Plans.nextMeeting(ready, now);
+    const rows = ready.map((m) => ({
+      id: m.id, name: Plans.label(m), sub: m.title ? m.who || m.goal || "" : m.who ? m.goal || "" : "", time: m.at ? Plans.formatAt(m.at, now) : "", isNext: !!next && next.id === m.id,
+      must: m.mustCount != null ? m.mustCount : (m.mustCover || []).length, files: m.files || 0,
+      startLabel: "Start " + Plans.label(m).slice(0, 50),
+    }));
+    return { next: next ? rows.find((r) => r.id === next.id) : null, rows };
+  }
+  /** "Next: Dana at 14:30" */
+  const nextText = (row) => `Next: ${row.name}${row.time ? " at " + row.time.replace(/^Today /, "") : ""}`;
+  /** Practice uses the next prepared meeting (or the only one), as the app does; none = a plain practice. */
+  const practiceTarget = (list, now) => Plans.practiceDefault(list || [], now);
+  const practiceLabel = (m) => (m ? `Practice call · uses "${Plans.label(m).slice(0, 40)}"` : "Practice call (offline, free)");
 
   /** The combined Note / Ask input. */
   const COMPOSER = {
@@ -60,6 +79,6 @@
   /** Keep keyboard focus across a re-render: remember the focused element by id (or data-fk) and its caret, give it back to the new element. */
   function focusKey(el) { return el ? (el.id || (el.getAttribute && el.getAttribute("data-fk")) || "") : ""; }
 
-  const api = { stopSteps, aiMode, blockedBy, planReady, practiceLabel, COMPOSER, composer, askStatus, canSkipSummary, niceFix, keyRelated, focusKey };
+  const api = { stopSteps, aiMode, blockedBy, startPaths, nextText, practiceTarget, practiceLabel, COMPOSER, composer, askStatus, canSkipSummary, niceFix, keyRelated, focusKey };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.WingmanHome = api;
 })(typeof window !== "undefined" ? window : globalThis);

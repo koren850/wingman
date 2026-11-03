@@ -12,6 +12,7 @@ const data = require("./lib.cjs");
 const { createLiveTail } = require("./livetail.cjs");
 const liveFixture = require("./livefixture.cjs");
 const attachments = require("../tray/attachments.cjs");
+const Plans = require("../shared/plans.js");
 
 const ROOT = path.join(__dirname, "..");
 const BRAND_ICON = path.join(ROOT, "..", "brand", "png", "icon-512.png");
@@ -56,7 +57,7 @@ function isDashboardSender(e, win) {
  * Registers every ipcMain handler used by preload.cjs. Returns { open(o), push(), live, win, isOpen() }.
  */
 function create(ctx) {
-  const { app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller } = ctx;
+  const { app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller, plans } = ctx;   // plans: the prepared-meetings store (tray/plans.cjs)
   let win, fake = fakeCall(process.env.WINGMAN_DASHBOARD_FAKE_CALL), fakeDoc = FAKE_DOCTOR[process.env.WINGMAN_DASHBOARD_FAKE_DOCTOR] || null;
   if (fakeDoc) fakeDoc = { ...fakeDoc, at: Date.now() - 4 * 60000 };
   const bgNow = () => (nativeTheme.shouldUseDarkColors ? BG.dark : BG.light);
@@ -65,8 +66,6 @@ function create(ctx) {
   const handle = (name, fn) => ipcMain.handle(name, (e, ...a) => { if (!mine(e)) throw new Error("denied"); return fn(...a); });
   // State sent to the page: controller state + the readiness result + a clock. `now` is the main-process clock at send time.
   const view = () => { const s = fake || controller.getState(); return { ...s, doctor: fakeDoc || s.doctor, now: Date.now(), fake: !!fake }; };
-  // Saved plan for the form: notes / mustCover are stored as lists, shown as multi-line text.
-  const briefInfo = () => { const b = lib.readBrief(path.join(BRIEFS, "latest.yaml")); return b ? { ...b, notes: b.notes.join("\n"), mustCover: b.mustCover.join("\n") } : null; };
 
   // Live conversation: tails the running call's transcript.jsonl / cards.jsonl (never the @@wingman status lines). Not used for fake/snapshot states.
   const live = createLiveTail({ callsDir: CALLS, send: (p) => { if (win && !win.isDestroyed()) win.webContents.send("live:update", p); } });
@@ -177,13 +176,15 @@ function create(ctx) {
     if (fake) { const f = fake.running && fake.callId === id ? liveFixture.build(fake.liveAt || fake.startedAt, id) : null; return f || { callId: "", reset: true, lines: [], cards: [] }; }
     return live.snapshot(id);
   });
+  const planArg = (v) => { if (v === undefined || v === null || v === "") return ""; if (typeof v !== "string" || !/^m[0-9a-z]{6,12}$/.test(v)) throw new Error("bad meeting id"); return v; };
   handle("call:cmd", (name, arg) => {
     if (typeof name !== "string") throw new Error("bad command");
     if (fake || SNAP) return { ok: false, error: "preview" };       // snapshot/preview states never touch a call
     switch (name) {
-      case "start": return { ok: controller.start({ noAi: false }) };
-      case "startNoAi": return { ok: controller.start({ noAi: true }) };
-      case "practice": return { ok: controller.practice() };
+      // start / startNoAi: arg is a prepared meeting's id, or nothing for a quick call (no Plan). practice: arg is { planId } or { quick: true }, nothing = the next meeting.
+      case "start": return { ok: controller.start({ noAi: false, planId: planArg(arg) }) };
+      case "startNoAi": return { ok: controller.start({ noAi: true, planId: planArg(arg) }) };
+      case "practice": { const a = arg && typeof arg === "object" ? arg : {}; return { ok: controller.practice({ quick: a.quick === true, planId: planArg(a.planId) }) }; }
       case "consent": return { ok: controller.consent() };
       case "quiet": if (typeof arg !== "boolean") throw new Error("bad argument"); return { ok: controller.setQuiet(arg) };
       case "client": return { ok: controller.confirmClient() };
@@ -200,46 +201,65 @@ function create(ctx) {
     }
   });
 
-  // ---- briefing ("Plan a call") ----
-  handle("brief:get", () => briefInfo());
-  // Recent plans (same private folder, owner-only file): so a plan that expired, or a repeat call, can be reused.
+  // ---- prepared meetings ("Plan"): several can wait; a call uses one only when it is started with it ----
+  // The page gets names, times, counts and the plan fields it edits; background file CONTENT never leaves the main process.
+  const meetingOut = (m) => ({ id: m.id, title: m.title, who: m.who, goal: m.goal, kind: m.kind, topic: m.topic, notes: m.notes.join("\n"), mustCover: m.mustCover.join("\n"), mustCount: m.mustCover.length, at: m.at, atInput: Plans.toInputValue(m.at), status: m.status, expiresAt: m.expiresAt, files: m.files, fileList: m.fileList });
+  handle("plans:list", () => plans.list().map(meetingOut));
+  // Recent plans (same private folder, owner-only file): so a repeat call can reuse the text of an earlier one.
   const RECENT = path.join(BRIEFS, "recent.json");
   const readRecent = () => { try { return data.recentClean(JSON.parse(fs.readFileSync(RECENT, "utf8"))); } catch { return []; } };
   const writeRecent = (list) => { fs.mkdirSync(BRIEFS, { recursive: true, mode: 0o700 }); fs.writeFileSync(RECENT, JSON.stringify(list), { mode: 0o600 }); };
   handle("brief:recent", () => readRecent());
   handle("brief:forgetRecent", () => { try { fs.rmSync(RECENT, { force: true }); } catch { /* nothing to forget */ } return []; });
-  handle("brief:save", (d) => {
-    if (!d || typeof d !== "object") throw new Error("bad briefing");
-    for (const k of ["who", "goal", "notes", "mustCover"]) if (typeof d[k] !== "string" || d[k].length > 1500) throw new Error("bad briefing field " + k);
-    const b = lib.briefFrom(d);
-    if (!b) return { ok: false, error: "Fill in at least one field." };
-    lib.writeBrief(BRIEFS, b);
+  // Save: d.id empty = a new meeting (the unsaved draft's background files move in), else an edit of that meeting.
+  handle("plans:save", (d) => {
+    if (!d || typeof d !== "object") throw new Error("bad plan");
+    for (const k of ["title", "who", "goal", "notes", "mustCover", "at"]) if (typeof d[k] !== "string" || d[k].length > 1500) throw new Error("bad plan field " + k);
+    if (d.id !== "" && !(typeof d.id === "string" && /^m[0-9a-z]{6,12}$/.test(d.id))) throw new Error("bad meeting id");
+    if (fake || SNAP) return { ok: false, error: "preview" };
+    const f = { title: d.title, who: d.who, goal: d.goal, notes: d.notes, mustCover: d.mustCover, at: d.at };
+    const r = d.id ? plans.update(d.id, f) : plans.create(f, { adoptDraft: true });
+    if (!r.ok) return { ok: false, error: r.error };
     try { writeRecent(data.recentAdd(readRecent(), d)); } catch { /* the plan itself is saved; the recent list is a convenience */ }
-    controller.briefSaved();
-    return { ok: true, brief: briefInfo() };
+    controller.refreshPlans();
+    return { ok: true, plan: meetingOut(r.meeting) };
   });
-  handle("brief:clear", () => { lib.clearBrief(BRIEFS); if (!SNAP) store.clear(); controller.briefCleared(); return { ok: true }; });
+  handle("plans:delete", (id) => {
+    if (typeof id !== "string" || !/^m[0-9a-z]{6,12}$/.test(id)) throw new Error("bad meeting id");
+    if (fake || SNAP) return { ok: false, error: "preview" };
+    const m = plans.get(id); if (!m) return { ok: false, error: "No such prepared meeting." };
+    const r = dialog.showMessageBoxSync(win, { type: "warning", buttons: ["Cancel", "Delete"], defaultId: 0, cancelId: 0, title: "Delete prepared meeting", message: `Delete "${Plans.label(m).slice(0, 60)}"?`, detail: "Its plan and background files are removed permanently." });
+    if (r !== 1) return { ok: false, cancelled: true };
+    const x = plans.remove(id); controller.refreshPlans();
+    return { ok: !!x.ok };
+  });
+  handle("plans:discardDraft", () => { if (!fake && !SNAP) plans.discardDraft(); return true; });
 
-  // ---- background files for the plan (.txt .md, .pdf when pdftotext exists, pasted text): validated in tray/attachments.cjs ----
-  // Content is never logged or sent back to the page: the list only has names and sizes.
-  const store = attachments.createStore({ dir: path.join(BRIEFS, "attachments") });
-  const FAKE_ATT = process.env.WINGMAN_DASHBOARD_FAKE_ATTACH ? { files: [{ id: "afake0001", name: "hosting-offer.txt", chars: 6200, expiresInMs: 5.5 * 3600e3 }, { id: "afake0002", name: "pasted text", chars: 1450, expiresInMs: 5.9 * 3600e3 }], maxChars: attachments.MAX_CHARS, pdf: false } : null;
-  const attState = () => FAKE_ATT || store.list();
-  handle("attach:list", () => attState());
-  handle("attach:add", async (name, bytes) => {
+  // ---- background files for a plan (.txt .md, .pdf when pdftotext exists, pasted text): validated in tray/attachments.cjs ----
+  // id "" = the plan being written and not saved yet. Content is never logged or sent back to the page: the list only has names and sizes.
+  const planId = (id) => { if (id === "") return ""; if (typeof id !== "string" || !/^m[0-9a-z]{6,12}$/.test(id)) throw new Error("bad meeting id"); return id; };
+  const attState = (id) => { const st = plans.files(id); return st ? st.list() : { files: [], maxChars: attachments.MAX_CHARS, pdf: false }; };
+  handle("attach:list", (id) => attState(planId(id)));
+  handle("attach:add", async (id, name, bytes) => {
+    planId(id);
     if (typeof name !== "string" || name.length > 300) throw new Error("bad file name");
     if (!(bytes instanceof Uint8Array) && !(bytes instanceof ArrayBuffer)) throw new Error("bad file");
-    if (fake || SNAP) return { ok: false, error: "preview", state: attState() };
-    const r = await store.addFile(name, bytes);
-    return { ok: !!r.ok, error: r.error, truncated: !!r.truncated, state: attState() };
+    if (fake || SNAP) return { ok: false, error: "preview", state: attState(id) };
+    const st = plans.files(id); if (!st) return { ok: false, error: "No such prepared meeting.", state: attState("") };
+    const r = await st.addFile(name, bytes);
+    controller.refreshPlans();
+    return { ok: !!r.ok, error: r.error, truncated: !!r.truncated, state: attState(id) };
   });
-  handle("attach:paste", (text) => {
+  handle("attach:paste", (id, text) => {
+    planId(id);
     if (typeof text !== "string" || text.length > 200000) throw new Error("bad text");
-    if (fake || SNAP) return { ok: false, error: "preview", state: attState() };
-    const r = store.addPaste(text);
-    return { ok: !!r.ok, error: r.error, truncated: !!r.truncated, state: attState() };
+    if (fake || SNAP) return { ok: false, error: "preview", state: attState(id) };
+    const st = plans.files(id); if (!st) return { ok: false, error: "No such prepared meeting.", state: attState("") };
+    const r = st.addPaste(text);
+    controller.refreshPlans();
+    return { ok: !!r.ok, error: r.error, truncated: !!r.truncated, state: attState(id) };
   });
-  handle("attach:remove", (id) => { if (typeof id !== "string" || id.length > 30) throw new Error("bad id"); if (!fake && !SNAP) store.remove(id); return attState(); });
+  handle("attach:remove", (id, fileId) => { planId(id); if (typeof fileId !== "string" || fileId.length > 30) throw new Error("bad id"); if (!fake && !SNAP) { const st = plans.files(id); if (st) st.remove(fileId); controller.refreshPlans(); } return attState(id); });
 
   // ---- readiness (doctor) ----
   handle("doctor:run", async (offline) => {

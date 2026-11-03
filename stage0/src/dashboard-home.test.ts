@@ -65,12 +65,33 @@ test("Start is only blocked by a NOT READY result", () => {
   assert.equal(H.blockedBy(d), d);
 });
 
-test("practice says it uses the plan only when one is ready", () => {
-  assert.equal(H.planReady(null, { briefReady: false }), false);
-  assert.equal(H.planReady({ who: "x" }, null), true);
-  assert.equal(H.planReady(null, { briefReady: true }), true);
-  assert.equal(H.practiceLabel(false), "Practice call (offline, free)");
-  assert.equal(H.practiceLabel(true), "Practice call · uses your plan");
+const NOW = new Date(2026, 10, 3, 9, 0).getTime(), at = (h: number, m = 0) => new Date(2026, 10, 3, h, m).getTime();
+const mt = (id: string, o: object = {}) => ({ id, title: "", who: id, goal: "", at: 0, createdAt: NOW, updatedAt: NOW, usedAt: 0, mustCount: 0, files: 0, ...o });
+
+test("Start card: prepared meetings are listed soonest first, the next timed one is highlighted, used and expired ones never show", () => {
+  const list = [mt("mnoTime0", { updatedAt: NOW + 5 }), mt("mlate01", { at: at(16), who: "Noam, Beta", mustCount: 3 }), mt("mnext01", { at: at(14, 30), who: "Dana, Acme", files: 2 }), mt("mused01", { at: at(14), usedAt: NOW - 10 }), mt("mold001", { at: at(1) })];
+  const r = H.startPaths(list, NOW);
+  assert.deepEqual(r.rows.map((x: any) => x.id), ["mnext01", "mlate01", "mnoTime0"]);
+  assert.equal(r.next.id, "mnext01"); assert.equal(H.nextText(r.next), "Next: Dana, Acme at 14:30");
+  assert.deepEqual([r.rows[0].time, r.rows[0].files, r.rows[1].must, r.rows[2].time], ["Today 14:30", 2, 3, ""]);
+  assert.equal(r.rows[0].isNext, true); assert.equal(r.rows[1].isNext, false);
+  assert.equal(r.rows[0].startLabel, "Start Dana, Acme");
+  assert.equal(H.startPaths([mt("mnoTime0")], NOW).next, null, "an untimed meeting is never 'Next'");
+  assert.deepEqual(H.startPaths([], NOW), { next: null, rows: [] });
+  assert.equal(H.startPaths(null, NOW).rows.length, 0);
+});
+
+test("Start card: a title wins over who in the row; the subtitle never repeats the name", () => {
+  const r = H.startPaths([mt("mtitled", { title: "Hosting move", who: "Dana", goal: "date" }), mt("mgoal01", { who: "", goal: "agree a date" })], NOW).rows.sort((a: any, b: any) => (a.id < b.id ? 1 : -1));
+  assert.equal(r[0].name, "Hosting move"); assert.equal(r[0].sub, "Dana"); assert.equal(r[1].name, "agree a date"); assert.equal(r[1].sub, "", "no repeat of the name");
+});
+
+test("practice names the plan it uses (the next meeting, or the only one) and says nothing special otherwise", () => {
+  assert.equal(H.practiceLabel(null), "Practice call (offline, free)");
+  assert.equal(H.practiceLabel(mt("mx", { who: "Dana, Acme" })), 'Practice call · uses "Dana, Acme"');
+  assert.equal(H.practiceTarget([mt("a"), mt("b")], NOW), null);
+  assert.equal(H.practiceTarget([mt("a")], NOW).id, "a");
+  assert.equal(H.practiceTarget([mt("a"), mt("b", { at: at(14) })], NOW).id, "b");
 });
 
 test("Ask/Note input: two clear modes, unknown mode means note, the armed state is spelled out", () => {
@@ -136,7 +157,9 @@ test("visible dashboard text follows the glossary (no consent, briefing, bank, s
 
 test("the practice button and the Start card are wired to the plan and the settings read", () => {
   const t = read("dashboard/home.js");
-  assert.match(t, /HL\.practiceLabel\(usePlan\)/);
+  assert.match(t, /HL\.practiceLabel\(target\)/);
+  assert.match(t, /id: "start-call"[\s\S]*?startFlow\(\{ noAi: false \}\)/);   // the Quick call button starts with no meeting
+  assert.match(t, /startFlow\(\{ planId: r\.id \}\)/);                           // a row's Start button starts that meeting
   assert.match(t, /api\.getSettings\(\)\.then\(\(r\) => \{ H\.ai = r && r\.ok \? HL\.aiMode\(r\.items\)/);
   assert.match(t, /HL\.stopSteps\(s\)/);
 });
@@ -175,7 +198,7 @@ test("recent plans: newest first, no duplicates, capped, junk dropped", () => {
 
 test("recent plans are read and written only by the main process, in the private plan folder, owner-only", () => {
   const w = read("dashboard/window.cjs");
-  assert.match(w, /handle\("brief:recent"/); assert.match(w, /handle\("brief:forgetRecent"/);
+  assert.match(w, /handle\("brief:recent"/);   // recent plans are a convenience kept beside the prepared meetings assert.match(w, /handle\("brief:forgetRecent"/);
   assert.match(w, /const RECENT = path\.join\(BRIEFS, "recent\.json"\)/);
   assert.match(w, /writeFileSync\(RECENT, JSON\.stringify\(list\), \{ mode: 0o600 \}\)/);
 });
