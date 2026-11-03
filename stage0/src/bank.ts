@@ -1,19 +1,26 @@
 // Keyword answer bank: prepared cards (data/bank.yaml) matched against what the other side said, with no model call.
 // Scoring is by trigger word count; "stall" cards (price / timeline / guarantee) always win so a commitment is never answered
 // by a topical card. Used by run.ts (card or hint for the model), doctor.ts and the detector's context. No embeddings in this stage.
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import YAML from "yaml";
 import { containsPhrase, phraseWordIndex } from "./normalize.ts";
 import { DATA } from "./env.ts";
 import { looksArithmetic } from "./calc.ts";
 
-export type BankCard = { id: string; title: string; triggers: string[]; say: string; facts: string[]; tags?: string[]; alts?: string[]; priority?: number };
+export type BankCard = { id: string; title: string; triggers: string[]; say: string; facts: string[]; tags?: string[]; alts?: string[]; priority?: number; en?: { say: string; facts?: string[]; alts?: string[] } };
 export type BankHit = { card: BankCard; score: number; matched: string[] };
 
 /** Reads and validates the YAML bank. Throws on a card without id/say/triggers or a duplicate id. */
 export function loadBank(file = join(DATA, "bank.yaml")): BankCard[] {
   const cards = YAML.parse(readFileSync(file, "utf8")) as BankCard[];
+  // English versions live next to the bank (bank.en.yaml: id -> {say, facts, alts}); a missing file just means no English cards.
+  const enFile = file.replace(/\.yaml$/, ".en.yaml");
+  if (enFile !== file && existsSync(enFile)) {
+    const en = (YAML.parse(readFileSync(enFile, "utf8")) ?? {}) as Record<string, BankCard["en"]>;
+    for (const c of cards) if (en[c.id]?.say) c.en = en[c.id];
+    englishIds = cards.filter((c) => c.en).map((c) => c.id);
+  }
   const ids = new Set<string>();
   for (const c of cards) {
     if (!c.id || !c.say || !Array.isArray(c.triggers)) throw new Error(`bad bank card: ${JSON.stringify(c).slice(0, 80)}`);
@@ -106,9 +113,32 @@ function beats(a: BankHit, aTier: boolean, b: BankHit, bTier: boolean): boolean 
 
 /** The stall line, rotating through the card's `alts` so repeated stalls do not look canned. */
 export function stallSay(card: BankCard, n: number): string {
-  const all = [card.say, ...(card.alts ?? [])];
+  const en = turnLang === "en" && card.en;
+  const all = en ? [en.say, ...(en.alts ?? [])] : [card.say, ...(card.alts ?? [])];
   return all[Math.abs(n) % all.length];
 }
+
+/** "he" when the text has Hebrew letters (a Hebrew question with English terms is Hebrew), "en" when it is Latin only, undefined otherwise. */
+export function questionLang(s: string): "he" | "en" | undefined {
+  if ((s.match(/[\u0590-\u05ff]/g) ?? []).length >= 2) return "he";
+  return (s.match(/[A-Za-z]/g) ?? []).length >= 3 ? "en" : undefined;
+}
+/**
+ * Language of the question being handled. matchBankFor() sets it from the other side's text (English-only = "en", anything with
+ * Hebrew = "he"; unclear or very short text keeps the last value), and stallSay() / localizeCard() read it, so run.ts needs no change.
+ * A cheap hack that assumes one question is handled at a time; run.ts should eventually pass the language explicitly.
+ */
+let turnLang: "he" | "en" = "he";
+export const getTurnLang = () => turnLang;
+export const setTurnLang = (l: "he" | "en") => { turnLang = l; };
+/** The card as it should be shown for the current question: English text for an English question, undefined when the card has no English version. */
+export function localizeCard(card: BankCard, lang: "he" | "en" = turnLang): BankCard | undefined {
+  if (lang !== "en") return card;
+  return card.en ? { ...card, say: card.en.say, facts: card.en.facts ?? [], alts: card.en.alts } : undefined;
+}
+/** Ids of the cards that have an English version (the model is told which BANK ids it may use in an English turn). */
+export const englishCardIds = () => englishIds;
+let englishIds: string[] = [];
 
 /** The generic "stall" card from the bank, or a built-in fallback line if the bank has none. */
 export function stallCard(bank: BankCard[]): BankCard {
@@ -150,7 +180,10 @@ export function priceOffTopic(text: string): "arithmetic" | "general" | undefine
 
 /** matchBank, except that stall-price is dropped when the question is arithmetic or clearly not about a price for the owner's services. */
 export function matchBankFor(text: string, bank: BankCard[]): BankHit | undefined {
-  const hit = matchBank(text, bank);
-  if (hit?.card.id === "stall-price" && priceOffTopic(text)) return matchBank(text, bank.filter((c) => c.id !== "stall-price"));
-  return hit;
+  const l = questionLang(text); if (l && text.trim().split(/\s+/).length >= 3) turnLang = l;
+  let hit = matchBank(text, bank);
+  if (hit?.card.id === "stall-price" && priceOffTopic(text)) hit = matchBank(text, bank.filter((c) => c.id !== "stall-price"));
+  if (!hit || turnLang !== "en") return hit;
+  const card = localizeCard(hit.card, "en");
+  return card ? { ...hit, card } : undefined;   // English question and no English card: the model answers (in English) instead of a Hebrew card
 }

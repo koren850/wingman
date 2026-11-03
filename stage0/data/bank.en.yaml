@@ -1,0 +1,114 @@
+# English versions of Prepared cards, shown when the other side's question is in English (see localizeCard in src/bank.ts).
+# A card without an entry here is NOT shown in English turns: the AI answers in English instead.
+# House style: no prices, dates, deadlines or promises. Short, spoken, first person.
+stall:
+  say: I want to check that properly and come back to you with an accurate answer.
+  alts: ["I don't want to guess. Let me check and come back with a clear answer.", "Let me verify that first, and I will get back to you."]
+  facts: [We do not guess, We check and come back, The question is noted]
+stall-price:
+  say: The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
+  alts: ["It depends on the scope. Let me check the details and come back to you with a proper figure."]
+  facts: [Depends on scope and requirements, No number without details, Come back after checking]
+stall-timeline:
+  say: It depends. Let me check and I will come back with an estimate.
+  alts: ["That depends on the scope. I will check and come back with a realistic estimate."]
+  facts: [Depends on scope, Estimate after checking, No date on the call]
+stall-guarantee:
+  say: I don't want to commit before checking. I will come back with what we can commit to, in writing.
+  facts: [No commitment on the call, We define it in writing, The commitment will be clear]
+stall-check-site:
+  say: I will take a look. I need the site address and details of what is happening, and I will come back with findings.
+  facts: [We need the site address, Note what happens and when, Come back with findings]
+migration:
+  say: Yes, a site can be moved to another server or platform. We copy the files and the database, check that everything works, and only then switch over, so the site keeps running.
+  facts: [Test before switching, Usually no real downtime, Back up before any move]
+staging:
+  say: A staging site is a copy of the site where we can test changes and updates without touching the live site, and publish only after approval.
+  facts: [Separate copy of the live site, Good for updates and design changes, Publish after approval]
+backups:
+  say: Yes, we can work with automatic backups of the files and the database, and restore from them if something goes wrong.
+  facts: [Files and database, Keep a copy off the server, Frequency depends on the plan]
+site-slow:
+  say: A slow site is usually heavy images, missing cache, heavy plugins or a weak server. We check the cause first and then fix it.
+  facts: ["Common causes: images, plugins, server", Measure before and after, Not always the server]
+redirects-404:
+  say: A 404 means the page was not found. When an address changes or a page is removed, we set up a redirect so visitors and Google reach the right place.
+  facts: [A 301 redirect is permanent, Important after a move to a new site, Check for broken links]
+caching:
+  say: Cache keeps a ready copy of the page so the site does not rebuild it on every visit. It speeds things up, and sometimes needs clearing to see a change.
+  facts: [Speeds the site up, Clear cache after changes, "Server, plugin and browser cache"]
+wp-updates:
+  say: Updates close security holes and improve stability. It is best to update in an orderly way, with a backup first and a check afterwards.
+  facts: ["Core, plugins and theme", Backup before each update, Test on staging first]
+plugin-conflicts:
+  say: Sometimes two plugins, or a plugin and the theme, clash. We switch them off one by one, find the conflict, and then decide what to do.
+  facts: [Disable plugins one by one, Better to test on staging, Sometimes an update is enough]
+php-version:
+  say: PHP is the language WordPress runs on. A newer version is usually faster and more secure, but we check plugin compatibility before upgrading.
+  facts: [Newer is faster and safer, Check plugin compatibility, Upgrade on staging first]
+maintenance-plan:
+  say: A maintenance plan usually covers updates, backups, monitoring, security and support for issues. What exactly is included depends on the plan.
+  facts: [Updates and backups, Monitoring and security, Support depends on the plan]
+hosting-vs-domain:
+  say: The domain is the address, like a street name. The hosting is the house itself, the server where the site files live. You can buy them separately.
+  facts: [Domain is the site name, Hosting is the server, DNS connects them]
+dns-basics:
+  say: "DNS is like the phone book of the internet: it translates the site name into the address of the server where the site lives."
+  facts: [Takes a while to update worldwide, Can be managed in Cloudflare, "Main records: A, CNAME, MX"]
+ssl-basics:
+  say: SSL is a security certificate that encrypts the connection between the visitor and the site. It is why you see the padlock and https in the address.
+  facts: [The certificate usually renews automatically, An expired certificate causes a security warning, "Let's Encrypt is a common free certificate"]
+domain-transfer:
+  say: A domain can be transferred between providers. The process differs a little between a .com and a country domain, so we check which type it is, and we coordinate so the site and email are not affected.
+  facts: [Needs a transfer code from the current provider, The domain usually has to be unlocked, Check DNS before the transfer]
+domain-renewal:
+  say: A domain is registered for a period and renewed with the provider where it is registered. It is worth enabling auto-renewal so it does not expire by mistake.
+  facts: [Renew at the registrar, Enable auto-renewal, An expired domain can stop working]
+site-down:
+  say: First I check the cause - the server, the site address, the security certificate, or a plugin that got stuck.
+  facts: ["Check server, DNS and SSL", A 500 error is usually a plugin or PHP, A white screen is usually a code error]
+hacked-site:
+  say: If a hack is suspected, we isolate and investigate first. Then we clean the code, close the hole, change passwords, and restore from a clean backup if needed.
+  facts: [Change passwords everywhere, Find how they got in, Usually an old plugin]
+cdn-cloudflare:
+  say: A CDN keeps copies of the site on servers close to visitors, so the site loads faster. Cloudflare also adds a layer of protection.
+  facts: [Shorter load times for visitors, Cloudflare adds protection from attacks, Free and paid versions exist]
+seo-basics:
+  say: SEO starts with a good base - a fast, secure site, a clean structure, headings and content that answers what people search for. Real ranking takes time.
+  facts: [Speed and HTTPS affect ranking, Quality content matters most, No one can promise a Google position]
+gdpr-cookies:
+  say: If the site collects visitor data, we can add cookie consent management and a privacy policy. The legal wording is worth checking with a lawyer.
+  facts: [Privacy policy on its own page, Consent before non-essential cookies, This is not legal advice]
+accessibility:
+  say: There are accessibility rules for websites that serve the public. It is worth checking with an accessibility consultant whether they apply, and a plugin alone is usually not enough.
+  facts: [Applies mostly to public-facing services, An accessibility statement is needed, This is not legal advice]
+design-change:
+  say: We can change the design, from a small refresh to a full redesign. First we understand what you want to achieve, then pick the right way.
+  facts: [Small refresh or full redesign, Work on staging, Define the goal first]
+add-page:
+  say: Adding a page is usually not a big deal. You can do it yourselves in the admin, or we can do it for you.
+  facts: [Add a page in the admin, Add it to the menu if needed, Match the existing design]
+email-hosting:
+  say: Email addresses on your domain, like name@company, can be set up with a dedicated email service or a server. It is best to keep them separate from the website hosting.
+  facts: [MX records decide where email goes, Google or Microsoft, Keep email separate from the site]
+two-factor:
+  say: Two-factor authentication means that besides the password you also need a code from your phone. It is one of the simplest and most effective ways to protect the site admin.
+  facts: [One-time code from an app, Recommended for all admin users, Protects even if the password leaks]
+security-waf:
+  say: A WAF is a firewall that blocks malicious traffic before it reaches the site. With a security plugin and regular updates, it reduces the risk significantly.
+  facts: [Blocks bots and attacks, Server level or Cloudflare, Does not replace updates and backups]
+image-optimization:
+  say: Heavy images are one of the common reasons for a slow site. We compress them, convert to a modern format like WebP, and load them smartly.
+  facts: [WebP is smaller than JPG, Match image size to display, Lazy loading saves resources]
+analytics-search-console:
+  say: Google Analytics shows who visits the site and what they do. Search Console shows how Google sees the site and which searches it appears for.
+  facts: [Analytics measures visitor behaviour, Search Console measures Google visibility, Both can be connected]
+builder-vs-wordpress:
+  say: A site builder like Wix is quick to start and closed. WordPress gives more flexibility, control and ownership of the site, and needs a bit more maintenance.
+  facts: [Closed builders limit flexibility, WordPress gives full control, The choice depends on the business need]
+forms-not-arriving:
+  say: When forms do not arrive, the problem is usually the email sending from the server. It is typically solved with an SMTP setup and checking the email does not land in spam.
+  facts: [Check the spam folder, Use SMTP instead of default sending, Check the form's recipient address]
+uptime-monitoring:
+  say: Uptime monitoring checks the site every few minutes, and if it goes down an alert is sent, so it can be handled even before anyone notices.
+  facts: [Automatic check every few minutes, Alert by email or message, Gives an uptime report over time]

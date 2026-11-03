@@ -71,7 +71,7 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
   const lat = readJsonl(join(dir, "latency.jsonl"));
   const usage = readJsonl(join(dir, "usage.jsonl"));
   const bank = loadBank();
-  const sayToId = new Map(bank.map((c) => [c.say.replace(/[*_#`>]+/g, "").trim(), c.id]));
+  const sayToId = new Map(bank.flatMap((c) => [[c.say.replace(/[*_#`>]+/g, "").trim(), c.id] as [string, string], ...[c.en?.say, ...(c.en?.alts ?? [])].filter(Boolean).map((x) => [x!.trim(), c.id] as [string, string])]));   // English card texts map to the same id
 
   // 1. Assign every STT word to the script turn it overlaps most (stream-relative word times vs the rendered timeline).
   //    A final can span several turns (Deepgram merges fast speech); its words are split between them.
