@@ -11,7 +11,7 @@ import { DATA } from "./env.ts";
 import { tokens } from "./normalize.ts";
 
 /** What the user typed before the call. `mustCover` items are checked against the transcript with covered(). */
-export type Brief = { who?: string; goal?: string; notes?: string[]; mustCover?: string[]; createdAt?: string };
+export type Brief = { planId?: string; title?: string; who?: string; goal?: string; notes?: string[]; mustCover?: string[]; createdAt?: string };
 export const BRIEF_DIR = join(DATA, "private", "briefs");
 export const LATEST_BRIEF = join(BRIEF_DIR, "latest.yaml");
 
@@ -78,5 +78,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const b: Brief = { who: who || undefined, goal: goal || undefined, notes, mustCover, createdAt: new Date().toISOString() };
   mkdirSync(BRIEF_DIR, { recursive: true, mode: 0o700 });
   writeFileSync(LATEST_BRIEF, YAML.stringify(b), { mode: 0o600 });
-  console.log(`Saved ${LATEST_BRIEF}. The next call in the next 6 hours uses it (pnpm call --no-brief to skip).`);
+  console.log(`Saved ${LATEST_BRIEF}. The Wingman app turns it into a prepared meeting the next time it looks (pick it there to start). Running pnpm call yourself uses it once, within 6 hours (--no-brief skips it).`);
 }

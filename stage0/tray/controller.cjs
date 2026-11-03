@@ -4,12 +4,13 @@
 const nodeFs = require("node:fs");
 const nodePath = require("node:path");
 const defaultLib = require("./lib.cjs");
+const Plans = require("../shared/plans.js");
 
 /** The complete list of things that can ever be written to a call's stdin. Notes are cleaned and capped before they get here. */
 const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "ask", "stop", "stop-delete", "stop-no-summary", "skip-summary"]);
 
 /**
- * Builds the controller. o: { root, spawn (child_process.spawn-like), lib?, fs?, path?, bin?, logPath?, tmpDir?, env?, briefFile?,
+ * Builds the controller. o: { root, spawn (child_process.spawn-like), lib?, fs?, path?, bin?, logPath?, tmpDir?, env?, plans?,
  * notify?(title, body), onChange?(), setTimeout?, kill?, doctorTimeoutMs? } (fs/spawn/timers are injectable for tests).
  * State lives in lib.reduce; every change calls onChange so the tray and window can redraw. Only one call child at a time.
  */
@@ -41,10 +42,10 @@ function createController(o) {
   }
 
   /** Spawns src/call.ts. Returns false if a call is already running. Reads its stdout "@@wingman" lines into state and notifications. */
-  function startCall(extraArgs = [], extraEnv = {}) {
+  function startCall(extraArgs = [], extraEnv = {}, planId = "") {
     if (child) return false;
     dropLingering();
-    set({ ev: "starting", practice: !!extraEnv.WINGMAN_STT_SCRIPT, noAi: extraArgs.includes("--no-ai") });
+    set({ ev: "starting", practice: !!extraEnv.WINGMAN_STT_SCRIPT, noAi: extraArgs.includes("--no-ai"), planId });
     const env = { ...(o.env || process.env), WINGMAN_CONTROL: "1", FORCE_COLOR: "0", ...appEnv(), ...extraEnv };
     if (logPath) try { fs.writeFileSync(logPath, "", { mode: 0o600 }); fs.chmodSync(logPath, 0o600); } catch { /* best effort */ }
     // detached: call.ts leads its own process group, so a stuck call can be force-killed with everything under it.
@@ -62,6 +63,7 @@ function createController(o) {
         if (!msg) continue;
         logLine(line.trim());
         const before = set(msg);
+        if (msg.ev === "consented" && !state.practice && state.planId) usePlan();   // a real call is live: its prepared meeting is used up (a practice call never does)
         for (const n of lib.notifications(before, state, msg)) notify(n.title, n.body);
         change();
         if (msg.ev === "ended") finish(c, msg.crashed ? 1 : 0);   // saved: Start is allowed again while call.ts lingers about 5 s for the answer window
@@ -76,18 +78,29 @@ function createController(o) {
     return true;
   }
 
-  /** Practice call: a pretend client plays into the real call loop with scripted AI. File mode: no mic, no system audio, no network, no cost.
-   *  When a Plan is ready the practice uses it (its notes and checklist); the plan file is passed with --brief so it is NOT used up. */
-  function practice() {
+  /** Marks the live call's prepared meeting used (its background files are dropped) and tells the menu and window. */
+  function usePlan() {
+    try { o.plans && o.plans.markUsed(state.planId, state.callId); } catch { /* the call goes on */ }
+    api.refreshPlans();
+  }
+
+  /**
+   * Practice call: a pretend client plays into the real call loop with scripted AI. File mode: no mic, no system audio, no network, no cost.
+   * o2.planId: practise with that prepared meeting; o2.quick: with none; neither: the next prepared meeting (Plans.practiceDefault).
+   * The meeting is passed with --brief and is NOT used up. False when a call runs, or when the named meeting is gone.
+   */
+  function practice(o2 = {}) {
     if (child) return false;
+    const pid = o2.quick ? "" : o2.planId || (o.plans ? (o.plans.practiceDefault() || {}).id || "" : "");
+    const exp = pid && o.plans ? o.plans.exportBrief(pid) : null;
+    if (o2.planId && !exp) return false;
     dropLingering();
     const script = path.join(root, "data", "demo", "demo-call.json"), gapMs = 4500;
     let lines = 16; try { lines = JSON.parse(fs.readFileSync(script, "utf8")).length; } catch { /* default */ }
     const wav = path.join(tmpDir, "wingman-practice.wav");
     lib.writeSilentWav(wav, Math.ceil((lines * gapMs) / 1000) + 12);
-    const usePlan = !!o.briefFile && state.briefReady && fs.existsSync(o.briefFile);
-    const ok = startCall(["--profile", "demo", "--file", wav, ...(usePlan ? ["--brief", o.briefFile] : ["--no-brief"])], { WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: String(gapMs) });
-    if (ok) notify("Practice call", `A pretend caller is talking${usePlan ? ", and your Plan is in use" : ""}. Watch the answer window on your second screen. Nothing is sent anywhere.`);
+    const ok = startCall(["--profile", "demo", "--file", wav, ...(exp ? ["--brief", exp.briefFile] : ["--no-brief"])], { WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: String(gapMs), ...(exp ? { WINGMAN_ATTACH_DIR: exp.attachDir } : {}) }, exp ? exp.meeting.id : "");
+    if (ok) notify("Practice call", `A pretend caller is talking${exp ? `, and your Plan "${Plans.label(exp.meeting).slice(0, 40)}" is in use` : ""}. Watch the answer window on your second screen. Nothing is sent anywhere.`);
     return ok;
   }
 
@@ -120,7 +133,17 @@ function createController(o) {
     stopNoSummary: () => stop(false, true),
     /** While a call is stopping and the summary has not finished: give it up. The call stays saved. */
     skipSummary: () => !!child && state.phase === "stopping" && !state.summarySkipped && state.stopPhase !== "done" && send("skip-summary") && (set({ ev: "summaryskip" }), change(), true),
-    start: (o2 = {}) => startCall(o2.noAi ? ["--no-ai"] : []),
+    /**
+     * Start a real call. o2.planId: with that prepared meeting (it must still be ready, else false); otherwise a quick call with NO Plan
+     * (--no-brief), which never uses up or changes any prepared meeting. o2.noAi: Prepared cards only.
+     */
+    start: (o2 = {}) => {
+      if (child) return false;
+      const ai = o2.noAi ? ["--no-ai"] : [];
+      if (!o2.planId) return startCall([...ai, "--no-brief"]);
+      const exp = o.plans ? o.plans.exportBrief(o2.planId) : null;
+      return exp ? startCall([...ai, "--brief", exp.briefFile], { WINGMAN_ATTACH_DIR: exp.attachDir }, exp.meeting.id) : false;
+    },
     practice,
     consent: () => !!child && state.phase === "waiting" && send("consent"),
     setQuiet: (on) => !!child && state.phase === "live" && send(on ? "quiet on" : "quiet off"),
@@ -134,7 +157,14 @@ function createController(o) {
     stopDelete: () => stop(true),
     briefSaved: () => { set({ ev: "brief" }); change(); },
     briefCleared: () => { set({ ev: "boot", briefReady: false }); change(); },
-    boot: (briefReady) => { set({ ev: "boot", briefReady }); change(); },
+    boot: (briefReady, plansKey) => { set({ ev: "boot", briefReady, plansKey }); change(); },
+    /** Re-reads the prepared meetings (they change from the window, the CLI or by expiring); redraws only when the list changed. */
+    refreshPlans: () => {
+      if (!o.plans) return;
+      let list = []; try { list = o.plans.list(); } catch { return; }
+      const key = Plans.signature(list);
+      if (key !== state.plansKey || (list.length > 0) !== state.briefReady) { set({ ev: "boot", briefReady: list.length > 0, plansKey: key }); change(); }
+    },
     /** Full doctor (microphone, audio, Deepgram, Haiku). Refused while a call runs. Resolves to lib.doctorSummary. */
     runDoctor: (opts = {}) => new Promise((resolve) => {
       if (child) return resolve({ ran: false, ok: false, verdict: "BUSY", failing: [{ text: "A call is running. Check again after it ends.", fix: "" }], warnings: [], at: Date.now() });

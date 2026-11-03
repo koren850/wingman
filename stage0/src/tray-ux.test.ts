@@ -42,10 +42,13 @@ test("reducer: mode event and --no-ai set the effective AI mode", () => {
   assert.equal(lib.reduce(s, { ev: "mode", noAi: true }).noAi, true);
 });
 
-test("a practice call that goes live keeps the Plan; a real call uses it up", () => {
+test("reducer: going live no longer clears the prepared-meeting flag (several meetings; the controller marks the used one)", () => {
   const ready = { ...lib.initialState(), briefReady: true };
   assert.equal(lib.reduce(lib.reduce(ready, { ev: "starting", practice: true }), { ev: "consented" }).briefReady, true);
-  assert.equal(lib.reduce(lib.reduce(ready, { ev: "starting" }), { ev: "consented" }).briefReady, false);
+  const real = lib.reduce(lib.reduce(ready, { ev: "starting", planId: "mabc123" }), { ev: "consented" });
+  assert.equal(real.briefReady, true); assert.equal(real.planId, "mabc123", "the live call remembers which meeting it uses");
+  assert.equal(lib.reduce(lib.reduce(ready, { ev: "starting" }), { ev: "consented" }).planId, "", "a quick call has no meeting");
+  assert.equal(lib.reduce(ready, { ev: "boot", briefReady: true, plansKey: "k1" }).plansKey, "k1");
 });
 
 // ---- controller: practice uses the Plan, exposes new state ----
@@ -66,29 +69,70 @@ function fake(extra: object = {}) {
   return { ctl, spawned, dir, notes };
 }
 
-test("practice: uses the saved Plan (--brief <file>, not --no-brief) when one is ready", () => {
-  const dir = mkdtempSync(join(tmpdir(), "wm-plan-")), plan = join(dir, "latest.yaml");
-  writeFileSync(plan, 'who: "Dana"\nnotes: []\nmustCover: []\n');
-  const { ctl, spawned, notes } = fake({ briefFile: plan });
-  ctl.boot(true);
+const { createPlanStore } = createRequire(import.meta.url)("../tray/plans.cjs");
+function withStore() {
+  const bdir = mkdtempSync(join(tmpdir(), "wm-plan-")), plans = createPlanStore({ dir: bdir, pdftotext: "" });
+  return { bdir, plans, ...fake({ plans }) };
+}
+
+test("practice: uses the next prepared meeting (--brief <its file>, its files folder), is not used up", () => {
+  const { ctl, spawned, notes, plans } = withStore();
+  const m = plans.create({ who: "Dana, Acme", mustCover: ["price"], at: Date.now() + 3600_000 }).meeting;
+  plans.create({ who: "Noam, Beta" });
   assert.equal(ctl.practice(), true);
   const a = spawned[0].args;
-  assert.ok(!a.includes("--no-brief")); assert.equal(a[a.indexOf("--brief") + 1], plan);
+  assert.ok(!a.includes("--no-brief")); assert.equal(a[a.indexOf("--brief") + 1], plans.dirOf(m.id) + "/brief.yaml");
+  assert.equal(spawned[0].opts.env.WINGMAN_ATTACH_DIR, plans.dirOf(m.id) + "/files");
   assert.ok(a.includes("--file") && a.includes("demo"), "still the offline file mode with the demo profile");
-  assert.match(notes.find((n) => n[0] === "Practice call")![1], /Plan is in use/);
-  assert.equal(ctl.getState().briefReady, true);
+  assert.match(notes.find((n) => n[0] === "Practice call")![1], /Dana, Acme.*in use/);
   spawned[0].say("consented", { id: "P1" });
-  assert.equal(ctl.getState().briefReady, true, "a practice call does not use up the Plan");
+  assert.equal(plans.get(m.id).status, "ready", "a practice call does not use up the meeting");
 });
 
-test("practice: no Plan, or a Plan file that vanished, keeps --no-brief", () => {
-  const dir = mkdtempSync(join(tmpdir(), "wm-plan-"));
-  const a = fake({ briefFile: join(dir, "latest.yaml") }); a.ctl.boot(true); a.ctl.practice();
-  assert.ok(a.spawned[0].args.includes("--no-brief"), "file missing");
-  const b = fake({ briefFile: join(dir, "latest.yaml") }); b.ctl.boot(false); b.ctl.practice();
-  assert.ok(b.spawned[0].args.includes("--no-brief") && !b.spawned[0].args.includes("--brief"));
-  const c = fake(); c.ctl.boot(true); c.ctl.practice();
-  assert.ok(c.spawned[0].args.includes("--no-brief"), "no plan path known");
+test("practice: --quick or no meetings means --no-brief; a named meeting that is gone refuses", () => {
+  const a = withStore(); a.plans.create({ who: "Dana" }); assert.equal(a.ctl.practice({ quick: true }), true);
+  assert.ok(a.spawned[0].args.includes("--no-brief") && !a.spawned[0].args.includes("--brief"));
+  const b = withStore(); assert.equal(b.ctl.practice(), true); assert.ok(b.spawned[0].args.includes("--no-brief"), "no meetings");
+  const c = withStore(); c.plans.create({ who: "A" }); c.plans.create({ who: "B" }); c.ctl.practice(); assert.ok(c.spawned[0].args.includes("--no-brief"), "two meetings and none is next: no guessing");
+  const d = withStore(); assert.equal(d.ctl.practice({ planId: "mnope0000" }), false); assert.equal(d.spawned.length, 0);
+  const e = fake(); e.ctl.practice(); assert.ok(e.spawned[0].args.includes("--no-brief"), "no store at all");
+});
+
+test("start: a quick call passes --no-brief and touches no meeting; a chosen meeting passes --brief and is used up only when the call goes live", () => {
+  const { ctl, spawned, plans } = withStore();
+  const a = plans.create({ who: "Dana", at: Date.now() + 3600_000 }).meeting, b = plans.create({ who: "Noam" }).meeting;
+  assert.equal(ctl.start({}), true);
+  assert.ok(spawned[0].args.includes("--no-brief") && !spawned[0].args.includes("--brief"));
+  assert.equal(spawned[0].opts.env.WINGMAN_ATTACH_DIR, undefined);
+  spawned[0].say("consented", { id: "Q1" });
+  assert.equal(plans.list().length, 2, "a quick call uses up nothing");
+  spawned[0].emit("exit", 0);
+  assert.equal(ctl.start({ planId: b.id, noAi: true }), true);
+  const args = spawned[1].args;
+  assert.equal(args[args.indexOf("--brief") + 1], plans.dirOf(b.id) + "/brief.yaml"); assert.ok(args.includes("--no-ai") && !args.includes("--no-brief"));
+  assert.equal(ctl.getState().planId, b.id);
+  spawned[1].say("waiting", { id: "R1" });
+  assert.equal(plans.get(b.id).status, "ready", "not used up before the call is live");
+  spawned[1].say("consented");
+  assert.equal(plans.get(b.id).status, "used"); assert.equal(plans.get(b.id, { includeUsed: true }).callId, "R1");
+  assert.equal(plans.get(a.id).status, "ready", "the other meeting is untouched");
+  assert.deepEqual(plans.list().map((m: any) => m.id), [a.id]);
+  assert.equal(ctl.getState().briefReady, true);
+  spawned[1].emit("exit", 0);
+  assert.equal(ctl.start({ planId: b.id }), false, "a used meeting cannot start a call again");
+  assert.equal(ctl.start({ planId: "mnope0000" }), false);
+});
+
+test("start: a failed or stopped-before-live call does not use the meeting up; refreshPlans redraws only on a change", () => {
+  const { ctl, spawned, plans } = withStore();
+  const m = plans.create({ who: "Dana" }).meeting;
+  ctl.start({ planId: m.id }); spawned[0].emit("exit", 1);
+  assert.equal(plans.get(m.id).status, "ready");
+  let changes = 0; const c2 = fake({ plans: plans, onChange: () => changes++ });
+  c2.ctl.refreshPlans(); const n = changes; c2.ctl.refreshPlans();
+  assert.equal(changes, n, "no change, no redraw"); assert.equal(c2.ctl.getState().briefReady, true);
+  plans.create({ who: "Another" }); c2.ctl.refreshPlans(); assert.equal(changes, n + 1);
+  assert.notEqual(c2.ctl.getState().plansKey, "");
 });
 
 test("controller state carries stopPhase, askArmed and the AI mode", () => {

@@ -12,15 +12,16 @@ const { askClock } = require("../shared/ask.js");
 const { createController } = require("./controller.cjs");
 const windowHost = require("../dashboard/window.cjs");
 const { createControlServer } = require("./control-socket.cjs");
+const { createPlanStore } = require("./plans.cjs");
 
 const ROOT = path.join(__dirname, "..");
 const ICON = path.join(ROOT, "..", "brand", "png", "trayTemplate.png");
 const LOGS = path.join(ROOT, "calls", "tray.log");
-const BRIEF_FILE = path.join(process.env.WINGMAN_BRIEFS_DIR || path.join(ROOT, "data", "private", "briefs"), "latest.yaml");
+const BRIEFS_DIR = process.env.WINGMAN_BRIEFS_DIR || path.join(ROOT, "data", "private", "briefs");
 const SNAPSHOT = !!process.env.WINGMAN_DASHBOARD_SNAPSHOT;
 const WANT_WINDOW = SNAPSHOT || process.argv.includes("--open-window") || process.env.WINGMAN_OPEN_WINDOW === "1";
 
-let tray, clock, promptWin, lastMenuKey = "", host, ctl, controlServer;
+let plans, tray, clock, promptWin, lastMenuKey = "", host, ctl, controlServer;
 
 // Single-instance guard (not in snapshot mode, so snapshots can run beside a real app).
 let gotLock = true;
@@ -116,9 +117,12 @@ function refresh() {
     { type: "separator" },
   ];
   if (!running) {
-    items.push({ label: "Start call", click: () => ctl.start({}) });
-    items.push({ label: "Start call without AI (Prepared cards only)", click: () => ctl.start({ noAi: true }) });
-    items.push({ label: s.briefReady ? "Plan a call: plan ready \u2713 (edit\u2026)" : "Plan a call\u2026", click: () => openWindow({ view: "home", focus: "plan" }) });
+    // Two clear paths: a quick call (no Plan) or a chosen prepared meeting. Starting never picks a Plan by itself.
+    let meetings = []; try { meetings = lib.planMenu(plans.list(), Date.now()); } catch { /* the menu still works without the list */ }
+    items.push({ label: "Start quick call", click: () => ctl.start({}) });
+    items.push({ label: "Start prepared meeting", enabled: meetings.length > 0, submenu: meetings.length ? meetings.map((m) => ({ label: m.label, click: () => ctl.start({ planId: m.planId }) })) : [{ label: "No prepared meetings", enabled: false }] });
+    items.push({ label: "Start quick call without AI (Prepared cards only)", click: () => ctl.start({ noAi: true }) });
+    items.push({ label: "Prepare a meeting\u2026", click: () => openWindow({ view: "home", focus: "plan" }) });
     items.push({ type: "separator" });
     items.push({ label: "Try a practice call (offline, free)", click: () => ctl.practice() });
   } else {
@@ -147,16 +151,17 @@ app.on("second-instance", (_e, argv) => { host && host.open({ view: "home" }); }
 app.whenReady().then(() => {
   if (!gotLock) return;
   if (!SNAPSHOT) fs.mkdirSync(path.join(ROOT, "calls"), { recursive: true });
+  plans = createPlanStore({ dir: BRIEFS_DIR, readOnly: SNAPSHOT });   // snapshot mode never converts, sweeps or writes
   ctl = createController({
     // Snapshot mode can never start anything: the spawn function itself refuses.
     spawn: SNAPSHOT ? () => { throw new Error("snapshot mode never spawns a process"); } : spawn,
-    root: ROOT, briefFile: BRIEF_FILE, logPath: SNAPSHOT ? "" : LOGS, tmpDir: app.getPath("temp"), notify: (t, b) => notify(t, b, /summary ready/i.test(t) ? { view: "call", id: ctl.getState().callId, tab: "followup" } : undefined), onChange,
+    root: ROOT, plans, logPath: SNAPSHOT ? "" : LOGS, tmpDir: app.getPath("temp"), notify: (t, b) => notify(t, b, /summary ready/i.test(t) ? { view: "call", id: ctl.getState().callId, tab: "followup" } : undefined), onChange,
   });
-  host = windowHost.create({ app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller: ctl });
-  ctl.boot(lib.briefReady(BRIEF_FILE));
+  host = windowHost.create({ app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller: ctl, plans });
+  ctl.refreshPlans();
   // Local control channel for the `wingman` CLI: owner-only Unix socket, fixed command list (tray/control-socket.cjs). Never in snapshot mode.
   if (!SNAPSHOT) {
-    controlServer = createControlServer({ controller: ctl, lib, briefFile: BRIEF_FILE, log: logLine, info: () => ({ pid: process.pid, version: app.getVersion() }) });
+    controlServer = createControlServer({ controller: ctl, lib, plans, log: logLine, info: () => ({ pid: process.pid, version: app.getVersion() }) });
     controlServer.start().catch((e) => logLine("control socket not started: " + e.message));
   }
   if (!SNAPSHOT) {
@@ -166,8 +171,8 @@ app.whenReady().then(() => {
     if (img.isEmpty()) tray.setTitle("Wingman");
     refresh();
     registerKeys();
-    // 1 s tick: updates the live timer, and picks up a Plan file written or expired outside the app (e.g. by the CLI).
-    clock = setInterval(() => { refresh(); const b = lib.briefReady(BRIEF_FILE); if (b !== state().briefReady && !ctl.isRunning()) ctl.boot(b); }, 1000);
+    // 1 s tick: updates the live timer, and picks up prepared meetings written, used or expired outside the app (e.g. by the CLI).
+    clock = setInterval(() => { ctl.refreshPlans(); refresh(); }, 1000);
   }
   if (WANT_WINDOW) host.open({ view: "home" });
 });

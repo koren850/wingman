@@ -53,7 +53,7 @@ function shape(a, fields) {
  * Builds the control server (does not listen until start()). Returns { start, stop, path, handle, COMMANDS }.
  * o.controller   tray/controller.cjs instance
  * o.lib          tray/lib.cjs
- * o.briefFile    path of latest.yaml (brief_refresh)
+ * o.plans        prepared-meetings store (tray/plans.cjs): `start` and `practice` choose a meeting through it; brief_refresh re-reads it
  * o.info         () => extra fields for ping/status (version, pid)
  */
 function createControlServer(o) {
@@ -63,6 +63,8 @@ function createControlServer(o) {
   const sockPath = o.socketPath || socketPath(o.env);
   const uid = o.uid !== undefined ? o.uid : (process.getuid ? process.getuid() : -1);
   const log = o.log || (() => {});
+  const Plans = require("../shared/plans.js");
+  const plans = o.plans;
   const stamps = [];            // timestamps of rate-limited commands
   let server, clients = 0;
 
@@ -75,8 +77,39 @@ function createControlServer(o) {
   /** The state fields the CLI may see. Whitelisted by hand so no call content (transcript, cards) can leak onto the socket. */
   const view = () => {
     const s = ctl.getState();
-    return { running: !!s.running, phase: s.phase, callId: s.callId || "", practice: !!s.practice, quiet: !!s.quiet, startedAt: s.startedAt || 0, liveAt: s.liveAt || 0, client: s.client || "", proposed: s.proposed || "", notes: s.notes | 0, briefReady: !!s.briefReady, stopPhase: s.stopPhase || "", askArmed: !!s.askArmed, askUntil: s.askArmed ? Number(s.askUntil) || 0 : 0, summarySkipped: !!s.summarySkipped, noAi: !!s.noAi };
+    return { running: !!s.running, phase: s.phase, callId: s.callId || "", practice: !!s.practice, quiet: !!s.quiet, startedAt: s.startedAt || 0, liveAt: s.liveAt || 0, client: s.client || "", proposed: s.proposed || "", notes: s.notes | 0, briefReady: !!s.briefReady, stopPhase: s.stopPhase || "", askArmed: !!s.askArmed, askUntil: s.askArmed ? Number(s.askUntil) || 0 : 0, summarySkipped: !!s.summarySkipped, noAi: !!s.noAi, planId: s.planId || "" };
   };
+
+  /** The small public view of a meeting: id and names only, no notes or files. */
+  const summary = (m) => (m ? { id: m.id, title: m.title, who: m.who, name: Plans.label(m), at: m.at || 0 } : null);
+  /** Finds a ready meeting by id or unique prefix: { ok:true, meeting } or a coded refusal. */
+  function findReady(idLike) {
+    if (!plans) return err("not_found", "This app has no prepared meetings.");
+    const r = plans.resolve(idLike);
+    if (r.error === "ambiguous") return err("choose_plan", `That id matches more than one prepared meeting. ${listing()}`);
+    if (!r.meeting) return err("not_found", `No such prepared meeting. ${listing()}`);
+    if (r.meeting.status !== "ready") return refused("That prepared meeting was already used by a call. Prepare a new one or use --quick.");
+    return { ok: true, meeting: r.meeting };
+  }
+  /** "Prepared meetings: id (name, time), ..." for hints. */
+  function listing() {
+    const l = plans ? plans.list() : [];
+    if (!l.length) return "There are no prepared meetings.";
+    return "Prepared meetings: " + l.slice(0, 8).map((m) => `${m.id} (${Plans.menuLabel(m, now())})`).join("; ") + ". Use --quick for a call with no Plan, or --plan <id>.";
+  }
+  /**
+   * Which Plan does a real start use? --quick: none. planId: that meeting. Neither (plain `wingman start`): no prepared meetings at all means a quick
+   * call; exactly one meeting scheduled within 30 minutes of now is used; anything else is refused with the list ("choose_plan").
+   */
+  function resolveStart(a) {
+    if (a.quick) return { ok: true, meeting: null, reason: "quick call requested" };
+    if (a.planId) { const r = findReady(a.planId); return r.ok ? { ...r, reason: "chosen" } : r; }
+    const all = plans ? plans.list() : [];
+    if (!all.length) return { ok: true, meeting: null, reason: "no prepared meetings" };
+    const due = plans.dueNow();
+    if (due.length === 1) return { ok: true, meeting: due[0], reason: "the only meeting due within 30 minutes" };
+    return err("choose_plan", `${due.length ? "More than one prepared meeting is due now" : "A prepared meeting exists but none is due within 30 minutes"}, so Wingman will not guess. ${listing()}`);
+  }
 
   // Allowlist: each entry validates its args (`args`) and then runs (`run`). `long` marks commands that may take a while (doctor).
   const COMMANDS = {
@@ -88,13 +121,25 @@ function createControlServer(o) {
         return { ok: true, app: "wingman", ...(o.info ? o.info() : {}), state: view(), health: Object.entries(s.health || {}).map(([id, h]) => ({ id, level: h.level, text: h.text })), overlayDown: s.overlayDown || "", offReason: s.offReason || "", doctorRunning: !!s.doctorRunning, doctor: s.doctor || null, lastError: s.lastError ? String(s.lastError).slice(0, 200) : "", endedCleanly: !!s.endedCleanly, summaryOk: !!s.summaryOk };
       },
     },
+    // start: quick (no Plan) or planId (a prepared meeting). With neither, the app decides safely (see resolveStart).
     start: {
-      args: (a) => shape(a, { noAi: { type: "boolean" } }),
-      run: (a) => (ctl.isRunning() ? refused("A call is already running. Stop it first (wingman stop).") : paced(() => done(ctl.start({ noAi: !!a.noAi }), "Could not start a call."))),
+      args: (a) => { const r = shape(a, { noAi: { type: "boolean" }, quick: { type: "boolean" }, planId: { type: "string", min: 1, max: 40 } }); if (r.quick && r.planId) throw new Error('give either "quick" or "planId", not both'); return r; },
+      run: (a) => {
+        if (ctl.isRunning()) return refused("A call is already running. Stop it first (wingman stop).");
+        const pick = resolveStart(a);
+        if (!pick.ok) return pick;
+        return paced(() => { const r = done(ctl.start({ noAi: !!a.noAi, planId: pick.meeting ? pick.meeting.id : "" }), "Could not start a call."); return r.ok ? { ...r, mode: pick.meeting ? "plan" : "quick", plan: summary(pick.meeting), reason: pick.reason } : r; });
+      },
     },
     practice: {
-      args: noArgs,
-      run: () => (ctl.isRunning() ? refused("A call is already running. Stop it first (wingman stop).") : paced(() => done(ctl.practice(), "Could not start a practice call."))),
+      args: (a) => { const r = shape(a, { quick: { type: "boolean" }, planId: { type: "string", min: 1, max: 40 } }); if (r.quick && r.planId) throw new Error('give either "quick" or "planId", not both'); return r; },
+      run: (a) => {
+        if (ctl.isRunning()) return refused("A call is already running. Stop it first (wingman stop).");
+        let m = null;
+        if (a.planId) { const r = findReady(a.planId); if (!r.ok) return r; m = r.meeting; }
+        else if (!a.quick && plans) m = plans.practiceDefault();
+        return paced(() => { const r = done(ctl.practice(a.quick ? { quick: true } : m ? { planId: m.id } : { quick: true }), "Could not start a practice call."); return r.ok ? { ...r, mode: m ? "plan" : "quick", plan: summary(m) } : r; });
+      },
     },
     consent: { args: noArgs, run: () => { const s = ctl.getState(); return need(ctl.isRunning() && s.phase === "waiting", "No call is waiting to start listening. This only applies when \"Ask me before listening starts\" is on.") || done(ctl.consent(), "Start listening was not accepted. Check wingman status."); } },
     quiet: { args: (a) => shape(a, { on: { type: "boolean", required: true } }), run: (a) => need(ctl.getState().phase === "live", "Quiet mode can only change while a call is live. Start a call first.") || done(ctl.setQuiet(a.on), "Could not change quiet mode.") },
@@ -108,7 +153,7 @@ function createControlServer(o) {
       run: (a) => need(a.confirm === true, "Deleting needs confirm:true.") || need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).") || paced(() => done(ctl.stopDelete(), "Could not stop and delete the call.")),
     },
     doctor: { long: true, args: (a) => shape(a, { offline: { type: "boolean" } }), run: async (a) => ({ ok: true, doctor: await ctl.runDoctor({ offline: !!a.offline }) }) },
-    brief_refresh: { args: noArgs, run: () => { if (!ctl.isRunning()) ctl.boot(lib.briefReady(o.briefFile)); return { ok: true }; } },
+    brief_refresh: { args: noArgs, run: () => { ctl.refreshPlans(); return { ok: true }; } },   // name kept for older CLIs: the prepared meetings changed on disk
   };
 
   /** Sliding 60 s window over start/stop-type commands. Returns "" and records the stamp if allowed, else a message. */

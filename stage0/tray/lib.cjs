@@ -5,12 +5,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { askClock } = require("../shared/ask.js");
+const Plans = require("../shared/plans.js");
 const PREFIX = "@@wingman ";
 const STOP_PHASES = ["saving", "summary", "done"];
 
 /** Fresh call state. Every field the reducer, menu and CLI `status` read must exist here. */
 function initialState() {
-  return { offReason: "", phase: "idle", startedAt: 0, liveAt: 0, quiet: false, proposed: "", client: "", notes: 0, health: {}, briefReady: false, doctorRunning: false, endedCleanly: false, lastError: "", callId: "", deleted: false, summaryOk: false, practice: false, stopPhase: "", askArmed: false, askUntil: 0, summarySkipped: false, noAi: false, overlayDown: "", doctor: null };
+  return { offReason: "", phase: "idle", startedAt: 0, liveAt: 0, quiet: false, proposed: "", client: "", notes: 0, health: {}, briefReady: false, plansKey: "", planId: "", doctorRunning: false, endedCleanly: false, lastError: "", callId: "", deleted: false, summaryOk: false, practice: false, stopPhase: "", askArmed: false, askUntil: 0, summarySkipped: false, noAi: false, overlayDown: "", doctor: null };
 }
 
 /** A status line from the engine (stdout line "@@wingman {json}", see PREFIX), or undefined. The prefix may follow log noise on the same line. */
@@ -24,10 +25,10 @@ function parseStatus(line) {
 function reduce(s, m) {
   const n = { ...s, health: { ...s.health } };
   switch (m.ev) {
-    case "boot": n.briefReady = !!m.briefReady; break;
-    case "starting": Object.assign(n, initialState(), { phase: "starting", startedAt: Date.now(), briefReady: s.briefReady, doctor: s.doctor, practice: !!m.practice, noAi: !!m.noAi }); break;
+    case "boot": n.briefReady = !!m.briefReady; n.plansKey = typeof m.plansKey === "string" ? m.plansKey : s.plansKey; break;   // briefReady = at least one prepared meeting is waiting; plansKey changes when the list does
+    case "starting": Object.assign(n, initialState(), { phase: "starting", startedAt: Date.now(), briefReady: s.briefReady, plansKey: s.plansKey, planId: typeof m.planId === "string" ? m.planId : "", doctor: s.doctor, practice: !!m.practice, noAi: !!m.noAi }); break;
     case "waiting": n.phase = "waiting"; n.callId = m.id || ""; break;
-    case "consented": n.phase = "live"; n.liveAt = Date.now(); if (!n.practice) n.briefReady = false; if (m.id) n.callId = String(m.id); break;   // a practice call does not use up the Plan; file/practice calls never pass "waiting": the id comes here
+    case "consented": n.phase = "live"; n.liveAt = Date.now(); if (m.id) n.callId = String(m.id); break;   // the controller marks the call's prepared meeting used (a practice call never does); file/practice calls never pass "waiting": the id comes here
     case "propose": n.proposed = String(m.title || ""); break;
     case "client": n.client = String(m.title || ""); break;
     case "quiet": n.quiet = !!m.on; break;
@@ -152,7 +153,12 @@ function doctorSummary(out) {
 const tail = (s, n) => (s.length > n ? "…" + s.slice(-n) : s).replace(/\u001b\[[0-9;]*m/g, "");
 
 /** Menu items depend only on these fields: rebuild the menu when they change, not every second. */
-function menuKey(s, running, now = 0) { return JSON.stringify([running, askClock(s.askUntil, now), s.overlayDown, s.phase, s.proposed, s.client, s.quiet, s.askArmed, s.briefReady, s.doctorRunning, Object.keys(s.health).sort(), Object.values(s.health).map((h) => h.text)]); }
+function menuKey(s, running, now = 0) { return JSON.stringify([running, askClock(s.askUntil, now), s.overlayDown, s.phase, s.proposed, s.client, s.quiet, s.askArmed, s.briefReady, s.plansKey, s.doctorRunning, Object.keys(s.health).sort(), Object.values(s.health).map((h) => h.text)]); }
+
+/** The "Start prepared meeting" submenu: [{ planId, label }], soonest first. Only meetings that can start a call; [] when none. `list` comes from tray/plans.cjs. */
+function planMenu(list, now) {
+  return Plans.ready(list, now).map((m) => ({ planId: m.id, label: Plans.menuLabel(m, now) }));
+}
 
 /** 16 kHz stereo 16-bit silence: the clock for a practice call in file mode. */
 function writeSilentWav(file, seconds) {
@@ -229,4 +235,4 @@ async function requestQuit(o) {
   return "quit";
 }
 
-module.exports = { KEYS, OVERLAY_KEYS, createStartKey, confirmStopDelete, waitUntil, requestQuit, writeSilentWav, menuKey, PREFIX, initialState, parseStatus, reduce, notifications, view, cleanText, briefFrom, writeBrief, briefReady, readBrief, clearBrief, doctorVerdict, doctorSummary, tail, mmss };
+module.exports = { planMenu, KEYS, OVERLAY_KEYS, createStartKey, confirmStopDelete, waitUntil, requestQuit, writeSilentWav, menuKey, PREFIX, initialState, parseStatus, reduce, notifications, view, cleanText, briefFrom, writeBrief, briefReady, readBrief, clearBrief, doctorVerdict, doctorSummary, tail, mmss };

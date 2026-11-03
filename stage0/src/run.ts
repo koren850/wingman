@@ -1134,6 +1134,7 @@ async function main() {
   setInterval(() => void frameRound(), 5000).unref();
   setInterval(tipsTick, 5000).unref();
   setInterval(reminderTick, 30_000).unref();
+  if (brief?.planId) log.write("events", { type: "plan.used", planId: brief.planId, title: brief.title ?? "" });   // which prepared meeting this call used (ids and names only)
   if (brief) console.log(`Brief loaded: ${[brief.who, brief.goal].filter(Boolean).join(" · ") || "(notes only)"}${brief.mustCover?.length ? ` · must cover: ${brief.mustCover.join(", ")}` : ""}`);
   console.log(spotter ? `Fact cards: ${spotter.size.clients} clients, ${spotter.size.domains} domains (snapshot ${snapshot?.generatedAt?.slice(0, 10) ?? "?"})` : "Fact cards: off (no snapshot at facts.file)");
   sup.tick();

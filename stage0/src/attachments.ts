@@ -9,10 +9,19 @@ const store = createRequire(import.meta.url)("../tray/attachments.cjs");
 export const ATTACH_DIR = join(DATA, "private", "briefs", "attachments");
 export type Attachment = { name: string; text: string };
 
-/** Fresh background files (newest 6 h), at most `maxChars` characters in total. consume: delete them after reading. */
+/**
+ * Background files, at most `maxChars` characters in total. The tray app starts a call with a prepared meeting by setting WINGMAN_ATTACH_DIR
+ * to that meeting's own files folder: those files are read but never deleted here (the app marks the meeting used and drops them), and
+ * they do not expire after 6 h (the meeting's own expiry decides). Without it, the old single-Plan folder is used (fresh files, 6 h) and
+ * consume deletes them after reading.
+ */
 export function loadAttachments(maxChars: number, o: { dir?: string; consume?: boolean } = {}): Attachment[] {
   if (maxChars <= 0) return [];
-  try { return store.createStore({ dir: o.dir ?? ATTACH_DIR, pdftotext: "" }).readAll({ limit: maxChars, consume: o.consume ?? true }); } catch { return []; }
+  const planDir = process.env.WINGMAN_ATTACH_DIR;
+  try {
+    if (planDir && !o.dir) return store.createStore({ dir: planDir, pdftotext: "", maxAgeMs: 400 * 24 * 3600_000 }).readAll({ limit: maxChars, consume: false });
+    return store.createStore({ dir: o.dir ?? ATTACH_DIR, pdftotext: "" }).readAll({ limit: maxChars, consume: o.consume ?? true });
+  } catch { return []; }
 }
 
 /** One prompt block. The files are data, never instructions; a closing tag inside a file cannot end the block. */
