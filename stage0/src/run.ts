@@ -43,7 +43,7 @@ import { callAppRunning } from "./callapp.ts";
 import { audienceByCues, classify, decideAudience, MeGate, guardMe } from "./assist.ts";
 import { detect } from "./detector.ts";
 import { guard, sanitize } from "./guards.ts";
-import { buildPrefix, runReflex, resolveBankId, type Tag } from "./reflex.ts";
+import { buildPrefix, runReflex, resolveBankId, leakedTag, type Tag } from "./reflex.ts";
 import type { SttResult, Channel, Word } from "./providers/stt/types.ts";
 import { SttChannel } from "./providers/stt/channel.ts";
 import { getSttProvider, sttChain, loadKeyterms } from "./providers/stt/index.ts";
@@ -53,7 +53,7 @@ import { SystemSource, MicSource, FileSource, peakOf } from "./audio.ts";
 import { CallLog } from "./log.ts";
 import { loadSettingsOrExit, expandHome } from "./settings.ts";
 import { CostMeter } from "./cost.ts";
-import { EchoFilter, MicGate } from "./echo.ts";
+import { EchoFilter, MicGate, resolveEchoMode, type EchoMode } from "./echo.ts";
 import { extract } from "./capture.ts";
 import { HealthSupervisor, CircuitBreaker, describeRung, type Rung } from "./health.ts";
 import { joinSplit, isBareQuestionTail, type PrevUtterance } from "./split.ts";
@@ -62,6 +62,7 @@ import { readAudioDevices, bluetoothInUse } from "./devices.ts";
 import { runSummary, formatShort } from "./summary.ts";
 import { FrameTracker, runFrame, frameText, isAgencyKind, isAgencyTopic, progress, missedMust, KIND_HE, type Frame } from "./frame.ts";
 import { TipGate, runTip, checkTip, talkRatio, talkTip, wrapUpTip, type Tip, type TimedLine } from "./tips.ts";
+import { SelfCheckGate, detectCareful, looksFactual, runSelfCheck, checkFix, MIN_WORDS } from "./selfcheck.ts";
 import { loadAttachments, backgroundBlock } from "./attachments.ts";
 import { createInterface } from "node:readline";
 
@@ -115,7 +116,7 @@ const breakers = new Map(REFLEX_MODELS.map((m) => [m, new CircuitBreaker({ failu
 const downUntil = new Map<string, number>();   // model -> epoch ms until which it is skipped (provider spend cap: 6 h; Infinity = failed to load at start)
 
 /** Card kinds. "info"/"warn"/"tip" are system cards; "me" is an answer for the user's own question. */
-type Badge = "bank" | "ai" | "stall" | "info" | "warn" | "tip" | "me";
+type Badge = "bank" | "ai" | "stall" | "info" | "warn" | "tip" | "me" | "careful" | "fix";
 /** One row of cards.jsonl as the answer window sees it. Same id = update of that card; withdraw = remove it; clear (health only) = remove the bar. */
 type Card = {
   tipType?: string;
@@ -287,8 +288,11 @@ function tipsTick() {
 }
 // Speakers mode: mic gate + echo text filter (echo.ts).
 const ECHO = S.audio.echo;
-const useGate = ECHO.mode === "gate" || ECHO.mode === "both";
-const useFilter = ECHO.mode === "filter" || ECHO.mode === "both";
+// "auto" starts as "filter" (never mutes the user) and becomes "both" only once the output device is known to be speakers.
+let echoMode: EchoMode = ECHO.mode === "auto" ? "filter" : ECHO.mode;
+let useGate = echoMode === "gate" || echoMode === "both";
+let useFilter = echoMode === "filter" || echoMode === "both";
+function setEchoMode(m: EchoMode) { echoMode = m; useGate = m === "gate" || m === "both"; useFilter = m === "filter" || m === "both"; }
 const gate = new MicGate({ hangoverMs: ECHO.gateHangoverMs, peak: ECHO.gatePeak });
 const echo = new EchoFilter({ windowMs: ECHO.filterWindowMs, threshold: ECHO.filterThreshold });
 let gatedMs = 0, echoDropped = 0;
@@ -325,7 +329,9 @@ const meTimers2 = new Set<NodeJS.Timeout>();
 let current: AbortController | undefined;   // the running answer for the other side; a new question aborts it
 let quiet = S.cards.quiet, consented = false, shuttingDown = false;   // set by startForwarding() (at once when no consent click is needed)
 const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay (a card keeps its first decision when it is updated, so it never flips)
-let shownTimes: number[] = [];
+// Cards that took a slot of the per-minute cap. A withdrawn card gives its slot back, and "buy time" lines never take one
+// (3 Nov call: stall lines and replaced cards used up the cap, and the best answer of the call was hidden).
+let shownTimes: { id: string; t: number }[] = [];
 const turnsWithCard = new Set<string>();
 
 /** The single exit for every card. Sanitizes text, decides hidden (quiet mode, or the per-minute cap unless priority), appends to cards.jsonl
@@ -335,16 +341,17 @@ function emitCard(c: Card) {
   const special = c.health || c.badge === "info" || c.badge === "tip";
   const forMe = c.badge === "me";   // answers to the user's own questions: hidden in quiet mode, but never counted against (or hidden by) the per-minute cap of cards for the other side
   let hidden = false, reason: string | undefined;
+  if (c.withdraw) shownTimes = shownTimes.filter((s) => s.id !== c.id);
   if (!special) {
     const prev = decided.get(c.id);
     if (prev) { hidden = prev.hidden; reason = prev.reason; }
     else {
       const now = Date.now();
-      shownTimes = shownTimes.filter((t) => now - t < S.cards.windowMs);
+      shownTimes = shownTimes.filter((s) => now - s.t < S.cards.windowMs);
       if (quiet) { hidden = true; reason = "quiet"; }
-      else if (forMe) { /* no cap */ }
+      else if (forMe || c.badge === "careful" || c.badge === "fix" || c.badge === "stall") { /* no cap, not counted */ }
       else if (shownTimes.length >= S.cards.maxPerMinute && !c.priority) { hidden = true; reason = "cap"; }
-      else shownTimes.push(now);
+      else shownTimes.push({ id: c.id, t: now });
       decided.set(c.id, { hidden, reason });
       if (!turnsWithCard.has(c.turnId)) {
         turnsWithCard.add(c.turnId);
@@ -357,7 +364,7 @@ function emitCard(c: Card) {
   if (c.clear) return;
   if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall" || forMe)) tipGate.noteAnswer(Date.now());   // no tip right after an answer card
   if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall")) lastThemCardAt = Date.now();      // a fresh answer for the other side: answers for the user must not push it off the screen
-  const badge = { bank: "📗 prepared", ai: "🤖 AI", stall: "⏸ buy time", info: "ℹ️ info", warn: "⚠️ HEALTH", tip: "💡 tip", me: "🙋 for you" }[c.badge];
+  const badge = { bank: "📗 prepared", ai: "🤖 AI", stall: "⏸ buy time", info: "ℹ️ info", warn: "⚠️ HEALTH", tip: "💡 tip", me: "🙋 for you", careful: "🟠 careful", fix: "🔴 correction" }[c.badge];
   console.log(`\n[${badge}${c.dim ? " · dimmed" : ""}${hidden ? ` · HIDDEN (${reason})` : ""}] ${c.say}${c.facts.length ? "\n   • " + c.facts.join("\n   • ") : ""}`);
 }
 
@@ -426,10 +433,13 @@ function onQuestion(r: SttResult, reason = "") {
   // Not a client / support call (frame, after hysteresis): a keyword hit on the agency bank is weak (dimmed, the model may drop it),
   // except the price / timeline / guarantee stall tier, which always stays.
   const offKind = !!tracker.kind && !isAgencyKind(tracker.kind);
+  // A prepared meeting with background files: a general topical card (SEO basics, "move a site") may be the wrong card for this meeting,
+  // so it shows dimmed and an AI answer from the background replaces it (3 Nov: "old links and Google ranking" got the generic SEO card).
+  const bgBank = !!background && !!hit && !STALL_TIER.has(hit.card.id);
   const weakBank = offKind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent;
   // weak = a bank card may be the wrong card, so it is dimmed and the model may withdraw it. Before the first call frame a topical card
   // may belong to a call that is not a customer call.
-  const weak = (reason.startsWith("head:") && !(hit && hit.score >= 2)) || reason.startsWith("problem") || weakBank || (!tracker.kind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent);
+  const weak = (reason.startsWith("head:") && !(hit && hit.score >= 2)) || reason.startsWith("problem") || weakBank || (!tracker.kind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent) || bgBank;
   const bankOnly = reason.startsWith("problem");                              // a "problem" is a guessed question (not a clear one): never an AI answer on it
 
   // Degradation ladder (health.ts): the rung in force for this question (it only changes between questions).
@@ -485,9 +495,10 @@ function onQuestion(r: SttResult, reason = "") {
         }
         if (tag.kind === "ANS" && !allowAns) { tag = { kind: "STALL" }; lat.tag = "STALL (ans-off)"; log.write("events", { type: "ans.suppressed", turnId, rung: sup.rung }); }
         // Off-kind call: the model prefers an answer or a stall over the weak keyword card, so that card goes away.
-        if (weakBank && shown?.badge === "bank" && shown.turnId === turnId && (tag.kind === "ANS" || tag.kind === "STALL")) { emitCard({ ...shown, withdraw: true }); log.write("events", { type: "withdraw", turnId, why: "off-kind" }); shown = undefined; }
+        if ((weakBank || bgBank) && shown?.badge === "bank" && shown.turnId === turnId && (tag.kind === "ANS" || tag.kind === "STALL")) { emitCard({ ...shown, withdraw: true }); log.write("events", { type: "withdraw", turnId, why: "off-kind" }); shown = undefined; }
         if (tag.kind === "SKIP") {
           clearTimeout(stallTimer);
+          if (shown?.id === stallId) { emitCard({ ...shown, withdraw: true }); log.write("events", { type: "withdraw", turnId, why: "stall-then-skip" }); shown = undefined; }
           if (weak && shown?.badge === "bank" && shown.turnId === turnId) { emitCard({ ...shown, withdraw: true }); log.write("events", { type: "withdraw", turnId, why: "haiku-skip" }); }
           return;
         }
@@ -523,14 +534,23 @@ function onQuestion(r: SttResult, reason = "") {
       onSayComplete(say) {
         if (ac.signal.aborted || modelIgnored) return;
         ai.say = say;
-        if (!/^(ANS|BANK)/.test(String(lat.tag ?? "")) || !fresh()) return;
+        // A late answer still replaces the "buy time" line already on screen for this question; otherwise a stale answer is dropped.
+        if (!/^(ANS|BANK)/.test(String(lat.tag ?? "")) || (!fresh() && shown?.id !== stallId)) return;
         if (String(lat.tag).startsWith("BANK") && shown?.badge === "bank") return; // bank card already up
+        // The model leaked its own control words into the say-line ("... לכן SKIP עדיף כרגע"): it was not sure, so no card.
+        if (leakedTag(ai.say)) {
+          clearTimeout(stallTimer); modelIgnored = true; log.write("events", { type: "reflex.discard", turnId, why: "leaked-tag" });
+          if (shown?.id === stallId) { emitCard({ ...shown, withdraw: true }); shown = undefined; }
+          return;
+        }
         const g = guard(ai.say);
         if (!g.ok) log.write("events", { type: "guard", turnId, rule: g.rule });
         if (!g.ok && noAgency) { clearTimeout(stallTimer); return; }   // a blocked answer on a call that is not with a customer: nothing, never a stall line
         const card: Card = g.ok ? { ...ai, at: Date.now() } : { ...ai, id: stallId, badge: "stall", say: stallSay(stall, turnSeq), facts: [], at: Date.now() };
         if (meSpokeSince()) card.dim = true;
         clearTimeout(stallTimer);
+        // The "buy time" line went up while the model was still deciding; the real answer replaces it (never both on screen).
+        if (g.ok && shown?.id === stallId) emitCard({ ...shown, withdraw: true });
         shown = card; emitCard(card); lat.cardAt = Date.now();
       },
       // Stream finished: book the cost, mark the model healthy, and upsert the card with its (guarded) facts.
@@ -601,6 +621,52 @@ function askTyped(q: string) {
   void onMeQuestion({ channel: "me", text, isFinal: true, speechFinal: true, words: [], arrivedAt: now, speechEndWall: now } as SttResult, true).catch((e) => log.write("events", { type: "me.error", error: String((e as Error)?.message ?? e).slice(0, 200) }));
 }
 
+// ---- Self-check: cards about what the user himself said (selfcheck.ts) ----
+const selfGate = new SelfCheckGate({ minGapMs: S.selfCheck.minGapMs });
+let selfSeq = 0;
+const selfEvent = (type: string, extra: Record<string, unknown> = {}) => log.write("events", { type, ...extra });
+/** A final "me" line that is not a question for Wingman: amber card on price / date / promise (no AI), red card on a contradiction of the briefing (cheap model). */
+function selfCheckLine(text: string) {
+  const sc = S.selfCheck;
+  if (!sc.enabled || !consented || shuttingDown) return;
+  if (text.split(/\s+/).filter(Boolean).length < MIN_WORDS) return;
+  const now = Date.now();
+  if (sc.careful) {
+    const c = detectCareful(text);
+    if (c) {
+      if (selfGate.canCareful(now)) {
+        selfGate.noteCareful(now); const n = ++selfSeq;
+        emitCard({ id: `sc-${n}`, turnId: `sc${n}`, badge: "careful", question: c.question, say: c.say, facts: [], priority: true, at: now });
+        selfEvent("selfcheck.careful", { kind: c.kind });
+      } else selfEvent("selfcheck.skip", { why: "careful-gap" });
+    }
+  }
+  if (!sc.fix) return;
+  if (!background.trim()) return;   // no prepared meeting: nothing to check against
+  if (!looksFactual(text)) return;
+  if (noAi || !sup.caps.llm || cost.llmState() === "capped") { selfEvent("selfcheck.skip", { why: noAi ? "no-ai" : "ai-unavailable" }); return; }
+  if (!selfGate.canModel(now)) { selfEvent("selfcheck.skip", { why: "busy-or-gap" }); return; }
+  selfGate.startModel(now);
+  void (async () => {
+    try {
+      const r = await runSelfCheck({ registry, model: S.tips.model, cache: S.llm.reflex.cache, background, transcript: recentTranscript(S.frame.windowMin), line: text, signal: notesAbort.signal, timeoutMs: sc.timeoutMs });
+      const cu = cost.addLlm("selfcheck", S.tips.model, r.usage, r.providerMetadata);
+      log.write("usage", { role: "selfcheck", model: S.tips.model, usage: r.usage, usd: cu.usd });
+      if (shuttingDown) return;
+      const v = r.verdict;
+      if (v.verdict === "ok") { selfEvent("selfcheck.ok"); return; }
+      const g = checkFix(v);
+      if (!g.ok) { selfEvent("selfcheck.skip", { why: "guard", rule: g.rule }); return; }
+      const t = Date.now();
+      if (!selfGate.canFix(t, v.correct)) { selfEvent("selfcheck.skip", { why: "fix-gap-or-repeat" }); return; }
+      selfGate.noteFix(t, v.correct); const n = ++selfSeq;
+      emitCard({ id: `sc-${n}`, turnId: `sc${n}`, badge: "fix", question: v.said, say: v.correct, facts: v.source ? [v.source] : [], priority: true, at: t });
+      selfEvent("selfcheck.fix", {});
+    } catch (e) { selfEvent("selfcheck.error", { error: String((e as Error)?.message ?? e).slice(0, 200) }); }
+    finally { selfGate.endModel(); }
+  })();
+}
+
 /** A "me" utterance has ended. Decide whether it is a question for Wingman and answer it. */
 function handleMe(joined: SttResult) {
   const text = joined.text.trim();
@@ -609,6 +675,7 @@ function handleMe(joined: SttResult) {
   const nWords = text.split(/\s+/).filter(Boolean).length;
   const forced = askUntil > 0 && speechEnd <= askUntil + 1500 && nWords >= 2;   // the ask key was pressed: this is for Wingman
   if (forced) disarmAsk("used");
+  if (!forced) selfCheckLine(text);   // what he said himself (not an ask to Wingman); a tag question ("יש לכם 200 עמודים, נכון?") is still a claim
   const mode = S.assist.answerMe;
   if (!forced && mode !== "always") return;
   const math = evalMath(text);
@@ -963,7 +1030,7 @@ async function shutdown() {
     cost.setSttSeconds(sttSeconds());
     log.write("usage", { role: "stt", vendor: them?.provider, seconds: { me: me?.audioSeconds, them: them?.audioSeconds }, bySeconds: sttSeconds(), usd: cost.sttUsd, dropped: { me: me?.dropped, them: them?.dropped } });
     if (brief?.mustCover?.length) { const left = uncovered(); log.write("events", { type: "mustcover.summary", left }); if (left.length) console.log(`\nNot covered in this call: ${left.join(", ")}`); }
-    log.write("events", { type: "echo.summary", mode: ECHO.mode, gatedSeconds: Math.round(gatedMs / 1000), echoDropped });
+    log.write("events", { type: "echo.summary", mode: echoMode, setting: ECHO.mode, gatedSeconds: Math.round(gatedMs / 1000), echoDropped });
     log.write("events", { type: "foreign.summary", dropped: foreignDropped });
     log.write("events", { type: "me.summary", mode: S.assist.answerMe, answers: meShown, questions: meSeq });
     if (foreignDropped) console.log(`\nDropped ${foreignDropped} speech-to-text lines in a foreign script (not Hebrew/English).`);
@@ -971,7 +1038,7 @@ async function shutdown() {
     const summary = speedSummary();
     log.write("events", { type: "speed.summary", summary });
     log.update({ endedAt: new Date().toISOString(), crashed, phase: "ended" });
-    console.log(`\nSpeakers mode (${ECHO.mode}): mic muted ${Math.round(gatedMs / 1000)} s while the client talked · ${echoDropped} echo lines dropped`);
+    console.log(`\nSpeakers mode (${echoMode}): mic muted ${Math.round(gatedMs / 1000)} s while the client talked · ${echoDropped} echo lines dropped`);
     console.log(`\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${me?.dropped ?? 0}, them ${them?.dropped ?? 0}`);
   } catch (e) { console.error("call summary failed:", e); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
   // (usage was logged twice on purpose: once above so the numbers exist even if the summary hangs, again below with the summary's own cost.)
@@ -1202,7 +1269,14 @@ async function main() {
     const srcKind = S.audio.system.source;
     const sys = srcKind === "audiotee" ? new SystemSource() : srcKind === "device" ? new MicSource(S.audio.system.device) : undefined;
     const mic = new MicSource(S.audio.mic.device);
-    if (S.audio.warnBluetooth) void readAudioDevices().then((devs) => {
+    const devsP = readAudioDevices();
+    if (ECHO.mode === "auto") void devsP.then((devs) => {
+      const m = resolveEchoMode("auto", devs);
+      setEchoMode(m);
+      log.write("events", { type: "echo.mode", mode: m, output: devs.find((d) => d.defaultOutput)?.name ?? "" });
+      console.log(`Speakers mode auto: ${m} (output: ${devs.find((d) => d.defaultOutput)?.name ?? "unknown"})`);
+    });
+    if (S.audio.warnBluetooth) void devsP.then((devs) => {
       const bt = bluetoothInUse(devs);
       if (!bt || shuttingDown) return;
       log.write("events", { type: "audio.bluetooth", role: bt.role, device: bt.device.name });

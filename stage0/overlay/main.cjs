@@ -14,7 +14,7 @@ const SNAP = process.env.WINGMAN_OVERLAY_SNAPSHOT;
 // Hidden snapshots: no Dock icon.
 if (SNAP && process.platform === "darwin") { try { app.setActivationPolicy("accessory"); app.dock && app.dock.hide(); } catch { /* no dock */ } }
 // Settings arrive as JSON from src/overlay.ts (call.ts / pnpm overlay). Defaults here equal config/defaults.yaml.
-const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, showLastLine: true, maxCards: 4, rewindSeconds: 30, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K", checklist: "Control+Alt+L" } },
+const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, showLastLine: true, liveTextPt: 22, maxCards: 4, rewindSeconds: 30, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K", checklist: "Control+Alt+L" } },
   (() => { try { return JSON.parse(process.env.WINGMAN_OVERLAY || "{}"); } catch { return {}; } })());
 let win, timer, lastCapture, endedSent = false, endedCheckAt = 0, phaseKey = "", capList = [];
 const captureKeys = [];   // Ctrl+Opt+1..3 held while the window runs
@@ -64,7 +64,7 @@ function create() {
   win.loadFile(path.join(__dirname, "index.html"));
   // Poll only after the page has its listeners; a reload replays the call files from the start.
   win.webContents.on("did-finish-load", () => {
-    win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, showLastLine: CFG.showLastLine !== false, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
+    win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, showLastLine: CFG.showLastLine !== false, liveTextPt: CFG.liveTextPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
     tails.cards = { file: undefined, offset: 0 }; tails.transcript = { file: undefined, offset: 0 }; capList = []; phaseKey = "";
     clearInterval(timer); timer = setInterval(poll, 100);
   });

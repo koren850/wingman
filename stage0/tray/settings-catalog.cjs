@@ -46,6 +46,10 @@ const ITEMS = [
     help: "Keeps the screen calm: never more than one tip in this time." },
   { key: "tips.talkRatio", group: "answers", label: "Tell me when I talk too much", kind: "bool",
     help: "A tip, with no AI involved, when you spoke more than three quarters of the last five minutes." },
+  { key: "selfCheck.careful", group: "call", label: "Warn me when I commit to a price, date or promise", kind: "bool",
+    help: "An amber card with a hedge you can use, when you say a price, a date or a promise. No AI involved." },
+  { key: "selfCheck.fix", group: "call", label: "Correct me when I contradict the meeting background", kind: "bool",
+    help: "A red card with the right fact when something you said clearly differs from the prepared meeting and its files. Needs a prepared meeting." },
   { key: "attachments.maxChars", group: "tune", label: "Background text the AI may read", kind: "int", min: 0, max: 40000, step: 1000, unit: "characters",
     help: "Files and pasted text from your Plan are used as background. This is the most text used in total; 0 means ignore them." },
 
@@ -61,7 +65,9 @@ const ITEMS = [
     help: "Second screen (recommended) keeps the answers out of anything you share. With one screen the window stays closed unless you allow the main screen.",
     options: [["secondary", "Second screen"], ["primary", "Main screen"]] },
   { key: "overlay.showLastLine", group: "audio", label: "Show what the other side just said", kind: "bool",
-    help: "A thin line at the top of the answer window with the other side's last sentence, so you can see which question the card below answers." },
+    help: "A strip at the top of the answer window with the latest sentence (yours or the other side's, labelled), so you can see which question the card below answers." },
+  { key: "overlay.liveTextPt", group: "audio", label: "Size of the live text", kind: "int", min: 14, max: 40, step: 1, unit: "pt",
+    help: "Font size of the live strip with the latest sentence. 22 reads well on a second screen." },
   { key: "overlay.contentProtection", group: "audio", label: "Show answer window in screen share", kind: "bool", invert: true,
     help: "Off (recommended): macOS hides the window from Zoom, Meet and screenshots. Not yet tested with Zoom, so also keep it on the second screen." },
 ];

@@ -4,7 +4,7 @@
 // Used by livetail.cjs / livefixture.cjs (main process) and live.js (renderer, as window.WingmanLive).
 (function (root) {
   const MAX_LINES = 400, MAX_CARDS = 150, MAX_TEXT = 600, MAX_SAY = 900, MAX_Q = 300, MAX_ROW_BYTES = 20000;
-  const SHOWN = { bank: 1, ai: 1, stall: 1, tip: 1, me: 1 };   // fact/note/reminder/info/warn cards live in the answer window only
+  const SHOWN = { bank: 1, ai: 1, stall: 1, tip: 1, me: 1, careful: 1, fix: 1 };   // fact/note/reminder/info/warn cards live in the answer window only
   // Clean a string field: drop control chars and bidi controls (LRM/RLM, embeddings, overrides, isolates) so call text cannot reorder what is shown around it; then cap length.
   const str = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f‎‏‪-‮⁦-⁩]/g, "").slice(0, n) : "");
   // Loose form for comparing a card question with a transcript line: lowercase, punctuation (incl. Hebrew maqaf/geresh/gershayim) to single spaces.

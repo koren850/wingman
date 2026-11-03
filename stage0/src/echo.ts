@@ -3,8 +3,24 @@
 // Two cheap layers: (1) mic gate: while the client channel is voiced, the mic sends silence instead of sound;
 // (2) echo text filter: a "me" final whose words mostly repeat a recent "them" final is dropped as echo.
 import { tokens } from "./normalize.ts";
+import type { AudioDevice } from "./devices.ts";
+import { isBluetooth } from "./devices.ts";
 
 export type EchoMode = "gate" | "filter" | "both" | "off";
+export type EchoSetting = EchoMode | "auto";
+
+/**
+ * "auto" (the default): the mic gate is only for speakers. With headphones there is no echo, and the gate would mute the
+ * user whenever the client makes any sound (3 Nov call: 53 of 70 minutes of the user's speech were lost that way).
+ * Headphones (Bluetooth, wired, USB headset) = "filter"; the Mac's own speakers = "both"; unknown output = "filter".
+ */
+export function resolveEchoMode(setting: EchoSetting, devs: AudioDevice[]): EchoMode {
+  if (setting !== "auto") return setting;
+  const out = devs.find((d) => d.defaultOutput);
+  if (!out) return "filter";
+  if (isBluetooth(out) || /headphone|headset|earpod|airpod|אוזניות/i.test(out.name) || /usb/i.test(out.transport)) return "filter";
+  return /builtin|built-in/i.test(out.transport) || /speaker|רמקול/i.test(out.name) ? "both" : "filter";
+}
 
 /** Share of the mic line's words that also appear in the client line (0-1). */
 export function overlap(meText: string, themText: string): number {

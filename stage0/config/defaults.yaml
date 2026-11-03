@@ -85,7 +85,7 @@ audio:
     micSilentMs: 10000     # mic silent this long after listening starts = "MIC SILENT"
     micPeak: 0.005         # peak (0-1) above which the mic counts as sound
   echo:                    # speakers mode: no headphones needed (the mic also hears the client from the speakers)
-    mode: both             # gate | filter | both | off. gate = mic sends silence while the client talks; filter = drop "me" lines that repeat the client. With headphones, "filter" keeps your words when you talk over the client. Env: WINGMAN_ECHO
+    mode: auto             # auto | gate | filter | both | off. auto = "filter" with headphones, "both" on the Mac's speakers. gate = mic sends silence while the client talks; filter = drop "me" lines that repeat the client. With headphones, "filter" keeps your words when you talk over the client. Env: WINGMAN_ECHO
     gatePeak: 0.02         # client audio peak (0-1) that closes the mic gate
     gateHangoverMs: 250    # gate stays closed this long after the client's last sound (room echo tail). Longer clips your first words
     filterWindowMs: 2500   # a "me" line is compared with client lines from this far back
@@ -140,6 +140,14 @@ tips:
   wrapUpAfterMin: 20       # missed must-cover items are nudged once at a wrap-up phrase or after this many minutes
   timeoutMs: 10000         # abort a tip call that takes longer than this (ms); no tip that time
 
+# ---- Self-check: cards about what YOU said (red = correction against the meeting background, amber = careful) ----
+selfCheck:
+  enabled: true            # false = no self-check cards at all
+  careful: true            # amber card when you commit to a price, date or promise (no AI)
+  fix: true                # red card when you contradict the prepared meeting background (cheap AI check, needs a prepared meeting)
+  minGapMs: 8000           # at least this long between two AI checks
+  timeoutMs: 6000          # abort an AI check that takes longer than this (ms); no card that time
+
 # ---- Background files from "Plan a call" (text the AI may read as background) ----
 attachments:
   maxChars: 40000          # at most this many characters in total (the Plan form refuses more); 0 = ignore attachments
@@ -187,7 +195,8 @@ overlay:
   allowPrimary: false      # true = allow the primary screen when there is only one display. Env: WINGMAN_ALLOW_PRIMARY=1
   contentProtection: true  # hide from screen capture (untested with Zoom). Env: WINGMAN_SHOW_IN_CAPTURE=1 turns it off
   fontPt: 30               # say-line font size
-  showLastLine: true       # thin muted strip above the answers with what the client just said (so you see what the card answers)
+  showLastLine: true       # strip above the answers with the latest sentence (both sides, labelled), so you see what the card answers
+  liveTextPt: 22           # size of that live strip (14-40)
   hotkeys:
     clear: "Control+Alt+C"  # clear all cards from the answer window
     pause: "Control+Alt+P"  # pause/resume showing cards (they keep being saved)

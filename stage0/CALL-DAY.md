@@ -13,7 +13,7 @@
 - During the call, Home shows the timer, **Quiet mode**, **Add note**, **Confirm client**, **Stop call** and **Stop and delete** (asks first), plus any health warning in plain words. The window never opens by itself: open it from the menu bar (**Open Wingman**) or the call chip. In Terminal: `q` = quiet, `n` = note.
 - **Ctrl+Opt+A = ask Wingman**: your next sentence (within 10 s) is a question for it; the answer shows in the violet "For you" card. Works even when "Answer my own questions" is off.
 - Ctrl+Opt+R = "what did they say?" (last 30 s as text). Ctrl+Opt+K = copy the newest captured phone/email/domain (or click it). Ctrl+Opt+C clears the window, Ctrl+Opt+P pauses it.
-- Headphones are optional: speakers mode (`audio.echo.mode: both`) mutes the mic while the other side talks and drops echo lines. With headphones, `WINGMAN_ECHO=filter` keeps your words when you talk over the other side.
+- Headphones are optional. `audio.echo.mode: auto` (default) checks the output: on the Mac speakers it mutes the mic while the other side talks and drops echo lines; with headphones it only drops echo lines, so your words are kept when you talk over the other side.
 - Red bar = STT/mic/system audio down. "I only hear you" (calm line) = no audio from the other side and no call app open: fine for testing alone. Abort rule: three wrong or late cards in a row, go quiet. Ctrl+C, one restart, then continue without Wingman.
 - Want this call gone: Stop and delete (… menu on the call panel), or Ctrl+C and answer `y`.
 

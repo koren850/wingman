@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 /** Child environment for the window: childEnv() (no API keys) plus WINGMAN_OVERLAY with the overlay settings as JSON. */
 export function overlayEnv(s: Settings): NodeJS.ProcessEnv {
   const o = s.overlay;
-  return { ...childEnv(process.env), WINGMAN_OVERLAY: JSON.stringify({ enabled: o.enabled, display: o.display, allowPrimary: o.allowPrimary, contentProtection: o.contentProtection, fontPt: o.fontPt, showLastLine: o.showLastLine, rewindSeconds: o.rewindSeconds, maxCards: s.cards.maxOnScreen, hotkeys: o.hotkeys }) };
+  return { ...childEnv(process.env), WINGMAN_OVERLAY: JSON.stringify({ enabled: o.enabled, display: o.display, allowPrimary: o.allowPrimary, contentProtection: o.contentProtection, fontPt: o.fontPt, showLastLine: o.showLastLine, liveTextPt: o.liveTextPt, rewindSeconds: o.rewindSeconds, maxCards: s.cards.maxOnScreen, hotkeys: o.hotkeys }) };
 }
 /** Spawns the window. Returns undefined when overlay.enabled is false. `detached` lets it outlive Ctrl+C for a short grace period (call.ts). */
 export function spawnOverlay(s: Settings, detached = false): ChildProcess | undefined {

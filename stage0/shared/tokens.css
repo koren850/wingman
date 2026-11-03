@@ -14,7 +14,7 @@
   /* speakers in the transcript */
   --spk-me:#d9a679; --spk-me-soft:rgba(217,166,121,.14); --spk-them:var(--info);
   /* card types: Prepared, AI, Buy time, Tip, For you (math answers for you share it) */
-  --t-prep:#6fcf9f; --t-ai:#86a8ff; --t-stall:#9aa8bb; --t-tip:#d2a572; --t-me:#f28ccf; --t-math:var(--t-me); --t-fact:#a493e0;
+  --t-prep:#6fcf9f; --t-ai:#86a8ff; --t-stall:#9aa8bb; --t-tip:#d2a572; --t-me:#f28ccf; --t-math:var(--t-me); --t-fact:#a493e0; --t-fix:#ff6a60; --t-careful:#f0b440;
   /* radii: chips and inputs, cards, panels, full pill */
   --r-chip:6px; --r-md:8px; --r-card:10px; --r-lg:14px; --r-pill:999px;
   /* aliases the dashboard stylesheet uses */
@@ -29,7 +29,7 @@
   --fault:#b3261e; --advisory:#8f5a00; --good:#17714a; --info:#2a68b0;
   --good-soft:rgba(23,113,74,.10); --bad-soft:rgba(179,38,30,.09); --warn-soft:rgba(143,90,0,.11); --info-soft:rgba(42,104,176,.09);
   --spk-me:#7a4a2a; --spk-me-soft:rgba(122,74,42,.10);
-  --t-prep:#17714a; --t-ai:#3a55c4; --t-stall:#5a6879; --t-tip:#8a5a24; --t-me:#b0287a; --t-fact:#6a4fb0;
+  --t-prep:#17714a; --t-ai:#3a55c4; --t-stall:#5a6879; --t-tip:#8a5a24; --t-me:#b0287a; --t-fact:#6a4fb0; --t-fix:#b3261e; --t-careful:#8f5a00;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -40,6 +40,6 @@
     --fault:#b3261e; --advisory:#8f5a00; --good:#17714a; --info:#2a68b0;
     --good-soft:rgba(23,113,74,.10); --bad-soft:rgba(179,38,30,.09); --warn-soft:rgba(143,90,0,.11); --info-soft:rgba(42,104,176,.09);
     --spk-me:#7a4a2a; --spk-me-soft:rgba(122,74,42,.10);
-    --t-prep:#17714a; --t-ai:#3a55c4; --t-stall:#5a6879; --t-tip:#8a5a24; --t-me:#b0287a; --t-fact:#6a4fb0;
+    --t-prep:#17714a; --t-ai:#3a55c4; --t-stall:#5a6879; --t-tip:#8a5a24; --t-me:#b0287a; --t-fact:#6a4fb0; --t-fix:#b3261e; --t-careful:#8f5a00;
   }
 }

@@ -597,6 +597,7 @@ select:active { border-color:var(--text); background-color:var(--s2); }
 .lf-tick .ico { width:11px; height:11px; stroke-width:3; }
 .lf-card.me { border-inline-start-color:var(--t-me); background:color-mix(in srgb, var(--t-me) 10%, var(--s2)); }
 .lf-card.bank { border-inline-start-color:var(--t-prep); } .lf-card.ai { border-inline-start-color:var(--t-ai); } .lf-card.stall { border-inline-start-color:var(--t-stall); }
+.lf-card.careful { border-inline-start-color:var(--warn); } .lf-card.fix { border-inline-start-color:var(--bad); }
 .lf-card.dim { opacity:.7; border-style:dashed; }
 .lf-say { font-size:15px; line-height:24px; font-weight:500; color:var(--text); unicode-bidi:plaintext; overflow-wrap:anywhere; align-self:stretch; }
 .lf-card.stall .lf-say { font-weight:400; color:var(--muted); }
@@ -635,6 +636,7 @@ select:active { border-color:var(--text); background-color:var(--s2); }
 
 /* ---------- one colour per card type (hues: ../shared/tokens.css) ---------- */
 .chip.t-prep, .chip.t-ai, .chip.t-stall, .chip.t-tip, .chip.t-me { background:color-mix(in srgb, var(--tc) 15%, transparent); color:var(--tc); }
+.chip.t-careful { background:color-mix(in srgb, var(--warn) 15%, transparent); color:var(--warn); } .chip.t-fix { background:var(--bad-soft); color:var(--bad); }
 .chip.t-prep { --tc:var(--t-prep); } .chip.t-ai { --tc:var(--t-ai); } .chip.t-stall { --tc:var(--t-stall); } .chip.t-tip { --tc:var(--t-tip); } .chip.t-me { --tc:var(--t-me); }
 
 /* ---------- Home: the pre-call sequence ---------- */

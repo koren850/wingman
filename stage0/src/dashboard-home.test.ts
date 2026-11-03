@@ -167,7 +167,7 @@ test("the practice button and the Start card are wired to the plan and the setti
 test("one badge legend: both windows get the card hues from shared/tokens.css, none of their own", () => {
   const tok = read("shared/tokens.css"), css = read("dashboard/app.css"), ov = read("overlay/index.html"), dh = read("dashboard/index.html");
   // one definition: dark and light hues for every card type live in the shared file
-  for (const k of ["prep", "ai", "stall", "tip", "me", "fact"]) assert.match(tok, new RegExp(`--t-${k}:#[0-9a-f]{6}`, "i"), `--t-${k} missing in tokens.css`);
+  for (const k of ["prep", "ai", "stall", "tip", "me", "fact", "fix", "careful"]) assert.match(tok, new RegExp(`--t-${k}:#[0-9a-f]{6}`, "i"), `--t-${k} missing in tokens.css`);
   for (const [n, f] of [["dashboard", css], ["answer window", ov]] as const) assert.ok(!/--t-(prep|ai|stall|tip|me|fact):\s*#/i.test(f), `${n} redefines a card hue`);
   // both pages load it, and the answer window's CSP lets the stylesheet in and stays dark
   assert.match(dh, /<link rel="stylesheet" href="\.\.\/shared\/tokens\.css">/);
@@ -176,7 +176,7 @@ test("one badge legend: both windows get the card hues from shared/tokens.css, n
   // the answer window's own hex values are neutrals, tints and its two brighter alert tones only
   const root = /:root \{([^}]*)\}/.exec(ov)![1];
   const names = [...root.matchAll(/(--[a-z0-9-]+):/g)].map((m) => m[1]);
-  for (const n of names) assert.ok(["--bg", "--card", "--card2", "--raised", "--line", "--text", "--soft", "--muted", "--t-prep-bg", "--t-me-bg", "--t-ai-bg", "--t-stall-bg", "--red-bg", "--fault", "--advisory", "--say-pt"].includes(n), `answer window defines ${n}: put shared colours in tokens.css`);
+  for (const n of names) assert.ok(["--bg", "--card", "--card2", "--raised", "--line", "--text", "--soft", "--muted", "--t-prep-bg", "--t-me-bg", "--t-ai-bg", "--t-stall-bg", "--red-bg", "--fault", "--advisory", "--say-pt", "--live-pt", "--t-fix-bg", "--t-careful-bg"].includes(n), `answer window defines ${n}: put shared colours in tokens.css`);
 });
 
 test("recent plans: newest first, no duplicates, capped, junk dropped", () => {

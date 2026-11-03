@@ -88,6 +88,6 @@ test("reflex prefix: background rule only when background files exist; prompt un
   const bg = "Background files Dan attached:\n<background_files>\n### brief.md\nAcme Foundation (invented): old WordPress site, 500 news items, 100 projects, WPML multisite, donors pages dropped.\n</background_files>";
   const withBg = buildPrefix("style", bank, "", bg);
   assert.match(withBg, /Using the background files/);
-  assert.match(withBg, /STALL on a client call/);
+  assert.match(withBg, /background does not say, never guess: reply SKIP/);
   assert.ok(withBg.indexOf("Using the background files") < withBg.indexOf("500 news items"));
 });

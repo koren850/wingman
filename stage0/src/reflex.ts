@@ -9,6 +9,9 @@ import { ModelRegistry, providerOptionsFor, cacheOptionsFor, withFallbacks } fro
 import { classifyFinish, classifyLlmError, ProviderError } from "./providers/errors.ts";
 
 /** The model's first-line verdict. `bankId` only for BANK. */
+/** True when a model say-line contains one of the reflex control words (SKIP / STALL / BANK / ANS) as a word (3 Nov call: "... לכן SKIP עדיף כרגע"). */
+export function leakedTag(say: string): boolean { return /(^|[^A-Za-z])(SKIP|STALL|BANK|ANS)(?![A-Za-z])/.test(say); }
+
 export type Tag = { kind: "SKIP" | "STALL" | "ANS" | "BANK"; bankId?: string };
 /** Callbacks fired while the reply streams. Order: onTag, onSay (partial, repeated), onSayComplete, onFacts, onDone. */
 export type ReflexHandlers = {
@@ -43,6 +46,9 @@ Output format, exactly. Decide the tag BEFORE you write line 1; the tag is final
   ANS           (you can answer safely from general knowledge). Line 2 is the say-line (at most 25 words, in the language of the question), then 0-3 lines starting with "- ", each fact at most 8 words. The say-line IS the answer: no opening like "good question", "here is the answer" or a greeting.
 
 Who can answer what:
+- Only a real question or request that Dan is expected to answer gets a card. When the other side states a fact, describes their situation, thinks aloud, agrees, or makes their own decision ("we prefer it automatic", "it doesn't update in Canada", "maybe we import only English first"), reply SKIP: Dan is listening, not being asked.
+- Never recommend or take a side on a decision that belongs to the other side (what content they keep, their workflow, which option they prefer, who on their team does what). At most restate the options neutrally, and only when they ask Dan which one fits.
+- Never describe how Dan's own system, site, code or setup behaves (what syncs, what is automatic, what is built) unless the background files state it. If they do not, SKIP: Dan knows his own system.
 - Anything only Dan can know or decide about himself is SKIP, whoever asks: his documents, experience, skills, availability, schedule, why he left a job, his opinions, whether he has questions, what he wants (the one exception: the interview structure hint below). Never answer yes/no on Dan's behalf: if the other side asks "do you have the invoice?" or "are you available Tuesday?", the tag is SKIP, never "yes..." or "no...".
 - STALL is only for a price, a date or a commitment about Dan's own services, on a call with his customer (client or support). On any other call (team, interview, supplier, advisor, friend, family, other) never use STALL and never use an agency BANK card, unless the question is really about Dan's web or hosting services.
 - On a team, interview, personal or supplier call use SKIP for small talk and for questions only Dan can answer or decide (who takes a task, schedules, owners, his experience, opinions, plans), ANS for a general-knowledge line that helps Dan right now, and nothing else.
@@ -56,7 +62,7 @@ ${houseStyle}
 ${profileText ? `\nClient profile:\n${profileText}\n` : ""}
 Answer bank (id: title). Reply "BANK <id>" and nothing else when one of these answers the question:
 ${index}
-${background ? `\nUsing the background files: when a THEM question asks about facts that the background files state (scope, counts, content types, names, what was agreed or dropped), answer ANS with one short line built only from those facts, in the language of the question. If the question is about the customer's own site or content and the background does not say, never guess: reply STALL on a client call (SKIP otherwise). Never state a price, date or promise even if the background mentions one.\n${background}\n` : ""}`;
+${background ? `\nUsing the background files: when a THEM question asks about facts that the background files state (scope, counts, content types, names, what was agreed or dropped), answer ANS with one short line built only from those facts, in the language of the question. If the question is about the customer's own site or content and the background does not say, never guess: reply SKIP (Dan answers himself; STALL stays only for a price, a date or a commitment). Never state a price, date or promise even if the background mentions one.\n${background}\n` : ""}`;
 }
 
 /** Call text is untrusted: it must not be able to close the <call_transcript> wrapper. */

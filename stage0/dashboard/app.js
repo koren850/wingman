@@ -76,6 +76,8 @@ const BADGE = {
   stall: ["Buy time", "t-stall", "A line to say while the real answer is found.", "\u25F7"],
   tip: ["Tip", "t-tip", "A small suggestion, not an answer.", ""],
   me: ["For you", "t-me", "An answer to your own question.", "\u2606"],
+  careful: ["Careful", "t-careful", "You committed to a price, date or promise. Consider hedging.", "\u26A0"],
+  fix: ["Correction", "t-fix", "What you said differs from the meeting background.", "\u2716"],
   calc: ["Math", "t-ai", "Worked out exactly, not by the AI.", "\u2211"],
 };
 /** Chip for a card badge, with its glyph and meaning as the tooltip. Unknown badges get a plain dot chip. */
@@ -578,7 +580,7 @@ function capturesSection(d) {
 
 /* ---------- Rate ---------- */
 // Card source labels for the Rate and Transcript tabs (BADGE above has the full legend for the main ones).
-const SRC = { me: "For you", bank: "Prepared", ai: "AI", stall: "Buy time", tip: "Tip", warn: "Warning", info: "Info", note: "Note", fact: "Fact", reminder: "Reminder" };
+const SRC = { me: "For you", bank: "Prepared", ai: "AI", stall: "Buy time", tip: "Tip", careful: "Careful", fix: "Correction", warn: "Warning", info: "Info", note: "Note", fact: "Fact", reminder: "Reminder" };
 /** Cards for the current Rate filter (all / unrated / rated / useful / side), in time order. */
 function filterCards(d) {
   const f = state.filter, all = allCards(d);

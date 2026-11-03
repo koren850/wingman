@@ -9,14 +9,17 @@
 <title>Wingman</title>
 <link rel="stylesheet" href="../shared/tokens.css">
 <style>
-  /* Colour meaning: red = a FAULT only (blind now). Mint = prepared answer, blue dashed = AI (unverified), slate = buy time, rose = for you, tan = start/reminders, violet = facts. Every type also has a glyph + label. */
+  /* Colour meaning: mint = prepared answer, blue dashed = AI (unverified), slate = buy time, rose = for you, tan = start/reminders, violet = facts.
+     About what YOU said: amber card = careful (you committed to a price, date or promise), red card = correction (you contradicted the meeting background).
+     The slim red line at the very top is a FAULT (Wingman is blind now). Every type also has a glyph + label, so colour is never the only signal. */
   :root {
     /* hues, radii and the fault/advisory colours come from ../shared/tokens.css; only this denser variant's neutrals, card tints and the two brighter alert tones are set here */
     --bg:#0f1620; --card:#18222f; --card2:#141c27; --raised:#1e2a3a; --line:#34455f;
     --text:#f1f4f8; --soft:#d0d8e4; --muted:#a9b5c7;
     --t-prep-bg:#16291f; --t-me-bg:#2b182a; --t-ai-bg:#171f2e; --t-stall-bg:#1a2029; --red-bg:#3b1816;
     --fault:#ff6a60; --advisory:#d9a03a;
-    --say-pt:30px;
+    --say-pt:30px; --live-pt:22px;
+    --t-fix-bg:#3a1714; --t-careful-bg:#33260f;
   }
   * { box-sizing:border-box; }
   /* drag on the whole page lets the user move the frameless window; interactive bits (.cap, #frame) opt out with no-drag. */
@@ -46,10 +49,14 @@
   .adv { display:flex; align-items:baseline; gap:8px; padding:0 4px; font-size:14.5px; line-height:1.35; color:var(--muted); }
   .adv::before { content:"•"; color:var(--t-stall); }
 
-  /* "Client just said": one muted line above the answers. */
-  #last { display:none; flex:0 0 auto; margin:-4px 0 -2px; font-size:15px; line-height:20px; color:var(--muted); gap:8px; align-items:baseline; min-width:0; }
-  #last .who { flex:0 0 auto; font-size:14px; }
+  /* Live strip: the latest sentence (either side, labelled) above the answers. Size: overlay.liveTextPt. */
+  #last { display:none; flex:0 0 auto; margin:-2px 0 0; padding:6px 12px; border-radius:var(--r-card); background:var(--card2); font-size:var(--live-pt); line-height:1.3; color:var(--text); gap:10px; align-items:baseline; min-width:0; border-inline-start:3px solid var(--line); }
+  #last.me { color:var(--soft); border-color:var(--t-me); }
+  #last .who { flex:0 0 auto; font-size:max(13px, calc(var(--live-pt) * .62)); font-weight:700; color:var(--muted); border-radius:var(--r-pill); padding:0 8px; background:var(--raised); }
+  #last.me .who { color:var(--t-me); }
   #last .txt { flex:1 1 auto; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
+  #last.fresh .txt { animation:livein .25s ease-out; }
+  @keyframes livein { from { opacity:.35; } }
 
   /* Stage: the newest answer (hero) owns at least half the window. Older answers are small rows (max 2). */
   #stage { position:relative; flex:1 1 auto; min-height:50vh; overflow:hidden; }
@@ -64,6 +71,8 @@
   .card.stall { border-color:var(--t-stall); background:var(--t-stall-bg); --k:.87; }
   .card.me { border-color:var(--t-me); background:var(--t-me-bg); --k:.93; }
   .card.info { border-color:var(--t-tip); }
+  .card.fix { border-color:var(--t-fix); background:var(--t-fix-bg); border-inline-start-width:8px; --k:.93; }
+  .card.careful { border-color:var(--t-careful); background:var(--t-careful-bg); border-inline-start-width:8px; --k:.87; }
   .card.calc { --k:1.3; }
   .card .top { display:flex; align-items:center; gap:10px; min-width:0; }
   .pill { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; font-size:15px; font-weight:700; border-radius:var(--r-pill); padding:2px 12px; background:var(--raised); color:var(--soft); }
@@ -73,8 +82,11 @@
   .stall .pill { background:#2e3846; color:var(--soft); }
   .me .pill { background:var(--t-me); color:#2b0f26; }
   .info .pill { background:transparent; color:var(--t-tip); border:1px solid var(--t-tip); }
+  .fix .pill { background:var(--t-fix); color:#2a0806; }
+  .careful .pill { background:var(--t-careful); color:#2a1c02; }
+  .card.fix .q, .card.careful .q { color:var(--soft); }
   .age { margin-inline-start:auto; font-size:14px; color:var(--muted); white-space:nowrap; }
-  .q { margin-top:6px; color:var(--muted); font-size:16px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
+  .q { margin-top:6px; color:var(--muted); font-size:17px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
   .q .ql { font-weight:700; color:var(--soft); margin-inline-end:6px; }
   /* Size is fixed per card type (never changes while text streams). */
   .say { margin-top:6px; font-size:max(26px, calc(var(--say-pt) * var(--k))); line-height:1.28; font-weight:650; color:var(--text); }
@@ -175,7 +187,7 @@
   kbd { font:600 13px/1 -apple-system, "SF Mono", Menlo, monospace; direction:ltr; color:var(--text); background:#2a384d; border:1px solid #4a5d79; border-bottom-width:2px; border-radius:5px; padding:3px 6px; }
   /* Short windows: drop the secondary furniture so the answer keeps the room. */
   @media (max-height:820px) { #notes, #keys, #rail .side ul { display:none; } #rail { max-height:9vh; } }
-  @media (max-height:660px) { #rail, #capture, #last { display:none !important; } }
+  @media (max-height:660px) { #rail, #capture { display:none !important; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
 </style>
 </head>
@@ -298,7 +310,7 @@
   // Card types (glossary): Prepared / AI / Buy time / For you / Math / Tip. Each has a glyph + label + tint.
   const TYPE = {
     bank: { gl: "✔", he: "מוכן מראש" }, ai: { gl: "✦", he: "AI · לא מאומת" }, stall: { gl: "◷", he: "לקנות זמן" },
-    me: { gl: "☆", he: "בשבילך" }, calc: { gl: "∑", he: "חישוב" }, info: { gl: "ℹ", he: "הודעה" }, consent: { gl: "◔", he: "מחכה שתאשר התחלת האזנה" },
+    me: { gl: "☆", he: "בשבילך" }, fix: { gl: "✕", he: "תיקון · מה שאמרת" }, careful: { gl: "!", he: "שים לב · התחייבת" }, calc: { gl: "∑", he: "חישוב" }, info: { gl: "ℹ", he: "הודעה" }, consent: { gl: "◔", he: "מחכה שתאשר התחלת האזנה" },
   };
   /** Newest = hero, the rest = compact rows (max 2 shown). Font size is fixed per type, so nothing shrinks while text streams. */
   function layoutRoles() {
@@ -380,7 +392,7 @@
     const top = div("top");
     const pill = span("pill"); pill.append(span("gl", kind.gl), document.createTextNode(kind.he + (calc && c.badge === "me" ? " · חישוב" : ""))); top.append(pill, span("age"));
     el.append(top);
-    if (c.question && !consent) { const q = div("q"); q.append(span("ql", "עונה על:")); mixed(q, c.question); el.append(q); }
+    if (c.question && !consent) { const q = div("q"); q.append(span("ql", (c.badge === "fix" || c.badge === "careful") ? "אמרת:" : "עונה על:")); mixed(q, c.question); el.append(q); }
     el._say = div("say"); el.append(el._say);
     if (c.facts?.length) {
       const ul = document.createElement("ul");
@@ -446,15 +458,21 @@
     rewindBox.style.display = "flex"; body.scrollTop = body.scrollHeight;
     clearTimeout(rewindTimer); rewindTimer = setTimeout(() => { rewindBox.style.display = "none"; rNew.style.display = "none"; }, 20000);
   }
-  // "Client just said" strip: the newest client line (overlay.showLastLine). Text nodes only; me-lines never replace it.
+  // Live strip: the newest line from either side, labelled (overlay.showLastLine). Text nodes only.
+  // A short "me" line (< 3 words: "כן", "אוקיי") does not replace the other side's sentence, so the question stays readable.
   let SHOW_LAST = true;
-  const lastBox = document.getElementById("last"), lastTxt = lastBox.querySelector(".txt");
-  function showLast(text) {
+  const lastBox = document.getElementById("last"), lastTxt = lastBox.querySelector(".txt"), lastWho = lastBox.querySelector(".who");
+  function showLast(text, ch) {
     if (!SHOW_LAST || !text) { lastBox.style.display = "none"; return; }
-    lastTxt.replaceChildren(); mixed(lastTxt, String(text).replace(/\s+/g, " ").trim().slice(0, 220));
+    const clean = String(text).replace(/\s+/g, " ").trim();
+    if (ch === "me" && clean.split(" ").length < 3 && lastBox.style.display === "flex") return;
+    lastTxt.replaceChildren(); mixed(lastTxt, clean.slice(-220));
+    lastWho.textContent = ch === "me" ? "אני" : "הצד השני";
+    lastBox.classList.toggle("me", ch === "me");
+    lastBox.classList.remove("fresh"); void lastBox.offsetWidth; lastBox.classList.add("fresh");
     lastBox.style.display = "flex";
   }
-  window.wingman.onLine((l) => { if (phase === "ended") return; listening(); lines.push(l); while (lines.length > 400) lines.shift(); if (l.ch === "them") showLast(l.text); });
+  window.wingman.onLine((l) => { if (phase === "ended") return; listening(); lines.push(l); while (lines.length > 400) lines.shift(); showLast(l.text, l.ch); });
   window.wingman.onRewind(showRewind);
   const caps = new Map();   // value -> chip, newest first (same order as main.cjs: chip N = Ctrl+Opt+N)
   const numberChips = () => [...capBox.children].forEach((el, i) => { el.querySelector(".n").textContent = String(i + 1); el.setAttribute("aria-label", `${el.dataset.kind} ${el.dataset.value}, ${fmtKey("Control+Alt+" + (i + 1))}`); });
@@ -474,6 +492,7 @@
     SHOW_LAST = c.showLastLine !== false; if (!SHOW_LAST) lastBox.style.display = "none";
     REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
     document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px');
+    if (c.liveTextPt) document.documentElement.style.setProperty('--live-pt', c.liveTextPt + 'px');
     // Key legend: shared modifiers once, then one key chip per action.
     const items = [["ask", "שאל אותי"], ["rewind", "מה אמרו"], ["checklist", "רשימה"], ["pause", "השהיה"], ["clear", "ניקוי"]].filter(([k]) => HK[k]).map(([k, l]) => [fmtKey(HK[k]).split("+"), l]);
     items.splice(Math.min(3, items.length), 0, [["Ctrl", "Opt", "1-3"], "העתק פרט"]);   // chip keys (fixed in main.cjs); Ctrl+Opt+K = chip 1, so it has no row of its own

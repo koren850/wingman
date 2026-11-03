@@ -31,3 +31,6 @@ stage0/.app/
 *.dmg
 stage0/data/briefs/
 .claude/
+
+# Personal session notes (never committed)
+NEXT-SESSION.md
