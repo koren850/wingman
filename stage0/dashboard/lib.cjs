@@ -105,6 +105,14 @@ function readFrame(events) {
   return frame ? { frame, ...feedLib.frameProgress(frame) } : null;
 }
 
+const cleanName = (v) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "").slice(0, 40).trim() : "");
+/** Speaker names from cards.jsonl "speaker" rows, in order (a later row wins; "" = cleared, kept so it also overrides names written on older lines): { "2": "Dana" }. Only voices 1-20 with a text name. */
+function speakerNames(rows) {
+  const out = {};
+  for (const r of rows) if (r && r.type === "speaker" && Number.isInteger(r.spk) && r.spk >= 1 && r.spk <= 20 && typeof r.name === "string") { const n = cleanName(r.name); out[r.spk] = n; }
+  return out;
+}
+
 /** Everything the call view needs: summary, meta, call summary, frame, transcript, cards (last version each), captures, events, latency, usage (provider internals removed) and ratings by card id. */
 function getCall(callsDir, id) {
   const dir = callDir(callsDir, id);
@@ -119,7 +127,8 @@ function getCall(callsDir, id) {
   for (const t of read(dir, "tags.jsonl")) if (t && t.id && (t.useful === "y" || t.useful === "n")) tags[t.id] = t.useful;
   return {
     summary: summarize(callsDir, id), meta: readJson(dir, "call.json"), callSummary: readSummary(dir), callFrame: readFrame(read(dir, "events.jsonl")),
-    transcript: read(dir, "transcript.jsonl").map((r) => ({ t: r.t, ch: r.ch, text: r.text })),
+    transcript: read(dir, "transcript.jsonl").map((r) => ({ t: r.t, ch: r.ch, text: r.text, ...(Number.isInteger(r.spk) && r.spk >= 1 && r.spk <= 20 ? { spk: r.spk } : {}), ...(cleanName(r.name) ? { name: cleanName(r.name) } : {}) })),
+    speakers: speakerNames(rows),
     cards: [...final.values()], captures: rows.filter((c) => c.type === "capture"),
     events: read(dir, "events.jsonl"), latency: read(dir, "latency.jsonl"),
     usage: read(dir, "usage.jsonl").map((u) => { const { usage: _u, providerMetadata: _p, ...rest } = u; return rest; }),

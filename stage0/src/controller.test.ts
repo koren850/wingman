@@ -63,7 +63,19 @@ test("only the fixed commands reach stdin, and only in the right phase", () => {
   assert.equal(ctl.note("   "), false);
   assert.equal(ctl.note("x".repeat(1000)), true);
   assert.deepEqual(c.written, ["consent\n", "quiet on\n", "quiet off\n", "client\n", "note שיחה על מעבר שרת\n", "note " + "x".repeat(300) + "\n"]);
-  for (const w of c.written) assert.ok(COMMANDS.includes(w.trim()) || /^note [^\n\r]{1,300}\n$/.test(w), "unexpected stdin: " + JSON.stringify(w));
+  for (const w of c.written) assert.ok(COMMANDS.includes(w.trim()) || /^note [^\n\r]{1,300}\n$/.test(w) || /^speaker \d{1,2}( [^\n\r]{1,40})?\n$/.test(w), "unexpected stdin: " + JSON.stringify(w));
+});
+
+test("speaker: renames call-local voices 1-20, empty name clears, bad input and no call refused", () => {
+  const { ctl, spawned } = fake();
+  assert.equal(ctl.speaker(2, "Dana"), false, "no call");
+  ctl.start({}); const c = spawned[0]; c.say("waiting", { id: "X" }); c.say("consented");
+  assert.equal(ctl.speaker(2, " Dana\nLevi "), true);
+  assert.equal(ctl.speaker(20, "Pierre"), true);
+  assert.equal(ctl.speaker(3, ""), true);
+  assert.equal(ctl.speaker(1, "x".repeat(100)), true);
+  for (const bad of [[0, "a"], [21, "a"], [1.5, "a"], ["2", "a"], [2, 5], [2, undefined]]) assert.equal(ctl.speaker(...(bad as [any, any])), false, JSON.stringify(bad));
+  assert.deepEqual(c.written, ["speaker 2 Dana Levi\n", "speaker 20 Pierre\n", "speaker 3\n", "speaker 1 " + "x".repeat(40) + "\n"]);
 });
 
 test("stop sends stop, marks stopping, escalates to SIGINT then SIGKILL on a stuck call", () => {

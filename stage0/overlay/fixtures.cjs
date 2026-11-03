@@ -58,6 +58,7 @@ S.stale = { cards: [old(bank, 300000), old(aiLong, 130000), old(stall, 70000), o
 S.ended = { cards: [bank, aiLong, ...caps], lines, ended: true };
 // Several people on the other side, told apart by voice (stt.speakers): the live strip and the rewind sheet name the speaker.
 S.speakers = { cards: [bank], lines: [{ t: now - 9000, ch: "them", spk: 1, text: "דנה, שלחת כבר את רשימת התורמים?" }, { t: now - 5000, ch: "them", spk: 2, text: "עוד לא, מחכה לייצוא מה-CRM." }, { t: now - 1500, ch: "them", spk: 3, name: "רות", text: "אני יכולה להריץ את הייצוא מחר בבוקר." }] };
+S.speakers.cards.push({ type: "speaker", spk: 2, name: "פייר", source: "user", t: now - 1000 });   // renamed after the fact: line 2 shows the name too
 // Self-check: a red correction and an amber "you committed" card about what the user said (invented project facts).
 const fix = card({ id: "s1-fix", turnId: "s1", badge: "fix", question: "יש לכם בערך 200 עמודים באתר", say: "לפי החומר שהכנו: 140 עמודים ו-320 חדשות, לא 200 עמודים.", facts: ["רקע הפגישה: ספירת מפות האתר"], at: now - 1500 });
 const careful = card({ id: "s2-careful", turnId: "s2", badge: "careful", question: "נסיים את כל ההעברה עד סוף החודש", say: "התחייבת לתאריך. אפשר לסייג: \"אחזור אליכם עם לוח זמנים מסודר\".", facts: [], at: now - 40000 });

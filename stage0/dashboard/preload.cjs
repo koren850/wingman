@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("wingman", {
   quiet: (on) => ipcRenderer.invoke("call:cmd", "quiet", !!on),
   confirmClient: () => ipcRenderer.invoke("call:cmd", "client"),
   note: (text) => ipcRenderer.invoke("call:cmd", "note", String(text)),
+  speaker: (spk, name) => ipcRenderer.invoke("call:cmd", "speaker", { spk: Number(spk), name: String(name) }),
   ask: (text) => ipcRenderer.invoke("call:cmd", "ask", String(text)),
   askWingman: () => ipcRenderer.invoke("call:cmd", "askWingman"),
   stop: () => ipcRenderer.invoke("call:cmd", "stop"),

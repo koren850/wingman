@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { realpathSync } from "node:fs";
 import { CliError, EXIT, makeCtx, usage, type Ctx, type Result } from "./common.ts";
 import { HELP } from "./help.ts";
-import { start, stop, consent, quiet, client, note, ask, app } from "./control.ts";
+import { start, stop, consent, quiet, client, note, speaker, ask, app } from "./control.ts";
 import { status, doctor, keys } from "./status.ts";
 import { plan } from "./plan.ts";
 import { calls } from "./calls.ts";
@@ -15,7 +15,7 @@ import { live } from "./live.ts";
 
 type Cmd = (ctx: Ctx, args: string[]) => Promise<Result>;
 const COMMANDS: Record<string, Cmd> = {
-  status, doctor, plan, prepare: plan, start, stop, consent, confirm: consent, client, quiet, note, ask, live, calls, settings, keys, app,
+  status, doctor, plan, prepare: plan, start, stop, consent, confirm: consent, client, quiet, note, speaker, ask, live, calls, settings, keys, app,
   help: async (_c, a) => ({ data: { help: HELP }, text: HELP.trimEnd() + (a.length ? "" : "") }),
 };
 

@@ -54,10 +54,10 @@ function createLiveTail(o) {
     let dir; try { dir = dirFor(cur.id); } catch { return; }   // not created yet
     const lr = readNew(dir, "transcript", cur.files.transcript), cr = readNew(dir, "cards", cur.files.cards);
     if (!lr.length && !cr.length) return;
-    const lines = cur.feed.addLines(lr), cards = cur.feed.addCards(cr), frame = cur.feed.addFrameRows(cr);
-    if (!lines.length && !cards.length && !frame) return;
-    if (lines.length > MAX_DELTA) { const s = cur.feed.snapshot(); send({ callId: cur.id, reset: true, lines: s.lines, cards: s.cards, frame: s.frame }); }
-    else send({ callId: cur.id, reset: false, lines, cards, ...(frame ? { frame } : {}) });
+    const lines = cur.feed.addLines(lr), cards = cur.feed.addCards(cr), frame = cur.feed.addFrameRows(cr), names = cur.feed.addSpeakerRows(cr);
+    if (!lines.length && !cards.length && !frame && !names) return;
+    if (lines.length > MAX_DELTA) { const s = cur.feed.snapshot(); send({ callId: cur.id, reset: true, lines: s.lines, cards: s.cards, frame: s.frame, names: s.names }); }
+    else send({ callId: cur.id, reset: false, lines, cards, ...(frame ? { frame } : {}), ...(names ? { names } : {}) });
   }
 
   const api = {

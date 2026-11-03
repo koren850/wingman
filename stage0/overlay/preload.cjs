@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("wingman", {
   onCard: (fn) => ipcRenderer.on("card", (_e, c) => fn(c)),
   onCapture: (fn) => ipcRenderer.on("capture", (_e, c) => fn(c)),
   onLine: (fn) => ipcRenderer.on("line", (_e, l) => fn(l)),
+  onSpeaker: (fn) => ipcRenderer.on("speaker", (_e, s) => fn(s)),
   onPartial: (fn) => ipcRenderer.on("partial", (_e, l) => fn(l)),
   onRewind: (fn) => ipcRenderer.on("rewind", () => fn()),
   onCopied: (fn) => ipcRenderer.on("copied", (_e, t) => fn(t)),

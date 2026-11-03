@@ -23,3 +23,23 @@ test("speaker book: numbers in order of first voice, names override, labels for 
   assert.equal(lineLabel("me", { spk: 1 }), "me");
   assert.equal(lineLabel("them"), "them");
 });
+
+test("attendee names: first names from a meeting's who line, either script", async () => {
+  const { attendeeNames } = await import("./speakers.ts");
+  assert.deepEqual(attendeeNames("Dana Levi, Pierre (IT) and רות כהן / Levi Studio"), ["Dana", "Pierre", "רות", "Levi"]);
+  assert.deepEqual(attendeeNames(undefined), []);
+});
+
+test("introductions: attendees match in any script; 'I am' + an ordinary word is not a name", async () => {
+  const { introName } = await import("./speakers.ts");
+  const who = ["Dana", "Pierre", "רות"];
+  assert.equal(introName("היי, אני רות מצוות ה-IT", who), "רות");
+  assert.equal(introName("Thanks Dan. I'm Dana, I manage the content.", who), "Dana");
+  assert.equal(introName("אני מבינה את זה", who), undefined);
+  assert.equal(introName("I'm sure it works", who), undefined);
+  assert.equal(introName("קוראים לי נועה ואני מהשיווק", who), "נועה");      // strong cue, not on the list
+  assert.equal(introName("I'm Pierre, I handle the newsletter."), "Pierre"); // no list: a capitalised English name
+  assert.equal(introName("אני מרים את זה עכשיו"), undefined);                // "מרים" is also a verb: needs the attendee list
+  assert.equal(introName("אני מרים מהשיווק", ["מרים"]), "מרים");
+  assert.equal(introName("I'm Donna. I manage the website content.", who), "Dana");   // misheard attendee: the list spelling wins
+});

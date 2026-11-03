@@ -29,8 +29,21 @@
     if (!r || typeof r !== "object" || (r.ch !== "me" && r.ch !== "them")) return null;
     const text = str(r.text, MAX_TEXT).trim();
     if (!text || !Number.isFinite(r.t) || r.t < 0 || r.t > 4e12) return null;
-    const who = r.ch === "them" ? (typeof r.name === "string" && r.name ? { name: r.name.slice(0, 40) } : Number.isInteger(r.spk) ? { spk: r.spk } : {}) : {};
+    const nm = r.ch === "them" ? str(r.name, 40).trim() : "";
+    const who = r.ch === "them" ? { ...(Number.isInteger(r.spk) && r.spk >= 1 && r.spk <= 20 ? { spk: r.spk } : {}), ...(nm ? { name: nm } : {}) } : {};
     return { t: Math.round(r.t), ch: r.ch, text, ...who };
+  }
+
+  /** cards.jsonl row {type:"speaker", spk, name} -> { spk, name } (name "" = cleared) or null. */
+  function cleanSpeaker(r) {
+    if (!r || typeof r !== "object" || r.type !== "speaker" || !Number.isInteger(r.spk) || r.spk < 1 || r.spk > 20 || typeof r.name !== "string") return null;
+    return { spk: r.spk, name: str(r.name, 40).trim() };
+  }
+  /** Rows (raw cards.jsonl rows) -> the names map { spk: name } after applying every valid speaker row in order, starting from `base`. */
+  function applyNames(base, rows) {
+    const out = { ...base };
+    for (const r of rows) { const s = cleanSpeaker(r); if (s) out[s.spk] = s.name; }
+    return out;
   }
 
   /** cards.jsonl row -> { id, badge, question, say, t, dim } | { id, withdraw: true } | null. Only bank / AI / stall answers and the "For you" answers (me) are shown. */
@@ -87,11 +100,21 @@
   /** In-memory feed, capped at MAX_LINES lines and MAX_CARDS cards. */
   function create() {
     // seq numbers lines for the renderer; cards is a Map so re-sent ids keep one entry.
-    let lines = [], seq = 0, frame = null;
+    let lines = [], seq = 0, frame = null, names = {};
     const cards = new Map();
     const api = {
       get lines() { return lines; },
-      clear() { lines = []; cards.clear(); frame = null; },
+      clear() { lines = []; cards.clear(); frame = null; names = {}; },
+      get names() { return names; },
+      /** Apply raw cards.jsonl "speaker" rows; returns the whole names map when it changed, else null. */
+      addSpeakerRows(rows) { return api.setNames(applyNames(names, rows)); },
+      /** Replace-merge a names map {spk: name} (validated like speaker rows). Returns the map when it changed, else null. */
+      setNames(m) {
+        if (!m || typeof m !== "object" || Array.isArray(m)) return null;
+        const next = applyNames(names, Object.entries(m).map(([k, v]) => ({ type: "speaker", spk: Number(k), name: v })));
+        if (JSON.stringify(next) === JSON.stringify(names)) return null;
+        names = next; return { ...names };
+      },
       get frame() { return frame; },
       /** Newest valid frame among raw cards.jsonl rows (type "frame"); returns it when it changed, else null. */
       addFrameRows(rows) {
@@ -122,7 +145,12 @@
       },
       /** Lines with their answer cards attached; cards not pinned to a line yet (or older than the first kept line) are dropped / listed in `loose`. */
       view() {
-        const res = lines.map((l) => ({ ...l, cards: [] })), loose = [];
+        // A rename wins over the name a line was written with (so a corrected or cleared name applies to the whole call).
+        const res = lines.map((l) => {
+          const o = { ...l, cards: [] };
+          if (l.ch === "them" && l.spk in names) { if (names[l.spk]) o.name = names[l.spk]; else delete o.name; }
+          return o;
+        }), loose = [];
         const first = lines.length ? lines[0].t : 0;
         for (const c of cards.values()) {
           const i = pinIndex(lines, c);
@@ -131,7 +159,7 @@
         for (const r of res) r.cards.sort((a, b) => a.t - b.t);
         return { items: res, loose };
       },
-      snapshot() { return { lines: lines.map((l) => ({ ...l })), cards: [...cards.values()], frame }; },
+      snapshot() { return { lines: lines.map((l) => ({ ...l })), cards: [...cards.values()], frame, names: { ...names } }; },
     };
     return api;
   }
@@ -144,6 +172,6 @@
   /** Call start for the stamps: the live clock when it is plausible, else the first line. */
   function startOf(liveAt, firstT) { return Number.isFinite(liveAt) && liveAt > 0 && Number.isFinite(firstT) && liveAt <= firstT + 5000 ? liveAt : (firstT || 0); }
 
-  const api = { MAX_LINES, MAX_CARDS, parseJsonl, cleanLine, cleanCard, cleanFrame, frameProgress, pinIndex, create, stamp, startOf, norm };
+  const api = { MAX_LINES, MAX_CARDS, parseJsonl, cleanLine, cleanCard, cleanSpeaker, applyNames, cleanFrame, frameProgress, pinIndex, create, stamp, startOf, norm };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.WingmanLive = api;
 })(typeof window !== "undefined" ? window : globalThis);

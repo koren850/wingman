@@ -42,7 +42,7 @@ import { checkScript } from "./lang.ts";
 import { callAppRunning } from "./callapp.ts";
 import { audienceByCues, classify, decideAudience, MeGate, guardMe } from "./assist.ts";
 import { detect, isClearQuestion } from "./detector.ts";
-import { SpeakerBook, lineLabel, type SpeakerInfo } from "./speakers.ts";
+import { SpeakerBook, lineLabel, attendeeNames, introName, type SpeakerInfo } from "./speakers.ts";
 import { guard, sanitize } from "./guards.ts";
 import { buildPrefix, runReflex, resolveBankId, leakedTag, type Tag } from "./reflex.ts";
 import type { SttResult, Channel, Word } from "./providers/stt/types.ts";
@@ -128,12 +128,24 @@ type Card = {
 };
 const transcript: (TimedLine & { ch: Channel; who?: SpeakerInfo })[] = [];
 const speakers = new SpeakerBook();   // the other side's voices (stt.speakers), numbered per call
+/** Name speaker `spk` for the rest of the call (source "intro" = from their own introduction, "user" = the user renamed them). The
+ *  answer window and the dashboard follow the cards.jsonl "speaker" row; later transcript rows carry the name. */
+function nameSpeaker(spk: number, name: string, source: "intro" | "user") {
+  if (!Number.isInteger(spk) || spk < 1 || spk > 20) return;
+  if (source === "intro" && (speakers.isManual(spk) || speakers.name(spk))) return;
+  const clean = name.replace(/[\u0000-\u001f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "").trim().slice(0, 40);
+  speakers.setName(spk, clean, source === "user");
+  log.write("cards", { type: "speaker", spk, name: clean, source });
+  log.write("events", { type: "speaker.name", spk, source, named: !!clean });
+  console.log(`\n[🗣 speaker ${spk}] ${clean || "(cleared)"} (${source})`);
+}
 const lineOf = (l: { ch: Channel; text: string; who?: SpeakerInfo }) => `${lineLabel(l.ch, l.who)}: ${l.text}`;
 const contextNotes: string[] = [];
 // Prepared start: a brief saved by `pnpm brief` (last 6 h), or --brief <file>; --no-brief skips it.
 // A replay (--file) never consumes latest.yaml; it uses a brief only when --brief is given.
 const brief: Brief | undefined = noBrief ? undefined : loadBrief(briefArg);
 if (brief) contextNotes.push(...briefNotes(brief));
+const attendees = attendeeNames(brief?.who);   // first names from the prepared meeting, for naming voices from their introductions
 // Fact cards from the local client/domain snapshot.
 const snapshot = S.facts.enabled ? loadSnapshot(join(ROOT, S.facts.file)) : undefined;
 const spotter = snapshot ? new EntitySpotter(snapshot, { sslWarnDays: S.facts.sslWarnDays, minAliasLen: S.facts.minAliasLen }) : undefined;
@@ -912,7 +924,9 @@ function acceptResult(r: SttResult, checkEcho: boolean) {
     // Side features must never take the call down: a bad snapshot row or odd text only loses its own card.
     try { capture(r.channel, r.text); } catch (e) { log.write("events", { type: "capture.error", error: String((e as Error)?.message ?? e) }); }
     try { spotFacts(r.text); } catch (e) { log.write("events", { type: "facts.error", error: String((e as Error)?.message ?? e) }); }
-    const who = r.channel === "them" && S.stt.speakers ? speakers.of(r.words) : undefined;
+    let who = r.channel === "them" && S.stt.speakers ? speakers.of(r.words) : undefined;
+    // "היי, אני רות מצוות ה-IT" / "I'm Dana": the voice that introduces itself gets that name (the meeting's attendees first).
+    if (who && !who.name) { const n = introName(r.text, attendees); if (n) { nameSpeaker(who.spk, n, "intro"); who = speakers.of(r.words); } }
     if (notesOn) notesLines.push(lineOf({ ch: r.channel, text: r.text, who }));
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) lastMeVoiced = Date.now();
     transcript.push({ ch: r.channel, text: r.text, at: Date.now(), ...(who ? { who } : {}) });
@@ -980,6 +994,7 @@ function setupControl(onConsent: () => void) {
     else if (cmd === "client") confirmClient();
     else if (cmd === "ask") { const q = rest.join(" ").trim(); if (q) askTyped(q); else armAsk(); }   // "ask" = the hotkey; "ask <text>" = a typed question (wingman CLI)
     else if (cmd === "note") addNote(rest.join(" "));
+    else if (cmd === "speaker") { const n = Number(rest[0]); if (Number.isInteger(n)) nameSpeaker(n, rest.slice(1).join(" "), "user"); }   // "speaker 2 Dana": the user renamed a voice
     else if (cmd === "stop") void shutdown();
     else if (cmd === "stop-no-summary") { skipSummaryNow(); void shutdown(); }   // `wingman stop --no-summary`: keep the call, skip the summary
     else if (cmd === "skip-summary") { if (shuttingDown) skipSummaryNow(); }      // the "Skip summary" button while the summary is being written

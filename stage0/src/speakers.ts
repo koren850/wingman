@@ -19,6 +19,7 @@ export type SpeakerInfo = { spk: number; name?: string };
 export class SpeakerBook {
   private nums = new Map<number, number>();
   private names = new Map<number, string>();
+  private manual = new Set<number>();   // named by the user: an introduction never overrides it
   /** The call-local number for a raw provider id (a new id gets the next number). */
   number(raw: number): number {
     let n = this.nums.get(raw);
@@ -34,7 +35,13 @@ export class SpeakerBook {
     return name ? { spk, name } : { spk };
   }
   /** Name call-local speaker `spk` (empty name clears it). */
-  setName(spk: number, name: string) { const n = name.trim().slice(0, 40); if (n) this.names.set(spk, n); else this.names.delete(spk); }
+  setName(spk: number, name: string, byUser = false) {
+    const n = name.trim().slice(0, 40);
+    if (n) this.names.set(spk, n); else this.names.delete(spk);
+    if (byUser) this.manual.add(spk);
+  }
+  name(spk: number): string | undefined { return this.names.get(spk); }
+  isManual(spk: number): boolean { return this.manual.has(spk); }
   get count(): number { return this.nums.size; }
 }
 
@@ -44,3 +51,54 @@ export function lineLabel(ch: "me" | "them", who?: SpeakerInfo): string {
   return `them (${who.name ?? `Speaker ${who.spk}`})`;
 }
 
+
+/**
+ * First names of the people on the call, from a prepared meeting's "who" line ("Dana Levi, Pierre (IT), רות כהן / Levi Studio").
+ * Parts are split on , ; / & "and" "ו"; the first word of each part that starts with a letter is the first name.
+ */
+export function attendeeNames(who: string | undefined): string[] {
+  if (!who) return [];
+  const out = new Set<string>();
+  for (const part of who.replace(/\([^)]*\)/g, " ").split(/[,;/&\n]|\s+and\s+|\s+ו(?=[א-ת])/i)) {
+    const first = part.trim().split(/\s+/)[0]?.replace(/[^\p{L}'-]/gu, "");
+    if (first && first.length >= 2 && /^\p{L}/u.test(first)) out.add(first);
+  }
+  return [...out];
+}
+
+// Introductions. Strong cues name the speaker on their own; "אני X" / "I'm X" only when X is one of the attendees, because
+// "אני מבינה", "אני מרים את זה" or "I'm sure" are not names.
+const STRONG_INTRO = [/(?:^|[\s,.])(?:קוראים לי|שמי)\s+([א-ת][א-ת'"]+)/, /\bmy name is\s+([A-Z][a-z'-]+)/i];
+const WEAK_INTRO = [/(?:^|[\s,.])(?:אני|זאת|זו|זה|מדברת|מדבר|כאן)\s+([א-ת][א-ת'"]+)/, /\b(?:I'm|I am|this is|it's)\s+([A-Z][a-z'-]+)/];
+const NOT_NAMES = new Set(["sorry", "here", "fine", "good", "not", "just", "the", "sure", "okay", "ok", "glad", "happy", "back", "going", "trying", "still", "also", "really", "so"]);
+const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}]/gu, "");
+
+/** Edit distance (small strings only). */
+function dist(a: string, b: string): number {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+/** The attendee a misheard name stands for ("Donna" for Dana): same first letter, at most 2 edits, and only one attendee that close. */
+function nearAttendee(cand: string, attendees: string[]): string | undefined {
+  const c = norm(cand);
+  if (c.length < 3) return undefined;
+  const close = attendees.filter((a) => { const n = norm(a); return n[0] === c[0] && dist(n, c) <= (Math.min(n.length, c.length) >= 4 ? 2 : 1); });
+  return close.length === 1 ? close[0] : undefined;
+}
+
+/** The name a speaker gives for themself in this line, or undefined. Attendee names win; a strong cue alone is enough. */
+export function introName(text: string, attendees: string[] = []): string | undefined {
+  const known = new Map(attendees.map((a) => [norm(a), a]));
+  for (const re of [...STRONG_INTRO, ...WEAK_INTRO]) {
+    const m = re.exec(text);
+    if (!m) continue;
+    const cand = m[1].replace(/['"]+$/, "");
+    const hit = known.get(norm(cand)) ?? nearAttendee(cand, attendees);
+    if (hit) return hit;
+    if (STRONG_INTRO.includes(re) && !NOT_NAMES.has(norm(cand))) return cand;
+    if (re === WEAK_INTRO[1] && !NOT_NAMES.has(norm(cand))) return cand;   // English "I'm Dana": STT capitalises names, not "sure" or "fine"
+  }
+  return undefined;
+}

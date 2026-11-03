@@ -107,7 +107,7 @@ function createController(o) {
   /** Writes one line to the call's stdin. Only the fixed COMMANDS, or "note"/"ask" plus one clean line of text, are allowed; anything else is refused. */
   function send(cmd) {
     if (!child) return false;
-    if (!COMMANDS.includes(cmd) && !/^(note|ask) [^\n\r]{1,300}$/.test(cmd)) return false;
+    if (!COMMANDS.includes(cmd) && !/^(note|ask) [^\n\r]{1,300}$/.test(cmd) && !/^speaker (?:[1-9]|1[0-9]|20)(?: [^\n\r]{1,40})?$/.test(cmd)) return false;
     try { if (child.stdin.writable) { child.stdin.write(cmd + "\n"); return true; } } catch { /* ended */ }
     return false;
   }
@@ -153,6 +153,13 @@ function createController(o) {
     note: (text) => { const t = lib.cleanText(text, 300); return !!child && state.phase !== "stopping" && !!t && send("note " + t); },
     /** A typed question for the live call (the CLI's `wingman ask`; the `ask <text>` stdin command in run.ts). */
     ask: (text) => { const t = lib.cleanText(text, 300); return !!child && state.phase === "live" && !!t && send("ask " + t); },
+    /** Rename (or, with an empty name, clear) the other side's call-local speaker n (1-20): the `speaker <n> <name>` stdin command in run.ts. */
+    speaker: (n, name) => {
+      if (!Number.isInteger(n) || n < 1 || n > 20 || typeof name !== "string") return false;
+      const t = lib.cleanText(name, 40);
+      if (name.trim() && !t) return false;
+      return !!child && state.phase !== "stopping" && send(t ? `speaker ${n} ${t}` : `speaker ${n}`);
+    },
     stop: () => stop(false),
     stopDelete: () => stop(true),
     briefSaved: () => { set({ ev: "brief" }); change(); },

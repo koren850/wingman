@@ -40,6 +40,10 @@ function shape(a, fields) {
     const v = a[k];
     if (v === undefined) { if (spec.required) throw new Error(`"${k}" is required`); continue; }
     if (spec.type === "boolean" && typeof v !== "boolean") throw new Error(`"${k}" must be true or false`);
+    if (spec.type === "integer") {
+      if (!Number.isInteger(v)) throw new Error(`"${k}" must be a whole number`);
+      if (v < spec.min || v > spec.max) throw new Error(`"${k}" must be ${spec.min} to ${spec.max}`);
+    }
     if (spec.type === "string") {
       if (typeof v !== "string") throw new Error(`"${k}" must be text`);
       if (v.length > (spec.max || 300) || v.length < (spec.min || 0)) throw new Error(`"${k}" must be ${spec.min || 0} to ${spec.max || 300} characters`);
@@ -145,6 +149,7 @@ function createControlServer(o) {
     quiet: { args: (a) => shape(a, { on: { type: "boolean", required: true } }), run: (a) => need(ctl.getState().phase === "live", "Quiet mode can only change while a call is live. Start a call first.") || done(ctl.setQuiet(a.on), "Could not change quiet mode.") },
     client: { args: noArgs, run: () => need(!!ctl.getState().proposed && !ctl.getState().client, "There is no proposed client to confirm. Wingman asks only after it spots one.") || done(ctl.confirmClient(), "Could not confirm the client.") },
     note: { args: (a) => shape(a, { text: { type: "string", required: true, min: 1, max: 2000 } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running. Start one with wingman start.") || done(ctl.note(a.text), "The note was empty or not accepted.") },
+    speaker: { args: (a) => shape(a, { spk: { type: "integer", required: true, min: 1, max: 20 }, name: { type: "string", min: 0, max: 40 } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running. Start one with wingman start.") || done(ctl.speaker(a.spk, a.name || ""), "The speaker number or name was not accepted.") },
     ask: { args: (a) => shape(a, { text: { type: "string", required: true, min: 1, max: 2000 } }), run: (a) => need(ctl.getState().phase === "live", "A question can only be asked while a call is live (wingman status shows the phase).") || done(ctl.ask(a.text), "The question was empty or not accepted.") },
     ask_listen: { args: noArgs, run: () => need(ctl.getState().phase === "live", "Only while a call is live.") || done(ctl.askWingman(), "Could not arm the ask window.") },
     stop: { args: (a) => shape(a, { noSummary: { type: "boolean" } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).") || paced(() => done(a.noSummary === true ? ctl.stopNoSummary() : ctl.stop(), "Could not stop the call.")) },

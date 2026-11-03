@@ -77,6 +77,8 @@ test("socket: only the fixed allowlist, strict argument schema, no arbitrary exe
     assert.equal((await r.raw('{"v":1,"cmd":"note","args":{"text":5}}\n')).code, "bad_args");
     assert.equal((await r.raw('{"v":1,"cmd":"note","args":{"text":"a","cmd":"rm"}}\n')).code, "bad_args");
     assert.equal((await r.raw(JSON.stringify({ v: 1, cmd: "note", args: { text: "x".repeat(2001) } }) + "\n")).code, "bad_args");
+    for (const args of [{}, { spk: 0 }, { spk: 21 }, { spk: 1.5 }, { spk: "2" }, { spk: 2, name: 5 }, { spk: 2, name: "x".repeat(41) }, { spk: 2, extra: 1 }]) assert.equal((await r.raw(JSON.stringify({ v: 1, cmd: "speaker", args }) + "\n")).code, "bad_args", JSON.stringify(args));
+    assert.equal((await r.raw('{"v":1,"cmd":"speaker","args":{"spk":2,"name":"Dana"}}\n')).code, "refused", "no call is running");
     assert.equal((await r.raw(JSON.stringify({ v: 1, cmd: "ping", args: {}, pad: "x".repeat(20000) }) + "\n")).code, "too_large");
     assert.equal((await r.raw('{"v":1,"cmd":"stop_delete","args":{"confirm":false}}\n')).code, "refused");
   } finally { await r.done(); }
@@ -109,6 +111,10 @@ test("socket: start/stop drive the app's controller (one call, no second engine)
     assert.equal((await r.run("ask", "-", "--json")).code, 0, "stdin text");
     assert.equal((await r.run("ask", "--listen", "--json")).code, 0);
     assert.deepEqual(c.written.slice(1), ["ask what is the price?\n", "note she is the owner\n", "ask from stdin\n", "ask\n"]);
+    assert.equal((await r.run("speaker", "2", "Dana", "Levi", "--json")).code, 0);
+    assert.equal((await r.run("speaker", "2", "--clear", "--json")).code, 0);
+    for (const bad of [["speaker"], ["speaker", "2"], ["speaker", "0", "Dana"], ["speaker", "21", "Dana"], ["speaker", "x", "Dana"], ["speaker", "2", "Dana", "--clear"], ["speaker", "2", "x".repeat(41)]]) assert.equal((await r.run(...bad, "--json")).code, 2, bad.join(" "));
+    assert.deepEqual(c.written.slice(5), ["speaker 2 Dana Levi\n", "speaker 2\n"]);
     assert.equal((await r.run("quiet", "on", "--json")).code, 0);
     assert.equal((await r.run("quiet", "maybe", "--json")).code, 2);
     assert.equal((await r.run("stop", "--delete", "--json")).code, 6, "delete needs --yes");
@@ -152,7 +158,7 @@ test("cli: app not running -> exit 3 with a hint, and nothing is opened", async 
   let opened = 0;
   try {
     const env = { ...process.env, WINGMAN_CONTROL_SOCKET: join(dir, "none.sock"), WINGMAN_CALLS_DIR: dir, WINGMAN_BRIEFS_DIR: join(dir, "b"), WINGMAN_USER_SETTINGS: join(dir, "s.yaml") };
-    for (const argv of [["start"], ["stop"], ["ask", "hi"], ["note", "hi"], ["status"], ["quiet", "on"], ["client"]]) {
+    for (const argv of [["start"], ["stop"], ["ask", "hi"], ["note", "hi"], ["speaker", "2", "Dana"], ["status"], ["quiet", "on"], ["client"]]) {
       let out = "";
       const code = await main([...argv, "--json"], { env, out: (s) => { out += s; }, err: () => {}, openApp: async () => { opened++; } });
       assert.equal(code, 3, argv.join(" "));
@@ -381,7 +387,7 @@ test("keys: status only, never a value or its last characters; set/migrate refus
 test("help: agent manual mentions every command; exit codes documented; usage errors exit 2", async () => {
   const r = await rig();
   try {
-    for (const w of ["status", "doctor", "plan", "prepare", "start", "stop", "ask", "live", "calls", "settings", "keys status", "app open", "--json", "--yes", "EXIT CODES"]) assert.ok(HELP.includes(w), w);
+    for (const w of ["status", "doctor", "plan", "prepare", "start", "stop", "ask", "speaker", "live", "calls", "settings", "keys status", "app open", "--json", "--yes", "EXIT CODES"]) assert.ok(HELP.includes(w), w);
     const h = await r.run("help"); assert.equal(h.code, 0); assert.match(h.out, /for an AI agent/);
     assert.equal((await r.run("help", "--json")).json.ok, true);
     assert.equal((await r.run("start", "--bogus", "--json")).code, 2);

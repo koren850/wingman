@@ -766,3 +766,9 @@ select:active { border-color:var(--text); background-color:var(--s2); }
 .pm-meta { grid-area:meta; display:flex; flex-wrap:wrap; gap:6px; }
 .pm-act { grid-area:act; display:flex; gap:4px; align-items:center; }
 @media (max-width: 560px) { .pm { grid-template-columns:1fr; grid-template-areas:"main" "meta" "act"; } }
+
+/* Speaker rename in the live view: the other side's chip is a button; click swaps it for a small field. */
+button.chip.spk-btn { height:20px; padding:0 8px; border-color:transparent; }
+button.chip.spk-btn:hover { border-color:color-mix(in srgb, var(--info) 40%, transparent); }
+button.chip.spk-btn:focus-visible, .spk-input:focus-visible { outline:2px solid var(--info); outline-offset:2px; }
+.spk-input { height:22px; width:160px; max-width:60%; padding:0 8px; font-size:12px; }

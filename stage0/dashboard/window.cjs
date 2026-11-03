@@ -187,6 +187,7 @@ function create(ctx) {
       case "practice": { const a = arg && typeof arg === "object" ? arg : {}; return { ok: controller.practice({ quick: a.quick === true, planId: planArg(a.planId) }) }; }
       case "consent": return { ok: controller.consent() };
       case "quiet": if (typeof arg !== "boolean") throw new Error("bad argument"); return { ok: controller.setQuiet(arg) };
+      case "speaker": { if (!arg || typeof arg !== "object" || !Number.isInteger(arg.spk) || arg.spk < 1 || arg.spk > 20 || typeof arg.name !== "string" || arg.name.length > 40) throw new Error("bad argument"); return { ok: controller.speaker(arg.spk, arg.name) }; }
       case "client": return { ok: controller.confirmClient() };
       case "note": if (typeof arg !== "string" || arg.length > 2000) throw new Error("bad argument"); return { ok: controller.note(arg) };
       case "ask": if (typeof arg !== "string" || !arg.trim() || arg.length > 2000) throw new Error("bad argument"); return { ok: controller.ask(arg) };   // a typed question for Wingman

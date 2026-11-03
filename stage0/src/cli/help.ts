@@ -19,7 +19,7 @@ TYPICAL FLOWS
              wingman start --practice = offline pretend client, free (uses the next prepared meeting, or --plan <id>, or none with --quick)
              wingman status            phase "live" = listening ("waiting" only if the optional "Ask me before listening starts" setting is on)
   During:    wingman live [--follow]   transcript + answer cards          wingman ask "what did we say the price was?"
-             wingman note "she is the owner"     wingman quiet on|off     wingman client   (confirm the proposed client)
+             wingman note "she is the owner"     wingman speaker 2 "Dana"     wingman quiet on|off     wingman client   (confirm the proposed client)
   Finish:    wingman stop   (or: wingman stop --delete --yes)     wingman calls summary latest     wingman calls email latest
   Review:    wingman calls list | show <id> | rate <id> <card> y|n | purge <id> --yes
 
@@ -53,6 +53,7 @@ COMMANDS
   client                       Confirm the proposed client (the AI may then use their details).
   quiet on|off                 Quiet mode: hide cards in the answer window (they are still saved).
   note "<text>"                Add a context note for the AI (max 300 characters; \`-\` reads stdin).
+  speaker <n> "<name>"         Name the other side's voice n (1-20, the "Speaker n" in the live view); \`speaker <n> --clear\` removes the name. Needs a running call.
   ask "<question>"             Type a question to Wingman during a live call; the answer appears as a card (read it with \`wingman live\`). Needs phase "live".
   ask --listen                 Same as the Ctrl+Opt+A key: Dan's next spoken sentence is the question.
   live [--follow] [--last N] [--id <call>] [--timeout S]     Transcript with answer cards (NDJSON with --json --follow).

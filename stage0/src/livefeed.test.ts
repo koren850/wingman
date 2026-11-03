@@ -125,3 +125,25 @@ test("a \"For you\" card (badge me) is shown and pinned under Dan's own line, a 
   assert.equal(v.items[2].cards[0].say, "12 × 3 = 36"); assert.equal(v.items[2].cards[0].source, "calc");
   assert.equal(F.cleanCard(card({ id: "ask", badge: "me", turnId: "side", say: "x" })), null);
 });
+
+test("speaker rows: names map, rename wins over the written name, cleared falls back to Speaker n, junk rejected", () => {
+  const f = F.create();
+  f.addLines([{ t: 1000, ch: "them", spk: 2, text: "hello there" }, { t: 2000, ch: "them", spk: 1, name: "Pierre", text: "good morning" }, { t: 3000, ch: "me", text: "hi" }]);
+  assert.equal(f.view().items[0].name, undefined);
+  assert.equal(f.view().items[1].name, "Pierre");
+  assert.deepEqual(f.addSpeakerRows([{ type: "speaker", spk: 2, name: "Dana‮", source: "user", t: 5 }]), { 2: "Dana" });
+  assert.equal(f.view().items[0].name, "Dana", "older line gets the name");
+  assert.equal(f.view().items[0].spk, 2);
+  assert.equal(f.addSpeakerRows([{ type: "speaker", spk: 2, name: "Dana" }]), null, "no change");
+  for (const bad of [{ type: "speaker", spk: 0, name: "x" }, { type: "speaker", spk: 21, name: "x" }, { type: "speaker", spk: 1.5, name: "x" }, { type: "speaker", spk: "2", name: "x" }, { type: "speaker", spk: 3, name: 7 }, { type: "card", spk: 3, name: "x" }]) assert.equal(f.addSpeakerRows([bad]), null, JSON.stringify(bad));
+  assert.equal(f.addSpeakerRows([{ type: "speaker", spk: 1, name: "Ruth" }])[1], "Ruth");
+  assert.equal(f.view().items[1].name, "Ruth", "a rename replaces the old name");
+  f.addSpeakerRows([{ type: "speaker", spk: 1, name: "" }]);
+  assert.equal(f.view().items[1].name, undefined, "cleared");
+  assert.equal(f.view().items[2].name, undefined, "my own line never gets a name");
+  assert.equal(f.addSpeakerRows([{ type: "speaker", spk: 4, name: "x".repeat(80) }])[4].length, 40);
+  assert.equal(F.cleanLine({ t: 1, ch: "them", text: "a", spk: 2, name: "Dana" }).spk, 2);
+  assert.deepEqual(f.snapshot().names[2], "Dana");
+  assert.equal(f.setNames({ 2: "Ruth", 99: "no", x: "no" })[2], "Ruth");
+  f.clear(); assert.deepEqual(f.names, {});
+});

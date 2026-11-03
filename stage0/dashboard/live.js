@@ -14,6 +14,7 @@ function liveApply(p) {
   if (p.reset) { LV.feed.clear(); LV.lastSeen = 0; }
   LV.callId = p.callId;
   if (p.frame) LV.feed.setFrame(p.frame);
+  if (p.names) LV.feed.setNames(p.names);
   const arr = (a, n) => (Array.isArray(a) ? a.slice(-n) : []);
   LV.feed.addLines(arr(p.lines, WingmanLive.MAX_LINES));
   LV.feed.addCards(arr(p.cards, 200));
@@ -78,9 +79,37 @@ function liveChrome() {
 /** One transcript line (Me / Them, mm:ss from the call start). Text via rich() only; dir is set per line for Hebrew with English terms. */
 function liveLineEl(l, t0) {
   const me = l.ch === "me", who = me ? "Me" : speakerName(l);
-  return h("div", { class: "lf-row " + (me ? "me" : "them"), dir: dirOf(l.text), role: "article", "aria-label": `${me ? "Me" : who} at ${WingmanLive.stamp(l.t, t0)}` },
-    h("div", { class: "lf-meta" }, chip(who, me ? "me" : "info"), h("span", { class: "lf-ts" }, WingmanLive.stamp(l.t, t0))),
+  const row = h("div", { class: "lf-row " + (me ? "me" : "them"), dir: dirOf(l.text), role: "article", "aria-label": `${me ? "Me" : who} at ${WingmanLive.stamp(l.t, t0)}` },
+    h("div", { class: "lf-meta" }, !me && Number.isInteger(l.spk) ? liveSpeakerChip(l, who) : chip(who, me ? "me" : "info"), h("span", { class: "lf-ts" }, WingmanLive.stamp(l.t, t0))),
     h("div", { class: "lf-tx", dir: dirOf(l.text), lang: langOf(l.text) }, rich(l.text)));
+  row._who = who;
+  return row;
+}
+/** The other side's speaker chip as a button: click (or Enter / Space) swaps it for a small text field to rename that voice. */
+function liveSpeakerChip(l, who) {
+  const n = l.spk;
+  const btnEl = h("button", { type: "button", class: "chip info spk-btn", "aria-label": `Rename Speaker ${n}`, title: "Rename this speaker", onclick: () => liveRenameOpen(btnEl, n, who) }, who);
+  return btnEl;
+}
+/** Inline rename: Enter saves (empty = clear the name), Escape or leaving the field cancels. Sends through the guarded call:cmd channel; the new name comes back via the cards file. */
+function liveRenameOpen(btnEl, n, who) {
+  const cur = LV.feed.names[n] || (who === `Speaker ${n}` ? "" : who);
+  let closed = false;
+  const input = h("input", { type: "text", class: "spk-input", maxlength: 40, value: cur, "aria-label": `Name for Speaker ${n}`, placeholder: `Speaker ${n}`, autocomplete: "off", spellcheck: "false",
+    onkeydown: (e) => {
+      if (e.key === "Enter") { e.preventDefault(); save(); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(true); }
+    },
+    onblur: () => close(false) });
+  const close = (refocus) => { if (closed) return; closed = true; if (input.isConnected) input.replaceWith(btnEl); if (refocus) btnEl.focus(); };
+  const save = async () => {
+    const v = input.value.replace(/\s+/g, " ").trim().slice(0, 40);
+    close(true);
+    if (v === cur) return;
+    if (await act(() => api.speaker(n, v), "Renaming the speaker")) announce(v ? `Speaker ${n} is now ${v}` : `Speaker ${n} name cleared`);
+  };
+  btnEl.replaceWith(input);
+  input.focus(); input.select();
 }
 /** One answer card under its line. _sig lets liveRender replace it only when its text or dim state changed (AI cards stream in as new versions). */
 function liveCardEl(c) {
@@ -127,7 +156,8 @@ function liveRender() {
   };
   for (const it of items) {
     const k = "l" + it.n; let el = LV.els.get(k);
-    if (!el) { el = liveLineEl(it, t0); LV.els.set(k, el); }
+    const who = it.ch === "me" ? "Me" : speakerName(it);
+    if (!el || el._who !== who) { const n = liveLineEl(it, t0); if (el) el.replaceWith(n); el = n; LV.els.set(k, el); }
     want.push([k, el]);
     it.cards.forEach(keepCard);
   }

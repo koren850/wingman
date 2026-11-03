@@ -1,4 +1,4 @@
-// Commands that drive the RUNNING app through its control socket: start, stop, consent, quiet, client, note, ask, app.
+// Commands that drive the RUNNING app through its control socket: start, stop, consent, quiet, client, note, speaker, ask, app.
 // They never spawn an engine themselves. Each sends one command over the owner-only control socket (tray/control-socket.cjs,
 // through client.ts); the tray app owns the engine and applies its own checks and rate limits.
 import { existsSync, readFileSync } from "node:fs";
@@ -103,6 +103,20 @@ export async function note(ctx: Ctx, args: string[]): Promise<Result> {
   const t = await text(ctx, positionals, "note");
   await call(ctx, "note", { text: t });
   return { data: { sent: true, kind: "note" }, text: "Note added for the AI." };
+}
+
+export async function speaker(ctx: Ctx, args: string[]): Promise<Result> {
+  const { values, positionals } = parse(args, { clear: { type: "boolean" } });
+  const bad = () => usage('Usage: wingman speaker <n> "<name>"   or   wingman speaker <n> --clear   (n = 1-20, as shown in the live view)');
+  const [num, ...rest] = positionals;
+  if (!num || !/^\d{1,2}$/.test(num)) throw bad();
+  const n = Number(num);
+  if (n < 1 || n > 20) throw bad();
+  const name = rest.join(" ").replace(/\s+/g, " ").trim();
+  if (values.clear ? !!name : !name) throw bad();
+  if (name.length > 40) throw usage(`Name too long (${name.length} characters): the limit is 40.`);
+  await call(ctx, "speaker", { spk: n, name });
+  return { data: { sent: true, kind: "speaker", spk: n, name }, text: name ? `Speaker ${n} is now called ${name}.` : `Speaker ${n} name cleared.` };
 }
 
 /**

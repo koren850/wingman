@@ -466,7 +466,9 @@
   const lastBox = document.getElementById("last"), lastTxt = lastBox.querySelector(".txt"), lastWho = lastBox.querySelector(".who");
   // partial = words still being spoken (live.jsonl); the final line replaces them. A partial never re-triggers the fade-in.
   // Who said it: "אני", the name, "דובר 2" when the voices are told apart, else "הצד השני". Text only (names come from the call).
-  const whoLabel = (l) => l.ch === "me" ? "אני" : (typeof l.name === "string" && l.name) ? l.name.slice(0, 40) : Number.isInteger(l.spk) ? `דובר ${l.spk}` : "הצד השני";
+  // Names given during the call (an introduction, or the user renamed a voice): they also apply to lines already received.
+  const NAMES = new Map();
+  const whoLabel = (l) => l.ch === "me" ? "אני" : (Number.isInteger(l.spk) && NAMES.get(l.spk)) || ((typeof l.name === "string" && l.name) ? l.name.slice(0, 40) : Number.isInteger(l.spk) ? `דובר ${l.spk}` : "הצד השני");
   function showLast(text, ch, partial, who) {
     if (!SHOW_LAST || !text) { lastBox.style.display = "none"; return; }
     const clean = String(text).replace(/\s+/g, " ").trim();
@@ -474,13 +476,18 @@
     lastBox.classList.toggle("partial", !!partial);
     lastTxt.replaceChildren(); mixed(lastTxt, clean.slice(-220));
     lastWho.textContent = who || (ch === "me" ? "אני" : "הצד השני");
+    lastBox._line = { ch, spk: lastBox._spkNext };
     lastBox.classList.toggle("me", ch === "me");
     if (!partial && !lastBox._wasPartial) { lastBox.classList.remove("fresh"); void lastBox.offsetWidth; lastBox.classList.add("fresh"); }
     lastBox._wasPartial = !!partial;
     lastBox.style.display = "flex";
   }
-  window.wingman.onLine((l) => { if (phase === "ended") return; listening(); lines.push(l); while (lines.length > 400) lines.shift(); showLast(l.text, l.ch, false, whoLabel(l)); });
-  window.wingman.onPartial((l) => { if (phase === "ended") return; listening(); showLast(l.text, l.ch, true, whoLabel(l)); });
+  window.wingman.onLine((l) => { if (phase === "ended") return; listening(); lines.push(l); while (lines.length > 400) lines.shift(); lastBox._spkNext = l.spk; showLast(l.text, l.ch, false, whoLabel(l)); });
+  window.wingman.onPartial((l) => { if (phase === "ended") return; listening(); lastBox._spkNext = l.spk; showLast(l.text, l.ch, true, whoLabel(l)); });
+  window.wingman.onSpeaker((s) => {
+    if (s.name) NAMES.set(s.spk, s.name); else NAMES.delete(s.spk);
+    if (lastBox._line && lastBox._line.ch === "them" && lastBox._line.spk === s.spk) lastWho.textContent = whoLabel(lastBox._line);   // the strip on screen follows at once
+  });
   window.wingman.onRewind(showRewind);
   const caps = new Map();   // value -> chip, newest first (same order as main.cjs: chip N = Ctrl+Opt+N)
   const numberChips = () => [...capBox.children].forEach((el, i) => { el.querySelector(".n").textContent = String(i + 1); el.setAttribute("aria-label", `${el.dataset.kind} ${el.dataset.value}, ${fmtKey("Control+Alt+" + (i + 1))}`); });
@@ -532,7 +539,7 @@
   function wipe() {
     askUntil = 0; clearInterval(askTimer); askEl.style.display = "none"; frameBox.style.display = "none"; frameBox.classList.remove("open"); for (const v of tipEls.values()) v.remove(); tipEls.clear(); lastBox.style.display = "none"; clearCards();
     for (const v of sides.values()) v.remove(); sides.clear(); noteList.replaceChildren(); notesBox.style.display = "none"; lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none";
-    rewindBox.style.display = "none"; rNew.style.display = "none"; bars.clear(); drawHealth(); quiet = false; pausedNew = 0; liveEl.textContent = "";
+    rewindBox.style.display = "none"; rNew.style.display = "none"; bars.clear(); NAMES.clear(); drawHealth(); quiet = false; pausedNew = 0; liveEl.textContent = "";
   }
   window.wingman.onReset(() => { wipe(); phase = "starting"; realPhase = false; liveAt = 0; clearTimeout(startTimer); refreshState(); });
   // Real phase from call.json. {phase:null} = the call writes none: fall back to the 4 s timer.

@@ -50,7 +50,14 @@ test("the window cannot send arbitrary stdin: preload exposes named commands onl
   const p = read("dashboard/preload.cjs");
   assert.doesNotMatch(p, /ipcRenderer\.send\(|ipcRenderer\.on\("(?!call:state|nav|live:update)/);
   assert.doesNotMatch(p, /writeStdin|\.write\(/);
-  assert.match(read("tray/controller.cjs"), /if \(!COMMANDS\.includes\(cmd\) && !\/\^\(note\|ask\) \[\^\\n\\r\]\{1,300\}\$\/\.test\(cmd\)\) return false;/);
+  assert.match(read("tray/controller.cjs"), /if \(!COMMANDS\.includes\(cmd\) && !\/\^\(note\|ask\) \[\^\\n\\r\]\{1,300\}\$\/\.test\(cmd\) && !\/\^speaker [^\n]*\.test\(cmd\)\) return false;/);
+});
+
+test("speaker rename: fixed command, strict regex in the controller, argument checked again in the sender-guarded handler", () => {
+  assert.match(read("tray/controller.cjs"), /!\/\^speaker \(\?:\[1-9\]\|1\[0-9\]\|20\)\(\?: \[\^\\n\\r\]\{1,40\}\)\?\$\/\.test\(cmd\)/);
+  assert.match(read("dashboard/window.cjs"), /case "speaker": \{ if \(!arg \|\| typeof arg !== "object" \|\| !Number\.isInteger\(arg\.spk\)/);
+  assert.match(read("dashboard/preload.cjs"), /speaker: \(spk, name\) => ipcRenderer\.invoke\("call:cmd", "speaker"/);
+  assert.doesNotMatch(read("dashboard/live.js"), /innerHTML|outerHTML|insertAdjacentHTML/);
 });
 
 test("live conversation: guarded channel, call text only via textContent, never on the status lines or in tray.log", () => {
