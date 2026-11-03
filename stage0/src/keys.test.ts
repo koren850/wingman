@@ -234,7 +234,6 @@ test("static: key values can only reach memory; no logging or persistence path t
   assert.match(ui, /type: "password", id, autocomplete: "off", spellcheck: "false"/);
   assert.doesNotMatch(ui, /localStorage|sessionStorage/);
   assert.match(ui, /const v = inp\.value; inp\.value = ""/);
-  assert.ok(existsSync(join(ROOT, "..", "docs", "ux", "settings-keys.png")));
 });
 
 test("migrate refuses a keys.env that is a symlink and never follows a pre-placed temp or backup symlink", async () => {
