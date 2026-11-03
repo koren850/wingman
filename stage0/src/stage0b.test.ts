@@ -1,3 +1,5 @@
+// Stage 0b helpers: echo filter and mic gate (echo.ts), spoken digits/phones/emails (capture.ts),
+// client and domain spotting (entities.ts), call notes and brief coverage. All fixtures are made-up data.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EchoFilter, MicGate, overlap } from "./echo.ts";

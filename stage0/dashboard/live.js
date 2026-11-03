@@ -1,11 +1,13 @@
 "use strict";
-// Home: the live conversation during a call. Who says what (Them / Me, mm:ss), each answer card pinned under the line it answered (a "For you" card sits under Dan's own question).
+// Home: the live conversation during a call. Who says what (Them / Me, mm:ss), each answer card pinned under the line it answered (a "For you" card sits under the user's own question).
 // Data comes from the main process (it tails transcript.jsonl and cards.jsonl) over the guarded "live:update" channel; the feed module
 // validates and caps everything again here. Call text only ever enters the page through textContent / text nodes.
+// LV: feed = in-memory WingmanLive feed; auto = follow the newest line; els = DOM nodes by key ("l<n>" line, "c<id>" card) so a redraw only adds, moves or removes;
+// lastSeen = last line number seen by the user (for the "N new" count); hydrating = call id whose snapshot is being fetched.
 const LV = { feed: WingmanLive.create(), callId: "", auto: true, els: new Map(), raf: 0, lastSeen: 0, hydrating: "" };
-const LV_BADGE = { bank: ["Bank", "good"], ai: ["AI", "info"], stall: ["Stall", "warn"], tip: ["Tip", "me"], me: ["For you", "me"] };
 const LV_KIND = { client: "Client", support: "Support", vendor: "Vendor", team: "Team", consult: "Consult", personal: "Personal", other: "Other" };
 
+/** Take one payload from main ("live:update" or a liveGet snapshot): { callId, reset, lines, cards, frame }. Checked again here, because the page does not trust the channel blindly. reset clears first. Redraw is batched to one animation frame. */
 function liveApply(p) {
   if (!p || typeof p !== "object" || Array.isArray(p)) return;
   if (typeof p.callId !== "string" || p.callId.length > 60) return;
@@ -17,16 +19,18 @@ function liveApply(p) {
   LV.feed.addCards(arr(p.cards, 200));
   liveSchedule();
 }
+// At most one pending redraw per frame, however many payloads arrive.
 function liveSchedule() { if (!LV.raf) LV.raf = requestAnimationFrame(() => { LV.raf = 0; liveRender(); }); }
 
 /** The right-hand column of Home while a call runs. Rebuilt with the column; its content comes from the feed kept in memory. */
 function liveFeedPanel() {
+  if (!H.showConv) return liveHiddenPanel();
   LV.els = new Map();
   const box = h("div", { id: "lf-scroll", class: "lf-scroll", role: "log", "aria-label": "Live conversation", "aria-live": "off", tabindex: "0" });
   box.addEventListener("scroll", liveOnScroll, { passive: true });
   const jump = h("button", { type: "button", id: "lf-jump", class: "btn primary sm lf-jump", hidden: "", onclick: () => liveToEnd(true) }, ico("chevron"), h("span", { id: "lf-jump-t" }, "Jump to latest"));
   const sec = h("section", { class: "card-big lf", "aria-labelledby": "lf-h" },
-    h("div", { class: "rhead" }, h("h2", { id: "lf-h" }, "Live conversation"), h("span", { class: "grow" }), h("span", { id: "lf-state", class: "lf-state faint" })),
+    h("div", { class: "rhead" }, h("h2", { id: "lf-h" }, "Live conversation"), h("span", { class: "grow" }), h("span", { id: "lf-state", class: "lf-state faint" }), btn("Card types", { id: "lf-types", cls: "ghost sm", icon: "help", title: "What the card names and colours mean", onclick: () => openShortcuts("types") }), btn("Hide", { id: "lf-hide", cls: "ghost sm", icon: "x", onclick: () => { H.showConv = false; renderSide(); const b = $("lf-show"); if (b) b.focus(); } })),
     h("div", { id: "lf-frame", class: "lf-frame", hidden: "" }),
     h("div", { class: "lf-body" }, box, h("div", { id: "lf-empty", class: "lf-empty" }), jump));
   LV.auto = true;
@@ -39,6 +43,17 @@ function liveFeedPanel() {
   return sec;
 }
 
+/** The default while a call runs: the words are kept (and saved) but not drawn, so a shared screen never shows them by accident. */
+function liveHiddenPanel() {
+  LV.els = new Map();
+  return h("section", { class: "card-big lf-off", "aria-labelledby": "lf-h" },
+    h("h2", { id: "lf-h" }, ico("transcript"), "Live conversation is hidden"),
+    h("p", { class: "sub" }, "It is hidden so nothing from the call shows if you share your screen. Wingman keeps listening and saving it."),
+    btn("Show conversation", { id: "lf-show", icon: "transcript", cls: "primary", onclick: () => { H.showConv = true; renderSide(); const s = $("lf-scroll"); if (s) s.focus({ preventScroll: true }); } }),
+    h("p", { class: "sub faint" }, "It hides again at the start of the next call."));
+}
+
+// Within 48 px of the bottom counts as "following"; scrolling up pauses auto-scroll and shows the "Jump to latest" button.
 const liveNearEnd = (b) => b.scrollHeight - b.scrollTop - b.clientHeight < 48;
 function liveOnScroll() {
   const b = $("lf-scroll"); if (!b) return;
@@ -60,17 +75,19 @@ function liveChrome() {
   st.textContent = !lines.length ? "" : LV.auto ? "Following" : "Paused: you scrolled up";
 }
 
+/** One transcript line (Me / Them, mm:ss from the call start). Text via rich() only; dir is set per line for Hebrew with English terms. */
 function liveLineEl(l, t0) {
   const me = l.ch === "me";
-  return h("div", { class: "lf-row " + (me ? "me" : "them"), role: "article", "aria-label": `${me ? "Me" : "Other side"} at ${WingmanLive.stamp(l.t, t0)}` },
+  return h("div", { class: "lf-row " + (me ? "me" : "them"), dir: dirOf(l.text), role: "article", "aria-label": `${me ? "Me" : "Other side"} at ${WingmanLive.stamp(l.t, t0)}` },
     h("div", { class: "lf-meta" }, chip(me ? "Me" : "Them", me ? "me" : "info"), h("span", { class: "lf-ts" }, WingmanLive.stamp(l.t, t0))),
     h("div", { class: "lf-tx", dir: dirOf(l.text), lang: langOf(l.text) }, rich(l.text)));
 }
+/** One answer card under its line. _sig lets liveRender replace it only when its text or dim state changed (AI cards stream in as new versions). */
 function liveCardEl(c) {
-  const [label0, tone] = LV_BADGE[c.badge] || [c.badge, ""];
-  const label = c.badge === "ai" && c.source === "calc" ? "Calc" : label0;
-  const el = h("div", { class: `lf-card ${c.badge === "tip" ? "tipc" : c.badge}${c.dim ? " dim" : ""}`, role: "note", "aria-label": `${label} answer` },
-    chip(label, tone, { dot: true }), h("div", { class: "lf-say", dir: dirOf(c.say), lang: langOf(c.say) }, rich(c.say)));
+  const kind = c.badge === "ai" && c.source === "calc" ? "calc" : c.badge;
+  const label = (BADGE[kind] || [c.badge])[0];
+  const el = h("div", { class: `lf-card ${c.badge === "tip" ? "tipc" : c.badge}${c.dim ? " dim" : ""}`, dir: dirOf(c.say), role: "note", "aria-label": `${label} answer` },
+    badgeChip(kind, label), h("div", { class: "lf-say", dir: dirOf(c.say), lang: langOf(c.say) }, rich(c.say)));
   el._sig = c.badge + "|" + c.say + "|" + !!c.dim;
   return el;
 }
@@ -95,6 +112,7 @@ function liveFrameRender() {
   el.hidden = false;
 }
 
+/** Sync the DOM to the feed without rebuilding it: keep nodes that did not change, add new ones, drop old ones, and fix the order. Keeps scroll position unless following. */
 function liveRender() {
   const box = $("lf-scroll"); if (!box) return;
   liveFrameRender();
@@ -128,4 +146,5 @@ function liveRender() {
   liveChrome();
 }
 
+// Register once at load; the feed fills even while the live panel is hidden, so showing it later has everything.
 api.onLive((p) => liveApply(p));

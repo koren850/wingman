@@ -1,4 +1,6 @@
 // Offline test doubles for a whole call with no network and no keys (pnpm e2e, src/e2e.test.ts).
+// Registered as STT provider "script" (providers/stt/index.ts) and LLM provider "scripted" (providers/llm.ts).
+// Answers are deterministic and keyed on phrases in the real prompts, so a prompt wording change can break these doubles.
 //   stt.provider: script      -> plays a transcript JSON ([{speaker: me|them, text}]) as STT finals, ignores audio.
 //                                File: env WINGMAN_STT_SCRIPT; spacing: env WINGMAN_SCRIPT_GAP_MS (default 1200).
 //   llm model "scripted:bank" -> a fake model: the reflex answers "BANK <id>" for the first bank card id named in
@@ -9,6 +11,7 @@ import { MockLanguageModelV4 } from "ai/test";
 import type { SttOptions, SttProvider, SttResult, SttStreamLike } from "./stt/types.ts";
 import { matchBank, loadBank } from "../bank.ts";
 
+/** Fake STT stream: replays the transcript file as final results on timers (the audio sent to it is only counted). */
 class ScriptStream extends EventEmitter implements SttStreamLike {
   isOpen = false; audioSeconds = 0; dropped = 0;
   private timers: NodeJS.Timeout[] = [];
@@ -40,6 +43,7 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
   async close() { this.isOpen = false; for (const t of this.timers) clearTimeout(t); this.emit("close"); }
 }
 
+/** The "script" STT provider. `id` is cast because SttProvider.id does not list it. */
 export const script: SttProvider = {
   id: "script" as any, experimental: false,
   capabilities: { keyterms: false, diarize: false, interim: false, maxKeyterms: 0 },
@@ -48,6 +52,7 @@ export const script: SttProvider = {
 };
 
 /** The reflex prompt ends with: The other side just said: <call_transcript>QUESTION</call_transcript>  (or, for Dan's own questions: Dan is asking you ... : <call_transcript>…) */
+// Extracts the question from the reflex prompt (see the line above).
 function questionOf(prompt: string): string {
   const m = prompt.match(/(?:The other side just said|The client just said|Dan is asking you[^<]*?): <call_transcript>([\s\S]*?)<\/call_transcript>/);
   return m?.[1] ?? "";
@@ -72,6 +77,7 @@ export function scriptedClassify(prompt: string): string {
   if (/(בירה|הבדל|difference|capital|dns|cdn|טוקיו|טיסה|תרגם|מה זה|מה זאת)/i.test(said)) return "ASSIST";
   return "NEITHER";
 }
+// Flattens an AI SDK prompt (string or parts) into one string for the keyword matching above.
 function promptText(o: any): string {
   return (o.prompt ?? []).map((m: any) => (typeof m.content === "string" ? m.content : (m.content ?? []).map((p: any) => p.text ?? "").join(""))).join("\n");
 }
@@ -89,6 +95,7 @@ const FRAME_ITEMS: [string, RegExp, boolean][] = [
   ["להבין למה האתר איטי", /איטי|לאט/, true], ["לשאול על גיבויים", /גיבוי/, true], ["לקבל טלפון ומייל לחזרה", /טלפון|מייל|dana@/i, true],
   ["לבדוק אם יש חנות WooCommerce", /ווקומרס|woocommerce/i, false], ["להסכים על הצעד הבא", /הצעה|נחזור|נדבר/, false],
 ];
+// The "must" flag marks must-cover checklist items.
 export function scriptedFrame(prompt: string): string {
   const said = prompt.slice(prompt.indexOf("<call_transcript>"));
   return JSON.stringify({ kind: "client", topic: "אתר איטי וגיבויים", goal: "להבין את הבעיה ולהציע בדיקה", people: [{ who: "דנה", role: "לקוחה" }], entities: ["WooCommerce"],
@@ -99,6 +106,7 @@ export function scriptedTip(prompt: string): string {
   const said = prompt.slice(prompt.indexOf("<call_transcript>"));
   return /גיבוי/.test(said) && !/Tips already given[^]*גיבויים נשמרים/.test(prompt) ? JSON.stringify({ type: "ask", text: "כדאי לשאול איפה הגיבויים נשמרים היום ומי אחראי עליהם." }) : "NONE";
 }
+/** Picks the fake model reply by which system-prompt phrase the prompt contains; the first match wins. */
 export function scriptedAnswer(prompt: string): string {
   if (prompt.includes("You build the call frame")) return scriptedFrame(prompt);
   if (prompt.includes("You write at most one live tip")) return scriptedTip(prompt);
@@ -114,6 +122,7 @@ export function scriptedAnswer(prompt: string): string {
 const usage = { inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 5, text: 5, reasoning: 0 } };
 const finish = { unified: "stop" as const, raw: "end_turn" };
 
+/** Factory used by ModelRegistry (spec.factory): returns modelId -> a mock model. Streaming sends the whole answer as one delta. */
 export function createScripted() {
   return (modelId: string) => new MockLanguageModelV4({
     provider: "scripted", modelId,

@@ -1,4 +1,5 @@
-// S4: ring buffer in SttChannel. Audio sent while the socket is down is kept (last ringMs) and replayed in order on reopen.
+// Ring buffer in SttChannel (providers/stt/channel.ts). Audio sent while the socket is down is kept (last ringMs) and replayed in order on reopen.
+// Uses fake provider streams; no sockets.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -18,6 +19,7 @@ const fake = (id: string, streams: Fake[]): SttProvider => ({
   create: () => { const s = new Fake(); streams.push(s); return s; }, probe: async () => ({ ok: true }),
 });
 const mk = (chain: SttProvider[], ringMs?: number) => new SttChannel({ channel: "them", chain, keyOf: () => "k", base: {}, circuit: { failures: 3, windowMs: 10_000 }, ringMs });
+// tag fills the buffer so tests can read the send order back from byte 0 (see tags()).
 const chunk = (tag: number, ms = 100) => Buffer.alloc(ms * 32, tag);   // 100 ms = 3200 bytes
 const tags = (s: Fake) => s.got.map((b) => b[0]);
 

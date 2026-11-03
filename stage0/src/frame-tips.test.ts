@@ -1,4 +1,5 @@
-// Call frame, live tips, background files: pure logic and offline doubles. No network, no keys.
+// Call frame (frame.ts), live tips (tips.ts), background files (attachments.ts, tray/attachments.cjs), summary kinds, live feed (dashboard/livefeed.js).
+// Pure logic and offline doubles (scripted providers, temp dirs). No network, no keys.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "Wingman Stage 0 dogfood tool (throwaway-grade)",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "scripts": {
     "start": "tsx src/run.ts",
     "overlay": "tsx src/overlay.ts",

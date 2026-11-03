@@ -1,4 +1,4 @@
-// Call frame: what is THIS call about? About once a minute (when enough new words were said) a small model reads the last
+// Call frame: what is THIS call about? Every frame.everyMs (default 1 min, and only when enough new words were said) a small model reads the last
 // few minutes plus the brief and returns { kind, topic, goal, people, entities, checklist }. The frame is shown in the
 // answer window and the dashboard, goes into the reflex / tips / summary prompts, and is logged as events type "frame".
 // Wingman is not a sales tool: the same call loop serves a client call, a vendor negotiation, a team meeting, a consult or a chat.
@@ -17,6 +17,7 @@ export type Frame = { kind: Kind; topic: string; goal: string; people: { who: st
 /** Kinds where the agency answer bank is the right source. Everything else treats keyword bank hits as weak. */
 export const AGENCY_KINDS: ReadonlySet<string> = new Set(["client", "support"]);
 export const KIND_HE: Record<Kind, string> = { client: "לקוח", support: "תמיכה", vendor: "ספק", team: "צוות", consult: "ייעוץ", personal: "אישית", other: "אחר" };
+/** Cap on checklist items kept in a frame. */
 export const MAX_ITEMS = 10;
 
 export const FRAME_SYSTEM = `You build the call frame for Wingman, a live meeting AI assistant that helps Dan during ANY phone or video call or meeting (or while he thinks aloud alone). The meeting can be about anything: a customer of his small web and hosting agency, a support problem, a supplier negotiation, a team meeting, a consultation with an accountant or lawyer, or a personal chat.
@@ -30,13 +31,15 @@ Answer with ONE JSON object and nothing else:
  "entities": ["companies, products, systems, sites named in the call"],
  "checklist": [{"item": "short phrase", "done": false, "must": true}]}
 
-kind: client = a customer or prospect of Dan's agency; support = a customer with a problem to fix; vendor = Dan buys or negotiates from a supplier (hosting, tools, freelancers); team = colleagues, standup, planning; consult = Dan asks a professional (accountant, lawyer, advisor) about his business; personal = friends and family, small talk; other = none of these (a job interview, a practice interview, a lecture, a call that is not about Dan's own customer or work).
+kind: client = a customer or prospect of Dan's agency; support = a customer with a problem to fix; vendor = Dan buys or negotiates from a supplier (hosting, tools, freelancers); team = colleagues, standup, planning, and colleagues discussing bugs, builds, code, tools or architecture (technical talk between teammates is team, never support: support needs a customer who reports a problem with their own site or service); a job interview is other even when its questions are technical; consult = Dan asks a professional (accountant, lawyer, advisor) about his business; personal = friends and family, small talk; other = none of these (a job interview, a practice interview, a lecture, a call that is not about Dan's own customer or work).
 checklist: 4 to 8 things a GOOD call of this kind should cover, written for THIS call (use the topic and the brief; include the brief's must-cover items first). "must": true for the few items without which the call fails, false for nice-to-have. "done": true only when the transcript clearly covered it.
 If a current frame is given: return its checklist items with EXACTLY the same text, flipping done to true only when the transcript clearly covered the item; you may add at most ONE new item. Keep the kind unless the call clearly changed.
 Never invent names, numbers or facts. Speech-to-text garbles names: take a person's name from Dan's notes/brief when it is there; otherwise only a name that is clear and repeated in the transcript, else use "them". Hebrew for topic, goal and checklist unless the call is in English. If the call is too short to tell, use kind "other" and an empty checklist.`;
 
+// Model output is untrusted: strip bidi overrides, control chars and markdown characters, collapse spaces, cap length.
 const str = (x: unknown, max: number): string => (typeof x === "string" || typeof x === "number" ? String(x) : "")
   .replace(/[‪-‮]/g, "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").replace(/[*_#`>]+/g, "").replace(/\s+/g, " ").trim().slice(0, max);
+// Light normalization for checklist comparison only (not the matching normalize() from normalize.ts).
 const norm = (s: string) => s.toLowerCase().replace(/[\s.,!?;:"'()־׳״-]+/g, " ").trim();
 const words = (s: string) => new Set(norm(s).split(" ").filter((w) => w.length > 1));
 /** Same checklist item? Equal after normalising, or at least 70% word overlap. */
@@ -47,7 +50,7 @@ export function sameItem(a: string, b: string): boolean {
   return common / Math.min(wa.size, wb.size) >= 0.7;
 }
 
-/** Defensive parse of the model answer (object, JSON text, or prose / ``` fences around the JSON). */
+/** Defensive parse of the model answer (object, JSON text, or prose / ``` fences around the JSON). Unknown kind becomes "other"; undefined when nothing usable is in it. */
 export function parseFrame(input: unknown): Frame | undefined {
   let o: any = input;
   if (typeof input === "string") {
@@ -82,6 +85,7 @@ export class FrameTracker {
     const before = JSON.stringify(this.current ?? null);
     if (!this.current) {
       this.current = { ...next, checklist: next.checklist.slice(0, MAX_ITEMS) };
+      trackedKind = this.current.kind;
       return { frame: this.current, changed: true };
     }
     const cur = this.current;
@@ -103,6 +107,7 @@ export class FrameTracker {
       checklist,
     };
     this.current = merged;
+    trackedKind = merged.kind;
     return { frame: merged, changed: JSON.stringify(merged) !== before };
   }
   /** The kind the rest of the app may rely on (set after the first update; flips only after hysteresis). */
@@ -115,10 +120,25 @@ function mergeBy<T>(a: T[], b: T[], key: (x: T) => string, max: number): T[] {
 
 /** The question is really about Dan's web / hosting services (so the agency bank and the price stall may apply even on a call that is not with his customer). */
 const AGENCY_TOPIC = /(אתר|אתרים|אחסון|דומיין|וורדפרס|ווקומרס|תחזוקת|תעודת אבטחה|\bdns\b|\bssl\b|cloudflare|קלאודפלייר|woocommerce|wordpress|hosting|domain name|website|\bcdn\b|\bwaf\b)/i;
-export const isAgencyTopic = (text: string): boolean => AGENCY_TOPIC.test(String(text ?? ""));
+/**
+ * On a supplier or team call the general words (site, hosting, websites) are the subject of the whole call, not a sign that someone is asking
+ * Dan about HIS services: only the unmistakable service terms count there (DNS, SSL, WordPress, domain, Cloudflare...).
+ * Without this a supplier call about hosting contracts kept pulling in the agency bank and the price stall for every line.
+ */
+const AGENCY_TOPIC_STRICT = /(דומיין|וורדפרס|תעודת אבטחה|\bdns\b|\bssl\b|cloudflare|קלאודפלייר|woocommerce|wordpress|domain name|\bcdn\b|\bwaf\b)/i;
+const STRICT_KINDS: ReadonlySet<string> = new Set(["vendor", "team"]);
+// Module-level on purpose: isAgencyTopic() is called from the detector/bank path, which has no FrameTracker. The tracker writes it on every apply().
+let trackedKind: Kind | undefined;
+/** Test hook: forget the kind the last FrameTracker settled on. */
+export const resetTrackedKind = () => { trackedKind = undefined; };
+/** Does the text talk about the owner's web/hosting services? Stricter word list on vendor/team calls (see AGENCY_TOPIC_STRICT). */
+export const isAgencyTopic = (text: string, kind: string | undefined = trackedKind): boolean =>
+  (kind && STRICT_KINDS.has(kind) ? AGENCY_TOPIC_STRICT : AGENCY_TOPIC).test(String(text ?? ""));
+/** True for client/support calls, and when the kind is not known yet (so the agency bank stays on until a frame says otherwise). */
 export const isAgencyKind = (k: string | undefined): boolean => !k || AGENCY_KINDS.has(k);
 /** "6/8": how many checklist items are done. */
 export const progress = (f: Frame | undefined): { done: number; total: number } => ({ done: f?.checklist.filter((c) => c.done).length ?? 0, total: f?.checklist.length ?? 0 });
+/** Must-cover checklist items still not done. */
 export const missedMust = (f: Frame | undefined): ChecklistItem[] => (f?.checklist ?? []).filter((c) => c.must && !c.done);
 
 /** One compact paragraph for the reflex / tips / summary prompts. */
@@ -134,10 +154,12 @@ export type FrameRun = {
   registry: ModelRegistry; model: string; cache: "off" | "5m" | "1h"; transcript: string; contextNotes: string[]; background: string; current?: Frame;
   signal: AbortSignal; timeoutMs: number; generate?: typeof generateText;
 };
+/** User message for the frame model: trusted notes, the current frame (so it keeps stable text) and the untagged transcript window. */
 export function frameUserMessage(o: Pick<FrameRun, "transcript" | "contextNotes" | "current">): string {
   const notes = o.contextNotes.map((n) => `- ${n.replace(/\s+/g, " ").slice(0, 300)}`).join("\n") || "(none)";
   return `Dan's trusted notes (brief, typed notes):\n${notes}\n\nCurrent frame:\n${o.current ? JSON.stringify(o.current) : "(none yet)"}\n\n<call_transcript>\n${untag(o.transcript)}\n</call_transcript>\n\nWrite the JSON object now.`;
 }
+/** One frame update: a single non-streamed call, no retries (the next tick tries again). Throws when the answer has no usable JSON. */
 export async function runFrame(o: FrameRun): Promise<{ frame: Frame; usage: unknown; providerMetadata: unknown }> {
   const model = await o.registry.resolve(o.model);
   const cache = cacheOptionsFor(o.model, o.cache);

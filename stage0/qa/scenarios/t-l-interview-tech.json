@@ -1,0 +1,76 @@
+{
+ "title": "Job interview, technical and behavioural questions (invented interviewer: Maya)",
+ "focus": "interview: technical questions get a short AI answer; behavioural questions get a structure hint, never invented experience; personal questions get nothing; no agency or stall cards",
+ "frame": {
+  "kind": [
+   "other",
+   "consult"
+  ],
+  "minChecklist": 2
+ },
+ "turns": [
+  {
+   "speaker": "them",
+   "text": "שלום דן, תודה שבאת. נתחיל עם שאלה טכנית. מה ההבדל בין REST ל GraphQL?",
+   "expect": {
+    "question": true,
+    "card": "ai"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "REST עובד עם כתובות נפרדות לכל משאב, GraphQL עם נקודת כניסה אחת."
+  },
+  {
+   "speaker": "them",
+   "text": "איך היית מסביר מה זה caching למנהל שלא טכני?",
+   "expect": {
+    "question": true,
+    "card": [
+     "ai",
+     "none"
+    ]
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "שומרים עותק של התשובה כדי שלא צריך לחשב אותה מחדש כל פעם."
+  },
+  {
+   "speaker": "them",
+   "text": "ספר לי על פעם שהיה לך קונפליקט עם עמית לעבודה.",
+   "expect": {
+    "question": true,
+    "card": "ai"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אממ, רגע, תן לי לחשוב על דוגמה."
+  },
+  {
+   "speaker": "them",
+   "text": "מה הציפיות שלך מבחינת שכר?",
+   "expect": {
+    "question": true,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "אני אשמח לשמוע קודם על התפקיד."
+  },
+  {
+   "speaker": "them",
+   "text": "מתי אתה יכול להתחיל לעבוד?",
+   "expect": {
+    "question": true,
+    "card": "none"
+   }
+  },
+  {
+   "speaker": "me",
+   "text": "תודה רבה על הזמן."
+  }
+ ]
+}

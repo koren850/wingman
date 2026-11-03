@@ -1,24 +1,32 @@
 "use strict";
 // Settings: about a dozen options that matter, in plain words, with real controls. Writes go through the main process,
 // which validates with the same schema the call uses and edits ~/.config/wingman/settings.yaml without touching comments or other keys.
+// Also the Keys section (write-only API key entry, see keys-ipc.cjs) and the read-only Advanced list. Loaded after home.js; viewSettings is called from boot.js.
 
-const SET = { data: null, busy: new Set(), errors: {}, savedAt: {} };
+// SET: settings state (data from main, in-flight keys, per-row errors, "Saved" timestamps). Rows are drawn from the catalog sent by main, not hard-coded.
+const SET = { data: null, busy: new Set(), errors: {}, savedAt: {}, tuneOpen: false };
 
+/** Draw Settings. focus: "advanced" opens the debug list, "keys" jumps to the first key field. */
 async function viewSettings(focus) {
   closePopover(false);
   state.view = "settings"; state.gen++; setNav(); busy();
   const main = $("main"); main.textContent = "";
-  main.append(SK() ? h("div", { class: "page-head ph2" }, h("div", {}, h("div", { class: "hh-date", id: "set-eyebrow" }, "Settings"), h("h1", { id: "set-h1" }, "Applies to your next call"))) : h("div", { class: "page-head" }, h("h1", {}, "Settings")), h("div", { id: "set-body", class: "set" }, h("div", { class: "loading" }, "Loading settings…")));
+  main.append(h("div", { class: "page-head" }, h("h1", {}, "Settings")), h("div", { id: "set-body", class: "set" }, h("div", { class: "loading" }, "Loading settings…")));
   let r; try { r = await api.getSettings(); } catch (e) { r = { ok: false, message: e.message }; }
   if (state.view !== "settings") return;
   SET.data = r; SET.errors = {}; drawSettings(); loadKeyState();
   ready();
-  if (focus === "advanced") { const d = $("adv"); if (d) { d.open = true; d.scrollIntoView({ block: "start" }); loadAdvanced(); } } else focusTop();
+  if (focus === "advanced") { const d = $("adv"); if (d) { d.open = true; d.scrollIntoView({ block: "start" }); loadAdvanced(); } }
+  else if (focus === "keys") { const k = $("key-deepgram") || $("g-keys"); if (k) { k.scrollIntoView({ block: "center" }); k.focus({ preventScroll: true }); } else focusTop(); }
+  else focusTop();
 }
 
+// Redraw everything but keep keyboard focus (focus is matched by id / data-fk).
 function drawSettings() {
   const body = $("set-body"); if (!body) return;
-  const keepFocus = document.activeElement && document.activeElement.id;
+  keepFocus(() => drawSettingsBody(body));
+}
+function drawSettingsBody(body) {
   body.textContent = "";
   const r = SET.data;
   if (!r || !r.ok) {
@@ -27,23 +35,31 @@ function drawSettings() {
     body.append(advancedBlock());
     return;
   }
-  if (SK()) {
-    const eb = $("set-eyebrow"), t1 = $("set-h1");
-    if (eb) eb.textContent = r.changed ? `${plural(r.changed, "setting")} changed from the defaults` : "Everything is on the defaults";
-    if (t1) t1.textContent = "Applies to your next call";
-  } else body.append(h("div", { class: "setintro" },
+  const main = h("div", { class: "setmain" }), jump = [];   // jump: [element id, title] for the "On this page" list
+  main.append(h("div", { class: "setintro" },
     h("p", {}, ico("clock"), h("span", {}, h("b", {}, "Changes apply to the next call."), " A call that is already running keeps the settings it started with.")),
-    h("p", { class: "sub plain" }, r.changed ? `${plural(r.changed, "setting")} changed from the defaults. ` : "Everything is on the defaults. ", "To check the microphone, keys and AI, use ", h("b", {}, "Ready for a call?"), " on ", h("button", { type: "button", class: "linkbtn", id: "to-home", onclick: () => viewHome() }, "Home"), ".")));
+    h("p", { class: "sub plain" }, r.changed ? `${plural(r.changed, "setting")} changed from the defaults. ` : "Everything is on the defaults. ", "To check the microphone, keys and AI, use the ", h("b", {}, "Readiness check"), " on ", h("button", { type: "button", class: "linkbtn", id: "to-home", onclick: () => viewHome() }, "Home"), ".")));
+  main.append(keysBlock(r)); jump.push(["g-keys", "Keys"]);          // keys first: nothing works without them
   for (const g of r.groups) {
     const rows = r.items.filter((i) => i.group === g.id);
     if (!rows.length) continue;
-    body.append(h("section", { class: "setgroup", "aria-labelledby": "g-" + g.id }, h("h2", { id: "g-" + g.id, class: "label" }, g.title), h("div", { class: "setlist" }, rows.map(settingRow))));
+    const list = h("div", { class: "setlist" }, rows.map(settingRow));
+    if (g.id === "tune") {            // expert numbers: folded away unless one was changed
+      const open = rows.some((i) => i.changed) || SET.tuneOpen;
+      const d = h("details", { class: "collapsed adv tune", id: "tune", open }, h("summary", {}, ico("chevron"), "Fine-tuning", h("span", { class: "faint" }, "· limits and timings, the defaults are fine")), list);
+      d.addEventListener("toggle", () => { SET.tuneOpen = d.open; });
+      main.append(d); jump.push(["tune", g.title]); continue;
+    }
+    main.append(h("section", { class: "setgroup", "aria-labelledby": "g-" + g.id }, h("h2", { id: "g-" + g.id, class: "label", tabindex: "-1" }, g.title), list)); jump.push(["g-" + g.id, g.title]);
   }
-  body.append(keysBlock(r));
-  body.append(advancedBlock());
-  if (keepFocus) { const f = document.getElementById(keepFocus); if (f && f.focus) f.focus({ preventScroll: true }); }
+  main.append(advancedBlock()); jump.push(["adv", "Advanced"]);
+  // The right side is a short "On this page" list (sticky), so a wide window has no empty third.
+  const nav = h("nav", { class: "setnav", "aria-label": "On this page" }, h("div", { class: "label" }, "On this page"),
+    jump.map(([id, t]) => h("button", { type: "button", class: "navlink", "data-fk": "nav-" + id, onclick: () => { const el = $(id); if (!el) return; if (el.tagName === "DETAILS") el.open = true; el.scrollIntoView({ block: "start" }); if (el.tagName !== "DETAILS") el.focus({ preventScroll: true }); } }, t)));
+  body.append(main, nav);
 }
 
+/** One setting row from a catalog item (kind bool / select / number): label, help, control, changed chip, reset button. */
 function settingRow(i) {
   const id = "set-" + i.key.replace(/\./g, "-");
   const err = SET.errors[i.key], saving = SET.busy.has(i.key);
@@ -60,15 +76,16 @@ function settingRow(i) {
   }
   const warn = i.warn && i.value === i.warnWhen;
   return h("div", { class: "setrow" + (i.changed ? " changed" : "") },
-    h("div", { class: "txt" }, h("label", { class: "lab", for: id }, i.label, SK() ? tip(i.help) : null), SK() ? h("span", { class: "sr", id: id + "-h" }, i.help) : h("p", { class: "help", id: id + "-h" }, i.help),
+    h("div", { class: "txt" }, h("label", { class: "lab", for: id }, i.label), h("p", { class: "help", id: id + "-h" }, i.help),
       warn ? h("p", { class: "warnline" }, ico("warning"), i.warn) : null,
       err ? h("p", { class: "errline", role: "alert" }, ico("x"), err) : null),
     h("div", { class: "ctl" }, control),
-    h("div", { class: "st" }, i.changed ? chip("changed", "warn", { dot: true }) : SK() ? null : chip("default", ""),
-      SK() && !i.changed ? null : h("button", { type: "button", class: "btn ghost sm", disabled: !i.changed || saving, "aria-label": `Reset ${i.label} to the default`, title: "Back to the default", onclick: () => reset(i) }, ico("undo"), "Reset"),
+    h("div", { class: "st" }, i.changed ? chip("changed", "warn", { dot: true }) : null,
+      !i.changed ? null : h("button", { type: "button", class: "btn ghost sm", disabled: !i.changed || saving, "aria-label": `Reset ${i.label} to the default`, title: "Back to the default", onclick: () => reset(i) }, ico("undo"), "Reset"),
       SET.savedAt[i.key] && Date.now() - SET.savedAt[i.key] < 4000 ? h("span", { class: "saved good" }, ico("check"), "Saved") : null));
 }
 
+/** Save one setting (null resets it). Disables the row while saving, then shows a transient "Saved" or the error text. */
 async function save(i, v) {
   if (SET.busy.has(i.key)) return;
   SET.busy.add(i.key); delete SET.errors[i.key]; drawSettings();
@@ -83,7 +100,7 @@ const reset = (i) => save(i, null);
 // Keys live in the macOS Keychain. The page can send a key to the main process and gets back only "ends ...abcd".
 // The typed value is read from the input once, the input is cleared at once, and it is never kept in state, storage or attributes.
 const KEYS = { data: null, busy: new Set(), msg: {} };
-const KEY_NAMES = { deepgram: ["Deepgram", "Turns the call audio into text. Without it nothing is transcribed."], anthropic: ["Anthropic", "Writes AI answers and the summary. Without it only bank cards work."] };
+const KEY_NAMES = { deepgram: ["Deepgram", "Turns the call audio into text. Without it nothing is transcribed."], anthropic: ["Anthropic", "Writes AI answers and the summary. Without it only Prepared cards work."] };
 async function loadKeyState() { let r; try { r = await api.keysStatus(); } catch (e) { r = null; } KEYS.data = r && r.ok ? r : null; if (state.view === "settings") drawSettings(); }
 function keyStatusChip(st) {
   if (!st || st.source === "missing") return chip("Missing", "bad", { dot: true });
@@ -92,6 +109,7 @@ function keyStatusChip(st) {
   if (st.source === "file") return chip("In file \u00b7 " + tail, "warn", { dot: true });
   return chip("From environment \u00b7 " + tail, "", { dot: true });
 }
+/** Run a key action (set, test, remove, migrate) with a busy flag and a message line. The result carries status only; a key value is never part of it. */
 async function keyAct(provider, fn, okMsg) {
   if (KEYS.busy.has(provider)) return;
   KEYS.busy.add(provider); KEYS.msg[provider] = null; drawSettings();
@@ -106,6 +124,7 @@ function testText(r) {
   if (!r || !r.ok) return (r && r.message) || "Could not test.";
   return { ok: "The key works.", invalid: "The provider rejected this key.", network: "Could not reach the provider. Check your connection.", missing: "No key to test." }[r.result] || "Could not test.";
 }
+/** Row for one provider: status chip, write-only password field, Test and Remove. */
 function keyRow(p) {
   const [name, what] = KEY_NAMES[p], st = KEYS.data && KEYS.data.providers[p], busy = KEYS.busy.has(p), m = KEYS.msg[p], id = "key-" + p;
   const inp = h("input", { type: "password", id, autocomplete: "off", spellcheck: "false", autocapitalize: "off", "aria-label": name + " key (write only)", placeholder: st && st.source !== "missing" ? "Paste a new key to replace it" : "Paste your key", class: "keyin", disabled: busy });
@@ -116,7 +135,7 @@ function keyRow(p) {
   };
   inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } });
   return h("div", { class: "keyrow keyrow2" },
-    h("div", { class: "txt" }, h("span", { class: "lab" }, name, SK() ? tip(what) : null), SK() ? null : h("p", { class: "help" }, what),
+    h("div", { class: "txt" }, h("span", { class: "lab" }, name), h("p", { class: "help" }, what),
       h("div", { class: "keyedit" }, inp, btn("Save", { cls: "sm", onclick: submit })),
       m ? h("p", { class: m.ok ? "saved good" : "errline", role: m.ok ? "status" : "alert" }, m.text) : null),
     h("div", { class: "keyside" }, KEYS.data ? keyStatusChip(st) : chip("Checking\u2026", ""),
@@ -133,7 +152,7 @@ function keysBlock(r) {
       anyFile ? h("div", { class: "keyfile" }, h("p", { class: "help" }, "Your keys are still in a plain text file. Move both to the Keychain in one step. Each key is checked in the Keychain first, then its line is removed from the file. No copy of the file is kept."),
         h("div", { class: "actions" }, btn("Move to Keychain", { icon: "check", cls: "sm", onclick: () => keyAct("migrate", () => api.keysMigrate(), "Moved to the Keychain.") }))) : null,
       mig ? h("div", { class: "keyfile" }, h("p", { class: mig.ok ? "saved good" : "errline", role: mig.ok ? "status" : "alert" }, mig.text)) : null,
-      h("div", { class: "keyfile" }, h("p", { class: "help" }, "Keys are stored in the macOS Keychain (item \u201cwingman\u201d). Wingman never shows them: only the last 4 characters. Your other settings are in ", h("code", {}, r.userFile), ".",
+      h("div", { class: "keyfile" }, h("p", { class: "help" }, "Keys are stored in the macOS Keychain (item \u201cwingman\u201d), set here. Wingman never shows them: only the last 4 characters. Your other settings are in ", h("code", {}, r.userFile), ".",
         h("span", {}, " "), h("button", { type: "button", class: "linkbtn", onclick: () => api.reveal("keys") }, "Show the old keys file in Finder")))));
 }
 
@@ -141,10 +160,11 @@ function keysBlock(r) {
 let advLoaded = false;
 function advancedBlock() {
   advLoaded = false;
-  const d = h("details", { class: "collapsed adv", id: "adv" }, h("summary", {}, ico("chevron"), "Advanced (for debugging)", SK() ? null : h("span", { class: "faint" }, "· every setting, where each value comes from")), h("div", { id: "adv-body", class: "advbody" }, h("div", { class: "loading" }, "Loading…")));
+  const d = h("details", { class: "collapsed adv", id: "adv" }, h("summary", {}, ico("chevron"), "Advanced (for debugging)", h("span", { class: "faint" }, "· every setting, where each value comes from")), h("div", { id: "adv-body", class: "advbody" }, h("div", { class: "loading" }, "Loading…")));
   d.addEventListener("toggle", () => { if (d.open) loadAdvanced(); });
   return d;
 }
+// Parse the text of `settings-cli` (lines "key   value   [source]") into groups by key prefix.
 function parseSettingsText(text) {
   const groups = new Map();
   for (const line of String(text).split("\n")) {

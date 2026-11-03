@@ -1,4 +1,4 @@
-// Precision/recall of the Hebrew question detector on data/questions.tsv (gate in STRUCTURE.md §4.1/S7).
+// Precision/recall of the Hebrew question detector on data/questions.tsv (pass/fail gate below). pnpm detector.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { detect } from "./detector.ts";

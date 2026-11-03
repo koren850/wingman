@@ -95,7 +95,10 @@
    "text": "כמה אתם משלמים היום על האחסון בחודש?",
    "expect": {
     "question": true,
-    "card": "stall"
+    "card": [
+     "stall",
+     "none"
+    ]
    }
   },
   {

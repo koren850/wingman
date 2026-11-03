@@ -1,6 +1,7 @@
-// Fixture builder for overlay snapshots: node fixtures.cjs <scenario> <callsDir>
+// Fixture builder for overlay snapshots (run by snapshot.sh): node fixtures.cjs <scenario> <callsDir>
+// All people, companies and numbers below are invented sample data.
 // Writes <callsDir>/<id>/{cards,transcript}.jsonl and a calls/latest symlink, the layout main.cjs tails.
-// Scenarios: empty, consent, full, overflow, quiet, frame. Test/dev only; nothing here is read by the real app.
+// Scenarios: empty (starting), listening (live, no cards yet), waiting (start approval), nophase (old call.json), consent, full, overflow, quiet, frame, foryou, onlyyou, stale, ended, starting. Test/dev only; nothing here is read by the real app.
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -8,7 +9,7 @@ const now = Date.now();
 const card = (o) => ({ type: "card", question: "", facts: [], at: now, ...o });
 const side = (o) => card({ turnId: "side", ...o });
 const health = (id, level, say) => card({ id: `health-${id}`, turnId: "health", badge: "warn", health: true, level, say });
-const consent = card({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך?", facts: ["להגיד את זה בתחילת השיחה", "הצד השני לא מסכים: Ctrl+C", "אחרי שהסכים: Enter"] });
+const consent = card({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך?", facts: ["אפשר להגיד את זה בתחילת השיחה", "לא רוצים להקליט: Ctrl+C", "להתחלת האזנה: Enter"] });
 const bank = card({ id: "q1-bank", turnId: "q1", badge: "bank", question: "כמה זמן לוקח להעביר את האתר לוורדפרס?", say: "בדרך כלל שלושה עד חמישה שבועות, תלוי בכמות התכנים.", facts: ["עיצוב: שבוע וחצי", "העברת תוכן ו-SEO redirects: שבוע", "בדיקות ועלייה לאוויר: 3 ימים"] });
 const aiLong = card({ id: "q2-ai", turnId: "q2", badge: "ai", question: "אתם יכולים לחבר את זה ל-Salesforce ולשמור את הלידים שמגיעים מ-Facebook Ads?", say: "כן, אפשר לחבר את הטפסים ישירות ל-Salesforce דרך ה-API או Zapier, וכל ליד מ-Facebook Ads יגיע עם ה-UTM שלו. החיבור לוקח בערך יומיים עבודה ועולה כ-2,400 ₪ חד פעמי.", facts: ["עדיף webhook ישיר מ-Zapier (פחות נקודות כשל)", "צריך הרשאת admin ב-Salesforce"] });
 const aiStream = card({ id: "q3-ai", turnId: "q3", badge: "ai", question: "ומה לגבי האחסון, מי אחראי על הגיבויים?", say: "אנחנו מארחים אצלנו בשרת ייעודי, גיבוי יומי ל-30 יום, ושחזור בתוך" });
@@ -35,7 +36,7 @@ const lines = [
   { t: now - 4000, ch: "them", text: "את המספר שלי תרשום, 052-0000000, ותשלח לי הצעה עד יום חמישי." },
 ];
 
-// Answers for Dan himself ("For you") and the calm "only you" state (invented).
+// Answers for the user himself ("For you") and the calm "only you" state (invented).
 const meCalc = card({ id: "m1-me", turnId: "m1", badge: "me", forMe: true, source: "calc", question: "כמה זה 36 ועוד 42?", say: "\u206636 + 42 = 78\u2069", at: now - 9000 });
 const meAi = card({ id: "m2-me", turnId: "m2", badge: "me", forMe: true, source: "ai", question: "מה ההבדל בין CDN ל-DNS?", say: "CDN מפיץ עותקים של האתר לשרתים קרובים לגולש, ו-DNS רק מתרגם שם דומיין לכתובת השרת.", facts: ["CDN משפר מהירות", "DNS קובע לאן הדומיין מצביע"], at: now - 2000 });
 const onlyYou = health("only-you", "info", "I only hear you. To get answers for the other side, join the call or play its audio. Ask me anything: Ctrl+Opt+A.");
@@ -45,11 +46,22 @@ const S = {
   onlyyou: { cards: [onlyYou, meCalc], lines: [{ t: now - 9500, ch: "me", text: "כמה זה 36 ועוד 42?" }] },
   empty: { cards: [], lines: [] },
   consent: { cards: [consent], lines: [] },
-  full: { cards: [bank, health("stt-me", "red", "NOT HEARING THE OTHER SIDE – אין שמע מהצד השני"), health("cost", "amber", "עלות AI $1.42 מתוך $2"), dimmed, aiLong, stall, factSsl, factClient, reminder, ...notes, ...caps, aiStream], lines },
+  full: { cards: [bank, health("them-silent", "red", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות"), health("cost", "amber", "עלות AI $1.42 מתוך $2"), dimmed, aiLong, stall, factSsl, factClient, reminder, ...notes, ...caps, aiStream], lines },
   overflow: { cards: [bank, dimmed, aiLong, stall, aiStream, card({ ...bank, id: "q5-bank", turnId: "q5" }), card({ ...aiLong, id: "q6-ai", turnId: "q6" }), factSsl, factClient, propose, reminder, ...notes, ...caps], lines },
   frame: { cards: [frameRow, vendorHero, tip1, tip2], lines: [{ t: now - 6000, ch: "them", text: "אנחנו יכולים להציע שרת ייעודי עם גיבוי יומי, מתאים לך?" }] },
-  quiet: { cards: [health("quiet", "info", "מצב שקט: הכרטיסים נרשמים אבל לא מוצגים (q לחזרה)"), factClient, reminder, ...caps.slice(0, 2)], lines },
+  quiet: { cards: [health("quiet", "info", "מצב שקט: הכרטיסים נרשמים אבל לא מוצגים "), factClient, reminder, ...caps.slice(0, 2)], lines },
 };
+
+// Older answers (2 and 5 minutes old) and a call that has ended.
+const old = (c, ago) => ({ ...c, at: now - ago });
+S.stale = { cards: [old(bank, 300000), old(aiLong, 130000), old(stall, 70000), old(dimmed, 50000), card({ ...aiStream, at: now - 50000 })], lines };
+S.ended = { cards: [bank, aiLong, ...caps], lines, ended: true };
+S.starting = { cards: [], lines: [], nolatest: true };
+// call.json phase (the contract overlay/lib.cjs callPhase reads): empty = starting, listening = live with no cards yet, waiting = start approval, nophase = timer fallback.
+S.empty.phase = "starting"; S.consent.phase = "waiting";
+S.listening = { cards: [], lines: [], phase: "live", liveAt: now - 95000 };
+S.waiting = { cards: [], lines: [], phase: "waiting" };
+S.nophase = { cards: [], lines: [], phase: "" };
 
 const [, , name = "full", dir = "/tmp/wingman-fixture"] = process.argv;
 const sc = S[name];
@@ -59,4 +71,8 @@ const call = path.join(dir, "fixture-call");
 fs.mkdirSync(call, { recursive: true });
 fs.writeFileSync(path.join(call, "cards.jsonl"), sc.cards.map((c) => JSON.stringify(c)).join("\n") + (sc.cards.length ? "\n" : ""));
 fs.writeFileSync(path.join(call, "transcript.jsonl"), sc.lines.map((c) => JSON.stringify(c)).join("\n") + (sc.lines.length ? "\n" : ""));
-fs.symlinkSync(call, path.join(dir, "latest"));
+const meta = { id: "fixture-call" };
+if (sc.ended) meta.endedAt = new Date().toISOString();
+else { const ph = sc.phase === undefined ? "live" : sc.phase; if (ph) meta.phase = ph; if (ph === "live") meta.liveAt = sc.liveAt || now - 600000; }
+fs.writeFileSync(path.join(call, "call.json"), JSON.stringify(meta));
+if (!sc.nolatest) fs.symlinkSync(call, path.join(dir, "latest"));

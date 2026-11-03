@@ -1,11 +1,14 @@
-// CostMeter: money spent this call, from the settings price table and the ACTUAL usage the providers report.
-// LLM spend is capped (budget.maxUsdPerCall -> bank-only); STT spend is tracked and shown, not capped.
+// CostMeter: money spent this call, from the settings price table (budget.prices) and the ACTUAL usage the providers report.
+// LLM spend is capped (budget.maxUsdPerCall: at the cap run.ts stops model calls, so only prepared cards answer);
+// STT spend is tracked and shown, not capped. STT minutes only raise a warning (budget.maxMinutesPerCall).
+// run.ts feeds it after every model call and reads llmState()/minutesState() in its guards and its 1 s health tick.
 import type { Settings } from "./settings.ts";
 
 export type LlmUsage = { inputTokens?: number; outputTokens?: number; inputTokenDetails?: { cacheReadTokens?: number; cacheWriteTokens?: number; noCacheTokens?: number } };
 export type RoleTotals = { calls: number; usd: number; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
 export type CostState = "ok" | "warn" | "capped";
 
+/** Per-call spend tracker. One instance per call (run.ts). */
 export class CostMeter {
   readonly roles: Record<string, RoleTotals> = {};
   readonly unpriced = new Set<string>();
@@ -37,16 +40,18 @@ export class CostMeter {
   get totalUsd() { return this.llmUsd + this.sttUsd; }
   get sttMinutes() { return Math.max(0, ...Object.values(this.sttSeconds)) / 60; }   // per-channel minutes ≈ call length
 
-  /** ok / warn (>= warnAt of the cap) / capped (>= cap). A cap of 0 means "no LLM spend allowed". */
+  /** ok / warn (>= warnAt of the cap) / capped (>= cap). A cap of 0 means "no LLM spend allowed" (capped once anything was spent; a priced-zero call stays ok). */
   llmState(): CostState {
     const cap = this.budget.maxUsdPerCall;
     if (this.llmUsd >= cap && (cap > 0 || this.llmUsd > 0)) return "capped";
     if (cap > 0 && this.llmUsd >= cap * this.budget.warnAt) return "warn";
     return "ok";
   }
+  /** Same scale for call length (STT minutes). Only a warning in run.ts; it never stops the call. */
   minutesState(): CostState {
     const cap = this.budget.maxMinutesPerCall;
     return this.sttMinutes >= cap ? "capped" : this.sttMinutes >= cap * this.budget.warnAt ? "warn" : "ok";
   }
+  /** One-line cost text for the terminal and the cost warning card. */
   line() { return `AI $${this.llmUsd.toFixed(3)} of $${this.budget.maxUsdPerCall} · STT $${this.sttUsd.toFixed(2)}`; }
 }

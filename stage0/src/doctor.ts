@@ -1,5 +1,6 @@
-// wingman doctor: tests the CONFIGURED providers and their fallbacks, the settings, and the offline items of the
-// FAILURES.md section 5 checklist. Ends with READY / READY WITH WARNINGS / NOT READY (exit 1).
+// wingman doctor: tests the CONFIGURED providers and their fallbacks, the settings, keys, local tools and the offline
+// readiness checklist. Ends with READY / READY WITH WARNINGS / NOT READY (exit 1). Also run by the tray app as "readiness check".
+// Top-level script on purpose: it runs top to bottom, printing sections as it goes; finish() exits.
 //   pnpm run doctor              everything (mic, system audio, STT sockets, 1-2 small LLM calls per model: costs a few cents)
 //   pnpm run doctor --offline    no audio, no network, no paid calls: settings, keys, packages, files, resources
 import { execFile, execFileSync, spawn } from "node:child_process";
@@ -16,29 +17,32 @@ import { describe, classifyLlmError } from "./providers/errors.ts";
 import { realKeychain } from "./keychain.ts";
 import { guard } from "./guards.ts";
 import { detect } from "./detector.ts";
+import { micVerdict } from "./mic-check.ts";
 
 // Running inside the installed Wingman app (Electron runtime, or the env var the tray sets): permissions belong to Wingman, not a terminal.
 const IS_APP = !!process.versions.electron || process.env.WINGMAN_APP === "1";
 const argv = process.argv.slice(2);
 const offline = argv.includes("--offline");
 let blocking: string[] = [], warnings = 0;
+// Result printers: ok = pass, bad = blocking (exit 1), warn = counted but not blocking.
 const ok = (m: string) => console.log(`  ✅ ${m}`);
 const bad = (m: string, fix?: string) => { blocking.push(m); console.log(`  ❌ ${m}${fix ? `\n     fix: ${fix}` : ""}`); };
 const warn = (m: string, fix?: string) => { warnings++; console.log(`  ⚠️  ${m}${fix ? `\n     fix: ${fix}` : ""}`); };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const dev = (t: string) => (IS_APP ? "" : t);   // terminal-only hints stay out of the app's text
 const section = (t: string) => console.log(`\n${t}`);
 
-console.log(`Wingman doctor${offline ? " (offline: no audio, no network, no paid calls)" : ""}`);
+console.log(`Wingman readiness check${offline ? " (offline: no audio, no network, no paid calls)" : ""}`);
 
-// 3. Settings (first: everything else depends on them)
+// Settings first: everything else depends on them. Invalid settings stop the run here.
 section("Settings");
 let S: Settings;
 let profile: string | undefined;
 try {
   const l = loadSettings({ argv, createStarter: true }); S = l.settings; profile = l.profile;
-  ok(`settings valid (defaults + ${existsSync(process.env.WINGMAN_USER_SETTINGS || USER_SETTINGS_FILE) ? "user file" : "no user file"}${profile ? ` + profile ${profile}` : ""}); see: pnpm settings`);
+  ok(`settings valid (defaults + ${existsSync(process.env.WINGMAN_USER_SETTINGS || USER_SETTINGS_FILE) ? "user file" : "no user file"}${profile ? ` + profile ${profile}` : ""})${dev("; see: pnpm settings")}`);
 } catch (e) {
-  if (e instanceof SettingsError) { console.log(formatSettingsError(e)); bad("settings invalid", "fix the key above, then rerun"); }
+  if (e instanceof SettingsError) { console.log(formatSettingsError(e)); bad("settings invalid", IS_APP ? "fix the setting above, then run the readiness check again" : "fix the key above, then rerun"); }
   else bad(`settings failed to load: ${(e as Error).message}`);
   finish();
 }
@@ -54,8 +58,9 @@ const { keys, sources } = loadKeysWithSources(keyFile, process.env, realKeychain
 const llmRefs = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
 const sttIds = sttChain(S);
 const srcLabel = (n: KeyName) => ({ keychain: "Keychain", file: "file", env: "environment" } as const)[sources[n]!];
+const keyFix = (name: KeyName) => IS_APP ? "Wingman → Settings → Keys: paste the key (it is stored in the macOS Keychain)" : `pnpm keys set ${name} (stored in the Keychain), or Wingman → Settings → Keys`;
 const need = (name: KeyName, why: string, required: boolean) =>
-  keys[name] ? ok(`${KEY_VARS[name]} present, source: ${srcLabel(name)}, ends ...${keys[name]!.slice(-4)} (${why})`) : required ? bad(`${KEY_VARS[name]} missing (${why})`, `Settings → Keys, or pnpm keys set ${name}`) : warn(`${KEY_VARS[name]} missing (${why}); that fallback cannot work`, `Settings → Keys, or pnpm keys set ${name}`);
+  keys[name] ? ok(`${KEY_VARS[name]} present, source: ${srcLabel(name)}, ends ...${keys[name]!.slice(-4)} (${why})`) : required ? bad(`${KEY_VARS[name]} missing (${why})`, keyFix(name)) : warn(`${KEY_VARS[name]} missing (${why}); that fallback cannot work`, keyFix(name));
 sttIds.filter((id) => id !== "script").forEach((id, i) => need(id as KeyName, `STT ${i ? "fallback" : "primary"} ${id}`, i === 0));
 if (!S.run.noAi) llmRefs.forEach((r, i) => { try { const k = LLM_PROVIDERS[parseModelRef(r).provider].key; if (k) need(k, `LLM ${i ? "fallback" : "reflex"} ${r}`, i === 0); else ok(`${r} needs no key (offline test double)`); } catch (e) { bad((e as Error).message); } });
 
@@ -73,33 +78,35 @@ if (!S.run.noAi) for (const [i, r] of llmRefs.entries()) {
 section("Data");
 try {
   const bank = loadBank(); const ids = new Set(bank.map((c) => c.id));
-  ids.size === bank.length && bank.length > 0 ? ok(`bank loads: ${bank.length} cards, unique ids`) : bad("bank ids are not unique or bank is empty");
-} catch (e) { bad(`bank failed to load: ${(e as Error).message}`); }
+  ids.size === bank.length && bank.length > 0 ? ok(`Prepared cards load: ${bank.length} cards, unique ids`) : bad("Prepared cards: ids are not unique or the list is empty");
+} catch (e) { bad(`Prepared cards failed to load: ${(e as Error).message}`); }
 const terms = loadKeyterms(S);
 S.stt.keyterms.enabled === "off" ? ok("keyterms off by setting") : terms.length ? ok(`${terms.length} keyterms (max ${S.stt.keyterms.max})`) : warn("no keyterms loaded", `check ${S.stt.keyterms.file}`);
 S.privacy.requireConsentAck && ok("\"Ask me before listening starts\" is on: listening starts after you confirm");
-guard("זה עולה 500 ₪").ok === false && guard("נסיים עד יום חמישי").ok === false ? ok("guards block price and date bait (full corpus: pnpm test)") : bad("guards let price/date bait through");
-detect("כמה זה עולה").isQuestion ? ok("detector sanity (full corpus: pnpm detector)") : bad("detector failed a basic question");
+guard("זה עולה 500 ₪").ok === false && guard("נסיים עד יום חמישי").ok === false ? ok(`guards block price and date bait${dev(" (full corpus: pnpm test)")}`) : bad("guards let price/date bait through");
+detect("כמה זה עולה").isQuestion ? ok(`detector sanity${dev(" (full corpus: pnpm detector)")}`) : bad("detector failed a basic question");
 
 section("Tools and resources");
+// Runs a local tool and returns trimmed stdout, or "" on any failure (missing tool, non-zero exit).
 const run = (cmd: string, a: string[]) => { try { return execFileSync(cmd, a, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch { return ""; } };
 Number(process.versions.node.split(".")[0]) >= 24 ? ok(`Node ${process.versions.node}`) : warn(`Node ${process.versions.node} (24+ expected)`);
 const sw = run("sw_vers", ["-productVersion"]);
 if (sw) { const [a, b] = sw.split(".").map(Number); a > 14 || (a === 14 && b >= 2) ? ok(`macOS ${sw}`) : bad(`macOS ${sw}: system audio tap needs 14.2+`); }
-run("ffmpeg", ["-version"]) ? ok("ffmpeg present") : bad("ffmpeg not found", "brew install ffmpeg");
+run("ffmpeg", ["-version"]) ? ok("ffmpeg present") : bad("ffmpeg not found", "install ffmpeg (brew install ffmpeg), then run the readiness check again");
 const batt = run("pmset", ["-g", "batt"]);
 if (batt) { const pct = Number(batt.match(/(\d+)%/)?.[1]); /AC Power/.test(batt) || pct > 20 ? ok(`power ok (${pct}%${/AC Power/.test(batt) ? ", charging" : ""})`) : warn(`battery ${pct}% and not charging`, "plug in"); }
 const df = run("df", ["-m", "."]).split("\n")[1]?.split(/\s+/); const freeMb = df ? Number(df[3]) : NaN;
 Number.isFinite(freeMb) ? (freeMb > 500 ? ok(`free disk ${Math.round(freeMb / 1024)} GB`) : warn(`free disk ${freeMb} MB`, "free some space")) : null;
 const orphans = run("pgrep", ["-f", "ffmpeg.*avfoundation|audiotee"]);
-orphans ? warn("leftover ffmpeg/audiotee process found", "pkill -f 'ffmpeg.*avfoundation|audiotee'") : ok("no orphan audio processes");
+orphans ? warn("leftover ffmpeg/audiotee process found", IS_APP ? "quit Wingman from the menu bar and open it again" : "pkill -f 'ffmpeg.*avfoundation|audiotee'") : ok("no orphan audio processes");
 if (S.overlay.enabled) {
   const displays = Number(run("sh", ["-c", "system_profiler SPDisplaysDataType 2>/dev/null | grep -c 'Resolution:'"]));
-  displays >= 2 ? ok(`${displays} displays: overlay goes to the second`) : displays === 1 ? (S.overlay.allowPrimary ? warn("one display and overlay.allowPrimary: the overlay will be on the shared screen") : bad("only one display: the overlay would refuse to open", "connect a second screen or set overlay.allowPrimary: true (never share that screen)")) : warn("could not count displays");
+  displays >= 2 ? ok(`${displays} displays: overlay goes to the second`) : displays === 1 ? (S.overlay.allowPrimary ? warn("one display and overlay.allowPrimary: the overlay will be on the shared screen") : bad("only one display: the overlay would refuse to open", "connect a second screen, or set overlay.allowPrimary: true (never share that screen)")) : warn("could not count displays");
 }
 
 section("Budget and data hygiene");
 {
+  // Month-to-date spend = sum of each call's last totals row (role "summary") written this calendar month.
   let month = 0; const now = new Date(); let old = 0;
   if (existsSync(CALLS)) for (const d of readdirSync(CALLS)) {
     const dir = join(CALLS, d); let st; try { st = statSync(dir); } catch { continue; }
@@ -111,7 +118,7 @@ section("Budget and data hygiene");
     }
   }
   S.budget.maxUsdPerMonth === null ? ok(`month-to-date $${month.toFixed(2)} (no monthly cap set)`) : month < S.budget.maxUsdPerMonth ? ok(`month-to-date $${month.toFixed(2)} of $${S.budget.maxUsdPerMonth}`) : warn(`month-to-date $${month.toFixed(2)} reached budget.maxUsdPerMonth $${S.budget.maxUsdPerMonth}`);
-  old ? warn(`${old} saved call(s) older than ${S.privacy.retentionDays} days`, `pnpm purge --older-than ${S.privacy.retentionDays}`) : ok("no calls past retention");
+  old ? warn(`${old} saved call(s) older than ${S.privacy.retentionDays} days`, IS_APP ? "delete the old calls in the Wingman window (Calls tab)" : `pnpm purge --older-than ${S.privacy.retentionDays}`) : ok("no calls past retention");
   const missingPrice = llmRefs.filter((r) => !S.budget.prices.llm[r]);
   missingPrice.length ? warn(`no price in budget.prices.llm for ${missingPrice.join(", ")}: cost shows $0`) : ok("price table covers the configured models");
 }
@@ -132,15 +139,18 @@ section("Screens and audio devices");
 
 if (offline) { console.log("\n(skipped: microphone, system audio, STT sockets, LLM calls, network latency. Run without --offline before a call.)"); finish(); }
 
-section("Microphone (speak for 3 seconds)");
+section("Microphone (speak normally for 5 seconds)");
 {
-  const mic = new MicSource(S.audio.mic.device); let peak = 0;
+  const mic = new MicSource(S.audio.mic.device); let peak = 0, chunks = 0;
   console.log(`  device: ${mic.device} (audio.mic.device; avoid AirPods for the first calls)`);
-  if (/airpods|bluetooth/i.test(mic.device)) warn("Bluetooth mic drops to low-quality audio", "use a wired headset");
-  mic.on("pcm", (b: Buffer) => { peak = Math.max(peak, peakOf(b)); });
+  if (/airpods|bluetooth/i.test(mic.device)) warn("Bluetooth mic drops to low-quality audio", "use the Mac microphone or a wired headset");
+  mic.on("pcm", (b: Buffer) => { chunks++; peak = Math.max(peak, peakOf(b)); });
   mic.on("error", (e: Error) => bad(`mic: ${e.message}`));
-  await mic.start(); await sleep(3000); await mic.stop();
-  peak > 0.02 ? ok(`mic level ok (peak ${peak.toFixed(2)})`) : bad(`mic silent (peak ${peak.toFixed(3)})`, IS_APP ? "System Settings → Privacy & Security → Microphone: allow Microphone for Wingman, then restart Wingman (or set audio.mic.device)" : "grant Microphone to your terminal app (Privacy & Security), restart it, or set audio.mic.device");
+  await mic.start(); await sleep(5000); await mic.stop();
+  const v = micVerdict(chunks, peak);
+  if (v === "fail") bad("no sound from the microphone: it looks blocked", IS_APP ? "System Settings → Privacy & Security → Microphone: allow Wingman, then restart Wingman (or choose another device in Settings)" : "grant Microphone to your terminal app (Privacy & Security), restart it, or set audio.mic.device");
+  else if (v === "ok") ok(`mic level ok (peak ${peak.toFixed(2)})`);
+  else warn(`mic is quiet (peak ${peak.toFixed(3)}): the microphone works, but the voice was weak`, "speak normally during the check, or move closer to the microphone");
 }
 if (!IS_APP && process.env.TERM_PROGRAM && process.env.TERM_PROGRAM !== "Apple_Terminal") warn(`Terminal is ${process.env.TERM_PROGRAM}, not Terminal.app: permissions are per app`);
 
@@ -152,6 +162,7 @@ else {
   sys.on("error", (e: Error) => { err = e.message; }); sys.on("pcm", (b: Buffer) => { peak = Math.max(peak, peakOf(b)); });
   try {
     await sys.start();
+    // Play a system sound and a Hebrew phrase so the system-audio tap has something to hear; the sleeps give the tap time to see it.
     spawn("afplay", ["/System/Library/Sounds/Glass.aiff"]); await sleep(400);
     spawn("say", ["-v", "Carmit", "בדיקת שמע"]); await sleep(2600);
     await sys.stop();
@@ -174,6 +185,7 @@ for (const [i, id] of sttIds.entries()) {
 
 if (!S.run.noAi) {
   section("LLM reflex (primary and fallbacks; the primary is called twice to check the prompt cache)");
+  // The primary model is called twice with the same prefix: the second call should read the prompt cache (checked via cache-read tokens).
   const prefix = buildPrefix(readFileSync(join(DATA, "house-style.md"), "utf8"), loadBank());
   for (const [mi, ref] of llmRefs.entries()) {
     for (const i of mi === 0 && registry.capabilities(ref).cache ? [1, 2] : [1]) {
@@ -189,7 +201,7 @@ if (!S.run.noAi) {
               console.log(`  ${ref} call ${i}: first tag ${first} ms (${tag}) · input ${u?.inputTokens} · cache read ${read}`);
               if (!["SKIP", "STALL", "ANS", "BANK"].includes(tag)) bad(`${ref}: reply had no valid tag`);
               else if (first > 2000) warn(`${ref}: first tag ${first} ms (> 2 s)`);
-              if (i === 2) read > 0 ? ok("prompt cache works") : warn("cache read is 0 on call 2: the prefix may be under the model's cache minimum", "pad buildPrefix() in src/reflex.ts (safe to ignore in Stage 0)");
+              if (i === 2) read > 0 ? ok("prompt cache works") : warn("cache read is 0 on call 2: the prefix may be under the model's cache minimum", IS_APP ? "safe to ignore: calls just cost a little more" : "pad buildPrefix() in src/reflex.ts (safe to ignore in Stage 0)");
               if (i === 1) ok(`${ref} answers${mi ? " (fallback)" : ""}`);
             },
           },
@@ -204,6 +216,7 @@ if (!S.run.noAi) {
 }
 finish();
 
+/** Print the verdict and exit: 1 if anything blocking, else 0. Hoisted, so it can also be called from the early settings-failure path. */
 function finish(): never {
   console.log("");
   if (blocking.length) { console.log(`NOT READY: ${blocking[0]}${blocking.length > 1 ? ` (+${blocking.length - 1} more blocking)` : ""}`); process.exit(1); }

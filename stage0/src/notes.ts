@@ -1,6 +1,6 @@
-// Live notes (PLAN §0.5): every ~30 s of new speech, a small model pulls the key facts out of the new lines
-// ("budget about 20k", "wants it before Passover", "Dan promised a quote by Tuesday"). Notes only record
-// what was said; they never suggest prices or promises.
+// Live notes: every notes.everyMs (run.ts notesRound), a small model pulls the key facts out of the new transcript lines
+// ("budget about 20k", "wants it before Passover", "I promised a quote by Tuesday"). Notes only record
+// what was said; they never suggest prices or promises. Notes also feed the post-call summary.
 import { generateText } from "ai";
 import { ModelRegistry, providerOptionsFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
@@ -12,6 +12,7 @@ Do NOT note plain questions the other side asked (Dan already sees those), small
 Dan's name is דן (speech-to-text may misspell it). Rules: Hebrew, at most 2 notes, each at most 12 words, one per line starting with "- ". Record only what was said; do not invent, advise, or add prices or dates nobody said.
 If there is nothing new worth noting, answer exactly: NONE`;
 
+/** Turns the model reply into at most 2 short bullet notes. "NONE" or no bullets = []. */
 export function parseNotes(text: string): string[] {
   if (/^\s*NONE\W*$/i.test(text)) return [];
   // The prompt asks for "- " bullets; models also answer with "•", "*", "–", "1." or "1)": accept those, never silently lose a note.
@@ -31,6 +32,7 @@ export function dedupeNotes(fresh: string[], existing: string[]): string[] {
   return out;
 }
 
+/** One notes model call over the new lines. Aborts on `signal` (call end) or `timeoutMs`; no retries. The caller does the cost accounting from `usage`. */
 export async function takeNotes(o: {
   registry: ModelRegistry; model: string; existing: string[]; lines: string[]; signal: AbortSignal; timeoutMs: number;
   generate?: typeof generateText;
@@ -41,6 +43,7 @@ export async function takeNotes(o: {
     abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
     instructions: { role: "system", content: NOTES_SYSTEM },
+    // untag() removes <call_transcript> tags from the lines, so spoken words cannot close the block early (prompt injection).
     messages: [{ role: "user", content: `Notes so far:\n${o.existing.map((n) => `- ${n}`).join("\n") || "(none)"}\n\n<call_transcript>\n${untag(o.lines.join("\n"))}\n</call_transcript>` }],
   } as any);
   return { notes: dedupeNotes(parseNotes(r.text), o.existing), usage: r.usage, providerMetadata: r.providerMetadata };

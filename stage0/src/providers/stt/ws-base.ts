@@ -5,6 +5,7 @@ import WebSocket from "ws";
 import { classifySttError, ProviderError } from "../errors.ts";
 import type { SttOptions, SttStreamLike } from "./types.ts";
 
+/** Base for WebSocket adapters. Subclasses supply the URL, the config frame and the message parser. */
 export abstract class WsStream extends EventEmitter implements SttStreamLike {
   protected ws?: WebSocket;
   protected connBytes = 0;      // bytes sent on the current socket (re-anchored per (re)open)
@@ -60,6 +61,7 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
     });
   }
 
+  // Retries only network-like failures with backoff (default 1 s, 2 s, 4 s). Auth/quota errors are emitted at once so SttChannel can switch provider.
   private async reconnect(cause: ProviderError) {
     if (!cause.retryable && cause.kind !== "network") { this.emit("error", cause); return; }   // auth/quota: the manager switches provider
     for (let i = 0; i < this.reconnectMax && !this.closing; i++) {
@@ -81,6 +83,7 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
     this.closing = true; clearInterval(this.keepAliveTimer);
     const end = this.endFrame();
     try { if (end !== undefined && this.isOpen) this.ws!.send(end); } catch {}
+    // (a custom baseUrl means a test server: no need to wait)
     await new Promise((r) => setTimeout(r, this.opts.baseUrl ? 100 : 1500));   // let the final results arrive
     try { this.ws?.close(); } catch {}
   }

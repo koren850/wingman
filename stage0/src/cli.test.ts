@@ -337,3 +337,49 @@ test("hidden instance: the real controller + scripted engine (file mode) driven 
     assert.equal((await r.run("calls", "purge", id, "--yes", "--json")).code, 0);
   } finally { await r.done(); rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("stop --no-summary: keeps the call, sends stop-no-summary, refuses --delete, help documents it", async () => {
+  const r = await rig();
+  try {
+    assert.ok(HELP.includes("--no-summary"));
+    await r.run("start", "--json", "--no-wait");
+    const c = r.f.spawned[0]; c.say("consented", { id: "S3" });
+    assert.equal((await r.run("stop", "--no-summary", "--delete", "--yes", "--json")).code, 2);
+    const st = await r.run("stop", "--no-summary", "--json", "--no-wait");
+    assert.equal(st.code, 0, st.out); assert.deepEqual(c.written, ["stop-no-summary\n"]);
+    assert.equal(st.json.summarySkipped, true); assert.equal(st.json.deleted, false);
+    r.f.spawned[0].emit("exit", 0);
+    const again = await r.run("start", "--json", "--no-wait"); const c2 = r.f.spawned[1]; c2.say("consented", { id: "S5" });
+    assert.match((await r.run("stop", "--no-summary", "--no-wait")).out, /wingman calls summary S5 --generate/);
+  } finally { await r.done(); }
+});
+
+test("status: shows the seconds left while Ctrl+Opt+A is armed (--json: questionSecondsLeft)", async () => {
+  const r = await rig();
+  try {
+    await r.run("start", "--no-wait", "--json");
+    r.f.spawned[0].say("consented", { id: "S4" }); r.f.spawned[0].say("ask", { on: true, until: Date.now() + 9500 });
+    const j = (await r.run("status", "--json")).json;
+    assert.equal(j.call.listeningForQuestion, true); assert.ok(j.call.questionSecondsLeft >= 8 && j.call.questionSecondsLeft <= 10, String(j.call.questionSecondsLeft));
+    assert.match((await r.run("status")).out, /listening for your question \(\d+ s left\)/);
+    r.f.spawned[0].say("ask", { on: false });
+    assert.equal((await r.run("status", "--json")).json.call.questionSecondsLeft, null);
+  } finally { await r.done(); }
+});
+
+test("status: shows the stop step while a call is being saved, and the listening-for-question state", async () => {
+  const r = await rig();
+  try {
+    await r.run("start", "--no-wait", "--json");
+    r.f.spawned[0].say("consented", { id: "S1" }); r.f.spawned[0].say("ask", { on: true });
+    const a = await r.run("status");
+    assert.match(a.out, /listening for your question/);
+    assert.equal((await r.run("status", "--json")).json.call.aiMode, "ai");
+    r.f.spawned[0].say("mode", { noAi: true });
+    assert.equal((await r.run("status", "--json")).json.call.aiMode, "prepared-only");
+    r.f.spawned[0].say("stopping"); r.f.spawned[0].say("stopphase", { phase: "summary" });
+    const b = await r.run("status"), j = (await r.run("status", "--json")).json;
+    assert.match(b.out, /stopping .*writing the summary/);
+    assert.equal(j.call.stopPhase, "summary"); assert.equal(j.call.listeningForQuestion, false);
+  } finally { await r.done(); }
+});

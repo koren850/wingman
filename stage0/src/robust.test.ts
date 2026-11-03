@@ -1,4 +1,6 @@
-// Robustness fixes (pre-meeting hardening): STT outage retry, monologue vs dead tap, disk failures, orphan overlay, linger/Start, doctor timeout.
+// Robustness: STT outage retry (providers/stt/channel.ts), health recovery, disk failures, orphan overlay,
+// tray controller linger/Start and doctor timeout. Mixes unit tests (fake streams, injected spawn) with source checks
+// of run.ts and a few real child runs of run.ts with scripted STT.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -18,7 +20,7 @@ import type { SttProvider, SttStreamLike } from "./providers/stt/types.ts";
 const { createController } = createRequire(import.meta.url)("../tray/controller.cjs");
 const tsx = join(ROOT, "node_modules", ".bin", "tsx");
 
-// ---- 1. short STT outage with no fallback: the channel can reopen the same provider ----
+// ---- short STT outage with no fallback: the channel can reopen the same provider ----
 class Fake extends EventEmitter implements SttStreamLike {
   dropped = 0; sent = 0; isOpen = true; closed = false;
   constructor(private fail?: () => Error | undefined) { super(); }
@@ -50,7 +52,7 @@ test("stt: with no fallback, exhausted is retryable and reopen() recovers the ch
   const auth = new ProviderError("auth", "deepgram", "401"); assert.equal(auth.retryable, false);
 });
 
-// ---- 2. monologue never sets themDead; real recovery is fast ----
+// ---- monologue never sets themDead; real recovery is fast ----
 test("health: themDead recovers within ~2 s of the other side returning, not recoverStableMs", () => {
   const now = { t: 0 };
   const s = new HealthSupervisor({ tickMs: 1000, recoverStableMs: 60_000, slowMs: 1500, slowSttMs: 1500, minSamples: 3 }, () => now.t);
@@ -71,7 +73,7 @@ test("run.ts: the silent-while-talking heuristic never sets themDead (source che
   assert.ok(calm.includes('"only-you"') && !/themDead/.test(calm), "calm branch must not touch themDead");
 });
 
-// ---- 3. disk failures ----
+// ---- disk failures ----
 test("log: write failures are counted, warned once, and never throw", async () => {
   const dir = mkdtempSync(join(tmpdir(), "wm-log-"));
   const r = spawnSync(tsx, ["-e", `
@@ -101,7 +103,7 @@ test("run.ts: unusable calls folder = one clear line and exit 2, no stack trace"
   rmSync(tmp, { recursive: true, force: true });
 });
 
-// ---- 8. notes cap, WINGMAN_USER_SETTINGS ----
+// ---- notes cap, WINGMAN_USER_SETTINGS ----
 test("run.ts: typed notes are capped (last 20 notes) in the context sent to the AI", async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wm-notes-")), calls = join(tmp, "calls");
   const wav = join(tmp, "s.wav"); await writeWav(wav, Buffer.alloc(16000 * 4 * 12), 2);
@@ -130,7 +132,7 @@ test("settings: WINGMAN_USER_SETTINGS is honoured by the engine loader", () => {
   rmSync(tmp, { recursive: true, force: true });
 });
 
-// ---- 6/7. overlay orphan guard, linger, doctor ----
+// ---- overlay orphan guard, linger, doctor ----
 test("overlay: spawned with a stdin pipe + parent watch; main.cjs quits when the parent goes away", () => {
   const o = readFileSync(join(ROOT, "src", "overlay.ts"), "utf8"), m = readFileSync(join(ROOT, "overlay", "main.cjs"), "utf8");
   assert.match(o, /stdio: \["pipe"/); assert.match(o, /WINGMAN_WATCH_PARENT/);

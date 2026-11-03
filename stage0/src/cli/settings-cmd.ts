@@ -1,5 +1,6 @@
 // wingman settings list | get | set. Same catalog, conversion and validation as the app's Settings page
 // (tray/settings-catalog.cjs + src/settings-edit.ts). Applies to the NEXT call. No secrets are involved: keys are not settings.
+// Edits the user settings file directly; it does not use the tray's control socket.
 import { CliError, EXIT, catalog, parse, usage, clip, type Ctx, type Result } from "./common.ts";
 import { applyEdits, readState } from "../settings-edit.ts";
 import { USER_SETTINGS_FILE } from "../settings.ts";
@@ -27,6 +28,7 @@ function typed(item: any, raw: string): unknown {
   return n;
 }
 
+/** list [--all] | get <key> | set <key> <value|default> [--advanced]. Keys not in the app's catalog need --advanced. keys.* is refused. */
 export async function settings(ctx: Ctx, args: string[]): Promise<Result> {
   const sub = args[0] || "list", rest = args.slice(1);
   if (sub === "list") {

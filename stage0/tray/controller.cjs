@@ -6,8 +6,13 @@ const nodePath = require("node:path");
 const defaultLib = require("./lib.cjs");
 
 /** The complete list of things that can ever be written to a call's stdin. Notes are cleaned and capped before they get here. */
-const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "ask", "stop", "stop-delete"]);
+const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "ask", "stop", "stop-delete", "stop-no-summary", "skip-summary"]);
 
+/**
+ * Builds the controller. o: { root, spawn (child_process.spawn-like), lib?, fs?, path?, bin?, logPath?, tmpDir?, env?, briefFile?,
+ * notify?(title, body), onChange?(), setTimeout?, kill?, doctorTimeoutMs? } (fs/spawn/timers are injectable for tests).
+ * State lives in lib.reduce; every change calls onChange so the tray and window can redraw. Only one call child at a time.
+ */
 function createController(o) {
   const lib = o.lib || defaultLib, fs = o.fs || nodeFs, path = o.path || nodePath;
   const root = o.root, bin = o.bin || ((n) => path.join(root, "node_modules", ".bin", n));
@@ -25,25 +30,27 @@ function createController(o) {
 
   /** The engine is done and call.ts only lingers to keep the answer window up: a new call replaces it (its overlay is closed now). */
   function dropLingering() { if (lingering) { const l = lingering; lingering = undefined; killGroup(l, "SIGTERM"); st(() => killGroup(l, "SIGKILL"), 3000); } }
+  /** Handles the end of call child c once (the "ended" line and the process exit can both arrive). Moves it to `lingering` and notifies on an unexpected non-zero exit. */
   function finish(c, code) {
     if (finished.has(c)) return;
     finished.add(c);
     if (child === c) { child = undefined; lingering = c; }
     set({ ev: "exit", code });
-    if (code && code !== 0 && !state.endedCleanly && !state.offReason) notify("Wingman stopped", state.lastError ? state.lastError.slice(0, 120) : `exit code ${code}. Details: calls/tray.log`);
+    if (code && code !== 0 && !state.endedCleanly && !state.offReason) notify("Wingman stopped unexpectedly", `${state.lastError ? state.lastError.slice(0, 120) : `Exit code ${code}`}. Start a new call when you are ready; Show log in the menu bar has the details.`);
     change();
   }
 
+  /** Spawns src/call.ts. Returns false if a call is already running. Reads its stdout "@@wingman" lines into state and notifications. */
   function startCall(extraArgs = [], extraEnv = {}) {
     if (child) return false;
     dropLingering();
-    set({ ev: "starting", practice: !!extraEnv.WINGMAN_STT_SCRIPT });
+    set({ ev: "starting", practice: !!extraEnv.WINGMAN_STT_SCRIPT, noAi: extraArgs.includes("--no-ai") });
     const env = { ...(o.env || process.env), WINGMAN_CONTROL: "1", FORCE_COLOR: "0", ...appEnv(), ...extraEnv };
     if (logPath) try { fs.writeFileSync(logPath, "", { mode: 0o600 }); fs.chmodSync(logPath, 0o600); } catch { /* best effort */ }
     // detached: call.ts leads its own process group, so a stuck call can be force-killed with everything under it.
     const c = o.spawn(bin("tsx"), [path.join(root, "src", "call.ts"), ...extraArgs], { cwd: root, env, stdio: ["pipe", "pipe", "pipe"], detached: true });
     child = c;
-    c.on("error", (e) => { logLine("ERR spawn " + e.message); notify("Wingman could not start", e.message); if (child === c) child = undefined; set({ ev: "stderr", text: e.message }); finished.add(c); set({ ev: "exit", code: 1 }); change(); });
+    c.on("error", (e) => { logLine("ERR spawn " + e.message); notify("Wingman could not start", `${e.message}. Quit Wingman from the menu bar and open it again; if it keeps happening, choose Show log.`); if (child === c) child = undefined; set({ ev: "stderr", text: e.message }); finished.add(c); set({ ev: "exit", code: 1 }); change(); });
     c.stdin.on("error", () => { /* the call already ended */ });
     let buf = "";
     c.stdout.on("data", (d) => {
@@ -57,7 +64,7 @@ function createController(o) {
         const before = set(msg);
         for (const n of lib.notifications(before, state, msg)) notify(n.title, n.body);
         change();
-        if (msg.ev === "ended") finish(c, msg.crashed ? 1 : 0);   // saved: Start is allowed again while call.ts lingers 5 s for the answer window
+        if (msg.ev === "ended") finish(c, msg.crashed ? 1 : 0);   // saved: Start is allowed again while call.ts lingers about 5 s for the answer window
       }
     });
     c.stderr.on("data", (d) => { logLine("ERR " + d.toString().trimEnd()); set({ ev: "stderr", text: d.toString() }); change(); });
@@ -69,7 +76,8 @@ function createController(o) {
     return true;
   }
 
-  /** Practice call: a pretend client plays into the real call loop with scripted AI. File mode: no mic, no system audio, no network, no cost. */
+  /** Practice call: a pretend client plays into the real call loop with scripted AI. File mode: no mic, no system audio, no network, no cost.
+   *  When a Plan is ready the practice uses it (its notes and checklist); the plan file is passed with --brief so it is NOT used up. */
   function practice() {
     if (child) return false;
     dropLingering();
@@ -77,23 +85,28 @@ function createController(o) {
     let lines = 16; try { lines = JSON.parse(fs.readFileSync(script, "utf8")).length; } catch { /* default */ }
     const wav = path.join(tmpDir, "wingman-practice.wav");
     lib.writeSilentWav(wav, Math.ceil((lines * gapMs) / 1000) + 12);
-    const ok = startCall(["--profile", "demo", "--file", wav, "--no-brief"], { WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: String(gapMs) });
-    if (ok) notify("Practice call", "A pretend caller is talking. Watch the answer window on your second screen. Nothing is sent anywhere.");
+    const usePlan = !!o.briefFile && state.briefReady && fs.existsSync(o.briefFile);
+    const ok = startCall(["--profile", "demo", "--file", wav, ...(usePlan ? ["--brief", o.briefFile] : ["--no-brief"])], { WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: String(gapMs) });
+    if (ok) notify("Practice call", `A pretend caller is talking${usePlan ? ", and your Plan is in use" : ""}. Watch the answer window on your second screen. Nothing is sent anywhere.`);
     return ok;
   }
 
+  /** Writes one line to the call's stdin. Only the fixed COMMANDS, or "note"/"ask" plus one clean line of text, are allowed; anything else is refused. */
   function send(cmd) {
     if (!child) return false;
     if (!COMMANDS.includes(cmd) && !/^(note|ask) [^\n\r]{1,300}$/.test(cmd)) return false;
     try { if (child.stdin.writable) { child.stdin.write(cmd + "\n"); return true; } } catch { /* ended */ }
     return false;
   }
+  /** Signals the whole process group (negative pid; call.ts is detached and leads its group). Falls back to the single process. */
   function killGroup(c, sig) { try { killProc(-c.pid, sig); } catch { try { c.kill(sig); } catch { /* gone */ } } }
-  function stop(del = false) {
+  /** Asks the call to stop (and optionally delete or skip the summary), then escalates: SIGINT at 12 s, SIGKILL at 20 s if it is still the same child. */
+  function stop(del = false, noSummary = false) {
     if (!child || state.phase === "stopping") return false;
     const c = child;
-    send(del ? "stop-delete" : "stop");
+    send(del ? "stop-delete" : noSummary ? "stop-no-summary" : "stop");
     if (del) set({ ev: "stopdelete" });
+    else if (noSummary) set({ ev: "summaryskip" });
     set({ ev: "stopping" }); change();
     st(() => { if (child === c) killGroup(c, "SIGINT"); }, 12000);      // call.ts: graceful stop
     st(() => { if (child === c) killGroup(c, "SIGKILL"); }, 20000);     // stuck: force everything off (mic included)
@@ -103,6 +116,10 @@ function createController(o) {
   const api = {
     getState: () => ({ ...state, health: { ...state.health }, running: !!child }),
     isRunning: () => !!child,
+    /** Stop and save, but do not write the summary (it can be written later from Calls or `wingman calls summary <id> --generate`). */
+    stopNoSummary: () => stop(false, true),
+    /** While a call is stopping and the summary has not finished: give it up. The call stays saved. */
+    skipSummary: () => !!child && state.phase === "stopping" && !state.summarySkipped && state.stopPhase !== "done" && send("skip-summary") && (set({ ev: "summaryskip" }), change(), true),
     start: (o2 = {}) => startCall(o2.noAi ? ["--no-ai"] : []),
     practice,
     consent: () => !!child && state.phase === "waiting" && send("consent"),

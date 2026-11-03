@@ -1,6 +1,7 @@
 // Fast back-to-back questions can arrive as ONE Deepgram final with no punctuation:
 //   "יש לכם גיבוי כמה זה עולה האתר איטי מה עושים"
 // Cut it into separate questions, but only where a new question clearly starts, so a normal single question is never chopped.
+// Bank-driven: cut points come from where distinct prepared cards' triggers begin (bankStarts); split.ts splitMulti does the cutting.
 import { splitMulti } from "./split.ts";
 import { bankStarts, matchBank, type BankCard } from "./bank.ts";
 import { detect } from "./detector.ts";
@@ -13,6 +14,8 @@ const opens = (w: string) => { const t = tokens(w)[0]; if (!t) return false; con
 // (\b does not work next to Hebrew letters, hence the lookahead.)
 const TOPIC_INTRO = /(^|[.?!,]\s*)(ו?מה|what)\s+(עם|אם|לגבי|about)(?=\s|$)/i;
 
+/** Returns the pieces of `text` (one per question) or `[text]` when it is not clearly several questions.
+ *  Strict on purpose: 6+ words, every piece a question by itself, and every piece matching a different bank card. */
 export function splitMergedQuestions(text: string, bank: BankCard[]): string[] {
   const words = text.trim().split(/\s+/);
   if (words.length < 6) return [text];

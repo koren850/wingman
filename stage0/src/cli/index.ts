@@ -1,4 +1,6 @@
 // wingman <command>: command line for Wingman. See help.ts for the agent-facing manual.
+// Dispatches to the command modules. Commands that act on a call talk to the running tray app over its owner-only control
+// socket (tray/control-socket.cjs, via client.ts); plan, live, calls and settings read and write files directly.
 //   pnpm wingman <command>    or    scripts/wingman-cli.sh <command>
 import { fileURLToPath } from "node:url";
 import { realpathSync } from "node:fs";
@@ -36,8 +38,10 @@ export async function main(argv: string[], over: Partial<Ctx> & { err?: (s: stri
     const cmd = Object.prototype.hasOwnProperty.call(COMMANDS, name) ? COMMANDS[name] : undefined;
     if (!cmd) throw usage(`Unknown command "${stripAnsi(name).slice(0, 40)}".`);
     const rest = args[0] === name ? args.slice(1) : [];
+    // `wingman <cmd> --help` prints the manual instead of running the command.
     if (name !== "help" && (rest.includes("-h") || rest.includes("--help"))) return (await main(["help", ...(json ? ["--json"] : [])], over), 0);
     const r = await cmd(ctx, rest);
+    // Streaming commands (live --follow) already wrote their output through ctx.out.
     if (!r.data.streamed) ctx.out(json ? JSON.stringify({ ok: !r.exit, ...(r.exit ? { exit: r.exit } : {}), ...r.data }) + "\n" : r.text + "\n");
     return r.exit ?? EXIT.OK;
   } catch (e) {
@@ -46,6 +50,7 @@ export async function main(argv: string[], over: Partial<Ctx> & { err?: (s: stri
   }
 }
 
+// Run only when executed directly (the file is also imported by tests). realpath so a symlinked launcher still counts.
 const isMain = (() => { try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
 if (isMain) {
   const ac = new AbortController();

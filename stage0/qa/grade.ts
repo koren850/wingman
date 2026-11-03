@@ -1,4 +1,5 @@
 // Grades one QA call folder against its scenario expectations. Pure functions over the call's JSONL files, so it is unit-tested offline.
+// Called by run-qa.ts after each scenario. Inputs are the scenario (qa/scenarios/*.json), the render timeline (what was said when), and the call dir the engine wrote.
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { guard } from "../src/guards.ts";
@@ -7,6 +8,7 @@ import { isAgencyKind } from "../src/frame.ts";
 import type { Scenario, TimelineTurn } from "./render.ts";
 
 export type Row = Record<string, any>;
+/** Rows of a JSONL file; a missing file gives [] and a bad line gives {} (a half-written line must not stop grading). */
 export const readJsonl = (file: string): Row[] => existsSync(file) ? readFileSync(file, "utf8").split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return {}; } }) : [];
 
 /** Lowercase, drop niqqud/punctuation/bidi marks, collapse spaces: the form used to compare STT text with the script. */
@@ -33,7 +35,7 @@ export type FrameGrade = {
   kindOk: boolean; topicOk: boolean; checklistOk: boolean; tips: { type: string; text: string; source?: string }[]; tipsOk: boolean; tipRelevant: boolean;
   irrelevantBank: string[]; tipLeaks: string[]; frameUsd: number; tipsUsd: number;
 };
-/** Answers for Dan's own questions: graded "me" turns, how many got the expected result, and "For you" cards that no turn asked for. */
+/** Answers for the user's own questions: graded "me" turns, how many got the expected result, and "For you" cards that no turn asked for. */
 export type MeGrade = { graded: number; ok: number; answers: number; unexpected: string[] };
 export type Grade = {
   me?: MeGrade;
@@ -51,9 +53,17 @@ export type Grade = {
   hiddenByCap: number; crashed: boolean; failures: Failure[]; turns: TurnResult[];
 };
 
+/** p-th percentile (nearest rank, p in 0..100) of a number list, or undefined if empty. */
 const pct = (a: number[], p: number) => { if (!a.length) return undefined; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]; };
+/** Does a card kind match an expectation? "stall" accepts "stall" and any "stall-*" tier. */
 const kindMatches = (kind: string, want: string) => want === "stall" ? kind === "stall" || kind.startsWith("stall-") : kind === want;
 
+/**
+ * Grades one call folder. Steps: (1) match each STT word to the script turn it overlaps in time; (2) STT word accuracy; (3) map detect events to
+ * turns; (4) tie question detects to latency rows; (5) find the final card per question; (6) grade turns (question found, split joined, right card);
+ * (6b) "me" turns and For-you cards; (7) summary guard leaks; (8) cost. Frame and tips are graded by gradeFrame. Files read: transcript, events,
+ * cards, latency, usage .jsonl and summary.json.
+ */
 export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: string): Grade {
   const transcript = readJsonl(join(dir, "transcript.jsonl"));
   const events = readJsonl(join(dir, "events.jsonl"));
@@ -198,7 +208,7 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
     turns.push({ i: t.i, text: t.text, heard, q: isQ, outcome, ok: reasons.length === 0, reasons, latencyMs, hidden });
   }
 
-  // 6b. "me" turns: did Dan's question for Wingman get a "For you" card, and did a question for the other person (or thinking aloud) get none?
+  // 6b. "me" turns: did the user's question for Wingman get a "For you" card, and did a question for the other person (or thinking aloud) get none?
   const meById = new Map<string, Row>();
   for (const c of cards) if (c.type === "card" && c.badge === "me") { if (c.withdraw) meById.delete(c.id); else meById.set(c.id, c); }
   const meCards = [...meById.values()].filter((c) => !c.hidden);

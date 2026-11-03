@@ -1,6 +1,6 @@
-// Prepared start (PLAN §0.6): a 1-minute briefing before the meeting.
+// Prepared start: a 1-minute briefing before the meeting. Loaded by run.ts at startup; also a small interactive CLI (below).
 //   pnpm brief            asks 4 short questions and saves data/private/briefs/latest.yaml
-//   pnpm call / start     loads a brief saved in the last 6 hours (or --brief <file>; --no-brief skips it)
+//   pnpm call / start     (run.ts) loads a brief saved in the last 6 hours (or --brief <file>; --no-brief skips it)
 // The brief becomes Dan's notes for the AI, and its must-cover items become reminders during the call.
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,6 +10,7 @@ import YAML from "yaml";
 import { DATA } from "./env.ts";
 import { tokens } from "./normalize.ts";
 
+/** What the user typed before the call. `mustCover` items are checked against the transcript with covered(). */
 export type Brief = { who?: string; goal?: string; notes?: string[]; mustCover?: string[]; createdAt?: string };
 export const BRIEF_DIR = join(DATA, "private", "briefs");
 export const LATEST_BRIEF = join(BRIEF_DIR, "latest.yaml");
@@ -38,7 +39,11 @@ export function briefNotes(b: Brief): string[] {
   return out;
 }
 
-/** Candidate base forms of a Hebrew word: as is, without a plural ending, without one or two glued prefix letters. */
+/**
+ * Candidate base forms of a Hebrew word: as is, without a plural ending, without one or two glued prefix letters.
+ * Crude on purpose (no real stemmer): a plural ending is cut only if 2+ letters remain; prefixes only on words of 4+ letters.
+ * Input must already be normalized (final letters folded), so "ים" appears as "ימ".
+ */
 export function stems(w: string): Set<string> {
   const out = new Set<string>([w]);
   const noPlural = w.replace(/(יות|ימ|ים|ות)$/, (m) => (w.length - m.length >= 2 ? "" : m));
@@ -49,7 +54,10 @@ export function stems(w: string): Set<string> {
   return out;
 }
 
-/** A must-cover item counts as covered when most of its words (by stem) were said in the call. */
+/**
+ * A must-cover item counts as covered when at least 60% of its words (by stem) were said in the call.
+ * Words of 4+ letters also match by prefix of each other ("תקציב" ~ "תקציבים"), since speech-to-text varies endings.
+ */
 export function covered(item: string, transcript: string): boolean {
   const want = tokens(item).filter((w) => w.length >= 2).map(stems);
   if (!want.length) return false;
@@ -58,6 +66,7 @@ export function covered(item: string, transcript: string): boolean {
   return want.filter(hit).length / want.length >= 0.6;
 }
 
+// CLI mode (pnpm brief): only when this file is run directly, not when run.ts imports it.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   console.log("Briefing for the next call (Enter skips a question).");

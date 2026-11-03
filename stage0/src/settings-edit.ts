@@ -1,6 +1,6 @@
-// Edits ~/.config/wingman/settings.yaml for the Wingman window's Settings page.
+// Edits the user settings file (~/.config/wingman/settings.yaml) for the Settings page and `wingman settings set`.
 // Validates the result with the same zod schema as every call (loadSettings), keeps comments and other keys
-// (yaml Document API), writes mode 600 through a temp file + rename. Used through src/settings-edit-cli.ts.
+// (yaml Document API), writes mode 600 through a temp file + rename. The app reaches it through src/settings-edit-cli.ts.
 import { existsSync, readFileSync, writeFileSync, renameSync, chmodSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import YAML from "yaml";
@@ -16,6 +16,7 @@ export function defaultsFlat(): Flat {
   return flatten(loadSettings({ userFile: join("/nonexistent-wingman", "settings.yaml"), env: {}, argv: [] }).settings);
 }
 
+/** After a delete, removes parent maps that became empty, so the file does not keep bare `section: {}` stubs. Never removes the top level. */
 function pruneEmpty(doc: YAML.Document, path: string[]) {
   for (let n = path.length - 1; n >= 1; n--) {
     const parent = path.slice(0, n);
@@ -24,6 +25,11 @@ function pruneEmpty(doc: YAML.Document, path: string[]) {
   }
 }
 
+/**
+ * Applies {key: value|null} to the user file. Unknown keys fail. A null, or a value equal to the default, deletes the key.
+ * The result is validated from a temp copy first; the real file is replaced (atomic rename) only if that passes.
+ * Returns the changed keys, or a user-facing message. Never throws for bad input.
+ */
 export function applyEdits(userFile: string, edits: Edits): EditResult {
   const keys = Object.keys(edits);
   if (!keys.length) return { ok: true, changed: [] };
@@ -45,6 +51,7 @@ export function applyEdits(userFile: string, edits: Edits): EditResult {
   const out = doc.toString();
   const dir = dirname(userFile), tmp = join(dir, `.settings.yaml.${process.pid}.tmp`), cand = join(dir, `.settings.check.${process.pid}.tmp`);
   try {
+    // Validate a copy first so a bad edit never touches the real file.
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     writeFileSync(cand, out, { mode: 0o600 });
     try { loadSettings({ userFile: cand, env: {}, argv: [] }); }

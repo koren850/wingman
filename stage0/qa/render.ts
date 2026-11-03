@@ -1,4 +1,4 @@
-// Synthetic call renderer: scenario JSON -> stereo 16 kHz 16-bit WAV (L = me / Dan's mic, R = them / the client), with real timing.
+// Synthetic call renderer: scenario JSON -> stereo 16 kHz 16-bit WAV (L = me / the user's mic, R = them / the other side), with real timing.
 //   tsx qa/render.ts <scenario…|--all>      writes qa/out/<scenario>.wav + qa/out/<scenario>.timeline.json
 // Speech comes from macOS `say` (Carmit for Hebrew, Samantha/Daniel for English), cached by text hash in qa/cache/. No network, no keys.
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
@@ -18,7 +18,7 @@ export type Expect = {
   card?: string | string[];       // bank id | "stall" (stall line or any stall-* card) | "ai" | "none"; an array = any of these
   joinWith?: "prev";              // this turn completes a question started by the previous client turn (split question)
   part?: "head";                  // first fragment of a split question: not graded on its own
-  forMe?: "answer" | "none";      // a "me" turn: Dan asks Wingman (a "For you" card is expected) or asks the other person / thinks aloud (no card)
+  forMe?: "answer" | "none";      // a "me" turn: the user asks Wingman (a "For you" card is expected) or asks the other person / thinks aloud (no card)
   note?: string;
 };
 export type Turn = { speaker: "me" | "them"; text: string; pauseBeforeMs?: number; rate?: number; overlapMs?: number; voice?: string; expect?: Expect };
@@ -34,10 +34,12 @@ export type FrameExpect = {
 export type Scenario = { name?: string; title: string; focus?: string; voices?: { me?: string; them?: string }; frame?: FrameExpect; turns: Turn[] };
 export type TimelineTurn = { i: number; speaker: "me" | "them"; text: string; startMs: number; endMs: number };
 
+/** Reads qa/scenarios/<name>.json. The scenario name is the file name. */
 export function loadScenario(name: string): Scenario & { name: string } {
   const s = JSON.parse(readFileSync(join(SCEN_DIR, `${name}.json`), "utf8")) as Scenario;
   return { ...s, name };
 }
+/** Sorted names of every scenario file. */
 export function allScenarioNames(): string[] {
   return readdirSync(SCEN_DIR).filter((f) => f.endsWith(".json")).map((f) => basename(f, ".json")).sort();
 }
@@ -63,13 +65,18 @@ function speak(text: string, voice: string, rate: number): Buffer {
   throw new Error("no data chunk in " + wav);
 }
 
-/** Deterministic light noise so the line is not digital silence. */
+/** Deterministic light noise (xorshift32 from a fixed seed, so renders are repeatable) so the line is not digital silence; silence can make the STT behave differently. */
 function noise(n: number, amp: number, seed: number): Int16Array {
   const out = new Int16Array(n); let x = seed >>> 0 || 1;
   for (let i = 0; i < n; i++) { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; out[i] = Math.round(((x / 0xffffffff) * 2 - 1) * amp); }
   return out;
 }
 
+/**
+ * Renders a scenario to qa/out/<name>.wav (stereo, L = me, R = them) and <name>.timeline.json. Turns are placed one after another
+ * (pauseBeforeMs, default 700 ms; overlapMs lets a turn start before the previous one ends), with 0.8 s lead-in and 4 s tail.
+ * Returns the wav path, the per-turn timeline (ms) and the total duration. Needs macOS `say`.
+ */
 export async function renderScenario(sc: Scenario & { name: string }): Promise<{ wav: string; timeline: TimelineTurn[]; durationMs: number }> {
   const voices = { me: sc.voices?.me ?? "Carmit", them: sc.voices?.them ?? "Carmit" };
   const tl: TimelineTurn[] = [];

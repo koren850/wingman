@@ -1,11 +1,13 @@
-// Health supervisor and degrade ladder (FAILURES.md section 2). Pure logic: run.ts feeds signals and renders the result.
+// Health supervisor and degrade ladder. Mostly pure logic: run.ts feeds signals (provider failures, lag, audio loss) and renders the result.
 // Rungs: 0 full · 1 reduced AI · 2 provider switch · 3 bank-only · 4 transcript-only · 5 off.
 // Rule: the applied rung changes only BETWEEN questions (except 5/off), and recovery needs a stable period.
 import { EventEmitter } from "node:events";
 
+/** Degrade level, 0 = everything works, 5 = Wingman stopped. Higher is worse. */
 export type Rung = 0 | 1 | 2 | 3 | 4 | 5;
 export const RUNG_NAMES = ["full", "reduced-ai", "provider-switch", "bank-only", "transcript-only", "off"] as const;
 
+/** What run.ts currently knows to be wrong. Each flag is independent; decide() picks the worst rung. */
 export type Signals = {
   noAi: boolean;            // user chose bank-only (--no-ai)
   llmDown: boolean;         // every configured LLM model is unusable (breakers open, auth/spend cap)
@@ -46,15 +48,18 @@ export function describeRung(r: Rung, reasons: string[], userChoiceOnly = false)
   const why = reasons.length ? ` (${reasons.join(", ")})` : "";
   switch (r) {
     case 0: return null;
-    case 1: return { level: "amber", text: `AI מופחת: בנק ותשובת עצירה בלבד${why}` };
-    case 2: return { level: "amber", text: `עברנו לספק גיבוי${why}` };
-    case 3: return userChoiceOnly ? { level: "info", text: "מצב בנק בלבד (בלי AI)" } : { level: "red", text: `בנק בלבד: ה-AI לא זמין${why}` };
-    case 4: return { level: "red", text: `אין כרטיסים לצד השני${why}. תשובות אליך (Ctrl+Opt+A) עדיין פועלות` };
-    case 5: return { level: "red", text: `Wingman כבוי${why}` };
+    case 1: return { level: "amber", text: `AI מופחת: רק כרטיסים מוכנים מראש ותשובת "לקנות זמן"${why}. הכרטיסים ממשיכים; אם זה נמשך, בדוק חיבור לאינטרנט` };
+    case 2: return { level: "amber", text: `עברנו לספק גיבוי${why}. אין צורך לעשות כלום; אחרי השיחה בדוק את המפתח ב-Settings` };
+    case 3: return userChoiceOnly ? { level: "info", text: "רק כרטיסים מוכנים מראש (בלי AI). להפעלת AI התחל שיחה חדשה בלי הבחירה הזו" } : { level: "red", text: `רק כרטיסים מוכנים מראש: ה-AI לא זמין${why}. בדוק חיבור לאינטרנט ומפתח ב-Settings` };
+    case 4: return { level: "red", text: `אין כרטיסים לצד השני${why}. תשובות אליך (Ctrl+Opt+A) עדיין פועלות; בדוק חיבור לאינטרנט` };
+    case 5: return { level: "red", text: `Wingman כבוי${why}. פתח את חלון Wingman ופתח שיחה חדשה` };
   }
 }
 
-/** closed -> (failures in window) -> open -> (cooldown) -> half-open probe -> (closeAfter successes) -> closed. */
+/**
+ * Per-model circuit breaker (not a rung): stops calling a model that keeps failing, then lets one probe through.
+ * closed -> (failures in window) -> open -> (cooldown) -> half-open probe -> (closeAfter successes) -> closed.
+ */
 export class CircuitBreaker {
   private fails: number[] = [];
   private okCount = 0;
@@ -77,8 +82,15 @@ export class CircuitBreaker {
   }
 }
 
+/** Timing knobs. `troubleHoldMs`: how long one 429/overload keeps the AI-trouble flag. `fastRecoverMs`: shortened calm period after the other side is heard again. */
 export type HealthConfig = { tickMs: number; recoverStableMs: number; slowMs: number; slowSttMs: number; minSamples: number; troubleHoldMs?: number; fastRecoverMs?: number };
 
+/**
+ * Turns signals into one applied rung and emits "rung" events { from, to, reasons }. Why it is not instant:
+ * - degrading waits until no question is in flight (beginQuestion/endQuestion), so a card is never changed mid-answer;
+ *   only rung 5 (fatal) applies immediately.
+ * - recovering needs `recoverStableMs` of continuous better signals, so a flapping provider does not make the UI flicker.
+ */
 export class HealthSupervisor extends EventEmitter {
   rung: Rung = 0;
   reasons: string[] = [];
@@ -103,6 +115,7 @@ export class HealthSupervisor extends EventEmitter {
   endQuestion() { this.busy = Math.max(0, this.busy - 1); if (!this.busy) this.tick(); }
   get idle() { return this.busy === 0; }
 
+  // Slow detection uses the median of the last 5 samples and needs minSamples, so one slow reply does not degrade the call.
   recordTag(ms: number) { this.tags = [...this.tags.slice(-4), ms]; this.set({ llmSlow: this.p50(this.tags) > this.cfg.slowMs && this.tags.length >= this.cfg.minSamples }); }
   recordSttLag(ms: number) { this.lags = [...this.lags.slice(-4), ms]; this.set({ sttSlow: this.p50(this.lags) > this.cfg.slowSttMs && this.lags.length >= this.cfg.minSamples }); }
   noteLlmTrouble() { this.troubleUntil = this.now() + (this.cfg.troubleHoldMs ?? 60_000); this.set({ llmTrouble: true }); }

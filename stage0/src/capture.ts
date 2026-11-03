@@ -1,4 +1,5 @@
-// Capture box (PLAN #42): phone numbers, emails and domains spoken in the call, as copyable text.
+// Capture box: phone numbers, emails and domains spoken in the call, as copyable text.
+// Pure text functions; run.ts calls extract() on the last two finals per channel and logs a "capture" card row.
 // Speech-to-text may write them as digits/Latin ("054-1234567", "gmail.com") or as Hebrew words
 // ("אפס חמש ארבע...", "דן שטרודל ג'ימייל נקודה קום"); both are handled.
 
@@ -10,7 +11,8 @@ const DIGITS: Record<string, string> = {
 };
 const TLDS = "com|net|org|io|co|il|info|biz|app|dev|me|shop|store|online|site|tech|ai|uk|de|eu|us|ru|fr";
 
-/** Hebrew spoken forms of "@", "." and common domain words -> symbols/Latin. */
+/** Hebrew spoken forms of "@", "." and common domain words -> symbols/Latin.
+ *  "@" and "." become the private markers \u0001 and \u0002 (never in real text); extract() turns them into the symbols after digitWords. */
 export function spokenToSymbols(s: string): string {
   return s
     // English "at ... dot": only when a dot-word follows the host ("dana at gmail dot com"), so "arrive at noon" stays text
@@ -59,6 +61,7 @@ function phones(s: string): string[] {
   return found;
 }
 
+/** Finds phones, emails and bare domains in one text. Order of results: phones, emails, domains; no duplicates; domains inside a found email are skipped. */
 export function extract(text: string): Capture[] {
   const out: Capture[] = [];
   const seen = new Set<string>();

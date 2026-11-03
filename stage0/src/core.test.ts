@@ -1,3 +1,5 @@
+// Core pure-logic basics: normalize.ts, detector.ts, guards.ts, bank.ts matching, reflex tag parsing, plus later regression blocks.
+// Offline, no fixtures. Note: later imports sit mid-file, next to the regression tests that use them.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalize, containsPhrase } from "./normalize.ts";
@@ -42,7 +44,7 @@ test("tag parser", () => {
   assert.equal(parseTag("whatever").kind, "SKIP");
 });
 
-// ---- Regression tests for VERIFY.md fixes ----
+// ---- Regression tests for earlier verification fixes (ids B6, D1... name the original findings) ----
 import { speechEndWall } from "./stt.ts";
 import { parseReflex } from "./reflex.ts";
 import { tokenVariants } from "./normalize.ts";

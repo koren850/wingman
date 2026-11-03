@@ -1,5 +1,8 @@
 // Settings layers (lowest to highest): config/defaults.yaml < ~/.config/wingman/settings.yaml
-// < profiles/<name>.yaml (--profile) < WINGMAN_* env vars < CLI flags. Validated with zod; every value remembers its layer.
+// < profiles/<name>.yaml (--profile) < WINGMAN_* env vars < CLI flags. Validated with zod; every value remembers its layer
+// (`sources`), so an error can name the file/flag that set the bad value. Layers are merged as flat dotted keys ("llm.reflex.model").
+// Every key must exist in config/defaults.yaml; the schema is strict, so a typo in a user file fails loudly instead of being ignored.
+// Used by run.ts, doctor.ts, the tray and the CLI tools.
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
@@ -19,6 +22,7 @@ const modelRef = z.string().regex(/^[a-z0-9_-]+:.+$/i, "expected provider:model,
 const sttName = z.enum(["deepgram", "soniox", "gladia", "script"]);   // script = offline test double (src/providers/scripted.ts)
 const price = z.strictObject({ inUsdPerM: z.number().min(0), outUsdPerM: z.number().min(0), cacheReadUsdPerM: z.number().min(0).optional(), cacheWriteUsdPerM: z.number().min(0).optional() });
 
+/** The full settings shape. strictObject everywhere: unknown keys are errors. Ranges are sanity bounds, not recommendations (see defaults.yaml). */
 export const schema = z.strictObject({
   v: z.literal(1),
   stt: z.strictObject({
@@ -82,9 +86,11 @@ export type Flat = Record<string, unknown>;
 type Layer = { name: LayerName; file?: string; flat: Flat; details?: Record<string, string> };
 
 export type SettingsIssue = { file: string; key: string; layer: LayerName; message: string; allowed?: string };
+/** Thrown for any invalid settings; `issues` carries file, key and layer so the message points at the culprit. */
 export class SettingsError extends Error {
   constructor(public issues: SettingsIssue[]) { super(issues.map((i) => `${i.file}: ${i.key}: ${i.message}`).join("\n")); this.name = "SettingsError"; }
 }
+/** Human-readable multi-line text for a SettingsError (shown in the terminal and the app). */
 export function formatSettingsError(e: SettingsError): string {
   return ["Wingman settings are invalid:", ...e.issues.map((i) => `  file:    ${i.file}\n  key:     ${i.key}\n  problem: ${i.message}${i.allowed ? `\n  allowed: ${i.allowed}` : ""}\n`)].join("\n");
 }
@@ -92,12 +98,14 @@ export function formatSettingsError(e: SettingsError): string {
 // Records that are keyed by model/provider ids (which may contain dots): kept as one leaf, merged key by key.
 const RECORD_LEAVES = new Set(["budget.prices.llm", "budget.prices.stt"]);
 
+/** Nested object -> flat dotted keys. Arrays and the RECORD_LEAVES stay as single values. */
 export function flatten(obj: unknown, prefix = "", out: Flat = {}): Flat {
   if (obj && typeof obj === "object" && !Array.isArray(obj) && !RECORD_LEAVES.has(prefix)) {
     for (const [k, v] of Object.entries(obj)) flatten(v, prefix ? `${prefix}.${k}` : k, out);
   } else if (prefix) out[prefix] = obj;
   return out;
 }
+/** Inverse of flatten(): dotted keys -> nested object. */
 export function unflatten(flat: Flat): Record<string, any> {
   const root: Record<string, any> = {};
   for (const [path, v] of Object.entries(flat)) {
@@ -108,6 +116,7 @@ export function unflatten(flat: Flat): Record<string, any> {
   return root;
 }
 
+/** Reads a settings YAML into flat keys. An empty file is fine; invalid YAML or a non-mapping top level throws SettingsError. */
 function readYaml(file: string, label: string): Flat {
   let doc: unknown;
   try { doc = YAML.parse(readFileSync(file, "utf8")); }
@@ -129,6 +138,7 @@ export function parseScalar(raw: string, def: unknown): unknown {
   return v === undefined ? null : v;
 }
 
+// WINGMAN_* environment overrides (layer "env"). Only these variables are read; `map` converts the string where YAML parsing is not right.
 const ENV_MAP: { env: string; key: string; map?: (v: string) => unknown }[] = [
   { env: "WINGMAN_ENDPOINT_MS", key: "stt.endpointMs" },
   { env: "WINGMAN_MIC", key: "audio.mic.device", map: (v) => v },
@@ -141,6 +151,7 @@ const ENV_MAP: { env: string; key: string; map?: (v: string) => unknown }[] = [
   { env: "WINGMAN_LLM_FALLBACKS", key: "llm.reflex.fallbacks" },
 ];
 
+/** Parsed command line: the chosen profile, flat overrides and, per key, the flag that set it (for error messages). */
 export type Cli = { profile?: string; flat: Flat; details: Record<string, string> };
 /** Flags: --file X, --no-ai, --discard, --quiet, --profile N, --stt P, --stt-fallback a,b, --model M, --endpoint-ms N, --set key=value (repeatable). Other flags are ignored. */
 export function parseCli(argv: string[], defaults: Flat): Cli {
@@ -169,6 +180,11 @@ export function parseCli(argv: string[], defaults: Flat): Cli {
 export type LoadOptions = { argv?: string[]; env?: NodeJS.ProcessEnv; userFile?: string; defaultsFile?: string; profilesDir?: string; createStarter?: boolean };
 export type Loaded = { settings: Settings; sources: Record<string, Source>; profile?: string; userFile: string };
 
+/**
+ * Merge all layers (default < user < profile < env < cli), validate, and return settings plus where each key came from.
+ * Throws SettingsError. `createStarter` writes a commented-out starter file to the user path on first run (mode 600, best effort).
+ * Takes argv/env/file paths as options so tests can run without touching the real home directory.
+ */
 export function loadSettings(o: LoadOptions = {}): Loaded {
   const env = o.env ?? process.env, userFile = o.userFile ?? (env.WINGMAN_USER_SETTINGS || USER_SETTINGS_FILE);
   const defaults = readYaml(o.defaultsFile ?? DEFAULTS_FILE, "defaults");
@@ -179,7 +195,7 @@ export function loadSettings(o: LoadOptions = {}): Loaded {
   if (existsSync(userFile)) layers.push({ name: "user", file: userFile, flat: readYaml(userFile, "settings file") });
   const cli = parseCli(o.argv ?? [], defaults);
   const profile = cli.profile ?? env.WINGMAN_PROFILE;
-  if (profile) {
+  if (profile) {   // the name is checked before it becomes a path: no "../" out of profiles/
     const pf = join(o.profilesDir ?? PROFILES_DIR, `${profile}.yaml`);
     if (!/^[\w-]+$/.test(profile) || !existsSync(pf)) throw new SettingsError([{ file: pf, key: "--profile", layer: "profile", message: `profile "${profile}" not found`, allowed: "a file profiles/<name>.yaml" }]);
     layers.push({ name: "profile", file: pf, flat: readYaml(pf, "profile") });
@@ -195,6 +211,7 @@ export function loadSettings(o: LoadOptions = {}): Loaded {
   const flat: Flat = {}, sources: Record<string, Source> = {};
   for (const l of layers) {
     for (const [k, v] of Object.entries(l.flat)) {
+      // price tables merge key by key, so a user file can add one model's price without replacing the whole table
       flat[k] = RECORD_LEAVES.has(k) && flat[k] && typeof v === "object" ? { ...(flat[k] as object), ...(v as object) } : v;
       sources[k] = { layer: l.name, file: l.file, detail: l.details?.[k] };
     }
@@ -204,6 +221,7 @@ export function loadSettings(o: LoadOptions = {}): Loaded {
   return { settings: res.data, sources, profile, userFile };
 }
 
+/** Turn one zod issue into a SettingsIssue that names the layer/file that set the key (walks up to the nearest parent key that has a source). */
 function issuesFor(iss: z.core.$ZodIssue, sources: Record<string, Source>): SettingsIssue[] {
   const base = iss.path.map(String).join(".");
   const find = (k: string): Source => {
@@ -234,6 +252,7 @@ export function redact(key: string, v: unknown): string {
   return JSON.stringify(v).replace(/\b(sk-[A-Za-z0-9_-]{16,}|[A-Fa-f0-9]{32,})\b/g, "***");
 }
 
+/** Template for the user's settings file: everything commented out, so nothing changes until a line is uncommented. */
 export const STARTER = `# Wingman personal settings (layer 2). Everything here is commented out, so nothing changes until you uncomment a line.
 # Every key and its default is documented in stage0/config/defaults.yaml. Check the result with: pnpm settings
 # API keys do NOT go here: they live in ~/.config/wingman/keys.env.

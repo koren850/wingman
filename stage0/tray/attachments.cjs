@@ -26,17 +26,23 @@ function cleanText(t) {
   return String(t).replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f‪-‮]/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+/** Looks for an executable `pdftotext` on PATH plus the usual Homebrew/system dirs (a packaged Electron app has a short PATH). Returns "" if none. */
 function findPdftotext(env = process.env) {
   const dirs = String(env.PATH || "").split(path.delimiter).concat(["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]);
   for (const d of dirs) { if (!d) continue; const f = path.join(d, "pdftotext"); try { fs.accessSync(f, fs.constants.X_OK); return f; } catch { /* not here */ } }
   return "";
 }
 
+/**
+ * Makes the attachment store. o: { dir, now?, maxChars?, maxAgeMs?, pdftotext? } (now/limits/pdftotext are overridable for tests).
+ * Returns { list, addFile, addPaste, remove, clear, readAll, used, pdfAvailable }. All results are {ok, ...}; errors are user-facing English.
+ */
 function createStore(o) {
   const dir = o.dir, now = o.now || Date.now, maxChars = o.maxChars || MAX_CHARS, maxAge = o.maxAgeMs || MAX_AGE_MS;
   const pdftotext = o.pdftotext === undefined ? findPdftotext() : o.pdftotext;   // "" = not available
   const ensure = () => { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); try { fs.chmodSync(dir, 0o700); } catch { /* best effort */ } };
 
+  /** Valid files in dir, oldest first. Side effect: deletes expired files. Names that do not match NAME_RE are ignored. */
   function entries() {
     let names = []; try { names = fs.readdirSync(dir); } catch { return []; }
     const out = [];
@@ -59,6 +65,7 @@ function createStore(o) {
   }
   function used() { return entries().reduce((a, e) => a + chars(e), 0); }
 
+  /** Cleans, caps to the remaining room and writes one attachment (mode 600, "wx" so an id clash fails instead of overwriting). */
   function store(name, text) {
     const es = entries();
     if (es.length >= MAX_FILES) return { ok: false, error: `At most ${MAX_FILES} background files.` };
@@ -92,6 +99,7 @@ function createStore(o) {
       if (!buf.subarray(0, 5).equals(Buffer.from("%PDF-"))) return { ok: false, error: "That is not a PDF file." };
       if (!pdftotext) return { ok: false, error: "PDF needs the pdftotext tool, which is not installed on this Mac. Paste the text instead, or use .txt or .md." };
       ensure();
+      // pdftotext needs a real file; the temp name starts with "." so entries() never lists it, and finally{} removes it.
       const tmp = path.join(dir, `.pdf-${process.pid}-${now().toString(36)}.pdf`);
       fs.writeFileSync(tmp, buf, { mode: 0o600 });
       try {
@@ -102,11 +110,13 @@ function createStore(o) {
     }
     return { ok: false, error: "Only .txt, .md and .pdf files." };
   }
+  /** Stores pasted text as an attachment named "pasted text". */
   function addPaste(text) {
     if (typeof text !== "string") return { ok: false, error: "Bad text." };
     if (text.length > 200_000) return { ok: false, error: "That is too much text to paste." };
     return store("pasted text", text);
   }
+  /** Deletes one attachment by id. Throws on a malformed id (the id comes from the renderer). */
   function remove(id) {
     if (typeof id !== "string" || !/^a[0-9a-z]{6,12}$/.test(id)) throw new Error("bad attachment id");
     for (const e of entries()) if (e.id === id) fs.rmSync(e.file, { force: true });

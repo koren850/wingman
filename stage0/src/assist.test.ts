@@ -1,4 +1,5 @@
-// Answering Dan's own questions: who is the question for, the classifier, the rate limit, the guard, the foreign-script filter, the call-app check.
+// Answering the user's own questions (assist.ts): who is the question for, the classifier, the rate limit, the guard, the foreign-script filter, the call-app check.
+// Offline: scripted classifier/answer providers (providers/scripted.ts) stand in for the model.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { audienceByCues, decideAudience, parseClassification, classify, classifyUserMessage, MeGate, guardMe, CLASSIFY_SYSTEM } from "./assist.ts";

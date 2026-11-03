@@ -1,11 +1,13 @@
-// ModelRegistry: resolves "provider:model" strings to AI SDK language models. Only @ai-sdk/anthropic is installed;
+// LLM side of the providers layer: ModelRegistry resolves "provider:model" strings to AI SDK language models. Only @ai-sdk/anthropic is installed;
 // other providers are imported on demand and give a clear "pnpm add" error when the package is missing.
 import type { LanguageModel } from "ai";
 import { KEY_VARS, type Keys, type KeyName } from "../env.ts";
 import { classifyLlmError, ProviderError } from "./errors.ts";
 
+/** Bad or missing configuration (model ref, package, key). `fix` is a command or hint shown to the user. */
 export class ConfigError extends Error { constructor(m: string, public fix?: string) { super(m); this.name = "ConfigError"; } }
 
+/** How to load a provider: npm package, factory export name, and which key it needs (none for the offline double). */
 export type ProviderSpec = { pkg: string; factory: string; key?: KeyName };
 export const LLM_PROVIDERS: Record<string, ProviderSpec> = {
   anthropic: { pkg: "@ai-sdk/anthropic", factory: "createAnthropic", key: "anthropic" },
@@ -16,6 +18,7 @@ export const LLM_PROVIDERS: Record<string, ProviderSpec> = {
   scripted: { pkg: "./scripted.ts", factory: "createScripted" },   // offline test double, no key
 };
 
+/** "provider:model" -> parts. Throws ConfigError for a bad format or an unknown provider. */
 export function parseModelRef(ref: string): { provider: string; model: string } {
   const i = ref.indexOf(":");
   if (i < 1 || i === ref.length - 1) throw new ConfigError(`Bad model "${ref}": expected provider:model, e.g. anthropic:claude-haiku-5-5`);
@@ -24,15 +27,19 @@ export function parseModelRef(ref: string): { provider: string; model: string } 
   return { provider, model };
 }
 
+/** Loads a provider package; injected by tests. */
 export type Importer = (pkg: string) => Promise<any>;
 const defaultImporter: Importer = (pkg) => import(pkg);
 
+/** USD per million tokens for one model (cost estimates). */
 export type Price = { inUsdPerM: number; outUsdPerM: number; cacheReadUsdPerM?: number; cacheWriteUsdPerM?: number };
 
+/** Resolves model refs to AI SDK models. Provider factories are imported lazily and cached per provider. */
 export class ModelRegistry {
   private factories = new Map<string, any>();
   constructor(private keys: Keys, private importer: Importer = defaultImporter) {}
 
+  /** Throws ConfigError when the package or API key is missing. The key is read when the factory is first built. */
   async resolve(ref: string): Promise<LanguageModel> {
     const { provider, model } = parseModelRef(ref);
     const spec = LLM_PROVIDERS[provider];
@@ -49,7 +56,7 @@ export class ModelRegistry {
       const factory = mod[spec.factory];
       if (typeof factory !== "function") throw new ConfigError(`${spec.pkg} has no ${spec.factory} export (unexpected version)`);
       const apiKey = spec.key ? this.keys[spec.key] : "none";
-      if (!apiKey) throw new ConfigError(`${KEY_VARS[spec.key!]} is missing for "${ref}"`, `add it to ~/.config/wingman/keys.env`);
+      if (!apiKey) throw new ConfigError(`${KEY_VARS[spec.key!]} is missing for "${ref}"`, `add it in Wingman Settings → Keys (or run: pnpm keys)`);
       make = factory({ apiKey }); this.factories.set(provider, make);
     }
     return make(model) as LanguageModel;

@@ -1,4 +1,5 @@
 // pnpm settings [--profile x] [--set k=v ...]: prints the effective settings, each value tagged with the layer it came from.
+// Reads files and the Keychain directly; it does not use the tray's control socket. Runs at import time (no exports).
 // Never prints secrets: API keys are not settings, and only present/missing is shown for them.
 import { flatten, loadSettingsOrExit, redact } from "./settings.ts";
 import { realKeychain } from "./keychain.ts";

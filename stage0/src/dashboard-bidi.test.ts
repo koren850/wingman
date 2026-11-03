@@ -1,3 +1,5 @@
+// Bidi tokenizer (dashboard/bidi.js splitBidi): Latin/number/email/URL/phone runs inside Hebrew text become LTR islands,
+// and joining all segments always gives back the original text. Loaded via require since the file is a classic browser script.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

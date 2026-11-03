@@ -1,4 +1,5 @@
-// Contract tests for the STT adapters against LOCAL mock WebSocket servers (no network, no keys).
+// Contract tests for the STT adapters (providers/stt/) against LOCAL mock WebSocket servers (no network, no keys),
+// plus SttChannel fallback with fake streams.
 // Soniox and Gladia are experimental: these tests prove the adapters follow the documented protocol, not that the live services agree.
 import { test } from "node:test";
 import assert from "node:assert/strict";

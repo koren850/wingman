@@ -39,7 +39,7 @@ test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, 
     assert.ok(cards.some((c) => c.id === "propose-client"), "client proposal");
     // Live note from the scripted notes model.
     assert.ok(shown.some((c) => c.badge === "note"), `a live note (${[...ids].join(", ")})`);
-    // Speakers mode: Dan's line that repeats the client is dropped as echo, his own line is kept.
+    // Speakers mode: the user's line that repeats the client is dropped as echo, their own line is kept.
     assert.ok(events.some((e) => e.type === "echo.drop"), "echo line dropped");
     const me = transcript.filter((t) => t.ch === "me").map((t) => t.text);
     assert.ok(me.some((t) => /מדבר דן/.test(t)), "Dan's own words kept");

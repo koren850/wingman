@@ -1,5 +1,8 @@
+// Preload for the main window (set in window.cjs). Exposes window.wingman (called `api` in the renderer scripts).
+// Each method maps to one ipcMain handler in window.cjs / keys-ipc.cjs; arguments are coerced to plain types here and checked again in main.
 const { contextBridge, ipcRenderer } = require("electron");
 // Fixed, narrow surface. The page can ask for named commands; it cannot send arbitrary IPC or stdin.
+// Keys: keysSet is the only way a secret goes main-ward; nothing here ever returns one (status gives last 4 characters).
 contextBridge.exposeInMainWorld("wingman", {
   listCalls: () => ipcRenderer.invoke("calls:list"),
   getCall: (id) => ipcRenderer.invoke("calls:get", String(id)),
@@ -9,6 +12,7 @@ contextBridge.exposeInMainWorld("wingman", {
   copyText: (text) => ipcRenderer.invoke("clipboard:write", String(text)),
   settingsText: () => ipcRenderer.invoke("tools:settings"),
   callState: () => ipcRenderer.invoke("call:state"),
+  // Push channels (main -> page). Only the callback gets the payload; the raw ipcRenderer event is not passed to the page.
   onCallState: (cb) => { ipcRenderer.on("call:state", (_e, s) => cb(s)); },
   onNav: (cb) => { ipcRenderer.on("nav", (_e, o) => cb(o)); },
   liveGet: (id) => ipcRenderer.invoke("live:get", String(id)),
@@ -20,16 +24,22 @@ contextBridge.exposeInMainWorld("wingman", {
   quiet: (on) => ipcRenderer.invoke("call:cmd", "quiet", !!on),
   confirmClient: () => ipcRenderer.invoke("call:cmd", "client"),
   note: (text) => ipcRenderer.invoke("call:cmd", "note", String(text)),
+  ask: (text) => ipcRenderer.invoke("call:cmd", "ask", String(text)),
+  askWingman: () => ipcRenderer.invoke("call:cmd", "askWingman"),
   stop: () => ipcRenderer.invoke("call:cmd", "stop"),
+  skipSummary: () => ipcRenderer.invoke("call:cmd", "skipSummary"),
+  writeSummary: (id) => ipcRenderer.invoke("calls:writeSummary", String(id)),
   stopDelete: () => ipcRenderer.invoke("call:cmd", "stopDelete"),
   getBrief: () => ipcRenderer.invoke("brief:get"),
   saveBrief: (d) => ipcRenderer.invoke("brief:save", { who: String(d.who || ""), goal: String(d.goal || ""), notes: String(d.notes || ""), mustCover: String(d.mustCover || "") }),
   clearBrief: () => ipcRenderer.invoke("brief:clear"),
+  recentPlans: () => ipcRenderer.invoke("brief:recent"),
+  forgetRecentPlans: () => ipcRenderer.invoke("brief:forgetRecent"),
   attachList: () => ipcRenderer.invoke("attach:list"),
   attachAdd: (name, bytes) => ipcRenderer.invoke("attach:add", String(name), bytes instanceof Uint8Array ? bytes : new Uint8Array(0)),
   attachPaste: (text) => ipcRenderer.invoke("attach:paste", String(text)),
   attachRemove: (id) => ipcRenderer.invoke("attach:remove", String(id)),
-  runDoctor: () => ipcRenderer.invoke("doctor:run"),
+  runDoctor: (offline) => ipcRenderer.invoke("doctor:run", offline === true),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSetting: (key, value) => ipcRenderer.invoke("settings:set", String(key), value),
   resetSetting: (key) => ipcRenderer.invoke("settings:set", String(key), null),

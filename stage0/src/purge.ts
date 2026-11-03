@@ -1,15 +1,18 @@
 // pnpm purge <callId|--older-than N|--all>: delete saved call folders (audio is never saved, but transcripts are).
+// Top-level script: it runs on import. Exit code 2 on a bad id or usage.
 import { readdirSync, rmSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { CALLS } from "./env.ts";
 
 const args = process.argv.slice(2);
 const dirs = () => existsSync(CALLS) ? readdirSync(CALLS).filter((d) => d !== "latest" && statSync(join(CALLS, d)).isDirectory()) : [];
+/** Deletes one call folder. The id is checked against a strict pattern first so it can never be a path ("..", "/"). */
 function purge(id: string) {
   if (!/^[0-9A-Za-z]{10,40}$/.test(id)) { console.error(`Not a call id: ${id}`); process.exitCode = 2; return; }
   const dir = join(CALLS, id);
   if (!existsSync(dir)) { console.error(`No such call: ${id}`); process.exitCode = 2; return; }
   rmSync(dir, { recursive: true, force: true });
+  // existsSync follows the link: false means calls/latest now dangles (it pointed at the folder just deleted), so remove it.
   try { if (existsSync(join(CALLS, "latest")) === false) rmSync(join(CALLS, "latest"), { force: true }); } catch {}
   console.log(`Deleted ${id}`);
 }

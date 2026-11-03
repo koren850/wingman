@@ -1,8 +1,13 @@
 "use strict";
-// Home: start or plan a call, run the live call, and see what is waiting. Shares helpers with app.js (classic scripts).
-// The page only asks the main process for fixed commands (start, consent, quiet, client, note, stop). All call text goes in via textContent.
+// Home: start or plan a call, run the live call, and see what is waiting. Shares helpers with app.js (classic scripts: $, h, state, api).
+// Main sends call state through api.onCallState (boot.js -> onCallState below); this file never keeps its own copy of the call, only state.call.
+// The page only asks the main process for fixed commands (start, start listening, quiet, client, note, stop). All call text goes in via textContent.
 
-const H = { attach: null, attachDirty: false, panelKey: "", timer: null, brief: undefined, editing: false, dismissed: "", doctorBusy: false, tickBound: false, lastHealth: "" };
+const HL = window.WingmanHome;
+// Home view state. panelKey/sideKey are "what was drawn last": a re-render happens only when they change, so typing is never wiped.
+// (H.timer and H.fullAt are not read anywhere.)
+const H = { attach: null, panelKey: "", timer: null, brief: undefined, editing: false, planOpen: false, draft: null, dismissed: "", doctorBusy: false, tickBound: false, lastHealth: "",
+  showConv: false, keys: null, ai: null, recent: [], compose: "note", autoChecked: false, quickAt: 0, fullAt: 0, stopAt: 0 };
 const isRunning = () => !!(state.call && state.call.running);
 const phaseOf = () => (state.call ? state.call.phase : "idle");
 const clock = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
@@ -18,25 +23,30 @@ async function act(fn, what) {
 }
 
 /* ---------- header: call chip + live state ---------- */
+/** Handler for every controller state push (from boot.js). Redraws the header chip and, on Home, patches or rebuilds the panels. */
 function onCallState(s) {
   const was = state.call && state.call.running;
   state.call = s;
+  if (!!was !== !!s.running) H.showConv = false;            // the live conversation is hidden again at the start of every call
+  H.stopAt = s.running && s.phase === "stopping" ? H.stopAt || Date.now() : 0;
   if (was && !s.running) loadList().then(() => { if (state.view === "home") renderSide(); });
   renderCallSlot();
   if (state.view === "home") {
     updateCallPanel();
     const k = `${!!s.doctorRunning}|${s.doctor ? s.doctor.at : 0}|${!!s.briefReady}|${!!s.running}`;
-    if (k !== H.sideKey) { const first = H.sideKey === undefined; H.sideKey = k; if (!first && !H.editing && !document.querySelector("#side-col form :focus")) renderSide(); }
+    if (k !== H.sideKey) { const first = H.sideKey === undefined; H.sideKey = k; if (!first && !document.querySelector("#main form :focus")) renderSide(); }
   }
 }
+/** Header chip while a call runs (clock, colour by health). Click goes to Home. */
 function renderCallSlot() {
   const slot = $("call-slot"); slot.textContent = "";
   if (!isRunning()) return;
   const s = state.call, ph = s.phase;
-  const label = ph === "live" ? (s.practice ? "Practice " : "Call ") + clock(Date.now() - s.liveAt) : ph === "waiting" ? "Waiting for consent" : ph === "stopping" ? "Saving…" : "Starting…";
+  const label = ph === "live" ? (s.practice ? "Practice " : "Call ") + clock(Date.now() - s.liveAt) : ph === "waiting" ? "Waiting for you to start listening" : ph === "stopping" ? "Saving…" : "Starting…";
   const bad = Object.values(s.health || {}).some((x) => x.level === "red");
   slot.append(h("button", { type: "button", id: "call-chip", class: "chip go " + (ph === "live" ? (bad ? "bad" : "good") : "warn"), onclick: () => { if (state.view !== "home") viewHome(); else window.scrollTo({ top: 0 }); }, "aria-label": `${label}. Open Home to control the call`, title: "Go to the live call" }, h("span", { class: "dot pulse" }), h("span", { class: "ctr" }, label), ico("chevron")));
 }
+/** One 1 s interval for the whole page (set up once): clocks, the ask countdown and the stop timer. Updates text in place, no re-render. */
 function ensureTick() {
   if (H.tickBound) return; H.tickBound = true;
   setInterval(() => {
@@ -44,40 +54,56 @@ function ensureTick() {
     const c = $("call-chip"); if (c) { const t = c.querySelector(".ctr"), s = state.call; if (t && s.phase === "live") t.textContent = (s.practice ? "Practice " : "Call ") + clock(Date.now() - s.liveAt); }
     const big = $("big-timer"); if (big && state.call.phase === "live") big.textContent = clock(Date.now() - state.call.liveAt);
     const w = $("wait-timer"); if (w) w.textContent = clock(Date.now() - state.call.startedAt);
+    if (state.call.askArmed) patchAsk(state.call);
+    const se = $("stop-elapsed"); if (se && H.stopAt) se.textContent = Math.round((Date.now() - H.stopAt) / 1000) + " s";
   }, 1000);
 }
 
 /* ---------- Home view ---------- */
+/** Draw Home. focus "plan" opens the plan form. Loads brief, files, keys, settings and recent plans first; drops out if the user navigated away meanwhile. */
 async function viewHome(focus) {
-  if (SK()) return viewHome2(focus);
   closePopover(false);
   state.view = "home"; state.gen++; setNav(); busy();
   const main = $("main"); main.textContent = "";
   const leftCol = h("div", { class: "hcol" }, h("div", { id: "call-col", class: "hcol" }), h("div", { id: "ready-slot" }));
   const sideCol = h("div", { id: "side-col", class: "hcol" });
-  main.append(h("div", { class: "page-head" }, h("h1", {}, "Home")), h("div", { class: "home" }, leftCol, sideCol));
+  main.append(h("div", { class: "page-head" }, h("h1", {}, "Home"), h("span", { class: "grow" }), shortcutsBtn()), h("div", { class: "home" }, leftCol, sideCol));
   H.panelKey = ""; H.sideKey = undefined;
   ensureTick();
   if (!state.call) { try { state.call = await api.callState(); } catch { state.call = null; } }
   H.brief = await api.getBrief().catch(() => null);
   H.attach = await api.attachList().catch(() => null);
-  H.editing = false;
+  H.keys = await api.keysStatus().then((r) => (r && r.ok ? r : null)).catch(() => null);
+  loadAiMode();
+  H.recent = await api.recentPlans().catch(() => []);
+  H.editing = false; H.planOpen = false; H.draft = null;
   if (state.view !== "home") return;
   renderCallSlot(); updateCallPanel(true); renderSide();
   ready();
-  if (focus === "plan") { const f = $("plan-who") || $("plan-edit"); if (f) { f.scrollIntoView({ block: "center" }); f.focus({ preventScroll: true }); } } else focusTop();
+  if (focus === "plan") { H.planOpen = !H.brief; renderSide(); const f = $("plan-who") || $("plan-edit"); if (f) { f.scrollIntoView({ block: "center" }); f.focus({ preventScroll: true }); } } else focusTop();
+  autoCheck();
 }
 
+/** Redraw the right column (and the setup/plan/readiness/start cards): the live conversation during a call, otherwise the setup steps and the waiting list. Keeps focus and unsaved plan text. */
 function renderSide() {
-  if (SK()) return renderSide2();
   const side = $("side-col"), slot = $("ready-slot"); if (!side) return;
-  side.textContent = ""; slot.textContent = "";
-  if (isRunning()) { side.append(liveFeedPanel()); return; }
-  slot.append(readinessCard());
-  side.append(planCard(), waitingCard());
+  captureDraft();
+  keepFocus(() => {
+    side.textContent = ""; slot.textContent = "";
+    if (isRunning()) { side.append(liveFeedPanel()); return; }
+    // Before a call, Home reads as a sequence: 1 Plan (optional), 2 Readiness check, 3 Start.
+    const sc = setupCard();
+    slot.append(h("div", { class: "hcol seqcol" }, sc, planCard(), readinessCard(), idleCard()));
+    side.append(waitingCard());
+  });
+}
+/** The effective AI mode for the Start card, read from the current settings (the same read the Settings page uses). */
+function loadAiMode() {
+  api.getSettings().then((r) => { H.ai = r && r.ok ? HL.aiMode(r.items) : null; if (state.view === "home" && !isRunning()) renderSide(); }).catch(() => { H.ai = null; });
 }
 
 /* call column: rebuilt when the phase changes, patched in place while it stays the same (so a note being typed is never lost) */
+/** Left column. Rebuilt only when the phase key changes; otherwise patchLive updates it in place. */
 function updateCallPanel(force) {
   const col = $("call-col"); if (!col) return;
   const s = state.call || { phase: "idle", health: {} };
@@ -86,79 +112,184 @@ function updateCallPanel(force) {
   const key = (running ? s.phase : "idle") + "|" + after + "|" + (H.brief ? "b" : "") + "|" + !!s.practice;
   if (force || key !== H.panelKey) {
     const wasRunning = H.panelKey && /^(starting|waiting|live|stopping)/.test(H.panelKey);
-    H.panelKey = key; col.textContent = ""; H.lastHealth = "";
-    if (running) col.append(livePanel(s)); else { if (after) col.append(afterCard(s, after)); col.append(SK() ? idleHero() : idleCard()); }
+    H.panelKey = key; H.lastHealth = "";
+    keepFocus(() => {
+      col.textContent = "";
+      if (running) col.append(livePanel(s)); else { if (after) col.append(afterCard(s, after)); }   // Home draws the Start card as step 3 in renderSide
+    });
     if (!force && wasRunning !== running) renderSide();
   }
   if (running) patchLive(s);
 }
 
-/* ---- idle ---- */
+/* ---- idle: the Start card is step 3 ---- */
+const shortcutsBtn = () => h("button", { type: "button", class: "btn ghost sm", id: "kb-open", title: "Every keyboard shortcut (press ? on this page)", onclick: () => openShortcuts() }, ico("keyboard"), h("span", {}, "Shortcuts"));
+const doc = () => (state.call && state.call.doctor) || null;
+const checking = () => !!(state.call && state.call.doctorRunning) || H.doctorBusy;
+/** 1 Plan (optional), 2 Readiness check, 3 Start: which one needs the user now. */
+function curStep() {
+  if (H.editing || H.planOpen) return 1;
+  const d = doc();
+  return !d || !d.ok || checking() ? 2 : 3;
+}
+const seqCls = (n) => "seq" + (curStep() === n ? " cur" : "");
+const stepHead = (n, id, title, why, ...rest) => h("div", { class: "rhead" }, h("span", { class: "stepn", "aria-hidden": "true" }, String(n)), h("h2", { id }, title), why ? tip(why) : null, curStep() === n ? chip("Next", "warn") : null, ...rest);
+
+/** Step 3: the Start card (start, start without AI, practice) with the AI-mode line and the plan note. */
 function idleCard() {
-  const lg = (label, o) => h("button", { type: "button", class: "btn lg " + (o.cls || ""), id: o.id, onclick: o.onclick }, ico(o.icon), h("span", {}, label));
-  const startBtn = lg("Start call", { cls: "primary", id: "start-call", icon: "phone", onclick: async (e) => { const b = e.currentTarget; b.disabled = true; await act(api.start, "Start"); b.disabled = false; } });
-  const noAi = btn("Start without AI", { icon: "play", cls: "", id: "start-noai", onclick: () => act(api.startNoAi, "Start without AI") });
-  const prac = btn("Practice call (offline, free)", { icon: "play", cls: "", id: "practice", onclick: () => act(api.practice, "Practice call") });
-  return h("section", { class: "card-big startcard", "aria-labelledby": "start-h" },
-    h("div", { class: "starthead" }, h("span", { class: "capy", "aria-hidden": "true" }), h("div", {}, h("h2", { id: "start-h" }, "Ready when your call is"), null)),
+  const startBtn = h("button", { type: "button", class: "btn lg primary", id: "start-call", onclick: () => startFlow(false, false) }, ico("phone"), h("span", {}, "Start call"));
+  const noAi = btn("Start without AI", { icon: "play", cls: "", id: "start-noai", onclick: () => startFlow(true, false) });
+  const usePlan = HL.planReady(H.brief, state.call);
+  const prac = btn(HL.practiceLabel(usePlan), { icon: "play", cls: "", id: "practice", onclick: () => act(api.practice, "Practice call") });
+  return h("section", { class: "card-big startcard " + seqCls(3), "aria-labelledby": "start-h" },
+    stepHead(3, "start-h", "Start", "Start listening to a real call. You can start even when the readiness check failed; Wingman warns you first."),
     startBtn,
-    H.brief ? h("p", { class: "briefnote" }, chip("Briefing ready", "good", { dot: true }), " ", H.brief.who ? `for ${H.brief.who}` : "for this call", " will be used.") : h("p", { class: "briefnote faint" }, "No briefing yet. Use Plan a call to give the AI context."),
+    h("div", { id: "start-gate" }),
+    H.ai ? h("p", { class: "aimode" + (H.ai.on ? "" : " off"), id: "ai-mode" }, ico(H.ai.on ? "check" : "warning"), h("span", {}, H.ai.text, " "), h("button", { type: "button", class: "linkbtn", id: "ai-change", onclick: () => viewSettings() }, "Change")) : null,
+    H.brief ? h("p", { class: "briefnote" }, chip("Plan ready", "good", { dot: true }), " ", H.brief.who ? `for ${H.brief.who}` : "for this call", " will be used.") : h("p", { class: "briefnote faint" }, "No plan: fine, the AI still helps. A plan (step 1) gives it context."),
     h("p", { class: "briefnote faint" }, "Wingman listens to any call or meeting and helps live. During a call press ", h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "A"), " and ask it anything."),
     h("div", { class: "startmore" },
-      h("div", { class: "opt" }, noAi, h("p", {}, "Bank cards only. Nothing goes to Anthropic; no summary is written.")),
-      h("div", { class: "opt" }, prac, h("p", {}, "A pretend call plays through the real answer window on your second screen. No cost, nothing leaves the Mac."))));
+      h("div", { class: "opt" }, noAi, h("p", {}, "Prepared cards only. Nothing goes to Anthropic; no summary is written.")),
+      h("div", { class: "opt" }, prac, h("p", {}, usePlan ? "A pretend call plays through the real answer window, with your saved plan. No cost, nothing leaves the Mac. Always allowed." : "A pretend call plays through the real answer window on your second screen. No cost, nothing leaves the Mac. Always allowed."))));
 }
 
+/** Plan edits that were typed but not saved. Saved before the call starts, never dropped. */
+function captureDraft() {
+  if (!$("plan-form")) return;
+  const g = (id) => { const e = $(id); return e ? e.value : ""; };
+  H.draft = { who: g("plan-who"), goal: g("plan-goal"), notes: g("plan-notes"), mustCover: g("plan-must") };
+}
+/** Save plan text typed but not saved before starting. True means go on; false means saving failed (error shown in the form) and the call must not start. */
+async function savePlanFirst() {
+  const f = $("plan-form"); if (!f) return true;
+  const g = (id) => { const e = $(id); return e ? e.value : ""; };
+  const v = { who: g("plan-who"), goal: g("plan-goal"), notes: g("plan-notes"), mustCover: g("plan-must") }, b = H.brief || {};
+  const filled = Object.values(v).some((x) => x.trim()), changed = Object.keys(v).some((k) => v[k].trim() !== String(b[k] || "").trim());
+  if (!filled || !changed) return true;
+  let r; try { r = await api.saveBrief(v); } catch { r = null; }
+  if (!r || !r.ok) { const e = $("plan-err"); if (e) e.textContent = (r && r.error) || "Could not save the plan, so the call did not start. Fix it or press Cancel, then start."; const w = $("plan-who"); if (w) w.focus(); fail("The plan was not saved, so the call did not start."); return false; }
+  H.brief = r.brief; H.editing = false; H.planOpen = false; H.draft = null; renderSide(); announce("Plan saved first");
+  return true;
+}
+const blockedBy = () => HL.blockedBy(doc());
+const setStartBusy = (on) => { for (const id of ["start-call", "start-noai"]) { const b = $(id); if (b) b.disabled = on; } };
+/** Start: save plan edits first, warn when the last readiness check failed (Start anyway is always there). Practice never goes through here. */
+async function startFlow(noAi, anyway) {
+  const g = $("start-gate"); if (g) g.textContent = "";
+  setStartBusy(true);
+  try {
+    if (!(await savePlanFirst())) return;
+    const d = anyway ? null : blockedBy();
+    if (d) { showStartGate(d, noAi); return; }
+    await act(noAi ? api.startNoAi : api.start, noAi ? "Start without AI" : "Start");
+  } finally { setStartBusy(false); }
+}
+/** Warning under Start when the last readiness check failed: run it again, or start anyway. */
+function showStartGate(d, noAi) {
+  const slot = $("start-gate") || $("main"); slot.textContent = "";
+  slot.append(h("div", { class: "startgate", role: "alert" },
+    h("div", { class: "sg-h" }, ico("warning"), h("b", {}, "Not ready for a call")),
+    h("p", { class: "sub" }, "The last readiness check found problems. Fix them, or start anyway:"),
+    issueList(d.failing.map((x) => ["bad", x])),
+    h("div", { class: "actions" },
+      btn("Run readiness check", { id: "gate-check", icon: "refresh", cls: "primary", onclick: () => runCheck(false) }),
+      btn("Start anyway", { id: "gate-anyway", cls: "danger", onclick: () => startFlow(noAi, true) }),
+      btn("Cancel", { cls: "ghost", onclick: () => { slot.textContent = ""; } }))));
+  const c = $("gate-check"); if (c) c.focus();
+}
+
+/** Banner after a call ended (saved / summary ready / problem) or was deleted. Dismiss is remembered by call id. */
 function afterCard(s, kind) {
   const dismiss = btn("", { icon: "x", cls: "ghost sm icon", aria: "Dismiss", title: "Dismiss", onclick: () => { H.dismissed = s.callId; updateCallPanel(true); } });
   if (kind === "deleted") return h("section", { class: "afterbar", role: "status" }, ico("trash"), h("div", { class: "grow" }, h("b", {}, "Call deleted."), " Nothing from it was kept."), dismiss);
   const known = state.calls.some((c) => c.id === s.callId);
   const go = (tab) => async () => { await loadList(); openCall(s.callId, { tab }); };
   return h("section", { class: "afterbar good", role: "status" }, ico("check"),
-    h("div", { class: "grow" }, h("b", {}, s.summaryOk ? "Summary ready." : s.endedCleanly ? "Call saved." : "The call ended with a problem."), " ", s.summaryOk ? "Next steps and a draft follow-up email are waiting." : s.endedCleanly ? "No summary was written (the call was short, or summaries are off). You can still rate the cards." : (s.lastError ? s.lastError.slice(0, 120) : "Check the call for what was saved.")),
+    h("div", { class: "grow" }, h("b", {}, s.summaryOk ? "Summary ready." : s.endedCleanly ? "Call saved." : "The call ended with a problem."), " ", s.summaryOk ? "Next steps and a draft follow-up email are waiting." : s.summarySkipped ? "You skipped the summary. Open the call and choose Write summary whenever you want it." : s.endedCleanly ? "No summary was written (the call was short, or summaries are off). You can still rate the cards." : (s.lastError ? s.lastError.slice(0, 120) : "Check the call for what was saved.")),
     s.summaryOk ? btn("Open follow-up", { cls: "positive", icon: "follow", onclick: go("followup") }) : btn(known || s.endedCleanly ? "Open the call" : "Open calls", { cls: "positive", onclick: go(undefined) }), dismiss);
 }
 
 /* ---- live ---- */
+/** The call card by phase (starting, waiting for consent, live, stopping). Built once per phase; patchLive fills in the changing parts by id. */
 function livePanel(s) {
   const ph = s.phase;
   const wrap = h("section", { class: "card-big livecard", "aria-labelledby": "live-h", id: "livecard" });
   const head = h("div", { class: "livehead" }, h("div", {}, h("div", { class: "label", id: "live-h" }, s.practice ? "Practice call" : "Call"), h("div", { class: "phase", id: "phase" })), ph === "live" ? h("div", { class: "bigtime", id: "big-timer", "aria-label": "Call time" }) : chip(ph === "waiting" ? "Nothing is sent yet" : ph === "stopping" ? "Saving…" : "Starting…", ph === "waiting" ? "good" : "warn", { dot: true }));
   wrap.append(head, h("div", { id: "off-banner" }), h("div", { id: "health-box" }));
-  if (ph === "starting") wrap.append(h("p", { class: "sub" }, SK() ? "Opening the answer window…" : "Starting the call and opening the answer window… this takes a few seconds."));
+  if (ph === "starting") wrap.append(h("p", { class: "sub" }, "Starting the call and opening the answer window… this takes a few seconds."));
   if (ph === "waiting") {
     wrap.append(h("div", { class: "waitbox" },
-      h("p", {}, SK() ? "Say the consent line (first card in the answer window), wait for a clear yes, then:" : "Say the consent line to the other person (it is the first card in the answer window), wait for a clear yes, then click:"),
-      h("button", { type: "button", id: "consent", class: "btn lg primary", onclick: (e) => { const b = e.currentTarget; b.disabled = true; act(api.consent, "Consent").then((ok) => { if (!ok) b.disabled = false; }); } }, ico("check"), h("span", {}, "Consent given")),
-      SK() ? h("p", { class: "sub" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "Return"), " from any app · waiting ", h("span", { class: "ltr", id: "wait-timer" }, "00:00")) : h("p", { class: "sub" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "Return"), " does the same from any app. Nothing is sent to the cloud before this. Waiting for ", h("span", { class: "ltr", id: "wait-timer" }, "00:00"), ".")));
+      h("p", {}, "Wingman is waiting for you to start listening. Nothing is heard or sent until you click."),
+      h("button", { type: "button", id: "consent", class: "btn lg primary", onclick: (e) => { const b = e.currentTarget; b.disabled = true; act(api.consent, "Start listening").then((ok) => { if (!ok) b.disabled = false; }); } }, ico("check"), h("span", {}, "Start listening")),
+      h("p", { class: "sub" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "Return"), " does the same from any app. Waiting for ", h("span", { class: "ltr", id: "wait-timer" }, "00:00"), ".")));
   }
   if (ph === "live" || ph === "waiting") wrap.append(h("div", { id: "client-box" }));
   if (ph === "live") {
-    const note = h("input", { type: "text", id: "note-in", maxlength: "300", autocomplete: "off", placeholder: SK() ? "Add a note for the AI" : "Add a note for the AI, e.g. this is about the shop migration", "aria-label": "Note for the AI" });
-    const send = async () => { const v = note.value.trim(); if (!v) return; if (await act(() => api.note(v), "Note")) { note.value = ""; announce("Note added"); } };
-    note.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); send(); } });
     wrap.append(
       h("div", { class: "liverow" },
         h("button", { type: "button", id: "quiet", class: "switch", role: "switch", "aria-checked": "false", onclick: (e) => { const on = e.currentTarget.getAttribute("aria-checked") !== "true"; act(() => api.quiet(on), "Quiet mode"); } }, h("span", { class: "knob", "aria-hidden": "true" }), h("span", { class: "sl" }, "Quiet mode"), h("span", { class: "faint", id: "quiet-note" })),
-        SK() ? tip("Cards are still saved for the review, but the answer window shows nothing.") : h("p", { class: "sub" }, "Cards are still saved for the review, but the answer window shows nothing.")),
-      h("div", { class: "noterow" }, note, btn("Add note", { cls: "", id: "note-add", onclick: send }), h("span", { class: "sub", id: "note-count" })));
+        h("p", { class: "sub" }, "Hides the cards in the answer window. They are still saved for the review.")),
+      composerEl(s));
   }
-  const stopRow = h("div", { class: "stoprow" },
-    btn(ph === "stopping" ? "Stopping…" : "Stop call", { id: "stop", icon: "stop", cls: "", onclick: () => act(api.stop, "Stop") }),
-    btn("Stop and delete", { id: "stop-del", icon: "trash", cls: "danger", onclick: () => act(api.stopDelete, "Stop and delete") }));
-  if (ph !== "starting") wrap.append(stopRow);
-  if (ph === "stopping") wrap.append(h("p", { class: "sub", id: "saving" }, SK() ? "Saving and writing the summary, up to 20 seconds." : "Saving the call and writing the summary. This can take up to 20 seconds. You can leave this window."));
+  // Stop is the normal button. Deleting the call is a separate, quiet link at the very bottom (it keeps its own confirmation).
+  if (ph !== "starting") wrap.append(h("div", { class: "stoprow" }, btn(ph === "stopping" ? "Stopping…" : "Stop call", { id: "stop", icon: "stop", cls: "", onclick: () => act(api.stop, "Stop") }), h("span", { class: "grow" }), shortcutsBtn()));
+  if (ph === "stopping") { const sv = h("div", { class: "stopsteps", id: "saving" }); fillStopSteps(sv, s); wrap.append(sv); }
+  if (ph !== "starting") wrap.append(h("div", { class: "deleterow" }, h("button", { type: "button", id: "stop-del", class: "linkbtn danger-link", onclick: () => act(api.stopDelete, "Delete this call") }, ico("trash"), "Delete this call…"), h("span", { class: "faint" }, "Stops it and removes everything saved from it.")));
   return wrap;
 }
+/** One input for the live call with two clear modes: a Note for the AI (background it keeps) or a question for Wingman (it answers in the answer window). The voice way to ask is armed by Ctrl+Opt+A or the button. */
+function composerEl(s) {
+  const input = h("input", { type: "text", id: "note-in", maxlength: "300", autocomplete: "off" });
+  const go = h("button", { type: "button", class: "btn", id: "note-add" });
+  const seg = h("div", { class: "seg composer-mode", role: "group", "aria-label": "What this box does" });
+  const sync = () => {
+    const c = HL.composer(H.compose);
+    input.placeholder = c.placeholder; input.setAttribute("aria-label", c.label); go.textContent = c.button;
+    for (const b of seg.children) b.setAttribute("aria-pressed", b.dataset.m === H.compose ? "true" : "false");
+  };
+  const send = async () => {
+    const v = input.value.trim(); if (!v) return;
+    const c = HL.composer(H.compose);
+    if (await act(() => (H.compose === "ask" ? api.ask(v) : api.note(v)), c.label)) { input.value = ""; announce(c.sent); }
+  };
+  for (const [m, label, icon] of [["note", "Note for the AI", "pencil"], ["ask", "Ask Wingman", "help"]])
+    seg.append(h("button", { type: "button", "data-m": m, "data-fk": "mode-" + m, onclick: () => { H.compose = m; sync(); input.focus(); } }, ico(icon), label));
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); send(); } });
+  go.addEventListener("click", send);
+  sync();
+  const voice = h("button", { type: "button", class: "btn sm", id: "ask-voice", onclick: () => act(api.askWingman, "Ask Wingman") }, ico("mic"), h("span", {}, "Listen for my question"));
+  return h("div", { class: "composer" },
+    h("div", { class: "composer-head" }, seg, h("span", { class: "grow" }), voice, tip("A note is background the AI keeps for this call (it never reads it out). A question is answered right away in a “For you” card in the answer window.", true)),
+    h("div", { class: "noterow" }, input, go),
+    h("div", { id: "ask-status", class: "askstatus", role: "status" }),
+    h("p", { class: "sub" }, h("span", { id: "note-count" }), h("span", { class: "keyhint" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "N"), " note · ", h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "A"), " ask by voice, from any app")));
+}
+/** What the stop is doing right now, and that the user can leave: the summary finishes in the background. */
+function fillStopSteps(el, s) {
+  const row = (x) => h("li", { class: x.state }, x.state === "done" ? ico("check") : x.state === "now" ? h("span", { class: "dot pulse" }) : h("span", { class: "tick" }), x.label);
+  el.textContent = "";
+  el.append(h("ul", {}, HL.stopSteps(s).map(row)),
+    h("p", { class: "sub" }, "Up to 20 seconds (", h("span", { id: "stop-elapsed", class: "ltr" }, H.stopAt ? Math.round((Date.now() - H.stopAt) / 1000) + " s" : "0 s"), "). You can leave this screen: the call is saved and the summary finishes in the background."),
+    h("div", { class: "actions" }, HL.canSkipSummary(s) ? btn("Skip summary", { id: "skip-summary", cls: "sm", onclick: () => act(api.skipSummary, "Skip summary") }) : null, btn("Go to Calls", { id: "stop-leave", cls: "sm", onclick: () => { loadList().then(() => viewInbox()).catch(() => showListError()); } })));
+}
+/** The "listening for your question" strip, with the seconds left from the real armed window (called on every state change and every second). */
+function patchAsk(s) {
+  const as = $("ask-status"), at = HL.askStatus(s, Date.now());
+  if (as && as.textContent !== at) { as.textContent = at; as.classList.toggle("on", !!at); }
+}
+/** Update the live panel in place from call state: timers, quiet switch, note count, stop steps, client proposal, and the problem banner. */
 function patchLive(s) {
   const ph = s.phase, now = Date.now();
-  const phase = $("phase"); if (phase) phase.textContent = ph === "waiting" ? "Waiting for consent" : ph === "live" ? "Listening" : ph === "stopping" ? "Stopping" : "Starting";
+  const phase = $("phase"); if (phase) phase.textContent = ph === "waiting" ? "Waiting for you to start listening" : ph === "live" ? "Listening" : ph === "stopping" ? "Stopping" : "Starting";
   const big = $("big-timer"); if (big) big.textContent = clock(now - s.liveAt);
   const wt = $("wait-timer"); if (wt) wt.textContent = clock(now - s.startedAt);
   const q = $("quiet"); if (q) { q.setAttribute("aria-checked", s.quiet ? "true" : "false"); const n = $("quiet-note"); if (n) n.textContent = s.quiet ? "On: cards are hidden" : "Off"; }
-  const nc = $("note-count"); if (nc) nc.textContent = s.notes ? plural(s.notes, "note") + " added" : "";
+  const nc = $("note-count"); if (nc) nc.textContent = s.notes ? plural(s.notes, "note") + " added · " : "";
+  patchAsk(s);
+  const av = $("ask-voice"); if (av) av.disabled = !!s.askArmed;
   const st = $("stop"), sd = $("stop-del"); if (st) st.disabled = ph === "stopping"; if (sd) sd.disabled = ph === "stopping";
   if (st) st.querySelector("span").textContent = ph === "stopping" ? "Stopping…" : "Stop call";
+  const sv = $("saving"); if (sv && ph === "stopping") { const k = `${s.stopPhase || ""}|${!!s.summaryOk}|${!!s.endedCleanly}|${!!s.summarySkipped}`; if (sv.dataset.k !== k) { sv.dataset.k = k; fillStopSteps(sv, s); } }
   // client proposal
   const cb = $("client-box");
   if (cb) {
@@ -169,95 +300,145 @@ function patchLive(s) {
       else if (s.proposed) cb.append(h("div", { class: "clientrow ask" }, ico("help"), h("div", { class: "grow" }, "Looks like ", h("b", { dir: dirOf(s.proposed), lang: langOf(s.proposed) }, s.proposed), ". Is this who the call is with?"), btn("Confirm client", { cls: "primary", id: "confirm-client", onclick: () => act(api.confirmClient, "Confirm client") })));
     }
   }
-  // health and problems in plain words
-  const items = [];
-  if (s.offReason) items.push(["bad", "Wingman turned itself off: " + s.offReason + ". It is not listening any more. The call so far is saved."]);
-  for (const hh of Object.values(s.health || {})) items.push([hh.level === "red" ? "bad" : "warn", hh.text]);
-  if (s.overlayDown) items.push(["warn", s.overlayDown === "one-screen" ? "No answer window: only one screen is connected, so it stays closed to keep it out of screen share. Still listening; cards are saved." : "The answer window closed. Still listening; cards are saved."]);
-  if (s.lastError && ph !== "live") items.push(["warn", s.lastError.slice(0, 160)]);
-  const hk = JSON.stringify(items);
+  // Problems ranked by impact. "Blind" faults (not hearing, mic dead, speech down, Wingman off) are one unmistakable banner; advisories stay small.
+  const blind = [], adv = [];
+  if (s.offReason) blind.push("Wingman turned itself off: " + s.offReason + ". It is not listening any more. The call so far is saved.");
+  for (const hh of Object.values(s.health || {})) (hh.level === "red" ? blind : adv).push(hh.text);
+  if (s.overlayDown) adv.push(s.overlayDown === "one-screen" ? "No answer window: only one screen is connected, so it stays closed to keep it out of screen share. Still listening; cards are saved." : "The answer window closed. Still listening; cards are saved.");
+  if (s.lastError && ph !== "live") adv.push(s.lastError.slice(0, 160));
+  const hk = JSON.stringify([blind, adv]);
   if (hk !== H.lastHealth) {
     H.lastHealth = hk;
-    const box = $("health-box"); if (box) { box.textContent = ""; if (items.length) box.append(h("ul", { class: "healthlist", "aria-label": "Warnings" }, items.map(([lvl, t]) => h("li", { class: lvl }, ico("warning"), h("span", {}, t))))); }
-    if (items.some((i) => i[0] === "bad")) announce("Wingman problem: " + items.find((i) => i[0] === "bad")[1]);
+    const box = $("health-box");
+    if (box) {
+      box.textContent = "";
+      if (blind.length) box.append(h("div", { class: "blindbar", role: "alert" }, ico("warning"), h("div", {}, h("div", { class: "bb-h" }, "Problem right now"), h("ul", {}, blind.map((t) => h("li", {}, t))), h("div", { class: "bb-s" }, "Answers may be missing or wrong until this clears."))));
+      if (adv.length) box.append(h("ul", { class: "healthlist adv", "aria-label": "Notices" }, adv.map((t) => h("li", { class: "warn" }, ico("warning"), h("span", {}, t)))));
+    }
+    if (blind.length) announce("Wingman problem: " + blind[0]);
   }
 }
 
-/* ---------- Plan a call ---------- */
+/* ---------- Setup (first run) ---------- */
+// Names of providers whose key is missing (status from keys:status; never the key itself).
+const keysMissing = () => (H.keys ? Object.entries(H.keys.providers || {}).filter(([, v]) => v && v.source === "missing").map(([k]) => ({ deepgram: "Deepgram", anthropic: "Anthropic" }[k] || k)) : []);
+/** A short checklist while Wingman is not set up yet: keys missing, or no full readiness check has passed. Each button goes straight to the control. */
+function setupCard() {
+  if (isRunning()) return null;
+  const d = doc(), miss = keysMissing(), practiced = state.calls.some((c) => c.mode !== "live" && !c.crashed);
+  const fullOk = !!(d && d.ok && d.at !== H.quickAt);
+  const need = miss.length > 0 || !d || (state.calls.length === 0 && !fullOk);
+  if (!need) return null;
+  const item = (done, title, why, action) => h("li", { class: done ? "done" : "" }, done ? ico("check") : h("span", { class: "tick" }), h("div", { class: "grow" }, h("div", { class: "st-t" }, title), h("div", { class: "faint st-w" }, why)), done ? null : action);
+  const items = [
+    item(!miss.length, "Add your keys", miss.length ? `Missing: ${miss.join(" and ")}. Deepgram hears the call, Anthropic writes the AI answers.` : "Both keys are saved in the Keychain.", btn("Open Settings → Keys", { id: "setup-keys", cls: "sm", icon: "settings", onclick: () => viewSettings("keys") })),
+    item(fullOk, "Run the readiness check", "Tests the microphone (Wingman needs the Microphone permission), system audio, the speech service and the AI. About 20 seconds, a few cents.", btn("Run readiness check", { id: "setup-check", cls: "sm", icon: "mic", disabled: checking(), onclick: () => runCheck(false) })),
+    item(practiced, "Try a practice call", "A pretend call through the real answer window. Free, offline.", btn("Practice call", { id: "setup-practice", cls: "sm", icon: "play", onclick: () => act(api.practice, "Practice call") })),
+  ];
+  const n = [!miss.length, fullOk, practiced].filter(Boolean).length;
+  return h("section", { class: "card-big setup", "aria-labelledby": "setup-h" }, h("div", { class: "rhead" }, h("h2", { id: "setup-h" }, "Set up Wingman"), chip(`${n} of 3 done`, n === 3 ? "good" : "warn"), h("span", { class: "grow" })), h("ul", { class: "setuplist" }, items));
+}
+
+/* ---------- Plan ---------- */
+/** Step 1: the plan card in its three states: saved plan summary, empty with recent plans, and the edit form. All plan text is set with value/textContent. */
 function planCard() {
-  const sec = h("section", { class: "card-big plan", "aria-labelledby": "plan-h" });
-  sec.append(h("h2", { id: "plan-h" }, ico("plan"), "Plan a call"));
+  const sec = h("section", { class: "card-big plan " + seqCls(1), "aria-labelledby": "plan-h" });
+  const optional = chip("optional", "");
+  const head = () => h("div", { class: "rhead" }, h("span", { class: "stepn", "aria-hidden": "true" }, "1"), h("h2", { id: "plan-h" }, "Plan"), tip("Who the call is with and what you want from it. The AI uses it for answers, tips and the summary. Optional; it expires after 6 hours."), optional, curStep() === 1 ? chip("Next", "warn") : null);
   if (H.brief && !H.editing) {
     const b = H.brief;
     const line = (k, v) => v ? h("div", { class: "pl" }, h("span", { class: "k" }, k), h("span", { class: "v", dir: dirOf(v), lang: langOf(v) }, v)) : null;
-    sec.append(
-      h("div", { class: "briefready", role: "status" }, ico("check"), h("span", {}, h("b", {}, "Briefing ready for your next call"), ` (expires in ${hrs(b.expiresInMs)})`)),
+    sec.append(head(),
+      h("div", { class: "briefready", role: "status" }, ico("check"), h("span", {}, h("b", {}, "Plan ready for your next call"), ` (expires in ${hrs(b.expiresInMs)})`)),
       h("div", { class: "plsum" }, line("Who", b.who), line("Goal", b.goal), line("Notes", b.notes.split("\n").join(" · ")), line("Must cover", b.mustCover.split("\n").join(" · "))),
       h("div", { class: "actions" }, btn("Edit", { id: "plan-edit", icon: "plan", onclick: () => { H.editing = true; renderSide(); const f = $("plan-who"); if (f) f.focus(); } }),
-        btn("Clear", { id: "plan-clear", icon: "x", cls: "ghost", onclick: async () => { await api.clearBrief(); H.brief = null; H.attach = null; H.editing = false; renderSide(); updateCallPanel(true); announce("Briefing cleared"); } })));
+        btn("Clear", { id: "plan-clear", icon: "x", cls: "ghost", onclick: async () => { await api.clearBrief(); H.brief = null; H.attach = null; H.editing = false; H.planOpen = false; H.draft = null; renderSide(); updateCallPanel(true); announce("Plan cleared"); } })));
     return sec;
   }
+  if (!H.brief && !H.editing && !H.planOpen) {
+    sec.append(head(), h("p", { class: "sub" }, "Tell the AI who the call is with and what you want from it. You can skip this."),
+      h("div", { class: "actions" }, btn("Write a plan", { id: "plan-open", icon: "plan", onclick: () => { H.planOpen = true; renderSide(); const f = $("plan-who"); if (f) f.focus(); } })));
+    if (H.recent.length) sec.append(h("div", { class: "recent" }, h("div", { class: "label" }, "Reuse a recent plan"),
+      h("ul", {}, H.recent.slice(0, 3).map((p, i) => { const t = [p.who, p.goal].filter(Boolean).join(" · ") || p.notes.split("\n")[0] || "Plan"; return h("li", {}, h("button", { type: "button", class: "btn sm", "data-fk": "recent-" + i, title: "Fill the form with this plan", onclick: () => { H.draft = { ...p }; H.planOpen = true; renderSide(); const f = $("plan-who"); if (f) f.focus(); } }, ico("plan"), h("span", { dir: dirOf(t), lang: langOf(t) }, t))); })),
+      h("button", { type: "button", class: "linkbtn", id: "recent-forget", onclick: async () => { H.recent = await api.forgetRecentPlans().catch(() => []); renderSide(); announce("Recent plans forgotten"); } }, "Forget recent plans")));
+    return sec;
+  }
+  sec.append(head());
   const f = (id, label, help, el) => h("div", { class: "field" }, h("label", { for: id }, label), el, help ? h("p", { class: "help", id: id + "-h" }, help) : null);
-  const b = H.brief || { who: "", goal: "", notes: "", mustCover: "" };
+  const b = H.draft || H.brief || { who: "", goal: "", notes: "", mustCover: "" };
   const who = h("input", { type: "text", id: "plan-who", maxlength: "120", autocomplete: "off", value: b.who, placeholder: "Who is on the call?", "aria-describedby": "plan-who-h" });
   const goal = h("input", { type: "text", id: "plan-goal", maxlength: "200", autocomplete: "off", value: b.goal, placeholder: "What do you want out of it?", "aria-describedby": "plan-goal-h" });
   const notes = h("textarea", { id: "plan-notes", maxlength: "600", rows: "2", placeholder: "One per line, e.g. they run a WooCommerce shop on old hosting", "aria-describedby": "plan-notes-h" }); notes.value = b.notes;
   const must = h("textarea", { id: "plan-must", maxlength: "600", rows: "2", placeholder: "One per line, e.g. budget, timeline", "aria-describedby": "plan-must-h" }); must.value = b.mustCover;
   const err = h("div", { class: "formerr", role: "alert", id: "plan-err" });
+  const group = (title, ...kids) => h("fieldset", { class: "fgroup" }, h("legend", {}, title), ...kids);
   const form = h("form", { id: "plan-form", novalidate: true },
-    f("plan-who", "Who is on the call", "Name of the person or company. The AI and the fact cards use it.", who),
-    f("plan-goal", "Goal", "The one outcome that makes this call a success.", goal),
-    f("plan-notes", "Notes for the AI", "Background it should know. It never reads these out loud.", notes),
-    f("plan-must", "Must cover", "You get a reminder in the answer window if one of these has not come up after 15 minutes.", must),
-    attachField(),
+    group("The call", h("div", { class: "frow" }, f("plan-who", "Who is on the call", "Name of the person or company.", who), f("plan-goal", "Goal", "The one outcome that makes this call a success.", goal))),
+    group("For the AI", f("plan-notes", "Notes", "Background it should know. It never reads these out loud.", notes), f("plan-must", "Must cover", "You get a reminder in the answer window if one of these has not come up after 15 minutes.", must)),
+    group("Background files", attachField()),
     err,
-    h("div", { class: "actions" }, h("button", { type: "submit", class: "btn", id: "plan-save" }, ico("check"), h("span", {}, "Save briefing")), H.editing ? btn("Cancel", { onclick: () => { H.editing = false; renderSide(); } }) : null),
-    h("p", { class: "sub" }, "Saved briefings are used by the next call that starts within 6 hours."));
+    h("div", { class: "actions stick" }, h("button", { type: "submit", class: "btn primary", id: "plan-save" }, ico("check"), h("span", {}, "Save plan")), btn("Cancel", { onclick: () => { H.editing = false; H.planOpen = false; H.draft = null; renderSide(); } }), h("span", { class: "sub" }, "Used by the next call that starts within 6 hours. Start also saves it.")));
   form.addEventListener("submit", async (e) => {
     e.preventDefault(); err.textContent = "";
     let r; try { r = await api.saveBrief({ who: who.value, goal: goal.value, notes: notes.value, mustCover: must.value }); } catch (x) { err.textContent = "Could not save: " + x.message; return; }
     if (!r.ok) { err.textContent = r.error || "Could not save."; return; }
-    H.brief = r.brief; H.editing = false; renderSide(); updateCallPanel(true); announce("Briefing saved for your next call");
+    H.brief = r.brief; H.editing = false; H.planOpen = false; H.draft = null; api.recentPlans().then((l) => { H.recent = l; }).catch(() => {}); renderSide(); updateCallPanel(true); announce("Plan saved for your next call");
     const ed = $("plan-edit"); if (ed) ed.focus();
   });
   sec.append(form);
   return sec;
 }
 
-/* ---------- Readiness (doctor) ---------- */
+/* ---------- Readiness check (doctor) ---------- */
+const niceFix = HL.niceFix, keyRelated = HL.keyRelated;   // doctor text says Settings → Keys and Wingman, not keys.env and the terminal
+/** One list style for readiness problems (card, Start warning). Only the status icon is red or amber; the words stay neutral. */
+function issueList(list) {
+  return h("ul", { class: "issues2" }, list.map(([lvl, x]) => h("li", { class: lvl }, ico(lvl === "bad" ? "x" : "warning"), h("div", {}, h("div", {}, niceFix(x.text)),
+    x.fix ? h("div", { class: "fix" }, "Fix: " + niceFix(x.fix)) : null,
+    keyRelated(x) ? h("button", { type: "button", class: "linkbtn fixlink", onclick: () => viewSettings("keys") }, "Open Settings → Keys") : null))));
+}
 function readinessCard() {
-  const d = (state.call && state.call.doctor) || null;
-  const running = !!(state.call && state.call.doctorRunning) || H.doctorBusy;
-  const sec = h("section", { class: "card-big ready", "aria-labelledby": "ready-h", id: "ready-card" });
-  const verdict = running ? chip("Checking…", "warn", { dot: true }) : !d ? chip("Not checked yet", "") : d.ok ? chip(d.verdict === "READY" ? "READY" : "READY, with warnings", "good", { dot: true }) : chip(d.verdict === "BUSY" ? "BUSY" : "NOT READY", d.verdict === "BUSY" ? "warn" : "bad", { dot: true });
-  sec.append(h("div", { class: "rhead" }, h("h2", { id: "ready-h" }, ico("mic"), "Ready for a call?"), verdict, h("span", { class: "grow" }),
-    h("button", { type: "button", class: "btn sm", id: "recheck", disabled: running, onclick: runCheck }, ico("refresh"), h("span", {}, running ? "Checking…" : d ? "Re-check" : "Run check"))));
+  const d = doc(), running = checking();
+  const quick = !!d && d.at === H.quickAt;
+  const sec = h("section", { class: "card-big ready " + seqCls(2), "aria-labelledby": "ready-h", id: "ready-card" });
+  const verdict = running ? chip("Checking…", "warn", { dot: true }) : !d ? chip("Not checked yet", "") : d.ok ? chip(d.verdict === "READY" ? "Ready" : "Ready, with warnings", "good", { dot: true }) : chip(d.verdict === "BUSY" ? "Busy" : "Not ready", d.verdict === "BUSY" ? "warn" : "bad", { dot: true });
+  sec.append(stepHead(2, "ready-h", "Readiness check", "A test of the microphone, system audio, your keys, the speech service and the AI. Run it before a call.", verdict, h("span", { class: "grow" }),
+    h("button", { type: "button", class: "btn", id: "recheck", disabled: running, onclick: () => runCheck(false) }, ico("refresh"), h("span", {}, running ? "Checking…" : !d ? "Run readiness check" : quick ? "Run full check" : "Re-check"))));
   if (running) sec.append(h("p", { class: "sub" }, "Testing the microphone, system audio, the speech service and the AI. About 20 seconds, a few cents."));
   else if (!d) sec.append(h("p", { class: "sub" }, "Run this before a call. It tests the microphone, system audio, your keys, the speech service and the AI."));
   else {
-    sec.append(h("p", { class: "sub" }, `Checked ${ago(d.at)}.` + (d.ok ? (d.warnings.length ? " You can call; fix these if you can:" : " Everything needed for a call works.") : " Fix these before the call:")));
+    sec.append(h("p", { class: "sub" }, `Checked ${ago(d.at)}.` + (quick ? " Quick check only (free): keys and settings. It does not test the microphone, the speech service or the AI." : "") + (d.ok ? (d.warnings.length ? " You can call; fix these if you can:" : quick ? "" : " Everything needed for a call works.") : " Fix these before the call:")));
     const list = [...d.failing.map((x) => ["bad", x]), ...d.warnings.map((x) => ["warn", x])];
-    if (list.length) sec.append(h("ul", { class: "issues2" }, list.map(([lvl, x]) => h("li", { class: lvl }, ico(lvl === "bad" ? "x" : "warning"), h("div", {}, h("div", {}, x.text), x.fix ? h("div", { class: "fix" }, "Fix: " + x.fix) : null)))));
+    if (list.length) sec.append(issueList(list));
     if (!d.ok && d.verdict !== "BUSY") sec.append(h("p", { class: "sub" }, "Keys and options are on the ", h("button", { type: "button", class: "linkbtn", id: "to-settings", onclick: () => viewSettings() }, "Settings page"), "."));
   }
   return sec;
 }
-async function runCheck() {
-  H.doctorBusy = true; renderSide(); announce("Checking everything. About 20 seconds.");
-  let r = null; try { r = await api.runDoctor(); } catch (e) { fail("Check failed: " + e.message); }
+/** Run the readiness check. offline = the free quick check (keys and settings only). Result lands in state.call.doctor. */
+async function runCheck(offline) {
+  H.doctorBusy = true; renderSide(); if (!offline) announce("Checking everything. About 20 seconds.");
+  let r = null; try { r = await api.runDoctor(offline === true); } catch (e) { if (!offline) fail("The readiness check did not finish. Try again."); }
   H.doctorBusy = false;
-  if (r && state.call) state.call.doctor = r;
+  if (r && state.call) { state.call.doctor = r; if (offline) H.quickAt = r.at; else H.fullAt = r.at; }
   if (state.view === "home") renderSide();
-  if (r) announce(r.ok ? "Ready for a call" : "Not ready: " + (r.failing[0] ? r.failing[0].text : r.verdict));
+  if (r && !offline) announce(r.ok ? "Ready for a call" : "Not ready: " + (r.failing[0] ? niceFix(r.failing[0].text) : r.verdict));
+}
+/** At launch, when no recent result exists, run the free offline check (no audio, no network, no cost). */
+function autoCheck() {
+  if (H.autoChecked || isRunning()) return;
+  H.autoChecked = true;
+  const d = doc();
+  if (checking() || (d && Date.now() - d.at < 6 * 3600 * 1000)) return;
+  runCheck(true);
 }
 
 /* ---------- Waiting for you ---------- */
+/** Up to five saved calls with cards to rate or a summary to send. */
 function waitingCard() {
   const todo = state.calls.filter((c) => !c.crashed && (pendingOf(c) > 0 || c.hasSummary)).slice(0, 5);
   const sec = h("section", { class: "card-big waiting", "aria-labelledby": "wait-h" });
-  const nP = todo.reduce((a, c) => a + pendingOf(c), 0);
-  sec.append(h("div", { class: "rhead" }, h("h2", { id: "wait-h" }, SK() ? null : ico("inbox"), "Waiting for you", SK() && todo.length ? h("span", { class: "cnt" }, nP ? plural(nP, "card") : todo.length) : null), h("span", { class: "grow" }), btn("All calls", { cls: "ghost sm", onclick: () => { loadList().then(() => viewInbox()); } })));
-  if (!todo.length) { sec.append(h("p", { class: "sub" }, SK() ? "You're all caught up." : state.calls.length ? "Nothing to rate or send. You're all caught up." : "After your first call, cards to rate and follow-up emails appear here.")); return sec; }
+  sec.append(h("div", { class: "rhead" }, h("h2", { id: "wait-h" }, ico("inbox"), "Waiting for you"), tip("Calls with cards you have not rated yet, or a summary and follow-up email ready to send."), h("span", { class: "grow" }), btn("All calls", { cls: "ghost sm", onclick: () => { loadList().then(() => viewInbox()).catch(() => showListError()); } })));
+  if (!todo.length) { sec.append(h("p", { class: "sub" }, state.calls.length ? "Nothing to rate or send. You're all caught up." : "After your first call, cards to rate and follow-up emails appear here.")); return sec; }
   sec.append(h("ul", { class: "waitlist" }, todo.map((c) => {
     const p = pendingOf(c), go = (o) => openCall(c.id, o);
     const tab = c.mode === "live" && p ? "rate" : c.hasSummary ? "followup" : "rate";
@@ -270,119 +451,6 @@ function waitingCard() {
   return sec;
 }
 
-/* =====================================================================
-   Skinned Home (data-skin a|b|c). Same data and commands as above, different structure:
-   greeting header with a readiness pill, one big Start, a compact Plan strip (the form opens as a sheet), Waiting for you above the fold.
-   ===================================================================== */
-async function viewHome2(focus) {
-  closePopover(false); closeSheet();
-  state.view = "home"; state.gen++; setNav(); busy();
-  const main = $("main"); main.textContent = "";
-  main.append(h("header", { id: "home-head", class: "hh" }), h("div", { class: "home home2" }, h("div", { class: "hcol hleft" }, h("div", { id: "call-col", class: "hcol" }), h("div", { id: "plan-slot" })), h("div", { id: "side-col", class: "hcol hside" })));
-  H.panelKey = ""; H.sideKey = undefined; H.readyOpen = false;
-  ensureTick();
-  if (!state.call) { try { state.call = await api.callState(); } catch { state.call = null; } }
-  H.brief = await api.getBrief().catch(() => null);
-  H.attach = await api.attachList().catch(() => null);
-  H.editing = false;
-  if (state.view !== "home") return;
-  renderCallSlot(); updateCallPanel(true); renderSide();
-  ready();
-  if (focus === "plan") openPlanSheet(); else focusTop();
-}
-
-function renderSide2() {
-  const side = $("side-col"); if (!side) return;
-  side.textContent = "";
-  renderHead();
-  const ps = $("plan-slot"); if (ps) { ps.textContent = ""; if (!isRunning()) ps.append(planStrip()); }
-  side.append(isRunning() ? liveFeedPanel() : waitingCard());
-}
-
-/* header: date, greeting, the next thing to do, and the readiness pill */
-function renderHead() {
-  const hd = $("home-head"); if (!hd) return;
-  hd.textContent = "";
-  if (isRunning()) { hd.classList.add("live"); hd.append(h("h1", { class: "sr" }, "Call in progress")); return; }
-  hd.classList.remove("live");
-  const now = new Date(), hr = now.getHours();
-  const greet = hr < 5 ? "Still up" : hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
-  const c = state.calls.find((x) => !x.crashed && (pendingOf(x) > 0 || x.hasSummary));
-  let next;
-  if (c) {
-    const p = pendingOf(c), tab = c.mode === "live" && p ? "rate" : c.hasSummary ? "followup" : "rate";
-    const label = tab === "rate" ? `Rate ${plural(p, "card")} from ${dayLabel(c.startedAt).toLowerCase()} ${tm(c.startedAt)}` : `Send the summary from ${dayLabel(c.startedAt).toLowerCase()} ${tm(c.startedAt)}`;
-    next = h("button", { type: "button", class: "nextact", id: "next-action", onclick: () => openCall(c.id, { tab, filter: tab === "rate" ? "unrated" : undefined }) }, h("span", { class: "k" }, "Next"), h("span", {}, label), ico("chevron"));
-  } else next = h("p", { class: "nextact none" }, "Nothing waiting. Start whenever you are ready.");
-  hd.append(h("div", { class: "hh-text" }, h("div", { class: "hh-date" }, fullDay(now.getTime())), h("h1", {}, `${greet}, Dan`), next), h("div", { class: "hh-act" }, readyPill()));
-}
-
-function readyPill() {
-  const d = (state.call && state.call.doctor) || null, running = !!(state.call && state.call.doctorRunning) || H.doctorBusy;
-  let cls = "", label;
-  if (running) { cls = "warn"; label = "Checking…"; }
-  else if (!d) { cls = ""; label = "Not checked"; }
-  else if (d.ok) { cls = d.warnings.length ? "warn" : "good"; label = d.warnings.length ? `Ready · ${plural(d.warnings.length, "warning")}` : "Ready"; }
-  else { cls = d.verdict === "BUSY" ? "warn" : "bad"; label = d.verdict === "BUSY" ? "Busy" : "Not ready"; }
-  const wrap = h("div", { class: "rwrap" });
-  const b = h("button", { type: "button", class: "rpill " + cls, id: "ready-pill", "aria-haspopup": "dialog", "aria-expanded": H.readyOpen ? "true" : "false", "aria-controls": "ready-pop", onclick: () => { H.readyOpen = !H.readyOpen; renderSide(); const nb = $("ready-pill"); if (nb && H.readyOpen) { const pop = $("ready-pop"); if (pop) pop.focus({ preventScroll: true }); } else if (nb) nb.focus(); } },
-    h("span", { class: "dot" + (running ? " pulse" : "") }), h("span", {}, label), ico("chevron"));
-  b.title = "Microphone, keys, speech service and AI";
-  wrap.append(b);
-  if (H.readyOpen) wrap.append(readyPop(d, running));
-  return wrap;
-}
-function readyPop(d, running) {
-  const pop = h("div", { class: "rpop", id: "ready-pop", role: "dialog", "aria-label": "Readiness", tabindex: "-1" });
-  const close = () => { H.readyOpen = false; renderSide(); const b = $("ready-pill"); if (b) b.focus(); };
-  pop.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } });
-  pop.append(h("div", { class: "rpop-h" }, h("b", {}, "Ready for a call?"), tip("Tests the microphone, system audio, your keys, the speech service and the AI. About 20 seconds, a few cents.", true)));
-  if (running) pop.append(h("p", { class: "sub" }, "Testing… about 20 seconds."));
-  else if (!d) pop.append(h("p", { class: "sub" }, "Not checked yet. Run it before a call."));
-  else {
-    pop.append(h("p", { class: "sub" }, `Checked ${ago(d.at)}.` + (d.ok ? (d.warnings.length ? " You can call; fix these if you can." : " Everything works.") : " Fix these first.")));
-    const list = [...d.failing.map((x) => ["bad", x]), ...d.warnings.map((x) => ["warn", x])];
-    if (list.length) pop.append(h("ul", { class: "issues2" }, list.map(([lvl, x]) => h("li", { class: lvl }, ico(lvl === "bad" ? "x" : "warning"), h("div", {}, h("div", {}, x.text), x.fix ? h("div", { class: "fix" }, "Fix: " + x.fix) : null)))));
-  }
-  pop.append(h("div", { class: "actions" }, h("button", { type: "button", class: "btn sm", id: "recheck", disabled: running, onclick: runCheck }, ico("refresh"), h("span", {}, running ? "Checking…" : d ? "Re-check" : "Run check")),
-    d && !d.ok && d.verdict !== "BUSY" ? h("button", { type: "button", class: "btn ghost sm", id: "to-settings", onclick: () => viewSettings() }, "Open Settings") : null));
-  if (!pop._bound) { pop._bound = true; const out = (e) => { if (!$("ready-pop")) { document.removeEventListener("pointerdown", out, true); return; } if (!e.target.closest(".rwrap")) { H.readyOpen = false; document.removeEventListener("pointerdown", out, true); renderSide(); } }; document.addEventListener("pointerdown", out, true); }
-  return pop;
-}
-
-/* the one big action */
-function idleHero() {
-  const startBtn = h("button", { type: "button", class: "btn lg primary start", id: "start-call", onclick: async (e) => { const b = e.currentTarget; b.disabled = true; await act(api.start, "Start"); b.disabled = false; } }, ico("phone"), h("span", {}, "Start call"));
-  const alt = (label, id, icon, fn, why) => h("span", { class: "alt" }, h("button", { type: "button", class: "btn ghost sm", id, onclick: fn }, ico(icon), h("span", {}, label)), tip(why));
-  const today = state.calls.filter((c) => !c.crashed && dayStart(c.startedAt) === dayStart(Date.now()));
-  const bits = [today.length ? `${plural(today.length, "call")} today, ${hrs(today.reduce((a, c) => a + c.durationMs, 0))}` : "No calls yet today", H.brief ? `briefing for ${H.brief.who || "this call"}` : null].filter(Boolean);
-  const ctx = h("p", { class: "hero-ctx" }, bits.join(" · "));
-  return h("section", { class: "hero", "aria-labelledby": "start-h" },
-    h("div", { class: "hero-top" }, h("span", { class: "capy", "aria-hidden": "true" }), h("div", {}, h("h2", { id: "start-h" }, "Ready when your call is"))),
-    startBtn, ctx,
-    h("div", { class: "hero-alts" },
-      alt("Start without AI", "start-noai", "play", () => act(api.startNoAi, "Start without AI"), "Bank cards only. Nothing goes to Anthropic; no summary is written."),
-      alt("Practice call", "practice", "play", () => act(api.practice, "Practice call"), "Offline and free. A pretend call plays through the real answer window on your second screen. Nothing leaves the Mac.")));
-}
-
-/* compact plan: a strip, not a form */
-function planStrip() {
-  const b = H.brief;
-  const body = b
-    ? h("div", { class: "plan2-txt" }, h("b", {}, "Briefing ready"), h("span", { class: "plan2-sum", dir: dirOf((b.who || "") + (b.goal || "")), lang: langOf((b.who || "") + (b.goal || "")) }, [b.who, b.goal].filter(Boolean).join(" · ") || "for your next call"), h("span", { class: "plan2-exp" }, `expires in ${hrs(b.expiresInMs)}${H.attach && H.attach.files.length ? " · " + plural(H.attach.files.length, "background file") : ""}`))
-    : h("div", { class: "plan2-txt" }, h("b", {}, "Plan a call"), h("span", { class: "plan2-sum" }, "Who, goal, context and background files for the AI"));
-  return h("section", { class: "plan2" + (b ? " has" : ""), "aria-label": "Plan a call" }, h("span", { class: "plan2-ico" }, ico(b ? "check" : "plan")), body,
-    h("div", { class: "plan2-act" },
-      b ? btn("Clear", { id: "plan-clear", cls: "ghost sm", onclick: async () => { await api.clearBrief(); H.brief = null; H.attach = null; renderSide(); updateCallPanel(true); announce("Briefing cleared"); } }) : null,
-      btn(b ? "Edit" : "Plan", { id: b ? "plan-edit" : "plan-open", cls: "sm", icon: "plan", onclick: openPlanSheet })));
-}
-
-function closeSheet(restore) {
-  const s = $("sheet"); if (!s) return;
-  const t = s._opener; s.remove();
-  if (H.attachDirty) { H.attachDirty = false; renderSide(); }
-  if (restore && t && document.contains(t)) t.focus();
-}
 /** Background files and pasted text for the next call. Added right away (not with Save); the AI reads them as background only. */
 function attachField() {
   const list = h("ul", { class: "att-list", "aria-label": "Background files" });
@@ -392,13 +460,13 @@ function attachField() {
   const paste = h("textarea", { id: "att-paste", rows: "2", maxlength: "20000", placeholder: "Or paste text here: an email, an offer, notes" });
   const draw = (st) => {
     if (!st) return;
-    H.attach = st; H.attachDirty = true;
+    H.attach = st;
     file.accept = st.pdf ? ".txt,.md,.pdf,text/plain,text/markdown,application/pdf" : ".txt,.md,text/plain,text/markdown";
     list.textContent = "";
     for (const a of st.files) list.append(h("li", {}, h("span", { class: "att-name", dir: dirOf(a.name), lang: langOf(a.name) }, a.name), h("span", { class: "faint att-n" }, `${a.chars.toLocaleString("en")} characters`),
       h("button", { type: "button", class: "btn ghost sm", "aria-label": "Remove " + a.name, onclick: async () => { try { draw(await api.attachRemove(a.id)); msg.textContent = ""; announce("File removed"); } catch (x) { msg.textContent = "Could not remove: " + x.message; } } }, ico("x"), h("span", {}, "Remove"))));
     const used = st.files.reduce((n, a) => n + a.chars, 0);
-    meter.textContent = `${used.toLocaleString("en")} of ${st.maxChars.toLocaleString("en")} characters used. They expire with the briefing (6 hours).${st.pdf ? "" : " PDF needs the pdftotext tool, which this Mac does not have: paste the text instead."}`;
+    meter.textContent = `${used.toLocaleString("en")} of ${st.maxChars.toLocaleString("en")} characters used. They expire with the plan (6 hours).${st.pdf ? "" : " PDF needs the pdftotext tool, which this Mac does not have: paste the text instead."}`;
   };
   const report = (r, what) => { if (!r.ok) { msg.textContent = r.error === "preview" ? "Not available in a preview." : (r.error || "Could not add that."); return; } msg.textContent = r.truncated ? `${what} was cut to fit the limit.` : ""; announce(`${what} added`); };
   file.addEventListener("change", async () => {
@@ -413,43 +481,51 @@ function attachField() {
     try { const r = await api.attachPaste(paste.value); draw(r.state); report(r, "Text"); if (r.ok) paste.value = ""; } catch (x) { msg.textContent = "Could not add: " + x.message; }
   };
   if (H.attach) draw(H.attach); else api.attachList().then(draw).catch(() => {});
-  H.attachDirty = false;
   return h("div", { class: "field attach" },
-    h("label", { for: "att-paste" }, "Background files", tip("Notes, an offer or an email the AI should know about. It uses them only as background for answers, tips and the call summary; it never reads them out.")),
+    h("label", { for: "att-paste", class: "sr" }, "Pasted text"), h("p", { class: "help" }, "Notes, an offer or an email the AI should know about. It uses them only as background for answers, tips and the call summary; it never reads them out."),
     list, meter,
-    h("div", { class: "att-actions" }, btn("Add file", { id: "att-add", icon: "plan", cls: "sm", onclick: () => file.click() }), file, paste, btn("Add pasted text", { id: "att-paste-add", cls: "sm", onclick: addPaste })),
+    h("div", { class: "att-actions" }, btn("Add file", { id: "att-add", icon: "attach", onclick: () => file.click() }), file, paste, btn("Add pasted text", { id: "att-paste-add", icon: "plus", onclick: addPaste })),
     msg);
 }
-function openPlanSheet() {
-  closeSheet();
+/* ---------- Shortcuts and card types (one place for every key) ---------- */
+// Read from tray/main.cjs (KEYS) and overlay/main.cjs (overlay.hotkeys defaults). Global keys work from any app during a call.
+const SHORTCUTS = [
+  ["During a call (from any app)", [
+    [["Ctrl", "Opt", "A"], "Ask Wingman: your next sentence (within 10 s) is a question for it"],
+    [["Ctrl", "Opt", "N"], "Add a note for the AI"],
+    [["Ctrl", "Opt", "Return"], "Start listening (only if “Ask me before listening starts” is on)"],
+    [["Ctrl", "Opt", "C"], "Clear the cards in the answer window"],
+    [["Ctrl", "Opt", "P"], "Pause the answer window: cards are hidden, new ones keep arriving and show on resume"],
+    [["Ctrl", "Opt", "R"], "Rewind: show or hide what was just said (last 30 s)"],
+    [["Ctrl", "Opt", "K"], "Copy the newest phone number, email or domain"],
+    [["Ctrl", "Opt", "1…3"], "Copy capture chip 1, 2 or 3 (phone, email, domain) shown in the answer window"],
+    [["Ctrl", "Opt", "L"], "Show or hide the call checklist"]]],
+  ["In a call's review", [
+    [["Y"], "Mark the card useful"], [["N"], "Mark it not useful"], [["U"], "Clear the mark"],
+    [["J", "K"], "Next or previous card"], [["1", "…", "5"], "Switch tab"], [["/"], "Search calls"], [["Esc"], "Back to Calls"], [["?"], "Show this list"]]],
+];
+/** Modal list of shortcuts and card types (where "types" scrolls to the card legend). Traps Tab, closes on Escape or outside click, returns focus to the opener. */
+function openShortcuts(where) {
+  closeShortcuts();
   const opener = document.activeElement;
-  const b = H.brief || { who: "", goal: "", notes: "", mustCover: "" };
-  const f = (id, label, why, el) => h("div", { class: "field" }, h("label", { for: id }, label, tip(why)), el);
-  const who = h("input", { type: "text", id: "plan-who", maxlength: "120", autocomplete: "off", value: b.who, placeholder: "Who is on the call?" });
-  const goal = h("input", { type: "text", id: "plan-goal", maxlength: "200", autocomplete: "off", value: b.goal, placeholder: "What do you want out of it?" });
-  const notes = h("textarea", { id: "plan-notes", maxlength: "600", rows: "3", placeholder: "One per line" }); notes.value = b.notes;
-  const must = h("textarea", { id: "plan-must", maxlength: "600", rows: "3", placeholder: "One per line, e.g. budget, timeline" }); must.value = b.mustCover;
-  const err = h("div", { class: "formerr", role: "alert", id: "plan-err" });
-  const form = h("form", { id: "plan-form", novalidate: true },
-    h("div", { class: "frow" }, f("plan-who", "Who", "Name of the person or company. The AI and the fact cards use it.", who), f("plan-goal", "Goal", "The one outcome that makes this call a success.", goal)),
-    f("plan-notes", "Notes for the AI", "Background it should know. It never reads these out loud.", notes),
-    f("plan-must", "Must cover", "You get a reminder in the answer window if one of these has not come up after 15 minutes.", must),
-    err,
-    h("div", { class: "actions sheet-actions" }, h("span", { class: "sub" }, "Used by the next call within 6 hours."), h("span", { class: "grow" }), btn("Cancel", { onclick: () => closeSheet(true) }), h("button", { type: "submit", class: "btn primary", id: "plan-save" }, ico("check"), h("span", {}, "Save briefing"))));
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault(); err.textContent = "";
-    let r; try { r = await api.saveBrief({ who: who.value, goal: goal.value, notes: notes.value, mustCover: must.value }); } catch (x) { err.textContent = "Could not save: " + x.message; return; }
-    if (!r.ok) { err.textContent = r.error || "Could not save."; return; }
-    H.brief = r.brief; closeSheet(false); renderSide(); updateCallPanel(true); announce("Briefing saved for your next call");
-    const ed = $("plan-edit"); if (ed) ed.focus();
-  });
-  const panel = h("div", { class: "sheet", role: "dialog", "aria-modal": "true", "aria-labelledby": "sheet-h", tabindex: "-1" }, h("div", { class: "sheet-head" }, h("h2", { id: "sheet-h" }, "Plan a call"), h("button", { type: "button", class: "btn ghost sm icon", "aria-label": "Close", onclick: () => closeSheet(true) }, ico("x"))), form);
-  const ov = h("div", { class: "sheet-ov", id: "sheet" }, panel); ov._opener = opener;
-  ov.addEventListener("pointerdown", (e) => { if (e.target === ov) closeSheet(true); });
+  const keys = (ks) => h("span", { class: "kbs" }, ks.map((k, i) => [i ? " " : null, h("kbd", {}, k)]));
+  const groups = SHORTCUTS.map(([title, rows]) => h("section", { class: "kb-g" }, h("h3", {}, title), h("dl", {}, rows.map(([ks, what]) => [h("dt", {}, keys(ks)), h("dd", {}, what)]))));
+  const types = h("section", { class: "kb-g", id: "kb-types" }, h("h3", {}, "Card types"), h("ul", { class: "kb-types" }, Object.keys(BADGE).filter((k) => k !== "calc").concat("calc").map((k) => h("li", {}, badgeChip(k), h("span", {}, BADGE[k][2])))));
+  const panel = h("div", { class: "sheet kb-sheet", role: "dialog", "aria-modal": "true", "aria-labelledby": "kb-h", tabindex: "-1" },
+    h("div", { class: "sheet-head" }, h("h2", { id: "kb-h" }, "Shortcuts"), h("button", { type: "button", class: "btn ghost sm icon", id: "kb-close", "aria-label": "Close", onclick: () => closeShortcuts(true) }, ico("x"))),
+    ...groups, h("p", { class: "sub" }, "The answer-window keys can be changed in settings.yaml under overlay.hotkeys."), types);
+  const ov = h("div", { class: "sheet-ov", id: "kb-sheet" }, panel); ov._opener = opener;
+  ov.addEventListener("pointerdown", (e) => { if (e.target === ov) closeShortcuts(true); });
   ov.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { e.stopPropagation(); closeSheet(true); return; }
-    if (e.key === "Tab") { const els = [...panel.querySelectorAll("button, input, textarea")].filter((x) => !x.disabled); const first = els[0], last = els[els.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
+    if (e.key === "Escape") { e.stopPropagation(); closeShortcuts(true); return; }
+    if (e.key === "Tab") { const els = [...panel.querySelectorAll("button")]; const first = els[0], last = els[els.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } }
   });
   $("pop-slot").append(ov);
-  who.focus();
+  if (where === "types") { const t = $("kb-types"); if (t) { t.scrollIntoView({ block: "center" }); t.setAttribute("tabindex", "-1"); t.focus({ preventScroll: true }); return; } }
+  $("kb-close").focus();
+}
+function closeShortcuts(restore) {
+  const s = $("kb-sheet"); if (!s) return;
+  const t = s._opener; s.remove();
+  if (restore && t && document.contains(t)) t.focus();
 }

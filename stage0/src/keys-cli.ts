@@ -1,5 +1,6 @@
-// pnpm keys status|set <provider>|remove <provider>|migrate
-// Values are never taken from argv and never printed. `set` reads from a hidden TTY prompt.
+// pnpm keys status|set <provider>|remove <provider>|migrate: manage the Deepgram/Anthropic keys in the macOS Keychain.
+// Talks to the Keychain directly (src/keychain.ts), not to the tray app. Values are never taken from argv (visible in `ps`)
+// and never printed. `set` reads from a hidden TTY prompt.
 import { realKeychain, keyStatus, migrateKeysToKeychain, checkKeyFormat, PROVIDERS, ACCOUNTS, scrub, type Keychain, type Provider } from "./keychain.ts";
 import { KEYS_FILE } from "./env.ts";
 import { loadSettings, expandHome } from "./settings.ts";
@@ -24,6 +25,7 @@ export function readHidden(prompt: string): Promise<string> {
   });
 }
 
+/** Runs one subcommand and returns the exit code (0 ok, 1 failed, 2 bad usage). `o` lets tests inject the Keychain, file, prompt and output. */
 export async function main(argv: string[], o: { keychain?: Keychain; keysFile?: string; readSecret?: (p: string) => Promise<string>; out?: (s: string) => void } = {}): Promise<number> {
   const out = o.out ?? ((s: string) => console.log(s));
   const keychain = o.keychain ?? realKeychain();
@@ -66,5 +68,6 @@ export async function main(argv: string[], o: { keychain?: Keychain; keysFile?: 
   return 2;
 }
 
+// Run only when executed directly, not when imported by tests.
 import { fileURLToPath } from "node:url";
 if (process.argv[1] === fileURLToPath(import.meta.url)) main(process.argv.slice(2)).then((c) => process.exit(c));

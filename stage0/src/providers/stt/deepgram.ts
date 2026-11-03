@@ -1,9 +1,11 @@
-// Deepgram Nova-3 live socket, one per channel ("me" = mic, "them" = system audio). Moved from src/stt.ts, behaviour kept.
+// Deepgram Nova-3 live socket, one per channel ("me" = mic, "them" = system audio), built on the Deepgram SDK.
+// The SDK reconnects its own socket; SttChannel (channel.ts) decides when to give up and switch provider.
 import { DeepgramClient } from "@deepgram/sdk";
 import { EventEmitter } from "node:events";
 import { classifySttError } from "../errors.ts";
 import { speechEndWall, type SttOptions, type SttResult, type SttStreamLike, type SttProvider, type Word } from "./types.ts";
 
+/** See the stall guard note below for the one non-obvious behaviour (an extra Finalize after silence). */
 export class DeepgramStream extends EventEmitter implements SttStreamLike {
   private conn: any;
   private connBytes = 0;   // bytes successfully sent on the CURRENT socket (re-anchored on every (re)open)
@@ -13,7 +15,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   dropped = 0;             // chunks dropped because the socket was not open
   private keepAlive?: NodeJS.Timeout;
   keytermsDropped = false; // true when the open had to be retried without keyterms
-  // Stall guard (measured 2 Nov): on language=multi Deepgram sometimes never sends speech_final / a final after an utterance
+  // Stall guard: on language=multi Deepgram sometimes never sends speech_final / a final after an utterance
   // (the transcript sits on an unresolved last word) until ~5.4 s later. We watch the audio we send: when voiced audio is
   // followed by finalizeSilenceMs of near-silence and no speech_final has come, send {"type":"Finalize"}. The reply
   // (from_finalize) is reported as speechFinal. 0 = off. Normal speech_final (endpointing, 100-700 ms) always wins, so this only fires on a stall.
@@ -22,14 +24,14 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   private finalizeSent = false;
   constructor(private opts: SttOptions) { super(); }
 
-  /** The query string the connection will use (for debugging and the local probe). */
+  /** The keyterms sent as repeated keyterm= query params (first 100 only). */
   static keytermParams(keyterms: string[] = []) { return keyterms.slice(0, 100); }
 
   async open() {
     try { await this.openOnce(this.opts.keyterms ?? []); }
     catch (e) {
       const err = classifySttError("deepgram", e);
-      // S8: a 400 while keyterms were sent may be the keyterm param itself: retry once without and say so.
+      // A 400 while keyterms were sent may be the keyterm param itself: retry once without and say so.
       if (err.kind === "bad_request" && this.opts.keyterms?.length && this.opts.keytermRetry !== false) {
         this.keytermsDropped = true; this.emit("keyterms_off", err);
         this.dropConn();
@@ -82,7 +84,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
 
   get isOpen() { return this.conn?.readyState === 1; }
 
-  /** Returns false when the chunk was dropped (socket not open or send failed). Never throws. */
+  /** Returns false when the chunk was dropped (socket not open or send failed). Never throws. Also feeds the stall guard. */
   send(pcm: Buffer): boolean {
     if (!this.conn || this.conn.readyState !== 1) { this.dropped++; return false; }
     try { this.conn.sendMedia(pcm); } catch { this.dropped++; return false; }
@@ -91,6 +93,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
     return true;
   }
 
+  // Peak over every 4th sample (stride 8 bytes) is enough to tell speech (>= 1500 of 32768) from silence; cheap on the audio path.
   private watchSilence(pcm: Buffer) {
     const ms = this.opts.finalizeSilenceMs ?? 900;
     if (!(ms > 0)) return;
@@ -133,6 +136,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   }
 }
 
+/** probe() opens a real socket (10 s limit) and closes it; used by the doctor. */
 export const deepgram: SttProvider = {
   id: "deepgram", experimental: false,
   capabilities: { keyterms: true, diarize: true, interim: true, maxKeyterms: 100 },

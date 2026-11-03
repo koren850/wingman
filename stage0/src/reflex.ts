@@ -1,11 +1,16 @@
-// Haiku reflex: one streamed call decides SKIP / STALL / BANK <id> / ANS and writes the card.
+// Reflex: one streamed model call (Claude Haiku by default) per question decides SKIP / STALL / BANK <id> / ANS and writes the card.
+// run.ts feeds it the transcript and handlers; the streamed text is parsed line by line (tag, say-line, facts) so the card can show
+// before the reply ends. Cost/latency caps come from llm.reflex (maxTokens, timeoutMs, maxRetries); fallbacks via withFallbacks().
+// The call text is untrusted: untag() keeps it from closing the <call_transcript> wrapper (prompt-injection guard).
 import { streamText } from "ai";
 import type { BankCard } from "./bank.ts";
 import type { Settings } from "./settings.ts";
 import { ModelRegistry, providerOptionsFor, cacheOptionsFor, withFallbacks } from "./providers/llm.ts";
 import { classifyFinish, classifyLlmError, ProviderError } from "./providers/errors.ts";
 
+/** The model's first-line verdict. `bankId` only for BANK. */
 export type Tag = { kind: "SKIP" | "STALL" | "ANS" | "BANK"; bankId?: string };
+/** Callbacks fired while the reply streams. Order: onTag, onSay (partial, repeated), onSayComplete, onFacts, onDone. */
 export type ReflexHandlers = {
   onTag(tag: Tag): void;
   onSay(text: string): void;              // full say-line so far (streamed)
@@ -16,6 +21,11 @@ export type ReflexHandlers = {
   onDiscard?(why: "late-skip" | "language"): void;
 };
 
+/**
+ * The system prompt: rules, house style, optional client profile, the bank index (id + title only) and background files.
+ * Built once per call and sent with a cache marker (see cacheOptionsFor), so keep it stable: any change busts the prompt cache.
+ * The prompt text is product behaviour; do not edit it casually.
+ */
 export function buildPrefix(houseStyle: string, bank: BankCard[], profileText = "", background = ""): string {
   const index = bank.map((c) => `- ${c.id}: ${c.title}`).join("\n");   // id + title only: a BANK reply is just the id, the card text is already known
   return `You are Wingman, a live meeting AI assistant: a sharp, calm voice whispering to Dan (male: address him in the masculine) during a call or meeting of any kind (a customer, a supplier, his team, an interviewer, an advisor, a friend, or Dan alone). You are a general meeting assistant, not a sales tool, and you never push anything.
@@ -30,15 +40,16 @@ Output format, exactly. Decide the tag BEFORE you write line 1; the tag is final
   SKIP          (nothing for Dan to say or read: small talk, not a question, a question only Dan can answer himself, or Dan is already handling it). Nothing else after it.
   BANK <id>     (a bank card answers exactly this question). Output ONLY "BANK <id>", with the id copied exactly from the list below: no say-line, no facts, the card text is already known.
   STALL         (client or service calls only: the question needs a price, a date, a deadline or a commitment from Dan). Nothing else after it.
-  ANS           (you can answer safely from general knowledge). Line 2 is the say-line (at most 25 words, in the language of the question), then 0-3 lines starting with "- ", each fact at most 8 words.
+  ANS           (you can answer safely from general knowledge). Line 2 is the say-line (at most 25 words, in the language of the question), then 0-3 lines starting with "- ", each fact at most 8 words. The say-line IS the answer: no opening like "good question", "here is the answer" or a greeting.
 
 Who can answer what:
-- Anything only Dan can know or decide about himself is SKIP, whoever asks: his documents, experience, skills, availability, schedule, why he left a job, his opinions, whether he has questions, what he wants. Never answer yes/no on Dan's behalf: if the other side asks "do you have the invoice?" or "are you available Tuesday?", the tag is SKIP, never "yes..." or "no...".
+- Anything only Dan can know or decide about himself is SKIP, whoever asks: his documents, experience, skills, availability, schedule, why he left a job, his opinions, whether he has questions, what he wants (the one exception: the interview structure hint below). Never answer yes/no on Dan's behalf: if the other side asks "do you have the invoice?" or "are you available Tuesday?", the tag is SKIP, never "yes..." or "no...".
 - STALL is only for a price, a date or a commitment about Dan's own services, on a call with his customer (client or support). On any other call (team, interview, supplier, advisor, friend, family, other) never use STALL and never use an agency BANK card, unless the question is really about Dan's web or hosting services.
-- On a team, interview, personal or supplier call use SKIP for small talk and for questions only Dan can answer, ANS for a general-knowledge line that helps Dan right now (what a term means, how something works), and nothing else.
-- On a call with Dan's own customer, answer as the owner of the agency: BANK when a card truly fits, ANS for a safe general answer, STALL for price, date or commitment.
+- On a team, interview, personal or supplier call use SKIP for small talk and for questions only Dan can answer or decide (who takes a task, schedules, owners, his experience, opinions, plans), ANS for a general-knowledge line that helps Dan right now, and nothing else.
+- Technical or factual questions are ANS even when asked to the whole room or at an interview: what a term or tool is, how X differs from Y, why an error or failure usually happens, which approach fits, what a standard or protocol does. Give a short, correct, plain answer. For a THEM request, when you are not sure of the facts, SKIP instead of guessing.
+- Interview, behavioural question ("tell me about a time...", "give an example of...", "how do you handle pressure / deadlines / conflict", "what was your biggest challenge"): this is the exception to "only Dan can answer": reply ANS with a one-line structure for the answer, never any content about Dan's own experience, employers, numbers or achievements. Example: for "ספר לי על פעם שהיה לך קונפליקט בצוות" the say-line is "מבנה STAR: מצב, משימה, פעולה, תוצאה. בחר דוגמה אחת וסיים במה למדת." For a THEM request these stay SKIP: "tell me about yourself", "do you have questions for us", salary, availability, notice period, start date, why this role, why he left a job.
 
-Hard rules: for THEM requests never state prices, amounts, dates, deadlines, SLAs or promises. In every request never invent facts about Dan, his business, the people on the call or their servers and sites, and never promise or commit anything on Dan's behalf. For ME requests general facts and arithmetic are fine (an exchange rate you know, how long a flight takes, 15% of 200); his own prices, dates and commitments are not. Prefer BANK over ANS when a card fits a THEM request on a client call. Keep the tone plain, calm and confident. No markdown.
+Hard rules: for THEM requests never state prices, amounts, dates, deadlines, SLAs or promises. In every request never invent facts about Dan, his business, the people on the call or their servers and sites, and never promise or commit anything on Dan's behalf. For ME requests general facts and arithmetic are fine (an exchange rate you know, how long a flight takes, 15% of 200); his own prices, dates and commitments are not. Prefer BANK over ANS when a card fits a THEM request on a client call. Choose the card by what THIS sentence asks, not by the topic of the last few lines: a general question ("why is the site slow", "what can we do to make it faster", "how do we find out what the problem is") gets the general card (or ANS), never a card about one possible cause (images, cache, server, a score tool) unless the sentence itself names that cause. A word that sounds like a bank term (by SOUND, e.g. "ss" for SSL, "קש" for cache, "איתי" for "איטי" next to "האתר") counts as that term. Keep the tone plain, calm and confident. No markdown.
 
 House style (for lines Dan says aloud to the other side, THEM requests; in ME requests you speak to Dan, so the current date and time, general facts and plain wording are fine):
 ${houseStyle}
@@ -51,20 +62,22 @@ ${background ? `\n${background}\n` : ""}`;
 /** Call text is untrusted: it must not be able to close the <call_transcript> wrapper. */
 export const untag = (s: string) => s.replace(/<\s*\/?\s*call_transcript\s*>/gi, "");
 
+/** The llm.reflex settings that runReflex reads. */
 export type ReflexConfig = Pick<Settings["llm"]["reflex"], "timeoutMs" | "maxTokens" | "maxRetries" | "effort" | "thinking" | "cache">;
+/** Inputs for runReflex. `models` is the fallback chain (first = primary). */
 export type ReflexRun = {
   registry: ModelRegistry; models: string[]; cfg: ReflexConfig; prefix: string; transcript: string; question: string; context?: string[]; signal: AbortSignal; h: ReflexHandlers;
   /** the call frame (src/frame.ts frameText) and, on a non-agency call, the weak keyword bank hit the model may drop */
   frame?: string; weakBank?: string;
   /** not a client / support call: BANK and STALL are not for this question (the code ignores them too); the model is told so */
   noAgency?: boolean;
-  /** "me" requests: Dan is alone on the call (nobody else has spoken): every question he asks is for the assistant */
+  /** "me" requests: the user is alone on the call (nobody else has spoken): every question asked is for the assistant */
   solo?: boolean;
   /** "me" requests: the clock the model reads (default: now) */
   now?: Date;
   /** max output tokens override (me answers are short) */
   maxTokens?: number;
-  /** "me": Dan asked the assistant himself (answer him, tag ANS or SKIP only). Default: the other side asked. */
+  /** "me": the user asked the assistant himself (answer directly, tag ANS or SKIP only). Default: the other side asked. */
   asker?: "me" | "them";
   /** called when a model fails and the next one is tried */
   onSwitch?: (from: string, to: string, err: ProviderError) => void;
@@ -74,7 +87,10 @@ export type ReflexRun = {
   stream?: typeof streamText;
 };
 
-/** Tries `models` in order (see withFallbacks). Resolves with the model that answered; throws a ProviderError. */
+/**
+ * Tries `models` in order (see withFallbacks). Resolves with the model that answered; throws a ProviderError.
+ * Once a tag was shown (`started`) a failure does not switch models, otherwise the user would see two different cards for one question.
+ */
 export async function runReflex(o: ReflexRun): Promise<string> {
   let started = false;
   const h: ReflexHandlers = { ...o.h, onTag: (t) => { started = true; o.h.onTag(t); } };
@@ -100,6 +116,7 @@ export function worldClock(d = new Date(), home = "Asia/Jerusalem"): string {
   }).join(", ");
 }
 
+/** The per-question user message: frame, hints, notes, clock (ME requests only), then the untagged transcript and the question. */
 export function reflexUserMessage(o: Pick<ReflexRun, "frame" | "weakBank" | "context" | "transcript" | "question" | "asker" | "noAgency" | "solo" | "now">): string {
   const me = o.asker === "me";
   const parts = [
@@ -116,6 +133,7 @@ export function reflexUserMessage(o: Pick<ReflexRun, "frame" | "weakBank" | "con
   return parts.join("");
 }
 
+// Hebrew block U+0590-05FF (letters and niqqud) and basic Latin letters, for the language check below.
 const HE = /[֐-׿]/g, LAT = /[A-Za-z]/g;
 const count = (s: string, re: RegExp) => (s.match(re) ?? []).length;
 /** "he" when the text has Hebrew words (a Hebrew question with English terms in it is still Hebrew), "en" when it is Latin only, undefined for digits / too little text. */
@@ -134,10 +152,15 @@ export function wrongLanguage(question: string, say: string): boolean {
   return h > l && h >= 3;
 }
 
+/**
+ * One streamed attempt on one model. Parses the buffer after every chunk and fires the handlers as soon as each part is complete.
+ * Three failure paths: abort by the caller (returns quietly), the hard timeout (ProviderError "timeout") and a stream error or bad
+ * finish reason (classified, so the breaker/fallback logic can react). A late "SKIP" or a wrong-language say-line discards the card.
+ */
 async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<string> {
   const provider = ref.split(":")[0];
   const model = await o.registry.resolve(ref);
-  const timeout = AbortSignal.timeout(o.cfg.timeoutMs);
+  const timeout = AbortSignal.timeout(o.cfg.timeoutMs);   // total budget for this attempt; aborts the stream so a hung provider cannot hold the card
   let streamError: unknown;
   const result = (o.stream ?? streamText)({
     model,
@@ -208,7 +231,11 @@ export function resolveBankId(id: string | undefined, bank: BankCard[]): BankCar
   return scored.length && (scored.length === 1 || scored[0].n > scored[1].n) ? scored[0].c : undefined;
 }
 
-/** Parse the streamed reply: empty lines ignored; line 1 = tag, line 2 = say-line, then "- " facts. */
+/**
+ * Parse the streamed reply: empty lines ignored; line 1 = tag, line 2 = say-line, then "- " facts (max 3).
+ * While streaming (`final` false) the last line may be unfinished, so it is held back as `partial` and a say-line only counts as
+ * complete once a newline followed it.
+ */
 export function parseReflex(buf: string, final: boolean): { tagLine?: string; say?: string; sayComplete: boolean; facts: string[] } {
   const raw = buf.split("\n");
   const complete = final ? raw : raw.slice(0, -1);
@@ -228,6 +255,7 @@ export function parseReflex(buf: string, final: boolean): { tagLine?: string; sa
   return { tagLine, say, sayComplete: !!say && (ne.length >= 2 || final), facts };
 }
 
+/** Reads the tag line leniently (markdown, colons, lower case); anything unrecognised is SKIP, the safe default. */
 export function parseTag(line: string): Tag {
   // Strip markdown and punctuation: "**ANS**", "BANK: dns-basics", "`BANK` dns-basics".
   const clean = line.replace(/[^A-Za-z0-9 _-]+/g, " ").trim();

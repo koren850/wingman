@@ -1,4 +1,6 @@
 // Client for the app's control socket (tray/control-socket.cjs). One JSON line out, one JSON line back.
+// The socket is owner-only (mode 600); ownSocket() below also checks that the file is a socket owned by this user
+// before connecting, so a planted file at that path is never trusted.
 import net from "node:net";
 import { lstatSync } from "node:fs";
 import { execFile } from "node:child_process";
@@ -13,11 +15,13 @@ export function appProcessRunning(ctx: Ctx): Promise<boolean | undefined> {
   return new Promise((res) => execFile("pgrep", ["-f", "Wingman.app/Contents/MacOS/Wingman"], { timeout: 3000 }, (e, out) => res(e ? (typeof (e as any).code === "number" && (e as any).code === 1 ? false : undefined) : String(out).trim().length > 0)));
 }
 
+// True only for a real socket owned by the current user.
 function ownSocket(path: string) {
   let st; try { st = lstatSync(path); } catch { return false; }
   return st.isSocket() && (!process.getuid || st.uid === process.getuid());
 }
 
+/** The app's answer. ok=false carries `code` and `error` (refused, rate_limited, bad_args...). */
 export type Reply = { ok: boolean; code?: string; error?: string; [k: string]: any };
 
 /** Raw request. Rejects with CliError(NO_APP) when nothing listens. A refusal from the app comes back as a normal reply with ok:false. */
@@ -45,6 +49,7 @@ export function request(ctx: Ctx, cmd: string, args?: Record<string, unknown>, t
   });
 }
 
+// App refusal code -> CLI exit code.
 const REPLY_EXIT: Record<string, number> = { refused: EXIT.REFUSED, rate_limited: EXIT.RATE_LIMITED, bad_args: EXIT.USAGE, bad_request: EXIT.USAGE, unknown_command: EXIT.FAIL };
 
 /** request() that turns a refusal into a CliError with the right exit code. */
@@ -58,6 +63,7 @@ export async function call(ctx: Ctx, cmd: string, args?: Record<string, unknown>
 export async function appStatus(ctx: Ctx): Promise<Reply | null> {
   try { return await call(ctx, "status"); } catch (e) { if (e instanceof CliError && e.code === "app_not_running") return null; throw e; }
 }
+/** Like appStatus() but throws NO_APP when the app is not running. */
 export async function needApp(ctx: Ctx): Promise<Reply> {
   const s = await appStatus(ctx);
   if (!s) throw new CliError("app_not_running", NO_APP_MESSAGE, EXIT.NO_APP, NO_APP_HINT);

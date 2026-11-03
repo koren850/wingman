@@ -8,6 +8,7 @@ const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const lib = require("./lib.cjs");
+const { askClock } = require("../shared/ask.js");
 const { createController } = require("./controller.cjs");
 const windowHost = require("../dashboard/window.cjs");
 const { createControlServer } = require("./control-socket.cjs");
@@ -21,13 +22,17 @@ const WANT_WINDOW = SNAPSHOT || process.argv.includes("--open-window") || proces
 
 let tray, clock, promptWin, lastMenuKey = "", host, ctl, controlServer;
 
+// Single-instance guard (not in snapshot mode, so snapshots can run beside a real app).
 let gotLock = true;
+// Hidden snapshots: no Dock icon at all (one is shown per Electron process otherwise).
+if (SNAPSHOT && process.platform === "darwin") { try { app.setActivationPolicy("accessory"); app.dock && app.dock.hide(); } catch { /* no dock */ } }
 if (!SNAPSHOT) {
   app.dock && app.dock.hide();                      // menu-bar first: in the Dock only while the window is open
   gotLock = app.requestSingleInstanceLock();        // a second launch hands over to the first one (second-instance below) and exits
   if (!gotLock) app.quit();
 }
 
+/** Silent macOS notification. `go` (openWindow arg) makes a click open the Wingman window there. Never throws. */
 function notify(title, body, go) {
   try {
     if (SNAPSHOT) return;
@@ -40,9 +45,11 @@ const logLine = (s) => ctl && ctl.logLine(s);
 const state = () => ctl.getState();
 
 function openWindow(o) { return host && host.open(o); }
+/** Controller state changed: redraw the menu bar and push the new state to the window. */
 function onChange() { refresh(); host && host.push(); }
 
-// Small input window for a quick note (global shortcut). It is the only extra window; it takes focus because Dan asked for it.
+// Small input window for a quick note (global shortcut or menu). It is the only extra window; it takes focus because the user asked for it.
+// Always on top and content-protected, so it stays visible over the call app but never shows in a screen share.
 function ask() {
   if (promptWin) { promptWin.focus(); return; }
   promptWin = new BrowserWindow({
@@ -56,6 +63,7 @@ function ask() {
   promptWin.loadFile(path.join(__dirname, "prompt.html"), { query: { kind: "note" } });
   promptWin.on("closed", () => { promptWin = undefined; });
 }
+// IPC from prompt.js. Only the prompt window may call it. Only kind "note" is acted on (the "brief" form in prompt.html is not used by this file).
 ipcMain.handle("prompt:submit", (e, kind, data) => {
   if (!promptWin || e.sender !== promptWin.webContents) throw new Error("denied");
   if (kind === "note" && data && typeof data.text === "string") ctl.note(data.text);
@@ -63,23 +71,41 @@ ipcMain.handle("prompt:submit", (e, kind, data) => {
   return true;
 });
 
-// Global keys while a call runs (the answer window owns Ctrl+Opt+C/P/R/K/L). Ctrl+Opt+A = ask Wingman (the next sentence, within 10 s, is a question for it).
-const KEYS = { consent: "Control+Alt+Return", note: "Control+Alt+N", ask: "Control+Alt+A" };
+// Global keys while a call runs. The answer window owns Ctrl+Opt+C/P/R/K/L and Ctrl+Opt+1-3 (lib.OVERLAY_KEYS); the menu-bar app never takes those.
+// Ctrl+Opt+A = ask Wingman (the next sentence, within the answer window time, is a question for it).
+const KEYS = lib.KEYS;
+/** Registers the note and ask global keys. A key another app already owns just gets logged, not fatal. */
 function registerKeys() {
   const bad = [];
-  if (!globalShortcut.register(KEYS.consent, () => ctl.consent())) bad.push(KEYS.consent);
   if (!globalShortcut.register(KEYS.note, () => { if (ctl.isRunning() && state().phase !== "stopping") ask(); })) bad.push(KEYS.note);
   if (!globalShortcut.register(KEYS.ask, () => ctl.askWingman())) bad.push(KEYS.ask);
   if (bad.length) logLine(`could not register ${bad.join(", ")}`);
 }
 
+// The Start listening key exists only while a call is really waiting (the optional "Ask me before listening starts" setting is on).
+const startKey = lib.createStartKey({ globalShortcut, key: KEYS.consent, onPress: () => { if (state().phase === "waiting") ctl.consent(); }, log: logLine });
+const confirmDelete = () => lib.confirmStopDelete({ dialog, stopDelete: () => ctl.stopDelete() });
+let quitting = false;
+/** Quit with a confirmation when a call runs. `quitting` stops a second quit click while the first is still stopping the call. */
+function quitApp() {
+  if (quitting) return;
+  quitting = true;
+  lib.requestQuit({
+    isRunning: () => ctl.isRunning(), dialog, stop: () => ctl.stop(), quit: () => app.quit(),
+    whenStopped: () => lib.waitUntil(() => !ctl.isRunning(), 25_000),
+  }).then((r) => { if (r === "kept") quitting = false; }).catch(() => { quitting = false; });
+}
+
+/** Redraws the tray title every tick, but rebuilds the menu only when what it shows changed. */
 function refresh() {
   if (!tray) return;
   const s = state(), running = ctl.isRunning();
+  startKey.sync(running && s.phase === "waiting");
   const v = lib.view(s, Date.now());
   tray.setTitle(v.title, { fontType: "monospacedDigit" });
   tray.setToolTip(v.tooltip);
-  const key = lib.menuKey(s, running) + v.statusLine.replace(/\d+:\d\d/, "");
+  // The status line holds a ticking m:ss timer; strip it so the key changes only on real changes.
+  const key = lib.menuKey(s, running, Date.now()) + v.statusLine.replace(/\d+:\d\d/, "");
   if (key === lastMenuKey) return;   // rebuilding an open menu every second would close it
   lastMenuKey = key;
   const items = [
@@ -91,28 +117,31 @@ function refresh() {
   ];
   if (!running) {
     items.push({ label: "Start call", click: () => ctl.start({}) });
-    items.push({ label: "Start call without AI (bank cards only)", click: () => ctl.start({ noAi: true }) });
-    items.push({ label: s.briefReady ? "Plan a call: briefing ready \u2713 (edit\u2026)" : "Plan a call\u2026", click: () => openWindow({ view: "home", focus: "plan" }) });
+    items.push({ label: "Start call without AI (Prepared cards only)", click: () => ctl.start({ noAi: true }) });
+    items.push({ label: s.briefReady ? "Plan a call: plan ready \u2713 (edit\u2026)" : "Plan a call\u2026", click: () => openWindow({ view: "home", focus: "plan" }) });
     items.push({ type: "separator" });
     items.push({ label: "Try a practice call (offline, free)", click: () => ctl.practice() });
   } else {
-    if (s.phase === "waiting") items.push({ label: "\u2705  Consent given: start listening", accelerator: KEYS.consent, registerAccelerator: false, click: () => ctl.consent() });
+    if (s.phase === "waiting") items.push({ label: "Start listening", accelerator: KEYS.consent, registerAccelerator: false, click: () => ctl.consent() });
     if (s.proposed && !s.client) items.push({ label: `Confirm client: ${s.proposed}`, click: () => ctl.confirmClient() });
-    items.push({ label: "Ask Wingman: my next sentence is for you", accelerator: KEYS.ask, registerAccelerator: false, enabled: s.phase === "live", click: () => ctl.askWingman() });
+    const askLeft = s.askArmed ? askClock(s.askUntil, Date.now()) : null;
+    items.push({ label: s.askArmed ? "Listening for your question" + (askLeft ? ` \u00b7 ${askLeft} left` : "\u2026") : "Ask Wingman: my next sentence is for you", accelerator: KEYS.ask, registerAccelerator: false, enabled: s.phase === "live", click: () => ctl.askWingman() });
     items.push({ label: "Add a note for the AI\u2026", accelerator: KEYS.note, registerAccelerator: false, enabled: s.phase !== "stopping", click: () => ask() });
-    items.push({ label: "Quiet mode (hide cards)", type: "checkbox", checked: !!s.quiet, enabled: s.phase === "live", click: (mi) => ctl.setQuiet(mi.checked) });
+    items.push({ label: "Quiet mode (hide cards in the answer window)", type: "checkbox", checked: !!s.quiet, enabled: s.phase === "live", click: (mi) => ctl.setQuiet(mi.checked) });
     items.push({ type: "separator" });
     items.push({ label: s.phase === "stopping" ? "Stopping\u2026" : "Stop call", enabled: s.phase !== "stopping", click: () => ctl.stop() });
-    items.push({ label: "Stop and delete this call", enabled: s.phase !== "stopping", click: () => ctl.stopDelete() });
+    items.push({ type: "separator" });
+    items.push({ label: "Stop and delete this call\u2026", enabled: s.phase !== "stopping", click: () => confirmDelete() });
   }
   items.push({ type: "separator" });
-  items.push({ label: s.doctorRunning ? "Checking\u2026" : "Check everything (doctor)", enabled: !s.doctorRunning && !running, click: () => { openWindow({ view: "home" }); ctl.runDoctor(); } });
+  items.push({ label: s.doctorRunning ? "Checking\u2026" : "Run readiness check", enabled: !s.doctorRunning && !running, click: () => { openWindow({ view: "home" }); ctl.runDoctor(); } });
   items.push({ label: "Show log", click: () => shell.openPath(LOGS) });
   items.push({ type: "separator" });
-  items.push({ label: "Quit Wingman", click: () => { if (running) { ctl.stop(); setTimeout(() => app.quit(), 9000); } else app.quit(); } });
+  items.push({ label: running ? "Quit Wingman\u2026" : "Quit Wingman", click: () => quitApp() });
   tray.setContextMenu(Menu.buildFromTemplate(items));
 }
 
+// A second launch (e.g. the .app clicked again) just brings up the window.
 app.on("second-instance", (_e, argv) => { host && host.open({ view: "home" }); });
 
 app.whenReady().then(() => {
@@ -121,7 +150,7 @@ app.whenReady().then(() => {
   ctl = createController({
     // Snapshot mode can never start anything: the spawn function itself refuses.
     spawn: SNAPSHOT ? () => { throw new Error("snapshot mode never spawns a process"); } : spawn,
-    root: ROOT, logPath: SNAPSHOT ? "" : LOGS, tmpDir: app.getPath("temp"), notify: (t, b) => notify(t, b, /summary ready/i.test(t) ? { view: "call", id: ctl.getState().callId, tab: "followup" } : undefined), onChange,
+    root: ROOT, briefFile: BRIEF_FILE, logPath: SNAPSHOT ? "" : LOGS, tmpDir: app.getPath("temp"), notify: (t, b) => notify(t, b, /summary ready/i.test(t) ? { view: "call", id: ctl.getState().callId, tab: "followup" } : undefined), onChange,
   });
   host = windowHost.create({ app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller: ctl });
   ctl.boot(lib.briefReady(BRIEF_FILE));
@@ -137,6 +166,7 @@ app.whenReady().then(() => {
     if (img.isEmpty()) tray.setTitle("Wingman");
     refresh();
     registerKeys();
+    // 1 s tick: updates the live timer, and picks up a Plan file written or expired outside the app (e.g. by the CLI).
     clock = setInterval(() => { refresh(); const b = lib.briefReady(BRIEF_FILE); if (b !== state().briefReady && !ctl.isRunning()) ctl.boot(b); }, 1000);
   }
   if (WANT_WINDOW) host.open({ view: "home" });

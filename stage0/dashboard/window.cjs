@@ -1,6 +1,8 @@
 // The Wingman window (home, calls, settings). Hosted by the menu-bar process (tray/main.cjs) so the menu and the
 // window drive ONE call controller. Every IPC handler checks the sender and validates its arguments; the window can
 // only ask the controller for the fixed commands, it never writes arbitrary text to a call's stdin.
+// Data comes from lib.cjs (saved calls), livetail.cjs (running call), keys-ipc.cjs (keys); preload.cjs is the page-side bridge.
+// WINGMAN_DASHBOARD_* env vars are snapshot/test aids (screenshots, fake call states); they spawn and touch nothing real.
 const path = require("node:path");
 const fs = require("node:fs");
 const { execFile } = require("node:child_process");
@@ -20,7 +22,7 @@ const BG = { dark: "#120E0B", light: "#FEF7EC" };
 const SNAP = process.env.WINGMAN_DASHBOARD_SNAPSHOT || "";
 const SIZE = /^(\d{3,4})x(\d{3,4})$/.test(process.env.WINGMAN_DASHBOARD_SIZE || "") ? process.env.WINGMAN_DASHBOARD_SIZE.split("x").map(Number) : null;
 
-/** Snapshot-only fake call states (WINGMAN_DASHBOARD_FAKE_CALL=waiting|live|live-warn|stopping|ended). Nothing is spawned. */
+/** Snapshot-only fake call states (WINGMAN_DASHBOARD_FAKE_CALL=waiting|live|live-ask|live-warn|stopping|stopping-summary|ended). Nothing is spawned. */
 function fakeCall(kind, now = Date.now()) {
   if (!kind) return null;
   const ev = (s, e) => lib.reduce(s, e);
@@ -30,12 +32,15 @@ function fakeCall(kind, now = Date.now()) {
   if (kind === "ended") { s = ev(s, { ev: "consented" }); s = ev(s, { ev: "summary", ok: true }); s = ev(s, { ev: "ended", id: "01JTESTDEMOSUMMARYCALL0001" }); s = ev(s, { ev: "exit", code: 0 }); return { ...s, running: false }; }
   s = ev(s, { ev: "consented" }); s = ev(s, { ev: "propose", title: "Dana Levi · Levi Studio" }); s = ev(s, { ev: "note", count: 2 });
   if (kind === "live-warn") { s = ev(s, { ev: "health", id: "stt", level: "red", text: "Speech service is not answering" }); s = ev(s, { ev: "health", id: "bt", level: "amber", text: "AirPods are the microphone: transcript quality drops" }); s = ev(s, { ev: "overlay", ok: false, reason: "one-screen" }); }
-  if (kind === "stopping") s = ev(s, { ev: "stopping" });
+  if (kind === "live-ask") s = ev(s, { ev: "ask", on: true, until: now + 8000 });
+  if (kind === "stopping" || kind === "stopping-summary") s = ev(s, { ev: "stopping" });
+  if (kind === "stopping-summary") s = { ...s, stopPhase: "summary" };
   return { ...s, running: true, startedAt: now - 9 * 60000, liveAt: now - (8 * 60000 + 14000) };
 }
+/** Canned readiness results for snapshots (WINGMAN_DASHBOARD_FAKE_DOCTOR=ready|notready). */
 const FAKE_DOCTOR = {
   ready: { ran: true, ok: true, verdict: "READY", failing: [], warnings: [{ text: "only one screen: the answer window will NOT open", fix: "connect the second screen before the call" }], at: 0 },
-  notready: { ran: true, ok: false, verdict: "NOT READY", failing: [{ text: "DEEPGRAM_API_KEY missing (speech to text)", fix: "add it to ~/.config/wingman/keys.env" }, { text: "mic silent (peak 0.000)", fix: "grant Microphone to your terminal app, restart it" }], warnings: [], at: 0 },
+  notready: { ran: true, ok: false, verdict: "NOT READY", failing: [{ text: "DEEPGRAM_API_KEY missing (speech to text)", fix: "Wingman → Settings → Keys: paste the key (it is stored in the macOS Keychain)" }, { text: "no sound from the microphone: it looks blocked", fix: "System Settings → Privacy & Security → Microphone: allow Wingman, then restart Wingman" }], warnings: [], at: 0 },
 };
 
 /** The sender must be the dashboard window's MAIN frame, still showing our own local page (not a sub-frame, not another window). */
@@ -46,14 +51,21 @@ function isDashboardSender(e, win) {
   return typeof f.url === "string" && f.url.startsWith("file://") && /\/dashboard\/index\.html(\?|#|$)/.test(f.url);
 }
 
+/**
+ * Build the window host. ctx: electron pieces + `controller` (the shared call controller from tray/main.cjs).
+ * Registers every ipcMain handler used by preload.cjs. Returns { open(o), push(), live, win, isOpen() }.
+ */
 function create(ctx) {
   const { app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller } = ctx;
   let win, fake = fakeCall(process.env.WINGMAN_DASHBOARD_FAKE_CALL), fakeDoc = FAKE_DOCTOR[process.env.WINGMAN_DASHBOARD_FAKE_DOCTOR] || null;
   if (fakeDoc) fakeDoc = { ...fakeDoc, at: Date.now() - 4 * 60000 };
   const bgNow = () => (nativeTheme.shouldUseDarkColors ? BG.dark : BG.light);
   const mine = (e) => isDashboardSender(e, win);
+  // All handlers go through here: reject any caller that is not our own page, and pass only the args (not the event) on.
   const handle = (name, fn) => ipcMain.handle(name, (e, ...a) => { if (!mine(e)) throw new Error("denied"); return fn(...a); });
+  // State sent to the page: controller state + the readiness result + a clock. `now` is the main-process clock at send time.
   const view = () => { const s = fake || controller.getState(); return { ...s, doctor: fakeDoc || s.doctor, now: Date.now(), fake: !!fake }; };
+  // Saved plan for the form: notes / mustCover are stored as lists, shown as multi-line text.
   const briefInfo = () => { const b = lib.readBrief(path.join(BRIEFS, "latest.yaml")); return b ? { ...b, notes: b.notes.join("\n"), mustCover: b.mustCover.join("\n") } : null; };
 
   // Live conversation: tails the running call's transcript.jsonl / cards.jsonl (never the @@wingman status lines). Not used for fake/snapshot states.
@@ -97,6 +109,7 @@ function create(ctx) {
     });
     protectedNow = undefined; protect();   // hidden from capture only during a call (see protect())
     nativeTheme.on("updated", () => { if (win && !win.isDestroyed()) win.setBackgroundColor(bgNow()); });
+    // The window only ever shows the local page: no popups, no navigation away (a stray link cannot load remote content).
     win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     win.webContents.on("will-navigate", (e) => e.preventDefault());
     win.on("closed", () => { win = undefined; if (!SNAP && app.dock) { try { app.dock.hide(); } catch { /* no dock */ } } });
@@ -105,10 +118,9 @@ function create(ctx) {
     const query = {};
     if (call) { query.call = call; query.tab = tab || ""; if (extra) query.x = extra; }
     if (/^(light|dark)$/.test(process.env.WINGMAN_DASHBOARD_THEME || "")) query.theme = process.env.WINGMAN_DASHBOARD_THEME;
-    if (/^[abc]$/.test(process.env.WINGMAN_DASHBOARD_SKIN || "")) query.skin = process.env.WINGMAN_DASHBOARD_SKIN;
     const v = SNAP ? process.env.WINGMAN_DASHBOARD_VIEW : o.view;
     if (/^(home|calls|inbox|settings|system)$/.test(v || "")) query.view = v;
-    if (/^(plan|advanced)$/.test((SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus) || "")) query.focus = SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus;
+    if (/^(plan|advanced|keys)$/.test((SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus) || "")) query.focus = SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus;
     if (!SNAP && o.id) { query.call = o.id; query.tab = o.tab || ""; }
     win.loadFile(path.join(__dirname, "index.html"), Object.keys(query).length ? { query } : undefined);
     if (SNAP) win.webContents.once("did-finish-load", async () => {
@@ -133,6 +145,16 @@ function create(ctx) {
   // ---- calls (review) ----
   handle("calls:list", () => data.listCalls(CALLS));
   handle("calls:get", (id) => data.getCall(CALLS, id));
+  // "Write summary" for a saved call that has none: the same tool as `wingman calls summary <id> --generate` (one small AI call, up to 3 min). Output is dropped: it contains call content.
+  const writing = new Set();
+  handle("calls:writeSummary", (id) => new Promise((resolve) => {
+    data.callDir(CALLS, id);   // validates the id
+    if (fake || SNAP) return resolve({ ok: false, error: "preview" });
+    const st = controller.getState(); if (st.running && st.callId === id) return resolve({ ok: false, error: "This call is still running." });
+    if (writing.has(id)) return resolve({ ok: false, error: "Already writing it." });
+    writing.add(id);
+    execFile(TSX, [path.join(ROOT, "src", "summary.ts"), id], { cwd: ROOT, timeout: 180_000, maxBuffer: 4_000_000, env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" } }, (err) => { writing.delete(id); resolve(err ? { ok: false, error: "The summary could not be written (missing key, no transcript, or the model failed). Check Settings → Keys." } : { ok: true }); });
+  }));
   handle("calls:search", (q) => data.searchCalls(CALLS, q));
   handle("calls:setTag", (id, cardId, useful) => data.setTag(CALLS, id, cardId, useful));
   handle("calls:delete", (id) => {
@@ -166,10 +188,13 @@ function create(ctx) {
       case "quiet": if (typeof arg !== "boolean") throw new Error("bad argument"); return { ok: controller.setQuiet(arg) };
       case "client": return { ok: controller.confirmClient() };
       case "note": if (typeof arg !== "string" || arg.length > 2000) throw new Error("bad argument"); return { ok: controller.note(arg) };
+      case "ask": if (typeof arg !== "string" || !arg.trim() || arg.length > 2000) throw new Error("bad argument"); return { ok: controller.ask(arg) };   // a typed question for Wingman
+      case "askWingman": return { ok: controller.askWingman() };                                                                                       // same as Ctrl+Opt+A
       case "stop": return { ok: controller.stop() };
+      case "skipSummary": return { ok: controller.skipSummary() };   // fixed command "skip-summary" to the running call
       case "stopDelete": {
-        const r = dialog.showMessageBoxSync(win, { type: "warning", buttons: ["Keep the call", "Stop and delete"], defaultId: 0, cancelId: 0, title: "Stop and delete", message: "Stop this call and delete everything from it?", detail: "The transcript, cards and notes are removed permanently. No summary is written." });
-        return { ok: r === 1 ? controller.stopDelete() : false, cancelled: r !== 1 };
+        const done = lib.confirmStopDelete({ dialog, win, stopDelete: () => controller.stopDelete() });   // the same confirmation as the tray
+        return { ok: done, cancelled: !done };
       }
       default: throw new Error("unknown command");
     }
@@ -177,12 +202,19 @@ function create(ctx) {
 
   // ---- briefing ("Plan a call") ----
   handle("brief:get", () => briefInfo());
+  // Recent plans (same private folder, owner-only file): so a plan that expired, or a repeat call, can be reused.
+  const RECENT = path.join(BRIEFS, "recent.json");
+  const readRecent = () => { try { return data.recentClean(JSON.parse(fs.readFileSync(RECENT, "utf8"))); } catch { return []; } };
+  const writeRecent = (list) => { fs.mkdirSync(BRIEFS, { recursive: true, mode: 0o700 }); fs.writeFileSync(RECENT, JSON.stringify(list), { mode: 0o600 }); };
+  handle("brief:recent", () => readRecent());
+  handle("brief:forgetRecent", () => { try { fs.rmSync(RECENT, { force: true }); } catch { /* nothing to forget */ } return []; });
   handle("brief:save", (d) => {
     if (!d || typeof d !== "object") throw new Error("bad briefing");
     for (const k of ["who", "goal", "notes", "mustCover"]) if (typeof d[k] !== "string" || d[k].length > 1500) throw new Error("bad briefing field " + k);
     const b = lib.briefFrom(d);
     if (!b) return { ok: false, error: "Fill in at least one field." };
     lib.writeBrief(BRIEFS, b);
+    try { writeRecent(data.recentAdd(readRecent(), d)); } catch { /* the plan itself is saved; the recent list is a convenience */ }
     controller.briefSaved();
     return { ok: true, brief: briefInfo() };
   });
@@ -210,13 +242,14 @@ function create(ctx) {
   handle("attach:remove", (id) => { if (typeof id !== "string" || id.length > 30) throw new Error("bad id"); if (!fake && !SNAP) store.remove(id); return attState(); });
 
   // ---- readiness (doctor) ----
-  handle("doctor:run", async () => {
+  handle("doctor:run", async (offline) => {
     if (fakeDoc) return { ...fakeDoc, at: Date.now() };
     if (SNAP) return null;
-    return controller.runDoctor();
+    return controller.runDoctor({ offline: offline === true });   // offline = free quick check (no speech or AI test)
   });
 
   // ---- settings ----
+  // Settings read/write run the TypeScript tools as child processes; child() expects one JSON line on stdout (the last one wins).
   const settingsEnv = () => ({ ...require("../src/keychain.cjs").childEnv(process.env), NO_COLOR: "1", FORCE_COLOR: "0" });   // the settings tools never need API keys
   const child = (args, input) => new Promise((resolve) => {
     const p = execFile(TSX, args, { cwd: ROOT, timeout: 30_000, maxBuffer: 2_000_000, env: settingsEnv() }, (err, stdout) => {

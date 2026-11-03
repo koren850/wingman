@@ -1,5 +1,6 @@
 // Background files from "Plan a call" (see tray/attachments.cjs for storage and validation). This is the call side:
-// read the fresh files once at call start (and delete them: one plan = one call), build the prompt block.
+// run.ts reads the fresh files once at call start (and deletes them: one plan = one call) and puts the block in the prompt prefix.
+// The tray store is CommonJS, so it is loaded with createRequire.
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { DATA } from "./env.ts";

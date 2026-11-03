@@ -51,6 +51,7 @@ function checkKeyFormat(provider, value) {
   if (provider === "anthropic" && !value.startsWith("sk-ant-")) return "An Anthropic key starts with sk-ant-.";
   return null;
 }
+/** Throws unless the value is one bare token that `security -i` parses unchanged (see the WRITE note above). */
 function assertSafeSecret(value) {
   if (typeof value !== "string" || !/^[A-Za-z0-9_.-]{1,300}$/.test(value) || value.startsWith("-")) throw new KeychainError("The key has characters that cannot be stored safely.");
 }
@@ -65,6 +66,7 @@ function scrub(text, secrets = []) {
 }
 const last4 = (v) => (typeof v === "string" && v.length >= 8 ? v.slice(-4) : "");
 
+/** Keychain access over an injectable runner. set() verifies by reading back; get() returns null when absent. */
 function createKeychain(run = realRunner) {
   const acct = (p) => { if (!PROVIDERS.includes(p)) throw new KeychainError("Unknown provider."); return ACCOUNTS[p]; };
   function get(provider) {
@@ -90,6 +92,7 @@ function createKeychain(run = realRunner) {
 }
 
 // ---- keys.env helpers (legacy file) ----
+/** Parses KEY=value lines (optional quotes) of the legacy keys.env. Lines with an empty value are ignored. */
 function parseKeysFile(text) {
   const out = {};
   for (const line of String(text).split("\n")) {
@@ -159,7 +162,8 @@ function migrateKeysToKeychain({ keychain, file }) {
   return result;
 }
 
-// ---- IPC-side policy (used by the window host): allow-list, rate limit, test requests ----
+// ---- IPC-side policy (used by dashboard/keys-ipc.cjs): rate limit, key test requests ----
+/** Sliding-window limiter: the returned function is true while under `max` calls per `windowMs`, and records the call. */
 function createRateLimiter(max = 5, windowMs = 60000, now = () => Date.now()) {
   const hits = [];
   return () => { const t = now(); while (hits.length && t - hits[0] > windowMs) hits.shift(); if (hits.length >= max) return false; hits.push(t); return true; };

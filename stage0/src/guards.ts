@@ -1,6 +1,7 @@
-// Card guards: AI text may never state prices, dates/deadlines or promises (PLAN §5).
-// A hit replaces the AI text with the stall line.
-// Note: JS \b is ASCII-only, so Hebrew patterns use explicit lookaheads instead.
+// Card guards: AI text may never state prices, dates/deadlines or promises.
+// Used by run.ts (reflex answers) and assist.ts (guardMe). A hit replaces the AI text with the stall line.
+// Patterns are deliberately broad (a false hit only costs a stall line; a missed price or promise would be spoken to a client).
+// Note: JS \b is ASCII-only, so Hebrew patterns use explicit lookaheads/lookbehinds on [א-ת] instead.
 
 const PRICE = [
   /[₪$€]\s?\d/, /\d[\d,.]*\s?(₪|ש"?ח|שקל|שקלים|דולר|יורו|nis|usd|eur|dollars?|shekels?|euros?|bucks)(?![\p{L}])/iu,
@@ -63,6 +64,7 @@ export function guardPromise(text: string): GuardResult {
   return { ok: true };
 }
 
+/** Full check, in order price, date, promise. Returns the first rule that hit ("price" | "date" | "promise"). */
 export function guard(text: string): GuardResult {
   for (const r of PRICE) if (r.test(text)) return { ok: false, rule: "price" };
   for (const r of DATE) if (r.test(text)) return { ok: false, rule: "date" };
@@ -70,7 +72,7 @@ export function guard(text: string): GuardResult {
   return { ok: true };
 }
 
-/** Strip anything that is not plain text (cards are text only). Keep bidi isolates/marks. */
+/** Strip anything that is not plain text (cards are text only). Keep bidi isolates/marks so mixed Hebrew/English lines still render right. */
 export function sanitize(text: string): string {
   return text
     .replace(/[‪-‮]/g, "") // embeddings/overrides out; isolates (2066-2069) and LRM/RLM stay

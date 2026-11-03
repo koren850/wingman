@@ -1,4 +1,5 @@
 // wingman calls list | show | summary | email | rate | purge. Reads and writes calls/ through dashboard/lib.cjs, the module the app's Calls pages use.
+// Only `purge` and `live` ask the app (over the control socket, tray/control-socket.cjs) whether a call is still running.
 import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { appStatus } from "./client.ts";
@@ -22,6 +23,7 @@ export function resolveId(ctx: Ctx, id: string | undefined): string {
   return id;
 }
 
+// Plain-text rendering of a call summary.
 function summaryText(s: any): string {
   const L: string[] = [];
   if (s.summary.length) L.push("Summary:", ...s.summary.map((x: string) => `  - ${x}`));
@@ -31,12 +33,14 @@ function summaryText(s: any): string {
   return L.join("\n");
 }
 
+// Writes a missing summary by running src/summary.ts in a child (one small paid model call). Its output is dropped on purpose.
 function generate(ctx: Ctx, id: string): Promise<boolean> {
   const run = ctx.spawnTsx ?? ((a: string[], ms: number) => new Promise<{ code: number; out: string }>((res) =>
     execFile(join(ctx.root, "node_modules", ".bin", "tsx"), a, { cwd: ctx.root, timeout: ms, maxBuffer: 4_000_000, env: { ...ctx.env, FORCE_COLOR: "0" } }, (e) => res({ code: e ? 1 : 0, out: "" }))));
   return run([join(ctx.root, "src", "summary.ts"), id], 180_000).then((r) => r.code === 0);   // output is dropped: it contains call content
 }
 
+/** Dispatches the calls subcommands. Ids are validated by resolveId() before they touch the filesystem. */
 export async function calls(ctx: Ctx, args: string[]): Promise<Result> {
   const sub = args[0] || "list", rest = args.slice(1);
   switch (sub) {

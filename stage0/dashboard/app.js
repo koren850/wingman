@@ -1,10 +1,13 @@
 "use strict";
-// Renderer. Every piece of call text goes in through textContent / text nodes only (call text is untrusted).
+// Renderer core for the main window: DOM helpers, the shared state object, and the saved-call views (Calls list, call tabs, keyboard).
+// Talks to the main process only through `api` (window.wingman, see preload.cjs). Loaded before home.js / live.js / settings.js, which add the other views.
+// Every piece of call text goes in through textContent / text nodes only (call text is untrusted).
 // No innerHTML anywhere. Icons are built with createElementNS.
 const api = window.wingman;
 const $ = (id) => document.getElementById(id);
 
 /* ---------- tiny DOM helpers ---------- */
+/** Create an element. attrs: "class" -> className, "onX" -> event listener, false/null skipped, true -> empty attribute. kids (nested ok): nodes, or anything else as a text node (never HTML). */
 function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -26,6 +29,9 @@ const ICONS = {
   warning: [["path", { d: "M12 4l9 16H3zM12 10v4M12 17.5v.01" }]],
   settings: [["path", { d: "M4 7h9M17 7h3M4 17h3M11 17h9" }], ["circle", { cx: 15, cy: 7, r: 2 }], ["circle", { cx: 9, cy: 17, r: 2 }]],
   inbox: [["path", { d: "M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5" }]],
+  calls: [["path", { d: "M4 5h16v11H9l-5 4z" }], ["path", { d: "M8 9.5h8M8 12.5h5" }]],
+  pencil: [["path", { d: "M4 20l1-4L16 5a2 2 0 0 1 3 3L8 19z" }], ["path", { d: "M14 7l3 3" }]],
+  eye: [["path", { d: "M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" }], ["circle", { cx: 12, cy: 12, r: 2.8 }]],
   back: [["path", { d: "M15 6l-6 6 6 6" }]],
   chevron: [["path", { d: "M9 6l6 6-6 6" }]],
   follow: [["rect", { x: 3, y: 5, width: 18, height: 14, rx: 2 }], ["path", { d: "M3 7l9 6 9-6" }]],
@@ -40,11 +46,15 @@ const ICONS = {
   phone: [["path", { d: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" }]],
   play: [["path", { d: "M8 5l11 7-11 7z" }]],
   stop: [["rect", { x: 6, y: 6, width: 12, height: 12, rx: 2 }]],
-  plan: [["rect", { x: 4, y: 5, width: 16, height: 15, rx: 2 }], ["path", { d: "M8 3v4M16 3v4M4 10h16" }]],
+  plan: [["rect", { x: 5, y: 4, width: 14, height: 17, rx: 2 }], ["path", { d: "M9 4V3h6v1M9 10h6M9 14h6M9 18h3" }]],
   mic: [["rect", { x: 9, y: 3, width: 6, height: 11, rx: 3 }], ["path", { d: "M5 11a7 7 0 0 0 14 0M12 18v3" }]],
   folder: [["path", { d: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }]],
+  attach: [["path", { d: "M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.7 17.2a1.7 1.7 0 0 1-2.4-2.4L15 7" }]],
+  plus: [["path", { d: "M12 5v14M5 12h14" }]],
+  keyboard: [["rect", { x: 3, y: 6, width: 18, height: 12, rx: 2 }], ["path", { d: "M7 10h.01M11 10h.01M15 10h.01M7 14h10" }]],
   undo: [["path", { d: "M9 7L4 12l5 5M4 12h10a6 6 0 0 1 0 8" }]],
 };
+/** Inline SVG icon from ICONS (decorative: aria-hidden). Unknown name gives an empty svg. */
 function ico(name, cls) {
   const s = document.createElementNS(SVGNS, "svg");
   s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "ico" + (cls ? " " + cls : "")); s.setAttribute("aria-hidden", "true"); s.setAttribute("focusable", "false");
@@ -56,15 +66,47 @@ const chip = (text, variant, opts = {}) => h("span", { class: "chip" + (variant 
 const linkChip = (kids, variant, onclick, aria, title) => h("button", { type: "button", class: "chip go" + (variant ? " " + variant : ""), onclick, "aria-label": aria, title }, kids, ico("chevron"));
 const btn = (label, o = {}) => h("button", { type: "button", class: "btn" + (o.cls ? " " + o.cls : ""), onclick: o.onclick, title: o.title, "aria-label": o.aria, id: o.id }, o.icon ? ico(o.icon) : null, label ? h("span", {}, label) : null);
 const ltr = (s) => h("span", { class: "ltr" }, s);
-/** Visual skin: "" = the original look; "a" | "b" | "c" = the design directions (set on <html data-skin> by boot.js). */
-const SK = () => document.documentElement.dataset.skin || "";
 /** Small "?" that carries the long explanation (hover, focus or screen reader) so it does not sit on the page as grey text. */
 const tip = (text, end) => h("button", { type: "button", class: "tip" + (end ? " end" : ""), "aria-label": text, "data-tip": text, onclick: (e) => e.stopPropagation() }, "?");
 
+/** The one badge legend. Same names, hues and glyphs as the answer window: [label, colour class, meaning, glyph]. A glyph backs the colour so it is never the only signal. */
+const BADGE = {
+  bank: ["Prepared", "t-prep", "A ready-made answer written before the call.", "\u2714"],
+  ai: ["AI", "t-ai", "Written by the AI. Not verified: check it before you say it.", "\u2726"],
+  stall: ["Buy time", "t-stall", "A line to say while the real answer is found.", "\u25F7"],
+  tip: ["Tip", "t-tip", "A small suggestion, not an answer.", ""],
+  me: ["For you", "t-me", "An answer to your own question.", "\u2606"],
+  calc: ["Math", "t-ai", "Worked out exactly, not by the AI.", "\u2211"],
+};
+/** Chip for a card badge, with its glyph and meaning as the tooltip. Unknown badges get a plain dot chip. */
+function badgeChip(badge, label) {
+  const b = BADGE[badge], el = chip(label || (b ? b[0] : badge), b ? b[1] : "", { dot: !b || !b[3] });
+  if (b && b[3]) el.prepend(h("span", { class: "gl", "aria-hidden": "true" }, b[3]));
+  if (b) el.title = b[2];
+  return el;
+}
+/** A calm error panel: plain words, Back and Try again. Never shows raw error text. */
+function errorState(what, retry, back) {
+  return h("div", { class: "errstate", role: "alert" }, ico("warning"), h("h2", {}, what), h("p", {}, "Something went wrong while loading. Nothing was changed or lost."),
+    h("div", { class: "actions" }, retry ? btn("Try again", { icon: "refresh", cls: "primary", onclick: retry }) : null, back ? btn("Back to Calls", { icon: "back", onclick: back }) : null));
+}
+function showListError(retry) { const main = $("main"); main.textContent = ""; main.append(errorState("Could not load your calls", retry || (() => { loadList().then(() => viewInbox()).catch(() => showListError()); }))); ready(); }
+
 /* ---------- live region / errors ---------- */
 let liveTimer;
+// Screen-reader messages: polite (#live) and assertive (#alert). Cleared first, then set after a tick, so the same text is announced again.
 function announce(msg) { const el = $("live"); el.textContent = ""; clearTimeout(liveTimer); liveTimer = setTimeout(() => { el.textContent = msg; }, 40); }
 function fail(msg) { const el = $("alert"); el.textContent = ""; setTimeout(() => { el.textContent = msg; }, 40); }
+
+/** Re-render and keep keyboard focus: the focused control (found by id or data-fk) and its caret go to the rebuilt element. */
+function keepFocus(fn) {
+  const a = document.activeElement, key = a && a !== document.body ? window.WingmanHome.focusKey(a) : "";
+  let s = null, e = null; try { if (a && typeof a.selectionStart === "number") { s = a.selectionStart; e = a.selectionEnd; } } catch { /* not a text field */ }
+  fn();
+  if (!key) return;
+  const n = document.getElementById(key) || document.querySelector(`[data-fk="${key}"]`);
+  if (n && n !== a && n.focus) { n.focus({ preventScroll: true }); if (s != null) { try { n.setSelectionRange(s, e); } catch { /* not a text field */ } } }
+}
 
 /* ---------- text: bidi + highlight ---------- */
 // Hebrew anywhere in the line = RTL (an English term at the start must not flip the line); no Hebrew = LTR.
@@ -77,6 +119,7 @@ function rich(text) {
   if (!HEB.test(s)) return [s];
   return window.WingmanBidi.splitBidi(s).map((seg) => (seg.ltr ? h("bdi", { dir: "ltr" }, seg.text) : seg.text));
 }
+/** Text as nodes with the search term wrapped in <mark>. Each non-matching piece still goes through rich() so English terms in Hebrew keep their direction. Case-insensitive; text only, no HTML. */
 function hlNodes(text, q) {
   const s = String(text), needle = (q || "").trim();
   if (!needle) return rich(s);
@@ -84,6 +127,7 @@ function hlNodes(text, q) {
   for (;;) { const j = lo.indexOf(nl, i); if (j < 0) { out.push(...rich(s.slice(i))); break; } if (j > i) out.push(...rich(s.slice(i, j))); out.push(h("mark", {}, s.slice(j, j + nl.length))); i = j + nl.length; }
   return out;
 }
+// Block of call text: dir/lang set per text (a Hebrew line is rtl even if it starts with English), content via hlNodes.
 const textEl = (tag, cls, text, q) => h(tag, { class: cls, dir: dirOf(text), lang: langOf(text) }, hlNodes(text, q));
 
 /* ---------- formatting ---------- */
@@ -98,10 +142,12 @@ function dayLabel(t) {
   return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
 }
 const fullDay = (t) => { const d = new Date(t); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); };
+/** Duration as "<1 min", "12 min" or "1 h 05 min". */
 function mins(ms) { const m = Math.round(ms / 60000); if (ms < 30000) return "<1 min"; if (m < 60) return `${Math.max(1, m)} min`; return `${Math.floor(m / 60)} h ${pad(m % 60)} min`; }
 const usd = (n) => (n < 0.01 ? "$" + n.toFixed(4) : "$" + n.toFixed(2));
 const sec = (ms) => (ms == null || isNaN(ms) ? "-" : (ms / 1000).toFixed(2) + " s");
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + "s"}`;
+// Nearest-rank percentile of the numbers in arr (nulls/NaN ignored); null when empty.
 const pct = (arr, p) => { const a = arr.filter((x) => x != null && !isNaN(x)).sort((x, y) => x - y); if (!a.length) return null; return a[Math.min(a.length - 1, Math.ceil(p * a.length) - 1)]; };
 const tone = (v, good, ok) => (v == null ? "" : v <= good ? "lat-good" : v <= ok ? "lat-ok" : "lat-bad");
 const toneWord = (v, good, ok) => (v == null ? "" : v <= good ? "fast" : v <= ok ? "ok" : "slow");
@@ -114,30 +160,36 @@ const meter = (frac, cls, mark) => {
   return m;
 };
 
+// All view state in one place. `gen` is bumped on every navigation so a slow async load (openCall) can tell it is stale; `sq` does the same for search.
 const state = { calls: [], view: "home", call: null, view0: "home", id: null, tab: "followup", sub: "speed", detail: null, search: "", hits: null, sq: 0, gen: 0, filter: "all", sel: null, lastId: null, hl: "", line: null };
 const pendingOf = (c) => Math.max(0, c.cardsTotal - c.rated);
 
 /* ---------- shell: nav + global pending chip ---------- */
+/** Mark the current nav button (a call view counts as Calls). */
 function setNav() {
-  const defs = [["nav-home", "home", "Home", "home"], ["nav-list", "inbox", "Calls", "inbox"], ["nav-settings", "settings", "Settings", "settings"]];
+  const defs = [["nav-home", "home", "Home", "home"], ["nav-list", "inbox", "Calls", "calls"], ["nav-settings", "settings", "Settings", "settings"]];
   const cur = state.view === "call" ? "inbox" : state.view;
   for (const [id, v, label, icon] of defs) {
     const b = $(id); b.textContent = ""; b.append(ico(icon), h("span", { class: "lab" }, label)); b.setAttribute("aria-label", label);
     if (cur === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   }
 }
+/** Header chip: total cards still to rate across saved calls (crashed calls excluded). Click opens the first one. */
 function renderPendingChip() {
   const slot = $("pending-slot"); slot.textContent = "";
   const n = state.calls.reduce((a, c) => a + (c.crashed ? 0 : pendingOf(c)), 0);
   if (!n) return;
   slot.append(linkChip([h("span", { class: "dot" }), h("span", { class: "ctr" }, n), (n === 1 ? " card to rate" : " cards to rate")], "warn", () => { const c = state.calls.find((x) => !x.crashed && pendingOf(x) > 0); if (c) openCall(c.id, { tab: "rate", filter: "unrated" }); }, `${n} ${n === 1 ? "card" : "cards"} to rate, open the first call`, "Open the first call with unrated cards"));
 }
+/** Reload the call list from disk. Callers redraw; a rejection means the list could not be read. */
 async function loadList() { state.calls = await api.listCalls(); renderPendingChip(); }
+// body[data-ready] is for snapshot tests: window.cjs waits for "1" before taking the picture.
 const ready = () => { document.body.dataset.ready = "1"; };
 const busy = () => { document.body.dataset.ready = "0"; };
 function focusTop() { const t = $("main").querySelector("h1"); if (t) { t.setAttribute("tabindex", "-1"); t.focus({ preventScroll: true }); } }
 
 /* ---------- usefulness gate ---------- */
+// The gate: live calls only, needs TARGET useful cards/hour over GATE_CALLS rated calls.
 function gateStats() {
   const live = state.calls.filter((c) => c.mode === "live" && c.rated > 0);
   const hours = live.reduce((a, c) => a + c.hours, 0), useful = live.reduce((a, c) => a + c.useful, 0), rated = live.reduce((a, c) => a + c.rated, 0);
@@ -146,33 +198,33 @@ function gateStats() {
 function gateStrip() {
   const g = gateStats(), ok = g.ph != null && g.ph >= TARGET, none = g.ph == null, final = g.n >= GATE_CALLS;
   const scale = Math.max(TARGET * 2, Math.ceil((g.ph || 0) * 1.15));
-  const S = SK();
-  const verdict = none ? "No ratings yet" : S && !final ? (ok ? "On track" : "Below target") : final ? (ok ? "Passed" : "Not passed") : ok ? "On track (final after 5 calls)" : "Below target so far";
+  const verdict = none ? "No ratings yet" : final ? (ok ? "Passed" : "Not passed") : ok ? "On track (final after 5 calls)" : "Below target so far";
   const left = Math.max(0, GATE_CALLS - g.n);
   const tick = TARGET / scale * 100;
   const lab = h("div", { class: "scale", "aria-hidden": "true" }, h("span", { class: "l" }, "0"), h("span", { class: "t" }, `${TARGET}+ needed`), h("span", { class: "r" }, String(scale)));
   lab.querySelector(".t").style.insetInlineStart = tick + "%"; lab.querySelector(".l").style.insetInlineStart = "0";
-  const el = h("section", { class: "gate go", "aria-labelledby": "gate-h" },
+  const el = h("section", { class: "gate", "aria-labelledby": "gate-h" },
     h("div", { class: "stat" }, h("h2", { id: "gate-h", class: "label", style: false }, "Usefulness gate"),
       h("div", { class: "big " + (none ? "muted" : ok ? "good" : "bad") }, none ? "–" : ltr(g.ph.toFixed(1)), h("small", {}, "useful / hour"))),
     h("div", { role: "img", "aria-label": none ? "No ratings yet" : `${g.ph.toFixed(1)} useful per hour, target ${TARGET} or more` }, meter(none ? 0 : g.ph / scale, none ? "" : ok ? "good" : "bad", TARGET / scale), lab),
     h("div", { class: "facts" },
       h("div", { class: "row1" }, !none && ok ? h("span", { class: "capy", "aria-hidden": "true" }) : null, chip(verdict, none ? "" : ok ? "good" : "bad", { dot: true })),
       h("span", {}, `${g.n} of ${GATE_CALLS} calls rated · ${g.useful} useful in `, ltr(g.hours.toFixed(1) + " h")),
-      S ? null : h("span", { class: "faint" }, left ? plural(left, "more call") + " to decide" : "Decision reached")),
-    h("button", { type: "button", class: "btn ghost sm gate-why" + (S ? " icon" : ""), "aria-haspopup": "dialog", "aria-expanded": "false", "aria-controls": "gate-pop", "aria-label": S ? "What is the usefulness gate?" : null, title: S ? "What is this?" : null }, ico("help"), S ? null : "What is this?"));
+      h("span", { class: "faint" }, left ? plural(left, "more call") + " to decide" : "Decision reached")),
+    h("button", { type: "button", class: "btn ghost sm gate-why", "aria-haspopup": "dialog", "aria-expanded": "false", "aria-controls": "gate-pop" }, ico("help"), "What is this?"));
   const why = el.querySelector(".gate-why");
   const toggle = (e) => { if (e) e.stopPropagation(); gatePopover(el, why, g, ok, none); };
   why.addEventListener("click", toggle);
-  el.addEventListener("click", (e) => { if (!e.target.closest("button")) toggle(); });
   return el;
 }
+/** Close the gate popover (if open), drop its outside-click listener and optionally give focus back to the button. */
 function closePopover(restore) {
   const p = $("gate-pop"); if (!p) return;
   const t = p._trigger; p.remove(); if (t) t.setAttribute("aria-expanded", "false");
   document.removeEventListener("pointerdown", p._outside, true);
   if (restore && t) t.focus();
 }
+/** Toggle the "How the usefulness gate works" dialog under the gate strip. Escape or a click outside closes it. */
 function gatePopover(anchor, trigger, g, ok, none) {
   if ($("gate-pop")) { closePopover(true); return; }
   const first = state.calls.find((c) => !c.crashed && pendingOf(c) > 0);
@@ -190,6 +242,7 @@ function gatePopover(anchor, trigger, g, ok, none) {
 }
 
 /* ---------- inbox ---------- */
+/** What is waiting on a saved call: crashed, cards to rate, summary ready. Each chip is a link into the right tab. */
 function waitingChips(c) {
   const out = [], p = pendingOf(c);
   const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
@@ -215,20 +268,17 @@ function callTable(rows, label) {
 }
 function nextUpCard() {
   const c = state.calls.find((x) => !x.crashed && (pendingOf(x) > 0 || x.hasSummary));
-  if (!c) return h("section", { class: "nextup clear", "aria-label": "Next up" }, h("span", { class: "capy", "aria-hidden": "true" }), h("div", {}, h("div", { class: "eyebrow" }, "Next up"), h("div", { class: "title" }, "You're all caught up"), h("div", { class: "sub" }, SK() ? "" : "No unrated cards and no summaries waiting.")));
+  if (!c) return h("section", { class: "nextup clear", "aria-label": "Next up" }, h("span", { class: "capy", "aria-hidden": "true" }), h("div", {}, h("div", { class: "eyebrow" }, "Next up"), h("div", { class: "title" }, "You're all caught up"), h("div", { class: "sub" }, "No unrated cards and no summaries waiting.")));
   const p = pendingOf(c);
   const tab = c.mode === "live" && p ? "rate" : c.hasSummary ? "followup" : "rate";
   const go = () => openCall(c.id, { tab, filter: tab === "rate" ? "unrated" : undefined });
-  return h("section", { class: "nextup go", "aria-label": "Next up", onclick: (e) => { if (!e.target.closest("button")) go(); } },
+  return h("section", { class: "nextup", "aria-label": "Next up" },
     h("div", { class: "grow" }, h("div", { class: "eyebrow" }, "Next up"),
       h("div", { class: "title" }, `${dayLabel(c.startedAt)} ${tm(c.startedAt)} · ${mins(c.durationMs)}`),
       h("div", { class: "why" }, p ? chip(`${plural(p, "card")} to rate`, "warn", { dot: true }) : null, c.hasSummary ? chip("Summary ready", "info", { dot: true }) : null)),
     h("button", { type: "button", class: "btn primary", onclick: go }, "Review", ico("chevron")));
 }
-function callsHead() {
-  const n = state.calls.reduce((a, c) => a + (c.crashed ? 0 : pendingOf(c)), 0), live = state.calls.filter((c) => c.mode === "live").length;
-  return h("div", { class: "page-head ph2" }, h("div", {}, h("div", { class: "hh-date" }, `${plural(state.calls.length, "call")} · ${live} live`), h("h1", {}, n ? `${plural(n, "card")} waiting for your rating` : "All caught up")));
-}
+/** The Calls list: next-up card, gate strip, transcript search (debounced; stale answers dropped via state.sq), live and practice tables. restoreFocus puts focus back on the last opened row. */
 function viewInbox(restoreFocus) {
   state.view = "inbox"; closePopover(false); state.gen++; setNav(); busy();
   const main = $("main"); main.textContent = "";
@@ -251,7 +301,7 @@ function viewInbox(restoreFocus) {
     }, 200);
   });
   main.append(
-    SK() ? callsHead() : h("div", { class: "page-head" }, h("h1", {}, "Calls")),
+    h("div", { class: "page-head" }, h("h1", {}, "Calls")),
     nextUpCard(), gateStrip(),
     h("div", { class: "bar" }, h("div", { class: "search" }, ico("search"), input), btn("", { icon: "refresh", cls: "icon ghost", aria: "Refresh calls", title: "Refresh", onclick: async () => { await loadList(); viewInbox(); announce("Refreshed"); } }), count), out);
   function draw() {
@@ -284,8 +334,10 @@ function viewInbox(restoreFocus) {
 }
 
 /* ---------- opening a call ---------- */
+// Old tab names (from earlier versions, links and ?tab= snapshot aids) mapped to the current five.
 const OLD_TABS = { summary: "followup", cards: "rate", side: "rate", speed: "details", cost: "details", events: "details" };
 const TABS = [["followup", "Follow-up", "follow"], ["rate", "Rate", "rate"], ["transcript", "Transcript", "transcript"], ["missed", "Missed", "missed"], ["details", "Details", "details"]];
+/** Turn a tab name plus optional extra (filter, line number or sub-tab) into { tab, filter?, line?, sub? }. tab is null when unknown. */
 function normTab(t, x) {
   if (!t) return { tab: null };
   const o = { tab: OLD_TABS[t] || t };
@@ -296,19 +348,21 @@ function normTab(t, x) {
   if (!TABS.some((x2) => x2[0] === o.tab)) o.tab = null;
   return o;
 }
+// Rate if a live call still has unrated cards, else the summary if there is one, else the transcript.
 function defaultTab(d) {
   const s = d.summary;
   if (s.mode === "live" && pendingOf(s) > 0) return "rate";
   if (d.callSummary) return "followup";
   return "transcript";
 }
+/** Load one call and show it. o: { tab, filter, sub, line, hl }. A newer navigation while loading wins (state.gen). */
 async function openCall(id, o = {}) {
   closePopover(false); state.view = "call"; state.id = id; state.lastId = id; state.sel = null; state.hl = o.hl || ""; state.line = o.line == null ? null : o.line;
   setNav(); busy();
   const gen = ++state.gen, main = $("main");
   main.textContent = ""; main.append(h("div", { class: "loading", role: "status" }, "Loading call…"));
   let d;
-  try { d = await api.getCall(id); } catch (e) { if (gen === state.gen) { main.textContent = ""; main.append(h("div", { class: "empty", role: "alert" }, "Could not load the call: " + e.message)); ready(); } return; }
+  try { d = await api.getCall(id); } catch (e) { if (gen === state.gen) { main.textContent = ""; main.append(errorState("Could not open this call", () => openCall(id, o), backToList)); ready(); focusTop(); } return; }
   if (gen !== state.gen) return;
   state.detail = d;
   const tab = o.tab && TABS.some((t) => t[0] === o.tab) ? o.tab : defaultTab(d);
@@ -318,13 +372,16 @@ async function openCall(id, o = {}) {
 }
 
 /* ---------- call view shell ---------- */
+// "side" cards (turnId "side") are extra notes, not answers to a question: kept out of the main card list and of the live view.
 const visibleCards = (d) => d.cards.filter((c) => c.turnId !== "side" && !c.health);
 const sideCards = (d) => d.cards.filter((c) => c.turnId === "side" && !c.health);
 const rateable = (c) => c.badge !== "info" && !c.health;
+// Time of the first card (prepared, stall or AI) for a question's latency row, or null if none was shown.
 const firstCard = (l) => { const ts = [l.bankAt, l.stallAt, l.cardAt].filter(Boolean); return ts.length ? Math.min(...ts) : null; };
 const t0Of = (d) => Date.parse(d.meta.startedAt) || (d.transcript[0] && d.transcript[0].t) || 0;
 function allCards(d) { return d.cards.filter((c) => !c.health).map((c, i) => [c, i]).sort((a, b) => (a[0].t || 0) - (b[0].t || 0) || a[1] - b[1]).map((x) => x[0]); }
 
+/** Draw the call page (header, stats line, tab bar) and open `tab`. Crashed and empty calls get a calm message instead of tabs. */
 function renderCall(tab) {
   const d = state.detail, s = d.summary, main = $("main");
   main.textContent = "";
@@ -358,13 +415,14 @@ function renderCall(tab) {
   $("tab-" + tab).focus({ preventScroll: true });
   ready();
 }
-function backToList() { loadList().then(() => viewInbox(true)); }
+function backToList() { loadList().then(() => viewInbox(true)).catch(() => showListError()); }
 async function deleteCurrent() {
   const id = state.id; let ok = false;
   try { ok = await api.deleteCall(id); } catch (e) { fail("Could not delete: " + e.message); return; }
   if (ok) { state.lastId = null; await loadList(); viewInbox(); announce("Call deleted"); }
 }
 
+/** Refresh the stats line and the tab badges after anything changes (a rating, for example). */
 function renderStats() {
   const el = $("stats"); if (!el) return;
   const d = state.detail, s = d.summary, p = pendingOf(s); el.textContent = "";
@@ -380,6 +438,7 @@ function renderStats() {
   set("missed", missedItems(d).length || null);
 }
 
+/** Show tab k in #pane. o: { filter, sub, line, keep }. focusPane true moves focus to the tab button when focus was inside the old pane. */
 function setTab(k, o = {}, focusPane) {
   const d = state.detail; if (!d) return;
   state.tab = k;
@@ -392,6 +451,7 @@ function setTab(k, o = {}, focusPane) {
 }
 
 /* ---------- copy ---------- */
+/** Copy button. Uses the main process clipboard (the sandboxed page may not have it), falls back to navigator.clipboard. Shows Copied / Copy failed for ~2 s. */
 function copyBtn(label, getText, o = {}) {
   const lab = h("span", {}, label);
   const b = h("button", { type: "button", class: "btn" + (o.cls ? " " + o.cls : ""), "aria-label": o.aria || label }, ico("copy"), lab);
@@ -407,14 +467,16 @@ function copyBtn(label, getText, o = {}) {
 }
 
 /* ---------- Follow-up ---------- */
-const SKIP_WHY = { discard: "The call was deleted", crashed: "The call crashed", "no-ai": "The call ran without AI", disabled: "Summary is off in settings (summary.enabled)", empty: "No transcript", "cost-cap": "The call's cost cap was reached" };
+const SKIP_WHY = { discard: "The call was deleted", crashed: "The call crashed", "no-ai": "The call ran without AI", disabled: "Summary is off in settings (summary.enabled)", empty: "No transcript", "cost-cap": "The call's cost cap was reached", user: "You skipped the summary when the call stopped" };
 function summaryWhy(d) {
   const ev = d.events.filter((e) => e.type === "summary.skipped" || e.type === "summary.error").at(-1);
   if (!ev) return "";
   if (ev.type === "summary.error") return "Summary failed: " + String(ev.error || "").slice(0, 160);
   const r = String(ev.reason || ""); return r.startsWith("short") ? "The call was too short to summarize (summary.minWords)" : (SKIP_WHY[r] || "");
 }
+// Placeholder the summary writes where it lacks a fact (Hebrew "to fill in"); shown highlighted in the email. One capture group so split() keeps the matches.
 const PH = /(\[להשלים[^\]\n]*\])/;
+/** Email draft as one div per line, each with its own direction (mixed Hebrew/English drafts) and placeholders highlighted. */
 function emailLines(text) {
   return text.split("\n").map((ln) => {
     if (!ln.trim()) return h("div", { class: "eline gap" });
@@ -422,16 +484,30 @@ function emailLines(text) {
     return h("div", { class: "eline", dir: dirOf(ln), lang: langOf(ln) }, kids);
   });
 }
+// Next-step checkboxes are a per-viewer convenience: kept in localStorage per call id, never sent anywhere. Reads/writes can fail (private mode), so they are wrapped.
 const stepsKey = (id) => "wm.steps." + id;
 function loadSteps(id) { try { const a = JSON.parse(localStorage.getItem(stepsKey(id)) || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } }
 function saveSteps(id, a) { try { localStorage.setItem(stepsKey(id), JSON.stringify(a)); } catch {} }
 
+/** "Write summary" for a call without one: one small AI call on the saved transcript (the same as `wingman calls summary <id> --generate`). */
+function writeSummaryBtn() {
+  const id = state.id, b = btn("Write summary", { id: "write-summary", cls: "primary", onclick: async () => {
+    b.disabled = true; b.querySelector("span").textContent = "Writing the summary…";
+    let r; try { r = await api.writeSummary(id); } catch (e) { r = { ok: false, error: String(e.message || e) }; }
+    if (state.id !== id) return;
+    if (r && r.ok) { openCall(id, { tab: "followup" }); return; }
+    b.disabled = false; b.querySelector("span").textContent = "Write summary";
+    fail(r && r.error === "preview" ? "This is a preview, nothing was written." : (r && r.error) || "The summary could not be written.");
+  } });
+  return b;
+}
+// Tab renderers below (tFollowup, tRate, tTranscript, tMissed, tDetails) all take (pane, detail, opts) and fill the pane.
 function tFollowup(pane, d) {
   const s = d.callSummary, box = h("div", { class: "pane" }); pane.append(box);
   const sections = [];
   if (!s) {
     const why = summaryWhy(d);
-    box.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No summary for this call"), why ? h("span", {}, why) : null, h("span", {}, "You can make one from Terminal:"), h("span", {}, h("code", {}, "pnpm summary " + state.id), " ", copyBtn("Copy", () => "pnpm summary " + state.id, { cls: "ghost sm", what: "Command", aria: "Copy command" }))));
+    box.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No summary for this call"), why ? h("span", {}, why) : null, writeSummaryBtn(), h("span", { class: "faint" }, "Or from Terminal: ", h("code", {}, "wingman calls summary " + state.id + " --generate"), " ", copyBtn("Copy", () => "wingman calls summary " + state.id + " --generate", { cls: "ghost sm", what: "Command", aria: "Copy command" }))));
   } else {
     const list = (items) => h("ul", { class: "bul" }, items.map((t) => h("li", { dir: dirOf(t), lang: langOf(t) }, rich(t))));
     const none = (t) => h("div", { class: "muted" }, t);
@@ -441,6 +517,7 @@ function tFollowup(pane, d) {
     const stepsUl = h("ul", { class: "steps" });
     const progress = h("span", { class: "n" });
     const upd = () => { const c = s.nextSteps.filter((_, i) => done[i]).length; progress.textContent = `${c} of ${s.nextSteps.length} done`; };
+    // n.who holds the stored Hebrew labels for the user and the client; the chips show English names. Other names are shown as stored.
     s.nextSteps.forEach((n, i) => {
       const cb = h("input", { type: "checkbox", id: "step-" + i }); cb.checked = !!done[i];
       const row = h("label", { class: "step" + (done[i] ? " done" : ""), for: "step-" + i }, cb,
@@ -487,6 +564,7 @@ function frameSection(d) {
     cf.missed.length ? h("div", { class: "muted fr-note" }, "Missed must-cover items are added to Open questions.") : null);
   return h("section", {}, head, body);
 }
+/** Values captured on the call (kind + value, copyable) and context notes / client confirmations from events. Null when there are none. */
 function capturesSection(d) {
   const ev = d.events.filter((e) => e.type === "context.note" || e.type === "client.confirmed");
   if (!d.captures.length && !ev.length) return null;
@@ -499,7 +577,9 @@ function capturesSection(d) {
 }
 
 /* ---------- Rate ---------- */
-const SRC = { me: "For you", bank: "Bank", ai: "AI", stall: "Stall", tip: "Tip", warn: "Warning", info: "Info", note: "Note", fact: "Fact", reminder: "Reminder" };
+// Card source labels for the Rate and Transcript tabs (BADGE above has the full legend for the main ones).
+const SRC = { me: "For you", bank: "Prepared", ai: "AI", stall: "Buy time", tip: "Tip", warn: "Warning", info: "Info", note: "Note", fact: "Fact", reminder: "Reminder" };
+/** Cards for the current Rate filter (all / unrated / rated / useful / side), in time order. */
 function filterCards(d) {
   const f = state.filter, all = allCards(d);
   return all.filter((c) => f === "all" || (f === "side" ? c.turnId === "side" : f === "rated" ? rateable(c) && !!d.tags[c.id] : f === "useful" ? rateable(c) && d.tags[c.id] === "y" : rateable(c) && !d.tags[c.id]));
@@ -512,7 +592,7 @@ function ratebar(d) {
   for (const [k, t] of [["all", "All"], ["unrated", "Unrated"], ["rated", "Rated"], ["useful", "Useful"], ["side", "Side"]]) {
     seg.append(h("button", { type: "button", "data-f": k, "aria-pressed": state.filter === k ? "true" : "false", onclick: (e) => { state.filter = k; state.sel = null; drawCards(); announce(`${t}: ${cnt[k]} cards`); e.currentTarget.focus(); } }, t, h("span", { class: "c" }, cnt[k])));
   }
-  return h("div", { class: "ratebar" }, seg, SK() ? tip("Keys: Y useful, N not useful, U clear, J and K move between cards.") : null, h("span", { class: "grow" }), h("span", { class: "hints", "aria-hidden": "true" }, h("span", {}, h("kbd", {}, "Y"), " useful"), h("span", {}, h("kbd", {}, "N"), " not useful"), h("span", {}, h("kbd", {}, "U"), " clear"), h("span", {}, h("kbd", {}, "J"), h("kbd", {}, "K"), " move")));
+  return h("div", { class: "ratebar" }, seg, btn("Card types", { cls: "ghost sm", icon: "help", title: "What the card names and colours mean", onclick: () => openShortcuts("types") }), h("span", { class: "grow" }), h("span", { class: "hints", "aria-hidden": "true" }, h("span", {}, h("kbd", {}, "Y"), " useful"), h("span", {}, h("kbd", {}, "N"), " not useful"), h("span", {}, h("kbd", {}, "U"), " clear"), h("span", {}, h("kbd", {}, "J"), h("kbd", {}, "K"), " move")));
 }
 function refreshSeg() {
   const d = state.detail, seg = $("seg"); if (!seg) return;
@@ -526,11 +606,13 @@ function tRate(pane, d) {
   box.append(ratebar(d), h("div", { class: "cardlist", id: "cardlist", role: "list", "aria-label": "Cards" }));
   pane.append(box); drawCards();
 }
+/** Open the transcript at the last line spoken at or before this card. */
 function jumpToCardTime(c) {
   const d = state.detail, rows = d.transcript; let line = 0;
   for (let i = 0; i < rows.length; i++) if (rows[i].t <= (c.t || 0)) line = i;
   setTab("transcript", { line }, true);
 }
+/** One card in the Rate list: text via textEl/rich only, plus Useful / Not useful buttons (roving tabindex; setCur decides which card is tabbable). */
 function cardEl(c, d, idx, total) {
   const t0 = t0Of(d), rt = h("div", { class: "rate" }), say = c.say || "";
   const first = String(say || c.question || "").slice(0, 60);
@@ -539,17 +621,18 @@ function cardEl(c, d, idx, total) {
     rt.append(mk("y", "Useful", "Y"), mk("n", "Not useful", "N"));
   }
   const el = h("article", { class: "card " + c.badge + (c.hidden ? " hidden" : ""), role: "group", "aria-label": `Card ${idx + 1} of ${total}: ${first}`, tabindex: "-1", "data-id": c.id, onclick: (e) => { if (!e.target.closest("button")) setCur(c.id, false); } },
-    h("div", { class: "ch" }, chip(SRC[c.badge] || c.badge, "", { dot: true }),
+    h("div", { class: "ch" }, BADGE[c.badge] ? badgeChip(c.badge, SRC[c.badge]) : chip(SRC[c.badge] || c.badge, "", { dot: true }),
       c.hidden ? chip("Hidden" + (c.hiddenReason ? ": " + c.hiddenReason : ""), "") : null, c.dim ? chip("Dimmed") : null,
       c.t && t0 ? h("button", { type: "button", class: "jump", title: "Show in transcript", "aria-label": `Show in transcript at ${mmss(c.t - t0)}`, onclick: () => jumpToCardTime(c) }, mmss(c.t - t0), ico("jump")) : null,
       h("span", { class: "verdict" })),
     c.question ? textEl("div", "q", c.question) : null, textEl("div", "say", say),
     c.facts && c.facts.length ? h("ul", { dir: "rtl", lang: "he" }, c.facts.map((f) => h("li", { dir: dirOf(f), lang: langOf(f) }, rich(f)))) : null,
     rateable(c) ? rt : null);
-  const src = el.querySelector(".chip .dot"); if (src) src.style.color = "var(--src)";
+  const src = el.querySelector(".chip .dot"); if (src && !BADGE[c.badge]) src.style.color = "var(--src)";
   paintCard(el, c);
   return el;
 }
+/** Show the saved verdict on a card (pressed state + label with icon, never colour alone). */
 function paintCard(el, c) {
   const v = state.detail.tags[c.id] || null;
   for (const b of el.querySelectorAll(".rate button")) b.setAttribute("aria-pressed", b.dataset.v === v ? "true" : "false");
@@ -557,6 +640,7 @@ function paintCard(el, c) {
   if (v) { ve.className = "verdict " + (v === "y" ? "good" : "bad"); ve.append(ico(v === "y" ? "check" : "x"), v === "y" ? "Useful" : "Not useful"); } else ve.className = "verdict";
 }
 const cardEls = () => [...document.querySelectorAll("#cardlist .card")];
+/** Redraw the card list for the current filter and keep the current card if it is still shown. */
 function drawCards() {
   const list = $("cardlist"); if (!list) return;
   const d = state.detail, cs = filterCards(d), total = cs.length; list.textContent = "";
@@ -567,6 +651,7 @@ function drawCards() {
   const firstUn = cs.find((c) => rateable(c) && !d.tags[c.id]) || cs[0];
   setCur(state.sel && cs.some((c) => c.id === state.sel) ? state.sel : firstUn.id, false);
 }
+/** Make one card the current one (the only tab stop in the list); focus moves to it when `focus` is true. */
 function setCur(id, focus) {
   state.sel = id;
   for (const el of cardEls()) {
@@ -575,6 +660,7 @@ function setCur(id, focus) {
     if (on && focus) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: "nearest" }); }
   }
 }
+/** Save a rating (same value again clears it) through the main process, then update the stats, chips and the card. advance moves on to the next unrated card. */
 async function doRate(c, v, advance) {
   const d = state.detail, prev = d.tags[c.id], next = prev === v ? null : v;
   let s; try { s = await api.setTag(state.id, c.id, next); } catch (e) { fail("Could not save the rating: " + e.message); return false; }
@@ -593,6 +679,7 @@ async function doRate(c, v, advance) {
 }
 
 /* ---------- Transcript ---------- */
+// Transcript tab: one row per line; cards appear after the line that precedes them; "Question" chips mark lines the detector treated as questions. Text only via hlNodes.
 function tTranscript(pane, d, o) {
   const t0 = t0Of(d);
   if (!d.transcript.length) return pane.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No transcript"), h("span", {}, "Nothing was transcribed for this call.")));
@@ -618,7 +705,7 @@ function tTranscript(pane, d, o) {
       ex.length ? h("div", { class: "ex" }, ex) : null));
     for (const c of cardsAt.get(i) || []) {
       box.append(h("div", { class: "mk", role: "listitem" }, h("button", { type: "button", class: "jump", "aria-label": `Card at ${mmss((c.t || t0) - t0)}: ${String(c.say || "").slice(0, 60)}. Open on Rate`, onclick: () => { state.sel = c.id; setTab("rate", { filter: "all", keep: true }, true); const el = document.querySelector(`#cardlist .card[data-id="${CSS.escape(c.id)}"]`); if (el) setCur(c.id, true); } },
-        chip(SRC[c.badge] || c.badge, c.badge === "bank" ? "good" : c.badge === "ai" ? "info" : c.badge === "stall" ? "warn" : "", { dot: true }), h("span", { class: "t", dir: dirOf(c.say), lang: langOf(c.say) }, c.say || c.question || ""))));
+        badgeChip(c.badge, SRC[c.badge]), h("span", { class: "t", dir: dirOf(c.say), lang: langOf(c.say) }, c.say || c.question || ""))));
     }
   });
   pane.append(box);
@@ -628,6 +715,7 @@ function tTranscript(pane, d, o) {
 }
 
 /* ---------- Missed ---------- */
+/** Questions that got no card, or a card more than 3 s after speech ended, plus detected questions with no latency row. Sorted by time. */
 function missedItems(d) {
   const t0 = t0Of(d), seen = new Set(), out = [];
   for (const l of d.latency) {
@@ -653,6 +741,7 @@ function tMissed(pane, d) {
 }
 
 /* ---------- Details: speed, cost, events ---------- */
+// Medians/p95 of speech end -> first card, and speech end -> final transcript, for the Details KPIs.
 function callMetrics(d) {
   const fin = d.latency.map((l) => (l.finalAt && l.speechEnd ? l.finalAt - l.speechEnd : null));
   const card = d.latency.map((l) => (firstCard(l) && l.speechEnd ? firstCard(l) - l.speechEnd : null));
@@ -666,7 +755,7 @@ function tDetails(pane, d, o) {
   box.append(h("div", { class: "kpis" },
     kpi("Useful per hour", [s.rated ? ltr(s.perHour.toFixed(1)) : "–"], live ? (s.rated ? `${s.useful} useful in ${s.hours.toFixed(2)} h` : "No ratings yet") : "Practice, not counted", live && s.rated ? (st === "pass" ? "good" : "bad") : "muted"),
     kpi("Rated", ltr(`${s.rated}/${s.cardsTotal}`), p ? `${p} still to rate` : s.cardsTotal ? "All rated" : "No cards"),
-    kpi("Bank answered", ltr(Math.round(s.bankShare * 100) + "%"), `${plural(s.questions, "question")}` + (m.noCard ? ` · ${m.noCard} without a card` : "")),
+    kpi("Prepared answered", ltr(Math.round(s.bankShare * 100) + "%"), `${plural(s.questions, "question")}` + (m.noCard ? ` · ${m.noCard} without a card` : "")),
     kpi("To first card (p50)", [ltr(sec(m.cardP50))], ["p95 ", ltr(sec(m.cardP95)), m.cardP50 != null ? " · " + toneWord(m.cardP50, 1000, 3000) : ""], tone(m.cardP50, 1000, 3000)),
     kpi("Cost", ltr(usd(s.costUsd)), `length ${mins(s.durationMs)}`)));
   const content = h("div", { id: "sub-out" });
@@ -719,14 +808,16 @@ function subEvents(out, d) {
 }
 
 /* ---------- keyboard ---------- */
+// Global keys: only inside the view (never from the header nav, WCAG 2.1.4) and never while typing. Uses e.code so they work on a Hebrew layout.
 const typingIn = (t) => t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
 document.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target;
-  if (e.key === "Escape") { if (typingIn(t)) { t.blur(); return; } if (state.view === "call") backToList(); return; }
+  if (e.key === "Escape") { if (typingIn(t) || (t.classList && t.classList.contains("tip"))) { t.blur(); return; } if (state.view === "call") backToList(); return; }
   if (typingIn(t)) return;
   const inMain = t === document.body || $("main").contains(t); // never from the header nav (WCAG 2.1.4: shortcuts only inside the view)
   if (!inMain) return;
+  if (e.key === "?" && typeof openShortcuts === "function") { e.preventDefault(); openShortcuts(); return; }
   // e.code, not e.key: works on the Hebrew keyboard layout too.
   if (state.view === "inbox" && e.code === "Slash") { const q = $("q"); if (q) { e.preventDefault(); q.focus(); } return; }
   if (state.view !== "call" || !state.detail || !$("tabs")) return;

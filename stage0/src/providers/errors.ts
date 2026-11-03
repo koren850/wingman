@@ -1,4 +1,5 @@
 // One error model for every provider (STT and LLM). Decides: retry here, switch provider, or stop.
+// Used by providers/llm.ts (withFallbacks), providers/stt/* (adapters, SttChannel) and src/reflex.ts. Classifiers never throw.
 export type ErrorKind = "auth" | "quota" | "spend_cap" | "rate" | "overload" | "network" | "timeout" | "bad_request" | "refusal" | "unsupported" | "unknown";
 
 /** retryable: the same request may work later. switchProvider: moving to a fallback is a sensible response. */
@@ -16,6 +17,7 @@ export const POLICY: Record<ErrorKind, { retryable: boolean; switchProvider: boo
   unknown: { retryable: false, switchProvider: false },
 };
 
+/** Normalized provider failure. `retryable` / `switchProvider` come from POLICY[kind]; `extra` keeps HTTP status, Retry-After and the original cause. */
 export class ProviderError extends Error {
   readonly retryable: boolean; readonly switchProvider: boolean;
   constructor(public kind: ErrorKind, public provider: string, message: string, public extra: { status?: number; retryAfterMs?: number; cause?: unknown } = {}) {
@@ -25,6 +27,7 @@ export class ProviderError extends Error {
   }
   get status() { return this.extra.status; }
 }
+/** Type guard for ProviderError. */
 export const isProviderError = (e: unknown): e is ProviderError => e instanceof ProviderError;
 
 /** HTTP status + body (+ headers) to a kind. Anthropic: 429 with enforced_spend_limit_reached is a monthly cap, 529 is global overload. */
@@ -43,7 +46,9 @@ export function classifyHttp(provider: string, status: number, body = "", header
   return mk("unknown");
 }
 
+// Node/undici network error codes and messages. Matched against both err.code and err.message.
 const NET_CODES = /ECONNRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|EPIPE|UND_ERR|fetch failed|socket hang up|network/i;
+// Anthropic error body "type" -> the HTTP status it stands for (used when a stream error has a body but no status).
 const ANTHROPIC_TYPES: Record<string, number> = {
   authentication_error: 401, permission_error: 403, not_found_error: 404, request_too_large: 413, rate_limit_error: 429, overloaded_error: 529, api_error: 500, invalid_request_error: 400,
 };
@@ -98,7 +103,7 @@ export function classifyWsClose(provider: string, code: number | undefined, reas
   return new ProviderError("network", provider, `${provider}: connection closed (${code ?? "?"} ${reason})`.trim());
 }
 
-/** Short Dan-facing text per kind (Hebrew strip text, terminal English). */
+/** Short user-facing text per kind, e.g. "deepgram: key rejected" (terminal and status strip). */
 export function describe(e: ProviderError): string {
   const t: Record<ErrorKind, string> = {
     auth: "key rejected", quota: "credit finished", spend_cap: "spend limit reached", rate: "rate limited", overload: "overloaded",

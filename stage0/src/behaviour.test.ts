@@ -1,4 +1,4 @@
-// Answer behaviour: Wingman never speaks for Dan on calls that are not with his customer; BANK is id-only; late SKIP / wrong language discard;
+// Answer behaviour: Wingman never speaks for the user on calls that are not with their customer; BANK is id-only; late SKIP / wrong language discard;
 // me-answer prompt (clock, solo, short); tips (masculine, personal = none); summary (no "לקוח" on other calls, untrusted names). Offline: scripted doubles only.
 import { test } from "node:test";
 import assert from "node:assert/strict";

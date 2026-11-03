@@ -1,205 +1,290 @@
 <!doctype html>
-<html lang="he" dir="rtl">
+<!-- Answer window page (RTL Hebrew). Loaded by overlay/main.cjs, which tails the call files and sends rows over IPC (preload.cjs -> window.wingman).
+     Shows the newest card as the hero, older ones as small rows, plus tips, call checklist, captured phone/email/domain chips, a rewind sheet and the key legend.
+     No network: CSP allows only local files. Text is always set with textContent / text nodes (never innerHTML), because card text comes from the call. -->
+<html lang="he" dir="rtl" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src file:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' file:; script-src file: 'unsafe-inline'; img-src file:">
 <title>Wingman</title>
+<link rel="stylesheet" href="../shared/tokens.css">
 <style>
-  /* Colour meaning: red/amber = a PROBLEM only. Mint = bank answer, blue = AI (unverified), slate = stall, capy tan = start/reminders, violet = facts. */
+  /* Colour meaning: red = a FAULT only (blind now). Mint = prepared answer, blue dashed = AI (unverified), slate = buy time, rose = for you, tan = start/reminders, violet = facts. Every type also has a glyph + label. */
   :root {
-    --bg:#0f1620; --card:#18222f; --card2:#141c27; --raised:#1e2a3a; --line:#26344a;
-    --text:#eef2f6; --soft:#c5cedb; --muted:#8e9bb0;
-    --bank:#6fcf9f; --me:#b79cff; --me-bg:#1f1b33; --ai:#86a8ff; --stall:#8795a8; --tan:#d2a572; --fact:#a493e0;
-    --red:#e5534b; --red-bg:#3b1816; --amber:#d9a03a; --amber-bg:#352610;
+    /* hues, radii and the fault/advisory colours come from ../shared/tokens.css; only this denser variant's neutrals, card tints and the two brighter alert tones are set here */
+    --bg:#0f1620; --card:#18222f; --card2:#141c27; --raised:#1e2a3a; --line:#34455f;
+    --text:#f1f4f8; --soft:#d0d8e4; --muted:#a9b5c7;
+    --t-prep-bg:#16291f; --t-me-bg:#2b182a; --t-ai-bg:#171f2e; --t-stall-bg:#1a2029; --red-bg:#3b1816;
+    --fault:#ff6a60; --advisory:#d9a03a;
     --say-pt:30px;
   }
   * { box-sizing:border-box; }
+  /* drag on the whole page lets the user move the frameless window; interactive bits (.cap, #frame) opt out with no-drag. */
   html,body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system, "SF Hebrew", "Arial Hebrew", "Helvetica Neue", sans-serif; -webkit-app-region:drag; -webkit-font-smoothing:antialiased; }
+  /* Each Latin/number run is wrapped in <bdi dir=ltr> (see mixed()), so it cannot reorder the Hebrew around it. */
   bdi { unicode-bidi:isolate; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   #wrap { padding:12px 16px 10px; display:flex; flex-direction:column; gap:10px; height:100vh; overflow:hidden; }
 
-  /* Top strip: brand mark + live dot + problems/pause. Quiet when all is well. */
-  #top { display:flex; align-items:center; gap:10px; min-height:24px; flex:0 0 auto; }
+  /* Top strip: brand mark + status dot + status word (listening / paused / quiet / ended). */
+  #top { display:flex; align-items:center; gap:10px; min-height:26px; flex:0 0 auto; }
   #top img { width:20px; height:25px; opacity:.9; }
-  #top .name { font-size:13px; color:var(--muted); letter-spacing:.04em; direction:ltr; }
-  #dot { width:8px; height:8px; border-radius:50%; background:var(--bank); opacity:.75; animation:breathe 3.2s ease-in-out infinite; }
-  #ask { display:none; align-items:center; gap:8px; background:var(--me-bg); color:var(--me); border:1px solid var(--me); border-radius:999px; padding:2px 14px; font-size:15px; font-weight:650; direction:ltr; animation:rise .2s ease-out; }
-  #ask::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--me); animation:breathe 1s ease-in-out infinite; }
-  #paused { display:none; margin-inline-start:auto; background:var(--raised); color:var(--soft); border-radius:999px; padding:3px 12px; font-size:15px; }
-  body.paused #dot { background:var(--stall); animation:none; }
-  @keyframes breathe { 50% { opacity:.25; } }
+  #top .name { font-size:14px; color:var(--muted); letter-spacing:.04em; direction:ltr; }
+  #dot { width:9px; height:9px; border-radius:50%; background:var(--t-prep); }
+  #state { font-size:15px; font-weight:650; color:var(--soft); border-radius:var(--r-pill); padding:2px 12px; background:var(--raised); }
+  body.paused #dot { background:var(--t-stall); } body.paused #state { background:#3a4558; color:var(--text); font-size:16px; }
+  body.starting #dot, body.waiting #dot, body.quiet #dot { background:var(--t-tip); }
+  body.ended #dot { background:var(--t-stall); }
+  #ask { display:none; align-items:center; gap:8px; background:var(--t-me-bg); color:var(--t-me); border:1px solid var(--t-me); border-radius:var(--r-pill); padding:2px 14px; font-size:15px; font-weight:650; margin-inline-start:auto; }
+  #ask::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--t-me); }
 
-  #health { display:flex; flex-direction:column; gap:6px; flex:0 0 auto; }
-  .hb { display:flex; align-items:center; gap:10px; border-radius:10px; padding:7px 12px; font-size:18px; font-weight:650; line-height:1.25; background:var(--red-bg); border:1px solid var(--red); border-inline-start-width:6px; animation:rise .25s ease-out; }
-  .hb::before { content:""; flex:0 0 auto; width:10px; height:10px; border-radius:50%; background:var(--red); }
-  .hb.amber { background:var(--amber-bg); border-color:var(--amber); } .hb.amber::before { background:var(--amber); }
-  .hb.info { background:var(--card); border-color:var(--line); font-weight:500; font-size:16px; color:var(--soft); } .hb.info::before { background:var(--stall); }
-  .hb .tag { font-size:12px; font-weight:700; letter-spacing:.06em; direction:ltr; opacity:.85; border:1px solid currentColor; border-radius:5px; padding:0 5px; margin-inline-start:auto; white-space:nowrap; }
+  /* Warnings. One slim red FAULT line (blind now), one small muted ADVISORY line. */
+  #health { display:flex; flex-direction:column; gap:5px; flex:0 0 auto; }
+  #health:empty { display:none; }
+  .fault { display:flex; align-items:center; gap:10px; border-radius:8px; padding:5px 12px; font-size:17px; font-weight:700; line-height:1.3; background:var(--red-bg); color:#ffd9d5; border:1px solid var(--fault); border-inline-start-width:6px; }
+  .fault::before { content:"⚠"; flex:0 0 auto; color:var(--fault); font-size:18px; }
+  .adv { display:flex; align-items:baseline; gap:8px; padding:0 4px; font-size:14.5px; line-height:1.35; color:var(--muted); }
+  .adv::before { content:"•"; color:var(--t-stall); }
 
-  /* "Client just said": one thin muted line above the answers, so the card below is read against its question. */
+  /* "Client just said": one muted line above the answers. */
   #last { display:none; flex:0 0 auto; margin:-4px 0 -2px; font-size:15px; line-height:20px; color:var(--muted); gap:8px; align-items:baseline; min-width:0; }
-  #last .who { flex:0 0 auto; font-size:12px; letter-spacing:.02em; opacity:.8; }
+  #last .who { flex:0 0 auto; font-size:14px; }
   #last .txt { flex:1 1 auto; min-width:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
 
-  /* Stage: answers. Newest = hero (big say line); older = compact rows; bottom edge fades instead of a hard cut. */
-  #stage { position:relative; flex:1 1 auto; min-height:140px; overflow:hidden; }
-  #cards { display:flex; flex-direction:column; gap:10px; max-height:100%; overflow:hidden; }
+  /* Stage: the newest answer (hero) owns at least half the window. Older answers are small rows (max 2). */
+  #stage { position:relative; flex:1 1 auto; min-height:50vh; overflow:hidden; }
+  /* Answers on top, then tips / captured details / facts right under them (no dead gap); free space stays at the bottom. */
+  #main { display:flex; flex-direction:column; gap:10px; max-height:100%; }
+  #cards { display:flex; flex-direction:column; gap:10px; flex:0 1 auto; min-height:0; overflow:hidden; }
   #cards.fade { -webkit-mask-image:linear-gradient(#000 calc(100% - 36px), transparent); mask-image:linear-gradient(#000 calc(100% - 36px), transparent); }
-  .card { background:var(--card); border-radius:14px; border-inline-start:6px solid var(--ai); padding:12px 16px 12px; transition:opacity .25s, background .25s; animation:rise .22s ease-out; }
-  .card.me { border-color:var(--me); background:var(--me-bg); } .me .pill { color:var(--me); background:#2a2447; }
-  .card.bank { border-color:var(--bank); } .card.ai { border-color:var(--ai); } .card.stall { border-color:var(--stall); } .card.info { border-color:var(--tan); }
-  .card .top { display:flex; align-items:baseline; gap:10px; min-width:0; }
-  .pill { flex:0 0 auto; font-size:13px; font-weight:650; border-radius:999px; padding:1px 10px; background:var(--raised); color:var(--soft); }
-  .bank .pill { color:var(--bank); } .ai .pill { color:var(--ai); } .info .pill { color:var(--tan); }
-  .q { color:var(--muted); font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
-  .say { margin-top:6px; font-size:calc(var(--say-pt) * var(--say-k, 1)); line-height:1.28; font-weight:650; color:var(--text); }
-  .say.split { font-weight:500; color:var(--soft); }
+  body.paused #cards, body.paused #tips { display:none; }
+  .card { flex:0 0 auto; background:var(--card); border-radius:var(--r-lg); border-inline-start:6px solid var(--t-ai); padding:12px 16px 12px; animation:rise .18s ease-out; --k:1; }
+  .card.bank { border-color:var(--t-prep); background:var(--t-prep-bg); --k:1; }
+  .card.ai { border-color:var(--t-ai); background:var(--t-ai-bg); border-style:dashed; border-inline-start-width:5px; --k:.93; }
+  .card.stall { border-color:var(--t-stall); background:var(--t-stall-bg); --k:.87; }
+  .card.me { border-color:var(--t-me); background:var(--t-me-bg); --k:.93; }
+  .card.info { border-color:var(--t-tip); }
+  .card.calc { --k:1.3; }
+  .card .top { display:flex; align-items:center; gap:10px; min-width:0; }
+  .pill { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; font-size:15px; font-weight:700; border-radius:var(--r-pill); padding:2px 12px; background:var(--raised); color:var(--soft); }
+  .pill .gl { font-size:15px; line-height:1; }
+  .bank .pill { background:var(--t-prep); color:#07241a; }
+  .ai .pill { background:transparent; color:var(--t-ai); border:1.5px dashed var(--t-ai); }
+  .stall .pill { background:#2e3846; color:var(--soft); }
+  .me .pill { background:var(--t-me); color:#2b0f26; }
+  .info .pill { background:transparent; color:var(--t-tip); border:1px solid var(--t-tip); }
+  .age { margin-inline-start:auto; font-size:14px; color:var(--muted); white-space:nowrap; }
+  .q { margin-top:6px; color:var(--muted); font-size:16px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
+  .q .ql { font-weight:700; color:var(--soft); margin-inline-end:6px; }
+  /* Size is fixed per card type (never changes while text streams). */
+  .say { margin-top:6px; font-size:max(26px, calc(var(--say-pt) * var(--k))); line-height:1.28; font-weight:650; color:var(--text); }
+  .say .rest { font-weight:500; color:var(--soft); }
   .say b { font-weight:700; color:var(--text); }
+  .card.ai .say { font-weight:560; color:var(--soft); }
+  .card.ai .say b { color:var(--text); font-weight:650; }
   .card.stall .say { font-weight:550; color:var(--soft); }
+  .card.calc .say { font-weight:750; }
   ul { margin:8px 0 0; padding-inline-start:20px; font-size:19px; line-height:1.35; color:var(--soft); }
   li::marker { color:var(--muted); }
-  .note-line { margin-top:6px; font-size:13px; color:var(--muted); }
-  /* Hero (newest) vs compact (older). */
-  .card.compact { padding:8px 14px; background:var(--card2); opacity:.62; }
-  .card.compact .say { font-size:18px; margin-top:2px; font-weight:500; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .card.compact .say b { font-weight:600; color:var(--soft); }
-  .card.compact ul, .card.compact .note-line { display:none; }
-  .card.compact .q { display:none; }
-  .card.compact { display:flex; align-items:center; gap:12px; }
-  .card.compact .say { order:1; flex:1 1 auto; min-width:0; }
+  .note-line { margin-top:6px; font-size:14px; color:var(--muted); }
+  .card.fresh { outline:2px solid var(--t-tip); outline-offset:2px; }
+  /* Older answers: small rows, faded by size and age (text stays readable). */
+  .card.compact { padding:7px 14px; display:flex; align-items:center; gap:12px; animation:none; }
+  .card.compact .say { order:1; flex:1 1 auto; min-width:0; margin-top:0; font-size:17px; font-weight:500; color:var(--soft); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card.compact .say .rest { color:var(--soft); }
+  .card.compact .say b { font-weight:600; }
   .card.compact .top { order:2; flex:0 0 auto; }
-  .card.compact .pill { background:transparent; border:1px solid var(--line); }
-  .card.dim { opacity:.7; border-style:dashed; border-inline-start-width:4px; background:var(--card2); }
-  .card.dim.compact { opacity:.45; }
-  .card.live::after { content:""; display:block; width:7px; height:7px; border-radius:50%; background:var(--ai); margin-top:6px; animation:breathe 1s ease-in-out infinite; }
-  /* Consent: the one thing that must be said first. Calm, large, brand tan. */
-  .card.consent { background:#241e19; border-color:var(--tan); padding:16px 20px; }
+  .card.compact .age { margin-inline-start:0; }
+  .card.compact ul, .card.compact .note-line, .card.compact .q { display:none; }
+  .card.compact.age-1 .say { color:var(--muted); } .card.compact.age-2 .say { color:var(--muted); font-size:16px; }
+  .card.compact.age-2 { border-inline-start-width:3px; }
+  .card.compact.extra { display:none; }
+  .card.dim { border-style:dashed; border-inline-start-width:4px; background:var(--card2); }
+  /* Start-listening step (only when "Ask me before listening starts" is on). */
+  .card.consent { background:#241e19; border-color:var(--t-tip); border-style:solid; padding:16px 20px; }
   .card.consent .say { font-weight:650; color:var(--text); }
   .card.consent ul { color:var(--muted); font-size:17px; list-style:none; padding:0; display:flex; flex-direction:column; gap:3px; }
   @keyframes rise { from { opacity:0; transform:translateY(-6px); } }
 
-  #empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:var(--muted); font-size:19px; }
-  #empty img { width:88px; opacity:.9; }
-  #empty small { font-size:14px; opacity:.7; }
+  #empty { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:var(--muted); font-size:22px; text-align:center; padding:0 20px; background:var(--bg); }
+  #empty img { width:80px; opacity:.9; }
+  #emptyT { font-weight:650; color:var(--soft); }
+  #empty small { font-size:16px; color:var(--muted); line-height:1.4; }
+  body.ended #empty img { opacity:.45; }
 
-  /* Rewind: a sheet over the answers (never pushes the layout), newest line at the bottom. */
-  #rewind { display:none; position:absolute; inset:0; background:#18222f; border:1px solid var(--tan); border-radius:14px; padding:12px 16px; flex-direction:column; box-shadow:0 8px 28px rgba(0,0,0,.5); animation:rise .15s ease-out; z-index:5; }
-  #rewind .h { color:var(--tan); font-size:14px; margin-bottom:6px; display:flex; justify-content:space-between; flex:0 0 auto; }
+  /* Rewind: a sheet over the answers. A new answer shows as a bar on top of the sheet, so it is never hidden. */
+  #rewind { display:none; position:absolute; inset:0; background:#18222f; border:1px solid var(--t-tip); border-radius:var(--r-lg); padding:12px 16px; flex-direction:column; box-shadow:0 8px 28px rgba(0,0,0,.5); z-index:5; }
+  #rnew { display:none; flex:0 0 auto; margin:-4px -8px 8px; padding:8px 12px; border-radius:var(--r-card); background:var(--t-tip); color:#241608; font-size:20px; line-height:1.3; font-weight:700; }
+  #rnew .rl { font-size:14px; font-weight:800; display:block; margin-bottom:2px; }
+  #rnew .rt { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
+  #rcontent { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+  #rewind .h { color:var(--t-tip); font-size:15px; margin-bottom:6px; display:flex; justify-content:space-between; flex:0 0 auto; }
   #rewind .h .k { direction:ltr; color:var(--muted); }
   #rewind .body { flex:1 1 auto; overflow-y:auto; display:flex; flex-direction:column; }
   #rewind .body::before { content:""; margin-top:auto; }
   #rewind .l { font-size:22px; line-height:1.35; margin:5px 0; color:var(--text); }
-  #rewind .l.me { color:var(--muted); font-size:17px; }
-  #rewind .who { font-size:12px; font-weight:700; border-radius:999px; padding:0 8px; margin-inline-end:8px; background:var(--raised); color:var(--soft); vertical-align:middle; }
+  #rewind .l.me { color:var(--muted); font-size:18px; }
+  #rewind .who { font-size:14px; font-weight:700; border-radius:var(--r-pill); padding:0 8px; margin-inline-end:8px; background:var(--raised); color:var(--soft); vertical-align:middle; }
 
-  /* Captured phones / emails / domains: tap-to-copy chips (latest first). */
+  /* Captured phones / emails / domains: newest 3, tap to copy. */
   #capture { display:none; flex-wrap:wrap; gap:6px; flex:0 0 auto; }
-  .cap { -webkit-app-region:no-drag; cursor:pointer; background:var(--raised); border-radius:9px; padding:4px 11px; font-size:19px; direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums; transition:background .2s; }
-  .cap .k { color:var(--muted); font-size:12px; margin-inline-end:8px; unicode-bidi:isolate; }
+  .cap { -webkit-app-region:no-drag; cursor:pointer; background:var(--raised); border-radius:9px; padding:2px 10px; font-size:16px; direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums; transition:background .2s; }
+  .cap kbd.n { margin-inline-end:8px; font-size:13px; padding:2px 6px; }
+  .cap .k { color:var(--muted); font-size:14px; margin-inline-end:8px; unicode-bidi:isolate; }
   .cap.copied { background:#245a41; }
 
-  /* Side rail: facts / reminders in two columns, notes below. Never taller than ~34% so answers keep the room. */
-  #rail { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:8px; flex:0 0 auto; max-height:34vh; overflow:hidden; }
+  /* Side rail: facts / reminders. Secondary: small, capped, hidden first when the window is short. */
+  #rail { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:6px; flex:0 1 auto; max-height:16vh; overflow:hidden; }
   #rail:empty { display:none; }
-  .side { background:var(--card2); border-radius:11px; padding:8px 12px; border-inline-start:4px solid var(--fact); min-width:0; animation:rise .22s ease-out; }
-  .side.reminder, .side.info { border-color:var(--tan); }
-  .side.warn { border-color:var(--red); }
-  .side .t { font-size:18px; font-weight:650; }
-  .side.warn .t::after { content:" ⚠"; color:var(--red); }
-  .side ul { font-size:15.5px; margin-top:3px; padding-inline-start:18px; line-height:1.3; }
-  #notes { display:none; flex:0 0 auto; padding:2px 4px; }
-  #notes .h { color:var(--muted); font-size:12px; letter-spacing:.03em; }
-  #notes ul { margin:2px 0 0; padding-inline-start:16px; font-size:15.5px; color:var(--soft); }
+  .side { background:var(--card2); border-radius:var(--r-card); padding:5px 12px; border-inline-start:4px solid var(--t-fact); min-width:0; }
+  .side.reminder, .side.info { border-color:var(--t-tip); }
+  .side.warn { border-color:var(--fault); }
+  .side .t { font-size:16px; font-weight:650; color:var(--soft); }
+  .side.warn .t::after { content:" ⚠"; color:var(--fault); }
+  .side ul { font-size:14.5px; margin-top:2px; padding-inline-start:18px; line-height:1.3; }
+  #notes { display:none; flex:0 0 auto; padding:0 4px; max-height:11vh; overflow:hidden; }
+  #notes .h { color:var(--muted); font-size:14px; }
+  #notes ul { margin:2px 0 0; padding-inline-start:16px; font-size:14.5px; color:var(--soft); }
   #notes li { margin:1px 0; }
-  /* Call frame: one line ("שיחה: לקוח · topic"), a done/total chip, and a checklist that opens on hover or with the checklist key. */
+  /* Call frame: one line, a done/total chip, and a checklist that opens on hover or with the checklist key. */
   #frame { display:none; position:relative; flex:0 0 auto; align-items:center; gap:10px; margin:-2px 0 -4px; -webkit-app-region:no-drag; }
   #frame .fl { font-size:15px; color:var(--muted); white-space:nowrap; }
   #frame .ft { flex:1 1 auto; min-width:0; font-size:17px; color:var(--soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; unicode-bidi:plaintext; }
   #frame .ft b { color:var(--text); font-weight:650; }
-  #chip { flex:0 0 auto; font-size:15px; font-weight:650; font-variant-numeric:tabular-nums; direction:ltr; border-radius:999px; padding:1px 11px; background:var(--raised); color:var(--soft); border:1px solid var(--line); cursor:default; }
-  #chip.all { color:var(--bank); border-color:var(--bank); }
-  #cl { display:none; position:absolute; inset-inline:0; top:100%; margin-top:6px; z-index:7; background:#18222f; border:1px solid var(--tan); border-radius:12px; padding:10px 14px; box-shadow:0 8px 28px rgba(0,0,0,.5); animation:rise .15s ease-out; }
+  #chip { flex:0 0 auto; font-size:15px; font-weight:650; font-variant-numeric:tabular-nums; direction:ltr; border-radius:var(--r-pill); padding:1px 11px; background:var(--raised); color:var(--soft); border:1px solid var(--line); cursor:default; }
+  #chip.all { color:var(--t-prep); border-color:var(--t-prep); }
+  #cl { display:none; position:absolute; inset-inline:0; top:100%; margin-top:6px; z-index:7; background:#18222f; border:1px solid var(--t-tip); border-radius:12px; padding:10px 14px; box-shadow:0 8px 28px rgba(0,0,0,.5); }
   #frame:hover #cl, #frame.open #cl { display:block; }
   #cl .goal { font-size:15px; color:var(--muted); margin-bottom:6px; }
   #cl ul { list-style:none; margin:0; padding:0; font-size:18px; display:flex; flex-direction:column; gap:4px; }
   #cl li { display:flex; align-items:baseline; gap:10px; color:var(--text); }
-  #cl li::before { content:""; flex:0 0 auto; width:11px; height:11px; border-radius:50%; border:2px solid var(--muted); align-self:center; }
-  #cl li.done { color:var(--muted); text-decoration:line-through; text-decoration-color:#5d6b80; }
-  #cl li.done::before { background:var(--bank); border-color:var(--bank); }
-  #cl .must { font-size:11px; color:var(--tan); border:1px solid var(--tan); border-radius:5px; padding:0 4px; margin-inline-start:auto; }
+  #cl li::before { content:""; flex:0 0 auto; width:16px; height:16px; border-radius:50%; border:2px solid var(--muted); align-self:center; }
+  #cl li.done { color:var(--muted); text-decoration:line-through; text-decoration-color:#7a889d; }
+  #cl li.done::before { content:"✓"; display:flex; align-items:center; justify-content:center; width:16px; height:16px; font-size:11px; font-weight:800; color:#07241a; background:var(--t-prep); border-color:var(--t-prep); }
+  #cl .must { font-size:14px; color:var(--t-tip); border:1px solid var(--t-tip); border-radius:5px; padding:0 4px; margin-inline-start:auto; }
   #cl li.done .must { display:none; }
-  /* Tips: small and muted, under the hero answer. Never the biggest thing on the screen. */
+  /* Tips: small, under the hero answer. Never the biggest thing on the screen. */
   #tips { display:flex; flex-direction:column; gap:6px; flex:0 0 auto; }
-  .tip { display:flex; align-items:baseline; gap:9px; background:var(--card2); border-radius:10px; padding:6px 12px; border-inline-start:3px solid var(--line); font-size:17px; line-height:1.3; color:var(--soft); animation:rise .22s ease-out; }
+  .tip { display:flex; align-items:baseline; gap:9px; background:var(--card2); border-radius:var(--r-card); padding:5px 12px; border-inline-start:3px dotted var(--t-stall); font-size:16px; line-height:1.3; color:var(--soft); animation:rise .18s ease-out; }
   .tip svg { flex:0 0 auto; width:14px; height:14px; align-self:center; fill:none; stroke:var(--muted); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-  .tip .k { flex:0 0 auto; font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:0 7px; }
+  .tip .k { flex:0 0 auto; font-size:14px; color:var(--muted); border:1px solid var(--line); border-radius:var(--r-pill); padding:0 8px; }
   .tip .tx { min-width:0; unicode-bidi:plaintext; }
-  #keys { flex:0 0 auto; display:flex; gap:16px; justify-content:center; color:#5d6b80; font-size:12px; direction:ltr; padding-top:2px; }
+  /* Key legend: real key chips. */
+  #keys { flex:0 0 auto; display:flex; flex-wrap:wrap; gap:4px 12px; justify-content:center; align-items:center; color:var(--soft); font-size:14px; padding-top:2px; max-height:52px; overflow:hidden; }
+  #keys .it { display:inline-flex; align-items:center; gap:5px; }
+  kbd { font:600 13px/1 -apple-system, "SF Mono", Menlo, monospace; direction:ltr; color:var(--text); background:#2a384d; border:1px solid #4a5d79; border-bottom-width:2px; border-radius:5px; padding:3px 6px; }
+  /* Short windows: drop the secondary furniture so the answer keeps the room. */
+  @media (max-height:820px) { #notes, #keys, #rail .side ul { display:none; } #rail { max-height:9vh; } }
+  @media (max-height:660px) { #rail, #capture, #last { display:none !important; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
 </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><img src="../../brand/png/mark-night-512.png" alt=""><span class="name">Wingman</span><span id="dot"></span><div id="ask">Listening for your question…</div><div id="paused">⏸ מושהה</div></div>
+  <div id="top"><img src="../../brand/png/mark-night-512.png" alt=""><span class="name">Wingman</span><span id="dot"></span><span id="state">מתחיל…</span><div id="ask">מקשיב לשאלה שלך…</div></div>
   <div id="health"></div>
   <div id="frame" dir="rtl"><span class="fl">שיחה:</span><span class="ft"></span><span id="chip"></span><div id="cl"></div></div>
   <div id="last" dir="rtl"><span class="who">הצד השני</span><span class="txt"></span></div>
   <div id="stage">
-    <div id="cards"></div>
-    <div id="empty"><img src="../../brand/png/mark-night-512.png" alt=""><div id="emptyT">מקשיב…</div><small>התשובות יופיעו כאן</small></div>
-    <div id="rewind"></div>
+    <div id="main">
+      <div id="cards"></div>
+      <div id="tips"></div>
+      <div id="capture"></div>
+      <div id="rail"></div>
+      <div id="notes"><div class="h">הערות AI</div><ul id="notelist"></ul></div>
+    </div>
+    <div id="empty"><img src="../../brand/png/mark-night-512.png" alt=""><div id="emptyT">מתחיל…</div><small id="emptyS"></small></div>
+    <div id="rewind"><div id="rnew"></div><div id="rcontent"></div></div>
   </div>
-  <div id="tips"></div>
-  <div id="capture"></div>
-  <div id="rail"></div>
-  <div id="notes"><div class="h">הערות AI</div><ul id="notelist"></ul></div>
   <div id="keys"></div>
+  <div id="live" class="sr" aria-live="polite" role="status"></div>
 </div>
+<script src="../shared/ask.js"></script>
+<script src="../dashboard/bidi.js"></script>
+<script src="text.js"></script>
 <script>
   const cardsBox = document.getElementById("cards");
   const healthBox = document.getElementById("health");
   const emptyBox = document.getElementById("empty");
   const cards = new Map(); // id -> element
-  const bars = new Map();  // health id -> element
+  const bars = new Map();  // health id -> {level, text}
   let MAX = 4;
-  let paused = false;
+  const SHOW_OLDER = 2;    // older answers shown next to the hero
+  let paused = false, quiet = false, phase = "starting", realPhase = false, liveAt = 0, pausedNew = 0, HK = { ask: "Control+Alt+A", pause: "Control+Alt+P" };
 
   // Mixed Hebrew/English text: every Latin/number run (domains, emails, phones, prices, "API") is an isolated LTR island, so it never flips neighbours.
   // Built with text nodes + <bdi> only (never innerHTML).
-  const LTR = /[$]?[A-Za-z0-9][A-Za-z0-9._@:\/+%#$&\-]*(?: [A-Za-z0-9][A-Za-z0-9._@:\/+%#$&\-]*)*(?:,\d{3})*/g;
+  // Shared bidi tokenizer (dashboard/bidi.js) plus the overlay joins, see text.js.
   function mixed(el, text) {
-    let last = 0; const s = String(text ?? "");
-    for (const m of s.matchAll(LTR)) {
-      let v = m[0].replace(/[.\-:,]+$/, "");           // trailing punctuation belongs to the sentence
-      if (m.index > last) el.append(document.createTextNode(s.slice(last, m.index)));
-      const b = document.createElement("bdi"); b.dir = "ltr"; b.textContent = v; el.append(b);
-      last = m.index + v.length;
+    for (const seg of WingmanText.segments(String(text ?? ""))) {
+      if (!seg.ltr) { el.append(document.createTextNode(seg.text)); continue; }
+      const b = document.createElement("bdi"); b.dir = "ltr"; b.textContent = seg.text; el.append(b);
     }
-    if (last < s.length) el.append(document.createTextNode(s.slice(last)));
     return el;
   }
   const div = (cls, dir = "rtl") => { const d = document.createElement("div"); if (cls) d.className = cls; d.dir = dir; return d; };
+  const span = (cls, text) => { const s = document.createElement("span"); if (cls) s.className = cls; if (text != null) s.textContent = text; return s; };
+  const fmtKey = (a) => String(a || "").split("+").map((p) => ({ Control: "Ctrl", Alt: "Opt", Option: "Opt", Command: "Cmd" }[p] || p)).join("+");
 
+  // ---- status word next to the dot: ended > paused > quiet > starting > listening ----
+  const stateEl = document.getElementById("state"), emptyT = document.getElementById("emptyT"), emptyS = document.getElementById("emptyS");
+  function refreshState() {
+    const s = phase === "ended" ? "ended" : phase === "waiting" ? "waiting" : paused ? "paused" : quiet ? "quiet" : phase === "starting" ? "starting" : "listening";
+    for (const n of ["ended", "paused", "quiet", "starting", "waiting"]) document.body.classList.toggle(n, s === n);
+    const T = {
+      ended: ["השיחה הסתיימה", "השיחה הסתיימה", "פרטי הלקוח נמחקו מהחלון."],
+      paused: ["⏸ מושהה", "מושהה", null],
+      quiet: ["מצב שקט", "מצב שקט", "הכרטיסים נשמרים אבל לא מוצגים בחלון."],
+      starting: ["מתחיל…", "מתחיל את השיחה…", "מתחבר לשמע ולתמלול. עוד כמה שניות."],
+      waiting: ["ממתין לאישור", "מחכה שתאשר התחלת האזנה", null],
+      listening: ["מקשיב", "מקשיב…", "אף אחד עוד לא שאל. התשובות יופיעו כאן."],
+    }[s];
+    stateEl.textContent = T[0]; emptyT.textContent = T[1]; emptyS.replaceChildren();
+    if (s === "paused") mixed(emptyS, `הכרטיסים ממשיכים להישמר, ויוצגו כשתחזור. ${fmtKey(HK.pause)} להמשך.`);
+    else if (s === "waiting") mixed(emptyS, `עוד לא מקשיב. לחץ ${fmtKey("Control+Alt+Return")} או Start listening בתפריט.`);
+    else if (s === "listening" && liveAt) emptyS.textContent = T[2] + ` מקשיב כבר ${elapsed(Date.now() - liveAt)}.`;
+    else emptyS.textContent = T[2];
+    emptyCheck();
+  }
+  const elapsed = (ms) => { const m = Math.floor(ms / 60000); return m < 1 ? "פחות מדקה" : m === 1 ? "דקה" : `${m} דקות`; };
+  let startTimer;
+  // First card or line = we are live, but only when call.json writes no phase (then a 4 s timer is the fallback too).
+  function listening() { if (phase === "starting" && !realPhase) { phase = "listening"; clearTimeout(startTimer); refreshState(); } }
+
+  // Fade the bottom of the card list only when it overflows (checked next frame, after layout).
   function fadeCheck() { requestAnimationFrame(() => cardsBox.classList.toggle("fade", cardsBox.scrollHeight > cardsBox.clientHeight + 2)); }
-  function emptyCheck() { fadeCheck(); emptyBox.style.display = cards.size ? "none" : "flex"; }
+  function emptyCheck() { fadeCheck(); emptyBox.style.display = (cards.size && !paused && phase !== "ended") ? "none" : "flex"; }
   function clearCards() { for (const el of cards.values()) el.remove(); cards.clear(); emptyCheck(); }
 
+  // ---- warnings: ONE red fault line (blind now) + ONE muted advisory line ----
+  // (ONLY_YOU_HE is not used; the same text lives in text.js healthText.)
+  const ONLY_YOU_HE = "שומע רק אותך. לתשובות לצד השני, הצטרף לשיחה או הפעל את השמע שלה.";
+  const cleanText = (id, text) => WingmanText.healthText(id, text, fmtKey(HK.ask));
+  function drawHealth() {
+    healthBox.replaceChildren();
+    const faults = [], advs = [];
+    for (const [id, h] of bars) {
+      if (id === "health-quiet") continue;                       // shown as the status word
+      if (id === "health-cost") continue;                        // cost alone changes nothing; the reduced-AI notice covers a cap
+      (h.level === "red" ? faults : advs).push(cleanText(id, h.text));
+    }
+    if (faults.length) { const el = div("fault"); el.setAttribute("role", "alert"); mixed(el, faults.join(" · ")); healthBox.append(el); }
+    if (advs.length) { const el = div("adv"); mixed(el, advs[0] + (advs.length > 1 ? `  (+${advs.length - 1})` : "")); healthBox.append(el); }
+    fadeCheck();
+  }
   function renderHealth(c) {
-    if (c.clear) { bars.get(c.id)?.remove(); bars.delete(c.id); return; }
-    let el = bars.get(c.id);
-    if (!el) { el = document.createElement("div"); bars.set(c.id, el); healthBox.append(el); }
-    el.className = `hb ${c.level || "red"}`; el.dir = /[A-Za-z]/.test(c.say) && !/[\u0590-\u05FF]/.test(c.say) ? "ltr" : "rtl"; el.replaceChildren();
-    // "NOT HEARING THE CLIENT – אין שמע": the Hebrew explanation leads (right edge), the English code becomes a small tag.
-    const m = /^([A-Z][A-Z0-9 ()_.,\/]{3,}?)\s[–-]\s(.+)$/.exec(c.say);
-    const body = document.createElement("span"); mixed(body, m ? m[2] : c.say); el.append(body);
-    if (m) { const t = document.createElement("span"); t.className = "tag"; t.textContent = m[1]; el.append(t); }
+    if (c.id === "health-quiet") { quiet = !c.clear; refreshState(); return; }
+    if (c.clear) bars.delete(c.id); else bars.set(c.id, { level: c.level || "red", text: c.say });
+    drawHealth();
   }
 
   const rail = document.getElementById("rail"), notesBox = document.getElementById("notes"), noteList = document.getElementById("notelist");
   const sides = new Map();
+  /** Side rail items (facts, reminders, info) and AI notes. Rail keeps the 2 newest; notes list keeps 3. */
   function renderSide(c) {
     if (c.badge === "note") {
       const li = document.createElement("li"); li.dir = "rtl"; mixed(li, c.say); noteList.append(li);
-      while (noteList.children.length > 8) noteList.firstElementChild.remove();
+      while (noteList.children.length > 3) noteList.firstElementChild.remove();
       notesBox.style.display = "block"; return;
     }
     let el = sides.get(c.id);
@@ -207,18 +292,36 @@
     el.className = `side ${c.badge}${c.warn ? " warn" : ""}`; el.replaceChildren();
     const t = div("t"); mixed(t, c.say); el.append(t);
     if (c.facts?.length) { const ul = document.createElement("ul"); for (const f of c.facts) { const li = document.createElement("li"); li.dir = "rtl"; mixed(li, f); ul.append(li); } el.append(ul); }
-    while (sides.size > 4) { const [k, v] = sides.entries().next().value; v.remove(); sides.delete(k); }
+    while (sides.size > 2) { const [k, v] = sides.entries().next().value; v.remove(); sides.delete(k); }
   }
 
-  const PILL = { bank: "מהבנק", ai: "AI · לא מאומת", stall: "לקנות זמן", info: "הודעה", me: "בשבילך" };
-  /** Newest = hero, the rest = compact rows. Long answers shrink a little so they still fit in a glance. */
+  // Card types (glossary): Prepared / AI / Buy time / For you / Math / Tip. Each has a glyph + label + tint.
+  const TYPE = {
+    bank: { gl: "✔", he: "מוכן מראש" }, ai: { gl: "✦", he: "AI · לא מאומת" }, stall: { gl: "◷", he: "לקנות זמן" },
+    me: { gl: "☆", he: "בשבילך" }, calc: { gl: "∑", he: "חישוב" }, info: { gl: "ℹ", he: "הודעה" }, consent: { gl: "◔", he: "מחכה שתאשר התחלת האזנה" },
+  };
+  /** Newest = hero, the rest = compact rows (max 2 shown). Font size is fixed per type, so nothing shrinks while text streams. */
   function layoutRoles() {
-    const els = [...cards.values()];
-    els.forEach((el, i) => el.classList.toggle("compact", i !== els.length - 1 && !el.classList.contains("consent")));
-    const hero = els[els.length - 1];
-    if (hero) { const n = hero.querySelector(".say")?.textContent.length || 0; hero.style.setProperty("--say-k", n > 260 ? "0.7" : n > 170 ? "0.8" : n > 110 ? "0.9" : "1"); }
-    els.forEach((el) => { if (el !== hero) el.style.removeProperty("--say-k"); });
+    const els = [...cards.values()], hero = els[els.length - 1];
+    let older = 0;
+    for (let i = els.length - 2; i >= 0; i--) { els[i].classList.toggle("extra", ++older > SHOW_OLDER); }
+    els.forEach((el) => { el.classList.toggle("compact", el !== hero && !el.classList.contains("consent")); });
+    if (hero) hero.classList.remove("extra");
+    updateAges();
   }
+  // Age: older cards say how old they are and fade by age.
+  function ageText(ms) { const s = Math.round(ms / 1000); return s < 60 ? `לפני ${s} שנ׳` : `לפני ${Math.round(s / 60)} דק׳`; }
+  function updateAges() {
+    const now = Date.now();
+    for (const el of cards.values()) {
+      const a = el.querySelector(".age"); if (!a) continue;
+      const ms = now - (el._at || now), hero = !el.classList.contains("compact");
+      a.textContent = ms >= (hero ? 45000 : 20000) ? ageText(ms) : "";
+      el.classList.toggle("age-1", ms > 60000); el.classList.toggle("age-2", ms > 180000);
+    }
+  }
+  setInterval(() => { updateAges(); if (phase === "listening" && liveAt && !cards.size) refreshState(); }, 10000);
+
   // ---- call frame header + checklist ----
   const KIND_HE = { client: "לקוח", support: "תמיכה", vendor: "ספק", team: "צוות", consult: "ייעוץ", personal: "אישית", other: "אחר" };
   const frameBox = document.getElementById("frame"), frameTxt = frameBox.querySelector(".ft"), chipEl = document.getElementById("chip"), clBox = document.getElementById("cl");
@@ -246,71 +349,102 @@
   const SVG = "http://www.w3.org/2000/svg";
   function tipIcon() { const s = document.createElementNS(SVG, "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true"); const p = document.createElementNS(SVG, "path"); p.setAttribute("d", "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"); s.append(p); return s; }
   function renderTip(c) {
-    if (paused) return;
     let el = tipEls.get(c.id);
     if (!el) { el = div("tip"); tipEls.set(c.id, el); tipsBox.append(el); while (tipEls.size > 2) { const [k, v] = tipEls.entries().next().value; v.remove(); tipEls.delete(k); } setTimeout(() => { el.remove(); tipEls.delete(c.id); }, 90000); }
     el.replaceChildren(tipIcon());
-    const k = document.createElement("span"); k.className = "k"; k.textContent = TIP_KIND[c.tipType] || "טיפ"; el.append(k);
+    const k = document.createElement("span"); k.className = "k"; k.textContent = "טיפ · " + (TIP_KIND[c.tipType] || "טיפ"); el.append(k);
     const t = document.createElement("span"); t.className = "tx"; mixed(t, c.say); el.append(t);
   }
 
-  function render(c) {
-    if (c.badge === "tip") { renderTip(c); return; }
-    if (c.health) { renderHealth(c); return; }
-    if (c.turnId === "side") { renderSide(c); return; }   // facts/notes/reminders are kept even while paused
-    if (c.withdraw) { cards.get(c.id)?.remove(); cards.delete(c.id); layoutRoles(); emptyCheck(); return; }
-    if (paused) return;
-    let el = cards.get(c.id);
-    const isNew = !el;
-    if (!el) {
-      el = document.createElement("div");
-      cards.set(c.id, el);
-      cardsBox.prepend(el);
-      while (cards.size > MAX) { const [k, v] = cards.entries().next().value; v.remove(); cards.delete(k); }
-    }
-    const consent = c.turnId === "start" || c.id === "consent";
-    el.className = `card ${c.badge}${c.dim ? " dim" : ""}${consent ? " consent" : ""}`;
-    el.replaceChildren();
+  // ---- answer cards: built once, then only the text is updated while it streams ----
+  const liveEl = document.getElementById("live"); let liveTimer;
+  function announce(label, text) { clearTimeout(liveTimer); liveTimer = setTimeout(() => { liveEl.textContent = `${label}: ${text}`; }, 1500); }
+
+  /** The bold first sentence is decided once, when that sentence is complete; after that it never changes. */
+  function setSay(el, say) {
+    const s = el._say;
+    if (el._cut == null && say.length > 90) { const i = say.search(/[.!?]\s/); if (i > 15 && i < say.length - 12) { el._cut = i + 1; } }
+    if (el._cut != null && !say.startsWith(el._first ?? say.slice(0, el._cut))) el._cut = null;   // text was rewritten: decide again
+    if (el._cut != null) {
+      const first = say.slice(0, el._cut);
+      if (!s._b || el._first !== first) { s.replaceChildren(); s._b = document.createElement("b"); mixed(s._b, first); s._rest = span("rest"); s.append(s._b, document.createTextNode(" "), s._rest); el._first = first; }
+      s._rest.replaceChildren(); mixed(s._rest, say.slice(el._cut).trimStart());
+    } else { s._b = null; el._first = null; s.replaceChildren(); mixed(s, say); }
+  }
+  /** (Re)builds the static parts of a card. Called only when its signature changes; streaming text goes through setSay. */
+  function buildCard(el, c, consent) {
+    const calc = c.source === "calc";
+    el.className = `card ${c.badge}${c.dim ? " dim" : ""}${consent ? " consent" : ""}${calc ? " calc" : ""}${el.classList.contains("compact") ? " compact" : ""}${el.classList.contains("extra") ? " extra" : ""}`;
+    el.replaceChildren(); el._cut = null; el._first = null;
+    const kind = consent ? TYPE.consent : (calc && c.badge === "ai") ? TYPE.calc : TYPE[c.badge] || { gl: "", he: c.badge };
     const top = div("top");
-    const pill = document.createElement("span"); pill.className = "pill"; pill.textContent = consent ? "להגיד בתחילת השיחה" : (c.badge === "ai" && c.source === "calc") ? "חישוב" : PILL[c.badge] || c.badge; top.append(pill);
-    if (c.question && !consent) { const q = document.createElement("span"); q.className = "q"; q.dir = "rtl"; mixed(q, c.question); top.append(q); }
+    const pill = span("pill"); pill.append(span("gl", kind.gl), document.createTextNode(kind.he + (calc && c.badge === "me" ? " · חישוב" : ""))); top.append(pill, span("age"));
     el.append(top);
-    // First sentence in strong weight, the rest softer: a one-second read for long answers.
-    const s = div("say"); const say = String(c.say || "");
-    const cut = say.length > 90 ? say.search(/[.!?]\s/) : -1;
-    if (cut > 15 && cut < say.length - 12) { s.classList.add("split"); const b = document.createElement("b"); mixed(b, say.slice(0, cut + 1)); s.append(b, document.createTextNode(" ")); mixed(s, say.slice(cut + 2)); } else mixed(s, say);
-    el.append(s);
+    if (c.question && !consent) { const q = div("q"); q.append(span("ql", "עונה על:")); mixed(q, c.question); el.append(q); }
+    el._say = div("say"); el.append(el._say);
     if (c.facts?.length) {
       const ul = document.createElement("ul");
       for (const f of c.facts) { const li = document.createElement("li"); li.dir = "rtl"; mixed(li, f); ul.append(li); }
       el.append(ul);
     }
     if (c.dim) { const n = div("note-line"); n.textContent = "ביטחון נמוך או שכבר דיברת"; el.append(n); }
-    // A card re-sent with new text (AI streaming): calm pulse while it grows.
-    if (!isNew && c.badge === "ai") { el.classList.add("live"); clearTimeout(el._live); el._live = setTimeout(() => el.classList.remove("live"), 900); }
+    el._label = kind.he;
+  }
+
+  /** Handles one row from calls/latest/cards.jsonl. The same id arrives again as the answer streams or is rewritten, so cards are updated in place. */
+  function render(c) {
+    if (phase === "ended") return;
+    listening();
+    if (c.badge === "tip") { renderTip(c); return; }
+    if (c.health) { renderHealth(c); return; }
+    if (c.turnId === "side") { renderSide(c); return; }   // facts/notes/reminders are kept even while paused
+    if (c.withdraw) { cards.get(c.id)?.remove(); cards.delete(c.id); layoutRoles(); emptyCheck(); return; }
+    // Paused: cards still arrive and are kept (just not shown); on resume the latest is on screen.
+    let el = cards.get(c.id);
+    const isNew = !el;
+    const consent = c.turnId === "start" || c.id === "consent";
+    if (!el) {
+      el = document.createElement("div"); el._at = Number(c.at) || Date.now();
+      cards.set(c.id, el);
+      cardsBox.prepend(el);
+      while (cards.size > MAX) { const [k, v] = cards.entries().next().value; v.remove(); cards.delete(k); }
+      if (paused) pausedNew++;
+    }
+    const sig = [c.badge, c.dim, consent, c.source, c.question, (c.facts || []).join("\u0001")].join("\u0002");
+    if (el._sig !== sig) { buildCard(el, c, consent); el._sig = sig; }
+    setSay(el, String(c.say || ""));
     layoutRoles(); emptyCheck();
+    if (!paused && !consent && c.badge !== "info") announce(el._label, String(c.say || ""));
+    if (isNew && !consent) newInRewind(el, c);
   }
 
   // Rewind: keep recent transcript lines; the hotkey shows the last N seconds (auto-hides after 20 s).
-  const lines = []; let REWIND_S = 30, rewindTimer, HK = {};
-  const rewindBox = document.getElementById("rewind"), capBox = document.getElementById("capture");
+  const lines = []; let REWIND_S = 30, rewindTimer;
+  const rewindBox = document.getElementById("rewind"), rContent = document.getElementById("rcontent"), rNew = document.getElementById("rnew"), capBox = document.getElementById("capture");
+  const rewindOpen = () => rewindBox.style.display === "flex";
+  function showNewBar(el, c) {
+    rNew.replaceChildren(span("rl", "תשובה חדשה · " + el._label)); const t = span("rt"); mixed(t, String(c.say || "")); rNew.append(t); rNew.style.display = "block"; rNew._id = c.id;
+  }
+  // A new answer while the sheet is open: a bar on top of the sheet, so it is never hidden.
+  function newInRewind(el, c) { if (rewindOpen() && c.badge !== "info") showNewBar(el, c); }
+  /** Hotkey toggle for the "what did they say" sheet; it hides itself after 20 s. */
   function showRewind() {
-    if (rewindBox.style.display === "flex") { rewindBox.style.display = "none"; return; }
+    if (rewindOpen()) { rewindBox.style.display = "none"; rNew.style.display = "none"; return; }
     const since = Date.now() - REWIND_S * 1000;
     const fresh = lines.some((l) => l.t >= since);
     let recent = lines.filter((l) => l.t >= since);
     if (!recent.length) recent = lines.slice(-4);   // quiet for a while: show the last few lines anyway
-    rewindBox.replaceChildren();
-    const h = div("h"); const ht = document.createElement("span"); ht.textContent = fresh ? `מה אמרו · ${REWIND_S} השניות האחרונות` : "מה אמרו · השורות האחרונות"; const hk = document.createElement("span"); hk.className = "k"; hk.textContent = (HK.rewind || "").replace(/Control/, "Ctrl").replace(/Alt/, "Opt") + " לסגירה"; h.append(ht, hk); rewindBox.append(h);
+    rContent.replaceChildren(); rNew.style.display = "none";
+    const h = div("h"); const ht = document.createElement("span"); ht.textContent = fresh ? `מה אמרו · ${REWIND_S} השניות האחרונות` : "מה אמרו · השורות האחרונות"; const hk = document.createElement("span"); hk.className = "k"; hk.textContent = fmtKey(HK.rewind) + " לסגירה"; h.append(ht, hk); rContent.append(h);
     const body = div("body");
     if (!recent.length) { const e = div("l"); e.textContent = "אין טקסט מהשניות האחרונות"; body.append(e); }
     for (const l of recent) {
       const d = div(`l ${l.ch}`); const who = document.createElement("span"); who.className = "who"; who.textContent = l.ch === "me" ? "אני" : "הצד השני";
       d.append(who); mixed(d, l.text); body.append(d);
     }
-    rewindBox.append(body);
+    rContent.append(body);
     rewindBox.style.display = "flex"; body.scrollTop = body.scrollHeight;
-    clearTimeout(rewindTimer); rewindTimer = setTimeout(() => { rewindBox.style.display = "none"; }, 20000);
+    clearTimeout(rewindTimer); rewindTimer = setTimeout(() => { rewindBox.style.display = "none"; rNew.style.display = "none"; }, 20000);
   }
   // "Client just said" strip: the newest client line (overlay.showLastLine). Text nodes only; me-lines never replace it.
   let SHOW_LAST = true;
@@ -320,42 +454,79 @@
     lastTxt.replaceChildren(); mixed(lastTxt, String(text).replace(/\s+/g, " ").trim().slice(0, 220));
     lastBox.style.display = "flex";
   }
-  window.wingman.onLine((l) => { lines.push(l); while (lines.length > 400) lines.shift(); if (l.ch === "them") showLast(l.text); });
+  window.wingman.onLine((l) => { if (phase === "ended") return; listening(); lines.push(l); while (lines.length > 400) lines.shift(); if (l.ch === "them") showLast(l.text); });
   window.wingman.onRewind(showRewind);
-  const caps = new Map();
+  const caps = new Map();   // value -> chip, newest first (same order as main.cjs: chip N = Ctrl+Opt+N)
+  const numberChips = () => [...capBox.children].forEach((el, i) => { el.querySelector(".n").textContent = String(i + 1); el.setAttribute("aria-label", `${el.dataset.kind} ${el.dataset.value}, ${fmtKey("Control+Alt+" + (i + 1))}`); });
   window.wingman.onCapture((c) => {
-    if (caps.has(c.value)) return;
-    const el = document.createElement("div"); el.className = "cap";
-    const k = document.createElement("span"); k.className = "k"; k.textContent = { phone: "טלפון", email: "מייל", domain: "דומיין" }[c.kind] || c.kind;
+    if (phase === "ended" || caps.has(c.value)) return;
+    const el = document.createElement("div"); el.className = "cap"; el.setAttribute("role", "button"); el.dataset.kind = { phone: "טלפון", email: "מייל", domain: "דומיין" }[c.kind] || c.kind; el.dataset.value = c.value;
+    const n = document.createElement("kbd"); n.className = "n";
+    const k = document.createElement("span"); k.className = "k"; k.textContent = el.dataset.kind;
     const v = document.createElement("span"); v.textContent = c.value;
-    el.append(k, v); el.addEventListener("click", () => window.wingman.copy(c.value));
+    el.append(n, k, v); el.addEventListener("click", () => window.wingman.copy(c.value));
     caps.set(c.value, el); capBox.prepend(el); capBox.style.display = "flex";
-    while (caps.size > 6) { const [key, node] = caps.entries().next().value; node.remove(); caps.delete(key); }
+    while (caps.size > 3) { const [key, node] = caps.entries().next().value; node.remove(); caps.delete(key); }
+    numberChips();
   });
   window.wingman.onCopied((t) => { const el = caps.get(t); if (el) { el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 1200); } });
   window.wingman.onConfig((c) => {
     SHOW_LAST = c.showLastLine !== false; if (!SHOW_LAST) lastBox.style.display = "none";
     REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
     document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px');
-    // Hotkey legend (symbols only), built from the configured accelerators.
-    const sym = (a) => String(a || "").replace(/Control\+?/, "⌃").replace(/Alt\+?|Option\+?/, "⌥").replace(/Command\+?|Cmd\+?/, "⌘").replace(/Shift\+?/, "⇧");
+    // Key legend: shared modifiers once, then one key chip per action.
+    const items = [["ask", "שאל אותי"], ["rewind", "מה אמרו"], ["checklist", "רשימה"], ["pause", "השהיה"], ["clear", "ניקוי"]].filter(([k]) => HK[k]).map(([k, l]) => [fmtKey(HK[k]).split("+"), l]);
+    items.splice(Math.min(3, items.length), 0, [["Ctrl", "Opt", "1-3"], "העתק פרט"]);   // chip keys (fixed in main.cjs); Ctrl+Opt+K = chip 1, so it has no row of its own
+    let common = items.length ? items[0][0].slice(0, -1) : [];
+    for (const [p] of items) { let n = 0; while (n < common.length && p[n] === common[n] && n < p.length - 1) n++; common = common.slice(0, n); }
     const keys = document.getElementById("keys"); keys.replaceChildren();
-    for (const [k, label] of [["ask", "שאל אותי"], ["rewind", "מה אמרו"], ["checklist", "רשימה"], ["copy", "העתק"], ["pause", "השהיה"], ["clear", "ניקוי"]]) if (HK[k]) { const s = document.createElement("span"); s.textContent = `${sym(HK[k])}  ${label}`; keys.append(s); }
+    if (common.length) { const it = span("it"); it.dir = "ltr"; common.forEach((m, i) => { it.append(Object.assign(document.createElement("kbd"), { textContent: m })); if (i < common.length - 1) it.append("+"); }); it.append(" +"); keys.append(it); }
+    for (const [p, label] of items) { const it = span("it"); it.dir = "rtl"; const kb = document.createElement("kbd"); kb.textContent = p.slice(common.length).join("+"); it.append(kb, span("", label)); keys.append(it); }
+    refreshState();
   });
-  // "Listening for your question…": shown from the ask key until Dan has spoken or `until` passes.
-  const askEl = document.getElementById("ask"); let askTimer;
+  // "מקשיב לשאלה שלך…": shown from the ask key until the user has spoken or `until` passes.
+  const askEl = document.getElementById("ask"); let askTimer, askUntil = 0;
+  // seconds left come from the real armed window (run.ts askUntil), redrawn every second
+  const drawAsk = () => {
+    const s = WingmanAsk.askSecondsLeft(askUntil, Date.now());
+    if (s === null) { askEl.style.display = "none"; clearInterval(askTimer); return; }
+    askEl.style.display = "flex";
+    askEl.textContent = "מקשיב לשאלה שלך… " + (s < 60 ? s + " שנ׳" : Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"));
+  };
   window.wingman.onAsk((a) => {
-    clearTimeout(askTimer);
-    const left = a && a.on ? (a.until || 0) - Date.now() : 0;
+    clearInterval(askTimer);
+    askUntil = a && a.on ? a.until || 0 : 0;
     // a row replayed from an old call (window reloaded) has `until` in the past: no indicator
-    askEl.style.display = left > 0 ? "flex" : "none";
-    if (left > 0) askTimer = setTimeout(() => { askEl.style.display = "none"; }, left + 200);
+    drawAsk();
+    if (askUntil) askTimer = setInterval(drawAsk, 500);
   });
   window.wingman.onCard(render);
-  window.wingman.onReset(() => { askEl.style.display = "none"; frameBox.style.display = "none"; frameBox.classList.remove("open"); for (const v of tipEls.values()) v.remove(); tipEls.clear(); lastBox.style.display = "none"; clearCards(); for (const v of sides.values()) v.remove(); sides.clear(); noteList.replaceChildren(); notesBox.style.display = "none"; lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none"; rewindBox.style.display = "none"; for (const el of bars.values()) el.remove(); bars.clear(); });
+  // Clears everything about the call (client data too), so nothing stays on screen after the call or when a new call starts.
+  function wipe() {
+    askUntil = 0; clearInterval(askTimer); askEl.style.display = "none"; frameBox.style.display = "none"; frameBox.classList.remove("open"); for (const v of tipEls.values()) v.remove(); tipEls.clear(); lastBox.style.display = "none"; clearCards();
+    for (const v of sides.values()) v.remove(); sides.clear(); noteList.replaceChildren(); notesBox.style.display = "none"; lines.length = 0; for (const n of caps.values()) n.remove(); caps.clear(); capBox.style.display = "none";
+    rewindBox.style.display = "none"; rNew.style.display = "none"; bars.clear(); drawHealth(); quiet = false; pausedNew = 0; liveEl.textContent = "";
+  }
+  window.wingman.onReset(() => { wipe(); phase = "starting"; realPhase = false; liveAt = 0; clearTimeout(startTimer); refreshState(); });
+  // Real phase from call.json. {phase:null} = the call writes none: fall back to the 4 s timer.
+  window.wingman.onPhase((p) => {
+    if (!p || phase === "ended") return;
+    if (p.phase === null) { realPhase = false; if (phase === "starting") { clearTimeout(startTimer); startTimer = setTimeout(listening, 4000); } return; }
+    realPhase = true; clearTimeout(startTimer); liveAt = p.liveAt || 0;
+    phase = p.phase === "live" ? "listening" : p.phase;
+    refreshState();
+  });
+  window.wingman.onEnded(() => { wipe(); phase = "ended"; refreshState(); });
   window.wingman.onClear(clearCards);
-  window.wingman.onPause(() => { paused = !paused; document.getElementById("paused").style.display = paused ? "block" : "none"; document.body.classList.toggle("paused", paused); document.getElementById("emptyT").textContent = paused ? "מושהה" : "מקשיב…"; if (paused) { clearCards(); for (const v of tipEls.values()) v.remove(); tipEls.clear(); } });
+  window.wingman.onPause(() => {
+    paused = !paused; document.body.classList.toggle("paused", paused);
+    if (!paused && pausedNew > 0) {   // back from pause: the latest answer that came in is on screen, marked for a few seconds
+      const hero = [...cards.values()].pop(); if (hero) { hero.classList.add("fresh"); setTimeout(() => hero.classList.remove("fresh"), 4000); announce(hero._label, hero.querySelector(".say")?.textContent || ""); }
+    }
+    pausedNew = 0; layoutRoles(); refreshState();
+  });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") clearCards(); });
+  refreshState();
 </script>
 </body>
 </html>

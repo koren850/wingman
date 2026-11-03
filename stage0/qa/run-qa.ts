@@ -3,7 +3,7 @@
 //             script STT, so detector/bank/AI fixes can be checked for a few cents (Haiku only, or free with --no-ai).
 // Renders each scenario to a WAV, plays it through src/run.ts in file mode (real Deepgram + real Haiku, profile "qa", no window),
 // grades the call folder against the scenario expectations, and writes qa/report.md + qa/report.json.
-// QA calls go to qa/calls/ (WINGMAN_CALLS_DIR), never into Dan's real calls/.
+// QA calls go to qa/calls/ (WINGMAN_CALLS_DIR), never into the real calls/ folder.
 import { spawn } from "node:child_process";
 import { mkdirSync, readdirSync, writeFileSync, createWriteStream, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -24,9 +24,11 @@ const names = flag("--all") || !argv.filter((a, i) => !a.startsWith("--") && !va
   ? allScenarioNames()
   : argv.filter((a, i) => !a.startsWith("--") && !valueFlags.has(argv[i - 1]));
 
+// Rough cost model for the pre-run estimate (the real spend is read from the call logs afterwards).
 const DG_PER_MIN = 2 * 0.55 / 60;   // two channels, USD/hour per channel from budget.prices
 const HAIKU_PER_Q = 0.0008, SUMMARY = 0.003, FRAME_TIPS_PER_MIN = 0.0012;   // frame + tips calls, measured: well under a cent a minute
 
+// Render all audio first so the estimate uses real durations; --dry stops here, before anything is sent to a paid service.
 const scenarios = names.map(loadScenario);
 const rendered = new Map<string, Awaited<ReturnType<typeof renderScenario>>>();
 for (const sc of scenarios) rendered.set(sc.name, await renderScenario(sc));
@@ -44,6 +46,7 @@ mkdirSync(join(QA, "calls"), { recursive: true });
 const isReplayDir = (d: string) => existsSync(join(QA, "calls", d, "replay.marker"));
 const stamp = regrade ? readdirSync(join(QA, "calls")).map((d) => d.slice(0, 14)).filter((d) => /^\d{14}$/.test(d)).sort().at(-1)! : new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
 
+/** Runs (or, with --regrade, just re-reads) one scenario in its own calls folder and grades the call it wrote. */
 async function runOne(name: string): Promise<Grade> {
   const sc = scenarios.find((s) => s.name === name)!;
   const r = rendered.get(name)!;
@@ -62,6 +65,7 @@ async function runOne(name: string): Promise<Grade> {
   if (!regrade) await new Promise<void>((res) => {
     const p = spawn(join(STAGE0, "node_modules", ".bin", "tsx"), args, { cwd: STAGE0, env, stdio: ["ignore", "pipe", "pipe"] });
     p.stdout.pipe(log, { end: false }); p.stderr.pipe(log, { end: false });
+    // Safety net: a stuck run must not hang the whole batch; allow the audio length plus 2 minutes.
     const kill = setTimeout(() => { console.error(`[${name}] timeout, killing`); p.kill("SIGTERM"); }, r.durationMs + 120_000);
     p.on("exit", (code) => { clearTimeout(kill); log.end(); console.log(`[${name}] done in ${((Date.now() - t0) / 1000).toFixed(0)} s (exit ${code})`); res(); });
   });
@@ -101,6 +105,7 @@ function buildReplay(name: string): string {
   return out;
 }
 
+// Worker pool: `concurrency` workers pull scenario names from one queue. The spend cap is checked before each scenario starts, so it can be exceeded by the runs already in flight.
 let spent = 0;
 const results: Grade[] = [];
 const queue = [...names];
@@ -117,6 +122,7 @@ results.sort((a, b) => a.scenario.localeCompare(b.scenario));
 writeReport(results);
 console.log(`\nReport: ${join(QA, replay ? "report-replay.md" : "report.md")}\nSpend (from call logs): $${spent.toFixed(3)}`);
 
+/** Writes qa/report.md + report.json (or report-replay.* for --replay). Totals weight STT accuracy by reference word count. */
 function writeReport(rs: Grade[]) {
   const P = (x: number) => `${Math.round(x * 100)}%`;
   const S = (ms?: number) => ms === undefined ? "-" : `${(ms / 1000).toFixed(1)}s`;

@@ -1,10 +1,13 @@
 "use strict";
 // Live conversation feed: pure functions shared by the main process (tailing) and the renderer (classic script), unit-tested in src/livefeed.test.ts.
 // Input is untrusted JSONL from calls/<id>/{transcript,cards}.jsonl. Everything is validated and capped here; nothing touches the DOM.
+// Used by livetail.cjs / livefixture.cjs (main process) and live.js (renderer, as window.WingmanLive).
 (function (root) {
   const MAX_LINES = 400, MAX_CARDS = 150, MAX_TEXT = 600, MAX_SAY = 900, MAX_Q = 300, MAX_ROW_BYTES = 20000;
   const SHOWN = { bank: 1, ai: 1, stall: 1, tip: 1, me: 1 };   // fact/note/reminder/info/warn cards live in the answer window only
+  // Clean a string field: drop control chars and bidi controls (LRM/RLM, embeddings, overrides, isolates) so call text cannot reorder what is shown around it; then cap length.
   const str = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f‎‏‪-‮⁦-⁩]/g, "").slice(0, n) : "");
+  // Loose form for comparing a card question with a transcript line: lowercase, punctuation (incl. Hebrew maqaf/geresh/gershayim) to single spaces.
   const norm = (s) => String(s || "").toLowerCase().replace(/[\s.,!?;:"'()־׳״-]+/g, " ").trim();
 
   /** Split a JSONL chunk into parsed rows. `carry` is the incomplete last line of the previous chunk. Bad or oversized rows are skipped. */
@@ -63,7 +66,7 @@
     return { done: list.filter((c) => c.done).length, total: list.length, missed: list.filter((c) => c.must && !c.done).map((c) => c.item) };
   }
 
-  /** Index of the line this card answers: same question text first, else the latest line of the right side spoken before the card (the other side's line; for a "For you" card, Dan's own). -1 = none yet. */
+  /** Index of the line this card answers: same question text first, else the latest line of the right side spoken before the card (the other side's line; for a "For you" card, the user's own). -1 = none yet. */
   function pinIndex(lines, card) {
     const q = norm(card.question), ct = card.t || Infinity, side = card.badge === "me" ? "me" : "them";
     if (q.length >= 4) {
@@ -82,6 +85,7 @@
 
   /** In-memory feed, capped at MAX_LINES lines and MAX_CARDS cards. */
   function create() {
+    // seq numbers lines for the renderer; cards is a Map so re-sent ids keep one entry.
     let lines = [], seq = 0, frame = null;
     const cards = new Map();
     const api = {

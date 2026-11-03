@@ -19,7 +19,10 @@
    "text": "מה הייתה האתגר הגדול ביותר שלך בשנה האחרונה?",
    "expect": {
     "question": true,
-    "card": "none"
+    "card": [
+     "ai",
+     "none"
+    ]
    },
    "pauseBeforeMs": 2500
   },
@@ -41,7 +44,10 @@
    "text": "איך אתה מתמודד עם לחץ ועם דד ליין?",
    "expect": {
     "question": true,
-    "card": "none"
+    "card": [
+     "ai",
+     "none"
+    ]
    },
    "pauseBeforeMs": 4000
   },

@@ -1,4 +1,5 @@
-// Local arithmetic for spoken questions, and keeping it (and non-service prices) away from the price stall.
+// Local arithmetic for spoken questions (calc.ts), and keeping it (and non-service prices) away from the price stall (bank.ts).
+// Pure logic, no fixtures.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { evalMath, looksArithmetic, fmtNum } from "./calc.ts";

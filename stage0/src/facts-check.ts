@@ -1,4 +1,6 @@
-// pnpm factscheck: false-hit check of the client/domain snapshot against ordinary call speech (gold sentences, question corpus, bank, synthetic call).
+// pnpm factscheck: false-hit check of the client/domain snapshot (data/private/entities.json, EntitySpotter) against ordinary
+// call speech (gold sentences, question corpus, bank, synthetic call). Every HIT printed here is a false positive to fix.
+// Needs a private snapshot, so it only works on a machine that has one. Prints only; the exit code is always 0.
 import { DATA } from "./env.ts";
 import { readFileSync } from "node:fs";
 import YAML from "yaml";
@@ -15,5 +17,6 @@ const texts: string[] = [
 let hits = 0;
 for (const t of texts) for (const f of s.spot(t ?? "")) { hits++; console.log("HIT", f.key, "|", f.title, "|", t); }
 console.log(`${texts.length} ordinary lines, ${hits} hits`);
+// Lines that SHOULD hit: edit them to name clients from your own snapshot (kept generic here on purpose).
 const real = ["אני מתקשר מאקמה", "זה מהסטודיו, יש בעיה באתר", "היי, מדבר מהמועצה המקומית", "האתר של העירייה לא עולה"];
 for (const t of real) console.log("REAL", t, "=>", s.spot(t).map((f) => f.title + " | " + (f.lines[0] ?? "(no domains)")).join(" ;; ") || "none");

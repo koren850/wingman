@@ -12,7 +12,10 @@ const FAKE = {
   missing: { deepgram: { source: "missing", last4: "", inFile: false, inKeychain: false }, anthropic: { source: "missing", last4: "", inFile: false, inKeychain: false } },
 };
 
-/** o: { handle, getWin, dialog, keysFile: () => Promise<string>, fake: "keychain"|"file"|"missing"|"" , run?, fetch?, env? } */
+/**
+ * Register the keys:* IPC handlers (status, set, test, remove, migrate). Called by window.cjs.
+ * o: { handle, getWin, dialog, keysFile: () => Promise<string>, fake: "keychain"|"file"|"missing"|"" , run?, fetch?, env?, now? }
+ * (run/fetch/env/now are test seams). */
 function register(o) {
   const keychain = kc.createKeychain(o.run || kc.realRunner);
   const limit = kc.createRateLimiter(5, 60000, o.now);
@@ -26,6 +29,8 @@ function register(o) {
     const file = await o.keysFile();
     return { ok: true, providers: kc.keyStatus({ keychain, file, env }), fake: false };
   };
+  // The key keys:test will try: Keychain, then environment, then keys.env. Never returned to the page.
+  // Note: src/env.ts loads env before Keychain, so with both set the test and the engine can use different keys.
   const resolveKey = async (p) => {
     const a = kc.ACCOUNTS[p];
     try { const v = keychain.get(p); if (v) return v; } catch { /* next */ }

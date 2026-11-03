@@ -92,3 +92,9 @@ deployment
 DevOps
 backup
 migration
+cache
+GraphQL
+Memcached
+feature flag
+REST
+תעודת אבטחה

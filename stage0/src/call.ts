@@ -1,4 +1,7 @@
 // pnpm call [run args]: opens the answer window and starts listening, together. Ctrl+C stops both.
+// Parent process: spawns overlay.ts's Electron window plus src/run.ts as a child (run args pass through).
+// With WINGMAN_CONTROL=1 it also prints "@@wingman {json}" overlay status lines on stdout, like run.ts does.
+// Stop order: SIGINT to run.ts (it saves the call), window closes 5 s later so the last cards stay readable.
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { rmSync } from "node:fs";
@@ -10,12 +13,14 @@ import { spawnOverlay } from "./overlay.ts";
 const rest = process.argv.slice(2);
 const { settings: S } = loadSettingsOrExit(rest);   // exits with code 2 and a clear message when settings are invalid
 requireKeys([S.stt.provider, ...(S.run.noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])].filter((k) => k !== "script" && k !== "scripted"), expandHome(S.keys.file));
-try { rmSync(join(CALLS, "latest"), { force: true }); } catch { /* the overlay must not replay the previous call */ }
+try { rmSync(join(CALLS, "latest"), { force: true }); } catch { /* removed so the new window waits for run.ts's own folder instead of replaying the previous call */ }
 
 const bin = (n: string) => join(ROOT, "node_modules", ".bin", n);
 // U1: the answer window is reopened if it crashes (overlay.restartMax). Exit code 3 = it refused a single shared screen.
 let overlay: ReturnType<typeof spawnOverlay>, restarts = 0;
+/** Same "@@wingman" status line protocol as run.ts, only in control mode (the tray app reads it). */
 const status = (ev: string, data: Record<string, unknown> = {}) => { if (process.env.WINGMAN_CONTROL === "1") process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`); };
+/** Starts the answer window; on a crash it reopens it after 1 s (up to overlay.restartMax). Code 0 = closed by the user, code 3 = refused a single shared screen: no restart. */
 function openOverlay() {
   overlay = spawnOverlay(S, true);
   overlay?.on("exit", (code, sig) => {
@@ -33,6 +38,7 @@ function openOverlay() {
 openOverlay();
 const run = spawn(bin("tsx"), [join(ROOT, "src", "run.ts"), ...rest], { cwd: ROOT, stdio: "inherit" });
 
+// stopping = a stop was requested; runExited = run.ts is gone (only the window lingers); exiting = finalExit() already started.
 let stopping = false, runExited = false, exiting = false;
 /** SIGTERM the answer window, SIGKILL it 2 s later if it hangs. */
 function closeOverlay() {
@@ -63,7 +69,7 @@ process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 process.on("SIGHUP", stop);
 run.on("exit", (code) => {
-  stopping = true; runExited = true;
+  stopping = true; runExited = true;   // stopping also stops the crash-restart of the window
   setTimeout(() => finalExit(code ?? 0), 5000);
   console.log("(answer window closes in 5 s)");
 });

@@ -1,5 +1,6 @@
 // Is a call app running? Decides how loud the "I only hear you" state is: a red alarm only when a call app is open
-// (then silence from the other side is a real problem), a calm hint otherwise (Dan is testing or thinking aloud).
+// (then silence from the other side is a real problem), a calm hint otherwise (the user is testing or thinking aloud).
+// Used by the silent-tap watchdog in run.ts. macOS only: on other platforms the answer is always "unknown".
 import { execFile } from "node:child_process";
 
 /** Process names (lines of `ps -axo comm`) that mean a call is probably in progress or about to start. */

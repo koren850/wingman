@@ -1,3 +1,5 @@
+// Preload for the answer window: exposes window.wingman with one subscribe function per event main.cjs sends, plus copy(text) back to main.
+// Only these fixed channels cross the context-isolation boundary; the page gets no Node or raw ipcRenderer.
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("wingman", {
   onConfig: (fn) => ipcRenderer.on("config", (_e, c) => fn(c)),
@@ -6,6 +8,8 @@ contextBridge.exposeInMainWorld("wingman", {
   onLine: (fn) => ipcRenderer.on("line", (_e, l) => fn(l)),
   onRewind: (fn) => ipcRenderer.on("rewind", () => fn()),
   onCopied: (fn) => ipcRenderer.on("copied", (_e, t) => fn(t)),
+  onPhase: (fn) => ipcRenderer.on("phase", (_e, p) => fn(p)),
+  onEnded: (fn) => ipcRenderer.on("ended", () => fn()),
   onReset: (fn) => ipcRenderer.on("reset", () => fn()),
   onFrame: (fn) => ipcRenderer.on("frame", (_e, f) => fn(f)),
   onChecklist: (fn) => ipcRenderer.on("checklist", () => fn()),

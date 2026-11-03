@@ -1,9 +1,13 @@
-// Typed entry point for the Keychain module (the implementation is src/keychain.cjs so Electron's main process can share it).
+// Typed entry point for the Keychain module. The implementation is src/keychain.cjs (CommonJS) so Electron's main process
+// and the tsx/ESM tools share one copy. This file only adds types; it re-exports the CJS functions unchanged.
 import { createRequire } from "node:module";
 
+/** Providers whose API key can live in the Keychain. */
 export type Provider = "deepgram" | "anthropic";
+/** Runs /usr/bin/security (or a test mock) synchronously. `input` goes to stdin, never to argv. */
 export type Runner = (args: string[], input?: string) => { status: number; stdout: string; stderr: string };
 export interface Keychain { get(p: Provider): string | null; set(p: Provider, v: string): true; remove(p: Provider): boolean }
+/** Where a key was found. Lookup order: keychain, then env, then the legacy keys.env file. */
 export type KeySource = "keychain" | "env" | "file" | "missing";
 export interface KeyStatus { source: KeySource; last4: string; inFile: boolean; inKeychain: boolean }
 export interface MigrateResult { moved: Provider[]; alreadyInKeychain: Provider[]; failed: { provider: Provider; reason: string }[]; backup: string | null }

@@ -1,8 +1,11 @@
-// Hebrew-aware question detector (STRUCTURE.md §4.1 step 2).
-// Cheap first filter only: ambiguous lines go to Haiku, which can answer SKIP.
+// Hebrew-aware question detector: decides if a finished utterance from the other side is a question worth answering.
+// Cheap first filter only: ambiguous lines go to the model, which can answer SKIP. Called by run.ts with the bank score as context.
+// Order matters: "?" and arithmetic first, then request/multi-word cues, then statement guards (negative, interjection),
+// then head words, then context rescues (stall bank hit, strong bank match). The `reason` string is for logs and tests.
 import { tokens, tokenVariants, containsPhrase, normalize } from "./normalize.ts";
 import { evalMath } from "./calc.ts";
 
+/** Fewer tokens than this is never a question unless it carries a "?" ("מחיר?"). */
 export const MIN_WORDS = 2;
 
 const HEAD_WORDS = [
@@ -12,7 +15,12 @@ const HEAD_WORDS = [
 ];
 // Head words are matched after normalize() (final letters folded), so normalize the list once.
 const HEAD_NORM = HEAD_WORDS.filter((h) => !h.includes(" ")).map(normalize);
-const MULTI = ["מה עושים", "מה אפשר לעשות", "מה עושים עם", "מה הסיבה", "איך עושים", "זה כולל", "מה זה", "אולי כדאי", "אולי עדיף", "מה ההבדל", "תוכל", "תוכלי", "תוכלו", "אתה יכול", "את יכולה", "אתם יכולים"];
+const MULTI = [
+  // asking for the listener's view or experience: "אתה חושב שזה קשור לגרסה של PHP", "מה דעתך", "אתה ממליץ"
+  "אפשר לדעת", "אתה חושב", "את חושבת", "אתם חושבים", "אתה ממליץ", "את ממליצה", "אתם ממליצים", "מה דעתך", "מה דעתכם", "לדעתך", "לדעתכם", "אתה מכיר", "אתם מכירים", "יש לך ניסיון", "יש לכם ניסיון",
+  // open prompts ("describe..."): "תאר לי", "תן לי דוגמה", "ספר על"
+  "תאר", "תתאר", "תתארי", "תתארו", "תן לי דוגמה", "תני לי דוגמה", "תן דוגמה", "תדבר על", "תדברי על",
+  "מה עושים", "מה אפשר לעשות", "מה עושים עם", "מה הסיבה", "איך עושים", "זה כולל", "מה זה", "אולי כדאי", "אולי עדיף", "מה ההבדל", "תוכל", "תוכלי", "תוכלו", "אתה יכול", "את יכולה", "אתם יכולים"];
 const REQUEST = [
   "תסביר", "תסבירי", "תסבירו", "תגיד", "תגידי", "תגידו", "תבדוק", "תבדקי", "תבדקו", "תעזור", "תעזרי",
   "תראה לי", "תראי לי", "אני רוצה להבין", "רציתי לשאול", "רציתי להבין", "שאלה", "אשמח לדעת", "תעדכן",
@@ -36,6 +44,7 @@ const TIME_ASK = /תן\s+לי\s+(רגע|שנייה|שניה|דקה)|תנו\s+ל�
 const SEND_PHRASES = ["תשלח לי", "תשלחי לי", "שלח לי", "שלחי לי", "send me"];
 const SEND_THINGS = ["מייל", "אימייל", "מסרון", "הודעה", "וואטסאפ", "ווטסאפ", "קישור", "לינק", "קובץ", "הזמנה", "תזכורת"].map(normalize);
 const SEND_THINGS_EN = ["email", "e-mail", "mail", "message", "text", "link", "invite", "reminder", "whatsapp"];
+/** `after` = normalized text following a send phrase. True when the first thing asked for is a message-like object (not a quote or info). */
 const sendAction = (after: string): boolean => {
   const w = tokens(after.replace(/^לי\s/, "")).filter((x) => !["a", "an", "the", "לי"].includes(x));
   return !!w.length && (SEND_THINGS.includes(w[0]) || SEND_THINGS_EN.includes(w[0]));
@@ -43,6 +52,7 @@ const sendAction = (after: string): boolean => {
 /** A statement of wishes or background ("ורוצים לחדש את האתר", "אנחנו חברת לוגיסטיקה"): never a question, whatever the bank says. */
 const INTENT_WORDS = ["רוצים", "רוצה", "רוצות", "נרצה", "אנחנו חברת", "אנחנו עסק", "אנחנו סטודיו"].map(normalize);
 const INTENT_PREFIX = /^(מעוניינ|מתכננ|שוקלי)/;
+/** True if the text states what someone wants or is (one-letter prefix tolerated: "ורוצים"). Two-word intents like "אנחנו חברת" match as a pair. */
 const intentStatement = (raw: string): boolean => {
   const t = tokens(raw);
   return t.some((w, i) => [w, w.slice(1)].some((x) => INTENT_WORDS.includes(x) || INTENT_PREFIX.test(x)) || INTENT_WORDS.some((p) => p.includes(" ") && t.slice(i, i + 2).join(" ") === p));
@@ -57,6 +67,10 @@ export type Detection = { isQuestion: boolean; reason: string };
 /** Optional bank context: a stall-* hit rescues short cue-less utterances; a strong multi-word hit rescues a problem statement. */
 export type DetectCtx = { bankScore?: number; stall?: boolean };
 
+/**
+ * Is this utterance a question? Pure and synchronous (no network). `reason` names the rule that fired, e.g. "head:מה", "question-mark",
+ * "math". Hebrew is matched on normalize()d tokens, so the word lists above are normalized once at load (final letters folded).
+ */
 export function detect(text: string, ctx: DetectCtx = {}): Detection {
   const raw = text.trim();
   const t = tokens(raw);
@@ -118,7 +132,8 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
       return { isQuestion: true, reason: `clause-head:${c[0]}` };
   }
   if (ctx.stall && t.length < 8) return { isQuestion: true, reason: "stall-bank" };
-  // D6: a problem statement ("האתר שלי קורס כל פעם") with a strong bank hit. Bank card only, never an AI answer.
+  // A problem statement ("האתר שלי קורס כל פעם") with a strong bank hit counts as a question, but a statement of wishes never does.
+  // The bank card is shown; no AI answer is made from this.
   if (t.length >= 3 && (ctx.bankScore ?? 0) >= 2 && intentStatement(raw)) return { isQuestion: false, reason: "intent-statement" };
   if (t.length >= 3 && (ctx.bankScore ?? 0) >= 2) return { isQuestion: true, reason: "problem:bank" };
   return { isQuestion: false, reason: "no-cue" };

@@ -1,4 +1,5 @@
-// Post-call summary: offline tests with the scripted model double and fake generators. No network, no keys.
+// Post-call summary (summary.ts): parsing, e-mail guard, skip rules and generation.
+// Offline: the scripted model double and fake generators. No network, no keys.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, readFileSync, statSync, existsSync, writeFileSync } from "node:fs";

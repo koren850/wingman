@@ -3,6 +3,7 @@
 // An LTR island starts and ends with a letter/digit (a leading "+" before a digit is allowed for phone numbers),
 // so Hebrew prefix letters + "-" (ו-webhooks, ל-CRM) and trailing punctuation stay outside the island.
 (function (root) {
+  // split() with one capture group puts the matched tokens at odd indexes (used below). The lookbehind enforces the "ends with letter/digit/slash" rule.
   const TOKEN = /(\+?[A-Za-z0-9](?:[A-Za-z0-9@+._:/#?&=%~-]|,(?=\d))*(?<=[A-Za-z0-9/]))/;
   /** Split text into [{ text, ltr }] segments; ltr segments are Latin/number/email/URL/phone tokens (3+ chars). */
   function splitBidi(text) {

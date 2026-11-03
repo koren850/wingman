@@ -1,4 +1,5 @@
-// The Settings page catalog must match the real schema and defaults.
+// tray/settings-catalog.cjs (the Settings page catalog) must match the real schema and defaults in settings-edit.ts.
+// Uses temp settings files.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";

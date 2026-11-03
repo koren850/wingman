@@ -1,4 +1,5 @@
 // `wingman help`: written for an AI agent (Claude Code) that drives Wingman from a terminal.
+// HELP is user-visible output: keep it in step with the commands in index.ts and the exit codes in common.ts.
 export const HELP = `wingman: command line for the Wingman live-call assistant. Everything Dan can do in the app, from a terminal.
 
 HOW TO USE IT (for an AI agent)
@@ -13,7 +14,7 @@ TYPICAL FLOWS
   Prepare:   wingman plan set --who "Dana, Levi Studio" --kind client --topic "hosting move" --goal "agree migration date" \\
                               --must "price" --must "downtime window" --note "She prefers WhatsApp"
              wingman plan attach --file ~/notes/offer.md        (or --text "..." or --stdin)      wingman plan show
-  Run:       wingman doctor            then   wingman start       (or: wingman start --practice  = offline pretend client, free)
+  Run:       wingman doctor (readiness check)            then   wingman start       (or: wingman start --practice  = offline pretend client, free)
              wingman status            phase "live" = listening ("waiting" only if the optional "Ask me before listening starts" setting is on)
   During:    wingman live [--follow]   transcript + answer cards          wingman ask "what did we say the price was?"
              wingman note "she is the owner"     wingman quiet on|off     wingman client   (confirm the proposed client)
@@ -21,22 +22,26 @@ TYPICAL FLOWS
   Review:    wingman calls list | show <id> | rate <id> <card> y|n | purge <id> --yes
 
 COMMANDS
-  status                       App running? Call phase, health, last readiness check, plan. Exit 3 when the app is not running.
-  doctor [--offline]           Readiness check (microphone, audio, speech service, model). Full check costs a few cents and is refused while a call runs.
+  status                       App running? Call phase, health, last readiness check, Plan. Exit 3 when the app is not running.
+                               While a call stops it shows the step (saving the call, writing the summary, finishing); --json: call.stopPhase.
+                               call.listeningForQuestion = Ctrl+Opt+A is armed (call.questionSecondsLeft = seconds left in that window); call.aiMode = ai | prepared-only.
+  doctor [--offline]           Readiness check, the same as Run readiness check in the app (microphone, audio, speech service, model). Full check costs a few cents and is refused while a call runs.
                                --offline: no audio, no network, no cost.
-  plan [show]                  Show the next meeting's brief and its background files.
+  plan [show]                  Show the Plan for the next meeting and its background files.
   plan set|prepare  [--who ..] [--goal ..] [--kind client|support|vendor|team|consult|personal|other] [--topic ..]
                     [--note ..]... [--add-note ..]... [--must ..]... [--add-must ..]... [--fresh]
-                               Create or edit the brief. Fields you leave out are kept (--fresh starts over). --must items become a checklist.
-                               The brief is used for ONE call and expires after 6 hours.
+                               Create or edit the Plan. Fields you leave out are kept (--fresh starts over). --must items become a checklist.
+                               The Plan is used for ONE call and expires after 6 hours.
   plan attach --file <.txt|.md|.pdf> | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters in total).
-  plan detach <file id>        plan clear      Remove one background file / the whole plan.
-  start [--practice] [--no-ai] [--no-wait]    Start a call in the app. --practice = offline pretend client. --no-ai = bank cards only.
-  stop [--delete --yes] [--no-wait]           Stop and save. --delete erases the call and needs --yes.
+  plan detach <file id>        plan clear      Remove one background file / the whole Plan.
+  start [--practice] [--no-ai] [--no-wait]    Start a call in the app. --practice = offline pretend client. --no-ai = Prepared cards only (no AI).
+  stop [--delete --yes] [--no-wait] [--no-summary]
+                                              Stop and save. --delete erases the call and needs --yes. --no-summary keeps the call but
+                                              skips the summary (write it later: wingman calls summary <id> --generate).
   confirm --yes                Only when the optional "Ask me before listening starts" setting is on (off by default): starts listening
-                               on a call that is waiting. Do it only when Dan asked. (Old name: consent.)
+                               on a call that is waiting (the "Start listening" step). Do it only when Dan asked. (Old name: consent.)
   client                       Confirm the proposed client (the AI may then use their details).
-  quiet on|off                 Hide cards from the answer window (they are still saved).
+  quiet on|off                 Quiet mode: hide cards in the answer window (they are still saved).
   note "<text>"                Add a context note for the AI (max 300 characters; \`-\` reads stdin).
   ask "<question>"             Type a question to Wingman during a live call; the answer appears as a card (read it with \`wingman live\`). Needs phase "live".
   ask --listen                 Same as the Ctrl+Opt+A key: Dan's next spoken sentence is the question.
@@ -52,7 +57,7 @@ COMMANDS
 
 EXIT CODES
   0 ok   1 failed   2 bad usage or invalid value   3 app not running   4 refused (wrong state, e.g. no live call, or a call is already running)
-  5 not found   6 needs --yes   7 not ready (doctor NOT READY, keys missing)   8 rate limited (start/stop: 1 per 1.5 s, 6 per minute)   9 timeout
+  5 not found   6 needs --yes   7 not ready (readiness check NOT READY, keys missing)   8 rate limited (start/stop: 1 per 1.5 s, 6 per minute)   9 timeout
 
 SAFETY
   - The app listens on an owner-only socket (~/.config/wingman/run/control.sock, mode 600). Only a fixed list of commands is accepted.

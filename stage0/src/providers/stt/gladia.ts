@@ -2,6 +2,7 @@
 // Protocol (docs.gladia.io live-stt, checked 2026-11-01): POST https://api.gladia.io/v2/live (header x-gladia-key) -> {id, url}
 //   · connect to url · audio = binary frames matching init encoding/sample_rate · messages {type:"transcript", data:{id,is_final,utterance:{text,start,end,language}}}
 //   · stop = {"type":"stop_recording"} · close code 1000 = intentional, anything else = reconnect to the same url.
+// The WsStream base reconnects (with backoff) after a close we did not ask for, when the error is network-like or retryable.
 import type WebSocket from "ws";
 import { classifyHttp, classifySttError } from "../errors.ts";
 import { speechEndWall, type SttOptions, type SttProvider, type SttResult, type Word } from "./types.ts";
@@ -9,6 +10,7 @@ import { WsStream } from "./ws-base.ts";
 
 export const GLADIA_API = "https://api.gladia.io";
 
+/** Gladia adapter on WsStream. connectUrl() does the init POST once; reconnects reuse the returned session url. */
 export class GladiaStream extends WsStream {
   private url?: string;
   constructor(opts: SttOptions) { super("gladia", opts); }

@@ -1,7 +1,7 @@
-// Speed of answers for Dan on a SOLO call (nobody else on the line), replaying the shape of a live test:
-// the speech-to-text final arrives ~0.9 s after the end of speech with speechFinal=false.
-// Before (real call, 2 Nov): end of speech -> card 4.2 s = 0.9 s STT + 1.7 s join-window wait + 1.6 s classifier then answer, and the sum went to the model.
-// Now: a "?" or a sum flushes at once, a sum is computed locally, a solo call skips the classifier, "you / can you" is for Wingman.
+// Speed of answers for Dan on a SOLO call (nobody else on the line), run through the real src/run.ts as a child process.
+// Scripted STT replays the shape of a live call: the final arrives ~0.9 s after the end of speech with speechFinal=false.
+// A "?" or a sum flushes at once, a sum is computed locally, a solo call skips the classifier, "you / can you" is for Wingman.
+// Without those, the card took about 4 s (STT, join-window wait, classifier, then the answer).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

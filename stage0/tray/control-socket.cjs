@@ -28,7 +28,9 @@ function socketPath(env = process.env, os = nodeOs) {
 
 const err = (code, error) => ({ ok: false, code, error });
 const isObj = (o) => o && typeof o === "object" && !Array.isArray(o);
+/** Arg validator for commands that take none: throws unless args is absent or {}. */
 function noArgs(a) { if (a === undefined) return {}; if (!isObj(a) || Object.keys(a).length) throw new Error("this command takes no arguments"); return {}; }
+/** Arg validator: rejects unknown keys, checks required/type/length. fields: { key: {type:"boolean"|"string", required?, min?, max?} }. Returns a clean copy. */
 function shape(a, fields) {
   if (a === undefined) a = {};
   if (!isObj(a)) throw new Error("args must be an object");
@@ -48,6 +50,7 @@ function shape(a, fields) {
 }
 
 /**
+ * Builds the control server (does not listen until start()). Returns { start, stop, path, handle, COMMANDS }.
  * o.controller   tray/controller.cjs instance
  * o.lib          tray/lib.cjs
  * o.briefFile    path of latest.yaml (brief_refresh)
@@ -69,11 +72,13 @@ function createControlServer(o) {
   const done = (ok, error) => (ok ? { ok: true, state: view() } : refused(error));
   /** Rate limit start/practice/stop: checked AFTER the state checks, so a refused command does not use up the budget. */
   const paced = (fn) => { const m = limited(); return m ? err("rate_limited", m) : fn(); };
+  /** The state fields the CLI may see. Whitelisted by hand so no call content (transcript, cards) can leak onto the socket. */
   const view = () => {
     const s = ctl.getState();
-    return { running: !!s.running, phase: s.phase, callId: s.callId || "", practice: !!s.practice, quiet: !!s.quiet, startedAt: s.startedAt || 0, liveAt: s.liveAt || 0, client: s.client || "", proposed: s.proposed || "", notes: s.notes | 0, briefReady: !!s.briefReady };
+    return { running: !!s.running, phase: s.phase, callId: s.callId || "", practice: !!s.practice, quiet: !!s.quiet, startedAt: s.startedAt || 0, liveAt: s.liveAt || 0, client: s.client || "", proposed: s.proposed || "", notes: s.notes | 0, briefReady: !!s.briefReady, stopPhase: s.stopPhase || "", askArmed: !!s.askArmed, askUntil: s.askArmed ? Number(s.askUntil) || 0 : 0, summarySkipped: !!s.summarySkipped, noAi: !!s.noAi };
   };
 
+  // Allowlist: each entry validates its args (`args`) and then runs (`run`). `long` marks commands that may take a while (doctor).
   const COMMANDS = {
     ping: { args: noArgs, run: () => ({ ok: true, app: "wingman", ...(o.info ? o.info() : {}) }) },
     status: {
@@ -91,13 +96,13 @@ function createControlServer(o) {
       args: noArgs,
       run: () => (ctl.isRunning() ? refused("A call is already running. Stop it first (wingman stop).") : paced(() => done(ctl.practice(), "Could not start a practice call."))),
     },
-    consent: { args: noArgs, run: () => { const s = ctl.getState(); return need(ctl.isRunning() && s.phase === "waiting", "No call is waiting to start listening.") || done(ctl.consent(), "Consent was not accepted."); } },
-    quiet: { args: (a) => shape(a, { on: { type: "boolean", required: true } }), run: (a) => need(ctl.getState().phase === "live", "Quiet mode can only change while a call is live.") || done(ctl.setQuiet(a.on), "Could not change quiet mode.") },
-    client: { args: noArgs, run: () => need(!!ctl.getState().proposed && !ctl.getState().client, "There is no proposed client to confirm.") || done(ctl.confirmClient(), "Could not confirm the client.") },
-    note: { args: (a) => shape(a, { text: { type: "string", required: true, min: 1, max: 2000 } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running.") || done(ctl.note(a.text), "The note was empty or not accepted.") },
-    ask: { args: (a) => shape(a, { text: { type: "string", required: true, min: 1, max: 2000 } }), run: (a) => need(ctl.getState().phase === "live", "A question can only be asked while a call is live.") || done(ctl.ask(a.text), "The question was empty or not accepted.") },
+    consent: { args: noArgs, run: () => { const s = ctl.getState(); return need(ctl.isRunning() && s.phase === "waiting", "No call is waiting to start listening. This only applies when \"Ask me before listening starts\" is on.") || done(ctl.consent(), "Start listening was not accepted. Check wingman status."); } },
+    quiet: { args: (a) => shape(a, { on: { type: "boolean", required: true } }), run: (a) => need(ctl.getState().phase === "live", "Quiet mode can only change while a call is live. Start a call first.") || done(ctl.setQuiet(a.on), "Could not change quiet mode.") },
+    client: { args: noArgs, run: () => need(!!ctl.getState().proposed && !ctl.getState().client, "There is no proposed client to confirm. Wingman asks only after it spots one.") || done(ctl.confirmClient(), "Could not confirm the client.") },
+    note: { args: (a) => shape(a, { text: { type: "string", required: true, min: 1, max: 2000 } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running. Start one with wingman start.") || done(ctl.note(a.text), "The note was empty or not accepted.") },
+    ask: { args: (a) => shape(a, { text: { type: "string", required: true, min: 1, max: 2000 } }), run: (a) => need(ctl.getState().phase === "live", "A question can only be asked while a call is live (wingman status shows the phase).") || done(ctl.ask(a.text), "The question was empty or not accepted.") },
     ask_listen: { args: noArgs, run: () => need(ctl.getState().phase === "live", "Only while a call is live.") || done(ctl.askWingman(), "Could not arm the ask window.") },
-    stop: { args: noArgs, run: () => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).") || paced(() => done(ctl.stop(), "Could not stop the call.")) },
+    stop: { args: (a) => shape(a, { noSummary: { type: "boolean" } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).") || paced(() => done(a.noSummary === true ? ctl.stopNoSummary() : ctl.stop(), "Could not stop the call.")) },
     stop_delete: {
       args: (a) => shape(a, { confirm: { type: "boolean", required: true } }),
       run: (a) => need(a.confirm === true, "Deleting needs confirm:true.") || need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).") || paced(() => done(ctl.stopDelete(), "Could not stop and delete the call.")),
@@ -106,6 +111,7 @@ function createControlServer(o) {
     brief_refresh: { args: noArgs, run: () => { if (!ctl.isRunning()) ctl.boot(lib.briefReady(o.briefFile)); return { ok: true }; } },
   };
 
+  /** Sliding 60 s window over start/stop-type commands. Returns "" and records the stamp if allowed, else a message. */
   function limited() {
     const t = now();
     while (stamps.length && t - stamps[0] > 60_000) stamps.shift();
@@ -115,6 +121,7 @@ function createControlServer(o) {
     return "";
   }
 
+  /** One request line in, one response object out. Never throws. Exposed for tests. */
   async function handle(line) {
     let req;
     try { req = JSON.parse(line); } catch { return err("bad_request", "Not valid JSON."); }
@@ -131,6 +138,7 @@ function createControlServer(o) {
     } catch (e) { log(`cli ${req.cmd} error`); return err("internal", "The app could not run that command."); }
   }
 
+  /** One request per connection: read up to the first newline, answer, close. Size, count and time limits stop a stuck or noisy client. */
   function onConnection(sock) {
     if (clients >= MAX_CLIENTS) { sock.end(JSON.stringify(err("busy", "Too many connections.")) + "\n"); return; }
     clients++;
@@ -160,6 +168,7 @@ function createControlServer(o) {
     const ds = fs.lstatSync(dir);
     if (!ds.isDirectory() || (uid >= 0 && ds.uid !== uid)) throw new Error("control folder is not owned by this user");
     if (ds.mode & 0o077) fs.chmodSync(dir, 0o700);
+    // sun_path is about 104 bytes on macOS; longer paths fail to bind.
     if (sockPath.length > 100) throw new Error("socket path too long");
     let st; try { st = fs.lstatSync(sockPath); } catch { st = undefined; }
     if (st) {
@@ -168,6 +177,7 @@ function createControlServer(o) {
     }
   }
 
+  /** Prepares the folder, then listens. Resolves with the socket path; rejects if the folder or old socket is not ours. */
   function start() {
     return new Promise((resolve, reject) => {
       try { prepare(); } catch (e) { return reject(e); }
@@ -182,6 +192,7 @@ function createControlServer(o) {
       server.once("error", () => { try { process.umask(prev); } catch { /* done */ } });
     });
   }
+  /** Stops listening and removes the socket file. */
   function stop() {
     return new Promise((resolve) => {
       if (!server) return resolve();

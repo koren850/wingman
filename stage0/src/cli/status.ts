@@ -1,4 +1,5 @@
-// status, doctor, keys status.
+// status, doctor, keys status. status and doctor ask the running app over the control socket (tray/control-socket.cjs);
+// when it is not running, status reports that and doctor runs src/doctor.ts directly. keys status reads the Keychain only.
 import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { call, appStatus, appProcessRunning, NO_APP_HINT } from "./client.ts";
@@ -7,9 +8,14 @@ import { CliError, EXIT, trayLib, parse, usage, ago, type Ctx, type Result } fro
 import { keyStatus, realKeychain, ACCOUNTS, PROVIDERS, type Keychain } from "../keychain.ts";
 import { loadSettings, expandHome } from "../settings.ts";
 import { KEYS_FILE } from "../env.ts";
+import { createRequire } from "node:module";
+const { askSecondsLeft } = createRequire(import.meta.url)("../../shared/ask.js") as { askSecondsLeft: (until: unknown, now: number) => number | null };
 
 type Doc = { ran: boolean; ok: boolean; verdict: string; failing: { text: string; fix: string }[]; warnings: { text: string; fix: string }[]; at: number };
 
+const STOP_TEXT: Record<string, string> = { saving: "saving the call", summary: "writing the summary", done: "finishing" };
+
+// Rolls app health + the last readiness check into ready / attention / not_ready, with the reasons.
 function readiness(running: boolean, health: any[], doctor: Doc | null, phase: string) {
   const reasons: string[] = [];
   let level = "ready" as "ready" | "attention" | "not_ready";
@@ -19,7 +25,7 @@ function readiness(running: boolean, health: any[], doctor: Doc | null, phase: s
   if (!doctor || !doctor.ran) bump("attention", "The readiness check has not run since the app started: wingman doctor");
   else if (!doctor.ok) bump("not_ready", `Last readiness check: ${doctor.verdict}${doctor.failing[0] ? " (" + doctor.failing[0].text + ")" : ""}`);
   else if (doctor.warnings.length) bump("attention", `Readiness check has ${doctor.warnings.length} warning(s): wingman doctor`);
-  if (phase === "stopping") bump("attention", "A call is being saved.");
+  if (phase === "stopping") bump("attention", "A call is being saved: wait for it to finish before starting another (wingman status shows the step).");
   return { level, ready: level !== "not_ready", reasons };
 }
 
@@ -36,7 +42,7 @@ export async function status(ctx: Ctx, args: string[]): Promise<Result> {
   const now = Date.now();
   const call_ = {
     active: !!st?.running, live: phase === "live", phase, practice: !!st?.practice, callId: st?.callId || "", client: st?.client || "", proposedClient: st?.proposed || "",
-    quiet: !!st?.quiet, notes: st?.notes ?? 0, elapsedSec: st?.liveAt ? Math.round((now - st.liveAt) / 1000) : 0,
+    quiet: !!st?.quiet, stopPhase: st?.stopPhase || "", listeningForQuestion: !!st?.askArmed, questionSecondsLeft: st?.askArmed ? askSecondsLeft(st?.askUntil, now) : null, aiMode: st?.noAi ? "prepared-only" : "ai", notes: st?.notes ?? 0, elapsedSec: st?.liveAt ? Math.round((now - st.liveAt) / 1000) : 0,
   };
   const hint = a ? "" : proc ? "The app is running but has no control socket (started before the CLI existed). Dan: Quit Wingman from the menu bar and open it again." : NO_APP_HINT;
   const data = {
@@ -47,12 +53,12 @@ export async function status(ctx: Ctx, args: string[]): Promise<Result> {
   const L: string[] = [];
   L.push(a ? `App: running (pid ${a.pid})` : `App: NOT running${proc ? " (process found, but no control socket)" : ""}`);
   if (a) {
-    L.push(`Call: ${phase === "idle" ? "none" : `${phase}${st.practice ? " (practice)" : ""}${call_.callId ? ` · ${call_.callId}` : ""}${call_.client ? ` · client ${call_.client}` : ""}${phase === "live" ? ` · ${trayLib.mmss(now - st.liveAt)}` : ""}${call_.quiet ? " · quiet" : ""}`}`);
+    L.push(`Call: ${phase === "idle" ? "none" : `${phase}${st.practice ? " (practice)" : ""}${call_.callId ? ` · ${call_.callId}` : ""}${call_.client ? ` · client ${call_.client}` : ""}${phase === "live" ? ` · ${trayLib.mmss(now - st.liveAt)}` : ""}${call_.quiet ? " · quiet" : ""}${call_.listeningForQuestion ? ` · listening for your question${call_.questionSecondsLeft ? ` (${call_.questionSecondsLeft} s left)` : ""}` : ""}${phase === "stopping" ? ` · ${STOP_TEXT[call_.stopPhase] || "stopping"}` : ""}`}`);
     if (call_.proposedClient && !call_.client) L.push(`  Client proposed: ${call_.proposedClient} (wingman client to confirm)`);
     for (const h of health) L.push(`  ${h.level === "red" ? "RED" : "amber"}: ${h.text}`);
     if (data.overlayDown) L.push(`  Answer window: ${data.overlayDown === "one-screen" ? "closed (only one screen)" : "closed"}`);
     if (data.offReason) L.push(`  Wingman turned itself off: ${data.offReason}`);
-    L.push(`Doctor: ${doctor && doctor.ran ? `${doctor.verdict} (${ago(now - doctor.at)} ago)` : "not run since the app started (wingman doctor)"}`);
+    L.push(`Readiness check: ${doctor && doctor.ran ? `${doctor.verdict} (${ago(now - doctor.at)} ago)` : "not run since the app started (run: wingman doctor)"}`);
   } else L.push(hint);
   L.push(`Plan: ${plan.ready ? `ready · ${[plan.who, plan.goal].filter(Boolean).join(" · ") || "(notes only)"} · expires in ${ago(plan.expiresInMin * 60000)}${plan.attachments.length ? ` · ${plan.attachments.length} file(s)` : ""}` : "none"}`);
   L.push(`Readiness: ${r.level.toUpperCase().replace("_", " ")}${r.reasons.length ? "\n  - " + r.reasons.join("\n  - ") : ""}`);
@@ -75,7 +81,7 @@ export async function doctor(ctx: Ctx, args: string[]): Promise<Result> {
     const r = await call(ctx, "doctor", { offline: !!values.offline }, 300_000);
     d = r.doctor; via = "app";
   } else { d = trayLib.doctorSummary(await runDoctorDirect(ctx, !!values.offline)); via = "cli"; }
-  const L = [`Doctor${values.offline ? " (offline)" : ""}: ${d.verdict}${via === "cli" ? " (app not running; ran directly)" : ""}`];
+  const L = [`Readiness check${values.offline ? " (offline)" : ""}: ${d.verdict}${via === "cli" ? " (app not running; ran directly)" : ""}`];
   for (const f of d.failing) L.push(`  FAIL ${f.text}${f.fix ? `\n       fix: ${f.fix}` : ""}`);
   for (const w of d.warnings) L.push(`  warn ${w.text}${w.fix ? `\n       fix: ${w.fix}` : ""}`);
   const busy = d.verdict === "BUSY";

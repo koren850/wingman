@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds .app/Wingman.app: a renamed copy of the dev Electron runtime, so the Dock, Cmd+Tab and notifications say
-# "Wingman" with the capybara icon instead of "Electron". Re-run after an Electron upgrade (pnpm install runs it).
+# "Wingman" with the app icon instead of "Electron". Re-run after an Electron upgrade (pnpm install runs it).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SRC=node_modules/electron/dist/Electron.app
@@ -35,7 +35,7 @@ process.chdir(STAGE0);
 if (!process.argv.slice(1).some((a) => a.endsWith(".cjs"))) process.argv.push("--open-window");
 require(STAGE0 + "/tray/main.cjs");
 JS
-# Helper apps keep their names; only the main bundle is shown to the user. Re-sign ad hoc after the edit.
+# Helper apps keep their names; only the main bundle is shown to the user. Re-sign ad hoc after the edit (best effort, hence "|| true"): the edit invalidates the old signature.
 codesign --force --deep --sign - "$OUT" >/dev/null 2>&1 || true
 echo "built $OUT"
 # --install: copy it to /Applications (Finder, Launchpad, Spotlight, Dock).

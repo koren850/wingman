@@ -18,3 +18,16 @@ stage0/qa/cache/
 stage0/qa/calls/
 stage0/qa/report-replay.*
 stage0/.app/
+
+# Never commit: logs, audio, local settings, secrets, builds, scratch
+*.log
+*.wav
+*.mp3
+*.m4a
+.env
+.env.*
+*.pem
+*.p12
+*.dmg
+stage0/data/briefs/
+.claude/

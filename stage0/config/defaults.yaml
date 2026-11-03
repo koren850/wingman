@@ -1,19 +1,19 @@
-# Wingman Stage 0 built-in defaults. This is layer 1 (lowest) and documents EVERY setting.
+# Wingman built-in defaults. This is layer 1 (lowest) and documents EVERY setting.
 # Do not edit for personal changes: put overrides in ~/.config/wingman/settings.yaml
 # (or a profile in stage0/profiles/<name>.yaml, used with --profile <name>).
 # Layers, lowest to highest: this file < user file < profile < env vars < CLI flags.
 # Check the result with: pnpm settings
-# Unknown keys are errors (typos should not pass silently). Secrets (API keys) never go here: use ~/.config/wingman/keys.env.
+# Unknown keys are errors (typos should not pass silently). Secrets (API keys) never go here: use Settings → Keys (macOS Keychain).
 
-v: 1                       # schema version
+v: 1                       # schema version of this file (bump only when the layout changes)
 
 # ---- Speech to text ----
 stt:
   provider: deepgram       # deepgram | soniox | gladia   (soniox and gladia are EXPERIMENTAL: not tested live)
   fallback: []             # providers to switch to mid-call on an auth/quota/outage failure, e.g. [soniox]
   model: nova-3            # model id for the provider (Deepgram: nova-3). Soniox/Gladia use their own default when this is nova-3
-  language: multi          # he = Hebrew only (Nova-3 supports "he"; fewer foreign-script mistakes, weaker on English words) | en | multi | auto (auto = multi). multi = Hebrew+English mixing: 52% vs 18% English-term recall on the synthetic gate, 2 Nov. Re-check on real voice
-  endpointMs: 200          # silence (ms) that ends an utterance. Measured 2 Nov (TTS, real Deepgram): 350 -> final lag p50 0.51 s, 200 -> ~0.4, 100 -> 0.27. Real speech pauses more than TTS: raise to 350-700 if questions get split. Env: WINGMAN_ENDPOINT_MS
+  language: multi          # he = Hebrew only (Nova-3 supports "he"; fewer foreign-script mistakes, weaker on English words) | en | multi | auto (auto = multi). multi = Hebrew+English mixing: 52% vs 18% English-term recall on the synthetic gate. Re-check on real voice
+  endpointMs: 200          # silence (ms) that ends an utterance. Measured with TTS audio and real Deepgram: 350 -> final lag p50 0.51 s, 200 -> ~0.4, 100 -> 0.27. Real speech pauses more than TTS: raise to 350-700 if questions get split. Env: WINGMAN_ENDPOINT_MS
   utteranceEndMs: 1000     # Deepgram utterance_end_ms (docs: min 1000, needs interim_results; the app does not act on UtteranceEnd, so this does not change lag)
   keepAliveMs: 5000        # socket keep-alive interval (Deepgram closes after ~10 s of silence)
   flushFallbackMs: 1500    # handle buffered finals if no speech_final arrives within this time
@@ -48,26 +48,26 @@ llm:
 
 # ---- Reflex behaviour ----
 reflex:
-  stallAfterMs: 1800       # no tag by then: show the stall line and keep streaming
+  stallAfterMs: 1800       # no tag by then: show the Buy time line and keep streaming
   dropStaleMs: 4000        # do not show an answer to a question older than this
-  allowAns: true           # false = bank + STALL only (a model ANS answer becomes a stall line). Use false for a first client call
+  allowAns: true           # false = Prepared + Buy time only (a model ANS answer becomes a stall line). Use false for a first client call
 
-# ---- Answering Dan's own questions (the "me" channel) ----
+# ---- Answering the user's own questions (the "me" channel) ----
 assist:
-  answerMe: always         # always = answer a question Dan asks the assistant (not one he asks the other person) | hotkey = only after the ask key | off = never (the ask key still works)
-  askWindowMs: 10000       # after the ask key (Ctrl+Opt+A) the next thing Dan says, within this time, is a question for Wingman
+  answerMe: always         # always = answer a question the user asks the assistant (not one asked of the other person) | hotkey = only after the ask key | off = never (the ask key still works)
+  askWindowMs: 10000       # after the ask key (Ctrl+Opt+A) the next thing the user says, within this time, is a question for Wingman
   model: "anthropic:claude-haiku-5-5"   # decides "asking Wingman or asking the other person?" when the local rules are unsure (one word out, about $0.0002). Must have a price in budget.prices.llm
-  classifyTimeoutMs: 3000
+  classifyTimeoutMs: 3000  # give up on that classifier call after this long (ms) and fall back to the local rules
   themQuietMs: 4000        # still unsure: answer only if the other side has been silent this long, or the call is solo
   minGapMs: 4000           # at least this long between two unasked answers (the ask key is exempt)
   maxPerMin: 6             # at most this many unasked answers a minute
-  protectThemMs: 15000     # never show an answer for Dan within this long after a card for the other side's question
+  protectThemMs: 5000      # never show an answer for the user within this long after a card for the other side's question (kept short so a question asked right after a hint card is not skipped)
 
 # ---- Cards ----
 cards:
-  maxPerMinute: 3          # at most this many NEW cards shown per window
+  maxPerMinute: 3          # at most this many NEW cards shown per window (calm screen; price and guarantee cards are exempt)
   windowMs: 60000          # the window for maxPerMinute
-  lockoutMs: 1500          # min gap between new cards (Stage 0: logged as lockout_would_apply, not enforced)
+  lockoutMs: 1500          # min gap between new cards (only logged as lockout_would_apply for now, not enforced)
   maxOnScreen: 4           # cards kept in the overlay
   quiet: false             # start in quiet mode (cards are logged, not shown). Key q toggles
 
@@ -77,12 +77,12 @@ audio:
     source: audiotee       # audiotee (macOS system tap) | device (an avfoundation input, e.g. BlackHole) | off
     device: "BlackHole 2ch"  # used when source = device. avfoundation name or ":index" (ffmpeg -f avfoundation -list_devices true -i "")
   mic:
-    device: ":default"     # avfoundation input for Dan's mic. Env: WINGMAN_MIC
+    device: ":default"     # avfoundation input for the user's mic. Env: WINGMAN_MIC
   warnBluetooth: true      # amber warning when AirPods/Bluetooth are the mic or speakers (the call profile lowers transcript quality)
   watchdog:
-    silentThemMs: 8000     # client audio silent this long while Dan talks = "NOT HEARING THE CLIENT"
+    silentThemMs: 8000     # client audio silent this long while the user talks = "NOT HEARING THE CLIENT"
     silentPeak: 0.01       # peak (0-1) above which client audio counts as sound
-    micSilentMs: 10000     # mic silent this long after consent = "MIC SILENT"
+    micSilentMs: 10000     # mic silent this long after listening starts = "MIC SILENT"
     micPeak: 0.005         # peak (0-1) above which the mic counts as sound
   echo:                    # speakers mode: no headphones needed (the mic also hears the client from the speakers)
     mode: both             # gate | filter | both | off. gate = mic sends silence while the client talks; filter = drop "me" lines that repeat the client. With headphones, "filter" keeps your words when you talk over the client. Env: WINGMAN_ECHO
@@ -95,29 +95,29 @@ audio:
 # ---- Fact cards (a known client or domain is mentioned) ----
 facts:
   enabled: true            # needs the snapshot file below; without it fact cards are simply off
-  file: data/private/entities.json   # built before the call from the domains dashboard + client-kb (git-ignored)
+  file: data/private/entities.json   # a snapshot of known clients and domains, built before the call (git-ignored)
   sslWarnDays: 30          # SSL expiring within this many days is flagged on the card
   minAliasLen: 4           # client name variants shorter than this (letters) never match (avoids false hits)
-  proposeClient: true      # first client spotted when no brief names one: "looks like X, press y" adds it to the AI notes
+  proposeClient: true      # first client spotted when no Plan names one: "looks like X, press y" adds it to the AI notes
 
 # ---- Live notes (key things said, every ~30 s) ----
 notes:
-  enabled: true
-  model: "anthropic:claude-haiku-5-5"
+  enabled: true            # false = no live notes
+  model: "anthropic:claude-haiku-5-5"   # model that writes the notes; must have a price in budget.prices.llm
   everyMs: 30000           # how often to look at new speech
   minNewWords: 25          # skip a round when less than this was said since the last one
-  timeoutMs: 8000
+  timeoutMs: 8000          # abort a notes call that takes longer than this (ms); the round is skipped
 
 # ---- Post-call summary (one model call when a live call ends; writes calls/<id>/summary.json; redo with: pnpm summary <id>) ----
 summary:
   enabled: true            # false = no summary at the end of a call (pnpm summary still works)
   model: "anthropic:claude-haiku-5-5"   # provider:model; must have a price in budget.prices.llm (about $0.002-0.005 per call)
-  minWords: 150            # skip calls with fewer client+Dan words than this (a missed call or a test is not worth a summary)
+  minWords: 150            # skip calls with fewer client+user words than this (a missed call or a test is not worth a summary)
   timeoutMs: 20000         # never hold up the end of the call longer than this; on timeout the summary is skipped (summary.error in events)
 
-# ---- Must-cover reminders (from the brief: pnpm brief) ----
+# ---- Must-cover reminders (from the Plan: pnpm brief) ----
 reminders:
-  enabled: true
+  enabled: true            # false = never remind about uncovered must-cover items
   firstAfterMin: 15        # first reminder of uncovered items after this many minutes
   everyMin: 10             # then at most this often
 
@@ -127,18 +127,18 @@ frame:
   model: "anthropic:claude-haiku-5-5"   # must have a price in budget.prices.llm (about $0.0005 per update)
   everyMs: 60000           # look again at most this often
   minNewWords: 40          # ... and only when at least this many new words were said
-  windowMin: 3             # the AI reads the last N minutes of the call
-  timeoutMs: 10000
+  windowMin: 3             # the AI reads the last N minutes of the call (tips use the same window)
+  timeoutMs: 10000         # abort a frame call that takes longer than this (ms); the old frame stays
 
 # ---- Live tips: at most one short tip now and then (a question to ask, a term, a reminder) ----
 tips:
-  enabled: true
-  model: "anthropic:claude-haiku-5-5"
+  enabled: true            # false = no live tips
+  model: "anthropic:claude-haiku-5-5"   # model that writes tips; must have a price in budget.prices.llm
   minGapMs: 120000         # at most one tip per this long
   afterAnswerMs: 20000     # never within this long after an answer card
   talkRatio: true          # local tip when you talk more than 75% of the last 5 minutes (no AI)
   wrapUpAfterMin: 20       # missed must-cover items are nudged once at a wrap-up phrase or after this many minutes
-  timeoutMs: 10000
+  timeoutMs: 10000         # abort a tip call that takes longer than this (ms); no tip that time
 
 # ---- Background files from "Plan a call" (text the AI may read as background) ----
 attachments:
@@ -146,7 +146,7 @@ attachments:
 
 # ---- Capture box ----
 capture:
-  enabled: true            # phone numbers, emails and domains spoken in the call show in the answer window (copy: overlay.hotkeys.copy)
+  enabled: true            # phone numbers, emails and domains spoken in the call show in the answer window (copy the newest: overlay.hotkeys.copy; chip 1-3: Ctrl+Opt+1/2/3 in the answer window)
 
 # ---- Health supervisor and degrade ladder ----
 health:
@@ -157,27 +157,28 @@ health:
 
 # ---- Budget (LLM spend is capped, STT is only warned about) ----
 budget:
-  maxUsdPerCall: 2         # LLM spend cap per call: at 100% the ladder drops to bank-only
+  maxUsdPerCall: 2         # LLM spend cap per call: at 100% the ladder drops to Prepared-only
   warnAt: 0.8              # fraction of a cap that shows an amber warning
   maxMinutesPerCall: 90    # warn at warnAt of this (a long real meeting is never cut)
   idleStopMin: 15          # stop the call when nobody spoke for this many minutes (a session left running). 0 = off
-  maxUsdPerMonth: null     # null = no monthly cap (used by doctor, from usage.jsonl)
+  maxUsdPerMonth: null     # null = no monthly cap (used by the readiness check, from usage.jsonl)
   # Price table. ESTIMATES: check your provider's pricing page and edit. A model missing here costs $0 and is flagged.
   prices:
     llm:                   # USD per million tokens
-      "anthropic:claude-haiku-5-5": { inUsdPerM: 0.1, outUsdPerM: 0.5, cacheReadUsdPerM: 0.01, cacheWriteUsdPerM: 0.2 }   # list price 2026-10; 1h cache write = 2x input
+      "anthropic:claude-haiku-5-5": { inUsdPerM: 0.1, outUsdPerM: 0.5, cacheReadUsdPerM: 0.01, cacheWriteUsdPerM: 0.2 }   # list price when written; 1h cache write = 2x input
       "anthropic:claude-sonnet-5-5": { inUsdPerM: 2, outUsdPerM: 10, cacheReadUsdPerM: 0.2, cacheWriteUsdPerM: 4 }
     stt:                   # USD per hour of audio, per channel
       deepgram: 0.55
       soniox: 0.12
       gladia: 0.61
 
-# ---- Privacy and consent ----
+# ---- Privacy ----
 privacy:
-  requireConsentAck: false # personal use: listening starts with the call. true = wait for a "consent given" click first
+  requireConsentAck: false # personal use: listening starts with the call. true = the call waits until you press Start listening (Ctrl+Opt+Return) first. In the app: "Ask me before listening starts"
+  # Spoken-style consent line shown as the first card when requireConsentAck is on (Hebrew; min 10 chars).
   consentText: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך? אם לא, אכבה אותו."
-  storeAudio: false        # audio is never saved (must stay false in Stage 0)
-  retentionDays: 30        # doctor lists saved calls older than this
+  storeAudio: false        # audio is never saved (must stay false: the schema rejects true)
+  retentionDays: 30        # the readiness check lists saved calls older than this
 
 # ---- Answer window (Electron overlay) ----
 overlay:
@@ -188,12 +189,12 @@ overlay:
   fontPt: 30               # say-line font size
   showLastLine: true       # thin muted strip above the answers with what the client just said (so you see what the card answers)
   hotkeys:
-    clear: "Control+Alt+C"
-    pause: "Control+Alt+P"
+    clear: "Control+Alt+C"  # clear all cards from the answer window
+    pause: "Control+Alt+P"  # pause/resume showing cards (they keep being saved)
     rewind: "Control+Alt+R"  # "what did they say?": show/hide the last rewindSeconds of the call as text
     copy: "Control+Alt+K"    # copy the newest captured phone/email/domain to the clipboard
     checklist: "Control+Alt+L"  # show/hide the call checklist (also opens when you hover the 3/6 chip)
-  rewindSeconds: 30
+  rewindSeconds: 30        # how far back the rewind key (above) shows, in seconds
   restartMax: 2            # reopen the answer window this many times if it crashes
 
 # ---- System and keys ----
@@ -201,10 +202,10 @@ system:
   caffeinate: true         # keep the Mac awake during a call
   sleepGapMs: 5000         # a gap longer than this between health ticks = the Mac slept; shows a warning. 0 = off
 keys:
-  file: "~/.config/wingman/keys.env"   # API keys live here, never in settings
+  file: "~/.config/wingman/keys.env"   # legacy keys file; keys now live in the macOS Keychain (Settings → Keys)
 
 # ---- Per-run options (normally set by CLI flags) ----
 run:
   file: null               # replay a stereo wav (L = me, R = them). CLI: --file x.wav
-  noAi: false              # bank only, no LLM. CLI: --no-ai
+  noAi: false              # Prepared cards only, no LLM. CLI: --no-ai
   discard: false           # delete the call folder at the end. CLI: --discard

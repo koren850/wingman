@@ -1,12 +1,33 @@
 // Wingman Stage 0: live (system audio + mic) or --file <stereo.wav> (L = me, R = them).
-//   pnpm start                 live call (press Enter once consent is confirmed; audio is not sent to the cloud before that)
+//   pnpm start                 live call (listening starts at once; with "Ask me before listening starts" on, press Enter first and nothing is sent before that)
 //   pnpm start --file x.wav    replay a recording in real time
-//   pnpm start --no-ai         bank only (no Haiku)
+//   pnpm start --no-ai         Prepared cards only (no AI)
 //   pnpm start --discard       delete the call folder when the call ends
-//   Keys while running: Enter = consent confirmed (start sending audio) · q = quiet on/off (cards logged, not shown)
+//   Keys while running: Enter = start listening (only when it is waiting) · q = Quiet mode on/off (cards saved, not shown)
 //                       n = type a context note for the AI ("this is about the shop migration"), Enter to add · Ctrl+C = stop
-//   WINGMAN_CONTROL=1         remote control for the menu-bar app: line commands on stdin (consent, quiet, client, ask, note <text>, stop)
-//                             and "@@wingman {json}" status lines on stdout. Consent is still required (no auto-start).
+//   WINGMAN_CONTROL=1         remote control for the menu-bar app: line commands on stdin (consent = Start listening, quiet, client, ask, note <text>, stop)
+//                             and "@@wingman {json}" status lines on stdout (starting/waiting/consented, ask, mode, stopphase, ended...).
+//                             call.json in the call folder also gets phase ("starting"|"waiting"|"live"|"ended") and liveAt for the answer window.
+//
+// Main flow (one process = one call):
+//   audio (audio.ts: mic -> "me", system tap -> "them") -> SttChannel per side (providers/stt) -> onResult/acceptResult
+//   -> per-channel buffer, joined on speech_final or a fallback timer (flush) -> "them": question detector (detector.ts),
+//   split/merge fixes, then onQuestion: prepared bank card at once, stall line after reflex.stallAfterMs, Claude reflex
+//   answer streamed in behind it (reflex.ts) -> emitCard -> cards.jsonl (the answer window tails it).
+//   "me" finals go to handleMe: only the user's own questions to Wingman (ask key, or a detected question) get a "me" card.
+// Side jobs on timers: notes (notesRound), call frame + tips (frameRound/tipsTick), must-cover reminders, health tick.
+// State is module-level on purpose: one call per process. Everything async checks `shuttingDown` before it writes.
+//
+// Safety and cost:
+//   - Nothing is sent for transcription until `consented` (immediately, or after "Start listening" when privacy.requireConsentAck is on).
+//   - AI text passes guards.ts (no prices, dates, promises); a hit becomes a stall line.
+//   - budget.maxUsdPerCall: at "capped" (cost.llmState) every model job (reflex, notes, frame, tips, me) stops; prepared cards still work.
+//   - budget.idleStopMin: a call with no speech stops itself. STT minutes only warn.
+//
+// IPC contract with the tray app (WINGMAN_CONTROL=1):
+//   stdin  lines: consent | quiet [on|off] | client | ask [text] | note <text> | stop | stop-no-summary | skip-summary | stop-delete
+//   stdout "@@wingman {json}" lines. Stop sequence: {ev:"stopphase",phase:"saving"} -> "summary" -> "done", then {ev:"ended"}.
+//   The tray escalates a stop with SIGINT at 12 s and SIGKILL at 20 s, so shutdown() finishes inside that.
 import { readFileSync, rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join } from "node:path";
@@ -51,7 +72,7 @@ const noAi = S.run.noAi;
 const discard = S.run.discard;
 const REFLEX_MODELS = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
 const keyFile = expandHome(S.keys.file);
-const NO_KEY = new Set(["script", "scripted"]);   // offline test doubles
+const NO_KEY = new Set(["script", "scripted"]);   // offline test doubles: providers that need no API key
 const keys = requireKeys([...new Set([S.stt.provider, ...(noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any, ...(S.summary.enabled ? [parseModelRef(S.summary.model).provider as any] : [])])])].filter((k) => !NO_KEY.has(k)), keyFile);
 for (const v of KEY_ENV_VARS) delete process.env[v];   // keys now live in `keys` (memory) only: no child of this process (audiotee, ffmpeg...) inherits them
 const registry = new ModelRegistry(keys);
@@ -59,7 +80,11 @@ const registry = new ModelRegistry(keys);
 /** S2: consent line. Names the cloud processing and the AI assistant, and offers an opt-out (settings privacy.consentText). */
 export const CONSENT_SAY = S.privacy.consentText;
 const CONTROL = process.env.WINGMAN_CONTROL === "1";
-/** Status line for the menu-bar app (only in control mode). */
+/** Hebrew label for a channel, used in health texts. */
+const chHe = (c: string) => (c === "me" ? "(המיקרופון שלך)" : "(הצד השני)");
+/** Call phase for the answer window: written into call.json at each change (best effort, like every CallLog write). */
+function setPhase(phase: "starting" | "waiting" | "live" | "ended", extra: Record<string, unknown> = {}) { try { log.update({ phase, ...extra }); } catch { /* best effort */ } }
+/** Status line for the menu-bar app: "@@wingman {json}" on its own line (the leading newline keeps it off any half-written log line). Only in control mode. */
 function status(ev: string, data: Record<string, unknown> = {}) {
   if (CONTROL) process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`);
 }
@@ -71,7 +96,7 @@ const keyterms = loadKeyterms(S);
 // Background files from "Plan a call": read once (and deleted: one plan = one call). A replay / --no-brief never uses them.
 const briefArg = args.includes("--brief") ? args[args.indexOf("--brief") + 1] : undefined;
 const noBrief = args.includes("--no-brief") || (!!fileArg && !briefArg);
-const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars);
+const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars, { consume: !fileArg });   // a practice call with the plan never uses up the real call's files
 const background = backgroundBlock(attachFiles);
 const prefix = buildPrefix(houseStyle, bank, "", background);
 let log: CallLog;
@@ -80,19 +105,23 @@ try { log = new CallLog({ mode: fileArg ? "file" : "live", file: fileArg, model:
   console.error(`Wingman cannot save this call: cannot create the calls folder (${(e as NodeJS.ErrnoException)?.code ?? (e as Error)?.message}). Check free disk space and the folder permissions: ${CALLS}`);
   process.exit(2);
 }
-log.onWriteFail = (e) => { try { health("disk", "amber", "לא ניתן לשמור את השיחה בדיסק (אין מקום?). השיחה ממשיכה, אבל ההקלטה והסיכום עלולים להיות חלקיים", String(e?.message ?? e)); } catch {} };
+log.onWriteFail = (e) => { try { health("disk", "amber", "לא ניתן לשמור את השיחה בדיסק (אין מקום?). השיחה ממשיכה, אבל ההקלטה והסיכום עלולים להיות חלקיים. פנה מקום בדיסק", String(e?.message ?? e)); } catch {} };
 const cost = new CostMeter(S.budget.prices, S.budget);
 const sup = new HealthSupervisor({ tickMs: S.health.tickMs, recoverStableMs: S.health.recoverStableMs, slowMs: S.llm.reflex.slowMs, slowSttMs: S.health.slowSttMs, minSamples: S.health.minSamples });
 sup.set({ noAi, bankFailed: bank.length === 0 });
+setPhase("starting");
+status("mode", { noAi });   // effective AI mode for the app (the setting or --no-ai)
 const breakers = new Map(REFLEX_MODELS.map((m) => [m, new CircuitBreaker({ failures: S.llm.circuit.failures, windowMs: 10_000, cooldownMs: S.llm.circuit.cooldownMs })]));
-const downUntil = new Map<string, number>();   // spend cap: no retries for the rest of the day
+const downUntil = new Map<string, number>();   // model -> epoch ms until which it is skipped (provider spend cap: 6 h; Infinity = failed to load at start)
 
+/** Card kinds. "info"/"warn"/"tip" are system cards; "me" is an answer for the user's own question. */
 type Badge = "bank" | "ai" | "stall" | "info" | "warn" | "tip" | "me";
+/** One row of cards.jsonl as the answer window sees it. Same id = update of that card; withdraw = remove it; clear (health only) = remove the bar. */
 type Card = {
   tipType?: string;
   id: string; turnId: string; badge: Badge; question: string; say: string; facts: string[]; dim?: boolean; at: number;
   health?: boolean; level?: "red" | "amber" | "info"; clear?: boolean; withdraw?: boolean;
-  forMe?: boolean; source?: "calc" | "ai";   // badge "me": an answer for Dan himself (his own question). source "calc" on an "ai" card: local arithmetic, no model
+  forMe?: boolean; source?: "calc" | "ai";   // badge "me": an answer for the user (their own question). source "calc" on an "ai" card: local arithmetic, no model
   priority?: boolean;   // "don't commit yet" bank cards (stall-price, stall-guarantee…): never hidden by the per-minute cap
 };
 const transcript: (TimedLine & { ch: Channel })[] = [];
@@ -106,9 +135,11 @@ const snapshot = S.facts.enabled ? loadSnapshot(join(ROOT, S.facts.file)) : unde
 const spotter = snapshot ? new EntitySpotter(snapshot, { sslWarnDays: S.facts.sslWarnDays, minAliasLen: S.facts.minAliasLen }) : undefined;
 const factsShown = new Set<string>();
 let clientChosen = !!brief?.who, proposed: Fact | undefined;
+/** Writes a side card (fact, note, reminder, client proposal) that is not tied to a question. */
 function emitSide(row: Record<string, unknown>) {
   log.write("cards", { type: "card", turnId: "side", question: "", at: Date.now(), ...row });
 }
+/** Looks up clients/domains in the local snapshot for this text and emits a fact card once per fact. May propose the client for confirmation. */
 function spotFacts(text: string) {
   if (!spotter) return;
   for (const f of spotter.spot(text, extract(text).filter((c) => c.kind === "domain").map((c) => c.value))) {
@@ -124,6 +155,7 @@ function spotFacts(text: string) {
     }
   }
 }
+/** The user confirmed the proposed client: its facts join the AI context notes (once). */
 function confirmClient() {
   if (!proposed || clientChosen) return;
   clientChosen = true;
@@ -136,8 +168,9 @@ function confirmClient() {
 // Live notes: key things said, every notes.everyMs.
 const liveNotes: string[] = [];
 const notesOn = S.notes.enabled && !noAi;
-const notesAbort = new AbortController();   // aborted in shutdown(): no notes call outlives the call
+const notesAbort = new AbortController();   // also used by tips; aborted in shutdown(): no notes call outlives the call
 let notesLines: string[] = [], notesBusy = false;
+/** Timer job (notes.everyMs): turns the new transcript lines into up to 2 notes. Skips while busy, not consenting, AI down or budget capped; the lines are dropped (not retried) if the call fails. */
 async function notesRound() {
   if (!notesOn || notesBusy || !consented || shuttingDown || !sup.caps.llm || cost.llmState() === "capped") return;
   const words = notesLines.join(" ").split(/\s+/).length;
@@ -160,7 +193,9 @@ async function notesRound() {
 const callStart = Date.now();
 let lastReminderAt = 0, reminderSeq = 0;
 const allText = () => transcript.map((l) => l.text).join(" ");
+/** Must-cover items of the brief that no transcript line has touched yet. */
 function uncovered(): string[] { return (brief?.mustCover ?? []).filter((i) => !covered(i, allText())); }
+/** Timer job: after reminders.firstAfterMin, every everyMin, lists the brief items still not covered. */
 function reminderTick() {
   if (!S.reminders.enabled || !brief?.mustCover?.length || !consented || shuttingDown) return;
   const min = (Date.now() - callStart) / 60000;
@@ -185,6 +220,8 @@ function recentTranscript(minutes: number, maxLines = 80): string {
   return t.length > 6000 ? t.slice(-6000) : t;
 }
 const framePct = (f: Frame) => { const p = progress(f); return `${p.done}/${p.total}`; };
+/** Call-frame update: one model call that says what the call is about and which checklist items were covered. Single flight (returns the running promise).
+ *  `final` = the last look at shutdown: ignores the shuttingDown check and needs fewer new words. */
 function frameRound(final = false): Promise<void> {
   if (frameBusy) return frameBusy;
   if (!frameOn || !consented || (!final && shuttingDown) || !sup.caps.llm || cost.llmState() === "capped") return Promise.resolve();
@@ -219,6 +256,7 @@ function emitTip(tip: Tip, source: "ai" | "talk" | "wrapup"): boolean {
   log.write("events", { type: "tip", source, tipType: tip.type });
   return true;
 }
+/** Asks the model for one coaching tip. Rate-limited (30 s between tries, 30 new words, TipGate); the result is dropped if an answer card appeared meanwhile. */
 async function aiTip() {
   const now = Date.now();
   if (tipBusy || (frameOn && !tracker.current) || tipWords < 30 || now - lastTipTryAt < Math.max(30_000, S.tips.minGapMs / 2) || !sup.caps.llm || cost.llmState() === "capped") return;
@@ -233,6 +271,7 @@ async function aiTip() {
   } catch (e) { log.write("events", { type: "tip.error", error: String((e as Error)?.message ?? e).slice(0, 200) }); }
   finally { tipBusy = false; }
 }
+/** Every 5 s: wrap-up nudge first, then the talk-ratio tip (at most every 10 min), then an AI tip. Silent in quiet mode. */
 function tipsTick() {
   if (!tipsOn || !consented || shuttingDown || quiet) return;
   const now = Date.now();
@@ -246,7 +285,7 @@ function tipsTick() {
   }
   void aiTip();
 }
-// Speakers mode (PLAN §0.4): mic gate + echo text filter.
+// Speakers mode: mic gate + echo text filter (echo.ts).
 const ECHO = S.audio.echo;
 const useGate = ECHO.mode === "gate" || ECHO.mode === "both";
 const useFilter = ECHO.mode === "filter" || ECHO.mode === "both";
@@ -260,6 +299,7 @@ function gateMic(b: Buffer): Buffer {
   return Buffer.alloc(b.length);
 }
 // Capture box: phones, emails, domains. The last two finals per channel are joined so a number split across finals is found.
+// `captured` dedupes per call.
 const lastFinals: Partial<Record<Channel, string[]>> = {};
 const captured = new Set<string>();
 function capture(ch: Channel, text: string) {
@@ -274,23 +314,26 @@ function capture(ch: Channel, text: string) {
   }
 }
 let lastCardAt = 0, lastMeVoiced = 0, turnSeq = 0;
-// ---- Answers for Dan's own questions (assist.*) ----
+// ---- Answers for the user's own questions (assist.*) ----
 const meGate = new MeGate({ minGapMs: S.assist.minGapMs, maxPerMin: S.assist.maxPerMin, protectThemMs: S.assist.protectThemMs });
 let lastThemSpeech = 0, meLat: { total: number; source: string }[] = [];
 let lastThemCardAt = 0, lastThemSound = Date.now(), themSoundSeen = false, lastThemText = Date.now(), askUntil = 0, askTimer: NodeJS.Timeout | undefined, meSeq = 0, meShown = 0, foreignDropped = 0;
-let meCurrent: AbortController | undefined;
+let meCurrent: AbortController | undefined;   // the running "me" answer; a newer question aborts it
+// meTimers2 holds deferred "me" card retries (cleared in shutdown).
 let themHeard: () => void = () => {};   // clears the "I only hear you" banner when the other side's audio or text returns
 const meTimers2 = new Set<NodeJS.Timeout>();
-let current: AbortController | undefined;
+let current: AbortController | undefined;   // the running answer for the other side; a new question aborts it
 let quiet = S.cards.quiet, consented = false, shuttingDown = false;   // set by startForwarding() (at once when no consent click is needed)
-const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay
+const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay (a card keeps its first decision when it is updated, so it never flips)
 let shownTimes: number[] = [];
 const turnsWithCard = new Set<string>();
 
+/** The single exit for every card. Sanitizes text, decides hidden (quiet mode, or the per-minute cap unless priority), appends to cards.jsonl
+ *  (hidden cards are logged too, flagged) and prints to the terminal. Health/info/tip cards are never hidden or counted. */
 function emitCard(c: Card) {
   c.say = sanitize(c.say); c.facts = c.facts.map(sanitize);
   const special = c.health || c.badge === "info" || c.badge === "tip";
-  const forMe = c.badge === "me";   // answers to Dan's own questions: hidden in quiet mode, but never counted against (or hidden by) the per-minute cap of cards for the other side
+  const forMe = c.badge === "me";   // answers to the user's own questions: hidden in quiet mode, but never counted against (or hidden by) the per-minute cap of cards for the other side
   let hidden = false, reason: string | undefined;
   if (!special) {
     const prev = decided.get(c.id);
@@ -313,24 +356,26 @@ function emitCard(c: Card) {
   log.write("cards", { type: "card", ...c, ...(hidden ? { hidden: true, hiddenReason: reason } : {}) });
   if (c.clear) return;
   if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall" || forMe)) tipGate.noteAnswer(Date.now());   // no tip right after an answer card
-  if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall")) lastThemCardAt = Date.now();      // a fresh answer for the other side: answers for Dan must not push it off the screen
-  const badge = { bank: "📗 bank", ai: "🤖 AI", stall: "⏸ stall", info: "ℹ️ info", warn: "⚠️ HEALTH", tip: "💡 tip", me: "🙋 for you" }[c.badge];
+  if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall")) lastThemCardAt = Date.now();      // a fresh answer for the other side: answers for the user must not push it off the screen
+  const badge = { bank: "📗 prepared", ai: "🤖 AI", stall: "⏸ buy time", info: "ℹ️ info", warn: "⚠️ HEALTH", tip: "💡 tip", me: "🙋 for you" }[c.badge];
   console.log(`\n[${badge}${c.dim ? " · dimmed" : ""}${hidden ? ` · HIDDEN (${reason})` : ""}] ${c.say}${c.facts.length ? "\n   • " + c.facts.join("\n   • ") : ""}`);
 }
 
-/** S4: persistent health bar in the overlay. Clears when healthy. */
+/** Health bar in the answer window (and a status line for the tray). One bar per id; the same id replaces the old text. Clear it with healthClear. */
 function health(id: string, level: "red" | "amber" | "info", text: string, note?: string) {
   console.log(`\n${level === "red" ? "🔴" : level === "amber" ? "🟠" : "ℹ️ "} ${text}`);
   status("health", { id, level, text });
   log.write("events", { type: "health", id, level, text, note });
   emitCard({ id: `health-${id}`, turnId: "health", badge: "warn", health: true, level, question: "", say: text, facts: [], at: Date.now() });
 }
+/** Removes the health bar `id`. */
 function healthClear(id: string) {
   log.write("events", { type: "health.clear", id });
   status("health.clear", { id });
   emitCard({ id: `health-${id}`, turnId: "health", badge: "warn", health: true, clear: true, question: "", say: "", facts: [], at: Date.now() });
 }
 
+// One row per question; also written to latency.jsonl. Times are epoch ms: speechEnd (when they stopped talking), finalAt, bankAt/stallAt/cardAt, tagAt...
 const latRows: Record<string, number | string>[] = [];
 function recordLatency(lat: Record<string, number | string>) { latRows.push(lat); log.write("latency", lat); }
 
@@ -341,10 +386,17 @@ function speedSummary(): string {
   const since = (k: string) => latRows.filter((l) => typeof l[k] === "number").map((l) => (l[k] as number) - (l.speechEnd as number));
   const first = latRows.map((l) => Math.min(...["bankAt", "stallAt", "cardAt"].map((k) => (typeof l[k] === "number" ? (l[k] as number) : Infinity))) - (l.speechEnd as number)).filter(Number.isFinite);
   const bank = since("bankAt"), tag = since("tagAt");
-  return `Speed: ${latRows.length} questions · first card p50 ${ms(pct(first, 50))} / p95 ${ms(pct(first, 95))} · bank cards ${bank.length} (p50 ${ms(pct(bank, 50))}) · Haiku first tag p50 ${ms(pct(tag, 50))}${meLat.length ? ` · For you ${meLat.length} answers (speech end to card p50 ${ms(pct(meLat.map((m) => m.total), 50))} / p95 ${ms(pct(meLat.map((m) => m.total), 95))}${meLat.some((m) => m.source === "calc") ? `, math p50 ${ms(pct(meLat.filter((m) => m.source === "calc").map((m) => m.total), 50))}` : ""})` : ""}`;
+  return `Speed: ${latRows.length} questions · first card p50 ${ms(pct(first, 50))} / p95 ${ms(pct(first, 95))} · Prepared cards ${bank.length} (p50 ${ms(pct(bank, 50))}) · Haiku first tag p50 ${ms(pct(tag, 50))}${meLat.length ? ` · For you ${meLat.length} answers (speech end to card p50 ${ms(pct(meLat.map((m) => m.total), 50))} / p95 ${ms(pct(meLat.map((m) => m.total), 95))}${meLat.some((m) => m.source === "calc") ? `, math p50 ${ms(pct(meLat.filter((m) => m.source === "calc").map((m) => m.total), 50))}` : ""})` : ""}`;
 }
 
 let lastAgencyTopicAt = 0;
+/** A question from the other side. Order of work:
+ *  1. calc: pure arithmetic is answered locally, no model.
+ *  2. bank: a keyword match shows a prepared card at once (dimmed when "weak").
+ *  3. no usable AI (degraded rungs): a stall line if nothing matched.
+ *  4. AI: a stall timer (reflex.stallAfterMs) shows "buy time" if nothing is up yet; meanwhile the model streams a tag
+ *     (BANK / ANS / STALL / SKIP) that can confirm, replace or withdraw the card, then the answer text, which passes the guards.
+ *  A newer question aborts this one (`current`). Answers older than reflex.dropStaleMs are never shown (`fresh`). `reason` is the detector's reason string. */
 function onQuestion(r: SttResult, reason = "") {
   const turnId = `q${++turnSeq}`;
   const speechEnd = r.speechEndWall ?? r.arrivedAt;
@@ -353,13 +405,13 @@ function onQuestion(r: SttResult, reason = "") {
   const meSpokeSince = () => lastMeVoiced > speechEnd;
   current?.abort();
   const ac = (current = new AbortController());
-  // Not a client / support call (frame, after hysteresis) and the question is not about Dan's web / hosting services: Wingman never
-  // speaks for Dan here. No agency bank card and no stall line, whatever the keywords say (team meeting, interview, friend, supplier).
+  // Not a client / support call (frame, after hysteresis) and the question is not about the user's web / hosting services: Wingman never
+  // speaks for the user here. No agency bank card and no stall line, whatever the keywords say (team meeting, interview, friend, supplier).
   // A short follow-up ("יהיה מוכן?", "את הדומיין?") has no topic word of its own: it counts as agency talk for 60 s after one that did (the frame can also guess "vendor" wrongly).
   const agencyTopic = isAgencyTopic(r.text), agencyRecent = Date.now() - lastAgencyTopicAt < 60_000;
   if (agencyTopic) lastAgencyTopicAt = Date.now();
   const noAgency = !!tracker.kind && !isAgencyKind(tracker.kind) && !agencyTopic && !agencyRecent;
-  const hit = noAgency ? undefined : matchBankFor(r.text, bank);   // stall-price is dropped for arithmetic and for prices that are not Dan's services
+  const hit = noAgency ? undefined : matchBankFor(r.text, bank);   // stall-price is dropped for arithmetic and for prices that are not the user's services
   if (noAgency && matchBank(r.text, bank)) log.write("events", { type: "agency.gated", turnId, kind: tracker.kind });
   if (!hit && !noAgency && matchBank(r.text, bank)?.card.id === "stall-price") log.write("events", { type: "stall.suppressed", turnId, why: priceOffTopic(r.text) ?? "off-topic" });
   // Arithmetic from the other side ("כמה זה 36 ועוד 42?"): the local answer, instantly, no model.
@@ -375,10 +427,13 @@ function onQuestion(r: SttResult, reason = "") {
   // except the price / timeline / guarantee stall tier, which always stays.
   const offKind = !!tracker.kind && !isAgencyKind(tracker.kind);
   const weakBank = offKind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent;
-  const weak = (reason.startsWith("head:") && !(hit && hit.score >= 2)) || reason.startsWith("problem") || weakBank || (!tracker.kind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent);   // before the first call frame a topical card may belong to a call that is not a customer call: dim, and Haiku's SKIP withdraws it   // weak detection: a bank card may be a wrong card
-  const bankOnly = reason.startsWith("problem");                              // D6: never an AI answer on a guessed question
+  // weak = a bank card may be the wrong card, so it is dimmed and the model may withdraw it. Before the first call frame a topical card
+  // may belong to a call that is not a customer call.
+  const weak = (reason.startsWith("head:") && !(hit && hit.score >= 2)) || reason.startsWith("problem") || weakBank || (!tracker.kind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent);
+  const bankOnly = reason.startsWith("problem");                              // a "problem" is a guessed question (not a clear one): never an AI answer on it
 
-  // Ladder: the rung in force for this question (it only changes between questions).
+  // Degradation ladder (health.ts): the rung in force for this question (it only changes between questions).
+  // beginQuestion/endQuestion tell the supervisor a question is in flight, so it does not change rung mid-answer.
   const caps = sup.caps, usable = usableModels();
   sup.beginQuestion();
   let ended = false;
@@ -398,6 +453,7 @@ function onQuestion(r: SttResult, reason = "") {
   }
 
   const stallId = `${turnId}-stall`;
+  // If neither the bank nor the model has put a card up by then, show the "buy time" line so the user is never left with a blank screen.
   const stallTimer = setTimeout(() => {
     if (ac.signal.aborted) return;
     if (!shown && !noAgency && fresh()) { shown = { id: stallId, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); lat.stallAt = Date.now(); }
@@ -412,6 +468,7 @@ function onQuestion(r: SttResult, reason = "") {
     onFail: (model, err) => llmFailed(model, err),
     onSwitch: (from, to, err) => { log.write("events", { type: "llm.switch", turnId, from, to, kind: err.kind }); console.log(`\n↪ AI ${from} -> ${to} (${describe(err)})`); },
     h: {
+      // The model's first token: its decision for this question. The code, not the prompt, enforces the stall tier and the off-topic gate.
       onTag(tagIn: Tag) {
         let tag = tagIn;
         if (ac.signal.aborted) return;
@@ -421,7 +478,7 @@ function onQuestion(r: SttResult, reason = "") {
           clearTimeout(stallTimer); log.write("events", { type: "stall-tier.kept", turnId, tag: tag.kind + (tag.bankId ? ` ${tag.bankId}` : ""), bank: hit?.card.id });
           lat.tag = `${lat.tag} (ignored: ${hit?.card.id} stays)`; modelIgnored = true; return;
         }
-        // Off-kind call, not about Dan's services: BANK and STALL are not for this question. The code enforces what the prompt asks.
+        // Off-kind call, not about the user's services: BANK and STALL are not for this question. The code enforces what the prompt asks.
         if (noAgency && (tag.kind === "STALL" || tag.kind === "BANK")) {
           clearTimeout(stallTimer); modelIgnored = true; lat.tag = `${lat.tag} (gated: ${tracker.kind})`;
           log.write("events", { type: "agency.gated", turnId, kind: tracker.kind, tag: tag.kind, model: true }); return;
@@ -462,6 +519,7 @@ function onQuestion(r: SttResult, reason = "") {
         ai.say = text;
       },
       onFacts(f) { if (!ac.signal.aborted) ai.facts = f; },
+      // Full answer text is ready: guard it, then show it (a guard hit becomes a stall line instead).
       onSayComplete(say) {
         if (ac.signal.aborted || modelIgnored) return;
         ai.say = say;
@@ -469,12 +527,13 @@ function onQuestion(r: SttResult, reason = "") {
         if (String(lat.tag).startsWith("BANK") && shown?.badge === "bank") return; // bank card already up
         const g = guard(ai.say);
         if (!g.ok) log.write("events", { type: "guard", turnId, rule: g.rule });
-        if (!g.ok && noAgency) { clearTimeout(stallTimer); return; }   // a blocked answer on a call that is not with his customer: nothing, never a stall line
+        if (!g.ok && noAgency) { clearTimeout(stallTimer); return; }   // a blocked answer on a call that is not with a customer: nothing, never a stall line
         const card: Card = g.ok ? { ...ai, at: Date.now() } : { ...ai, id: stallId, badge: "stall", say: stallSay(stall, turnSeq), facts: [], at: Date.now() };
         if (meSpokeSince()) card.dim = true;
         clearTimeout(stallTimer);
         shown = card; emitCard(card); lat.cardAt = Date.now();
       },
+      // Stream finished: book the cost, mark the model healthy, and upsert the card with its (guarded) facts.
       onDone({ usage, providerMetadata, text, model }) {
         if (ac.signal.aborted) return;
         clearTimeout(stallTimer);
@@ -500,18 +559,20 @@ function onQuestion(r: SttResult, reason = "") {
     console.error("reflex error:", e?.message ?? e);
     // L5/L6: refusal, empty answer or timeout: show the stall line if nothing is up yet.
     if ((kind === "refusal" || kind === "timeout") && !shown && !noAgency && fresh()) { shown = { id: stallId, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); }
-    if (kind !== "refusal" && ++reflexErrors >= 2) health("ai", "amber", "AI לא עונה (הבנק עדיין עובד)", String(e?.message ?? e));
+    if (kind !== "refusal" && ++reflexErrors >= 2) health("ai", "amber", "AI לא עונה: מוצגים רק כרטיסים מוכנים מראש. בדוק חיבור לאינטרנט ומפתח ב-Settings", String(e?.message ?? e));
   }).finally(end);
 }
 
-// ---- Answers for Dan's own questions ("me" channel) ----
-const ONLY_YOU_TEXT = "I only hear you. To get answers for the other side, join the call or play its audio. Ask me anything: Ctrl+Opt+A.";
+// ---- Answers for the user's own questions ("me" channel) ----
+// A "me" card is only for the user. Whether a line is for Wingman or for the other person is decided by audienceByCues (rules),
+// then a quick classifier model when unsure and the other side is talking; MeGate rate-limits the cards.
+const ONLY_YOU_TEXT = "אני שומע רק אותך. כדי לקבל תשובות גם לצד השני, הצטרף לשיחה או הפעל את השמע שלה. אפשר לשאול אותי כל דבר: Ctrl+Opt+A";
 const isSolo = () => !themSoundSeen && !transcript.some((l) => l.ch === "them");
-/** Answers for Dan need a working model and budget; they do NOT need the other side to be heard (rung 4 still allows them). */
+/** Answers for the user need a working model and budget; they do NOT need the other side to be heard (rung 4 still allows them). */
 const canMeAi = () => !noAi && consented && !shuttingDown && sup.caps.meAns && usableModels().length > 0 && cost.llmState() !== "capped";
 const meLog = (turnId: string, text: string, decision: string, why: string, extra: Record<string, unknown> = {}) => log.write("events", { type: "me.decision", turnId, text, decision, why, ...extra });
 
-/** Ctrl+Opt+A / the "ask" control command: the next thing Dan says (within assist.askWindowMs) is a question for Wingman. */
+/** Ctrl+Opt+A / the "ask" control command: the next thing the user says (within assist.askWindowMs) is a question for Wingman. */
 function armAsk() {
   if (shuttingDown) return;
   if (!consented) { console.log("\n(ask ignored: listening has not started yet)"); return; }
@@ -523,6 +584,7 @@ function armAsk() {
   clearTimeout(askTimer);
   askTimer = setTimeout(() => disarmAsk("timeout"), S.assist.askWindowMs + 2500);   // small grace: a sentence that started inside the window may finish after it
 }
+/** Ends the ask window ("used" = a question took it; "timeout" = nothing came). */
 function disarmAsk(why: string) {
   if (!askUntil) return;
   askUntil = 0; clearTimeout(askTimer);
@@ -556,6 +618,8 @@ function handleMe(joined: SttResult) {
   void onMeQuestion(joined, forced).catch((e) => log.write("events", { type: "me.error", error: String((e as Error)?.message ?? e).slice(0, 200) }));
 }
 
+/** Answers one "me" question. `forced` = the ask key / typed ask was used, so it is surely for Wingman and may wait for a protected card slot.
+ *  Steps: 1 audience decision (rules, maybe classifier in parallel with the answer), 2 show gate (meGate, stale check), 2a arithmetic, 2b model. */
 async function onMeQuestion(r: SttResult, forced: boolean) {
   const tStart = Date.now();
   const text = r.text.trim();
@@ -584,7 +648,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
   }
   let dec = decideAudience(cue, { verdict, themQuietMs: quietFor, solo, quietNeededMs: S.assist.themQuietMs });
   let tDecide = Date.now();
-  const settle = async (): Promise<boolean> => {           // true = answer for Dan
+  const settle = async (): Promise<boolean> => {           // true = answer for the user
     if (verdictP) { await verdictP; verdictP = undefined; dec = decideAudience(cue, { verdict, themQuietMs: Date.now() - Math.max(lastThemSound, lastThemText), solo, quietNeededMs: S.assist.themQuietMs }); tDecide = Date.now(); if (!dead() && !dec.answer) meLog(turnId, text, "skip", dec.why); }
     return !dead() && dec.answer;
   };
@@ -642,19 +706,20 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
         log.write("usage", { role: "me", model, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.me.usd });
         log.write("events", { type: "reflex.raw", turnId, text: raw });
         if (!shownOnce && tag?.kind !== "ANS") meLog(turnId, text, "skip", `model:${tag?.kind ?? "none"}`);
-        // Dan pressed the ask key (or typed `ask`) and nothing came back: say so, never leave him with an empty screen.
+        // The user pressed the ask key (or typed `ask`) and nothing came back: say so, never leave an empty screen.
         if (forced && !cardOut && !shownOnce) { meLog(turnId, text, "unsure", "forced-no-answer"); show("לא בטוח — נסה לנסח שוב", [], "ai"); }
       },
     },
   }).catch((e: ProviderError) => { if (!dead()) log.write("events", { type: "me.error", turnId, kind: e?.kind ?? "unknown", error: String(e?.message ?? e).slice(0, 200) }); });
 }
 
-let reflexErrors = 0;
+let reflexErrors = 0;   // consecutive reflex failures; 2 in a row raise the "AI not answering" bar, a success clears it
 /** Models whose breaker lets a request through, in configured order. */
 function usableModels(): string[] {
   const now = Date.now();
   return REFLEX_MODELS.filter((m) => (downUntil.get(m) ?? 0) <= now && breakers.get(m)!.allow());
 }
+/** Reflex failure hook: opens the model's circuit breaker (hard = auth/quota/spend cap/unsupported opens it for longer), parks a spend-capped model for 6 h, tells the supervisor, shows a bar for hard errors. */
 function llmFailed(model: string, err: ProviderError) {
   const hard = err.kind === "auth" || err.kind === "spend_cap" || err.kind === "quota" || err.kind === "unsupported";
   breakers.get(model)?.failure(hard);
@@ -675,10 +740,12 @@ function refreshSignals() {
   });
 }
 
-// C2: buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer).
+// Buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer, stt.flushFallbackMs,
+// for when the end-of-speech mark never arrives).
 type Pending = { texts: string[]; words: Word[]; last: SttResult; timer?: NodeJS.Timeout };
 const pending: Partial<Record<Channel, Pending>> = {};
 let lastThem: PrevUtterance | undefined;   // S10: the previous client utterance, for split questions
+/** Handles one buffered utterance: "me" -> handleMe; "them" -> glue split questions, split merged ones, detect, onQuestion. */
 function flush(ch: Channel) {
   const p = pending[ch]; if (!p) return;
   clearTimeout(p.timer); delete pending[ch];
@@ -693,7 +760,7 @@ function flush(ch: Channel) {
   const startWall = w.length && joined.speechEndWall ? endWall - Math.max(0, (w[w.length - 1].end - w[0].start) * 1000) : now;
   const detectText = (t: string) => { const h = matchBankFor(t, bank); return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) }; };
   let { hit, d } = detectText(joined.text);
-  // S10: glue the previous short fragment only when that turns a non-question into a question.
+  // Glue the previous short fragment only when that turns a non-question into a question (a split question: "כמה זה" ... "עולה לחודש?").
   const glued = d.isQuestion && !isBareQuestionTail(joined.text, d.reason) ? joined.text : joinSplit(lastThem, joined.text, startWall, S.stt.joinWindowMs);
   if (glued !== joined.text) {
     const g = detectText(glued);
@@ -715,6 +782,7 @@ function flush(ch: Channel) {
   if (d.isQuestion && sup.caps.detect) onQuestion(joined, d.reason);
 }
 
+/** Every STT result (both channels). Only finals matter. Drops foreign-script junk, logs, then routes "me" lines through the echo filter delay. */
 function onResult(r: SttResult) {
   if (!r.isFinal) return;
   // Hebrew + English mixing sometimes hallucinates Telugu / Persian / Arabic on short clips: such a final triggers nothing.
@@ -729,7 +797,7 @@ function onResult(r: SttResult) {
   }
   log.write("events", { type: "stt", ch: r.channel, final: true, speechFinal: r.speechFinal, text: r.text, speechEndWall: r.speechEndWall });
   if (r.channel === "them" && r.text) echo.noteThem(r.text, r.arrivedAt);
-  // "me" lines wait briefly so the client line they may echo has arrived, then go through the echo filter.
+  // "me" lines wait briefly so the client line they may echo has arrived (the two channels' finals are not time-ordered), then go through the echo filter.
   // (No wait when the other side has not spoken within the filter window: there is nothing the mic could be echoing.)
   if (r.channel === "me" && r.text && useFilter && !shuttingDown && Date.now() - lastThemSpeech < ECHO.filterWindowMs + ECHO.filterDelayMs) {
     const t = setTimeout(() => { meTimers.delete(t); acceptResult(r, true); }, ECHO.filterDelayMs);
@@ -737,7 +805,8 @@ function onResult(r: SttResult) {
   }
   acceptResult(r, false);
 }
-const meTimers = new Set<NodeJS.Timeout>();
+const meTimers = new Set<NodeJS.Timeout>();   // pending echo-filter delays (cleared in shutdown)
+/** Takes a final into the call: echo drop, side features (capture, facts, notes), transcript, then buffers it for flush(). */
 function acceptResult(r: SttResult, checkEcho: boolean) {
   if (shuttingDown) return;
   if (r.text.length > 2000) r = { ...r, text: r.text.slice(-2000) };   // a runaway final must not stall the regex/matching
@@ -759,13 +828,13 @@ function acceptResult(r: SttResult, checkEcho: boolean) {
     const p = (pending[r.channel] ??= { texts: [], words: [], last: r });
     p.texts.push(r.text); p.words.push(...r.words); p.last = r;
     clearTimeout(p.timer); p.timer = setTimeout(() => flush(r.channel), S.stt.flushFallbackMs);
-    // Dan's own question: do not wait for the end-of-speech mark or the fallback timer when the text already ends in "?" or is a sum.
+    // The user's own question: do not wait for the end-of-speech mark or the fallback timer when the text already ends in "?" or is a sum.
     if (r.channel === "me" && S.assist.answerMe !== "off" && (/\?\s*$/.test(r.text) || evalMath(p.texts.join(" ")))) { flush("me"); return; }
   }
   if (r.speechFinal) flush(r.channel);
 }
 
-// Single-key input: Enter = consent confirmed, q = quiet toggle, Ctrl+C = stop.
+// Single-key input (terminal mode only; with WINGMAN_CONTROL the tray uses stdin lines instead): Enter = consent, q = quiet, a = ask, n = note, y = confirm client, Ctrl+C = stop.
 let keyWaiter: ((k: string) => void) | undefined;
 function setupKeys(onEnter: () => void) {
   if (!process.stdin.isTTY) return;
@@ -783,14 +852,16 @@ function setupKeys(onEnter: () => void) {
     }
   });
 }
+/** Quiet mode: cards are still saved to cards.jsonl but flagged hidden, so the answer window shows nothing. Reversible mid-call. */
 function toggleQuiet(on = !quiet) {
   if (on === quiet) return;
   quiet = on; log.write("events", { type: "quiet", on: quiet });
-  quiet ? health("quiet", "info", "מצב שקט: הכרטיסים נרשמים אבל לא מוצגים (q לחזרה)") : healthClear("quiet");
+  quiet ? health("quiet", "info", "מצב שקט: הכרטיסים נשמרים אבל לא מוצגים. לחזרה כבה את Quiet mode בתפריט") : healthClear("quiet");
   console.log(`\nquiet ${quiet ? "ON: cards are logged, not shown" : "OFF"}`);
   status("quiet", { on: quiet });
 }
 const typedNotes: string[] = [], MAX_TYPED_NOTES = 20, MAX_TYPED_NOTE_CHARS = 4096;
+/** A typed context note for the AI (instant-start mode). Added to every prompt via contextNotes; capped so a long call cannot grow the prompt without bound. */
 function addNote(text: string) {
   const note = text.trim();
   if (!note) return;
@@ -803,7 +874,7 @@ function addNote(text: string) {
   console.log(`\n✓ note added (${contextNotes.length})`);
   status("note", { count: contextNotes.length });
 }
-/** Menu-bar app commands (WINGMAN_CONTROL=1): one per line on stdin. */
+/** Menu-bar app commands (WINGMAN_CONTROL=1): one per line on stdin. A closed stdin means the app is gone: stop cleanly (saves the call). */
 function setupControl(onConsent: () => void) {
   const rl = createInterface({ input: process.stdin });
   rl.on("line", (line) => {
@@ -814,11 +885,13 @@ function setupControl(onConsent: () => void) {
     else if (cmd === "ask") { const q = rest.join(" ").trim(); if (q) askTyped(q); else armAsk(); }   // "ask" = the hotkey; "ask <text>" = a typed question (wingman CLI)
     else if (cmd === "note") addNote(rest.join(" "));
     else if (cmd === "stop") void shutdown();
+    else if (cmd === "stop-no-summary") { skipSummaryNow(); void shutdown(); }   // `wingman stop --no-summary`: keep the call, skip the summary
+    else if (cmd === "skip-summary") { if (shuttingDown) skipSummaryNow(); }      // the "Skip summary" button while the summary is being written
     else if (cmd === "stop-delete") { discardNow = true; void shutdown(); }
   });
   rl.on("close", () => void shutdown());   // the menu-bar app went away: stop cleanly
 }
-// Typed context note (instant-start mode: tell Wingman what the call is about, mid-call).
+// Typed context note state (terminal key `n`): undefined = not typing.
 let noteBuf: string | undefined, discardNow = false;
 function noteKey(ch: string) {
   if (ch === "\u001b") { noteBuf = undefined; process.stdout.write(" (cancelled)\n"); return; }
@@ -830,30 +903,49 @@ function noteKey(ch: string) {
   if (ch === "\u007f" || ch === "\b") { if (noteBuf) { noteBuf = [...noteBuf].slice(0, -1).join(""); process.stdout.write("\b \b"); } return; }
   if (ch >= " ") { noteBuf += ch; process.stdout.write(ch); }
 }
+/** Waits up to `ms` for one key press (the delete-this-call question). Resolves "" on timeout. */
 const askKey = (ms: number) => new Promise<string>((res) => { const t = setTimeout(() => { keyWaiter = undefined; res(""); }, ms); keyWaiter = (k) => { clearTimeout(t); res(k); }; });
 
-let stops: (() => Promise<void>)[] = [];
+let stops: (() => Promise<void>)[] = [];   // audio source stoppers, run first in shutdown()
 let me: SttChannel, them: SttChannel;
 let crashed = false;
 
+/** Skip the summary for this stop: aborts the model call if it is running, and shutdown() moves on. The call stays saved (write it later with `wingman calls summary <id> --generate`). */
+let summarySkipped = false;
+const summaryAbort = new AbortController();
+let wakeSkip: () => void = () => {};
+const summarySkipWait = new Promise<void>((res) => { wakeSkip = res; });
+function skipSummaryNow() {
+  if (summarySkipped) return;
+  summarySkipped = true; summaryAbort.abort(); wakeSkip();
+  try { log.write("events", { type: "summary.skipped", reason: "user" }); } catch { /* best effort */ }
+}
 /** Post-call summary: one model call before the "delete this call?" question. Never blocks longer than summary.timeoutMs; errors are logged, not thrown. */
 async function postCallSummary() {
+  if (summarySkipped) { status("summary", { ok: false, skipped: true }); return; }
   try {
     log.write("events", { type: "context.snapshot", contextNotes, aiNotes: liveNotes });   // lets `pnpm summary <id>` rebuild the same input later
     const r = await runSummary({
-      dir: log.dir, callId: log.id, S, registry, cost, noAi, discard: discard || discardNow, crashed,
+      dir: log.dir, callId: log.id, S, registry, cost, noAi, signal: summaryAbort.signal, discard: discard || discardNow, crashed,
       data: { lines: transcript.map((l) => ({ ch: l.ch, text: l.text })), contextNotes, aiNotes: liveNotes, frame: tracker.current },
       write: (stream, row) => log.write(stream, row),
     });
+    if (summarySkipped) { status("summary", { ok: false, skipped: true }); return; }
     if (r.skipped) return;
     if (r.ok) console.log(formatShort(r.summary!)); else console.log(`\nSummary failed: ${r.error}`);
     status("summary", { ok: r.ok, id: log.id });
   } catch (e) { try { log.write("events", { type: "summary.error", error: String((e as Error)?.message ?? e) }); } catch {} }
 }
 
+/** The one exit path (stop command, Ctrl+C, SIGTERM/SIGHUP, idle stop, file end, crash, rung 5). Idempotent.
+ *  Order: abort jobs and timers -> stop audio -> close STT -> write usage + endedAt (phase "ended") -> final frame look -> summary
+ *  -> ask about deletion (terminal only) -> process.exit. call.json gets phase "ended" as soon as the call files are written (before the summary);
+ *  the tray follows the {ev:"stopphase"} lines for progress. Watchdogs: 10 s force-exit if closing audio/sockets hangs (the mic must not stay open),
+ *  16 s last-resort exit overall. The tray's own SIGINT (12 s) / SIGKILL (20 s) escalation comes after those. */
 async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true; current?.abort(); notesAbort.abort();
+  status("stopphase", { phase: "saving" });   // the app shows: saving, then summary, then done (tray/lib.cjs STOP_PHASES)
   const shutdownDeadline = Date.now() + 12_000;
   const hard = setTimeout(() => { console.error("shutdown stuck: forcing exit"); process.exit(1); }, 10_000);   // a hung audio/socket close must not keep the mic open
   for (const t of meTimers) clearTimeout(t); meTimers.clear();
@@ -878,19 +970,22 @@ async function shutdown() {
     log.write("usage", { role: "summary", llmUsd: cost.llmUsd, sttUsd: cost.sttUsd, totalUsd: cost.totalUsd, roles: cost.roles, unpriced: [...cost.unpriced] });
     const summary = speedSummary();
     log.write("events", { type: "speed.summary", summary });
-    log.update({ endedAt: new Date().toISOString(), crashed });
+    log.update({ endedAt: new Date().toISOString(), crashed, phase: "ended" });
     console.log(`\nSpeakers mode (${ECHO.mode}): mic muted ${Math.round(gatedMs / 1000)} s while the client talked · ${echoDropped} echo lines dropped`);
     console.log(`\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${me?.dropped ?? 0}, them ${them?.dropped ?? 0}`);
   } catch (e) { console.error("call summary failed:", e); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
+  // (usage was logged twice on purpose: once above so the numbers exist even if the summary hangs, again below with the summary's own cost.)
   // One last frame look so the checklist result in the review is current (a few seconds at most, never when the call is discarded or crashed).
   if (frameOn && left() > 6000 && !crashed && !discard && !discardNow && cost.llmState() !== "capped") {
     await Promise.race([frameRound(true), new Promise((res) => setTimeout(res, Math.min(S.frame.timeoutMs + 500, left() - 5000)))]).catch(() => {});
     const f = tracker.current;
     if (f) log.write("events", { type: "frame.summary", kind: f.kind, done: progress(f).done, total: progress(f).total, missed: missedMust(f).map((m) => m.item) });
   }
-  await Promise.race([postCallSummary(), new Promise((res) => setTimeout(res, Math.max(1500, left())))]);
+  status("stopphase", { phase: "summary" });
+  await Promise.race([postCallSummary(), summarySkipWait, new Promise((res) => setTimeout(res, Math.max(1500, left())))]);
+  if (summarySkipped) status("summary", { ok: false, skipped: true });
   try { log.write("usage", { role: "summary", llmUsd: cost.llmUsd, sttUsd: cost.sttUsd, totalUsd: cost.totalUsd, roles: cost.roles, unpriced: [...cost.unpriced] }); } catch {}
-  try { log.update({ endedAt: new Date().toISOString(), crashed }); } catch {}
+  try { log.update({ endedAt: new Date().toISOString(), crashed, phase: "ended" }); } catch {}
   let del = discard || discardNow;
   if (!del && !crashed && process.stdin.isTTY) {
     process.stdout.write("\nDelete this call's saved text now? y = delete, any other key (or 10 s) = keep: ");
@@ -900,11 +995,13 @@ async function shutdown() {
     try { rmSync(log.dir, { recursive: true, force: true }); if (!existsSync(join(CALLS, "latest"))) rmSync(join(CALLS, "latest"), { force: true }); } catch {}
     console.log(`\nDeleted ${log.dir}`);
   } else console.log(`\nSaved ${log.dir}\nRate the cards: pnpm tag · delete later: pnpm purge ${log.id}`);
+  status("stopphase", { phase: "done" });
   status("ended", { id: log.id, deleted: del, crashed });
   try { if (process.stdin.isTTY) process.stdin.setRawMode(false); } catch {}
   process.exit(crashed ? 1 : 0);
 }
 
+/** Fatal error path: print, log, then shut down in order to save what we have (crashed=true lands in call.json). A second crash during shutdown exits at once. */
 function crash(kind: string, e: unknown) {
   if (kind === "main" && (e as ProviderError)?.kind) console.error(`\n🔴 ${describe(e as ProviderError)} – ${(e as Error).message}\n   (providers: stt ${sttChain(S).join(" -> ")}; fix the key/credit or set stt.fallback; pnpm run doctor checks all of them)`);
   else console.error(`\n🔴 ${kind}:`, e);
@@ -920,15 +1017,16 @@ process.on("SIGINT", () => void shutdown());
 process.on("SIGTERM", () => void shutdown());
 process.on("SIGHUP", () => void shutdown());
 
+/** Audio seconds sent per STT provider, both channels summed. Cost input. */
 const sttSeconds = () => {
   const out: Record<string, number> = {};
   for (const c of [me, them]) for (const [k, v] of Object.entries(c?.audioSecondsByProvider() ?? {})) out[k] = (out[k] ?? 0) + v;
   return out;
 };
-let sttSwitchedCh = new Set<Channel>();
+let sttSwitchedCh = new Set<Channel>();   // channels that moved to the fallback STT provider (the ladder treats this as degraded)
 let costWarned = false, minutesWarned = false;
 
-/** Once a second: feed the supervisor and the cost warnings. */
+/** Every health.tickMs: sleep detection, idle auto-stop, ladder signals, cost and call-length warnings, then the supervisor tick. */
 let lastTick = Date.now(), sleepClearAt = 0, lastSpeechAt = Date.now(), idleWarned = false, consentedAt = 0;
 function tickHealth() {
   // Y2: a long gap between ticks means the Mac slept (lid closed) mid-call.
@@ -936,10 +1034,10 @@ function tickHealth() {
   const gapMs = S.system.sleepGapMs ?? 0;
   if (gapMs > 0 && gap > gapMs + S.health.tickMs) {
     log.write("events", { type: "sleep.gap", ms: gap });
-    health("sleep", "amber", `המחשב נרדם ל-${Math.round(gap / 1000)} שניות. חלק מהשיחה לא נשמע`);
+    health("sleep", "amber", `המחשב נרדם ל-${Math.round(gap / 1000)} שניות. חלק מהשיחה לא נשמע. אם פספסת משהו, בקש שיחזרו עליו`);
     sleepClearAt = now + 20_000;
   } else if (sleepClearAt && now > sleepClearAt) { sleepClearAt = 0; healthClear("sleep"); }
-  // S16: a call left running with nobody talking stops itself (a long real meeting is never cut while people speak).
+  // A call left running with nobody talking stops itself (a long real meeting is never cut while people speak).
   const idleMin = S.budget.idleStopMin;
   if (idleMin > 0 && consented && !fileArg && !shuttingDown) {
     if (!consentedAt) consentedAt = now;
@@ -952,10 +1050,11 @@ function tickHealth() {
   cost.setSttSeconds(sttSeconds());
   sup.set({ sttOnFallback: sttSwitchedCh.size > 0 });
   const st = cost.llmState();
-  if (st === "warn" && !costWarned) { costWarned = true; health("cost", "amber", `עלות AI ${cost.line()}`); log.write("events", { type: "cost.warn", line: cost.line() }); }
-  if (cost.minutesState() !== "ok" && !minutesWarned) { minutesWarned = true; health("minutes", "amber", `השיחה רצה ${cost.sttMinutes.toFixed(0)} דקות. לעצור?`); }
+  if (st === "warn" && !costWarned) { costWarned = true; health("cost", "amber", `עלות AI ${cost.line()}. אפשר להמשיך; לעצירה לחץ Stop call`); log.write("events", { type: "cost.warn", line: cost.line() }); }
+  if (cost.minutesState() !== "ok" && !minutesWarned) { minutesWarned = true; health("minutes", "amber", `השיחה רצה ${cost.sttMinutes.toFixed(0)} דקות. אם היא הסתיימה, לחץ Stop call`); }
   sup.tick();
 }
+/** Ladder change handler: log it, show/clear the "ladder" bar, and at rung 5 (everything down) stop the call. */
 function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: string[] }) {
   log.write("events", { type: "ladder", from, to, reasons, idle: sup.idle });
   const d = describeRung(to, reasons, sup.userChoiceOnly);
@@ -964,6 +1063,7 @@ function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: stri
   if (to === 5) { console.log("Wingman is OFF: " + reasons.join(", ")); status("off", { reasons }); void shutdown(); }
 }
 
+/** One STT channel (own socket, provider chain with fallback and circuit breaker). Keys come from memory, not env. */
 function makeChannel(ch: Channel): SttChannel {
   return new SttChannel({
     channel: ch, chain: sttChain(S).map(getSttProvider), keyOf: (id) => (NO_KEY.has(id) ? "none" : (keys as Record<string, string | undefined>)[id]),
@@ -990,7 +1090,7 @@ async function sttRetryLoop(s: SttChannel, ch: string) {
         const pe = e as ProviderError;
         log.write("events", { type: "stt.retry.fail", ch, n: n + 1, kind: pe.kind, error: pe.message });
         if (pe.kind && pe.retryable === false && pe.kind !== "bad_request") {
-          health(`stt-${ch}`, "red", `STT (${ch}) – ${describe(pe)}`);
+          health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} – ${describe(pe)}. בדוק את חיבור האינטרנט`);
           if (ch === "them") sup.set({ fatal: `STT unusable: ${describe(pe)} (client channel)` });
           return;
         }
@@ -1010,7 +1110,7 @@ async function openChannel(ch: SttChannel, name: string) {
       if (!pe.kind || (!pe.retryable && pe.kind !== "unknown")) throw e;   // auth / quota / spend cap / bad request: fatal with its clear message
       log.write("events", { type: "stt.open.retry", ch: name, n: n + 1, kind: pe.kind, error: pe.message });
       if (Date.now() - t0 > 30_000) {
-        health(`stt-${name}`, "red", `STT (${name}) אין חיבור – ${describe(pe)}. מנסה שוב ושוב עד שיחזור`);
+        health(`stt-${name}`, "red", `תמלול ${chHe(name)} אין חיבור – ${describe(pe)}. מנסה שוב ושוב עד שיחזור. בדוק חיבור לאינטרנט`);
         void sttRetryLoop(ch, name); return;
       }
       if (!n) health(`stt-${name}`, "amber", `מתחבר לשירות התמלול (${name})…`);
@@ -1019,6 +1119,7 @@ async function openChannel(ch: SttChannel, name: string) {
   }
 }
 
+/** Startup: open both STT channels, start timers, wire STT events to health bars, handle consent, then start the audio sources (or the replay file). */
 async function main() {
   me = makeChannel("me"); them = makeChannel("them");
   for (const id of sttChain(S)) if (getSttProvider(id).experimental) console.log(`⚠ STT provider "${id}" is EXPERIMENTAL (never tested live).`);
@@ -1029,6 +1130,7 @@ async function main() {
   if (failed) throw failed.reason;
   sup.on("rung", renderRung); sup.start(); lastTick = Date.now(); setInterval(tickHealth, S.health.tickMs).unref();
   setInterval(() => void notesRound(), S.notes.everyMs).unref();
+  // All timers are unref'd: they never keep the process alive on their own.
   setInterval(() => void frameRound(), 5000).unref();
   setInterval(tipsTick, 5000).unref();
   setInterval(reminderTick, 30_000).unref();
@@ -1040,44 +1142,45 @@ async function main() {
     s.on("result", (r: SttResult) => { if (ch === "them" && r.isFinal && r.speechFinal && r.speechEndWall) sup.recordSttLag(r.arrivedAt - r.speechEndWall); onResult(r); });
     s.on("stt_error", (e: ProviderError) => { console.error("stt error", ch, e.message); log.write("events", { type: "stt.error", ch, kind: e.kind, error: e.message }); });
     s.on("keyterms_off", () => { console.log("keyterms off for this provider (open was rejected with them)"); log.write("events", { type: "stt.keyterms_off", ch }); });
-    s.on("disconnected", (d) => health(`stt-${ch}`, "red", `STT DISCONNECTED (${ch}) – אין תמלול, מנסה להתחבר מחדש`, JSON.stringify({ code: d.code, reason: d.reason })));
+    s.on("disconnected", (d) => health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} התנתק – מנסה להתחבר מחדש. בדוק את חיבור האינטרנט`, JSON.stringify({ code: d.code, reason: d.reason })));
     s.on("reconnected", () => { healthClear(`stt-${ch}`); log.write("events", { type: "stt.reconnected", ch }); });
     s.on("switched", (d: { from: string; to: string; kind: string; reason: string }) => {
       sttSwitchedCh.add(ch); healthClear(`stt-${ch}`);
       log.write("events", { type: "stt.switch", ch, ...d });
-      health(`stt-switch-${ch}`, "amber", `STT (${ch}): עברנו מ-${d.from} ל-${d.to}`, d.reason); tickHealth();
+      health(`stt-switch-${ch}`, "amber", `תמלול ${chHe(ch)}: עברנו מ-${d.from} ל-${d.to}`, d.reason); tickHealth();
     });
     s.on("exhausted", (e: ProviderError) => {
       log.write("events", { type: "stt.exhausted", ch, kind: e.kind, retryable: e.retryable });
       // Auth / quota / spend cap will not fix themselves: stop with a clear message. Anything else (wifi drop, 5xx, rate limit) is retried forever with backoff.
       if (!e.retryable) {
-        health(`stt-${ch}`, "red", `STT (${ch}) נפל בכל הספקים – ${describe(e)}`);
+        health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} נפל בכל הספקים – ${describe(e)}`);
         if (ch === "them") sup.set({ fatal: `STT unusable: ${describe(e)} (client channel)` });
         return;
       }
-      health(`stt-${ch}`, "red", `STT (${ch}) אין חיבור – ${describe(e)}. מנסה שוב ושוב עד שיחזור`);
+      health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} אין חיבור – ${describe(e)}. מנסה שוב ושוב עד שיחזור. בדוק חיבור לאינטרנט`);
       void sttRetryLoop(s as SttChannel, ch);
     });
   }
-  console.log(`Wingman Stage 0 · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} bank cards${noAi ? " · bank only" : ""}${discard ? " · --discard" : ""}`);
-  console.log(`Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = consent confirmed · q = quiet · a = ask Wingman · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`);
+  console.log(`Wingman Stage 0 · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} prepared cards${noAi ? " · prepared only" : ""}${discard ? " · --discard" : ""}`);
+  console.log(`Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = start listening (when waiting) · q = Quiet mode · a = ask Wingman · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`);
   console.log(`Speakers mode: ${ECHO.mode} (audio.echo.mode; "filter" is best with headphones) · capture box ${S.capture.enabled ? "on" : "off"}`);
 
-  // Consent card: re-emitted until confirmed (the overlay may start late).
-  const consentCard = (): Card => ({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: CONSENT_SAY, facts: ["להגיד את זה בתחילת השיחה", CONTROL ? "הצד השני לא מסכים: Stop and delete בתפריט" : "הצד השני לא מסכים: Ctrl+C", CONTROL ? "אחרי שהסכים: Ctrl+Opt+Return" : "אחרי שהסכים: Enter"], at: Date.now() });
+  // Consent card: re-emitted every 20 s until confirmed (the answer window may start late and would miss a single one).
+  const consentCard = (): Card => ({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: CONSENT_SAY, facts: ["אפשר להגיד את זה בתחילת השיחה", CONTROL ? "לא רוצים להקליט: עצור ומחק מהתפריט" : "לא רוצים להקליט: Ctrl+C", CONTROL ? "להתחלת האזנה: Ctrl+Opt+Return" : "להתחלת האזנה: Enter"], at: Date.now() });
   let micPeakAfterStart = 0, micPeakWin = 0, micSilentShown = false, micWatch: NodeJS.Timeout | undefined;
-  // privacy.requireConsentAck (default off: a personal tool): wait for a consent click before any audio leaves the Mac.
+  // privacy.requireConsentAck ("Ask me before listening starts", default off): wait for Start listening before any audio leaves the Mac.
   const needAck = S.privacy.requireConsentAck && !fileArg && (process.stdin.isTTY || CONTROL);
   const startForwarding = () => {
     if (consented) return;
     consented = true; clearInterval(reemit); log.write("events", { type: needAck ? "consent.confirmed" : "listening.start" });
-    if (needAck) { emitCard({ ...consentCard(), id: "consent", say: "הסכמה אושרה. התמלול פעיל.", facts: [] }); console.log("\nConsent confirmed: audio is now being sent for transcription."); }
+    if (needAck) { emitCard({ ...consentCard(), id: "consent", say: "ההאזנה התחילה. התמלול פעיל.", facts: [] }); console.log("\nListening started: audio is now being sent for transcription."); }
     status("consented", { id: log.id });
     consentedAt = Date.now();
-    // Periodic: checks the last micSilentMs of audio each time, shows the red banner when silent and clears it as soon as the mic is heard.
+    setPhase("live", { liveAt: consentedAt });
+    // Mic watchdog. Periodic: checks the last micSilentMs of audio each time, shows the red banner when silent and clears it as soon as the mic is heard.
     if (!fileArg) { micPeakWin = 0; micWatch = setInterval(() => {
       if (shuttingDown) return;
-      if (micPeakWin < S.audio.watchdog.micPeak) { if (!micSilentShown) { micSilentShown = true; health("mic", "red", "MIC SILENT – המיקרופון לא קולט (הרשאה? WINGMAN_MIC?)"); } }
+      if (micPeakWin < S.audio.watchdog.micPeak) { if (!micSilentShown) { micSilentShown = true; health("mic", "red", "המיקרופון לא קולט. בדוק הרשאת מיקרופון ב-Settings ובחירת מיקרופון, ואז הרץ בדיקת מוכנות"); } }
       micPeakWin = 0;
     }, S.audio.watchdog.micSilentMs); micWatch.unref(); }
   };
@@ -1085,7 +1188,7 @@ async function main() {
   const reemit = setInterval(() => { if (!consented && needAck) emitCard(consentCard()); }, 20_000);
   if (!needAck) startForwarding();
   if (CONTROL) setupControl(startForwarding); else setupKeys(startForwarding);
-  if (!consented) { console.log(`\nWaiting for consent: nothing is sent to the cloud until you ${CONTROL ? "click \"Consent given\" in the menu bar" : "press Enter"}.`); status("waiting", { id: log.id }); }
+  if (!consented) { console.log(`\nWaiting for you to start listening: nothing is sent to the cloud until you ${CONTROL ? "click \"Start listening\" in the menu bar" : "press Enter"}.`); setPhase("waiting"); status("waiting", { id: log.id }); }
 
   if (fileArg) {
     const f = new FileSource(fileArg);
@@ -1111,11 +1214,11 @@ async function main() {
       if (micSilentShown && pk >= S.audio.watchdog.micPeak) { micSilentShown = false; healthClear("mic"); }
       me.send(gateMic(b));
     });
-    mic.on("error", (e) => { console.error("mic error:", e.message); health("mic", "red", "MIC ERROR – המיקרופון נפל", e.message); });
+    mic.on("error", (e) => { console.error("mic error:", e.message); health("mic", "red", "המיקרופון נפל. חבר אותו מחדש או בחר מיקרופון אחר ב-Settings", e.message); });
     mic.on("log", (m: string) => console.log(m));
     if (sys) {
       sys.on("pcm", (b: Buffer) => { gate.noteThemPeak(peakOf(b)); if (consented) them.send(b); });
-      sys.on("error", (e: Error) => { console.error("system audio error:", e.message); health("sys", "red", "SYSTEM AUDIO ERROR – לא שומעים את הלקוח", e.message); });
+      sys.on("error", (e: Error) => { console.error("system audio error:", e.message); health("sys", "red", "לא שומעים את הצד השני. בדוק את הרשאת הקלטת המסך/שמע המערכת והרץ בדיקת מוכנות", e.message); });
       sys.on("log", (m: string) => console.log(m));
       await sys.start();
     } else {
@@ -1125,10 +1228,10 @@ async function main() {
     await mic.start();
     stops.push(async () => { await sys?.stop(); }, () => mic.stop(), async () => { clearInterval(micWatch); clearInterval(reemit); });
     // Silent-tap watchdog. Two different situations:
-    //  1. Frames keep arriving but are silent while Dan talks (a monologue, a test, thinking aloud): ONE calm info line. This NEVER sets
+    //  1. Frames keep arriving but are silent while the user talks (a monologue, a test, thinking aloud): ONE calm info line. This NEVER sets
     //     themDead (that would drop the ladder to transcript-only for a minute). Sound or client text clears it at once.
     //  2. No frames at all from the tap for deadFrameMs: the tap is really dead -> red, themDead (recovers within seconds once frames return).
-    // Answers for Dan keep working in both cases.
+    // Answers for the user keep working in both cases.
     const W = S.audio.watchdog;
     let shownKind: "red" | "calm" | undefined, checking = false, lastSysFrame = Date.now();
     const clearThemBanner = () => {
@@ -1151,7 +1254,7 @@ async function main() {
         if (shownKind !== "red") {
           if (shownKind === "calm") { healthClear("only-you"); shownKind = undefined; }
           shownKind = "red"; sup.set({ themDead: true }); log.write("events", { type: "watchdog.tap-dead" });
-          health("them-silent", "red", "NOT HEARING THE OTHER SIDE – אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות");
+          health("them-silent", "red", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות. בדוק שהשמע של השיחה מופעל ושהווליום למעלה");
         }
         return;
       }

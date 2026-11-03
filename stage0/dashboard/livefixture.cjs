@@ -2,6 +2,7 @@
 // Snapshot-only fixture for the live conversation view (WINGMAN_DASHBOARD_FAKE_CALL=live|live-warn|stopping). Invented data. Nothing is read from a real call.
 const feedLib = require("./livefeed.js");
 
+/** Build one live-view payload ({ callId, reset: true, lines, cards, frame }) from invented rows; liveAt is the fake call start (ms). */
 function build(liveAt, callId) {
   const at = (m, s) => liveAt + (m * 60 + s) * 1000;
   const lines = [
@@ -15,6 +16,7 @@ function build(liveAt, callId) {
     { t: at(7, 44), ch: "me", text: "בהחלט." },
     { t: at(8, 2), ch: "them", text: "ומה לגבי אחסון, מי אחראי על הגיבויים אם משהו נופל בשבת?" },
   ];
+  // "side-1" has turnId "side" and must be filtered out by livefeed (it is the check that side cards stay hidden).
   const cards = [
     { type: "card", id: "q1-ai", turnId: "q1", badge: "ai", t: at(5, 14), question: "ועוד שאלה, אתם יכולים לחבר את הטפסים ל-Monday ולשמור שם את הלידים?", say: "כן, אפשר לחבר את הטפסים ל-Monday דרך webhook, וכל ליד נכנס ללוח עם המקור שלו. לוקח בערך יום עבודה." },
     { type: "card", id: "q2-stall", turnId: "q2", badge: "stall", t: at(7, 35), question: "", say: "שאלה טובה, תן לי שנייה לוודא שאני נותן לך מספר מדויק." },

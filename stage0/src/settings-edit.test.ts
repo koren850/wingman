@@ -1,4 +1,5 @@
-// Settings page backend: comment-preserving edits, zod validation, mode 600, reset to default.
+// Settings page backend (settings-edit.ts): comment-preserving edits, zod validation, mode 600, reset to default.
+// Each test works on its own temp settings.yaml.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync, statSync, existsSync } from "node:fs";

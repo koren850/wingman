@@ -1,15 +1,17 @@
-# Wingman Stage 0 (dogfood tool)
+# Wingman app and operator guide (stage0)
+
+This is the detailed guide for the app in `stage0/`. For what Wingman is, requirements and a quick start, read the [root README](../README.md). Design: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Decisions: [docs/DECISIONS.md](../docs/DECISIONS.md). Privacy: [docs/PRIVACY-AND-SECURITY.md](../docs/PRIVACY-AND-SECURITY.md). Developing: [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md). Limits: macOS only, Hebrew first, needs Deepgram and Anthropic keys, costs money per call, and is not a recording or consent tool.
 
 Wingman is a live meeting AI assistant. It listens to a call or meeting (any kind, or just you thinking aloud), answers questions the other side asks, answers questions **you** ask it, and notes, tips and summarises. It is not a sales or marketing tool. The agency answer bank is one knowledge source, used when the call is about web/hosting work.
 
 **Ask Wingman:** press **Ctrl+Opt+A**, then say your question within 10 s; the answer appears in a violet "For you" card. With `assist.answerMe: always` (default) it also answers questions you ask out loud that are clearly for it ("כמה זה 36 ועוד 42?", "מה ההבדל בין CDN ל-DNS?"), and stays quiet when you ask the other person ("מה התקציב שלכם?"). Arithmetic is computed locally, no AI.
 
-Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Personal use. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
+Stage 0: a personal tool, terminal or menu-bar launched. The original plan is in [`../docs/history/`](../docs/history/README.md). Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
 
 ## Setup (once)
 1. Keys: open the Wingman app, **Settings → Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; makes a mode-600 backup first). Never put keys in this repo.
 2. `pnpm install`
-3. `pnpm run doctor` checks keys, mic, system audio, Deepgram and Haiku (incl. prompt cache).
+3. `pnpm run doctor` (the app calls it "Readiness check") checks keys, mic, system audio, Deepgram and Haiku (incl. prompt cache).
    macOS will ask your terminal app for **Microphone** and **System Audio Recording**. Allow both, then quit and reopen the terminal.
    **Run from Terminal.app.** In iTerm/Warp/IDE terminals add the app by hand under Privacy & Security > Screen & System Audio Recording > System Audio Recording Only.
 4. Set `audio.mic.device` (or `WINGMAN_MIC`) if the default mic is wrong (list devices: `ffmpeg -f avfoundation -list_devices true -i ""`, then e.g. `WINGMAN_MIC=":1"`). Avoid AirPods for the first call.
@@ -27,7 +29,7 @@ Rough, terminal-launched. See `../STRUCTURE.md` §13 Stage 0. Personal use. Audi
 | `pnpm banktest` | Bank top-1 accuracy on 40 held-out utterances |
 | `pnpm gate --count N` / `--ids t01,t02` / `--no-keyterms` | Score only the sentences you recorded (default all 40); A/B without keyterms |
 | `pnpm start --file data/synthetic/call1.wav` | Replay a stereo recording (L = me, R = them) in real time |
-| `pnpm start --no-ai` | Answer bank only, no Haiku |
+| `pnpm start --no-ai` | Prepared cards only, no Haiku |
 | `pnpm gate` | Hebrew STT gate on your recordings in `data/gold/recordings/` |
 | `pnpm gate data/gold/synthetic.wav` | Dry run of the gate on the Mac's Hebrew voice |
 | `pnpm detector` | Question-detector precision/recall on `data/questions.tsv` |
@@ -85,7 +87,7 @@ Model strings are `provider:model`. Only Anthropic is installed. For others run 
 
 **Audio**: `audio.system.source: audiotee | device | off`. `device` captures an avfoundation input through ffmpeg, for example BlackHole (`audio.system.device: "BlackHole 2ch"`). `audio.mic.device: ":1"` picks the mic (list with `ffmpeg -f avfoundation -list_devices true -i ""`).
 
-**Cautious first call**: `pnpm call --profile first-client-call` (bank + stall lines only, 2 new cards a minute).
+**Cautious first call**: `pnpm call --profile first-client-call` (Prepared + Buy time cards only, 2 new cards a minute).
 
 **Health bar and degrade ladder.** The overlay shows one persistent bar for the current mode: full -> reduced AI (bank + stall only; AI slow or rate-limited) -> provider switch (running on a fallback) -> bank-only (no usable AI, or `budget.maxUsdPerCall` reached) -> transcript-only (client audio or bank down) -> off. The mode changes only between questions and recovers after `health.recoverStableMs` of calm. Transitions are logged as `ladder` rows; spend per role is logged as `usage` rows with USD, using the editable price table in `budget.prices` (estimates: check your provider's prices).
 
@@ -96,6 +98,20 @@ Model strings are `provider:model`. Only Anthropic is installed. For others run 
 - `pnpm keys status|set <provider>|remove <provider>|migrate`. `pnpm run doctor` shows source (Keychain/file/environment) and last 4 only.
 - Migration (`pnpm keys migrate` or the Settings button, never automatic): backup `keys.env.bak-<date>` (600), write + verify each key in the Keychain, then remove that line from keys.env (atomic, 600). Delete the backup once calls work.
 - Tests use a mocked `security` runner and fake keys (`src/keys.test.ts`); the real runner refuses to run under the test runner.
+
+## Keys, stopping and quitting (menu-bar app)
+
+| Key | What it does |
+|---|---|
+| Ctrl+Opt+A | Ask Wingman: your next sentence is a question for it. The menu shows "Listening for your question…" until it is taken or times out. |
+| Ctrl+Opt+N | Add a note for the AI. |
+| Ctrl+Opt+Return | Start listening. Registered only while a call is waiting ("Ask me before listening starts" on). |
+| Ctrl+Opt+C / P / R / K / L | Answer window: clear, pause, rewind, copy newest capture, checklist. |
+| Ctrl+Opt+1 / 2 / 3 | Answer window: copy capture chip 1, 2 or 3 (phone, email, domain). The menu-bar app never takes these. |
+
+**Stopping.** Stop call saves the call and writes the summary in steps (saving, summary, done); `wingman status` shows the step while it runs. "Stop and delete this call…" asks first (Cancel is the default). **Quit Wingman** during a call asks too; if you confirm it stops and saves the call first (up to 20 s), then closes.
+
+**Practice call.** If a Plan is ready, the practice call uses it (offline and free, the Plan is not used up).
 
 ## Answers for you (assist.*)
 | Setting | Default | What it does |
@@ -108,6 +124,6 @@ How it decides (`src/assist.ts`): local cues first (math, "what does X mean", "�
 
 Test it offline: `WINGMAN_CONTROL=1` plus the stdin command `ask` (see `src/me-answers.test.ts`).
 
-**Only you on the line.** When the other side's audio is silent while you talk: a calm line (no call app open: "I only hear you. To get answers for the other side, join the call or play its audio. Ask me anything: Ctrl+Opt+A.") or, when Zoom/Teams/FaceTime/etc. is running, the red NOT HEARING THE OTHER SIDE bar. Either way answers for you keep working; only cards for the other side pause (`WINGMAN_CALL_APP=none|zoom` forces the check in tests).
+**Only you on the line.** When the other side's audio is silent while you talk: a calm line (no call app open: "אני שומע רק אותך…": join the call or play its audio to get answers for the other side; ask me anything with Ctrl+Opt+A) or, when Zoom/Teams/FaceTime/etc. is running, the red NOT HEARING THE OTHER SIDE bar. Either way answers for you keep working; only cards for the other side pause (`WINGMAN_CALL_APP=none|zoom` forces the check in tests).
 
 **Language.** `stt.language: he` is "Hebrew only" (Nova-3 supports Hebrew; steadier on short clips). With `multi`, a final whose letters are mostly not Hebrew/Latin (Telugu, Persian, Arabic...) is dropped and counted (`stt.dropForeignScript`, `foreign.summary` in events.jsonl).

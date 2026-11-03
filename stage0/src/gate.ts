@@ -1,8 +1,10 @@
-// Hebrew STT gate (STRUCTURE.md Stage 0 / S2). Streams each recording to Deepgram in real time and reports:
+// Hebrew STT quality gate (dev tool, not part of a call). Streams each recording to Deepgram in real time
+// through the same SttStream the engine uses, and reports:
 //   term recall on the gold English tech terms (pass >= 85%), endpoint-to-final p50/p95 (pass <= 600 ms),
 //   and speakers found by diarization.
 //   pnpm gate [files...]     default: data/gold/recordings/* (your real recordings)
-//   pnpm gate data/gold/synthetic.wav   dry run on the Carmit TTS version
+//   pnpm gate data/gold/synthetic.wav   dry run on the Carmit TTS version (made by `pnpm synth`)
+// Exit code: 0 = all files pass, 1 = a file fails, 2 = no recordings. Writes data/gold/report-*.md.
 import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import YAML from "yaml";
@@ -17,7 +19,7 @@ const allItems = JSON.parse(readFileSync(join(DATA, "gold", "terms.json"), "utf8
 const argv = process.argv.slice(2);
 const flag = (n: string) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : undefined);
 const countArg = flag("--count"), idsArg = flag("--ids");
-const language = (flag("--language") ?? "multi") as "he" | "multi" | "en";   // default = the production stt.language   // --language multi = Hebrew+English code-switching
+const language = (flag("--language") ?? "multi") as "he" | "multi" | "en";   // multi = Hebrew+English code-switching (the production stt.language default)
 const items = idsArg ? allItems.filter((i) => idsArg.split(",").map((x) => x.trim()).includes(i.id))
   : countArg ? allItems.slice(0, Math.max(1, Number(countArg) || allItems.length)) : allItems;
 const useKeyterms = !argv.includes("--no-keyterms");
@@ -33,8 +35,10 @@ const files = fileArgs.length ? fileArgs
   : existsSync(recDir) ? readdirSync(recDir).filter((f) => /\.(wav|m4a|mp3|aiff?|caf)$/i.test(f)).map((f) => join(recDir, f)) : [];
 if (!files.length) { console.error(`No recordings. Put them in ${recDir} (see data/gold/SCRIPT.md), or pass a file.`); process.exit(2); }
 
+/** Percentile p (0-100) of a list of numbers; NaN when the list is empty. */
 const pct = (a: number[], p: number) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))] : NaN; };
 
+/** Streams one recording at real-time pace, scores term recall (with aliases) and endpoint-to-final delay. Returns pass/fail. */
 async function run(file: string) {
   const pcm = await decode(file, 1);
   const stt = new SttStream({ apiKey: keys.deepgram, channel: "them", keyterms, diarize: true, language } as any);
@@ -47,12 +51,13 @@ async function run(file: string) {
     if (r.speechFinal && r.speechEndWall) delays.push(r.arrivedAt - r.speechEndWall);
   });
   await stt.open();
-  const frame = 3200; // 100 ms
+  // Real-time pacing matters: the delay measured is speech-end -> final as seen live, so audio must not be sent faster than it was spoken.
+  const frame = 3200; // 100 ms of 16 kHz mono s16le
   for (let off = 0; off < pcm.length; off += frame) {
     stt.send(pcm.subarray(off, off + frame));
     await new Promise((r) => setTimeout(r, 100));
   }
-  await new Promise((r) => setTimeout(r, 2500));
+  await new Promise((r) => setTimeout(r, 2500));   // let the last finals arrive before closing
   await stt.close();
 
   const text = finals.map((f) => f.text).join(" ");

@@ -1,5 +1,6 @@
 // Commands that drive the RUNNING app through its control socket: start, stop, consent, quiet, client, note, ask, app.
-// They never spawn an engine themselves.
+// They never spawn an engine themselves. Each sends one command over the owner-only control socket (tray/control-socket.cjs,
+// through client.ts); the tray app owns the engine and applies its own checks and rate limits.
 import { existsSync, readFileSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { join } from "node:path";
@@ -11,6 +12,9 @@ const PHASE_TEXT: Record<string, string> = {
   starting: "starting", waiting: "waiting for your OK to start listening", live: "live and listening", stopping: "stopping and saving", idle: "no call",
 };
 
+const STOP_TEXT: Record<string, string> = { saving: "saving the call", summary: "writing the summary", done: "finishing" };
+
+/** Polls the app status every 400 ms until ok(state) or `ms` passes. Returns the last status (null if the app vanished). */
 async function waitFor(ctx: Ctx, ok: (s: any) => boolean, ms: number) {
   const end = Date.now() + ms; let last: any = null;
   while (Date.now() < end) {
@@ -38,17 +42,18 @@ export async function start(ctx: Ctx, args: string[]): Promise<Result> {
 }
 
 export async function stop(ctx: Ctx, args: string[]): Promise<Result> {
-  const { values } = parse(args, { delete: { type: "boolean" }, yes: { type: "boolean" }, "no-wait": { type: "boolean" } });
+  const { values } = parse(args, { delete: { type: "boolean" }, yes: { type: "boolean" }, "no-wait": { type: "boolean" }, "no-summary": { type: "boolean" } });
+  if (values.delete && values["no-summary"]) throw usage("`--delete` already erases the call; --no-summary only makes sense for a call you keep.");
   if (values.delete && !values.yes) throw new CliError("needs_yes", "`stop --delete` erases the whole call (transcript, cards, summary). Add --yes to confirm.", EXIT.NEEDS_YES);
   const before = await needApp(ctx);
   const callId = before.state.callId || "";
-  await call(ctx, values.delete ? "stop_delete" : "stop", values.delete ? { confirm: true } : undefined);
+  await call(ctx, values.delete ? "stop_delete" : "stop", values.delete ? { confirm: true } : values["no-summary"] ? { noSummary: true } : undefined);
   let s = before;
   if (!values["no-wait"]) s = (await waitFor(ctx, (st) => !st.running, 40_000)) ?? before;
   const done = !s.state.running;
   return {
-    data: { stopped: true, finished: done, deleted: !!values.delete, callId: values.delete ? "" : callId, summaryReady: !!s.summaryOk },
-    text: values.delete ? (done ? "Call stopped and deleted." : "Stopping and deleting the call...") : `Call stopped${done ? " and saved" : " (still saving; check wingman status)"}.${callId ? ` id ${callId}` : ""}${s.summaryOk ? "\nSummary ready: wingman calls summary " + callId : ""}`,
+    data: { stopped: true, finished: done, stopPhase: s.state.stopPhase || "", deleted: !!values.delete, callId: values.delete ? "" : callId, summaryReady: !!s.summaryOk, summarySkipped: !!values["no-summary"] },
+    text: values.delete ? (done ? "Call stopped and deleted." : "Stopping and deleting the call...") : `Call stopped${done ? " and saved" : ` (still ${STOP_TEXT[s.state.stopPhase] ?? "saving"}; check wingman status)`}.${callId ? ` id ${callId}` : ""}${s.summaryOk ? "\nSummary ready: wingman calls summary " + callId : values["no-summary"] && callId ? "\nNo summary written. Later: wingman calls summary " + callId + " --generate" : ""}`,
   };
 }
 
@@ -89,7 +94,10 @@ export async function note(ctx: Ctx, args: string[]): Promise<Result> {
   return { data: { sent: true, kind: "note" }, text: "Note added for the AI." };
 }
 
-/** True when this checkout's run.ts understands the `ask <text>` stdin command (another agent adds it). */
+/**
+ * Compatibility check: does this checkout's src/run.ts know the `ask <text>` stdin command? An older run.ts only knows bare
+ * `ask` (the hotkey) and would ignore the text. Looks for askTyped() in the source. False if the file cannot be read.
+ */
 function engineHasAsk(ctx: Ctx): boolean {
   try { return /function askTyped/.test(readFileSync(join(ctx.root, "src", "run.ts"), "utf8")); } catch { return false; }
 }
@@ -110,6 +118,7 @@ export async function ask(ctx: Ctx, args: string[]): Promise<Result> {
   };
 }
 
+/** wingman app status | open. `open` only runs when the user types it; the CLI never opens the app on its own. */
 export async function app(ctx: Ctx, args: string[]): Promise<Result> {
   const { positionals } = parse(args, {});
   const sub = positionals[0] || "status";

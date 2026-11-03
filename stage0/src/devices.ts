@@ -4,6 +4,7 @@ import { execFile } from "node:child_process";
 
 export type AudioDevice = { name: string; transport: string; defaultInput: boolean; defaultOutput: boolean };
 
+/** Parses `system_profiler SPAudioDataType -json` output. Bad JSON gives []. */
 export function parseAudioDevices(json: string): AudioDevice[] {
   let d: any;
   try { d = JSON.parse(json); } catch { return []; }
@@ -19,6 +20,7 @@ export function parseAudioDevices(json: string): AudioDevice[] {
   return out;
 }
 
+// Name guess for Bluetooth gear that reports no transport; built-in/USB devices with such a word in their name are not flagged.
 const BT_NAME = /airpods|beats|buds|bose|jabra|sony wh|sony wf|bluetooth|headset/i;
 export const isBluetooth = (d: AudioDevice) => /bluetooth/i.test(d.transport) || (BT_NAME.test(d.name) && !/builtin|usb/i.test(d.transport));
 
@@ -30,6 +32,7 @@ export function bluetoothInUse(devs: AudioDevice[]): { device: AudioDevice; role
   return outp ? { device: outp, role: "output" } : undefined;
 }
 
+/** Runs system_profiler (macOS only). Any failure or timeout gives [] so a startup check never blocks a call. */
 export function readAudioDevices(timeoutMs = 4000): Promise<AudioDevice[]> {
   return new Promise((res) => {
     if (process.platform !== "darwin") return res([]);

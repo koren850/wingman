@@ -3,7 +3,7 @@
 ## Before (10 min)
 - `pnpm run doctor` is all green. Do Not Disturb on. Wired headphones (not AirPods). Set `WINGMAN_MIC` if needed.
 - Second screen connected; Zoom share-mode test done (window, primary, secondary, all screens). Never share the primary screen with the overlay on it.
-- Keys: Dan: Settings → Keys → Move to Keychain (once), then Test both (shows ok). Status should read "Saved in Keychain · …xxxx" for both.
+- Keys: Settings → Keys → Move to Keychain (once), then Test both (shows ok). Status should read "Saved in Keychain · …xxxx" for both.
 - Deepgram and Anthropic spend limits set. Consider `--no-ai` for call one.
 - Run `pnpm dashboard` from Terminal.app (menu bar icon plus the Wingman window; `pnpm tray` = menu bar only). On **Home**: **Ready for a call?** → Re-check until READY. Optional: **Plan a call** (who, goal, notes, must cover; Save). Click **Start call** (or **Start without AI** for call one); `pnpm call` in Terminal still works.
 - Listening starts with the call (personal use: no consent step). To get a consent click first, turn on Settings → "Ask me before listening starts".

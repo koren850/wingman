@@ -1,15 +1,19 @@
-// Fact cards (PLAN §0.5): when a known client or domain is mentioned, show what we know about it.
-// Data comes from a local snapshot (data/private/entities.json, git-ignored), built before the call
-// from the domains dashboard and client-kb. Nothing is looked up over the network during the call.
+// Fact cards: when a known client or domain is mentioned in the transcript, show what we know about it (hosting, CMS, PHP, SSL).
+// Data comes from a local snapshot (data/private/entities.json, git-ignored) that you build before the call from your own
+// client/domain lists. Nothing is looked up over the network during the call. Used by run.ts; matching reuses normalize.ts.
+// Client names and aliases live only in that private file, never in code.
 import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { normalize, tokens, tokenVariants } from "./normalize.ts";
 
-/** Single words that are client aliases but also everyday speech: they only match as part of a longer alias. */
+/** Everyday words that some client aliases are made of: alone they only match as part of a longer alias.
+ *  Words that are generic only for YOUR client list (a client called "The Garage", say) go in a
+ *  `generic-aliases.txt` file next to the snapshot, one per line, so client names never live in the code. */
 const GENERIC = new Set(["אתרים", "אתר", "תחנה", "נמל", "נחלה", "עתיד", "staging", "dev", "test",
   "design", "studio", "online", "digital", "media", "group", "travel", "energy", "health", "global", "systems", "solutions", "store", "shop", "hosting", "server", "cloud", "website"].map(normalize));
 /** Subdomain labels that say nothing about the client. */
 const SUBDOMAIN_NOISE = new Set(["www", "staging", "stage", "dev", "test", "old", "new", "mail", "api", "onboarding", "beta", "admin", "shop", "app", "m", "en", "he"]);
-/** Second-level-ish name of a domain: "staging.example-c.com" -> "example-c", "example-b.co.il" -> "example-b". */
+/** Second-level-ish name of a domain: "staging.example-shop.com" -> "example-shop", "acme.co.il" -> "acme". Handles two-part TLDs (co.il, org.il...). */
 export function domainBase(domain: string): string {
   const labels = domain.toLowerCase().split(".");
   const twoPartTld = labels.length >= 3 && ["co", "org", "net", "ac", "gov", "muni", "k12"].includes(labels[labels.length - 2]);
@@ -20,7 +24,7 @@ function domainRank(d: string): number {
   const labels = d.split(".");
   return (SUBDOMAIN_NOISE.has(labels[0]) ? 10 : 0) + labels.length;
 }
-/** Alias tokens must appear in order; the alias side is exact, the spoken side may carry a Hebrew prefix ("מסייפלט"). */
+/** Alias tokens must appear in order; the alias side is exact, the spoken side may carry a Hebrew prefix ("מאקמי" = מ + אקמי). */
 export function aliasMatch(text: string, alias: string): boolean {
   const want = tokens(alias);
   if (!want.length) return false;
@@ -34,13 +38,16 @@ export type Domain = {
   domain: string; clientId?: number | null; server?: string | null; cms?: string | null; cmsVersion?: string | null;
   php?: string | null; sslExpires?: string | null; suspended?: boolean | null;
 };
-export type Snapshot = { generatedAt?: string; clients: Client[]; domains: Domain[] };
+export type Snapshot = { generatedAt?: string; clients: Client[]; domains: Domain[]; genericAliases?: string[] };
 export type Fact = { key: string; kind: "client" | "domain"; title: string; lines: string[]; clientId?: number; warn: boolean };
 
+/** Reads the snapshot JSON (undefined if the file is missing) plus the optional `generic-aliases.txt` next to it (one word per line, `#` comments). */
 export function loadSnapshot(file: string): Snapshot | undefined {
   if (!existsSync(file)) return undefined;
   const s = JSON.parse(readFileSync(file, "utf8")) as Snapshot;
-  return { generatedAt: s.generatedAt, clients: s.clients ?? [], domains: s.domains ?? [] };
+  const sidecar = join(dirname(file), "generic-aliases.txt");
+  const genericAliases = existsSync(sidecar) ? readFileSync(sidecar, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")) : [];
+  return { generatedAt: s.generatedAt, clients: s.clients ?? [], domains: s.domains ?? [], genericAliases };
 }
 
 /** Days from `now` until an ISO date (negative = past). */
@@ -48,17 +55,21 @@ export function daysUntil(iso: string, now = Date.now()): number {
   return Math.floor((Date.parse(iso) - now) / 86_400_000);
 }
 
+/** Finds clients and domains in free text and turns them into short Hebrew fact cards. Built once per call from a Snapshot. */
 export class EntitySpotter {
   private byClient = new Map<number, Client>();
   private byDomain = new Map<string, Domain>();
-  /** Latin domain base ("example-b" of example-b.co.il) -> domain, for people saying the name without the ending. */
+  /** Latin domain base ("acme" of acme.co.il) -> domain, for people saying the name without the ending. */
   private byBase = new Map<string, Domain>();
+  /** GENERIC plus the snapshot's own generic words. */
+  private generic: Set<string>;
   constructor(private snap: Snapshot, private o: { sslWarnDays: number; minAliasLen: number }) {
+    this.generic = new Set([...GENERIC, ...(snap.genericAliases ?? []).map(normalize)]);
     for (const c of snap.clients) this.byClient.set(c.id, c);
     for (const d of snap.domains) {
       this.byDomain.set(d.domain.toLowerCase(), d);
       const base = domainBase(d.domain);
-      if (base.length >= 5 && !GENERIC.has(base)) {
+      if (base.length >= 5 && !this.generic.has(base)) {
         const prev = this.byBase.get(base);
         if (!prev || domainRank(d.domain) < domainRank(prev.domain)) this.byBase.set(base, d);
       }
@@ -66,7 +77,7 @@ export class EntitySpotter {
   }
   get size() { return { clients: this.snap.clients.length, domains: this.snap.domains.length }; }
 
-  /** Every client/domain mentioned in this text. Domains first (more specific). */
+  /** Every client/domain mentioned in this text. Domains first (more specific). `captured` = domains already extracted from the text as full domain names. */
   spot(text: string, captured: string[] = []): Fact[] {
     const out = new Map<string, Fact>();
     const norm = normalize(text);
@@ -80,7 +91,7 @@ export class EntitySpotter {
         if (typeof a !== "string") return false;
         const n = normalize(a);
         if (n.replace(/\s/g, "").length < this.o.minAliasLen) return false;
-        if (!n.includes(" ") && GENERIC.has(n)) return false;
+        if (!n.includes(" ") && this.generic.has(n)) return false;
         return aliasMatch(text, a);
       });
       if (hit) out.set(`c:${c.id}`, this.clientFact(c));
@@ -90,6 +101,7 @@ export class EntitySpotter {
     return [...out.values()];
   }
 
+  /** Card for a client: up to 4 domain lines (+ a "more" line) and the client note. `warn` when any SSL expires soon. */
   clientFact(c: Client): Fact {
     const doms = this.snap.domains.filter((d) => d.clientId === c.id || c.domains?.includes(d.domain)).sort((a, b) => domainRank(a.domain) - domainRank(b.domain));
     const lines = doms.slice(0, 4).map((d) => this.domainLine(d));
@@ -97,6 +109,7 @@ export class EntitySpotter {
     if (c.note) lines.push(c.note);
     return { key: `c:${c.id}`, kind: "client", title: c.name, lines, clientId: c.id, warn: doms.some((d) => this.sslWarn(d)) };
   }
+  /** Card for one domain, with its owner client's name and note when known. */
   domainFact(d: Domain): Fact {
     const client = d.clientId != null ? this.byClient.get(d.clientId) : undefined;
     const lines = [this.domainLine(d, false)];
@@ -104,6 +117,7 @@ export class EntitySpotter {
     if (client?.note) lines.push(client.note);
     return { key: `d:${d.domain}`, kind: "domain", title: client ? `${d.domain} · ${client.name}` : d.domain, lines, clientId: d.clientId ?? undefined, warn: this.sslWarn(d) };
   }
+  /** Warn when the certificate expires within sslWarnDays or expired in the last 30 days (older dates are stale data). */
   private sslWarn(d: Domain): boolean { if (!d.sslExpires) return false; const n = daysUntil(d.sslExpires); return n >= -30 && n <= this.o.sslWarnDays; }
   private domainLine(d: Domain, withName = true): string {
     const parts: string[] = [];

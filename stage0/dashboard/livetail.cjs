@@ -9,6 +9,10 @@ const feedLib = require("./livefeed.js");
 const ID_RE = /^[0-9A-Za-z_-]{8,40}$/;
 const MAX_READ = 512 * 1024, MAX_DELTA = 200;
 
+/**
+ * o: { callsDir, send(payload), interval?, fs?, path?, setInterval?, clearInterval? } (the last four are test seams).
+ * Returns { sync, stop, snapshot, active, tick }. Payloads: { callId, reset, lines, cards, frame? } (+ ended on stop).
+ */
 function createLiveTail(o) {
   const fs = o.fs || nodeFs, path = o.path || nodePath, calls = o.callsDir, send = o.send;
   const every = o.interval || 150, setT = o.setInterval || setInterval, clearT = o.clearInterval || clearInterval;
@@ -16,6 +20,7 @@ function createLiveTail(o) {
 
   const fresh = (id) => ({ id, feed: feedLib.create(), files: { transcript: { off: 0, carry: Buffer.alloc(0) }, cards: { off: 0, carry: Buffer.alloc(0) } } });
 
+  /** New complete JSONL rows of <name>.jsonl since the last read (st = { off, carry }); at most MAX_READ bytes per call. [] on any error. */
   function readNew(dir, name, st) {
     let fd, size;
     try {
@@ -36,12 +41,14 @@ function createLiveTail(o) {
     } catch { return []; } finally { if (fd !== undefined) try { fs.closeSync(fd); } catch { /* closed */ } }
   }
 
+  /** Call folder for id, strictly inside callsDir (lstat: a symlink such as calls/latest is rejected). Throws if missing. */
   function dirFor(id) {
     const base = fs.realpathSync(calls), dir = path.join(base, id);
     if (path.dirname(dir) !== base || !fs.lstatSync(dir).isDirectory()) throw new Error("not a call folder");
     return dir;
   }
 
+  /** One poll: read new rows, update the feed, send a delta (or a full reset when a burst is too big). */
   function tick() {
     if (!cur) return;
     let dir; try { dir = dirFor(cur.id); } catch { return; }   // not created yet

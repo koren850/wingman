@@ -1,0 +1,235 @@
+// Menu-bar app UX: tray/lib.cjs reducer (stop phases, ask state, AI mode), tray/controller.cjs (practice with the Plan, notifications,
+// Start key, confirmations; Electron objects and spawn are injected), mic verdict, and run.ts phase wiring.
+// Includes one real scripted engine run and a control-socket check, both with a temp calls folder.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { ROOT } from "./env.ts";
+import { micVerdict } from "./mic-check.ts";
+
+const req = createRequire(import.meta.url);
+const lib = req("../tray/lib.cjs");
+const { createController } = req("../tray/controller.cjs");
+
+// ---- reducer: stop phases, ask, mode ----
+test("reducer: stopphase is stored, unknown phases ignored, cleared on start and exit", () => {
+  let s = lib.reduce(lib.initialState(), { ev: "starting" });
+  s = lib.reduce(s, { ev: "consented", id: "A" });
+  assert.equal(s.stopPhase, "");
+  s = lib.reduce(s, { ev: "stopping" });
+  for (const p of ["saving", "summary", "done"]) { s = lib.reduce(s, { ev: "stopphase", phase: p }); assert.equal(s.stopPhase, p); }
+  s = lib.reduce(s, { ev: "stopphase", phase: "bogus" }); assert.equal(s.stopPhase, "done");
+  assert.equal(lib.reduce(s, { ev: "exit" }).stopPhase, "");
+  assert.equal(lib.reduce(s, { ev: "starting" }).stopPhase, "");
+});
+
+test("reducer: askArmed follows the ask event, clears on timeout, stop and exit", () => {
+  let s = lib.reduce(lib.initialState(), { ev: "consented" });
+  s = lib.reduce(s, { ev: "ask", on: true, until: 1 }); assert.equal(s.askArmed, true);
+  assert.equal(lib.reduce(s, { ev: "ask", on: false }).askArmed, false);
+  assert.equal(lib.reduce(s, { ev: "stopping" }).askArmed, false);
+  assert.equal(lib.reduce(s, { ev: "exit" }).askArmed, false);
+  assert.notEqual(lib.menuKey(s, true), lib.menuKey(lib.reduce(s, { ev: "ask", on: false }), true), "the menu is rebuilt when ask arms");
+});
+
+test("reducer: mode event and --no-ai set the effective AI mode", () => {
+  let s = lib.reduce(lib.initialState(), { ev: "starting", noAi: true }); assert.equal(s.noAi, true);
+  s = lib.reduce(s, { ev: "mode", noAi: false }); assert.equal(s.noAi, false);
+  assert.equal(lib.reduce(s, { ev: "mode", noAi: true }).noAi, true);
+});
+
+test("a practice call that goes live keeps the Plan; a real call uses it up", () => {
+  const ready = { ...lib.initialState(), briefReady: true };
+  assert.equal(lib.reduce(lib.reduce(ready, { ev: "starting", practice: true }), { ev: "consented" }).briefReady, true);
+  assert.equal(lib.reduce(lib.reduce(ready, { ev: "starting" }), { ev: "consented" }).briefReady, false);
+});
+
+// ---- controller: practice uses the Plan, exposes new state ----
+// Fake child process: emits `@@wingman {json}` status lines on stdout like the engine; spawn, notify and setTimeout are injected into the controller.
+function fake(extra: object = {}) {
+  const spawned: any[] = [];
+  const spawn = (_c: string, args: string[], opts: any) => {
+    const c: any = new EventEmitter();
+    c.pid = 1; c.args = args; c.opts = opts;
+    c.stdin = Object.assign(new EventEmitter(), { writable: true, write: () => true });
+    c.stdout = new EventEmitter(); c.stderr = new EventEmitter(); c.kill = () => {};
+    c.say = (ev: string, data: object = {}) => c.stdout.emit("data", Buffer.from(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`));
+    spawned.push(c); return c;
+  };
+  const notes: string[][] = [];
+  const dir = mkdtempSync(join(tmpdir(), "wm-ux-"));
+  const ctl = createController({ spawn, root: ROOT, tmpDir: dir, setTimeout: () => 0, kill: () => {}, notify: (t: string, b: string) => notes.push([t, b]), env: {}, ...extra });
+  return { ctl, spawned, dir, notes };
+}
+
+test("practice: uses the saved Plan (--brief <file>, not --no-brief) when one is ready", () => {
+  const dir = mkdtempSync(join(tmpdir(), "wm-plan-")), plan = join(dir, "latest.yaml");
+  writeFileSync(plan, 'who: "Dana"\nnotes: []\nmustCover: []\n');
+  const { ctl, spawned, notes } = fake({ briefFile: plan });
+  ctl.boot(true);
+  assert.equal(ctl.practice(), true);
+  const a = spawned[0].args;
+  assert.ok(!a.includes("--no-brief")); assert.equal(a[a.indexOf("--brief") + 1], plan);
+  assert.ok(a.includes("--file") && a.includes("demo"), "still the offline file mode with the demo profile");
+  assert.match(notes.find((n) => n[0] === "Practice call")![1], /Plan is in use/);
+  assert.equal(ctl.getState().briefReady, true);
+  spawned[0].say("consented", { id: "P1" });
+  assert.equal(ctl.getState().briefReady, true, "a practice call does not use up the Plan");
+});
+
+test("practice: no Plan, or a Plan file that vanished, keeps --no-brief", () => {
+  const dir = mkdtempSync(join(tmpdir(), "wm-plan-"));
+  const a = fake({ briefFile: join(dir, "latest.yaml") }); a.ctl.boot(true); a.ctl.practice();
+  assert.ok(a.spawned[0].args.includes("--no-brief"), "file missing");
+  const b = fake({ briefFile: join(dir, "latest.yaml") }); b.ctl.boot(false); b.ctl.practice();
+  assert.ok(b.spawned[0].args.includes("--no-brief") && !b.spawned[0].args.includes("--brief"));
+  const c = fake(); c.ctl.boot(true); c.ctl.practice();
+  assert.ok(c.spawned[0].args.includes("--no-brief"), "no plan path known");
+});
+
+test("controller state carries stopPhase, askArmed and the AI mode", () => {
+  const { ctl, spawned } = fake();
+  ctl.start({ noAi: true });
+  assert.equal(ctl.getState().noAi, true);
+  const c = spawned[0];
+  c.say("consented", { id: "X" }); c.say("ask", { on: true }); assert.equal(ctl.getState().askArmed, true);
+  c.say("ask", { on: false }); assert.equal(ctl.getState().askArmed, false);
+  c.say("stopphase", { phase: "saving" }); assert.equal(ctl.getState().stopPhase, "saving");
+  c.say("stopphase", { phase: "summary" }); assert.equal(ctl.getState().stopPhase, "summary");
+});
+
+test("notifications for crashes and start failures say what to do next", () => {
+  const { ctl, spawned, notes } = fake();
+  ctl.start({}); spawned[0].emit("error", new Error("ENOENT tsx"));
+  assert.match(notes[0][1], /Quit Wingman.*open it again/);
+  ctl.start({}); spawned[1].stderr.emit("data", Buffer.from("boom")); spawned[1].emit("exit", 1);
+  assert.match(notes[notes.length - 1][0], /stopped unexpectedly/); assert.match(notes[notes.length - 1][1], /Start a new call/);
+});
+
+// ---- tray: conditional Start listening key ----
+function fakeShortcuts(registerOk = true) {
+  const reg = new Map<string, () => void>(); const log: string[] = [];
+  return { reg, log, gs: { register: (k: string, f: () => void) => { log.push("register " + k); if (registerOk) reg.set(k, f); return registerOk; }, unregister: (k: string) => { log.push("unregister " + k); reg.delete(k); } } };
+}
+test("Start listening key: registered only while waiting, removed otherwise, handler fires", () => {
+  const f = fakeShortcuts(); let pressed = 0; const msgs: string[] = [];
+  const k = lib.createStartKey({ globalShortcut: f.gs, key: lib.KEYS.consent, onPress: () => pressed++, log: (m: string) => msgs.push(m) });
+  assert.equal(f.reg.size, 0, "nothing at launch");
+  k.sync(false); assert.deepEqual(f.log, [], "not waiting: nothing to unregister");
+  k.sync(true); k.sync(true); assert.equal(f.log.filter((x: string) => x.startsWith("register")).length, 1, "registered once");
+  f.reg.get("Control+Alt+Return")!(); assert.equal(pressed, 1);
+  k.sync(false); assert.equal(f.reg.size, 0); assert.equal(k.isOn(), false);
+  k.sync(true); assert.equal(f.reg.size, 1, "can come back for the next call");
+  assert.deepEqual(msgs, []);
+});
+test("Start listening key: a refused registration is logged and retried at the next sync", () => {
+  const f = fakeShortcuts(false); const msgs: string[] = [];
+  const k = lib.createStartKey({ globalShortcut: f.gs, key: "Control+Alt+Return", onPress: () => {}, log: (m: string) => msgs.push(m) });
+  k.sync(true); assert.equal(k.isOn(), false); assert.match(msgs[0], /could not register/);
+  k.sync(true); assert.equal(f.log.length, 2, "tries again");
+  const t = lib.createStartKey({ globalShortcut: { register() { throw new Error("x"); }, unregister() {} }, key: "k", onPress: () => {} });
+  assert.doesNotThrow(() => t.sync(true));
+});
+test("the menu-bar app never uses the answer window's keys (C/P/R/K/L and 1-3)", () => {
+  for (const k of Object.values(lib.KEYS)) assert.ok(!lib.OVERLAY_KEYS.includes(k as string), `${k} collides`);
+  for (const n of ["1", "2", "3"]) assert.ok(lib.OVERLAY_KEYS.includes(`Control+Alt+${n}`));
+  const src = readFileSync(join(ROOT, "tray", "main.cjs"), "utf8");
+  assert.ok(!/Control\+Alt\+[123]\b/.test(src), "main.cjs registers no Ctrl+Opt+1-3");
+});
+
+// ---- tray: confirmations ----
+test("Stop and delete: Cancel (default), Escape and closing do nothing; only the second button deletes", () => {
+  const run = (answer: number) => { const seen: any[] = []; let deleted = 0; const ok = lib.confirmStopDelete({ dialog: { showMessageBoxSync: (o: any) => { seen.push(o); return answer; } }, stopDelete: () => deleted++ }); return { ok, deleted, opt: seen[0] }; };
+  const c = run(0); assert.equal(c.deleted, 0); assert.equal(c.ok, false);
+  assert.equal(c.opt.defaultId, 0, "Cancel is the default"); assert.equal(c.opt.cancelId, 0, "Escape cancels");
+  assert.deepEqual(c.opt.buttons, ["Cancel", "Stop and delete"]);
+  assert.equal(run(-1).deleted, 0);
+  const d = run(1); assert.equal(d.deleted, 1); assert.equal(d.ok, true);
+});
+
+test("Quit: nothing running quits at once; during a call it asks, Keep is the default, Stop waits for the save", async () => {
+  const mk = (running: boolean, answer: number) => {
+    const ev: string[] = []; let stopped = false;
+    return { ev, o: { isRunning: () => running, dialog: { showMessageBoxSync: (d: any) => { ev.push("dialog " + d.defaultId + d.cancelId); return answer; } }, stop: () => { ev.push("stop"); stopped = true; }, quit: () => ev.push("quit"), whenStopped: async () => { ev.push("waited " + stopped); } } };
+  };
+  const a = mk(false, 0); assert.equal(await lib.requestQuit(a.o), "quit"); assert.deepEqual(a.ev, ["quit"]);
+  const b = mk(true, 0); assert.equal(await lib.requestQuit(b.o), "kept"); assert.deepEqual(b.ev, ["dialog 00"]);
+  const c = mk(true, -1); assert.equal(await lib.requestQuit(c.o), "kept");
+  const d = mk(true, 1); assert.equal(await lib.requestQuit(d.o), "quit"); assert.deepEqual(d.ev, ["dialog 00", "stop", "waited true", "quit"]);
+});
+
+test("waitUntil resolves true as soon as the predicate holds, false at the deadline", async () => {
+  let n = 0; assert.equal(await lib.waitUntil(() => ++n >= 3, 1000, { every: 1 }), true);
+  assert.equal(await lib.waitUntil(() => false, 20, { every: 5 }), false);
+});
+
+// ---- doctor: mic verdict ----
+test("mic check: 0 peak fails (blocked), 0.017 warns (quiet voice), 0.05 is ok", () => {
+  assert.equal(micVerdict(300, 0), "fail");
+  assert.equal(micVerdict(0, 0.5), "fail", "no audio at all");
+  assert.equal(micVerdict(300, 0.017), "warn");
+  assert.equal(micVerdict(300, 0.02), "warn", "exactly the threshold is still quiet");
+  assert.equal(micVerdict(300, 0.05), "ok");
+  assert.equal(micVerdict(300, NaN), "fail");
+});
+
+// ---- run.ts: phases and stop steps are wired in order ----
+test("run.ts writes call.json phases and emits stop steps in order", () => {
+  const src = readFileSync(join(ROOT, "src", "run.ts"), "utf8");
+  for (const p of ['setPhase("starting")', 'setPhase("waiting")', 'setPhase("live", { liveAt']) assert.ok(src.includes(p), p);
+  const at = (t: string) => src.indexOf(t);
+  assert.ok(at('status("stopphase", { phase: "saving" })') < at('status("stopphase", { phase: "summary" })'));
+  assert.ok(at('status("stopphase", { phase: "summary" })') < at('status("stopphase", { phase: "done" })'));
+  assert.ok(at('status("stopphase", { phase: "done" })') < at('status("ended"'));
+  assert.match(src, /phase: "ended"/);
+  assert.match(src, /loadAttachments\(S\.attachments\.maxChars, \{ consume: !fileArg \}\)/, "a practice call never deletes the real call's files");
+});
+
+// ---- real engine run (offline, scripted, temp calls folder): statuses and call.json phases ----
+test("engine: control-mode run emits mode + stop steps in order and call.json ends at phase ended", { timeout: 60_000 }, async () => {
+  const { spawnSync } = await import("node:child_process");
+  const { writeWav } = await import("./audio.ts");
+  const { readdirSync } = await import("node:fs");
+  const tmp = mkdtempSync(join(tmpdir(), "wingman-ux-run-")), calls = join(tmp, "calls"), wav = join(tmp, "silence.wav");
+  await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 8), 2);
+  const r = spawnSync(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
+    cwd: ROOT, encoding: "utf8", timeout: 50_000, input: "",
+    env: { ...process.env, WINGMAN_CALLS_DIR: calls, WINGMAN_CONTROL: "1", WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json"), WINGMAN_SCRIPT_GAP_MS: "800" },
+  });
+  const evs = r.stdout.split("\n").filter((l) => l.startsWith("@@wingman ")).map((l) => JSON.parse(l.slice(10)));
+  const names = evs.map((e) => e.ev);
+  assert.ok(names.includes("mode") && evs.find((e) => e.ev === "mode").noAi === false, `mode event: ${names}`);
+  const phases = evs.filter((e) => e.ev === "stopphase").map((e) => e.phase);
+  assert.deepEqual(phases, ["saving", "summary", "done"]);
+  assert.ok(names.indexOf("stopphase") < names.indexOf("ended") && names.lastIndexOf("stopphase") < names.indexOf("ended"));
+  const id = readdirSync(calls).find((d) => d !== "latest")!;
+  const meta = JSON.parse(readFileSync(join(calls, id, "call.json"), "utf8"));
+  assert.equal(meta.phase, "ended"); assert.ok(meta.endedAt); assert.ok(meta.liveAt > 0, "liveAt was written when listening started");
+  // the reducer fed with the real stream ends with a clean stop
+  let s = lib.initialState(); for (const e of evs) s = lib.reduce(s, e);
+  assert.equal(s.stopPhase, "done"); assert.equal(s.phase, "stopping");
+});
+
+test("control socket status exposes stopPhase, askArmed and the AI mode; the CLI prints the stop step", async () => {
+  const { createControlServer } = req("../tray/control-socket.cjs");
+  const { ctl, spawned } = fake();
+  ctl.start({ noAi: true }); spawned[0].say("consented", { id: "C1" }); spawned[0].say("ask", { on: true });
+  const srv = createControlServer({ controller: ctl, lib, socketPath: join(tmpdir(), "x.sock") });
+  let r = await srv.handle(JSON.stringify({ v: 1, cmd: "status" }));
+  assert.equal(r.state.askArmed, true); assert.equal(r.state.noAi, true); assert.equal(r.state.stopPhase, "");
+  spawned[0].say("stopping"); spawned[0].say("stopphase", { phase: "summary" });
+  r = await srv.handle(JSON.stringify({ v: 1, cmd: "status" }));
+  assert.equal(r.state.phase, "stopping"); assert.equal(r.state.stopPhase, "summary"); assert.equal(r.state.askArmed, false);
+});
+
+test("reducer: macOS Electron chatter on stderr is not kept as the last error", () => {
+  let s = lib.initialState();
+  s = lib.reduce(s, { ev: "stderr", text: "2026-11-03 10:45:03.730 Electron[72437:801406] ApplePersistenceIgnoreState: Existing state will not be touched." });
+  assert.equal(s.lastError, "");
+  s = lib.reduce(s, { ev: "stderr", text: "Error: real failure" });
+  assert.equal(s.lastError, "Error: real failure");
+});

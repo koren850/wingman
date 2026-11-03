@@ -1,4 +1,6 @@
-// pnpm tag [callId]: rate each card of a call as useful or not (feeds the usefulness gate, STRUCTURE.md §13).
+// pnpm tag [callId]: rate each card of a call as useful or not (feeds the usefulness gate).
+// Reads calls/<id>/{cards,events,latency}.jsonl, writes tags.jsonl. Default call = calls/latest, else the newest folder.
+// Top-level script: it runs on import, so nothing imports it.
 import { readFileSync, existsSync, readdirSync, writeFileSync, realpathSync } from "node:fs";
 import { join, basename } from "node:path";
 import { createInterface } from "node:readline";

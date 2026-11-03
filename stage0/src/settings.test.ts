@@ -1,3 +1,5 @@
+// Layered settings loader (settings.ts + defaults.yaml): precedence, env/CLI mapping, validation errors, redact, starter file.
+// Uses a shared temp dir for user and profile files; the real user file is never read.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, existsSync, readFileSync, mkdirSync } from "node:fs";

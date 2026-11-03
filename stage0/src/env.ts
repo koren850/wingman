@@ -1,4 +1,6 @@
-// Loads API keys from ~/.config/wingman/keys.env (never from the repo). Process env wins over the file.
+// Paths (ROOT, DATA, CALLS) and API-key loading. Order: process env, then macOS Keychain, then the legacy
+// ~/.config/wingman/keys.env (never from the repo). Keys are held in memory only; run.ts also deletes them from process.env
+// so child processes (ffmpeg, audiotee) cannot inherit them.
 import { readFileSync, existsSync, statSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname, resolve } from "node:path";
@@ -9,7 +11,7 @@ export { childEnv } from "./keychain.ts";
 export const KEYS_FILE = join(homedir(), ".config", "wingman", "keys.env");
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const DATA = join(ROOT, "data");
-/** WINGMAN_CALLS_DIR redirects every call folder (the synthetic QA harness writes to qa/calls/, never into Dan's real calls/). */
+/** WINGMAN_CALLS_DIR redirects every call folder (the synthetic QA harness writes to qa/calls/, never into the user's real calls/). */
 export const CALLS = process.env.WINGMAN_CALLS_DIR ? resolve(process.env.WINGMAN_CALLS_DIR) : join(ROOT, "calls");
 
 /** provider id -> env var holding its key. */
@@ -21,6 +23,7 @@ export const KEY_VARS = {
 export type KeyName = keyof typeof KEY_VARS;
 export type Keys = Partial<Record<KeyName, string>>;
 
+/** Parses KEY=value lines of keys.env (optional quotes). Empty values and other lines are ignored. */
 export function parseKeysFile(text: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of text.split("\n")) {
@@ -30,7 +33,7 @@ export function parseKeysFile(text: string): Record<string, string> {
   return out;
 }
 
-/** C5: the keys file must be readable by Dan only. Too-open permissions are fixed (chmod 600) and reported once. */
+/** The keys file must be readable by its owner only. Too-open permissions are fixed (chmod 600) and reported once per process. */
 let permsChecked = false;
 export function securePerms(file: string): "ok" | "fixed" | "missing" {
   if (!existsSync(file)) return "missing";
@@ -60,10 +63,12 @@ export function loadKeysWithSources(file = KEYS_FILE, env: NodeJS.ProcessEnv = p
   }
   return { keys, sources };
 }
+/** Same as loadKeysWithSources, keys only. */
 export function loadKeys(file = KEYS_FILE, env: NodeJS.ProcessEnv = process.env, keychain: Keychain | null = null): Keys {
   return loadKeysWithSources(file, env, keychain).keys;
 }
 
+/** Loads keys and exits the process with code 2 and a clear message when any of `which` is missing. Uses the real Keychain by default. */
 export function requireKeys<K extends KeyName>(which: K[], file = KEYS_FILE, keychain: Keychain | null = realKeychain()) {
   const k = loadKeys(file, process.env, keychain);
   const missing = which.filter((w) => !k[w]);
@@ -74,7 +79,7 @@ export function requireKeys<K extends KeyName>(which: K[], file = KEYS_FILE, key
   return k as Record<K, string> & Keys;
 }
 
-/** Template comment for a new keys.env (values are never printed by Wingman). */
+/** Template text for a new keys.env (values are never printed by Wingman). Not referenced anywhere in the repo at the moment. */
 export const KEYS_TEMPLATE = `# Wingman keys. Paste each key after the =  (file mode must be 600)
 DEEPGRAM_API_KEY=
 ANTHROPIC_API_KEY=

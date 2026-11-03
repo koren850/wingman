@@ -10,6 +10,7 @@ import { WsStream } from "./ws-base.ts";
 
 export const SONIOX_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 
+/** Soniox adapter on WsStream. Final tokens are collected and emitted as one final result at an endpoint marker. */
 export class SonioxStream extends WsStream {
   private finals: { text: string; start: number; end: number; conf?: number; speaker?: number }[] = [];
   constructor(opts: SttOptions) { super("soniox", opts); }

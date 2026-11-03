@@ -1,4 +1,5 @@
-// Child process for the Wingman window. `read`: prints state JSON. `write`: reads {key: value|null} JSON from stdin, validates, writes.
+// Child process spawned by the main window (dashboard/window.cjs) so the Electron process does not load the settings code.
+// `read`: prints state JSON. `write`: reads {key: value|null} JSON from stdin, validates, writes.
 // Output is always one JSON line on stdout. WINGMAN_USER_SETTINGS redirects the settings file (tests and screenshots only).
 import { applyEdits, readState, userFileFromEnv } from "./settings-edit.ts";
 import { SettingsError, formatSettingsError } from "./settings.ts";

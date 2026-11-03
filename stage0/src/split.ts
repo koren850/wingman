@@ -1,4 +1,4 @@
-// S10: a client question split by a pause arrives as two utterances ("כמה זה" ... "עולה לבנות חנות?").
+// Question stitching for run.ts. S10: a client question split by a pause arrives as two utterances ("כמה זה" ... "עולה לבנות חנות?").
 // The previous client utterance is glued to the new one when it was short, not a question, had no end mark,
 // and ended within stt.joinWindowMs.
 
@@ -7,6 +7,7 @@ export type PrevUtterance = { text: string; at: number; question: boolean };
 /** A fragment of up to this many words still glues even when it was itself detected as a question ("כמה זה" ... "עולה לחודש"). */
 export const SHORT_HEAD_WORDS = 3;
 
+/** Returns `prev.text + " " + text` when the previous client utterance looks like the head of a split question, else `text` unchanged. Caller keeps the glue only if it detects as a question. */
 export function joinSplit(prev: PrevUtterance | undefined, text: string, now: number, windowMs: number, maxPrevWords = 12): string {
   if (!prev || windowMs <= 0) return text;
   if (prev.question && prev.text.trim().split(/\s+/).length > SHORT_HEAD_WORDS) return text;

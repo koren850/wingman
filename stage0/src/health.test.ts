@@ -1,3 +1,5 @@
+// Health supervisor and degrade ladder (health.ts), CircuitBreaker, and CostMeter (cost.ts) budget states.
+// Time is injected through a mutable `now` object, so no real timers or sleeps.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decide, NO_SIGNALS, capabilities, describeRung, CircuitBreaker, HealthSupervisor, type Rung } from "./health.ts";
@@ -57,7 +59,7 @@ test("slow AI: p50 of the last tags above slowMs drops to reduced AI; recovery c
   const now = { t: 0 }; const { s } = sup(now);
   s.recordTag(2000); s.recordTag(2100); s.tick(); assert.equal(s.rung, 0, "needs minSamples");
   s.recordTag(1900); s.tick(); assert.equal(s.rung, 1); assert.equal(s.caps.ans, false);
-  now.t += 61_000; s.recordTag(2000); s.tick();   // still slow when the minute passes: flag recomputed? samples cleared only on recovery
+  now.t += 61_000; s.recordTag(2000); s.tick();   // still slow when the minute passes: the flag stays; samples are cleared only on recovery
   s.set({ llmSlow: false }); s.tick(); now.t += 61_000; s.tick(); assert.equal(s.rung, 0);
   s.recordTag(300); s.recordTag(400); s.recordTag(350); assert.equal(s.signals.llmSlow, false);
 });

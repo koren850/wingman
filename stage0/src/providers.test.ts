@@ -1,3 +1,5 @@
+// Provider layer: error classification (providers/errors.ts), model refs and registry (providers/llm.ts) and
+// fallback switching in runReflex (reflex.ts). The AI stream and registry are mocks: no network, no keys.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { classifyHttp, classifyLlmError, classifyFinish, classifyWsClose, classifySttError, ProviderError, POLICY, type ErrorKind } from "./providers/errors.ts";

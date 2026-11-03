@@ -1,9 +1,11 @@
 // One STT channel ("me" or "them") over a provider chain. Switches to the next provider mid-call when
 // a failure is non-retryable (auth, quota, spend cap) or repeats (circuit: N failures in windowMs).
+// Also keeps a short audio ring while the socket is down and replays it after a reconnect. Created by src/run.ts.
 import { EventEmitter } from "node:events";
 import { classifySttError, type ProviderError } from "../errors.ts";
 import type { Channel, SttOptions, SttProvider, SttResult, SttStreamLike } from "./types.ts";
 
+/** chain = providers in fallback order; circuit = switch after `failures` errors within `windowMs`. */
 export type ChannelOpts = {
   channel: Channel;
   chain: SttProvider[];                                   // primary first
@@ -11,7 +13,7 @@ export type ChannelOpts = {
   base: Omit<SttOptions, "apiKey" | "channel">;
   baseUrls?: Record<string, string>;                      // tests: point an adapter at a mock server
   circuit: { failures: number; windowMs: number };
-  ringMs?: number;                                        // S4: audio kept while the socket is down, flushed on reopen (0/undefined = drop, old behaviour)
+  ringMs?: number;                                        // audio kept while the socket is down, flushed on reopen (0/undefined = drop, old behaviour)
   now?: () => number;
 };
 
@@ -23,10 +25,10 @@ export class SttChannel extends EventEmitter {
   private switching = false;
   private seconds: Record<string, number> = {};
   private droppedOld = 0;
-  private ring: Buffer[] = [];          // S4 ring: most recent ringMs of audio while the socket is not open
+  private ring: Buffer[] = [];          // ring: most recent ringMs of audio while the socket is not open
   private ringBytes = 0;
   private ringDropped = 0;              // chunks that fell off the ring (counted in `dropped`)
-  private flushedBytes = 0;
+  private flushedBytes = 0;           // total bytes ever replayed from the ring
   private flushEndSec = 0;              // flushed audio occupies [0, flushEndSec] of the current connection's audio clock
   private everOpened = false;
   constructor(private o: ChannelOpts) { super(); }
@@ -88,9 +90,11 @@ export class SttChannel extends EventEmitter {
   }
 
   private wire(s: SttStreamLike) {
+    // Events from a stream that is no longer the current one (an old stream closing after a switch) are ignored, so a stale
+    // disconnect cannot trigger a second failover.
     s.on("result", (r: SttResult) => {
       if (s !== this.stream && this.stream) return;
-      // S4: a result that ends inside flushed audio would get a lag inflated by the burst: drop its wall-clock anchor
+      // A result that ends inside flushed audio would get a lag inflated by the burst: drop its wall-clock anchor
       const end = r.words?.at(-1)?.end;
       if (this.flushEndSec > 0 && r.speechEndWall !== undefined && (end === undefined || end <= this.flushEndSec + 0.05)) r = { ...r, speechEndWall: undefined };
       this.emit("result", r);
@@ -109,6 +113,7 @@ export class SttChannel extends EventEmitter {
     if (nonRetryable || (err.switchProvider && this.failures.length >= this.o.circuit.failures)) void this.switchNext(err);
   }
 
+  /** Move to the next provider in the chain. On success emits "switched"; if none opens, emits "exhausted" and keeps the old stream. Re-entrant calls are ignored. */
   async switchNext(err: ProviderError) {
     if (this.switching) return;
     this.switching = true;
@@ -142,6 +147,7 @@ export class SttChannel extends EventEmitter {
     this.emit("reconnected", { channel: this.o.channel, reopened: true });
   }
 
+  /** Returns false when the chunk was not sent live (buffered in the ring or dropped). Never throws. */
   send(pcm: Buffer): boolean {
     const ringing = (this.o.ringMs ?? 0) > 0 && this.everOpened;
     if (ringing && !this.stream?.isOpen) { this.buffer(pcm); return false; }

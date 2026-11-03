@@ -1,64 +1,134 @@
 # Wingman
 
-A live partner for meetings: Claude listens with full context and Dan's tools, and helps, corrects and improves the conversation as it happens. No missed points, no stuttering.
+A live meeting assistant for macOS. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time, and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. It also answers questions you ask it out loud, does simple math locally, keeps a checklist of what the call should cover, and writes a summary and follow-up email draft when the call ends. It was built by Dan, who runs a small web and hosting agency in Israel, for his own Hebrew support and sales calls, so Hebrew (with English tech words mixed in) is the first-class language.
 
-"Wingman" is a **codename** (name availability check pending; bundle id, keychain service and data-dir are neutral constants).
+![The Wingman answer window during a call: a "For you" card, a math result and a Prepared card, all invented examples](docs/ux/for-you-card.png)
 
-## Project status (2026-11-01)
-- **Personal tool first.** Built for Dan's Hebrew client calls and his own tools. Published as open source: **works on macOS, from source.** Signed installers, Windows, the pack installer and a polished wizard wait until a second real user wants Wingman.
-- `STRUCTURE.md` is the buildable structure (build order in §13, spikes in §14, red-team log in §16). `PLAN.md` is the requirements document: only its §0, §1, §1b, §5 and §9 are requirements; its technical sections are superseded by `STRUCTURE.md`. `REDTEAM.md` is the review that produced the 2026-11-01 changes.
-- Nothing is built yet. License: Apache-2.0.
+*The answer window on the second screen. The cards here are invented examples. The window is right-to-left because the cards are Hebrew.*
 
-> **Next session: start with `NEXT-SESSION.md`.**
+> Wingman is a personal tool in an early stage ("Stage 0"). It works and is tested, but it is not a polished product. See [Project status](#project-status).
 
-## TARGET: first real use by Sun 8 Nov 2026
-Go/no-go Fri 6 Nov evening: client call only if the STT gate passes, consent wording is confirmed and a Zoom share test is done; otherwise first client call 11-12 Nov.
+## Key features
 
-| When | Dan | Claude |
-|---|---|---|
-| Sun 1 Nov | Paste keys, `pnpm run doctor`, allow Mic + System Audio | Run the synthetic call end to end, fix, report speeds |
-| Mon 2 Nov | Record 10 of the 40 gold sentences; live self-test with a Hebrew tech video; edit the top 10 cards | STT gate on the recording; tune cards and detector |
-| Tue 3 Nov | 15-min Zoom with a friend playing a client | Review cards, fix misses, add bank cards |
-| Wed 4 - Thu 5 Nov | Off | Polish |
-| Fri 6 - Sun 8 Nov | **First real client call** (friendly client, consent line said) | Same-day fixes from the logs |
-| By ~13 Nov | 3 real calls + `pnpm tag` after each | Usefulness gate decision |
+| Feature | What it does |
+|---|---|
+| **Prepared** cards | A local answer bank (`stage0/data/bank.yaml`, 41 cards) answers common questions (DNS, SSL, backups, slow site...) in about half a second, with no AI call. |
+| **AI** cards | When the bank has nothing, a small Claude model writes a short answer. AI cards are always marked as not verified. |
+| **Buy time** lines | For prices, dates and promises Wingman never invents a number. It shows a safe stalling line ("I will check and come back with a proper price"). |
+| **For you** cards | Ask Wingman a question out loud (or press Ctrl+Opt+A) and the answer shows in its own card. |
+| **Math** | Arithmetic ("36 plus 42", "15% of 200", Hebrew and English number words) is computed locally. No AI, instant. |
+| **Tip** cards | At most one short tip every two minutes (a question to ask, a reminder), never during an answer. |
+| **Call checklist** | Wingman works out what the call is about (client, support, vendor, team, consult, personal) and keeps a checklist for that kind of call. |
+| **Plan** | A one-minute briefing before the call: who, goal, notes, must-cover items, background files. Used for one call. |
+| **Fact cards** | If you build a local snapshot of your clients and domains, a mention of a known client or domain shows what you already know. No network lookups during the call. |
+| **Capture chips** | Phone numbers, emails and domains spoken in the call appear as copyable chips. |
+| **Summary** | After the call: summary, decisions, next steps, open questions and a follow-up email draft. Prices, dates and promises become `[להשלים: ...]` placeholders. |
+| **Readiness check** | One command or button that tests mic, system audio, keys, speech service and the AI before you go live. |
+| **Health and fallbacks** | A visible bar if something degrades. A degrade ladder keeps the call going (reduced AI, bank only, transcript only). Nothing blocks the call. |
+| **Menu-bar app and CLI** | An Electron menu-bar app with a Home / Calls / Settings window, and a `wingman` command line that drives the running app. |
 
-Start a call with `cd stage0 && pnpm call`; after it, `pnpm tag`.
+## How it works
 
-## STOP RULE
-**If Wingman has not been used on a real call by 2026-11-22, or if a new job starts, freeze the project** and write down in this file where it stopped (what works, what is blocked, what the next step would have been). No more review rounds.
+```
+mic (you) ----------------+                                   +--> Prepared bank (local, ~0.5 s)
+                          +--> Deepgram Nova-3 --> question --+
+system audio (them) ------+     speech to text     detector   +--> Claude Haiku (short AI answer
+ (AudioTee, macOS)             (two channels)                       or "Buy time" line, ~1-2 s)
+                                                                          |
+                                                                          v
+                                                         guards (no prices, dates, promises)
+                                                                          |
+                                                                          v
+                                                    Answer window on your second screen
+```
 
-## Start here (next session): Stage 0, the dogfood tool (2-3 days)
-Read `STRUCTURE.md` §13 "Stage 0" and §14 S2. Stage 0 is a rough terminal-launched tool plus the Hebrew STT gate. It is not the final architecture.
+Two audio channels go to the speech service, one for each side, so Wingman always knows who said what. A local detector decides whether a line from the other side is a question. The bank is tried first because it is fast, free and written by you. A small AI model decides whether to skip, stall, pick a bank card or write an answer. Every AI line passes through code guards before it can be shown. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-**Keys and accounts needed**
-1. A **Deepgram API key** (deepgram.com, free starting credit).
-2. An **Anthropic API key** (Haiku reflex).
-3. Nothing else for Stage 0: no Apple Developer ID, no SignPath, no M365.
+## Requirements
 
-**Prep needed**
-1. Audio: install **AudioTee** or **BlackHole** (whichever works first on this Mac, macOS 27.x) and grant Microphone and System Audio Recording. Headphones on. Second screen for the cards.
-2. **Gold set (day 0-1):** Dan records himself speaking about **~40 English tech terms** (DNS, SSL, Cloudflare, WordPress, ...) in Hebrew sentences, plus **one consenting friend**, 3 consented recordings in total, plus **1 speakerphone clip**. Hand-label about 60 lines (this also seeds the 30-50 line Hebrew question corpus).
-3. **Bank:** 30-60 answer cards in Dan's own words (Claude drafts, he edits), and a short `house-style.md` (never-say rules, no prices/dates/promises).
-4. **Consent and privacy (before the first real client call):** settle the consent wording (STRUCTURE.md S15, short lawyer/consultant check) and pre-record consent decisions for the top clients. Interim privacy policy until encryption exists: plain files, manual purge (`wingman purge --older-than`), **synthetic or consented calls only**.
-5. 30-minute **name availability check** (npm scope, GitHub org, domain).
+- **macOS only.** System audio is captured with AudioTee (Core Audio tap, macOS 14.2 or newer). There is no Windows or Linux support.
+- Node.js 24 and pnpm.
+- `ffmpeg` on your PATH (used for the microphone and for replaying audio files).
+- A **Deepgram** API key (speech to text) and an **Anthropic** API key (the AI). Both are paid services. See [costs](docs/ARCHITECTURE.md#latency-budget-and-cost-model): roughly a dollar an hour of call for speech, plus a few cents of AI.
+- A second screen is strongly recommended. With one screen the answer window refuses to open (so it cannot end up in a screen share).
+- Microphone and System Audio Recording permission for the app that runs Wingman.
 
-**Stage 0 gate (numbers)**
-- Term recall on the ~40 English terms >= ~85 %.
-- Endpoint-to-final <= ~600 ms.
-- Diarization works on Hebrew (`he`).
-- If Deepgram fails, try Soniox; do not start Stage 1 until the vendor is decided.
+Honest limits: Hebrew-first (English works, other languages are untested); needs the internet and both keys; not a recording or consent tool; answers are hints, not facts.
 
-**Then:** run Wingman on **3 real consented calls**, tag each card useful or not, and apply the **usefulness gate** (about 2+ useful cards per hour, plus the share of questions the bank answers). Only after it passes: Stage 1a (CLI replay), 1b (live audio + overlay) and later the brain. The fallback product, if the gate fails, is the keyword bank + Haiku plus a post-call summary and promises list. Optional: the NexQ test (PLAN.md §3), only to hear Deepgram Hebrew in a ready app.
+## Quick start
 
-## Stack (decided 2026-11-01, details in STRUCTURE.md)
-TypeScript · **Deepgram Nova-3 `he`** over its live WebSocket behind our own `SttProvider` · **Claude Haiku 5.5** as the fast reflex via the Vercel AI SDK · keyword answer bank first (embeddings and the Sonnet brain only after the usefulness gate) · Electron overlay on the second screen from Stage 1b · plain JSONL/YAML files · tools through our ToolBroker (MCP) from Stage 2 · optional deep answers from Dan's own **Claude Code** login (opt-in, off by default). **M365/Outlook is read-only and reached only through that deep session's connector;** the post-call email is a local draft (.eml or clipboard) that Dan sends himself.
+The app lives in `stage0/`.
 
-## Decisions already made
-- Headphones: yes. Second screen: yes, and the answer window goes there.
-- Call apps: Zoom, Teams, Google Meet.
-- Opt-out clients: ask once per client at the first start.
-- Fast model: Claude Haiku 5.5. Deep mode stays opt-in and off by default, owner's own login only.
-- Real job interviews: off-limits. Practice mode only.
-- Audio for Stages 0-1: AudioTee or BlackHole from the terminal; Electron loopback is tested on a signed build before the installer stage (macOS 27.x included).
-- Phone: Dan has **Android**. **Phone mode is Stage P, right after the usefulness gate:** speakerphone + Mac mic, voice print to tell "me" from "client", one-tap start (tray/hotkey ⌃⌥W, Android home-screen button), and Tasker auto-start with the caller number picking the client profile. Fallback if speakerphone Hebrew is too poor: a cloud phone line (PLAN.md "Later ideas").
+```bash
+cd stage0
+pnpm install                 # also builds .app/Wingman.app, a renamed Electron runtime
+
+pnpm keys set deepgram       # hidden prompt; stored in the macOS Keychain
+pnpm keys set anthropic      # (or paste them in the app: Settings -> Keys)
+
+pnpm run doctor              # the Readiness check. Allow Microphone + System Audio Recording when macOS asks,
+                             # then quit and reopen your terminal. Run it from Terminal.app.
+
+pnpm dashboard               # opens the menu-bar app and its window
+```
+
+In the window: **Home -> Run check** until it says READY, optionally **Plan a call**, then try **Practice call (offline, free)**. A pretend client plays through the real call loop and the real answer window, and nothing leaves your Mac. When you are ready, press **Start call**.
+
+Notes:
+- `pnpm run doctor`, not `pnpm doctor` (the second one is pnpm's own command).
+- Never put keys in the repo. They belong in the Keychain.
+- No second screen yet? Use `WINGMAN_ALLOW_PRIMARY=1`, and never share that screen.
+
+More operator detail (all commands, settings, hotkeys): [stage0/README.md](stage0/README.md).
+
+## Command line
+
+```bash
+cd stage0
+pnpm -s wingman help         # full help
+pnpm -s wingman status       # is the app running, is a call live
+pnpm -s wingman start --practice
+```
+
+The `wingman` command talks to the running menu-bar app over an owner-only local socket. It cannot read API keys.
+
+## Privacy and safety in short
+
+- Audio goes to **Deepgram** to be transcribed. Text of the call goes to **Anthropic** for AI answers and the summary. Nothing else leaves your Mac.
+- Audio is **never saved**. Transcripts and cards are saved locally in `stage0/calls/<id>/` with owner-only permissions, until you delete them.
+- API keys live in the macOS Keychain, not in files.
+- **You are responsible for telling the other people on the call** that a transcription and AI tool is running, and for following the recording and privacy laws that apply to you. Wingman is not a consent tool and gives no legal advice.
+- Not for real job interviews or exams.
+
+Full details: [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) and [SECURITY.md](SECURITY.md).
+
+## Project status
+
+A personal tool, built and used by one person. It is at "Stage 0": the live call loop, the app, the CLI, the summary and the QA harness are built and tested (about 355 unit tests, plus a synthetic QA harness that plays invented scenarios through real Deepgram and Haiku). It has been verified with synthetic and test calls; the real-call hand tests still open are listed in [docs/ROADMAP.md](docs/ROADMAP.md). Signed installers, Windows, plugins and a setup wizard are not built and will wait until a second real user needs them.
+
+## Repo map
+
+| Path | What is there |
+|---|---|
+| `stage0/` | The app: engine (`src/`), menu-bar app (`tray/`), window (`dashboard/`), answer window (`overlay/`), QA harness (`qa/`), settings (`config/`), data (`data/`) |
+| `brand/` | Logo, icons and the script that builds them |
+| `docs/` | Documentation (below) |
+| `docs/ux/` | Screenshots and UX before/after images |
+| `docs/history/` | The original plan, structure, red-team review and proposals, kept for context |
+| `CHANGELOG.md` | Milestones |
+
+## Documentation
+
+| Doc | Read it for |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, call lifecycle, files, latency and cost, tests |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log: what we chose and why |
+| [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) | What data goes where, what is stored, how keys are handled |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, scripts, tests, QA harness, building the app |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Open items, known limits, ideas |
+| [docs/history/](docs/history/README.md) | Original planning documents |
+| [stage0/README.md](stage0/README.md) | The detailed app and operator guide |
+
+## License
+
+MIT, see [LICENSE](LICENSE).

@@ -1,4 +1,5 @@
-// Regressions found by the synthetic QA harness (qa/): see qa/report.md.
+// Regressions found by the synthetic QA harness (qa/): detector, bank, reflex tag parsing, question split/merge.
+// Part 1 covers the first QA run; "qa2" tests cover the second replay run.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseReflex, parseTag } from "./reflex.ts";
@@ -80,7 +81,7 @@ test("qa: 'היי דן, כמה שאלות מהירות' is an opener, 'כמה ש
   assert.equal(detect("כמה זה עולה").isQuestion, true);
 });
 
-// Round 2 (QA replay fixes, 2 Nov).
+// Second QA run (replay fixes): the "qa2" tests below. Imports sit here, next to the tests that use them.
 import { splitMulti, joinSplit as joinSplit2 } from "./split.ts";
 import { bankStarts as bankStarts2, matchBank as matchBank2, loadBank as loadBank2 } from "./bank.ts";
 import { detect as detect2 } from "./detector.ts";

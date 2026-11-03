@@ -1,11 +1,13 @@
 // wingman live [--follow]: the current transcript and answer cards, read from calls/<id>/{transcript,cards}.jsonl with the same
-// parser and cleaner as the app's live view (dashboard/livefeed.js). Nothing is requested over the control socket.
+// parser and cleaner as the app's live view (dashboard/livefeed.js). Only the "is this call still running" check uses the
+// owner-only control socket (tray/control-socket.cjs); the content is read from files.
 import { closeSync, fstatSync, lstatSync, openSync, readSync } from "node:fs";
 import { join } from "node:path";
 import { appStatus } from "./client.ts";
 import { CliError, EXIT, dataLib, feedLib, parse, usage, type Ctx, type Result } from "./common.ts";
 import { resolveId } from "./calls.ts";
 
+// Reads new complete lines of a growing .jsonl file. A partial last line is carried over to the next read; a shrunk file restarts from 0.
 class Tail {
   off = 0; carry = Buffer.alloc(0);
   constructor(private file: string) {}
@@ -26,6 +28,7 @@ class Tail {
   }
 }
 
+// Which call to show: --id, else the running call, else the newest saved one.
 async function pickId(ctx: Ctx, given: string | undefined) {
   if (given) return { id: resolveId(ctx, given), running: false, phase: "" };
   const a = await appStatus(ctx);
@@ -38,6 +41,7 @@ async function pickId(ctx: Ctx, given: string | undefined) {
 const fmtLine = (l: any, t0: number) => `[${feedLib.stamp(l.t, t0)}] ${l.ch === "me" ? "me  " : "them"}: ${l.text}`;
 const fmtCard = (c: any, t0: number) => `    -> [${c.badge}${c.dim ? ", dim" : ""}] ${c.say}`;
 
+/** Snapshot of a call, or with --follow a stream polled every 600 ms; app status is checked every 5th poll to detect the call ending. */
 export async function live(ctx: Ctx, args: string[]): Promise<Result> {
   const { values } = parse(args, { follow: { type: "boolean" }, id: { type: "string" }, last: { type: "string" }, timeout: { type: "string" } });
   const last = values.last === undefined ? Infinity : Number(values.last);

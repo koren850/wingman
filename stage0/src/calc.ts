@@ -1,7 +1,9 @@
 // Local, no-AI arithmetic for spoken questions: "כמה זה 36 ועוד 42?", "what's 15% of 200", "שלוש מאות חלקי שלוש".
 // Understands digits and Hebrew / English number words (to millions), + - × ÷, percent-of, and normal precedence.
-// Strict on purpose: the text must be a question-style lead-in (or end in "?") followed by ONLY an expression, so
-// "יש לי 3 ועוד 2 אנשים" or "כמה זה 100 שקל ועוד 50" (money) are never computed here.
+// Strict on purpose, because a wrong number on screen is worse than no card. The expression must END the clause (an unknown
+// word after it rejects the text) and either follow a question cue ("?", כמה, what is...) or be a bare unambiguous expression
+// ("3 כפול 450"). So "יש לי 3 ועוד 2 אנשים" and any text with a money word or price verb ("כמה זה 100 שקל ועוד 50") are never computed here.
+// Used by detect() (math = a question), run.ts (calc cards, no AI call), assist.ts (math = for the assistant) and bank.ts (not a price).
 
 const HEB_UNITS: Record<string, number> = {
   אפס: 0, אחד: 1, אחת: 1, שניים: 2, שנים: 2, שתיים: 2, שתים: 2, שני: 2, שתי: 2, שלוש: 3, שלושה: 3, ארבע: 4, ארבעה: 4, חמש: 5, חמישה: 5,
@@ -15,6 +17,7 @@ const EN_UNITS: Record<string, number> = {
 };
 const EN_TENS: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
 
+/** One parsed word: a number (with flags for fractions/percent), an operator, or a marker word (%, "of", squared, discount, "on"). `null` elsewhere = an unknown word. */
 type Tok =
   | { t: "num"; v: number; frac?: boolean; pct?: boolean; lbl?: string }
   | { t: "op"; v: "+" | "-" | "*" | "/"; sym?: boolean; weak?: boolean }
@@ -33,7 +36,7 @@ const FRACS: Record<string, number> = { חצי: 0.5, רבע: 0.25, שליש: 1 /
 const FRAC_LBL: Record<string, string> = { חצי: "½", רבע: "¼", שליש: "⅓", half: "½", quarter: "¼", third: "⅓" };
 const FRAC_VAV = /^ו(חצי|רבע|שליש)$/;
 
-/** Question-style openers that make a bare expression a calculation request. Longest first. */
+/** Question-style openers. Unused: intent is decided by INTENT/SOFT below (kept only as a reference list; `void` silences the unused warning). */
 const LEADS = [
   "כמה זה יוצא", "כמה יוצא", "כמה זה יהיה", "כמה יהיה", "כמה זה שווה", "כמה שווה", "כמה זה", "כמה הוא", "כמה", "מה זה", "מה התוצאה של", "מה התוצאה", "מה הסכום של", "מה הסכום",
   "תחשב לי", "תחשבי לי", "תחשב", "תחשבי", "חשב לי", "חשב", "אפשר לחשב", "תגיד לי כמה זה", "תגיד לי כמה",
@@ -46,8 +49,10 @@ void LEADS;
  * service ("כמה עולה אתר ועוד אחסון ל-3 שנים", "כמה עולה 3 כפול 500"), never a sum to compute. run.ts uses this to skip calc cards.
  */
 const PRICE_VERB = /(?<![א-ת])[והבכלמש]{0,2}(עולה|עולים|יעלה|יעלו|עלות|עלותו|מחיר|מחירו|מחירים|לשלם|אשלם|נשלם|תשלם|תעריף|תעריפים|תמחור|תמחר|שולם)(?![א-ת])|\b(cost|costs|price|prices|pricing|charge|charges|quote|fee|fees)\b/i;
+/** True if the text is about what something costs. evalMath refuses these so a price question never gets a computed sum. */
 export function hasPriceVerb(text: string): boolean { return PRICE_VERB.test(String(text ?? "")); }
 
+/** Pre-tokenize cleanup: strips niqqud/bidi/zero-width marks and quotes, keeps "1,200" as one number, spaces out operators and %, and keeps "3/4" as one fraction token. */
 const clean = (s: string) => s.toLowerCase()
   .replace(/[֑-ׇ​-‏‪-‮⁦-⁩]/g, "")      // niqqud, zero-width, bidi marks
   .replace(/[״"׳'`’]/g, "")
@@ -66,6 +71,7 @@ const clean = (s: string) => s.toLowerCase()
   .replace(/\s+/g, " ").trim();
 
 const MULT_WORDS: Record<string, number> = { מאה: 100, מאתיים: 200, מאות: 100, hundred: 100, אלף: 1000, thousand: 1000, אלפיים: 2000, אלפים: 1000, אלפי: 1000, מיליון: 1e6, מליון: 1e6, million: 1e6 };
+/** Classify a spoken number word: a unit (1-19), tens (20-90) or a multiplier (100, 1000, 1e6). */
 function numberWord(w: string): { kind: "unit" | "tens" | "mult"; v: number } | undefined {
   if (w in HEB_UNITS) return { kind: "unit", v: HEB_UNITS[w] };
   if (w in EN_UNITS) return { kind: "unit", v: EN_UNITS[w] };
@@ -85,6 +91,7 @@ const INTENT = new Set(["כמה", "נגיד", "what", "whats", "how", "calculate
 const MONEY = /(שקל|שקלים|ש ח|₪|\$|דולר|דולרים|יורו|אירו|nis|usd|eur|dollars?|euros?|shekels?|bucks)/;
 const stripSoftVav = (w: string) => (w.length > 2 && w[0] === "ו" && SOFT.has(w.slice(1)) ? w.slice(1) : w);
 
+/** Cleaned text -> words, with fused prefixes undone: leading "ו" (and), "ממאתיים" -> "מ" + "מאתיים", STT "ממ" -> "מ". */
 function prep(body: string): string[] {
   const out: string[] = [];
   for (let w of clean(body).split(" ").filter(Boolean)) {
@@ -192,6 +199,11 @@ function shape(run: Tok[]): Tok[] | undefined {
   return o;
 }
 
+/**
+ * Evaluate alternating num/op tokens with normal precedence (* and / before + and -). "N% of M" is already a multiplication
+ * by shape(). A percent after + or - is a percent OF the left side ("2400 ועוד 17 אחוז"). Returns undefined for division by
+ * zero, a lone number, a malformed sequence or a non-finite result; rounds to 12 significant digits to hide float noise.
+ */
 function evaluate(toks: Tok[]): number | undefined {
   const t: Tok[] = [];
   let squared = false;
@@ -223,6 +235,7 @@ function evaluate(toks: Tok[]): number | undefined {
   return Number.isFinite(r.v) ? Number(r.v.toPrecision(12)) : undefined;
 }
 
+/** Plain machine form of a result (no separators, at most 4 decimals). */
 export const fmtNum = (n: number): string => (Number.isInteger(n) ? String(n) : String(Math.round(n * 10000) / 10000));
 /** Display form: thousands separators, at most 4 decimals ("2,450", "12.5"). */
 export const fmtShow = (n: number): string => {
@@ -230,6 +243,7 @@ export const fmtShow = (n: number): string => {
   return Math.abs(r) < 1e15 ? r.toLocaleString("en-US", { maximumFractionDigits: 4, useGrouping: true }).replace("-", "−") : fmtNum(r);
 };
 
+/** `expr` normalized expression ("350 × 7"), `value` number, `result` plain string, `say` the display line "expr = value" wrapped in LTR isolates. */
 export type MathResult = { expr: string; value: number; result: string; say: string };
 
 /**
@@ -240,7 +254,7 @@ export type MathResult = { expr: string; value: number; result: string; say: str
  */
 export function evalMath(text: string): MathResult | undefined {
   const raw = String(text ?? "").trim();
-  if (!raw || raw.length > 200) return undefined;
+  if (!raw || raw.length > 200) return undefined;   // long text is conversation, not a sum
   const body = clean(raw);
   if (MONEY.test(body) || hasPriceVerb(body)) return undefined;
   const toks = tokenize(body);
@@ -250,7 +264,7 @@ export function evalMath(text: string): MathResult | undefined {
   if (end < toks.length) return undefined;           // an unknown word after the expression: "3 ועוד 2 אנשים"
   let start = end; while (start > 0 && toks[start - 1] !== null) start--;
   const raws = toks.slice(start, end) as Tok[];
-  if (toks.slice(0, start).length > 5) return undefined;
+  if (toks.slice(0, start).length > 5) return undefined;   // too much unrelated talk before the expression: not a calculation request
   // No opener: only a bare, unambiguous expression ("3 כפול 450"). Not "5-3" (a date or phone), not "12/3", not a lone "עוד".
   if (!intent && (start !== 0 || raws.some((x) => x.t === "op" && (x.sym || x.weak)) || !raws.some((x) => x.t === "op" || x.t === "pct" || x.t === "sq" || x.t === "of"))) return undefined;
   const run = shape(raws);

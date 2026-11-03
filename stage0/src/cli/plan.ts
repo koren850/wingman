@@ -1,5 +1,6 @@
 // wingman plan / prepare: the next meeting's brief (same file and format as the app's "Plan a call" and `pnpm brief`), plus background files.
-// Writes data/private/briefs/latest.yaml and the attachments store directly (no engine, no network); the app notices within a second.
+// Writes data/private/briefs/latest.yaml and the attachments store directly (no engine, no network), then nudges the app with a
+// best-effort brief_refresh over the control socket (tray/control-socket.cjs); a running app also notices the file change itself.
 import { readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { request } from "./client.ts";
@@ -9,11 +10,13 @@ import { KINDS } from "../frame.ts";
 const KIND_PREFIX = "Call kind: ", TOPIC_PREFIX = "Topic: ";
 const LIMIT_NOTES = 12;
 
+/** The brief as the CLI shows it. kind/topic are stored as prefixed notes in the brief file and split out here. */
 export interface Plan { ready: boolean; who: string; goal: string; kind: string; topic: string; notes: string[]; mustCover: string[]; expiresInMin: number; attachments: { id: string; name: string; chars: number }[]; }
 
 const store = (ctx: Ctx) => attachments.createStore({ dir: join(ctx.briefs, "attachments") });
 const briefFile = (ctx: Ctx) => join(ctx.briefs, "latest.yaml");
 
+/** Reads the current brief and background files. ready=false when there is no unexpired brief. */
 export function readPlan(ctx: Ctx): Plan {
   const b = trayLib.readBrief(briefFile(ctx));
   let kind = "", topic = "";
@@ -41,6 +44,7 @@ function describe(p: Plan): string {
 
 async function refreshApp(ctx: Ctx) { try { await request(ctx, "brief_refresh", undefined, 3000); } catch { /* app not running: it reads the file when it starts */ } }
 
+// plan set|prepare: fields not given are kept from the current plan, unless --fresh.
 async function setPlan(ctx: Ctx, args: string[]): Promise<Result> {
   const { values } = parse(args, {
     who: { type: "string" }, goal: { type: "string" }, kind: { type: "string" }, topic: { type: "string" },
@@ -63,6 +67,7 @@ async function setPlan(ctx: Ctx, args: string[]): Promise<Result> {
   return { data: { saved: true, plan: p }, text: "Plan saved.\n" + describe(p) };
 }
 
+// plan attach: exactly one of --file / --text / --stdin. Size and total limits are enforced by the attachments store.
 async function attach(ctx: Ctx, args: string[]): Promise<Result> {
   const { values } = parse(args, { file: { type: "string" }, text: { type: "string" }, stdin: { type: "boolean" } });
   const n = [values.file, values.text, values.stdin].filter((x) => x !== undefined && x !== false).length;
@@ -84,6 +89,7 @@ async function attach(ctx: Ctx, args: string[]): Promise<Result> {
   return { data: { attached: true, id: r.id, chars: r.chars, truncated: !!r.truncated, attachments: p.attachments }, text: `Background added (${r.chars} characters${r.truncated ? ", cut to fit the limit" : ""}), id ${r.id}.` };
 }
 
+/** Dispatches plan subcommands. A first argument starting with "-" (or `prepare --who X`) means `set`. */
 export async function plan(ctx: Ctx, args: string[]): Promise<Result> {
   const sub = !args[0] ? "show" : args[0].startsWith("-") ? "set" : args[0], rest = sub === args[0] ? args.slice(1) : args;   // `prepare --who X` = set
   switch (sub) {

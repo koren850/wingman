@@ -1,5 +1,6 @@
-// Keychain key management. EVERYTHING here uses a mocked `security` runner, a fake key and a temp keys.env:
-// no real Keychain, no real keys. The fake key must never show up outside the mock store (and its last 4 characters).
+// Keychain key management: keychain.ts, keys-cli.ts, env.ts key loading and dashboard/keys-ipc.cjs.
+// Everything uses a mocked `security` runner, a fake key and a temp keys.env: no real Keychain, no real keys.
+// The fake key must never show up outside the mock store (and its last 4 characters).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -39,6 +40,7 @@ function mockSecurity() {
 }
 const tmpHome = () => mkdtempSync(join(tmpdir(), "wingman-keys-"));
 const fileWith = (lines: string) => { const f = join(tmpHome(), "keys.env"); writeFileSync(f, lines, { mode: 0o600 }); return f; };
+// Needles found in the haystack: the tests assert this list is empty, so a failure names the leaked secret.
 const leaks = (hay: string, ...needles: string[]) => needles.filter((n) => hay.includes(n));
 
 function host(opts: { file: string; fetch?: typeof fetch; confirm?: number; env?: NodeJS.ProcessEnv }) {
