@@ -1,6 +1,7 @@
 // Health supervisor and degrade ladder. Mostly pure logic: run.ts feeds signals (provider failures, lag, audio loss) and renders the result.
 // Rungs: 0 full · 1 reduced AI · 2 provider switch · 3 bank-only · 4 transcript-only · 5 off.
 // Rule: the applied rung changes only BETWEEN questions (except 5/off), and recovery needs a stable period.
+// Rung 5 is only for a user stop or withdrawn consent (signal `fatal`); a dead STT channel is rung 4 (transcript-only), retried in the background.
 import { EventEmitter } from "node:events";
 
 /** Degrade level, 0 = everything works, 5 = Wingman stopped. Higher is worse. */
@@ -17,16 +18,17 @@ export type Signals = {
   costCapped: boolean;      // budget.maxUsdPerCall reached
   sttOnFallback: boolean;   // an STT channel runs on its fallback provider
   sttSlow: boolean;         // final lag p50 above health.slowSttMs
-  themDead: boolean;        // no client audio / client STT down: cannot detect questions
+  themDead: boolean;        // no client audio: cannot detect questions
+  themSttDown: boolean;     // the client channel's transcription is unusable (key/credit refused, or down on every provider): transcript-only, retried slowly. NOT rung 5: the user's own channel still works
   bankFailed: boolean;      // bank or detector unusable
-  fatal: string | null;     // STT down on every provider, consent withdrawn, crash...
+  fatal: string | null;     // consent withdrawn or a user stop (never an STT outage: that is themSttDown, rung 4)
 };
-export const NO_SIGNALS: Signals = { noAi: false, llmDown: false, llmOnFallback: false, llmTrouble: false, llmSlow: false, costCapped: false, sttOnFallback: false, sttSlow: false, themDead: false, bankFailed: false, fatal: null };
+export const NO_SIGNALS: Signals = { noAi: false, llmDown: false, llmOnFallback: false, llmTrouble: false, llmSlow: false, costCapped: false, sttOnFallback: false, sttSlow: false, themDead: false, themSttDown: false, bankFailed: false, fatal: null };
 
 /** Which rung the signals ask for, and why (worst wins). */
 export function decide(s: Signals): { rung: Rung; reasons: string[] } {
   if (s.fatal) return { rung: 5, reasons: [s.fatal] };
-  const r4 = [s.themDead && "other side not heard", s.bankFailed && "bank or detector failed"].filter(Boolean) as string[];
+  const r4 = [s.themDead && "other side not heard", s.themSttDown && "other side's transcription is down", s.bankFailed && "bank or detector failed"].filter(Boolean) as string[];
   if (r4.length) return { rung: 4, reasons: r4 };
   const r3 = [s.noAi && "AI off (--no-ai)", s.llmDown && "no LLM provider usable", s.costCapped && "LLM budget cap reached"].filter(Boolean) as string[];
   if (r3.length) return { rung: 3, reasons: r3 };
@@ -107,9 +109,9 @@ export class HealthSupervisor extends EventEmitter {
   start() { this.timer = setInterval(() => this.tick(), this.cfg.tickMs); this.timer.unref(); }
   stop() { clearInterval(this.timer); }
   set(patch: Partial<Signals>) {
-    if (patch.themDead === false && this.sig.themDead) this.fastRecover = true;
+    if ((patch.themDead === false && this.sig.themDead) || (patch.themSttDown === false && this.sig.themSttDown)) this.fastRecover = true;
     Object.assign(this.sig, patch);
-    if (patch.fatal || (this.fastRecover && patch.themDead === false)) this.tick();
+    if (patch.fatal || (this.fastRecover && (patch.themDead === false || patch.themSttDown === false))) this.tick();
   }
   beginQuestion() { this.busy++; }
   endQuestion() { this.busy = Math.max(0, this.busy - 1); if (!this.busy) this.tick(); }
@@ -132,7 +134,7 @@ export class HealthSupervisor extends EventEmitter {
     if (want.rung > this.rung) { this.betterSince = null; return this.apply(want.rung, want.reasons); }
     if (want.rung < this.rung) {
       this.betterSince ??= t;
-      const need = this.fastRecover && this.reasons.length > 0 && this.reasons.every((r) => r === "other side not heard") ? (this.cfg.fastRecoverMs ?? 2000) : this.cfg.recoverStableMs;
+      const need = this.fastRecover && this.reasons.length > 0 && this.reasons.every((r) => r === "other side not heard" || r === "other side's transcription is down") ? (this.cfg.fastRecoverMs ?? 2000) : this.cfg.recoverStableMs;
       if (t - this.betterSince >= need) { this.tags = []; this.lags = []; this.sig.llmSlow = false; this.sig.sttSlow = false; return this.apply(want.rung, want.reasons); }
       return;
     }
@@ -149,3 +151,8 @@ export class HealthSupervisor extends EventEmitter {
   get caps() { return capabilities(this.rung); }
   get signals(): Readonly<Signals> { return this.sig; }
 }
+
+/** Wait before STT reopen attempt n (0 first): 1, 2, 4, 8, then every 10 s; once the failure is permanent (key/credit refused) every `slowMs` (30 s). */
+export const sttRetryDelayMs = (n: number, permanent: boolean, slowMs = 30_000): number => (permanent ? slowMs : Math.min(10_000, 1000 * 2 ** n));
+/** A refused key / exhausted credit / spend cap: retrying fast is pointless, but it is still retried slowly (the user may top up mid-call). "unknown" is treated as transient. */
+export const isPermanentSttError = (e: { retryable?: boolean; kind?: string }): boolean => e.retryable === false && e.kind !== "unknown";

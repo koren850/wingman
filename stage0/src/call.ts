@@ -9,6 +9,7 @@ import { ROOT, CALLS, requireKeys } from "./env.ts";
 import { loadSettingsOrExit, expandHome } from "./settings.ts";
 import { parseModelRef } from "./providers/llm.ts";
 import { spawnOverlay } from "./overlay.ts";
+import { RowRelay, nextRestartCount, listenForRows } from "./relay.ts";
 
 const rest = process.argv.slice(2);
 const { settings: S } = loadSettingsOrExit(rest);   // exits with code 2 and a clear message when settings are invalid
@@ -17,14 +18,21 @@ try { rmSync(join(CALLS, "latest"), { force: true }); } catch { /* removed so th
 
 const bin = (n: string) => join(ROOT, "node_modules", ".bin", n);
 // U1: the answer window is reopened if it crashes (overlay.restartMax). Exit code 3 = it refused a single shared screen.
-let overlay: ReturnType<typeof spawnOverlay>, restarts = 0;
+let overlay: ReturnType<typeof spawnOverlay>, restarts = 0, overlayStartedAt = 0;
+// Second path for the cards (when writing cards.jsonl fails): run.ts sends card rows to a private socket, forwarded to the window's stdin.
+const relay = new RowRelay();
+const rows = listenForRows(relay);
 /** Same "@@wingman" status line protocol as run.ts, only in control mode (the tray app reads it). */
 const status = (ev: string, data: Record<string, unknown> = {}) => { if (process.env.WINGMAN_CONTROL === "1") process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`); };
 /** Starts the answer window; on a crash it reopens it after 1 s (up to overlay.restartMax). Code 0 = closed by the user, code 3 = refused a single shared screen: no restart. */
 function openOverlay() {
   overlay = spawnOverlay(S, true);
+  overlayStartedAt = Date.now();
+  if (overlay?.stdin) relay.attach(overlay.stdin);
   overlay?.on("exit", (code, sig) => {
+    relay.detach();
     if (stopping) return;
+    restarts = nextRestartCount(restarts, Date.now() - overlayStartedAt);   // a window that ran 10 minutes was stable: crashes far apart do not add up
     if (code !== 3 && code !== 0 && restarts < S.overlay.restartMax) {
       restarts++; console.log(`(answer window crashed: code ${code ?? sig}; reopening, ${restarts}/${S.overlay.restartMax})`);
       status("overlay", { ok: false, restarting: true });
@@ -36,7 +44,7 @@ function openOverlay() {
   });
 }
 openOverlay();
-const run = spawn(bin("tsx"), [join(ROOT, "src", "run.ts"), ...rest], { cwd: ROOT, stdio: "inherit" });
+const run = spawn(bin("tsx"), [join(ROOT, "src", "run.ts"), ...rest], { cwd: ROOT, stdio: "inherit", env: { ...process.env, ...(rows ? { WINGMAN_OVERLAY_SOCK: rows.path } : {}) } });
 
 // stopping = a stop was requested; runExited = run.ts is gone (only the window lingers); exiting = finalExit() already started.
 let stopping = false, runExited = false, exiting = false;
@@ -50,7 +58,7 @@ function closeOverlay() {
 /** Close the window (escalating) and leave; never waits longer than 2.5 s for it. */
 function finalExit(code: number) {
   if (exiting) return;
-  exiting = true;
+  exiting = true; rows?.close();
   const o = overlay;
   closeOverlay();
   if (!o || o.exitCode !== null || o.signalCode) return process.exit(code);

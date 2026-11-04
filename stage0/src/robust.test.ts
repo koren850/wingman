@@ -70,7 +70,7 @@ test("health: other recoveries still need the stable minute", () => {
 });
 test("run.ts: the silent-while-talking heuristic never sets themDead (source check)", () => {
   const src = readFileSync(join(ROOT, "src", "run.ts"), "utf8");
-  const calm = src.slice(src.indexOf('log.write("events", { type: "watchdog.silent-them"'), src.indexOf('}, 2000).unref();', src.indexOf('watchdog.silent-them')));
+  const calm = src.slice(src.indexOf('log.write("events", { type: "watchdog.silent-them"'), src.indexOf('}), 2000).unref();', src.indexOf('watchdog.silent-them')));
   assert.ok(calm.includes('"only-you"') && !/themDead/.test(calm), "calm branch must not touch themDead");
 });
 

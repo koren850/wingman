@@ -5,6 +5,7 @@
 // Audio is never written to disk by the engine; only transcripts are saved. Child processes get childEnv() (no API keys).
 import { spawn, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { performance } from "node:perf_hooks";
 import { AudioTee } from "audiotee";
 import { childEnv } from "./env.ts";
 
@@ -40,9 +41,125 @@ export class MicSource extends EventEmitter implements Source {
     this.p.stderr!.on("data", (b: Buffer) => this.emit("log", `mic: ${b.toString().trim()}`));
     this.p.on("error", (e) => this.emit("error", new Error(`ffmpeg mic: ${e.message}`)));
     // ffmpeg exits 255 on SIGINT; that is our own stop(), not an error.
-    this.p.on("exit", (code) => { if (code && !(this.stopping && code === 255)) this.emit("error", new Error(`ffmpeg mic exited ${code}`)); });
+    // Any exit we did not ask for is a drop (a vanished device can end ffmpeg with code 0 too). ffmpeg exits 255 on SIGINT: that is our own stop().
+    this.p.on("exit", (code, sig) => { if (!this.stopping) this.emit("error", new Error(`ffmpeg mic exited ${code ?? sig}`)); });
   }
   async stop() { this.stopping = true; this.p?.kill("SIGINT"); }
+}
+
+/** Reconnect delay after the n-th failure in a row (n = 0 first): 1, 2, 4 s, then every 10 s. */
+export const AUDIO_BACKOFF_MS = (n: number): number => (n < 3 ? 1000 * 2 ** n : 10_000);
+
+/** The avfoundation spec to open on attempt `attempt`, given what is plugged in (names from system_profiler; [] = unknown).
+ *  A named or numbered device that is gone (AirPods switched off) falls back to ":default" (the built-in mic or whatever macOS now defaults to).
+ *  After two failed opens in a row an explicit device is given up on too, since the device list cannot always be read. */
+export function pickMicDevice(configured: string, devices: { name: string }[], attempt: number): string {
+  const want = avDevice(configured);
+  if (want === ":default") return want;
+  if (attempt >= 2) return ":default";
+  const name = want.slice(1).toLowerCase();
+  if (attempt === 0 || !devices.length || /^\d+$/.test(name)) return want;
+  return devices.some((d) => d.name.toLowerCase().includes(name) || name.includes(d.name.toLowerCase())) ? want : ":default";
+}
+
+/** Options of SupervisedSource. `make(attempt)` builds a fresh inner source each time (re-resolving its device). */
+export type SupervisedOpts = {
+  name: string;
+  make: (attempt: number) => Source | Promise<Source>;
+  /** No frame for this long while running = the source hung (device vanished without the process exiting): restart it. 0 = off. */
+  stallMs?: number;
+  backoff?: (n: number) => number;
+  /** A restarted source must deliver frames for this long before the failure count resets. */
+  stableMs?: number;
+};
+
+/**
+ * Keeps one audio source alive for the whole call. Events: "pcm", "log", "down" ({reason,n}), "up" ({after}: frames flow again after a "down"),
+ * "retry" ({n,delayMs,attempt}), "restart" ({reason}). start() never rejects: a source that cannot start counts as down and is retried
+ * (backoff 1, 2, 4 s, then every 10 s) until stop(). `restart(reason)` forces a fresh source (after sleep/wake).
+ */
+export class SupervisedSource extends EventEmitter implements Source {
+  private inner?: Source;
+  private stopped = false;
+  private failures = 0;       // consecutive failures (drives the backoff)
+  private attempt = 0;        // how many sources were built so far
+  private isDown = false;
+  private gen = 0;            // generation: events of an older inner source are ignored
+  private timer?: NodeJS.Timeout;
+  private stallTimer?: NodeJS.Timeout;
+  private stableTimer?: NodeJS.Timeout;
+  private lastFrame = 0;
+  private downSince = 0;
+  frames = 0;
+  constructor(private o: SupervisedOpts) { super(); }
+  get down() { return this.isDown; }
+  get peak() { return (this.inner as { peak?: number } | undefined)?.peak ?? 0; }
+
+  async start() {
+    this.stopped = false;
+    this.stallTimer = this.o.stallMs ? setInterval(() => this.checkStall(), Math.max(250, Math.min(2000, this.o.stallMs / 4))) : undefined;
+    this.stallTimer?.unref();
+    await this.spawn();
+  }
+  async stop() {
+    this.stopped = true;
+    clearTimeout(this.timer); clearInterval(this.stallTimer); clearTimeout(this.stableTimer);
+    this.gen++;
+    await this.drop();
+  }
+  /** Replace the current source with a fresh one now (e.g. after the Mac woke up). */
+  restart(reason: string) {
+    if (this.stopped) return;
+    this.emit("restart", { reason });
+    this.fail(reason, true);
+  }
+
+  private async drop() {
+    const old = this.inner; this.inner = undefined;
+    if (!old) return;
+    old.removeAllListeners(); old.on("error", () => {});   // a dying source must never raise an unhandled "error"
+    try { await Promise.race([old.stop(), new Promise((r) => setTimeout(r, 3000).unref())]); } catch { /* already gone */ }
+  }
+  private async spawn() {
+    if (this.stopped) return;
+    const gen = ++this.gen, attempt = this.attempt++;
+    try {
+      const src = await this.o.make(attempt);
+      if (this.stopped || gen !== this.gen) { void src.stop().catch(() => {}); return; }
+      this.inner = src;
+      src.on("pcm", (b: Buffer) => { if (gen === this.gen) this.onFrame(b); });
+      src.on("log", (m: string) => { if (gen === this.gen) this.emit("log", m); });
+      src.on("error", (e: Error) => { if (gen === this.gen) this.fail(e?.message ?? String(e)); });
+      this.lastFrame = performance.now();
+      await src.start();
+    } catch (e) {
+      if (gen === this.gen) this.fail((e as Error)?.message ?? String(e));
+    }
+  }
+  private onFrame(b: Buffer) {
+    this.lastFrame = performance.now(); this.frames++;
+    if (this.isDown) {
+      this.isDown = false;
+      this.emit("up", { after: performance.now() - this.downSince, attempt: this.attempt });
+    }
+    if (this.failures && !this.stableTimer) this.stableTimer = setTimeout(() => { this.failures = 0; this.stableTimer = undefined; }, this.o.stableMs ?? 5000);
+    this.emit("pcm", b);
+  }
+  private checkStall() {
+    if (this.stopped || this.isDown || !this.o.stallMs) return;
+    if (performance.now() - this.lastFrame > this.o.stallMs) this.fail(`no audio for ${Math.round((performance.now() - this.lastFrame) / 1000)} s`);
+  }
+  private fail(reason: string, immediate = false) {
+    if (this.stopped) return;
+    clearTimeout(this.timer); clearTimeout(this.stableTimer); this.stableTimer = undefined;
+    this.gen++;                       // ignore whatever the old source still says
+    void this.drop();
+    if (!this.isDown) { this.isDown = true; this.downSince = performance.now(); }
+    const n = this.failures++;
+    const delayMs = immediate ? 0 : (this.o.backoff ?? AUDIO_BACKOFF_MS)(n);
+    this.emit("down", { reason, n: n + 1, delayMs });
+    this.timer = setTimeout(() => { this.emit("retry", { n: n + 1, delayMs, attempt: this.attempt }); void this.spawn(); }, delayMs);
+  }
 }
 
 /** Decodes any audio file to 16 kHz stereo s16le with ffmpeg and plays it out in real time as two channels. */

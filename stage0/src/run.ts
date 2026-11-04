@@ -54,13 +54,17 @@ import { SttChannel } from "./providers/stt/channel.ts";
 import { getSttProvider, sttChain, loadKeyterms } from "./providers/stt/index.ts";
 import { ModelRegistry, parseModelRef, ConfigError } from "./providers/llm.ts";
 import { describe, type ProviderError } from "./providers/errors.ts";
-import { SystemSource, MicSource, FileSource, peakOf } from "./audio.ts";
-import { CallLog } from "./log.ts";
+import { SystemSource, MicSource, FileSource, SupervisedSource, pickMicDevice, avDevice, peakOf } from "./audio.ts";
+import { CardPipe } from "./relay.ts";
+import { detectGap } from "./clock.ts";
+import { freeBytes, diskLevel, diskText } from "./diskspace.ts";
+import { performance } from "node:perf_hooks";
+import { CallLog, sweepLive } from "./log.ts";
 import { loadSettingsOrExit, expandHome } from "./settings.ts";
 import { CostMeter } from "./cost.ts";
 import { EchoFilter, MicGate, resolveEchoMode, type EchoMode } from "./echo.ts";
 import { extract } from "./capture.ts";
-import { HealthSupervisor, CircuitBreaker, describeRung, type Rung } from "./health.ts";
+import { HealthSupervisor, CircuitBreaker, describeRung, sttRetryDelayMs, isPermanentSttError, type Rung } from "./health.ts";
 import { joinSplit, isBareQuestionTail, type PrevUtterance } from "./split.ts";
 import { splitMergedQuestions } from "./multiq.ts";
 import { readAudioDevices, bluetoothInUse } from "./devices.ts";
@@ -122,6 +126,10 @@ try { log = new CallLog({ mode: fileArg ? "file" : "live", file: fileArg, model:
   process.exit(2);
 }
 log.onWriteFail = (e) => { try { health("disk", "amber", "לא ניתן לשמור את השיחה בדיסק (אין מקום?). השיחה ממשיכה, אבל ההקלטה והסיכום עלולים להיות חלקיים. פנה מקום בדיסק", String(e?.message ?? e)); } catch {} };
+// Second path to the answer window: every cards row also goes to call.ts over a private socket, which hands it to the window. If cards.jsonl cannot
+// be written (disk full, folder gone), the cards and the health bars still reach the screen. No socket (pnpm start alone) = disk only.
+if (process.env.WINGMAN_OVERLAY_SOCK) { const pipe = new CardPipe(process.env.WINGMAN_OVERLAY_SOCK); log.onCardRow = (row) => pipe.send(row); }
+sweepLive(CALLS, log.id);   // live.jsonl (interim words) that a hard exit left in an older call folder
 const cost = new CostMeter(S.budget.prices, S.budget);
 const sup = new HealthSupervisor({ tickMs: S.health.tickMs, recoverStableMs: S.health.recoverStableMs, slowMs: S.llm.reflex.slowMs, slowSttMs: S.health.slowSttMs, minSamples: S.health.minSamples });
 sup.set({ noAi, bankFailed: bank.length === 0 && !interview });
@@ -240,6 +248,7 @@ const liveNotes: string[] = [];
 const notesOn = S.notes.enabled && !noAi;
 const notesAbort = new AbortController();   // also used by tips; aborted in shutdown(): no notes call outlives the call
 let notesLines: string[] = [], notesBusy = false;
+const MAX_NOTES_LINES = 200;   // lines waiting for the next notes round; the oldest are dropped when the AI stays down
 /** Timer job (notes.everyMs): turns the new transcript lines into up to 2 notes. Skips while busy, not consenting, AI down or budget capped; the lines are dropped (not retried) if the call fails. */
 async function notesRound() {
   if (!notesOn || notesBusy || !consented || shuttingDown || !sup.caps.llm || cost.llmState() === "capped") return;
@@ -479,7 +488,8 @@ let lastAgencyTopicAt = 0;
  *  4. AI: a stall timer (reflex.stallAfterMs) shows "buy time" if nothing is up yet; meanwhile the model streams a tag
  *     (BANK / ANS / STALL / SKIP) that can confirm, replace or withdraw the card, then the answer text, which passes the guards.
  *  A newer question aborts this one (`current`). Answers older than reflex.dropStaleMs are never shown (`fresh`). `reason` is the detector's reason string. */
-function onQuestion(r: SttResult, reason = "") {
+function onQuestion(r: SttResult, reason = "") { try { onQuestionCore(r, reason); } catch (e) { survived("onQuestion", e); } }
+function onQuestionCore(r: SttResult, reason = "") {
   if (S.cards.focus && !interview && !focusWorthy(r.text, reason)) { log.write("events", { type: "focus.skip", reason, text: r.text.slice(0, 120) }); return; }
   // Their own discussion: the question is for one of them, not the user. Price/date ("buy time") cards still show.
   if (flowOn && S.flow.holdCards && flow.internal && !matchBankFor(r.text, bank)?.card.id.startsWith("stall-")) { log.write("events", { type: "flow.hold", reason, text: r.text.slice(0, 120) }); return; }
@@ -659,8 +669,8 @@ function onQuestion(r: SttResult, reason = "") {
     lat.aborted = ac.signal.aborted ? 1 : 0; recordLatency(lat);
     if (ac.signal.aborted) return;
     const kind = e?.kind ?? "unknown";
-    log.write("events", { type: kind === "refusal" ? "reflex.empty" : "reflex.error", turnId, kind, error: String(e) });
-    console.error("reflex error:", e?.message ?? e);
+    log.write("events", { type: kind === "refusal" ? "reflex.empty" : "reflex.error", turnId, kind, error: errBrief(e) });
+    console.error("reflex error:", errBrief(e));
     // L5/L6: refusal, empty answer or timeout: show the stall line if nothing is up yet.
     if ((kind === "refusal" || kind === "timeout") && !shown && !noStall && fresh()) { shown = { id: stallId, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); }
     if (kind !== "refusal" && ++reflexErrors >= 2) health("ai", "amber", "AI לא עונה: מוצגים רק כרטיסים מוכנים מראש. בדוק חיבור לאינטרנט ומפתח ב-Settings", String(e?.message ?? e));
@@ -752,7 +762,8 @@ function selfCheckLine(text: string) {
 }
 
 /** A "me" utterance has ended. Decide whether it is a question for Wingman and answer it. */
-function handleMe(joined: SttResult) {
+function handleMe(joined: SttResult) { try { handleMeCore(joined); } catch (e) { survived("handleMe", e); } }
+function handleMeCore(joined: SttResult) {
   const text = joined.text.trim();
   if (!text || shuttingDown || !consented) return;
   const speechEnd = joined.speechEndWall ?? joined.arrivedAt;
@@ -897,7 +908,8 @@ type Pending = { texts: string[]; words: Word[]; last: SttResult; timer?: NodeJS
 const pending: Partial<Record<Channel, Pending>> = {};
 let lastThem: (PrevUtterance & { spk?: number }) | undefined;   // S10: the previous client utterance, for split questions
 /** Handles one buffered utterance: "me" -> handleMe; "them" -> glue split questions, split merged ones, detect, onQuestion. */
-function flush(ch: Channel) {
+function flush(ch: Channel) { try { flushCore(ch); } catch (e) { survived("flush", e); } }
+function flushCore(ch: Channel) {
   const p = pending[ch]; if (!p) return;
   clearTimeout(p.timer); delete pending[ch];
   const joined: SttResult = { ...p.last, text: p.texts.join(" "), words: p.words, speechFinal: true };
@@ -956,7 +968,8 @@ function livePartial(r: SttResult) {
 }
 
 /** Every STT result (both channels). Only finals matter. Drops foreign-script junk, logs, then routes "me" lines through the echo filter delay. */
-function onResult(r: SttResult) {
+function onResult(r: SttResult) { try { onResultCore(r); } catch (e) { survived("onResult", e); } }
+function onResultCore(r: SttResult) {
   if (!r.isFinal) { livePartial(r); return; }
   // Hebrew + English mixing sometimes hallucinates Telugu / Persian / Arabic on short clips: such a final triggers nothing.
   if (S.stt.dropForeignScript && r.text) {
@@ -980,7 +993,8 @@ function onResult(r: SttResult) {
 }
 const meTimers = new Set<NodeJS.Timeout>();   // pending echo-filter delays (cleared in shutdown)
 /** Takes a final into the call: echo drop, side features (capture, facts, notes), transcript, then buffers it for flush(). */
-function acceptResult(r: SttResult, checkEcho: boolean) {
+function acceptResult(r: SttResult, checkEcho: boolean) { try { acceptResultCore(r, checkEcho); } catch (e) { survived("acceptResult", e); } }
+function acceptResultCore(r: SttResult, checkEcho: boolean) {
   if (shuttingDown) return;
   if (r.text.length > 2000) r = { ...r, text: r.text.slice(-2000) };   // a runaway final must not stall the regex/matching
   if (checkEcho) {
@@ -988,7 +1002,7 @@ function acceptResult(r: SttResult, checkEcho: boolean) {
     if (e.echo) { echoDropped++; log.write("events", { type: "echo.drop", text: r.text, score: Number(e.score.toFixed(2)) }); return; }
   }
   if (r.text) {
-    lastSpeechAt = Date.now();
+    lastSpeechMono = mono();
     if (r.channel === "them") { lastThemText = Date.now(); lastThemSpeech = Date.now(); themHeard(); }
     // Side features must never take the call down: a bad snapshot row or odd text only loses its own card.
     try { capture(r.channel, r.text); } catch (e) { log.write("events", { type: "capture.error", error: String((e as Error)?.message ?? e) }); }
@@ -996,7 +1010,7 @@ function acceptResult(r: SttResult, checkEcho: boolean) {
     let who = r.channel === "them" && S.stt.speakers ? speakers.of(r.words) : undefined;
     // "היי, אני רות מצוות ה-IT" / "I'm Dana": the voice that introduces itself gets that name (the meeting's attendees first).
     if (who && !who.name) { const n = introName(r.text, attendees); if (n) { nameSpeaker(who.spk, n, "intro"); who = speakers.of(r.words); } }
-    if (notesOn) notesLines.push(lineOf({ ch: r.channel, text: r.text, who }));
+    if (notesOn) { notesLines.push(lineOf({ ch: r.channel, text: r.text, who })); if (notesLines.length > MAX_NOTES_LINES) notesLines.splice(0, notesLines.length - MAX_NOTES_LINES); }   // capped: the AI can be down for an hour
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) lastMeVoiced = Date.now();
     transcript.push({ ch: r.channel, text: r.text, at: Date.now(), ...(who ? { who } : {}) });
     if (flowOn) try { flowEvents(flow.add({ ch: r.channel, spk: who?.spk, who: who ? voiceName(who) : undefined, text: r.text, at: Date.now() })); } catch (e) { log.write("events", { type: "flow.error", error: String((e as Error)?.message ?? e) }); }
@@ -1054,10 +1068,22 @@ function addNote(text: string) {
   console.log(`\n✓ note added (${contextNotes.length})`);
   status("note", { count: contextNotes.length });
 }
-/** Menu-bar app commands (WINGMAN_CONTROL=1): one per line on stdin. A closed stdin means the app is gone: stop cleanly (saves the call). */
+/** The menu-bar app's pipe closed without a "stop" (its normal quit sends "stop" first, so this is a crash or kill). Nothing can reconnect to a running
+ *  call (the app starts a new one), so the choice is between ending a live call that may be in a meeting, or letting it run unattended.
+ *  While waiting for "Start listening" nothing is running: stop cleanly. While live: keep listening and keep showing cards (the answer window is
+ *  a separate process), say so on the screen, and stop by itself after ORPHAN_IDLE_MIN minutes of silence (or on SIGTERM/SIGINT). */
+function onControlClosed() {
+  if (shuttingDown || orphaned) return;
+  if (!consented) { log.write("events", { type: "control.closed", live: false }); void shutdown(); return; }
+  orphaned = true;
+  log.write("events", { type: "control.closed", live: true, idleStopMin: ORPHAN_IDLE_MIN });
+  console.log(`\nThe menu-bar app closed: the call continues and stops by itself after ${ORPHAN_IDLE_MIN} minutes of silence.`);
+  health("control", "amber", `אפליקציית Wingman בתפריט נסגרה. השיחה ממשיכה, ותיעצר לבד אחרי ${ORPHAN_IDLE_MIN} דקות בלי דיבור`);
+}
+/** Menu-bar app commands (WINGMAN_CONTROL=1): one per line on stdin. A closed stdin (see onControlClosed) means the app crashed. */
 function setupControl(onConsent: () => void) {
   const rl = createInterface({ input: process.stdin });
-  rl.on("line", (line) => {
+  rl.on("line", safe("control command", (line: string) => {
     const [cmd, ...rest] = line.trim().split(" ");
     if (cmd === "consent") onConsent();
     else if (cmd === "quiet") toggleQuiet(rest[0] === "on" ? true : rest[0] === "off" ? false : undefined);
@@ -1069,8 +1095,8 @@ function setupControl(onConsent: () => void) {
     else if (cmd === "stop-no-summary") { skipSummaryNow(); void shutdown(); }   // `wingman stop --no-summary`: keep the call, skip the summary
     else if (cmd === "skip-summary") { if (shuttingDown) skipSummaryNow(); }      // the "Skip summary" button while the summary is being written
     else if (cmd === "stop-delete") { discardNow = true; void shutdown(); }
-  });
-  rl.on("close", () => void shutdown());   // the menu-bar app went away: stop cleanly
+  }));
+  rl.on("close", safe("control closed", onControlClosed));
 }
 // Typed context note state (terminal key `n`): undefined = not typing.
 let noteBuf: string | undefined, discardNow = false;
@@ -1135,6 +1161,7 @@ async function shutdown() {
   for (const ch of ["me", "them"] as Channel[]) { clearTimeout(pending[ch]?.timer); delete pending[ch]; }
   for (const s of stops) await s().catch(() => {});
   sup.stop();
+  try { rmSync(join(log.dir, "live.jsonl"), { force: true }); } catch { /* best effort: interim words are never worth keeping, even if the rest of the shutdown hangs */ }
   await Promise.all([me?.close(), them?.close()].filter(Boolean)).catch(() => {});
   clearTimeout(hard);
   setTimeout(() => process.exit(crashed ? 1 : 0), 16_000).unref();   // last resort, before the tray's SIGKILL at 20 s (files are already written)
@@ -1155,7 +1182,7 @@ async function shutdown() {
     log.update({ endedAt: new Date().toISOString(), crashed, phase: "ended" });
     console.log(`\nSpeakers mode (${echoMode}): mic muted ${Math.round(gatedMs / 1000)} s while the client talked · ${echoDropped} echo lines dropped`);
     console.log(`\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${me?.dropped ?? 0}, them ${them?.dropped ?? 0}`);
-  } catch (e) { console.error("call summary failed:", errText(e)); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
+  } catch (e) { console.error("call summary failed:", errBrief(e)); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
   // (usage was logged twice on purpose: once above so the numbers exist even if the summary hangs, again below with the summary's own cost.)
   // One last frame look so the checklist result in the review is current (a few seconds at most, never when the call is discarded or crashed).
   if (frameOn && left() > 6000 && !crashed && !discard && !discardNow && cost.llmState() !== "capped") {
@@ -1196,10 +1223,35 @@ async function shutdown() {
   process.exit(crashed ? 1 : 0);
 }
 
+/** One short, safe line for an error: a classified provider error ("authentication failed"), or "Name: message" cut to 200 chars.
+ *  Never the raw object: AI SDK errors carry the whole request (requestBodyValues = the prompt, i.e. call text) and util.inspect would print it. */
+function errBrief(e: unknown): string {
+  try {
+    const pe = e as ProviderError;
+    if (pe?.kind) return `${describe(pe)}${pe.provider ? ` (${pe.provider})` : ""}`;
+    return errText(e).slice(0, 200);
+  } catch { return "error"; }
+}
+/** A handler failed but the call must go on: log it (`error.survived`) and carry on. Floods are thinned (first 20 per place, then every 100th). Does not count towards the "too many strays" crash. */
+const survivedCount: Record<string, number> = {};
+function survived(where: string, e: unknown) {
+  const n = (survivedCount[where] = (survivedCount[where] ?? 0) + 1);
+  if (n > 20 && n % 100) return;
+  try { log.write("events", { type: "error.survived", where, n, error: String((e as Error)?.stack ?? e).slice(0, 2000) }); } catch { /* best effort */ }
+  try { console.error(`\n⚠️ ${where} failed (call continues): ${errBrief(e)}`); } catch { /* stderr gone */ }
+}
+/** Wraps an event handler / timer callback: a throw (or a rejected promise) is logged and survived. */
+function safe<A extends unknown[]>(where: string, fn: (...a: A) => unknown): (...a: A) => void {
+  return (...a: A) => {
+    try { const r = fn(...a); if (r && typeof (r as Promise<unknown>).catch === "function") (r as Promise<unknown>).catch((e) => survived(where, e)); }
+    catch (e) { survived(where, e); }
+  };
+}
+
 /** Fatal error path: print, log, then shut down in order to save what we have (crashed=true lands in call.json). A second crash during shutdown exits at once. */
 function crash(kind: string, e: unknown) {
   if (kind === "main" && (e as ProviderError)?.kind) console.error(`\n🔴 ${describe(e as ProviderError)} – ${(e as Error).message}\n   (providers: stt ${sttChain(S).join(" -> ")}; fix the key/credit or set stt.fallback; pnpm run doctor checks all of them)`);
-  else console.error(`\n🔴 ${kind}:`, e);
+  else console.error(`\n🔴 ${kind}: ${errBrief(e)}`);
   try { log.write("events", { type: "crash", kind, error: String((e as Error)?.stack ?? e) }); } catch {}
   if (shuttingDown) process.exit(1);
   crashed = true;
@@ -1214,7 +1266,7 @@ function stray(kind: string, e: unknown) {
   strayErrors = [...strayErrors.filter((t) => now - t < 60_000), now];
   if (!consented || shuttingDown || strayErrors.length > 3) { crash(kind, e); return; }
   try { log.write("events", { type: "error.survived", kind, error: String((e as Error)?.stack ?? e).slice(0, 2000) }); } catch {}
-  console.error(`\n⚠️ ${kind} (call continues): ${String((e as Error)?.message ?? e).slice(0, 200)}`);
+  console.error(`\n⚠️ ${kind} (call continues): ${errBrief(e)}`);
 }
 process.on("uncaughtException", (e) => stray("uncaughtException", e));
 process.on("unhandledRejection", (e) => stray("unhandledRejection", e));
@@ -1231,23 +1283,58 @@ const sttSeconds = () => {
 let sttSwitchedCh = new Set<Channel>();   // channels that moved to the fallback STT provider (the ladder treats this as degraded)
 let costWarned = false, minutesWarned = false;
 
+/** Monotonic ms (does not jump with the wall clock; on macOS it also stands still while the Mac sleeps). Idle time and frame freshness use it. */
+const mono = () => performance.now();
+const liveSources: SupervisedSource[] = [];   // mic + system audio, restarted after a sleep gap
+let lastSysFrame = mono();
+let orphaned = false;   // the menu-bar app's pipe closed (it crashed): the call goes on, but stops itself after ORPHAN_IDLE_MIN of silence
+const ORPHAN_IDLE_MIN = 5;
+
+/** Free-space check of the calls folder (at start and every 15 s): amber < 500 MB, red < 100 MB. The red bar also becomes a macOS notification (tray). */
+let diskShown: "ok" | "amber" | "red" = "ok", diskAt = -Infinity;
+function checkDisk(force = false) {
+  const m = mono();
+  if (!force && m - diskAt < 15_000) return;
+  diskAt = m;
+  const b = freeBytes(CALLS), lvl = diskLevel(b);
+  if (lvl === diskShown) return;
+  diskShown = lvl;
+  log.write("events", { type: "disk.free", level: lvl, mb: b === null ? null : Math.round(b / 1024 / 1024) });
+  if (lvl === "ok") healthClear("disk-space"); else health("disk-space", lvl, diskText(lvl, b ?? 0));
+}
+
+/** After a sleep gap: timers that count silence start again, both audio sources are rebuilt (they may be dead after wake) and both STT sockets reopened. */
+function onWake(gapMs: number) {
+  log.write("events", { type: "sleep.gap", ms: gapMs });
+  health("sleep", "amber", `המחשב נרדם ל-${Math.round(gapMs / 1000)} שניות. חלק מהשיחה לא נשמע. אם פספסת משהו, בקש שיחזרו עליו`);
+  sleepClearAt = Date.now() + 20_000;
+  const m = mono();
+  lastSpeechMono = m; consentedMono = m; lastSysFrame = m; lastThemSound = Date.now(); lastThemText = Date.now();
+  if (idleWarned) { idleWarned = false; healthClear("idle"); }
+  if (fileArg || shuttingDown) return;
+  for (const src of liveSources) src.restart("wake");
+  for (const [s, ch] of [[me, "me"], [them, "them"]] as const) if (s) void sttRetryLoop(s, ch, false, 0);
+  log.write("events", { type: "wake.recover" });
+}
+
 /** Every health.tickMs: sleep detection, idle auto-stop, ladder signals, cost and call-length warnings, then the supervisor tick. */
-let lastTick = Date.now(), sleepClearAt = 0, lastSpeechAt = Date.now(), idleWarned = false, consentedAt = 0;
+let lastTick = Date.now(), lastTickMono = mono(), sleepClearAt = 0, lastSpeechMono = mono(), idleWarned = false, consentedAt = 0, consentedMono = 0;
 function tickHealth() {
-  // Y2: a long gap between ticks means the Mac slept (lid closed) mid-call.
-  const now = Date.now(), gap = now - lastTick; lastTick = now;
-  const gapMs = S.system.sleepGapMs ?? 0;
-  if (gapMs > 0 && gap > gapMs + S.health.tickMs) {
-    log.write("events", { type: "sleep.gap", ms: gap });
-    health("sleep", "amber", `המחשב נרדם ל-${Math.round(gap / 1000)} שניות. חלק מהשיחה לא נשמע. אם פספסת משהו, בקש שיחזרו עליו`);
-    sleepClearAt = now + 20_000;
-  } else if (sleepClearAt && now > sleepClearAt) { sleepClearAt = 0; healthClear("sleep"); }
+  // Y2: a long gap between ticks means the Mac slept (lid closed) mid-call. Wall time and monotonic time are compared, so a clock that is set
+  // backwards is not mistaken for anything, and a sleep never counts as "nobody spoke" (idle time is monotonic).
+  const now = Date.now(), m = mono();
+  const g = detectGap({ wall: lastTick, mono: lastTickMono }, { wall: now, mono: m }, S.system.sleepGapMs ?? 0, S.health.tickMs);
+  lastTick = now; lastTickMono = m;
+  if (g.kind === "sleep") onWake(g.ms);
+  else if (g.kind === "clock-back") log.write("events", { type: "clock.jump", backMs: g.ms });
+  else if (sleepClearAt && now > sleepClearAt) { sleepClearAt = 0; healthClear("sleep"); }
+  checkDisk();
   // A call left running with nobody talking stops itself (a long real meeting is never cut while people speak).
-  const idleMin = S.budget.idleStopMin;
+  const idleMin = orphaned ? ORPHAN_IDLE_MIN : S.budget.idleStopMin;
   if (idleMin > 0 && consented && !fileArg && !shuttingDown) {
-    if (!consentedAt) consentedAt = now;
-    const idle = now - Math.max(lastSpeechAt, consentedAt);
-    if (idle >= idleMin * 60_000) { log.write("events", { type: "idle.stop", minutes: idleMin }); console.log(`\nNobody spoke for ${idleMin} minutes: stopping the call.`); void shutdown(); }
+    if (!consentedMono) consentedMono = m;
+    const idle = m - Math.max(lastSpeechMono, consentedMono);
+    if (idle >= idleMin * 60_000) { log.write("events", { type: "idle.stop", minutes: idleMin, orphaned }); console.log(`\nNobody spoke for ${idleMin} minutes: stopping the call.`); void shutdown(); }
     else if (idle >= Math.max(1, idleMin - 2) * 60_000 && !idleWarned) { idleWarned = true; health("idle", "amber", `אף אחד לא דיבר ${Math.round(idle / 60_000)} דקות. השיחה תיעצר לבד בעוד כ-2 דקות`); }
     else if (idleWarned && idle < 60_000) { idleWarned = false; healthClear("idle"); }
   }
@@ -1277,28 +1364,32 @@ function makeChannel(ch: Channel): SttChannel {
   });
 }
 
-/** STT channel with no fallback left: keep reopening the current provider (backoff 1,2,4,8,10,10... s) until it works or the failure is permanent. */
+/** STT channel with no fallback left: keep reopening the current provider (backoff 1,2,4,8,10,10... s) until it works. A refused key / no credit
+ *  (permanent) does not end the call: the other side's channel goes to rung 4 (transcript-only: your own questions still get answers), the red bar stays,
+ *  and the reopen is retried slowly (every 30 s, so a top-up mid-call is picked up). "unknown" errors count as transient. */
 const sttRetrying = new Set<string>();
-const STT_RETRY_BACKOFF_MS = (n: number) => Math.min(10_000, 1000 * 2 ** n);
-async function sttRetryLoop(s: SttChannel, ch: string) {
+const SLOW_RETRY_MS = Number(process.env.WINGMAN_STT_SLOW_RETRY_MS) || 30_000;   // (the env override exists for tests)
+function sttMarkPermanent(ch: string, e: ProviderError) {
+  health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} – ${describe(e)}. בדוק את המפתח והקרדיט ב-Settings. מנסה שוב כל ${Math.round(SLOW_RETRY_MS / 1000)} שניות`, e.message);
+  if (ch === "them") sup.set({ themSttDown: true });
+  log.write("events", { type: "stt.permanent", ch, kind: e.kind });
+}
+async function sttRetryLoop(s: SttChannel, ch: string, permanent = false, firstDelayMs?: number) {
   if (sttRetrying.has(ch)) return;
   sttRetrying.add(ch);
   try {
     for (let n = 0; !shuttingDown; n++) {
-      await new Promise((r) => setTimeout(r, STT_RETRY_BACKOFF_MS(n)));
+      await new Promise((r) => setTimeout(r, n === 0 && firstDelayMs !== undefined ? firstDelayMs : sttRetryDelayMs(n, permanent, SLOW_RETRY_MS)));
       if (shuttingDown) return;
       try {
         await s.reopen();
-        healthClear(`stt-${ch}`); log.write("events", { type: "stt.recovered", ch, attempts: n + 1 });
+        healthClear(`stt-${ch}`); if (ch === "them") sup.set({ themSttDown: false });
+        log.write("events", { type: "stt.recovered", ch, attempts: n + 1 });
         return;
       } catch (e) {
         const pe = e as ProviderError;
         log.write("events", { type: "stt.retry.fail", ch, n: n + 1, kind: pe.kind, error: pe.message });
-        if (pe.kind && pe.retryable === false && pe.kind !== "bad_request") {
-          health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} – ${describe(pe)}. בדוק את חיבור האינטרנט`);
-          if (ch === "them") sup.set({ fatal: `STT unusable: ${describe(pe)} (client channel)` });
-          return;
-        }
+        if (!permanent && isPermanentSttError(pe)) { permanent = true; sttMarkPermanent(ch, pe); }
       }
     }
   } finally { sttRetrying.delete(ch); }
@@ -1333,40 +1424,38 @@ async function main() {
   const opened = await Promise.allSettled([openChannel(me, "me"), openChannel(them, "them")]);
   const failed = opened.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
   if (failed) throw failed.reason;
-  sup.on("rung", renderRung); sup.start(); lastTick = Date.now(); setInterval(tickHealth, S.health.tickMs).unref();
-  setInterval(() => void notesRound(), S.notes.everyMs).unref();
+  sup.on("rung", renderRung); sup.start(); lastTick = Date.now(); lastTickMono = mono(); setInterval(safe("health tick", tickHealth), S.health.tickMs).unref();
+  setInterval(safe("notes", notesRound), S.notes.everyMs).unref();
   // All timers are unref'd: they never keep the process alive on their own.
-  setInterval(() => void frameRound(), 5000).unref();
-  setInterval(tipsTick, 5000).unref();
-  setInterval(reminderTick, 30_000).unref();
-  setInterval(() => void flowTick(), 5000).unref();
+  setInterval(safe("frame", () => frameRound()), 5000).unref();
+  setInterval(safe("tips", tipsTick), 5000).unref();
+  setInterval(safe("reminders", reminderTick), 30_000).unref();
+  setInterval(safe("flow", flowTick), 5000).unref();
   if (brief?.planId) log.write("events", { type: "plan.used", planId: brief.planId, title: brief.title ?? "" });   // which prepared meeting this call used (ids and names only)
   if (brief) console.log(`Brief loaded: ${[brief.who, brief.goal].filter(Boolean).join(" · ") || "(notes only)"}${brief.mustCover?.length ? ` · must cover: ${brief.mustCover.join(", ")}` : ""}`);
   console.log(spotter ? `Fact cards: ${spotter.size.clients} clients, ${spotter.size.domains} domains (snapshot ${snapshot?.generatedAt?.slice(0, 10) ?? "?"})` : "Fact cards: off (no snapshot at facts.file)");
+  checkDisk(true);
   sup.tick();
   for (const s of [me, them]) {
     const ch = s === me ? "me" : "them";
-    s.on("result", (r: SttResult) => { if (ch === "them" && r.isFinal && r.speechFinal && r.speechEndWall) sup.recordSttLag(r.arrivedAt - r.speechEndWall); onResult(r); });
-    s.on("stt_error", (e: ProviderError) => { console.error("stt error", ch, e.message); log.write("events", { type: "stt.error", ch, kind: e.kind, error: e.message }); });
-    s.on("keyterms_off", () => { console.log("keyterms off for this provider (open was rejected with them)"); log.write("events", { type: "stt.keyterms_off", ch }); });
-    s.on("disconnected", (d) => health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} התנתק – מנסה להתחבר מחדש. בדוק את חיבור האינטרנט`, JSON.stringify({ code: d.code, reason: d.reason })));
-    s.on("reconnected", () => { healthClear(`stt-${ch}`); log.write("events", { type: "stt.reconnected", ch }); });
-    s.on("switched", (d: { from: string; to: string; kind: string; reason: string }) => {
-      sttSwitchedCh.add(ch); healthClear(`stt-${ch}`);
+    s.on("result", safe(`stt result ${ch}`, (r: SttResult) => { if (ch === "them" && r.isFinal && r.speechFinal && r.speechEndWall) sup.recordSttLag(r.arrivedAt - r.speechEndWall); onResult(r); }));
+    s.on("stt_error", safe(`stt_error ${ch}`, (e: ProviderError) => { console.error("stt error", ch, errBrief(e)); log.write("events", { type: "stt.error", ch, kind: e.kind, error: e.message }); }));
+    s.on("keyterms_off", safe("keyterms_off", () => { console.log("keyterms off for this provider (open was rejected with them)"); log.write("events", { type: "stt.keyterms_off", ch }); }));
+    s.on("disconnected", safe(`disconnected ${ch}`, (d: { code?: number; reason?: string }) => health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} התנתק – מנסה להתחבר מחדש. בדוק את חיבור האינטרנט`, JSON.stringify({ code: d.code, reason: d.reason }))));
+    s.on("reconnected", safe(`reconnected ${ch}`, () => { healthClear(`stt-${ch}`); if (ch === "them") sup.set({ themSttDown: false }); log.write("events", { type: "stt.reconnected", ch }); }));
+    s.on("switched", safe(`switched ${ch}`, (d: { from: string; to: string; kind: string; reason: string }) => {
+      sttSwitchedCh.add(ch); healthClear(`stt-${ch}`); if (ch === "them") sup.set({ themSttDown: false });
       log.write("events", { type: "stt.switch", ch, ...d });
       health(`stt-switch-${ch}`, "amber", `תמלול ${chHe(ch)}: עברנו מ-${d.from} ל-${d.to}`, d.reason); tickHealth();
-    });
-    s.on("exhausted", (e: ProviderError) => {
+    }));
+    s.on("exhausted", safe(`exhausted ${ch}`, (e: ProviderError) => {
       log.write("events", { type: "stt.exhausted", ch, kind: e.kind, retryable: e.retryable });
-      // Auth / quota / spend cap will not fix themselves: stop with a clear message. Anything else (wifi drop, 5xx, rate limit) is retried forever with backoff.
-      if (!e.retryable) {
-        health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} נפל בכל הספקים – ${describe(e)}`);
-        if (ch === "them") sup.set({ fatal: `STT unusable: ${describe(e)} (client channel)` });
-        return;
-      }
+      // Auth / quota / spend cap will not fix themselves: permanent red bar, the other side drops to transcript-only (rung 4), reopen retried every 30 s.
+      // Anything else (wifi drop, 5xx, rate limit, unknown) is retried with backoff 1, 2, 4, 8, 10 s.
+      if (isPermanentSttError(e)) { sttMarkPermanent(ch, e); void sttRetryLoop(s as SttChannel, ch, true); return; }
       health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} אין חיבור – ${describe(e)}. מנסה שוב ושוב עד שיחזור. בדוק חיבור לאינטרנט`);
       void sttRetryLoop(s as SttChannel, ch);
-    });
+    }));
   }
   console.log(`Wingman Stage 0 · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} prepared cards${noAi ? " · prepared only" : ""}${discard ? " · --discard" : ""}`);
   console.log(`Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = start listening (when waiting) · q = Quiet mode · a = ask Wingman · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`);
@@ -1383,7 +1472,7 @@ async function main() {
     consented = true; clearInterval(reemit); log.write("events", { type: needAck ? "consent.confirmed" : "listening.start" });
     if (needAck) { emitCard({ ...consentCard(), id: "consent", say: "ההאזנה התחילה. התמלול פעיל.", facts: [] }); console.log("\nListening started: audio is now being sent for transcription."); }
     status("consented", { id: log.id });
-    consentedAt = Date.now();
+    consentedAt = Date.now(); consentedMono = mono();
     setPhase("live", { liveAt: consentedAt });
     // Mic watchdog. Silence is normal while the user listens (3 Nov: a quiet Bluetooth mic raised "mic not picking up" about 20 times).
     // Red only when the mic was NEVER heard since listening started (permission, wrong device). Once it was heard, only a long silence
@@ -1415,8 +1504,24 @@ async function main() {
     if (S.system.caffeinate) spawn("caffeinate", ["-dis", "-w", String(process.pid)], { stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
     // Client audio: audiotee (macOS tap) | device (avfoundation input such as BlackHole, via ffmpeg) | off.
     const srcKind = S.audio.system.source;
-    const sys = srcKind === "audiotee" ? new SystemSource() : srcKind === "device" ? new MicSource(S.audio.system.device) : undefined;
-    const mic = new MicSource(S.audio.mic.device);
+    const W = S.audio.watchdog;
+    const deadFrameMs = Math.max(W.silentThemMs, 8000);
+    // Both sources are supervised: a source that cannot start, exits, or goes quiet (AirPods dropped, default input changed, ffmpeg/audiotee died)
+    // is rebuilt with backoff 1, 2, 4 s, then every 10 s, with the device looked up again each time. The call degrades (no mic / no other side) instead of ending.
+    const sys = srcKind === "audiotee" || srcKind === "device"
+      ? new SupervisedSource({ name: "sys", stallMs: deadFrameMs + 4000, make: () => (srcKind === "audiotee" ? new SystemSource() : new MicSource(S.audio.system.device)) })
+      : undefined;
+    const micDevice = S.audio.mic.device;
+    const mic = new SupervisedSource({
+      name: "mic", stallMs: 10_000,
+      make: async (failures) => {
+        const devs = failures ? await readAudioDevices() : [];   // asked only after a failure; system_profiler takes ~0.3 s
+        const dev = pickMicDevice(micDevice, devs, failures);
+        if (failures) { log.write("events", { type: "audio.mic.device", configured: micDevice, using: dev, failures }); console.log(`mic: trying ${dev}`); }
+        return new MicSource(dev);
+      },
+    });
+    liveSources.push(mic); if (sys) liveSources.push(sys);
     const devsP = readAudioDevices();
     if (ECHO.mode === "auto") void devsP.then((devs) => {
       const m = resolveEchoMode("auto", devs);
@@ -1430,24 +1535,38 @@ async function main() {
       log.write("events", { type: "audio.bluetooth", role: bt.role, device: bt.device.name });
       health("bluetooth", "amber", bt.role === "mic" ? `${bt.device.name} הוא המיקרופון: איכות התמלול יורדת. עדיף מיקרופון המק או אוזניות חוטיות` : `${bt.device.name} ברמקולים: אם המיקרופון שלהן ייפתח, האיכות תרד`);
     });
-    console.log(`Mic device: ${mic.device} (audio.mic.device / WINGMAN_MIC) · client audio: ${srcKind}${srcKind === "device" ? ` (${S.audio.system.device})` : ""}`);
-    mic.on("pcm", (b: Buffer) => {
+    console.log(`Mic device: ${avDevice(micDevice)} (audio.mic.device / WINGMAN_MIC) · client audio: ${srcKind}${srcKind === "device" ? ` (${S.audio.system.device})` : ""}`);
+    mic.on("pcm", safe("mic pcm", (b: Buffer) => {
       if (!consented) return;
       const pk = peakOf(b); micPeakAfterStart = Math.max(micPeakAfterStart, pk); micPeakWin = Math.max(micPeakWin, pk);
       if (micSilentShown && pk >= S.audio.watchdog.micPeak) { micSilentShown = false; healthClear("mic"); }
       me.send(gateMic(b));
-    });
-    mic.on("error", (e) => { console.error("mic error:", e.message); health("mic", "red", "המיקרופון נפל. חבר אותו מחדש או בחר מיקרופון אחר ב-Settings", e.message); });
-    mic.on("log", (m: string) => console.log(m));
+    }));
+    // Supervisor events -> log + health bars. The bar appears at the first failure and goes when frames flow again.
+    const wireSource = (src: SupervisedSource, name: "mic" | "sys", id: string, downText: string, onDown: () => void, onUp: () => void) => {
+      let shown = false;
+      src.on("down", safe(`${name} down`, (d: { reason: string; n: number; delayMs: number }) => {
+        log.write("events", { type: "audio.down", src: name, reason: d.reason, n: d.n, retryInMs: d.delayMs });
+        console.error(`${name} audio down (${d.reason}); retry ${d.n} in ${Math.round(d.delayMs / 1000)} s`);
+        if (!shown) { shown = true; health(id, "red", downText, d.reason); onDown(); }
+      }));
+      src.on("up", safe(`${name} up`, (d: { after: number }) => {
+        log.write("events", { type: "audio.up", src: name, downMs: d.after });
+        console.log(`${name} audio is back (down ${Math.round(d.after / 1000)} s)`);
+        if (shown) { shown = false; healthClear(id); onUp(); }
+      }));
+      src.on("restart", (d: { reason: string }) => log.write("events", { type: "audio.restart", src: name, reason: d.reason }));
+      src.on("log", (m: string) => console.log(m));
+    };
+    wireSource(mic, "mic", "mic", "המיקרופון נפל. מנסה להתחבר מחדש לבד (אם האוזניות נותקו, עובר למיקרופון המק). אם זה נמשך: חבר מיקרופון או בחר אחר ב-Settings", () => {}, () => { micSilentShown = false; });
     if (sys) {
-      sys.on("pcm", (b: Buffer) => { gate.noteThemPeak(peakOf(b)); if (consented) them.send(b); });
-      sys.on("error", (e: Error) => { console.error("system audio error:", e.message); health("sys", "red", "לא שומעים את הצד השני. בדוק את הרשאת הקלטת המסך/שמע המערכת והרץ בדיקת מוכנות", e.message); });
-      sys.on("log", (m: string) => console.log(m));
-      await sys.start();
+      sys.on("pcm", safe("sys pcm", (b: Buffer) => { gate.noteThemPeak(peakOf(b)); if (consented) them.send(b); }));
+      wireSource(sys, "sys", "sys", "לא שומעים את הצד השני. מנסה להתחבר מחדש לבד. אם זה נמשך: בדוק את הרשאת הקלטת המסך/שמע המערכת והרץ בדיקת מוכנות", () => sup.set({ themDead: true }), () => sup.set({ themDead: false }));
     } else {
       console.log("audio.system.source is off: no audio from the other side, so only your own questions get answers (Ctrl+Opt+A).");
       sup.set({ themDead: true });
     }
+    await sys?.start();   // neither start() can fail the call: a source that will not start is retried in the background
     await mic.start();
     stops.push(async () => { await sys?.stop(); }, () => mic.stop(), async () => { clearInterval(micWatch); clearInterval(reemit); });
     // Silent-tap watchdog. Two different situations:
@@ -1455,8 +1574,7 @@ async function main() {
     //     themDead (that would drop the ladder to transcript-only for a minute). Sound or client text clears it at once.
     //  2. No frames at all from the tap for deadFrameMs: the tap is really dead -> red, themDead (recovers within seconds once frames return).
     // Answers for the user keep working in both cases.
-    const W = S.audio.watchdog;
-    let shownKind: "red" | "calm" | undefined, checking = false, lastSysFrame = Date.now();
+    let shownKind: "red" | "calm" | undefined, checking = false;
     const clearThemBanner = () => {
       if (!shownKind) return;
       healthClear(shownKind === "red" ? "them-silent" : "only-you");
@@ -1464,17 +1582,16 @@ async function main() {
       shownKind = undefined;
     };
     themHeard = clearThemBanner;
-    sys?.on("pcm", (b: Buffer) => {
-      lastSysFrame = Date.now();
+    sys?.on("pcm", safe("sys watchdog", (b: Buffer) => {
+      lastSysFrame = mono();
       if (peakOf(b) <= W.silentPeak) { if (shownKind === "red") { clearThemBanner(); } return; }   // frames are back (even quiet ones): the tap is alive
       lastThemSound = Date.now(); themSoundSeen = true;
       clearThemBanner();
-    });
-    const deadFrameMs = Math.max(W.silentThemMs, 8000);
+    }));
     const ONLY_YOU_MS = Math.max(W.silentThemMs, 45_000); let lastOnlyYouAt = 0;
-    setInterval(() => {
+    setInterval(safe("sys watchdog tick", () => {
       if (!sys || !consented || shuttingDown) return;
-      if (Date.now() - lastSysFrame > deadFrameMs) {
+      if (mono() - lastSysFrame > deadFrameMs) {
         if (shownKind !== "red") {
           if (shownKind === "calm") { healthClear("only-you"); shownKind = undefined; }
           shownKind = "red"; sup.set({ themDead: true }); log.write("events", { type: "watchdog.tap-dead" });
@@ -1494,7 +1611,7 @@ async function main() {
         log.write("events", { type: "watchdog.silent-them", callApp: app ?? null });
         shownKind = "calm"; health("only-you", "info", ONLY_YOU_TEXT);
       });
-    }, 2000).unref();
+    }), 2000).unref();
   }
 }
 
