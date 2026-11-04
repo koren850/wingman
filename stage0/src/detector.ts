@@ -95,7 +95,14 @@ export function enQuestion(raw: string): string {
     for (const clause of sentence.split(/,/)) {
       let w = clause.replace(/[^a-z0-9'\s]/g, " ").trim().split(/\s+/).filter(Boolean);
       if (!w.length) continue;
-      while (w.length > 3 && (EN_OPENERS.has(w[0]) || nameWords().has(w[0]))) w = w.slice(1);   // "hello <name>, ..." opens like a greeting
+      // "hello <name>, ..." opens like a greeting. A name that is also a question word or auxiliary ("Will", "May", "Can") is stripped only right after
+      // a greeting: at the start of the clause "Will you send it" is still a question.
+      let afterOpener = false;
+      while (w.length > 3) {
+        if (EN_OPENERS.has(w[0])) { w = w.slice(1); afterOpener = true; continue; }
+        if (nameWords().has(w[0]) && (afterOpener || !(EN_AUX.has(w[0]) || EN_WH.has(w[0].replace(/'s$|'re$|'ll$|'d$/, ""))))) { w = w.slice(1); afterOpener = false; continue; }
+        break;
+      }
       const [a, b, c] = w;
       if (w.length < 3 && !(w.length === 2 && EN_WH.has(a))) continue;
       const base = a.replace(/'s$|'re$|'ll$|'d$/, "");

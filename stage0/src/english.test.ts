@@ -92,3 +92,18 @@ test("reflex prefix: background rule only when background files exist; prompt un
   assert.match(withBg, /background does not say, never guess: reply SKIP/);
   assert.ok(withBg.indexOf("Using the background files") < withBg.indexOf("500 news items"));
 });
+
+import { setProfile } from "./profile.ts";
+test("detector: a user named Will or May still hears 'Will you send it' as a question; a greeting plus the name is still skipped", () => {
+  try {
+    for (const name of ["Will", "May"]) {
+      setProfile({ name });
+      assert.equal(detect(`${name} you send me the invoice today`).isQuestion, true, `${name} you send`);
+      assert.equal(detect(`${name} we move the meeting to Monday`).isQuestion, true, `${name} we move`);
+      assert.equal(detect(`Hello ${name} can you send the invoice today`).isQuestion, true, "greeting + name, then a request");
+    }
+    setProfile({ name: "Dana" });
+    assert.equal(detect("Hello Dana can you send the invoice today").isQuestion, true);
+    assert.equal(detect("Hi Dana how long will the import take").isQuestion, true);
+  } finally { setProfile(undefined); }
+});
