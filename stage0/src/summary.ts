@@ -291,6 +291,11 @@ export function loadCallData(dir: string): CallData {
   return { lines, contextNotes, aiNotes, frame };
 }
 
+/** Arguments for the background summary process (run.ts spawns it when the summary did not fit the stop budget). It must use the SAME settings profile as the call: a practice call's summary must not run on the real settings. */
+export function backgroundSummaryArgs(root: string, callId: string, profile?: string): string[] {
+  return [join(root, "src", "summary.ts"), callId, ...(profile ? ["--profile", profile] : [])];
+}
+
 // ---------- CLI: pnpm summary <callId|latest> ----------
 async function main() {
   const [{ CALLS, requireKeys }, { loadSettingsOrExit, expandHome }, { CostMeter: Meter }] = await Promise.all([import("./env.ts"), import("./settings.ts"), import("./cost.ts")]);

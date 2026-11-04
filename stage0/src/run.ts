@@ -64,7 +64,7 @@ import { HealthSupervisor, CircuitBreaker, describeRung, type Rung } from "./hea
 import { joinSplit, isBareQuestionTail, type PrevUtterance } from "./split.ts";
 import { splitMergedQuestions } from "./multiq.ts";
 import { readAudioDevices, bluetoothInUse } from "./devices.ts";
-import { runSummary, formatShort } from "./summary.ts";
+import { runSummary, formatShort, backgroundSummaryArgs } from "./summary.ts";
 import { FrameTracker, runFrame, frameText, isAgencyKind, isAgencyTopic, progress, missedMust, KIND_HE, type Frame } from "./frame.ts";
 import { TipGate, runTip, checkTip, talkRatio, talkTip, wrapUpTip, type Tip, type TimedLine } from "./tips.ts";
 import { SelfCheckGate, detectCareful, looksFactual, runSelfCheck, checkFix, MIN_WORDS } from "./selfcheck.ts";
@@ -1183,7 +1183,7 @@ async function shutdown() {
     if (!summaryDone && !summarySkipped && !crashed && !noAi && S.summary.enabled) {
       summaryAbort.abort();
       try {
-        spawn(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "summary.ts"), log.id], { cwd: ROOT, detached: true, stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
+        spawn(join(ROOT, "node_modules", ".bin", "tsx"), backgroundSummaryArgs(ROOT, log.id, profile), { cwd: ROOT, detached: true, stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
         log.write("events", { type: "summary.background" });
         status("summary", { ok: false, background: true, id: log.id });
       } catch { /* the user can still run: wingman calls summary <id> --generate */ }

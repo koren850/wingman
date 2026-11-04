@@ -169,3 +169,9 @@ test("loadCallData: a speaker renamed later relabels the earlier lines; the last
     assert.deepEqual(loadCallData(dir).lines.map((l) => l.who), ["Speaker 1", "Speaker 2", "Dana", undefined, "Pierre", "Speaker 2"], "old calls without rows keep their stored names");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("background summary: the settings profile of the call is forwarded (and nothing extra without one)", async () => {
+  const { backgroundSummaryArgs } = await import("./summary.ts");
+  assert.deepEqual(backgroundSummaryArgs("/app", "C1"), ["/app/src/summary.ts", "C1"]);
+  assert.deepEqual(backgroundSummaryArgs("/app", "C1", "practice"), ["/app/src/summary.ts", "C1", "--profile", "practice"]);
+});
