@@ -11,12 +11,27 @@ import { MockLanguageModelV4 } from "ai/test";
 import type { SttOptions, SttProvider, SttResult, SttStreamLike } from "./stt/types.ts";
 import { matchBank, loadBank } from "../bank.ts";
 
+// Fault injection for tests: WINGMAN_STT_FAIL=<channel>:<http status>@<ms since this process started> makes that channel fail like a real provider
+// (e.g. them:401@3000 = a refused key 3 s in; later open() calls fail too) until WINGMAN_STT_HEAL_AT_MS (ms since start; default never).
+const T0 = Date.now();
+const FIRST_OPEN: Record<string, number> = {};
+function injectedFailure(channel: string): { status: number; at: number } | undefined {
+  const m = String(process.env.WINGMAN_STT_FAIL ?? "").match(/^(me|them):(\d+)@(\d+)$/);
+  if (!m || m[1] !== channel) return undefined;
+  const heal = Number(process.env.WINGMAN_STT_HEAL_AT_MS ?? Infinity);
+  return Date.now() - T0 >= heal ? undefined : { status: Number(m[2]), at: Number(m[3]) };
+}
+const failError = (status: number) => Object.assign(new Error(`HTTP ${status} (injected)`), { statusCode: status });
+
 /** Fake STT stream: replays the transcript file as final results on timers (the audio sent to it is only counted). */
 class ScriptStream extends EventEmitter implements SttStreamLike {
   isOpen = false; audioSeconds = 0; dropped = 0;
   private timers: NodeJS.Timeout[] = [];
   constructor(private o: SttOptions) { super(); }
   async open() {
+    const inj = injectedFailure(this.o.channel);
+    if (inj && Date.now() - T0 >= inj.at) throw failError(inj.status);
+    if (inj) { const t = setTimeout(() => { if (!this.isOpen) return; this.isOpen = false; for (const x of this.timers) clearTimeout(x); this.emit("error", failError(inj.status)); }, inj.at - (Date.now() - T0)); this.timers.push(t); }
     this.isOpen = true;
     const file = process.env.WINGMAN_STT_SCRIPT;
     if (!file) throw new Error("stt.provider script needs WINGMAN_STT_SCRIPT=<transcript.json>");
@@ -26,12 +41,14 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
     // so a saved Deepgram run plays back exactly as it was heard.
     type Line = { speaker: string; text: string; afterMs?: number; atMs?: number; words?: SttResult["words"]; speechFinal?: boolean; endLagMs?: number };
     const lines = (JSON.parse(readFileSync(file, "utf8")) as Line[]);
+    // A channel that is reopened (after an outage) continues the script where the clock is, instead of replaying it from the start.
+    const firstOpen = (FIRST_OPEN[this.o.channel] ??= Date.now()), late = Date.now() - firstOpen;
     let at = 300;
     lines.forEach((l, i) => {
       if (Number.isFinite(l.atMs)) at = Number(l.atMs);
       else if (i > 0) at += Number.isFinite(l.afterMs) ? Number(l.afterMs) : gap;
-      const when = at;
-      if (l.speaker !== this.o.channel) return;
+      const when = at - late;
+      if (l.speaker !== this.o.channel || when < 0) return;
       this.timers.push(setTimeout(() => {
         const now = Date.now();
         const r: SttResult = { channel: this.o.channel, text: l.text, isFinal: true, speechFinal: l.speechFinal ?? true, words: l.words ?? [], speechEndWall: now - (l.endLagMs ?? 300), arrivedAt: now };
