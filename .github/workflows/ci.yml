@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      # Skip the Electron download and the .app build: CI only needs the engine and the tests.
+      WINGMAN_SKIP_APP: "1"
+    defaults:
+      run:
+        working-directory: stage0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable pnpm (version comes from package.json)
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: ./node_modules/.bin/tsc --noEmit -p .
+
+      # CI has no private word list, so the "repo guard" test skips itself. That is expected.
+      # Run it on your own machine with WINGMAN_DENYLIST set (see CONTRIBUTING.md).
+      - name: Tests
+        run: pnpm test
