@@ -131,6 +131,7 @@ export type DetectCtx = { bankScore?: number; stall?: boolean };
  * Is this utterance a question? Pure and synchronous (no network). `reason` names the rule that fired, e.g. "head:מה", "question-mark",
  * "math". Hebrew is matched on normalize()d tokens, so the word lists above are normalized once at load (final letters folded).
  */
+const DANGLING = /(?:^|\s)(עם|של|על|את|או|כמו|לגבי|בין|with|about|of|to|for|the|a|an|and|or|like|between)\s*$/iu;
 export function detect(text: string, ctx: DetectCtx = {}): Detection {
   const raw = text.trim();
   const t = tokens(raw);
@@ -142,6 +143,9 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
   }
   if (t.length < MIN_WORDS) return { isQuestion: false, reason: "too-short" };
   if (t.every(isFiller)) return { isQuestion: false, reason: "filler" };
+  // Cut off mid-phrase ("יש לך ניסיון עם", "do you have experience with"): speech-to-text split it or lost the last word. Wait for
+  // the rest (the next line), never guess an answer to half a question (4 Nov mock: it got the "about you" card).
+  if (DANGLING.test(raw)) return { isQuestion: false, reason: "unfinished" };
   // Fillers plus "give me a second": "אממ, רגע, כאילו, תן לי רגע" says nothing.
   if (tokens(raw.replace(TIME_ASK, " ")).every(isFiller)) return { isQuestion: false, reason: "filler" };
   // Bare arithmetic is a question for the calculator, with or without "?" or "כמה": "15 אחוז מ 2400", "3 כפול 450".

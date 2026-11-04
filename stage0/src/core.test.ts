@@ -164,3 +164,11 @@ test("reflex parse: a labelled say-line shows only the words", () => {
   assert.equal(parseReflex("ANS\nתגיד: חודש מקבלת הצעה\n", true).say, "חודש מקבלת הצעה");
   assert.equal(parseReflex("ANS\nSayings differ: keep this\n", true).say, "Sayings differ: keep this");
 });
+
+test("a question cut off mid-phrase waits for the rest", () => {
+  assert.equal(detect("יש לך ניסיון עם").reason, "unfinished");
+  assert.equal(detect("do you have experience with").isQuestion, false);
+  assert.equal(detect("tell me about the").isQuestion, false);
+  assert.equal(detect("יש לך ניסיון עם פייתון").isQuestion, true);
+  assert.equal(detect("יש לך ניסיון עם?").isQuestion, true);   // a "?" still counts
+});
