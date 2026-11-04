@@ -31,12 +31,14 @@ COMMANDS
                                --offline: no audio, no network, no cost.
   plan list                    The prepared meetings, soonest first (id, time, checklist and file counts). --json: {"plans":[{id,name,title,who,goal,kind,topic,notes,mustCover,at,atText,attachments,expiresInMin}]}
   plan show [id]               One meeting in full. Without an id: the only meeting, or the list when there are several.
-  plan new|set [--id <id>] [--title ..] [--at "2026-11-03 14:30"|none] [--who ..] [--goal ..] [--kind client|support|vendor|team|consult|personal|other] [--topic ..]
+  plan new|set [--id <id>] [--title ..] [--at "2026-11-03 14:30"|none] [--who ..] [--goal ..] [--kind client|support|vendor|team|consult|personal|other|interview] [--topic ..]
                [--note ..]... [--add-note ..]... [--must ..]... [--add-must ..]... [--fresh]
                                new = a new meeting. set --id <id> = edit that one (fields you leave out are kept; --fresh starts its fields over).
                                set without --id and without --new: makes the first meeting, edits the only one, and with several it REFUSES (exit 2): name one with --id.
                                --at is your local time ("14:30" = today); --must items become the checklist. Time rule: a meeting with a time stays until about 6 hours
                                after it; without a time it stays 14 days after its last edit. A meeting is used up by the real call started with it (Practice never does).
+                               --kind interview = a job interview: Dan is the candidate. The AI answers technical questions and questions about him from the
+                               background files only; no "buy time" lines, no card limit. Add --note "Prepared cards: <file.yaml>" for instant cards (bank format).
   plan attach [--id <id>] --file <.txt|.md|.pdf> | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters per meeting). --id is needed when there are several meetings.
   plan detach <file id> [--id <id>]       Remove one background file.
   plan delete <id> --yes       Delete a meeting and its background files (exit 6 without --yes).   (plan clear = the old name; it works only when exactly one meeting exists)

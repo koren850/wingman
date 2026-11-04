@@ -1,7 +1,7 @@
 // Fixture builder for overlay snapshots (run by snapshot.sh): node fixtures.cjs <scenario> <callsDir>
 // All people, companies and numbers below are invented sample data.
 // Writes <callsDir>/<id>/{cards,transcript}.jsonl and a calls/latest symlink, the layout main.cjs tails.
-// Scenarios: speakers (several voices on the other side), selfcheck (red/amber cards about what the user said), empty (starting), listening (live, no cards yet), waiting (start approval), nophase (old call.json), consent, full, overflow, quiet, frame, foryou, onlyyou, stale, ended, starting. Test/dev only; nothing here is read by the real app.
+// Scenarios: flow / flowyou (their own discussion; then they turn to the user), speakers (several voices on the other side), selfcheck (red/amber cards about what the user said), empty (starting), listening (live, no cards yet), waiting (start approval), nophase (old call.json), consent, full, overflow, quiet, frame, foryou, onlyyou, stale, ended, starting. Test/dev only; nothing here is read by the real app.
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -63,6 +63,10 @@ S.speakers.cards.push({ type: "speaker", spk: 2, name: "פייר", source: "user
 const fix = card({ id: "s1-fix", turnId: "s1", badge: "fix", question: "יש לכם בערך 200 עמודים באתר", say: "לפי החומר שהכנו: 140 עמודים ו-320 חדשות, לא 200 עמודים.", facts: ["רקע הפגישה: ספירת מפות האתר"], at: now - 1500 });
 const careful = card({ id: "s2-careful", turnId: "s2", badge: "careful", question: "נסיים את כל ההעברה עד סוף החודש", say: "התחייבת לתאריך. אפשר לסייג: \"אחזור אליכם עם לוח זמנים מסודר\".", facts: [], at: now - 40000 });
 S.selfcheck = { cards: [old(bank, 90000), careful, fix], lines: [{ t: now - 8000, ch: "them", text: "כמה עמודים יש בערך באתר הנוכחי, ומה עם החדשות הישנות?" }, { t: now - 2500, ch: "me", text: "יש לכם בערך 200 עמודים באתר" }] };
+// Flow: two people on the other side talk among themselves (with a topic line); flowyou: then one of them turns to the user.
+const flowLines = [{ t: now - 12000, ch: "them", spk: 1, name: "דנה", text: "אז מה עושים עם החדשות הישנות?" }, { t: now - 7000, ch: "them", spk: 2, name: "רות", text: "לדעתי מייבאים הכל ומציגים רק מ-2023." }, { t: now - 2000, ch: "them", spk: 1, name: "דנה", text: "מסכימה, ככה לא מאבדים כלום." }];
+S.flow = { cards: [old(bank, 60000), { type: "flow", state: "internal", who: ["דנה", "רות"], topic: "אילו חדשות ישנות לייבא לאתר החדש", at: now - 1500 }], lines: flowLines };
+S.flowyou = { cards: [...S.flow.cards, { type: "addressed", who: "רות", text: "דן, זה אפשרי מבחינתכם?", at: now - 500 }], lines: [...flowLines, { t: now - 600, ch: "them", spk: 2, name: "רות", text: "דן, זה אפשרי מבחינתכם?" }] };
 S.starting = { cards: [], lines: [], nolatest: true };
 // call.json phase (the contract overlay/lib.cjs callPhase reads): empty = starting, listening = live with no cards yet, waiting = start approval, nophase = timer fallback.
 S.empty.phase = "starting"; S.consent.phase = "waiting";

@@ -14,6 +14,7 @@
 - **Ctrl+Opt+A = ask Wingman**: your next sentence (within 10 s) is a question for it; the answer shows in the violet "For you" card. Works even when "Answer my own questions" is off.
 - Ctrl+Opt+R = "what did they say?" (last 30 s as text). Ctrl+Opt+K = copy the newest captured phone/email/domain (or click it). Ctrl+Opt+C clears the window, Ctrl+Opt+P pauses it.
 - Headphones are optional. `audio.echo.mode: auto` (default) checks the output: on the Mac speakers it mutes the mic while the other side talks and drops echo lines; with headphones it only drops echo lines, so your words are kept when you talk over the other side.
+- Several people on the other side: lines show their names (from introductions or the meeting's attendees; rename a voice on the dashboard or with `wingman speaker <n> "<name>"`). When two or more of them talk among themselves while you are quiet, a muted "מדברים ביניהם" line shows who and what about, and answer cards wait. When someone says your name (or "you" right after), an orange "פונים אליך" alert shows who. Turn it off with `flow.enabled: false`.
 - Red bar = STT/mic/system audio down. "I only hear you" (calm line) = no audio from the other side and no call app open: fine for testing alone. Abort rule: three wrong or late cards in a row, go quiet. Ctrl+C, one restart, then continue without Wingman.
 - Want this call gone: Stop and delete (… menu on the call panel), or Ctrl+C and answer `y`.
 

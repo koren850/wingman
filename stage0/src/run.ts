@@ -35,7 +35,7 @@ import { KEY_ENV_VARS } from "./keychain.ts";
 import { requireKeys, childEnv, DATA, CALLS, ROOT } from "./env.ts";
 import { EntitySpotter, loadSnapshot, type Fact } from "./entities.ts";
 import { takeNotes } from "./notes.ts";
-import { loadBrief, briefNotes, covered, type Brief } from "./brief.ts";
+import { loadBrief, briefNotes, covered, isInterview, briefCardsFile, type Brief } from "./brief.ts";
 import { loadBank, matchBank, matchBankFor, priceOffTopic, stallCard, stallSay, modelMayOverrideBank, STALL_TIER, type BankCard } from "./bank.ts";
 import { evalMath, looksArithmetic } from "./calc.ts";
 import { checkScript } from "./lang.ts";
@@ -43,7 +43,8 @@ import { callAppRunning } from "./callapp.ts";
 import { audienceByCues, classify, decideAudience, MeGate, guardMe } from "./assist.ts";
 import { detect, isClearQuestion } from "./detector.ts";
 import { SpeakerBook, lineLabel, attendeeNames, introName, type SpeakerInfo } from "./speakers.ts";
-import { guard, sanitize } from "./guards.ts";
+import { FlowTracker, runTopic, type FlowEvent } from "./flow.ts";
+import { guard, guardInterview, sanitize } from "./guards.ts";
 import { buildPrefix, runReflex, resolveBankId, leakedTag, type Tag } from "./reflex.ts";
 import type { SttResult, Channel, Word } from "./providers/stt/types.ts";
 import { SttChannel } from "./providers/stt/channel.ts";
@@ -91,16 +92,25 @@ function status(ev: string, data: Record<string, unknown> = {}) {
   if (CONTROL) process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`);
 }
 
-const bank = loadBank();
+// Prepared start: a brief saved by `pnpm brief` / the Plan (last 6 h), or --brief <file>; --no-brief skips it.
+// A replay (--file) never consumes latest.yaml; it uses a brief only when --brief is given.
+const briefArg = args.includes("--brief") ? args[args.indexOf("--brief") + 1] : undefined;
+const noBrief = args.includes("--no-brief") || (!!fileArg && !briefArg);
+const brief: Brief | undefined = noBrief ? undefined : loadBrief(briefArg);
+// Interview plan (kind "interview"): Wingman coaches the candidate. The plan's own prepared cards replace the agency bank, no "buy time"
+// lines, no focus cap, and the AI answers technical and personal questions from the prep files (reflex.ts INTERVIEW_BLOCK).
+const interview = isInterview(brief);
+const cardsFile = interview ? briefCardsFile(brief) : undefined;
+let bank: BankCard[];
+try { bank = interview ? (cardsFile ? loadBank(cardsFile) : []) : loadBank(); }
+catch (e) { console.error(`Prepared cards ${cardsFile} not loaded: ${(e as Error).message}`); bank = []; }
 const stall = stallCard(bank);
 const houseStyle = readFileSync(join(DATA, "house-style.md"), "utf8");
 const keyterms = loadKeyterms(S);
 // Background files from "Plan a call": read once (and deleted: one plan = one call). A replay / --no-brief never uses them.
-const briefArg = args.includes("--brief") ? args[args.indexOf("--brief") + 1] : undefined;
-const noBrief = args.includes("--no-brief") || (!!fileArg && !briefArg);
 const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars, { consume: !fileArg });   // a practice call with the plan never uses up the real call's files
 const background = backgroundBlock(attachFiles);
-const prefix = buildPrefix(houseStyle, bank, "", background);
+const prefix = buildPrefix(houseStyle, bank, "", background, interview);
 let log: CallLog;
 try { log = new CallLog({ mode: fileArg ? "file" : "live", file: fileArg, model: S.llm.reflex.model, fallbacks: S.llm.reflex.fallbacks, stt: `${S.stt.provider} ${S.stt.model} ${S.stt.language}`, sttFallback: S.stt.fallback, profile, noAi, discard });
 } catch (e) {
@@ -110,7 +120,7 @@ try { log = new CallLog({ mode: fileArg ? "file" : "live", file: fileArg, model:
 log.onWriteFail = (e) => { try { health("disk", "amber", "לא ניתן לשמור את השיחה בדיסק (אין מקום?). השיחה ממשיכה, אבל ההקלטה והסיכום עלולים להיות חלקיים. פנה מקום בדיסק", String(e?.message ?? e)); } catch {} };
 const cost = new CostMeter(S.budget.prices, S.budget);
 const sup = new HealthSupervisor({ tickMs: S.health.tickMs, recoverStableMs: S.health.recoverStableMs, slowMs: S.llm.reflex.slowMs, slowSttMs: S.health.slowSttMs, minSamples: S.health.minSamples });
-sup.set({ noAi, bankFailed: bank.length === 0 });
+sup.set({ noAi, bankFailed: bank.length === 0 && !interview });
 setPhase("starting");
 status("mode", { noAi });   // effective AI mode for the app (the setting or --no-ai)
 const breakers = new Map(REFLEX_MODELS.map((m) => [m, new CircuitBreaker({ failures: S.llm.circuit.failures, windowMs: 10_000, cooldownMs: S.llm.circuit.cooldownMs })]));
@@ -140,10 +150,50 @@ function nameSpeaker(spk: number, name: string, source: "intro" | "user") {
   console.log(`\n[🗣 speaker ${spk}] ${clean || "(cleared)"} (${source})`);
 }
 const lineOf = (l: { ch: Channel; text: string; who?: SpeakerInfo }) => `${lineLabel(l.ch, l.who)}: ${l.text}`;
+// Flow (several people on the other side): their own discussion, its topic line, and the moment they turn to the user.
+const flowOn = S.flow.enabled && S.stt.speakers;
+const flow = new FlowTracker();
+let flowTopic = "", flowTopicAt = 0, flowBusy = false;
+const voiceName = (w: SpeakerInfo) => w.name ?? `דובר ${w.spk}`;
+/** Writes the flow rows the answer window and dashboard follow: {type:"flow", state, who, topic} and {type:"addressed", who, text}. */
+function flowEvents(evs: FlowEvent[]) {
+  for (const e of evs) {
+    if (e.type === "internal") {
+      log.write("cards", { type: "flow", state: "internal", who: e.who, ...(flowTopic ? { topic: flowTopic } : {}), at: Date.now() });
+      log.write("events", { type: "flow.internal", who: e.who });
+      console.log(`\n[👥 talking among themselves] ${e.who.join(", ")}`);
+    } else if (e.type === "open") {
+      flowTopic = ""; flowTopicAt = 0;
+      log.write("cards", { type: "flow", state: "open", at: Date.now() });
+      log.write("events", { type: "flow.open" });
+    } else {
+      log.write("cards", { type: "addressed", who: e.who, text: e.text, at: Date.now() });
+      log.write("events", { type: "flow.addressed", who: e.who });
+      console.log(`\n[👉 to you${e.who ? ` · ${e.who}` : ""}] ${e.text}`);
+    }
+  }
+}
+/** Timer job: ends a discussion nobody continued, and refreshes its topic line (one small model call, at most every flow.topicEveryMs). */
+async function flowTick() {
+  if (!flowOn || shuttingDown) return;
+  flowEvents(flow.tick(Date.now()));
+  if (!S.flow.topic || noAi || !flow.internal || flowBusy || !consented || !sup.caps.llm || cost.llmState() === "capped") return;
+  if (Date.now() - flowTopicAt < S.flow.topicEveryMs) return;
+  flowBusy = true; flowTopicAt = Date.now();
+  try {
+    const lines = transcript.slice(-14).map(lineOf);
+    const r = await runTopic({ registry, model: S.flow.model, lines, signal: notesAbort.signal, timeoutMs: S.flow.timeoutMs });
+    const c = cost.addLlm("flow", S.flow.model, r.usage, r.providerMetadata);
+    log.write("usage", { role: "flow", model: S.flow.model, usage: r.usage, usd: c.usd });
+    if (r.topic && flow.internal && !shuttingDown && r.topic !== flowTopic) {
+      flowTopic = r.topic;
+      log.write("cards", { type: "flow", state: "internal", who: flow.people, topic: r.topic, at: Date.now() });
+      console.log(`\n[👥 topic] ${r.topic}`);
+    }
+  } catch (e) { log.write("events", { type: "flow.error", error: String((e as Error)?.message ?? e).slice(0, 200) }); }
+  finally { flowBusy = false; }
+}
 const contextNotes: string[] = [];
-// Prepared start: a brief saved by `pnpm brief` (last 6 h), or --brief <file>; --no-brief skips it.
-// A replay (--file) never consumes latest.yaml; it uses a brief only when --brief is given.
-const brief: Brief | undefined = noBrief ? undefined : loadBrief(briefArg);
 if (brief) contextNotes.push(...briefNotes(brief));
 const attendees = attendeeNames(brief?.who);   // first names from the prepared meeting, for naming voices from their introductions
 // Fact cards from the local client/domain snapshot.
@@ -354,8 +404,8 @@ const turnsWithCard = new Set<string>();
 // "Important cards only" (cards.focus): 2 cards per 2 minutes, and only for clear questions. The detector's weaker cues ("head": a
 // question word at the start, 124 of 225 detections on 3 Nov, mostly statements) do not count; price/date cards and cards about
 // what the user said are not affected.
-const capMax = () => (S.cards.focus ? Math.min(2, S.cards.maxPerMinute) : S.cards.maxPerMinute);
-const capWindow = () => (S.cards.focus ? 120_000 : S.cards.windowMs);
+const capMax = () => (interview ? 99 : S.cards.focus ? Math.min(2, S.cards.maxPerMinute) : S.cards.maxPerMinute);   // an interview: every question gets its card
+const capWindow = () => (S.cards.focus && !interview ? 120_000 : S.cards.windowMs);
 function focusWorthy(text: string, reason: string): boolean { return isClearQuestion(text, reason) || !!matchBankFor(text, bank)?.card.id.startsWith("stall-"); }
 function emitCard(c: Card) {
   c.say = sanitize(c.say); c.facts = c.facts.map(sanitize);
@@ -426,7 +476,9 @@ let lastAgencyTopicAt = 0;
  *     (BANK / ANS / STALL / SKIP) that can confirm, replace or withdraw the card, then the answer text, which passes the guards.
  *  A newer question aborts this one (`current`). Answers older than reflex.dropStaleMs are never shown (`fresh`). `reason` is the detector's reason string. */
 function onQuestion(r: SttResult, reason = "") {
-  if (S.cards.focus && !focusWorthy(r.text, reason)) { log.write("events", { type: "focus.skip", reason, text: r.text.slice(0, 120) }); return; }
+  if (S.cards.focus && !interview && !focusWorthy(r.text, reason)) { log.write("events", { type: "focus.skip", reason, text: r.text.slice(0, 120) }); return; }
+  // Their own discussion: the question is for one of them, not the user. Price/date ("buy time") cards still show.
+  if (flowOn && S.flow.holdCards && flow.internal && !matchBankFor(r.text, bank)?.card.id.startsWith("stall-")) { log.write("events", { type: "flow.hold", reason, text: r.text.slice(0, 120) }); return; }
   const turnId = `q${++turnSeq}`;
   const speechEnd = r.speechEndWall ?? r.arrivedAt;
   const lat: Record<string, number | string> = { turnId, speechEnd, finalAt: r.arrivedAt, text: r.text };
@@ -439,8 +491,9 @@ function onQuestion(r: SttResult, reason = "") {
   // A short follow-up ("יהיה מוכן?", "את הדומיין?") has no topic word of its own: it counts as agency talk for 60 s after one that did (the frame can also guess "vendor" wrongly).
   const agencyTopic = isAgencyTopic(r.text), agencyRecent = Date.now() - lastAgencyTopicAt < 60_000;
   if (agencyTopic) lastAgencyTopicAt = Date.now();
-  const noAgency = !!tracker.kind && !isAgencyKind(tracker.kind) && !agencyTopic && !agencyRecent;
-  const hit = noAgency ? undefined : matchBankFor(r.text, bank);   // stall-price is dropped for arithmetic and for prices that are not the user's services
+  const noAgency = !interview && !!tracker.kind && !isAgencyKind(tracker.kind) && !agencyTopic && !agencyRecent;
+  const noStall = noAgency || interview;   // an interview never gets a "buy time" line
+  const hit = interview ? matchBank(r.text, bank) : noAgency ? undefined : matchBankFor(r.text, bank);   // stall-price is dropped for arithmetic and for prices that are not the user's services
   if (noAgency && matchBank(r.text, bank)) log.write("events", { type: "agency.gated", turnId, kind: tracker.kind });
   if (!hit && !noAgency && matchBank(r.text, bank)?.card.id === "stall-price") log.write("events", { type: "stall.suppressed", turnId, why: priceOffTopic(r.text) ?? "off-topic" });
   // Arithmetic from the other side ("כמה זה 36 ועוד 42?"): the local answer, instantly, no model.
@@ -454,14 +507,14 @@ function onQuestion(r: SttResult, reason = "") {
   }
   // Not a client / support call (frame, after hysteresis): a keyword hit on the agency bank is weak (dimmed, the model may drop it),
   // except the price / timeline / guarantee stall tier, which always stays.
-  const offKind = !!tracker.kind && !isAgencyKind(tracker.kind);
+  const offKind = !interview && !!tracker.kind && !isAgencyKind(tracker.kind);
   // A prepared meeting with background files: a general topical card (SEO basics, "move a site") may be the wrong card for this meeting,
   // so it shows dimmed and an AI answer from the background replaces it (3 Nov: "old links and Google ranking" got the generic SEO card).
-  const bgBank = !!background && !!hit && !STALL_TIER.has(hit.card.id);
+  const bgBank = !interview && !!background && !!hit && !STALL_TIER.has(hit.card.id);
   const weakBank = offKind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent;
   // weak = a bank card may be the wrong card, so it is dimmed and the model may withdraw it. Before the first call frame a topical card
   // may belong to a call that is not a customer call.
-  const weak = (reason.startsWith("head:") && !(hit && hit.score >= 2)) || reason.startsWith("problem") || weakBank || (!tracker.kind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent) || bgBank;
+  const weak = (reason.startsWith("head:") && !(hit && hit.score >= 2)) || reason.startsWith("problem") || weakBank || (!interview && !tracker.kind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent) || bgBank;
   const bankOnly = reason.startsWith("problem");                              // a "problem" is a guessed question (not a clear one): never an AI answer on it
 
   // Degradation ladder (health.ts): the rung in force for this question (it only changes between questions).
@@ -480,7 +533,7 @@ function onQuestion(r: SttResult, reason = "") {
   }
   if (!useAi) {
     // Degraded (not by --no-ai): no LLM, so a question without a bank card gets the stall line, as the ladder promises.
-    if (!noAi && !bankOnly && !noAgency && !shown && fresh()) { shown = { id: `${turnId}-stall`, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); lat.stallAt = Date.now(); }
+    if (!noAi && !bankOnly && !noStall && !shown && fresh()) { shown = { id: `${turnId}-stall`, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); lat.stallAt = Date.now(); }
     recordLatency(lat); end(); return;
   }
 
@@ -488,7 +541,7 @@ function onQuestion(r: SttResult, reason = "") {
   // If neither the bank nor the model has put a card up by then, show the "buy time" line so the user is never left with a blank screen.
   const stallTimer = setTimeout(() => {
     if (ac.signal.aborted) return;
-    if (!shown && !noAgency && fresh()) { shown = { id: stallId, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); lat.stallAt = Date.now(); }
+    if (!shown && !noStall && fresh()) { shown = { id: stallId, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); lat.stallAt = Date.now(); }
   }, S.reflex.stallAfterMs);
 
   const ai: Card = { id: `${turnId}-ai`, turnId, badge: "ai", question: r.text, say: "", facts: [], at: 0 };
@@ -517,6 +570,10 @@ function onQuestion(r: SttResult, reason = "") {
         }
         if (tag.kind === "ANS" && !allowAns) { tag = { kind: "STALL" }; lat.tag = "STALL (ans-off)"; log.write("events", { type: "ans.suppressed", turnId, rung: sup.rung }); }
         // Off-kind call: the model prefers an answer or a stall over the weak keyword card, so that card goes away.
+        // Interview: the prepared card (Dan's own words) stays; the model's own version of the same answer is not shown.
+        if (interview && hit && shown?.badge === "bank" && shown.turnId === turnId && tag.kind === "ANS") {
+          clearTimeout(stallTimer); modelIgnored = true; lat.tag = `${lat.tag} (kept prepared ${hit.card.id})`; log.write("events", { type: "interview.kept", turnId, bank: hit.card.id }); return;
+        }
         if ((weakBank || bgBank) && shown?.badge === "bank" && shown.turnId === turnId && (tag.kind === "ANS" || tag.kind === "STALL")) { emitCard({ ...shown, withdraw: true }); log.write("events", { type: "withdraw", turnId, why: "off-kind" }); shown = undefined; }
         if (tag.kind === "SKIP") {
           clearTimeout(stallTimer);
@@ -526,7 +583,7 @@ function onQuestion(r: SttResult, reason = "") {
         }
         if (tag.kind === "STALL") {
           clearTimeout(stallTimer);
-          if (!shown && !noAgency && fresh()) { shown = { ...ai, id: stallId, badge: "stall", say: stallSay(stall, turnSeq), at: Date.now() }; emitCard(shown); }
+          if (!shown && !noStall && fresh()) { shown = { ...ai, id: stallId, badge: "stall", say: stallSay(stall, turnSeq), at: Date.now() }; emitCard(shown); }
           return;
         }
         if (tag.kind === "BANK" && tag.bankId && hit?.card.id !== tag.bankId) {
@@ -565,9 +622,9 @@ function onQuestion(r: SttResult, reason = "") {
           if (shown?.id === stallId) { emitCard({ ...shown, withdraw: true }); shown = undefined; }
           return;
         }
-        const g = guard(ai.say);
+        const g = (interview ? guardInterview : guard)(ai.say);
         if (!g.ok) log.write("events", { type: "guard", turnId, rule: g.rule });
-        if (!g.ok && noAgency) { clearTimeout(stallTimer); return; }   // a blocked answer on a call that is not with a customer: nothing, never a stall line
+        if (!g.ok && noStall) { clearTimeout(stallTimer); return; }   // a blocked answer on a call that is not with a customer: nothing, never a stall line
         const card: Card = g.ok ? { ...ai, at: Date.now() } : { ...ai, id: stallId, badge: "stall", say: stallSay(stall, turnSeq), facts: [], at: Date.now() };
         if (meSpokeSince()) card.dim = true;
         clearTimeout(stallTimer);
@@ -584,7 +641,7 @@ function onQuestion(r: SttResult, reason = "") {
         log.write("usage", { role: "reflex", model, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.reflex.usd });
         log.write("events", { type: "reflex.raw", turnId, text });
         if (shown && shown.badge === "ai" && ai.facts.length) {
-          const g = guard(ai.facts.join(" "));
+          const g = (interview ? guardInterview : guard)(ai.facts.join(" "));
           if (g.ok) emitCard({ ...shown, facts: ai.facts }); // upsert same id with facts
           else log.write("events", { type: "guard", turnId, rule: g.rule, where: "facts" });
         }
@@ -600,7 +657,7 @@ function onQuestion(r: SttResult, reason = "") {
     log.write("events", { type: kind === "refusal" ? "reflex.empty" : "reflex.error", turnId, kind, error: String(e) });
     console.error("reflex error:", e?.message ?? e);
     // L5/L6: refusal, empty answer or timeout: show the stall line if nothing is up yet.
-    if ((kind === "refusal" || kind === "timeout") && !shown && !noAgency && fresh()) { shown = { id: stallId, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); }
+    if ((kind === "refusal" || kind === "timeout") && !shown && !noStall && fresh()) { shown = { id: stallId, turnId, badge: "stall", question: r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() }; emitCard(shown); }
     if (kind !== "refusal" && ++reflexErrors >= 2) health("ai", "amber", "AI לא עונה: מוצגים רק כרטיסים מוכנים מראש. בדוק חיבור לאינטרנט ומפתח ב-Settings", String(e?.message ?? e));
   }).finally(end);
 }
@@ -650,7 +707,7 @@ const selfEvent = (type: string, extra: Record<string, unknown> = {}) => log.wri
 /** A final "me" line that is not a question for Wingman: amber card on price / date / promise (no AI), red card on a contradiction of the briefing (cheap model). */
 function selfCheckLine(text: string) {
   const sc = S.selfCheck;
-  if (!sc.enabled || !consented || shuttingDown) return;
+  if (!sc.enabled || interview || !consented || shuttingDown) return;   // interview: a false red card mid-answer costs more than it saves (a misheard employer name became a red card in practice)
   if (text.split(/\s+/).filter(Boolean).length < MIN_WORDS) return;
   const now = Date.now();
   if (sc.careful) {
@@ -847,8 +904,10 @@ function flush(ch: Channel) {
   const endWall = joined.speechEndWall ?? now;
   const w = joined.words;
   const startWall = w.length && joined.speechEndWall ? endWall - Math.max(0, (w[w.length - 1].end - w[0].start) * 1000) : now;
-  const detectText = (t: string) => { const h = matchBankFor(t, bank); return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) }; };
+  const detectText = (t: string) => { const h = interview ? matchBank(t, bank) : matchBankFor(t, bank); return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) }; };
   let { hit, d } = detectText(joined.text);
+  // Interview: a line that matches one of Dan's prepared cards is a question even without a question mark ("עבדת פעם עם טלפוניה").
+  if (interview && !d.isQuestion && hit && wordCount(joined.text) >= 3) d = { ...d, isQuestion: true, reason: "interview-card" };
   // Glue the previous short fragment only when that turns a non-question into a question (a split question: "כמה זה" ... "עולה לחודש?").
   // Never glue two different voices: one person's fragment is not the start of another person's question.
   const otherVoice = p.spk !== undefined && lastThem?.spk !== undefined && p.spk !== lastThem.spk;
@@ -857,9 +916,14 @@ function flush(ch: Channel) {
     const g = detectText(glued);
     if (g.d.isQuestion) { log.write("events", { type: "split.join", prev: lastThem?.text, text: joined.text }); joined.text = glued; hit = g.hit; d = g.d; }
   }
+  const FOLLOW_UP = /^(and\b|so\b|what did\b|how did\b|why\??$|what was\b|what happened\b|what was the (result|outcome)|ו?מה עשית|ו?איך פתרת|ולמה|ומה|ואיך|ומה היה)/i;   // openers that continue the last question
+  // Interview follow-up: "Tell me about a time X failed." + "What did you do?" a moment later, same voice, is ONE question. Alone the short
+  // part has no context, and as a new question it would cancel the answer to the first part.
+  const followUp = interview && !otherVoice && d.isQuestion && !!lastThem?.question && startWall - lastThem.at < 3000 && wordCount(joined.text) <= 6 && FOLLOW_UP.test(joined.text.trim());
+  if (followUp) { log.write("events", { type: "split.followup", prev: lastThem!.text, text: joined.text }); joined.text = `${lastThem!.text} ${joined.text}`; }
   lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: endWall, question: d.isQuestion, spk: p.spk };
   // Fast back-to-back questions merged into one final: one question (and one card) per piece.
-  const parts = d.isQuestion ? splitMergedQuestions(joined.text, bank) : [joined.text];
+  const parts = d.isQuestion && !followUp ? splitMergedQuestions(joined.text, bank) : [joined.text];
   if (parts.length > 1) {
     log.write("events", { type: "split.multi", text: joined.text, parts });
     parts.forEach((p, part) => {
@@ -930,6 +994,7 @@ function acceptResult(r: SttResult, checkEcho: boolean) {
     if (notesOn) notesLines.push(lineOf({ ch: r.channel, text: r.text, who }));
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) lastMeVoiced = Date.now();
     transcript.push({ ch: r.channel, text: r.text, at: Date.now(), ...(who ? { who } : {}) });
+    if (flowOn) try { flowEvents(flow.add({ ch: r.channel, spk: who?.spk, who: who ? voiceName(who) : undefined, text: r.text, at: Date.now() })); } catch (e) { log.write("events", { type: "flow.error", error: String((e as Error)?.message ?? e) }); }
     { const n = wordCount(r.text); frameWords += n; tipWords += n; }
     log.write("transcript", { ch: r.channel, text: r.text, words: r.words, ...(who ? { spk: who.spk, ...(who.name ? { name: who.name } : {}) } : {}) });
     // A different voice starts a new turn: never glue two people's words into one question.
@@ -1259,6 +1324,7 @@ async function main() {
   setInterval(() => void frameRound(), 5000).unref();
   setInterval(tipsTick, 5000).unref();
   setInterval(reminderTick, 30_000).unref();
+  setInterval(() => void flowTick(), 5000).unref();
   if (brief?.planId) log.write("events", { type: "plan.used", planId: brief.planId, title: brief.title ?? "" });   // which prepared meeting this call used (ids and names only)
   if (brief) console.log(`Brief loaded: ${[brief.who, brief.goal].filter(Boolean).join(" · ") || "(notes only)"}${brief.mustCover?.length ? ` · must cover: ${brief.mustCover.join(", ")}` : ""}`);
   console.log(spotter ? `Fact cards: ${spotter.size.clients} clients, ${spotter.size.domains} domains (snapshot ${snapshot?.generatedAt?.slice(0, 10) ?? "?"})` : "Fact cards: off (no snapshot at facts.file)");

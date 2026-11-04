@@ -35,8 +35,21 @@ export function briefNotes(b: Brief): string[] {
   const out: string[] = [];
   if (b.who) out.push(`On this call: ${b.who}`);
   if (b.goal) out.push(`Goal of the call: ${b.goal}`);
-  for (const n of b.notes ?? []) out.push(n);
+  for (const n of b.notes ?? []) if (!/^Prepared cards:/i.test(n)) out.push(n);   // a file path is not a note for the AI
   return out;
+}
+
+/** The plan's call kind ("Call kind: interview" note, written by the Plan store), lower case, or "". */
+export function briefKind(b: Brief | undefined): string {
+  const n = (b?.notes ?? []).find((x) => /^Call kind:\s*/i.test(x));
+  return n ? n.replace(/^Call kind:\s*/i, "").trim().toLowerCase() : "";
+}
+/** A job interview plan: kind "interview" (or "ראיון"). Wingman then answers as the candidate's coach (reflex.ts INTERVIEW block). */
+export const isInterview = (b: Brief | undefined): boolean => /^(interview|job interview|ראיון|ראיון עבודה)$/.test(briefKind(b));
+/** The plan's own prepared cards: a "Prepared cards: <file.yaml>" note (bank format). They replace the agency bank for that call. */
+export function briefCardsFile(b: Brief | undefined): string | undefined {
+  const n = (b?.notes ?? []).find((x) => /^Prepared cards:\s*\S/i.test(x));
+  return n ? n.replace(/^Prepared cards:\s*/i, "").trim() : undefined;
 }
 
 /**

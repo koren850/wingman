@@ -94,6 +94,7 @@ or
 {"verdict":"fix","said":"<short quote of what Dan said>","correct":"<the correct fact, Hebrew, at most 120 characters, addressed to Dan in the masculine>","source":"<at most 80 characters: where in the background>"}
 Rules:
 - "fix" ONLY when the background clearly states something different from what Dan said (a number, a name, a count, a technology, whether something is included or in scope).
+- The sentence is speech-to-text output: a misspelled or misheard word or name (Dan's own name included, e.g. "Dann", "Corn") is never a fix.
 - Opinions, estimates, small talk, questions and anything the background does not mention: {"verdict":"ok"}. When unsure: ok.
 - The correction states the fact from the background in plain Hebrew; do not add advice. Plain text, no markdown.`;
 

@@ -554,7 +554,7 @@ function tFollowup(pane, d) {
   const cs = capturesSection(d), fs = frameSection(d); if (cs || fs) box.append(h("div", { class: "fu-main", style: false }, fs, cs));
 }
 /** What the call turned out to be about, and how much of its checklist was covered (6/8, with the missed items). */
-const KIND_EN = { client: "Client", support: "Support", vendor: "Vendor", team: "Team", consult: "Consult", personal: "Personal", other: "Other" };
+const KIND_EN = { client: "Client", support: "Support", vendor: "Vendor", team: "Team", consult: "Consult", personal: "Personal", interview: "Interview", other: "Other" };
 function frameSection(d) {
   const cf = d.callFrame; if (!cf) return null;
   const f = cf.frame, all = cf.total > 0 && cf.done === cf.total;

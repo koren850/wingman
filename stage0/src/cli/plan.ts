@@ -74,7 +74,8 @@ async function setPlan(ctx: Ctx, args: string[], forceNew: boolean): Promise<Res
     note: { type: "string", multiple: true }, "add-note": { type: "string", multiple: true }, must: { type: "string", multiple: true }, "add-must": { type: "string", multiple: true },
     fresh: { type: "boolean" },
   });
-  if (values.kind && !(KINDS as readonly string[]).includes(values.kind)) throw usage(`--kind must be one of: ${KINDS.join(", ")}`);
+  const PLAN_KINDS = [...KINDS, "interview"];   // interview: a plan-only kind (src/brief.ts isInterview); the call frame never guesses it
+  if (values.kind && !PLAN_KINDS.includes(values.kind)) throw usage(`--kind must be one of: ${PLAN_KINDS.join(", ")}`);
   const wantNew = forceNew || !!values.new;
   if (wantNew && values.id) throw usage("--new makes a new meeting; --id edits an existing one. Not both.");
   const s = store(ctx);

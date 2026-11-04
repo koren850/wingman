@@ -106,6 +106,8 @@ function poll() {
     if (c.type === "capture") { lastCapture = c.value; capList = pushCapture(capList, c.value); win.webContents.send("capture", c); }
     else if (c.type === "ask") win.webContents.send("ask", { on: !!c.on, until: Number(c.until) || 0 });
     else if (c.type === "speaker") { if (Number.isInteger(c.spk)) win.webContents.send("speaker", { spk: c.spk, name: typeof c.name === "string" ? c.name.slice(0, 40) : "" }); }
+    else if (c.type === "flow") win.webContents.send("flow", { state: c.state === "internal" ? "internal" : "open", who: Array.isArray(c.who) ? c.who.filter((w) => typeof w === "string").slice(0, 6).map((w) => w.slice(0, 40)) : [], topic: typeof c.topic === "string" ? c.topic.slice(0, 160) : "" });
+    else if (c.type === "addressed") win.webContents.send("addressed", { who: typeof c.who === "string" ? c.who.slice(0, 40) : "", text: typeof c.text === "string" ? c.text.slice(0, 200) : "" });
     else if (c.type === "frame") { if (c.frame && typeof c.frame === "object") win.webContents.send("frame", c.frame); }
     else if (!c.hidden) win.webContents.send("card", c);
   }

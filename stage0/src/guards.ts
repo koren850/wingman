@@ -72,6 +72,13 @@ export function guard(text: string): GuardResult {
   return { ok: true };
 }
 
+/** Interview answers: price and promise only. Dates and durations are the candidate's own facts there, not commitments. */
+export function guardInterview(text: string): GuardResult {
+  for (const r of PRICE) if (r.test(text)) return { ok: false, rule: "price" };
+  for (const r of PROMISE) if (r.test(text)) return { ok: false, rule: "promise" };
+  return { ok: true };
+}
+
 /** Strip anything that is not plain text (cards are text only). Keep bidi isolates/marks so mixed Hebrew/English lines still render right. */
 export function sanitize(text: string): string {
   return text

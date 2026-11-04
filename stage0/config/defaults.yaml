@@ -142,6 +142,15 @@ tips:
   wrapUpAfterMin: 20       # missed must-cover items are nudged once at a wrap-up phrase or after this many minutes
   timeoutMs: 10000         # abort a tip call that takes longer than this (ms); no tip that time
 
+# ---- Flow: several people on the other side (needs stt.speakers) ----
+flow:
+  enabled: true            # "they're talking among themselves" line, cards held while they do, an alert when they turn to you
+  holdCards: true          # while they talk among themselves, answer cards wait (price/date cards and your-name questions still show)
+  topic: true              # one short AI line: who is discussing what (every topicEveryMs while it lasts)
+  model: "anthropic:claude-haiku-5-5"   # model for the topic line; must have a price in budget.prices.llm
+  topicEveryMs: 45000      # at most this often
+  timeoutMs: 6000          # abort a topic call that takes longer than this (ms)
+
 # ---- Self-check: cards about what YOU said (red = correction against the meeting background, amber = careful) ----
 selfCheck:
   enabled: true            # false = no self-check cards at all

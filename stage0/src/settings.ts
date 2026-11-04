@@ -61,6 +61,7 @@ export const schema = z.strictObject({
   summary: z.strictObject({ enabled: z.boolean(), model: modelRef, minWords: int(0, 100000), timeoutMs: int(2000, 120000) }),
   reminders: z.strictObject({ enabled: z.boolean(), firstAfterMin: int(1, 120), everyMin: int(1, 120) }),
   frame: z.strictObject({ enabled: z.boolean(), model: modelRef, everyMs: int(10000, 600000), minNewWords: int(5, 500), windowMin: int(1, 10), timeoutMs: int(2000, 30000) }),
+  flow: z.strictObject({ enabled: z.boolean(), holdCards: z.boolean(), topic: z.boolean(), model: modelRef, topicEveryMs: int(15000, 600000), timeoutMs: int(2000, 30000) }),
   selfCheck: z.strictObject({ enabled: z.boolean(), careful: z.boolean(), fix: z.boolean(), minGapMs: int(1000, 120000), timeoutMs: int(2000, 30000) }),
   tips: z.strictObject({ enabled: z.boolean(), model: modelRef, minGapMs: int(10000, 1800000), afterAnswerMs: int(0, 120000), talkRatio: z.boolean(), wrapUpAfterMin: int(5, 240), timeoutMs: int(2000, 30000) }),
   attachments: z.strictObject({ maxChars: int(0, 40000) }),

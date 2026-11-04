@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld("wingman", {
   onEnded: (fn) => ipcRenderer.on("ended", () => fn()),
   onReset: (fn) => ipcRenderer.on("reset", () => fn()),
   onFrame: (fn) => ipcRenderer.on("frame", (_e, f) => fn(f)),
+  onFlow: (fn) => ipcRenderer.on("flow", (_e, f) => fn(f)),
+  onAddressed: (fn) => ipcRenderer.on("addressed", (_e, a) => fn(a)),
   onChecklist: (fn) => ipcRenderer.on("checklist", () => fn()),
   onClear: (fn) => ipcRenderer.on("clear", () => fn()),
   onAsk: (fn) => ipcRenderer.on("ask", (_e, a) => fn(a)),

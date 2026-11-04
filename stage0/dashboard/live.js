@@ -5,7 +5,7 @@
 // LV: feed = in-memory WingmanLive feed; auto = follow the newest line; els = DOM nodes by key ("l<n>" line, "c<id>" card) so a redraw only adds, moves or removes;
 // lastSeen = last line number seen by the user (for the "N new" count); hydrating = call id whose snapshot is being fetched.
 const LV = { feed: WingmanLive.create(), callId: "", auto: true, els: new Map(), raf: 0, lastSeen: 0, hydrating: "" };
-const LV_KIND = { client: "Client", support: "Support", vendor: "Vendor", team: "Team", consult: "Consult", personal: "Personal", other: "Other" };
+const LV_KIND = { client: "Client", support: "Support", vendor: "Vendor", team: "Team", consult: "Consult", personal: "Personal", interview: "Interview", other: "Other" };
 
 /** Take one payload from main ("live:update" or a liveGet snapshot): { callId, reset, lines, cards, frame }. Checked again here, because the page does not trust the channel blindly. reset clears first. Redraw is batched to one animation frame. */
 function liveApply(p) {
