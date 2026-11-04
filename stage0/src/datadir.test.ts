@@ -109,6 +109,13 @@ test("migration: an empty new folder and a tray.log alone count as no data", () 
   assert.ok(existsSync(join(root, "calls", "01AAA", "call.json")));
 });
 
+test("migration: Electron's own files in the data folder (it is Electron's userData too) do not count as data", () => {
+  const o = oldLayout(), root = join(tmp(), "Wingman");
+  put(join(root, "Cache", "data_0"), "x"); put(join(root, "Local Storage", "leveldb", "000003.log"), "x"); put(join(root, "Preferences"), "{}");
+  assert.equal(run(o, root).status, "migrated");
+  assert.ok(existsSync(join(root, "calls", "01AAA", "call.json")) && existsSync(join(root, "Preferences")));
+});
+
 test("migration: nothing old means nothing happens (fresh install, no marker)", () => {
   const stage0 = tmp(), root = join(tmp(), "Wingman");
   const r = migrate.migrateUserData({ dataDir: root, oldCalls: join(stage0, "calls"), oldPrivate: join(stage0, "data", "private"), log: () => {} });

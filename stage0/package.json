@@ -1,10 +1,14 @@
 {
   "name": "wingman-stage0",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
-  "description": "Wingman Stage 0 dogfood tool (throwaway-grade)",
+  "description": "Wingman: a live meeting assistant for macOS (menu-bar app plus engine, Hebrew first). Listens locally, shows short answer cards on a second screen.",
   "license": "MIT",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "start": "tsx src/run.ts",
     "overlay": "tsx src/overlay.ts",
@@ -27,7 +31,9 @@
     "wingman": "tsx src/cli/index.ts",
     "qa": "tsx qa/run-qa.ts",
     "make-app": "scripts/make-app.sh",
-    "postinstall": "scripts/make-app.sh || true"
+    "postinstall": "node scripts/postinstall.cjs",
+    "preinstall": "node scripts/check-env.cjs",
+    "install-app": "scripts/make-app.sh --install"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.94",

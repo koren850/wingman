@@ -25,9 +25,11 @@ function walk(dir, skipTop = () => false, rel = "", out = []) {
   return out;
 }
 
-/** Does the new folder already hold user data? Our own markers and the tray log do not count. */
-function hasUserData(root) {
-  return walk(root, (n) => n === MARKER || n === PENDING).some((f) => f.rel !== path.join("calls", "tray.log") && !path.basename(f.rel).startsWith(".DS_Store"));
+/** Does the data folder already hold user data? Only the entries Wingman itself keeps count (`names`: calls, briefs, entities.json...):
+ *  the folder is also Electron's own userData folder (Cache, Local Storage, ...), and our markers and the tray log are not data. */
+function hasUserData(root, names = ["calls", "briefs", "entities.json"]) {
+  return names.some((n) => walk(path.join(root, n)).some((f) => !(n === "calls" && f.rel === "tray.log") && !f.rel.startsWith(".DS_Store"))) ||
+    names.some((n) => { try { return fs.lstatSync(path.join(root, n)).isFile(); } catch { return false; } });
 }
 
 function mkdir700(dir) { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); try { fs.chmodSync(dir, 0o700); } catch { /* not ours to chmod */ } }
@@ -56,7 +58,8 @@ function migrateUserData(o) {
   ];
   if (!plan.length) return { status: "none", files: 0, bytes: 0, copied: 0 };
   const resuming = fs.existsSync(pending);
-  if (!resuming && fs.existsSync(root) && hasUserData(root)) {
+  const tops = ["calls", ...new Set(plan.filter((f) => f.dst.startsWith(root + path.sep) && !f.dst.startsWith(newCalls + path.sep)).map((f) => path.relative(root, f.dst).split(path.sep)[0]))];
+  if (!resuming && fs.existsSync(root) && hasUserData(root, tops)) {
     // The new folder is already in use: never mix. Remember the decision so this check (and the message) happens once.
     mkdir700(root);
     fs.writeFileSync(marker, JSON.stringify({ at: new Date().toISOString(), status: "skipped", reason: "the data folder already had data" }, null, 2) + "\n", { mode: 0o600 });
