@@ -10,7 +10,7 @@ import { loadKeysWithSources, KEYS_FILE, KEY_VARS, DATA, CALLS, type KeyName } f
 import { SystemSource, MicSource, peakOf } from "./audio.ts";
 import { loadBank } from "./bank.ts";
 import { readPack, packPath, EXAMPLE_PACK } from "./pack.ts";
-import { getProfile, profileFile } from "./profile.ts";
+import { checkProfile, profileFile } from "./profile.ts";
 import { buildPrefix, runReflex } from "./reflex.ts";
 import { loadSettings, SettingsError, formatSettingsError, expandHome, USER_SETTINGS_FILE, type Settings } from "./settings.ts";
 import { ModelRegistry, parseModelRef, ConfigError, LLM_PROVIDERS } from "./providers/llm.ts";
@@ -83,7 +83,7 @@ try {
   ids.size === bank.length && bank.length > 0 ? ok(`Prepared cards load: ${bank.length} cards, unique ids`) : bad("Prepared cards: ids are not unique or the list is empty");
 } catch (e) { bad(`Prepared cards failed to load: ${(e as Error).message}`); }
 try {
-  const P = getProfile();
+  const P = checkProfile();
   P.name || P.spellings.length ? ok(`profile: ${P.name || P.spellings[0]} (address: ${P.address})${packPath("bank.yaml")?.startsWith(EXAMPLE_PACK) ? ", example pack in use" : ""}`)
     : warn("no user profile (name detection and the Hebrew address form are off)", `wingman profile set --name <name> --address male|female|neutral  (${profileFile()})`);
 } catch (e) { bad(`profile: ${(e as Error).message}`, "wingman profile set ... or fix the file"); }
@@ -193,8 +193,10 @@ for (const [i, id] of sttIds.entries()) {
 if (!S.run.noAi) {
   section("LLM reflex (primary and fallbacks; the primary is called twice to check the prompt cache)");
   // The primary model is called twice with the same prefix: the second call should read the prompt cache (checked via cache-read tokens).
-  const prefix = buildPrefix(readPack("house-style.md"), loadBank());
-  for (const [mi, ref] of llmRefs.entries()) {
+  let prefix!: ReturnType<typeof buildPrefix>;
+  let prefixOk = true;
+  try { prefix = buildPrefix(readPack("house-style.md"), loadBank()); } catch (e) { prefixOk = false; bad(`The reflex prompt could not be built: ${(e as Error).message}`, "fix the profile, answer bank or house style file named above, then run the check again"); }
+  for (const [mi, ref] of prefixOk ? llmRefs.entries() : [] as [number, typeof llmRefs[number]][]) {
     for (const i of mi === 0 && registry.capabilities(ref).cache ? [1, 2] : [1]) {
       const t0 = Date.now(); let first = 0, tag = "";
       try {

@@ -2,11 +2,11 @@
 // Offline: temp folders only; the real ~/.config/wingman is never read (WINGMAN_PROFILE_FILE / WINGMAN_PACK_DIR point elsewhere).
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, readFileSync, statSync, existsSync, utimesSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, statSync, existsSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  parseProfile, getProfile, setProfile, saveProfile, persona, nameRegex, hebrewAddressRule, userName, isMeLabel, genderNote, ProfileError, EMPTY_PROFILE, profileFile, USER_PROFILE_FILE,
+  parseProfile, getProfile, checkProfile, setProfile, saveProfile, persona, nameRegex, hebrewAddressRule, userName, isMeLabel, genderNote, ProfileError, EMPTY_PROFILE, profileFile, USER_PROFILE_FILE,
 } from "./profile.ts";
 import { packPath, readPack, packDirs, EXAMPLE_PACK, USER_PACK, parseTopics, loadTopics } from "./pack.ts";
 import { main } from "./cli/index.ts";
@@ -247,4 +247,39 @@ test("repo guard: no tracked source, data or config file contains a word from th
     text.split("\n").forEach((l, i) => { if (re.test(l) || re.test(rel)) hits.push(`${rel}:${i + 1}`); });
   }
   assert.deepEqual(hits.slice(0, 20), [], "personal words in the repo");
+});
+
+test("profile: a file that becomes invalid mid-call keeps the last good profile; only checkProfile (startup) throws", () => {
+  const dir = tmp("badreread"), f = join(dir, "profile.yaml"), env = { WINGMAN_PROFILE_FILE: f };
+  saveProfile({ ...EMPTY_PROFILE, name: "Noa" }, f);
+  assert.equal(getProfile(env).name, "Noa");
+  writeFileSync(f, "name: [unclosed");
+  const later = new Date(Date.now() + 8000); utimesSync(f, later, later);
+  assert.doesNotThrow(() => getProfile(env));
+  assert.equal(getProfile(env).name, "Noa", "last good profile is kept");
+  assert.throws(() => checkProfile(env), ProfileError);
+  // a broken file with no good profile before it: neutral defaults, no throw
+  const g = join(dir, "other.yaml"); writeFileSync(g, "nmae: x");
+  assert.deepEqual(getProfile({ WINGMAN_PROFILE_FILE: g }), EMPTY_PROFILE);
+  assert.equal(checkProfile({ WINGMAN_PROFILE_FILE: join(dir, "absent.yaml") }).name, "");
+  // fixing the file takes effect again
+  writeFileSync(f, "name: Ori\n"); const l2 = new Date(Date.now() + 16000); utimesSync(f, l2, l2);
+  assert.equal(getProfile(env).name, "Ori");
+});
+
+test("profile: saveProfile is atomic (tmp + rename, no leftovers, mode 600) and a failed save keeps the old file", () => {
+  const dir = tmp("atomic"), f = join(dir, "profile.yaml");
+  saveProfile({ ...EMPTY_PROFILE, name: "Noa" }, f);
+  saveProfile({ ...EMPTY_PROFILE, name: "Ori" }, f);
+  assert.deepEqual(readdirSync(dir), ["profile.yaml"]);
+  assert.equal(statSync(f).mode & 0o777, 0o600);
+  assert.throws(() => saveProfile({ ...EMPTY_PROFILE, name: "x", address: "robot" as any }, f));
+  assert.match(readFileSync(f, "utf8"), /name: Ori/);
+});
+
+test("profile: timezone must be a real IANA zone", () => {
+  assert.equal(parseProfile("timezone: Asia/Jerusalem").timezone, "Asia/Jerusalem");
+  assert.equal(parseProfile("timezone: ''").timezone, "");
+  assert.throws(() => parseProfile("timezone: Mars/Base"), ProfileError);
+  assert.throws(() => parseProfile("timezone: nonsense"), /time zone/);
 });

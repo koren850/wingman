@@ -1,7 +1,7 @@
 // The user profile: who Wingman is helping. Lives in the user's own config (~/.config/wingman/profile.yaml, override with
 // WINGMAN_PROFILE_FILE), never in the repo. A missing file means neutral defaults: no name, prompts say "the user".
 // Prompts get the persona() text; the detector and flow mode get nameRegex() (the user addressed by name).
-import { readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, statSync, renameSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import YAML from "yaml";
@@ -13,6 +13,11 @@ export const profileFile = (env: NodeJS.ProcessEnv = process.env) => env.WINGMAN
 export const ADDRESS = ["male", "female", "neutral"] as const;
 export type Address = (typeof ADDRESS)[number];
 
+/** Empty (= this machine's zone) or an IANA name that Intl accepts. */
+export function validTimezone(tz: string): boolean {
+  if (!tz) return true;
+  try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return true; } catch { return false; }
+}
 const text = (max: number) => z.string().max(max).transform((s) => s.trim());
 /** Strict like settings.ts: an unknown key in the file is an error, so a typo does not silently do nothing. */
 export const profileSchema = z.strictObject({
@@ -27,7 +32,7 @@ export const profileSchema = z.strictObject({
   /** the user's own business (free text, optional): makes "client" and "support" calls meaningful */
   business: text(1500).default(""),
   /** IANA time zone used for "what time is it" answers; empty = this machine's time zone */
-  timezone: text(60).default(""),
+  timezone: text(60).refine(validTimezone, { message: "not a time zone this system knows (use a name like Asia/Jerusalem, or leave empty)" }).default(""),
 });
 export type Profile = z.infer<typeof profileSchema>;
 export const EMPTY_PROFILE: Profile = profileSchema.parse({});
@@ -52,8 +57,11 @@ let cache: { file: string; mtime: number; profile: Profile } | undefined;
 export function setProfile(p: Partial<Profile> | undefined) { override = p ? profileSchema.parse(p) : undefined; }
 
 /**
- * The current profile: the file, re-read when its modification time changes (so `wingman profile set` takes effect in a running call
- * after the next prompt is built). A missing or unreadable file gives neutral defaults; an INVALID file throws ProfileError.
+ * The current profile: the file, re-read when its modification time changes (so `wingman profile set` takes effect after the next
+ * prompt is built; the reflex prefix itself is built once per call, so a running call keeps the profile it started with for that part).
+ * A missing or unreadable file gives neutral defaults. An INVALID file (hand edit, half-written save) NEVER throws here: this is called on
+ * hot paths during a call, so the last good profile is kept (or the neutral default if there never was one). The explicit startup check is
+ * checkProfile(), which throws ProfileError.
  */
 export function getProfile(env: NodeJS.ProcessEnv = process.env): Profile {
   if (override) return override;
@@ -62,9 +70,26 @@ export function getProfile(env: NodeJS.ProcessEnv = process.env): Profile {
   try { mtime = statSync(file).mtimeMs; } catch { return EMPTY_PROFILE; }
   if (cache && cache.file === file && cache.mtime === mtime) return cache.profile;
   let raw: string;
+  try { raw = readFileSync(file, "utf8"); } catch { return cache && cache.file === file ? cache.profile : EMPTY_PROFILE; }
+  try {
+    const profile = parseProfile(raw, file);
+    cache = { file, mtime, profile };
+    return profile;
+  } catch {
+    const keep = cache && cache.file === file ? cache.profile : EMPTY_PROFILE;
+    cache = { file, mtime, profile: keep };   // do not re-parse the same broken bytes on every prompt
+    return keep;
+  }
+}
+
+/** The strict read for startup and the doctor: throws ProfileError when the file exists but is invalid. A missing file is fine (neutral defaults). */
+export function checkProfile(env: NodeJS.ProcessEnv = process.env): Profile {
+  if (override) return override;
+  const file = profileFile(env);
+  let raw: string;
   try { raw = readFileSync(file, "utf8"); } catch { return EMPTY_PROFILE; }
   const profile = parseProfile(raw, file);
-  cache = { file, mtime, profile };
+  cache = { file, mtime: (() => { try { return statSync(file).mtimeMs; } catch { return 0; } })(), profile };
   return profile;
 }
 
@@ -73,7 +98,12 @@ export function saveProfile(p: Profile, file = profileFile()): void {
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
   const full = profileSchema.parse(p);
   const doc = Object.fromEntries(Object.entries(full).filter(([k, v]) => k === "name" || !(v === "" || (Array.isArray(v) && !v.length))));
-  writeFileSync(file, `# Wingman user profile: who Wingman is helping. Edit with: wingman profile set ...\n${YAML.stringify(doc)}`, { mode: 0o600 });
+  // Atomic: a call that reads the file at this moment sees the old or the new profile, never half of one.
+  const tmp = `${file}.tmp-${process.pid}-${Date.now().toString(36)}`;
+  try {
+    writeFileSync(tmp, `# Wingman user profile: who Wingman is helping. Edit with: wingman profile set ...\n${YAML.stringify(doc)}`, { mode: 0o600 });
+    renameSync(tmp, file);
+  } catch (e) { try { rmSync(tmp, { force: true }); } catch { /* gone */ } throw e; }
   cache = undefined;
 }
 

@@ -38,7 +38,7 @@ import { EntitySpotter, loadSnapshot, type Fact } from "./entities.ts";
 import { takeNotes } from "./notes.ts";
 import { loadBrief, briefNotes, covered, isInterview, briefCardsFile, type Brief } from "./brief.ts";
 import { readPack } from "./pack.ts";
-import { getProfile } from "./profile.ts";
+import { getProfile, checkProfile } from "./profile.ts";
 import { loadBank, matchBank, matchBankFor, priceOffTopic, stallCard, stallSay, modelMayOverrideBank, STALL_TIER, type BankCard } from "./bank.ts";
 import { evalMath, looksArithmetic } from "./calc.ts";
 import { checkScript } from "./lang.ts";
@@ -73,7 +73,7 @@ import { createInterface } from "node:readline";
 
 const args = process.argv.slice(2);
 const { settings: S, profile } = loadSettingsOrExit(args);
-try { getProfile(); } catch (e) { console.error(`Wingman: ${(e as Error).message}\nFix ~/.config/wingman/profile.yaml (or run: wingman profile set ...).`); process.exit(2); }   // an invalid user profile stops the call before it starts
+try { checkProfile(); } catch (e) { console.error(`Wingman: ${(e as Error).message}\nFix ~/.config/wingman/profile.yaml (or run: wingman profile set ...).`); process.exit(2); }   // an invalid user profile stops the call before it starts
 const fileArg = S.run.file ?? undefined;
 const noAi = S.run.noAi;
 const discard = S.run.discard;
