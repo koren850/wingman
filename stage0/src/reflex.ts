@@ -12,7 +12,7 @@ import { classifyFinish, classifyLlmError, ProviderError } from "./providers/err
 /** True when a model say-line contains one of the reflex control words (SKIP / STALL / BANK / ANS) as a word (3 Nov call: "... לכן SKIP עדיף כרגע"). */
 export function leakedTag(say: string): boolean {
   // also the model talking about its own job instead of answering ("The say-line is about... the transcript garbled RAG")
-  return /(^|[^A-Za-z])(SKIP|STALL|BANK|ANS)(?![A-Za-z])/.test(say) || /\bsay-line\b|\btranscript\s+(garbled|misheard)|\bgarbled\b/i.test(say);
+  return /(^|[^A-Za-z])(SKIP|STALL|BANK|ANS)(?![A-Za-z])/.test(say) || /\bsay-line\b|\btranscript\s+(garbled|misheard)|\bgarbled\b|\bbank card\b/i.test(say);
 }
 
 export type Tag = { kind: "SKIP" | "STALL" | "ANS" | "BANK"; bankId?: string };
@@ -92,6 +92,7 @@ export type ReflexRun = {
   frame?: string; weakBank?: string;
   /** not a client / support call: BANK and STALL are not for this question (the code ignores them too); the model is told so */
   noAgency?: boolean;
+  anyLanguage?: boolean;   // interview: an answer in the other language is still useful, never dropped for language
   /** "me" requests: the user is alone on the call (nobody else has spoken): every question asked is for the assistant */
   solo?: boolean;
   /** "me" requests: the clock the model reads (default: now) */
@@ -213,7 +214,7 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
         if (!sayDone && p.say) h.onSay(p.say);
         if (!sayDone && p.sayComplete && p.say) {
           sayDone = true;
-          if (!me && kind === "ANS" && wrongLanguage(o.question, p.say)) { discard("language"); continue; }
+          if (!me && !o.anyLanguage && kind === "ANS" && wrongLanguage(o.question, p.say)) { discard("language"); continue; }
           h.onSayComplete(p.say);
         }
         if (p.facts.length && !me) h.onFacts(p.facts);
@@ -231,7 +232,7 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
   if (!discarded && laterSkip(buf.split("\n").map((l) => l.trim()).filter(Boolean))) discard("late-skip");
   if (!discarded && kind !== "BANK") {
     if (!sayDone && fin.say) {
-      if (!me && kind === "ANS" && wrongLanguage(o.question, fin.say)) discard("language"); else h.onSayComplete(fin.say);
+      if (!me && !o.anyLanguage && kind === "ANS" && wrongLanguage(o.question, fin.say)) discard("language"); else h.onSayComplete(fin.say);
     }
     if (fin.facts.length && !me && !discarded) h.onFacts(fin.facts);
   }

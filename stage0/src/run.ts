@@ -550,7 +550,7 @@ function onQuestion(r: SttResult, reason = "") {
   lat.reqAt = Date.now();
   runReflex({
     registry, models: usable, cfg: S.llm.reflex, prefix, transcript: recent, question: r.text, context: contextNotes, signal: ac.signal,
-    frame: frameText(tracker.current) || undefined, weakBank: weakBank ? hit!.card.id : undefined, noAgency,
+    frame: frameText(tracker.current) || undefined, weakBank: weakBank ? hit!.card.id : undefined, noAgency, anyLanguage: interview,
     onFail: (model, err) => llmFailed(model, err),
     onSwitch: (from, to, err) => { log.write("events", { type: "llm.switch", turnId, from, to, kind: err.kind }); console.log(`\n↪ AI ${from} -> ${to} (${describe(err)})`); },
     h: {
