@@ -156,3 +156,16 @@ test("loadCallData: uses context.snapshot, or rebuilds from events and cards", (
     d = loadCallData(dir); assert.deepEqual([d.contextNotes, d.aiNotes], [["A"], ["B"]]);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("loadCallData: a speaker renamed later relabels the earlier lines; the last rename wins; a cleared name goes back to the number", () => {
+  const dir = mkdtempSync(join(tmpdir(), "wingman-sum-"));
+  const jl = (f: string, rows: object[]) => writeFileSync(join(dir, f), rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  try {
+    jl("transcript.jsonl", [{ ch: "them", text: "a", spk: 1 }, { ch: "them", text: "b", spk: 2 }, { ch: "them", text: "c", spk: 1, name: "Dana" }, { ch: "me", text: "d" }, { ch: "them", text: "e", spk: 3, name: "Pierre" }, { ch: "them", text: "f", spk: 2 }]);
+    jl("cards.jsonl", [{ type: "speaker", spk: 1, name: "Dana", source: "intro" }, { type: "speaker", spk: 2, name: "Noa", source: "user" }, { type: "speaker", spk: 2, name: "Ori", source: "user" }, { type: "speaker", spk: 3, name: "", source: "user" }]);
+    const d = loadCallData(dir);
+    assert.deepEqual(d.lines.map((l) => l.who), ["Dana", "Ori", "Dana", undefined, "Speaker 3", "Ori"]);
+    jl("cards.jsonl", [{ id: "x", say: "no speaker rows" }]);
+    assert.deepEqual(loadCallData(dir).lines.map((l) => l.who), ["Speaker 1", "Speaker 2", "Dana", undefined, "Pierre", "Speaker 2"], "old calls without rows keep their stored names");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

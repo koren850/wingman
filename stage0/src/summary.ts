@@ -271,7 +271,15 @@ const readRows = (dir: string, f: string): any[] => {
 
 /** Rebuilds the model input of a saved call. Uses the context.snapshot event written at the end of the call when there is one. */
 export function loadCallData(dir: string): CallData {
-  const lines = readRows(dir, "transcript.jsonl").filter((r) => (r.ch === "me" || r.ch === "them") && typeof r.text === "string" && r.text.trim()).map((r) => ({ ch: r.ch as "me" | "them", text: String(r.text), ...(r.ch === "them" && (r.name || typeof r.spk === "number") ? { who: typeof r.name === "string" && r.name ? r.name : `Speaker ${r.spk}` } : {}) }));
+  // A voice named (or renamed) during the call: the LAST "speaker" row in cards.jsonl decides its name for every line, early ones included.
+  const named = new Map<number, string>();
+  for (const c of readRows(dir, "cards.jsonl")) if (c.type === "speaker" && typeof c.spk === "number") named.set(c.spk, typeof c.name === "string" ? c.name.trim() : "");
+  const whoOf = (r: any): string | undefined => {
+    if (r.ch !== "them") return undefined;
+    if (typeof r.spk === "number") return (named.has(r.spk) ? named.get(r.spk) : typeof r.name === "string" ? r.name : "") || `Speaker ${r.spk}`;
+    return typeof r.name === "string" && r.name ? r.name : undefined;
+  };
+  const lines = readRows(dir, "transcript.jsonl").filter((r) => (r.ch === "me" || r.ch === "them") && typeof r.text === "string" && r.text.trim()).map((r) => { const who = whoOf(r); return { ch: r.ch as "me" | "them", text: String(r.text), ...(who ? { who } : {}) }; });
   const events = readRows(dir, "events.jsonl"), cards = readRows(dir, "cards.jsonl");
   const frame = parseFrame(events.filter((e) => e.type === "frame").at(-1)?.frame);
   const snap = events.filter((e) => e.type === "context.snapshot").at(-1);

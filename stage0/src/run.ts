@@ -153,7 +153,7 @@ function nameSpeaker(spk: number, name: string, source: "intro" | "user") {
   log.write("events", { type: "speaker.name", spk, source, named: !!clean });
   console.log(`\n[🗣 speaker ${spk}] ${clean || "(cleared)"} (${source})`);
 }
-const lineOf = (l: { ch: Channel; text: string; who?: SpeakerInfo }) => `${lineLabel(l.ch, l.who)}: ${l.text}`;
+const lineOf = (l: { ch: Channel; text: string; who?: SpeakerInfo }) => `${lineLabel(l.ch, speakers.current(l.who))}: ${l.text}`;   // the voice's name NOW, so a rename also fixes its earlier lines
 // Flow (several people on the other side): their own discussion, its topic line, and the moment they turn to the user.
 const flowOn = S.flow.enabled && S.stt.speakers;
 const flow = new FlowTracker();
@@ -951,7 +951,7 @@ function livePartial(r: SttResult) {
   if (now - (lastPartialAt[r.channel] ?? 0) < 250) return;
   if (S.stt.dropForeignScript && !checkScript(r.text).ok) return;
   lastPartialAt[r.channel] = now;
-  const who = r.channel === "them" && S.stt.speakers ? speakers.of(r.words) : undefined;
+  const who = r.channel === "them" && S.stt.speakers ? speakers.peek(r.words) : undefined;   // peek: an interim id must not take a Speaker number
   log.write("live", { ch: r.channel, text: r.text.slice(-300), ...(who ? { spk: who.spk, ...(who.name ? { name: who.name } : {}) } : {}) });
 }
 
@@ -1108,7 +1108,7 @@ async function postCallSummary() {
     log.write("events", { type: "context.snapshot", contextNotes, aiNotes: liveNotes });   // lets `pnpm summary <id>` rebuild the same input later
     const r = await runSummary({
       dir: log.dir, callId: log.id, S, registry, cost, noAi, signal: summaryAbort.signal, discard: discard || discardNow, crashed,
-      data: { lines: transcript.map((l) => ({ ch: l.ch, text: l.text, ...(l.who ? { who: l.who.name ?? `Speaker ${l.who.spk}` } : {}) })), contextNotes, aiNotes: liveNotes, frame: tracker.current },
+      data: { lines: transcript.map((l) => ({ ch: l.ch, text: l.text, ...(l.who ? { who: speakers.name(l.who.spk) ?? `Speaker ${l.who.spk}` } : {}) })), contextNotes, aiNotes: liveNotes, frame: tracker.current },
       write: (stream, row) => log.write(stream, row),
     });
     if (summarySkipped) { status("summary", { ok: false, skipped: true }); return; }

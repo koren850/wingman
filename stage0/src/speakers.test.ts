@@ -57,3 +57,20 @@ test("introductions: 'this is Zoom', \"it's Friday\", \"I'm Israeli\" do not nam
   assert.equal(introName("זה זום", []), undefined);
   assert.equal(introName("It's Dana here, the rest of the team will join in a few minutes", ["Dana"]), "Dana", "attendee match still works in a longer line");
 });
+
+test("SpeakerBook.current gives a stored line the voice's name now; peek never allocates a number", async () => {
+  const { SpeakerBook } = await import("./speakers.ts");
+  const b = new SpeakerBook();
+  const w = (speaker: number) => [{ text: "x", start: 0, end: 1, speaker }] as any;
+  const first = b.of(w(7))!;
+  assert.deepEqual(first, { spk: 1 });
+  b.setName(1, "Dana", true);
+  assert.deepEqual(b.current(first), { spk: 1, name: "Dana" }, "an earlier line follows the rename");
+  b.setName(1, "");
+  assert.deepEqual(b.current(first), { spk: 1 }); assert.equal(b.current(undefined), undefined);
+  // a transient interim id: peek answers without taking number 2
+  assert.equal(b.peek(w(99)), undefined);
+  assert.equal(b.count, 1);
+  assert.deepEqual(b.peek(w(7)), { spk: 1 });
+  assert.deepEqual(b.of(w(55)), { spk: 2 }, "the next real new voice still gets number 2");
+});

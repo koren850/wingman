@@ -34,6 +34,14 @@ export class SpeakerBook {
     const name = this.names.get(spk);
     return name ? { spk, name } : { spk };
   }
+  /** Like of(), but for interim (partial) words: a raw id that has no number yet gives undefined and takes none, so a transient diarization id never uses up a Speaker number. */
+  peek(words: Word[]): SpeakerInfo | undefined {
+    const raw = dominantSpeaker(words);
+    const spk = raw === undefined ? undefined : this.nums.get(raw);
+    if (spk === undefined) return undefined;
+    const name = this.names.get(spk);
+    return name ? { spk, name } : { spk };
+  }
   /** Name call-local speaker `spk` (empty name clears it). */
   setName(spk: number, name: string, byUser = false) {
     const n = name.trim().slice(0, 40);
@@ -41,6 +49,12 @@ export class SpeakerBook {
     if (byUser) this.manual.add(spk);
   }
   name(spk: number): string | undefined { return this.names.get(spk); }
+  /** A line's speaker info with the CURRENT name: a voice renamed (or introduced) later also relabels its earlier lines for the models and the summary. */
+  current(w: SpeakerInfo | undefined): SpeakerInfo | undefined {
+    if (!w) return undefined;
+    const name = this.names.get(w.spk);
+    return name ? { spk: w.spk, name } : { spk: w.spk };
+  }
   isManual(spk: number): boolean { return this.manual.has(spk); }
   get count(): number { return this.nums.size; }
 }
