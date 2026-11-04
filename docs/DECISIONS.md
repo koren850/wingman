@@ -27,7 +27,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 | [19](#adr-19-wingman-understands-any-call-the-call-frame) | Wingman understands any call (the call frame) |
 | [20](#adr-20-tips-are-rare-and-guarded) | Tips are rare and guarded |
 | [21](#adr-21-api-keys-in-the-macos-keychain) | API keys in the macOS Keychain |
-| [22](#adr-22-plain-files-no-database-no-audio) | Plain files, no database, audio never saved |
+| [22](#adr-22-plain-files-no-database-audio-never-saved) | Plain files, no database, audio never saved |
 | [23](#adr-23-swappable-providers-behind-settings) | Swappable providers behind settings |
 | [24](#adr-24-a-degrade-ladder-and-cost-caps) | A degrade ladder and cost caps |
 | [25](#adr-25-an-electron-menu-bar-app) | An Electron menu-bar app |
@@ -37,11 +37,12 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 | [29](#adr-29-consent-step-removed-optional-ask-me-before-listening-starts) | Consent step removed, optional "Ask me before listening starts" |
 | [30](#adr-30-the-cli-over-an-owner-only-socket) | The CLI over an owner-only socket |
 | [31](#adr-31-stop-is-a-sequence-with-skip-summary) | Stop is a sequence, with "Skip summary" |
-| [32](#adr-32-synthetic-qa-instead-of-test-calls) | Synthetic QA instead of live test calls |
+| [32](#adr-32-synthetic-qa-instead-of-live-test-calls) | Synthetic QA instead of live test calls |
 | [33](#adr-33-a-practice-call-that-runs-offline) | A practice call that runs offline |
-| [34](#adr-34-user-visible-glossary) | A small user-visible glossary |
+| [34](#adr-34-a-small-user-visible-glossary) | A small user-visible glossary |
 | [35](#adr-35-scope-no-real-job-interviews-or-exams) | Scope: no real job interviews or exams |
 | [36](#adr-36-web-lookup-is-not-built) | Web lookup is not built (on purpose) |
+| [37](#adr-37-quick-call-and-several-prepared-meetings) | Quick call and several prepared meetings |
 
 ---
 
@@ -229,7 +230,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 **Context.** It is useful to see what you already know about a client or domain when it is mentioned. A live lookup in a client database during a call is slow, can fail, and could show the wrong client's data.
 
-**Decision.** Build a snapshot file before the call (`data/private/entities.json`, git-ignored) and match names and domains against it locally. No network lookups during the call. Short or generic aliases never match alone. A client spotted when no Plan names one is only proposed ("looks like X, confirm") before the AI may use its details.
+**Decision.** Build a snapshot file before the call (`entities.json` in the Wingman data folder, outside the repo) and match names and domains against it locally. No network lookups during the call. Short or generic aliases never match alone. A client spotted when no Plan names one is only proposed ("looks like X, confirm") before the AI may use its details.
 
 **Why.** Instant, offline, and the data scope is known. A false client match is a privacy mistake, so matching is conservative (the tool `pnpm factscheck` measures false hits on ordinary lines).
 
@@ -373,7 +374,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 **Context.** Starting a call when the system is not ready (no mic permission, no key) gives a bad call and a confusing error.
 
-**Decision.** When the last Readiness check says NOT READY, **Start call** warns and offers **Start anyway**. When the mic is blocked the check is a FAIL; when it is merely quiet it is a WARN.
+**Decision.** When the last Readiness check says NOT READY, **Start** warns and offers **Start anyway**. When the mic is blocked the check is a FAIL; when it is merely quiet it is a WARN.
 
 **Why.** Warn, but never block: Rule 3, nothing may stop the user from using the tool when they know what they are doing.
 
@@ -425,7 +426,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 **Why.** Repeatable, cheap (about $0.35 for the full set at the time), and it exercises the real services.
 
-**Alternatives.** Only manual tests; only mocked tests (we also have those: about 355).
+**Alternatives.** Only manual tests; only mocked tests (we also have those: 515).
 
 **Consequences.** Synthetic speech is cleaner than real speech, so accuracy numbers are optimistic. A real recording and the 40-sentence gold set are still needed.
 
@@ -457,13 +458,13 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 **Context.** A live AI helper can be misused to deceive an interviewer or an examiner. Several similar tools are built for that.
 
-**Decision.** Out of scope: real job interviews, exams or assessments. Wingman starts only when the user starts it; there is no always-on mode. The rule is social, not technical, and stated honestly: a label cannot stop misuse.
+**Decision.** Out of scope: real job interviews, exams or assessments where outside help is not allowed. Wingman starts only when the user starts it; there is no always-on mode. The rule is social, not technical, and stated honestly: a label cannot stop misuse.
 
 **Why.** Hidden AI help in those settings misleads people.
 
 **Alternatives.** Build for it (rejected).
 
-**Consequences.** Documentation and the readiness material say so. Interview mode (a prepared meeting of kind `interview`) is for coaching the user with their own prep notes; the rule above still applies to the user.
+**Consequences.** Documentation and the readiness material say so. Interview mode (a prepared meeting of kind `interview`) exists for practice and for coaching the user with their own prep notes, and it is documented that way. It is not a tool for a real interview or exam that forbids outside help. The rule above still applies to the user, and the user is responsible for following it.
 
 ## ADR 36: Web lookup is not built
 

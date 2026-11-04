@@ -2,6 +2,16 @@
 
 Milestones from the git history. Wingman has no versioned releases yet.
 
+## 2026-11-04
+
+- Installer: `./install.sh` (check, dry run, update, uninstall, purge), `wingman update` and `wingman uninstall`, a postinstall that downloads Electron and fails loudly, Node 24 and macOS 14.2 checks, Electron fuses turned off, permission texts in the app.
+- Guided first-run setup: keys, About you, permissions, microphone, screens, answer pack, readiness check, practice call.
+- User data moved to `~/Library/Application Support/Wingman` (a one-time copy, never a move). Pack lookup per file and Unicode whole-word topics. Profile validation (time zone) and a kept last-good profile.
+- Security: the app asks before a call started from the command line (`privacy.askBeforeCliStart`) and before a delete; `plan attach` refuses symlinks and secret folders; strict Content-Security-Policy for the answer window; short error text; nested prompt tags are stripped.
+- Reliability: audio sources restart by themselves; a relay socket and a disk-space check; sleep and wake recovery; stray errors are survived; a dead speech channel steps down to transcript-only.
+- Interview mode (a cards file per meeting, no Buy time lines, salary-only guard, no fact cards) and flow mode (their own discussion, the "turned to you" alert). English cards read left to right.
+- Docs: CONTRIBUTING, troubleshooting, pack format, CI workflow; numbers and paths corrected.
+
 ## 2026-11-03
 
 - Live meeting assistant: answers for you ("For you" cards, Ctrl+Opt+A, local math), the `wingman` CLI over an owner-only socket, API keys moved to the macOS Keychain.

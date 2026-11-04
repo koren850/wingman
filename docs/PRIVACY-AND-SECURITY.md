@@ -14,28 +14,38 @@ Wingman listens to calls. Read this before you use it on one.
 | Data | Goes to | When | Why |
 |---|---|---|---|
 | **Audio** of both channels (your microphone and the system audio, 16 kHz) | **Deepgram** (speech to text) | While a call is listening | Transcription. Also sent during the full Readiness check (a short test tone or silence) and the STT gate. |
-| **Text**: transcript lines, the Plan (who, goal, notes, must-cover items), background files you attach, the answer bank text, house style, the call frame, client facts matched in the call | **Anthropic** (the Claude model) | During a call (answers, frame, notes, tips, "is this for me" classifier) and after (summary and follow-up email) | AI answers and the summary |
+| **Text**: transcript lines, the Plan (who, goal, notes, must-cover items), background files you attach, the answer bank text, house style, your profile (name, "about", business), the call frame, client facts matched in the call | **Anthropic** (the Claude model) | During a call (answers, frame, notes, tips, "is this for me" classifier) and after (summary and follow-up email) | AI answers and the summary |
 | A tiny test request with your key | Deepgram, Anthropic | When you press Test on a key, or run the Readiness check | Checks the key works |
 
-Nothing else is sent. There is no telemetry, no analytics, no update check and no cloud account. The window and the answer window load no web content (strict Content-Security-Policy, navigation blocked). If you configure a fallback provider (Soniox, Gladia, or another model vendor), the same data goes to that vendor when it is used.
+Nothing else is sent. There is no telemetry, no analytics, no automatic update check and no cloud account. (`wingman update` runs only when you start it, and talks to your git remote.) The window and the answer window load no web content (strict Content-Security-Policy, navigation blocked). If you configure a fallback provider (Soniox, Gladia, or another model vendor), the same data goes to that vendor when it is used.
 
 Read your providers' own data-retention and training policies. Wingman does not control what they do with data they receive.
 
 ## What is stored on your Mac
 
+Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN_DATA_DIR`). It is outside the repo. Folders are mode 700, files mode 600.
+
 | What | Where | How long | Protection |
 |---|---|---|---|
-| Per call: `call.json`, `events.jsonl`, `transcript.jsonl`, `cards.jsonl`, `latency.jsonl`, `usage.jsonl`, `summary.json`, `tags.jsonl` | `stage0/calls/<id>/` | Until you delete it. The Readiness check lists calls older than `privacy.retentionDays` (30). | Owner-only file permissions (mode 600, umask 077). **Not encrypted**: use FileVault. |
+| Per call: `call.json`, `events.jsonl`, `transcript.jsonl`, `cards.jsonl`, `latency.jsonl`, `usage.jsonl`, `summary.json`, `tags.jsonl` | `<data folder>/calls/<id>/` | Until you delete it. The Readiness check lists calls older than `privacy.retentionDays` (30). | Owner-only file permissions (mode 600, umask 077). **Not encrypted**: use FileVault. |
 | **Audio** | Nowhere | Never saved (`privacy.storeAudio` must stay false) | n/a |
-| Plan and attached background files | `stage0/data/private/briefs/` | A Plan expires after 6 hours and is used for one call; attachments are deleted when the call reads them | Mode 600 |
-| Client snapshot (optional) | `stage0/data/private/entities.json` | Until you delete it | Git-ignored |
+| Prepared meetings and their background files | `<data folder>/briefs/` (files in `briefs/attachments/`) | A meeting with a time stays until 6 hours after it; one without a time stays 14 days after its last edit. A meeting a real call used is kept 7 days as a record, and its background files are deleted when it is used. | Mode 600 |
+| Client snapshot (optional) | `<data folder>/entities.json` | Until you delete it | Owner-only |
 | Your settings | `~/.config/wingman/settings.yaml` | Until you delete it | Mode 600; never contains keys |
-| Menu-bar app log | `stage0/calls/tray.log` | Until you delete it | Status lines only, no call content, no keys |
+| Your profile (name, "about", business, time zone) | `~/.config/wingman/profile.yaml` | Until you delete it | Never in the repo |
+| Your pack (answer cards, house style, word lists) | `~/.config/wingman/pack/` | Until you delete it | Never in the repo |
+| Menu-bar app log | `<data folder>/calls/tray.log` | Until you delete it | Status lines only, no call content, no keys |
 | API keys | macOS Keychain, service `wingman` | Until you remove them | Keychain |
+
+The data folder is also where Electron keeps its own files (cache, local storage). Wingman does not put call content there.
 
 Delete a call: **Stop and delete this call** (asks first), `wingman calls purge <id> --yes`, or `pnpm purge <id> | --older-than N | --all`. Deleting a call folder removes its transcript, cards and summary.
 
-Important: the transcript and the summary of a real call can contain personal data and client secrets. Keep them out of backups you do not control and do not share the `calls/` folder or the `qa/` output of real calls.
+Delete everything: `wingman uninstall --purge` removes the data folder, `~/.config/wingman` and the Keychain keys, after you type `DELETE`. Plain `wingman uninstall` removes only the app and the command link.
+
+**Older versions** kept calls in `stage0/calls/` and meetings in `stage0/data/private/` inside the repo folder. The first start of a newer version **copies** them into the data folder. It never moves or overwrites anything and writes a marker so it runs once. The old folders stay where they were: **delete them yourself** when you are happy with the copy, and check they are not in a backup you share.
+
+Important: the transcript and the summary of a real call can contain personal data and client secrets. Keep them out of backups you do not control and do not share the calls folder or the `qa/` output of real calls.
 
 ## API keys
 
@@ -53,13 +63,24 @@ The menu-bar app listens on `~/.config/wingman/run/control.sock`.
 
 - Directory mode 700, socket mode 600, and the owner is checked at start.
 - A Unix socket: no network listener, nothing reachable from other machines.
-- A fixed list of commands. Start and stop are rate-limited. Destructive commands need `--yes`.
-- Any process running as your macOS user can use it, so treat your user account as the trust boundary. Do not run untrusted code as your user.
+- A fixed list of commands. Starts are rate-limited. Destructive commands need `--yes`.
+- Any process running as your macOS user can reach the socket, so treat your user account as the trust boundary. Two things are asked of **you**, in a window in the app, because a script cannot click:
+  - **Starting a real call from the command line** (`privacy.askBeforeCliStart`, on by default). Without your click the start is refused. Practice calls never ask.
+  - **Stopping and deleting a call** (`wingman stop --delete`). It always asks.
+- `wingman plan attach --file` refuses symbolic links, key and `.env` style files, and the folders `~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.config/wingman` and `~/Library/Keychains`. A file outside your home folder needs `--force`.
 - Call content is private: the CLI help tells agents not to paste transcripts anywhere but your own terminal.
+
+## The app itself
+
+- The window and the answer window load no web content. They run with a strict Content-Security-Policy (the answer window's script is an external file, with no inline script), navigation is blocked, and the preload bridge exposes only a fixed list of commands.
+- The built `Wingman.app` has three Electron fuses turned off: `RunAsNode`, the `NODE_OPTIONS` variable and `--inspect`. So the app cannot be used as a general Node runtime or attached to a debugger from outside.
+- Errors are printed as short text, never as the raw error object, because it can contain prompts.
+- Text the AI reads (transcript, background, notes) is wrapped in tags. Any tag-like text inside it is stripped until none is left, so a spoken or pasted payload cannot close the wrapper.
+- Your profile file is checked on load. A bad file at start gives a clear error. A bad edit during a call keeps the last good profile.
 
 ## Git-ignored private folders
 
-These are in `.gitignore` and must never be committed: `stage0/calls/`, `stage0/data/private/`, `stage0/data/gold/recordings/`, `stage0/qa/out/`, `stage0/qa/cache/`, `stage0/qa/calls/`, `*.env`. The QA scenarios and the demo call use invented clients only. Before you publish a fork, check `git status` and your history for anything from a real call.
+These are in `.gitignore` and must never be committed: `stage0/calls/` and `stage0/data/private/` (the old in-repo locations and the optional denylist), `stage0/data/gold/recordings/`, `stage0/qa/out/`, `stage0/qa/cache/`, `stage0/qa/calls/`, `*.env`. Your real data is outside the repo, in the data folder and `~/.config/wingman`. The QA scenarios and the demo call use invented clients only. Before you publish a fork, check `git status` and your history for anything from a real call. A test (the repo guard) can check the tracked files against your own private word list: see [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
 
 ## The answer window and screen sharing
 
@@ -76,7 +97,7 @@ The answer window has content protection on, which asks macOS to hide it from sc
 - Call files are not encrypted at rest.
 - Content protection is untested with real screen-sharing tools.
 - Soniox, Gladia and non-Anthropic AI providers are tested with mocks only.
-- No code signing or notarisation: the app runs the repo's code.
+- No code signing or notarisation: the app runs the repo's code. It is only ad hoc signed.
 
 ## Reporting a problem
 
