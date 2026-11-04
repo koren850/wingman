@@ -72,10 +72,11 @@ export function guard(text: string): GuardResult {
   return { ok: true };
 }
 
-/** Interview answers: price and promise only. Dates and durations are the candidate's own facts there, not commitments. */
+/** Interview answers: technical talk about costs, rates, dates and durations is the candidate's own content there ("$0.10 per million
+ *  tokens", "2,100 tasks in 4 days"). Only a salary figure is blocked: salary comes from the prepared card, never from the model. */
+const SALARY = /(salary|compensation|gross|net pay|\bk\b|שכר|משכורת|ברוטו|נטו|אלף ש)/i;
 export function guardInterview(text: string): GuardResult {
-  for (const r of PRICE) if (r.test(text)) return { ok: false, rule: "price" };
-  for (const r of PROMISE) if (r.test(text)) return { ok: false, rule: "promise" };
+  if (/\d/.test(text) && SALARY.test(text)) return { ok: false, rule: "price" };
   return { ok: true };
 }
 
