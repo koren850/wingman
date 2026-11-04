@@ -1202,8 +1202,18 @@ function crash(kind: string, e: unknown) {
   setTimeout(() => process.exit(1), 5000).unref(); // never hang on a broken shutdown
   void shutdown();
 }
-process.on("uncaughtException", (e) => crash("uncaughtException", e));
-process.on("unhandledRejection", (e) => crash("unhandledRejection", e));
+// During a live call one stray error must not end the call: log it and keep listening. Only repeated errors (more than 3 in a
+// minute) or an error before the call is live end it.
+let strayErrors: number[] = [];
+function stray(kind: string, e: unknown) {
+  const now = Date.now();
+  strayErrors = [...strayErrors.filter((t) => now - t < 60_000), now];
+  if (!consented || shuttingDown || strayErrors.length > 3) { crash(kind, e); return; }
+  try { log.write("events", { type: "error.survived", kind, error: String((e as Error)?.stack ?? e).slice(0, 2000) }); } catch {}
+  console.error(`\n⚠️ ${kind} (call continues): ${String((e as Error)?.message ?? e).slice(0, 200)}`);
+}
+process.on("uncaughtException", (e) => stray("uncaughtException", e));
+process.on("unhandledRejection", (e) => stray("unhandledRejection", e));
 process.on("SIGINT", () => void shutdown());
 process.on("SIGTERM", () => void shutdown());
 process.on("SIGHUP", () => void shutdown());
