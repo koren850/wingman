@@ -524,7 +524,8 @@ function onQuestion(r: SttResult, reason = "") {
   let ended = false;
   const end = () => { if (!ended) { ended = true; sup.endQuestion(); } };
   const useAi = !noAi && !bankOnly && caps.llm && usable.length > 0;
-  const allowAns = S.reflex.allowAns && caps.ans;
+  // Interview: a slow AI (reduced rung) still answers; a late answer is worth more than none there. Spend cap / no AI still stop it (caps.llm).
+  const allowAns = S.reflex.allowAns && (caps.ans || (interview && caps.llm));
 
   let shown: Card | undefined, modelIgnored = false;
   if (hit) {
