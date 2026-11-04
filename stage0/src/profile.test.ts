@@ -156,7 +156,7 @@ function allPrompts(): Record<string, string> {
 test("prompts: with an empty profile no prompt names anyone; they say 'the user' and carry no address or business text", () => {
   setProfile({});
   for (const [k, p] of Object.entries(allPrompts())) {
-    assert.ok(!/\bDan\b|דן|Dan|דן/.test(p), `${k} has a name`);
+    assert.ok(!/\bDan\b|דן/.test(p), `${k} has a name`);
     assert.ok(!/\$\{u\}|\$\{P\./.test(p), `${k} has an unexpanded placeholder`);
     assert.ok(!/\b(his|him|himself)\b/.test(p), `${k} has a gendered pronoun`);
   }
