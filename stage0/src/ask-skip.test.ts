@@ -143,7 +143,7 @@ test("pages wired: Skip summary button + fixed IPC, Write summary in Calls, coun
   assert.match(read("dashboard/window.cjs"), /case "skipSummary": return \{ ok: controller\.skipSummary\(\) \}/);
   assert.match(read("dashboard/app.js"), /btn\("Write summary"/);
   assert.match(read("dashboard/window.cjs"), /handle\("calls:writeSummary"/);
-  assert.match(read("overlay/index.html"), /WingmanAsk\.askSecondsLeft/);
+  assert.match(read("overlay/app.js"), /WingmanAsk\.askSecondsLeft/);
   assert.match(read("overlay/index.html"), /src="\.\.\/shared\/ask\.js"/);
   assert.match(read("dashboard/index.html"), /src="\.\.\/shared\/ask\.js"/);
 });

@@ -57,6 +57,8 @@ function create() {
     icon: BRAND_ICON,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  win.webContents.on("will-navigate", (e) => e.preventDefault());
   if (!SNAP) { win.setAlwaysOnTop(true, "floating"); win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); }
   // Content protection is ON but UNTESTED with Zoom; the second screen is the real protection.
   // overlay.contentProtection: false (WINGMAN_SHOW_IN_CAPTURE=1) turns it off for the Zoom share test.

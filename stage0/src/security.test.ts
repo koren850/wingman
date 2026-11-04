@@ -27,3 +27,22 @@ test("background block: a file cannot close <background_files> with nested tags"
   assert.equal((b.match(/<\/?background_files>/g) || []).length, 2, "only the wrapper's own two tags remain");
   assert.equal(stripTag("a<x>b", "x"), "ab");
 });
+
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (f: string) => readFileSync(join(root, f), "utf8");
+
+test("overlay: preload bridge functions return nothing; page script is external; CSP allows no inline script; window open and navigation are blocked", () => {
+  const pre = read("overlay/preload.cjs");
+  assert.doesNotMatch(pre, /=>\s*ipcRenderer\.on\(/, "a bridge function must not return the ipcRenderer proxy");
+  assert.equal((pre.match(/=> \{ ipcRenderer\.on\(/g) || []).length, 18);
+  const html = read("overlay/index.html");
+  const csp = /Content-Security-Policy" content="([^"]*)"/.exec(html)![1];
+  assert.match(csp, /script-src 'self'(;|$)/); assert.doesNotMatch(csp.match(/script-src[^;]*/)![0], /unsafe-inline|unsafe-eval/);
+  assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/, "no inline script");
+  assert.match(html, /<script src="app\.js"><\/script>/);
+  const main = read("overlay/main.cjs");
+  assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/); assert.match(main, /will-navigate/);
+});
