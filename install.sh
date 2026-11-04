@@ -4,7 +4,8 @@
 #   ./install.sh              check the machine, install dependencies, build Wingman.app, offer /Applications and the `wingman` command
 #   ./install.sh --check      only report what is present and what is missing (changes nothing)
 #   ./install.sh --dry-run    show every step that would run, change nothing
-#   ./install.sh --yes        accept the default answer to every offer (copy to /Applications, `wingman` link, brew install ffmpeg)
+#   ./install.sh --yes        accept the default answer to every offer (copy to /Applications, `wingman` link, brew install ffmpeg);
+#                         without a terminal and without --yes every offer is declined
 #   ./install.sh --offline    pass --offline to pnpm (uses only the local package cache)
 #   ./install.sh --update     git pull (fast-forward only), pnpm install, rebuild the app   (also: wingman update)
 #   ./install.sh --uninstall  remove the app copies and the `wingman` link; your data stays   (also: wingman uninstall)
@@ -17,7 +18,7 @@ set -uo pipefail
 ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAGE0="$ROOT/stage0"
 APP_OUT="$STAGE0/.app/Wingman.app"
-APP_DST="/Applications/Wingman.app"
+APP_DST="${WINGMAN_APPS_DIR:-/Applications}/Wingman.app"
 BIN_DIR="${WINGMAN_BIN_DIR:-$HOME/.local/bin}"
 LINK="$BIN_DIR/wingman"
 DATA_DIR="${WINGMAN_DATA_DIR:-$HOME/Library/Application Support/Wingman}"
@@ -46,7 +47,8 @@ run() { if [ "$DRY" = 1 ] || [ "$MODE" = check ]; then printf '  would run: %s\n
 ask() {
   local q="$1" def="$2" ans
   if [ "$MODE" = check ] || [ "$DRY" = 1 ]; then printf '  would ask: %s (default %s)\n' "$q" "$def"; [ "$def" = y ]; return; fi
-  if [ "$YES" = 1 ] || [ ! -t 0 ]; then [ "$def" = y ]; return; fi
+  if [ "$YES" = 1 ]; then [ "$def" = y ]; return; fi
+  if [ ! -t 0 ]; then return 1; fi   # no terminal and no --yes: every offer is declined
   read -r -p "  $q [$([ "$def" = y ] && echo Y/n || echo y/N)] " ans
   case "${ans:-$def}" in y|Y|yes|YES) return 0 ;; *) return 1 ;; esac
 }
