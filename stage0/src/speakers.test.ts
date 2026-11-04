@@ -44,3 +44,16 @@ test("introductions: attendees match in any script; 'I am' + an ordinary word is
   assert.equal(introName("אני מרים מהשיווק", ["מרים"]), "מרים");
   assert.equal(introName("I'm Donna. I manage the website content.", who), "Dana");   // misheard attendee: the list spelling wins
 });
+
+test("introductions: 'this is Zoom', \"it's Friday\", \"I'm Israeli\" do not name a voice; a long sentence or a stop-list word is not an intro", async () => {
+  const { introName } = await import("./speakers.ts");
+  for (const t of ["This is Zoom, can you hear me?", "It's Friday so I will keep it short", "I'm Israeli and I live in Tel Aviv", "Well this is Google Meet then", "It's Monday", "I'm Microsoft certified", "So I think that this is Pierre's idea about the website", "We looked at it yesterday and I'm Dana to the team"]) assert.equal(introName(t), undefined, t);
+  assert.equal(introName("It's Friday", ["Friday"]), undefined, "even an odd attendee name is a day word here");
+  assert.equal(introName("It's Dana's turn now", ["Dana"]), undefined);
+  assert.equal(introName("Hi everyone, I'm Pierre."), "Pierre");
+  assert.equal(introName("This is Dana speaking"), "Dana");
+  assert.equal(introName("אני מרים את זה", ["מרים"]), undefined, "Hebrew verb after an attendee-like word");
+  assert.equal(introName("זה שישי אז נקצר", ["Dana"]), undefined);
+  assert.equal(introName("זה זום", []), undefined);
+  assert.equal(introName("It's Dana here, the rest of the team will join in a few minutes", ["Dana"]), "Dana", "attendee match still works in a longer line");
+});
