@@ -1,6 +1,6 @@
 "use strict";
 // Background files for "Plan a call": .txt, .md, and .pdf (only when `pdftotext` is already on this Mac; nothing is ever installed),
-// plus pasted text. Only the extracted TEXT is stored, in data/private/briefs/attachments/ (mode 600, folder 700), capped at
+// plus pasted text. Only the extracted TEXT is stored, in briefs/attachments/ in the Wingman data folder (mode 600, folder 700), capped at
 // MAX_CHARS in total, and it expires with the brief (6 h). Used as background by the frame / tips / reflex prompts.
 // Everything is validated here (type, size, file name); the content is never logged and never printed.
 const fs = require("node:fs");

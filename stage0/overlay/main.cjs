@@ -9,7 +9,7 @@ const { callPhase, pushCapture, registerCaptureKeys, unregisterCaptureKeys } = r
 const BRAND_ICON = path.join(__dirname, "..", "..", "brand", "png", "icon-512.png");
 
 // WINGMAN_CALLS_DIR: point at a temp calls folder (snapshots/tests). WINGMAN_OVERLAY_SNAPSHOT=<png>: render hidden, save, quit.
-const CALLS = process.env.WINGMAN_CALLS_DIR || path.join(__dirname, "..", "calls");
+const CALLS = require("../shared/paths.cjs").callsDir();
 const SNAP = process.env.WINGMAN_OVERLAY_SNAPSHOT;
 // Hidden snapshots: no Dock icon.
 if (SNAP && process.platform === "darwin") { try { app.setActivationPolicy("accessory"); app.dock && app.dock.hide(); } catch { /* no dock */ } }

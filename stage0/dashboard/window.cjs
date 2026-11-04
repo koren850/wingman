@@ -16,8 +16,9 @@ const Plans = require("../shared/plans.js");
 
 const ROOT = path.join(__dirname, "..");
 const BRAND_ICON = path.join(ROOT, "..", "brand", "png", "icon-512.png");
-const CALLS = process.env.WINGMAN_CALLS_DIR || path.join(ROOT, "calls");
-const BRIEFS = process.env.WINGMAN_BRIEFS_DIR || path.join(ROOT, "data", "private", "briefs");
+const userPaths = require("../shared/paths.cjs");
+const CALLS = userPaths.callsDir();
+const BRIEFS = userPaths.briefsDir();
 const TSX = path.join(ROOT, "node_modules", ".bin", "tsx");
 const BG = { dark: "#120E0B", light: "#FEF7EC" };
 const SNAP = process.env.WINGMAN_DASHBOARD_SNAPSHOT || "";

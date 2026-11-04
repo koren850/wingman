@@ -97,7 +97,7 @@ audio:
 # ---- Fact cards (a known client or domain is mentioned) ----
 facts:
   enabled: true            # needs the snapshot file below; without it fact cards are simply off
-  file: data/private/entities.json   # a snapshot of known clients and domains, built before the call (git-ignored)
+  file: data/private/entities.json   # (kept in the Wingman data folder as entities.json) a snapshot of known clients and domains, built before the call (git-ignored)
   sslWarnDays: 30          # SSL expiring within this many days is flagged on the card
   minAliasLen: 4           # client name variants shorter than this (letters) never match (avoids false hits)
   proposeClient: true      # first client spotted when no Plan names one: "looks like X, press y" adds it to the AI notes

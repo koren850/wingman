@@ -32,7 +32,7 @@ import { readFileSync, rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { KEY_ENV_VARS } from "./keychain.ts";
-import { requireKeys, childEnv, DATA, CALLS, ROOT } from "./env.ts";
+import { requireKeys, childEnv, DATA, CALLS, ROOT, resolveUserPath } from "./env.ts";
 import { EntitySpotter, loadSnapshot, type Fact } from "./entities.ts";
 import { takeNotes } from "./notes.ts";
 import { loadBrief, briefNotes, covered, isInterview, briefCardsFile, type Brief } from "./brief.ts";
@@ -200,7 +200,7 @@ const contextNotes: string[] = [];
 if (brief) contextNotes.push(...briefNotes(brief));
 const attendees = attendeeNames(brief?.who);   // first names from the prepared meeting, for naming voices from their introductions
 // Fact cards from the local client/domain snapshot.
-const snapshot = S.facts.enabled ? loadSnapshot(join(ROOT, S.facts.file)) : undefined;
+const snapshot = S.facts.enabled ? loadSnapshot(resolveUserPath(S.facts.file)) : undefined;
 const spotter = snapshot ? new EntitySpotter(snapshot, { sslWarnDays: S.facts.sslWarnDays, minAliasLen: S.facts.minAliasLen }) : undefined;
 const factsShown = new Set<string>();
 let clientChosen = !!brief?.who, proposed: Fact | undefined;

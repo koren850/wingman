@@ -3,7 +3,7 @@
 import { createRequire } from "node:module";
 import { parseArgs, type ParseArgsConfig } from "node:util";
 import { join, resolve } from "node:path";
-import { ROOT, DATA, CALLS } from "../env.ts";
+import { ROOT, CALLS, BRIEFS } from "../env.ts";
 
 const req = createRequire(import.meta.url);
 export const trayLib = req("../../tray/lib.cjs");
@@ -46,7 +46,7 @@ export function makeCtx(env: NodeJS.ProcessEnv, over: Partial<Ctx> = {}): Ctx {
     env, json: false, out: (s) => process.stdout.write(s),
     root: ROOT,
     calls: env.WINGMAN_CALLS_DIR ? resolve(env.WINGMAN_CALLS_DIR) : CALLS,
-    briefs: env.WINGMAN_BRIEFS_DIR ? resolve(env.WINGMAN_BRIEFS_DIR) : join(DATA, "private", "briefs"),
+    briefs: env.WINGMAN_BRIEFS_DIR ? resolve(env.WINGMAN_BRIEFS_DIR) : BRIEFS,
     socket: controlSocket.socketPath(env),
     userSettings: env.WINGMAN_USER_SETTINGS || undefined,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
