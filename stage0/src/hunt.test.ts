@@ -101,12 +101,12 @@ test("notes: other bullet styles and an over-long promise note", () => {
 test("entities: a snapshot client without aliases does not throw; hyphenated domain names match when spoken", () => {
   const snap: any = {
     clients: [{ id: 1, name: "Acme" }, { id: 2, name: "דנה", aliases: ["דנה כהן"] }],
-    domains: [{ domain: "my-store.com", clientId: null }],
+    domains: [{ domain: "example-store.com", clientId: null }],
   };
   const sp = new EntitySpotter(snap, { sslWarnDays: 30, minAliasLen: 3 });
   assert.deepEqual(sp.spot("שלום").map((f) => f.key), []);
-  assert.deepEqual(sp.spot("יש בעיה ב my-store").map((f) => f.key), ["d:my-store.com"]);
-  assert.deepEqual(sp.spot("יש בעיה ב my store").map((f) => f.key), ["d:my-store.com"]);
+  assert.deepEqual(sp.spot("יש בעיה ב example-store").map((f) => f.key), ["d:example-store.com"]);
+  assert.deepEqual(sp.spot("יש בעיה ב example store").map((f) => f.key), ["d:example-store.com"]);
 });
 
 test("bank: English and spoken price questions get the price stall, not a topical card", () => {
