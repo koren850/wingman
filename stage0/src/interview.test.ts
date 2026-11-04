@@ -21,8 +21,9 @@ test("an interview plan is recognised and its cards file is read from the notes"
 test("interview guard keeps the candidate's own dates and numbers, still blocks prices and promises", () => {
   assert.ok(guardInterview("Agent platform: 2,100+ tasks in 4 days, lead dev since 2023").ok);
   assert.ok(!guard("2,100+ tasks in 4 days").ok);   // the client-call guard would have dropped it
-  assert.equal(guardInterview("It costs $500 a month").rule, "price");
-  assert.equal(guardInterview("I guarantee it will work").rule, "promise");
+  assert.ok(guardInterview("Haiku is about $0.10 per million input tokens; rate limit of 50 requests").ok);   // technical costs are content
+  assert.equal(guardInterview("My expectation is 30-33K gross").rule, "price");   // salary only from the prepared card
+  assert.equal(guardInterview("שכר של 31 אלף").rule, "price");
 });
 
 test("the interview prompt replaces the old interview rule and labels the bank as Dan's answers", () => {
