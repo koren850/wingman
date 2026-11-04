@@ -108,6 +108,6 @@ import { domainBase, aliasMatch } from "./entities.ts";
 test("facts: domain base and exact alias matching", () => {
   assert.equal(domainBase("staging.example-c.com"), "example-c");
   assert.equal(domainBase("tender.example-b.co.il"), "example-b");
-  assert.ok(aliasMatch("אני מתקשר מסייפלט", "סייפלט"));
+  assert.ok(aliasMatch("אני מתקשר מברוולד", "ברוולד"));
   assert.ok(!aliasMatch("CDN שמגן על האתר", "המגן"), "no prefix stripping on the alias side");
 });

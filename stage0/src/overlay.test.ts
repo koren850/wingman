@@ -31,11 +31,11 @@ function fakeGs(failOn: string[] = []) {
   return { reg, register: (a: string, f: () => void) => { if (failOn.includes(a)) return false; reg.set(a, f); return true; }, unregister: (a: string) => { reg.delete(a); } };
 }
 test("capture keys: Ctrl+Opt+1..3 copy chip N, unregistered on quit", () => {
-  const gs = fakeGs(), list = ["052-0000000", "dana@x.co.il"], copied: string[] = [];
+  const gs = fakeGs(), list = ["050-1234567", "dana@x.co.il"], copied: string[] = [];
   const held = lib.registerCaptureKeys(gs, () => list, (v: string) => copied.push(v));
   assert.deepEqual(held, ["Control+Alt+1", "Control+Alt+2", "Control+Alt+3"]);
   gs.reg.get("Control+Alt+1")!(); gs.reg.get("Control+Alt+2")!(); gs.reg.get("Control+Alt+3")!();   // chip 3 does not exist: nothing
-  assert.deepEqual(copied, ["052-0000000", "dana@x.co.il"]);
+  assert.deepEqual(copied, ["050-1234567", "dana@x.co.il"]);
   lib.unregisterCaptureKeys(gs, held);
   assert.equal(gs.reg.size, 0); assert.equal(held.length, 0);
 });
@@ -52,11 +52,11 @@ test("capture keys do not collide with window or tray keys", () => {
 const join = (s: string) => text.segments(s).map((x: any) => x.text).join("");
 const ltr = (s: string) => text.segments(s).filter((x: any) => x.ltr).map((x: any) => x.text);
 test("segments: dates, versions, prices, multi-word Latin stay whole and lossless", () => {
-  for (const s of ["נגמר ב-(8 Nov) ושרת: PHP 8.1", "הפעילו Facebook Ads עם Node 18 דרך ה-API", "תקציב 40-50 אלף ₪ + מע״מ ו-2,400 ₪", "שלח ל-dana@example-electronics.co.il."]) assert.equal(join(s), s);
+  for (const s of ["נגמר ב-(8 Nov) ושרת: PHP 8.1", "הפעילו Facebook Ads עם Node 18 דרך ה-API", "תקציב 40-50 אלף ₪ + מע״מ ו-2,400 ₪", "שלח ל-dana@example-shop.co.il."]) assert.equal(join(s), s);
   assert.deepEqual(ltr("נגמר ב-(8 Nov) ושרת: PHP 8.1"), ["8 Nov", "PHP 8.1"]);
   assert.deepEqual(ltr("הפעילו Facebook Ads עם Node 18 דרך ה-API"), ["Facebook Ads", "Node 18", "API"]);
   assert.deepEqual(ltr("תקציב 40-50 אלף ₪ ו-2,400 ₪"), ["40-50", "2,400"]);
-  assert.deepEqual(ltr("שלח ל-dana@example-electronics.co.il."), ["dana@example-electronics.co.il"]);
+  assert.deepEqual(ltr("שלח ל-dana@example-shop.co.il."), ["dana@example-shop.co.il"]);
 });
 
 test("healthText: Hebrew only, with a next step", () => {

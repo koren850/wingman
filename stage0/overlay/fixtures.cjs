@@ -15,8 +15,8 @@ const aiLong = card({ id: "q2-ai", turnId: "q2", badge: "ai", question: "אתם 
 const aiStream = card({ id: "q3-ai", turnId: "q3", badge: "ai", question: "ומה לגבי האחסון, מי אחראי על הגיבויים?", say: "אנחנו מארחים אצלנו בשרת ייעודי, גיבוי יומי ל-30 יום, ושחזור בתוך" });
 const dimmed = card({ id: "q0-bank", turnId: "q0", badge: "bank", dim: true, question: "יש לכם ניסיון עם WooCommerce?", say: "כן, בנינו מעל עשרים חנויות WooCommerce, כולל חיבור לסליקה ולמלאי.", facts: [] });
 const stall = card({ id: "q4-stall", turnId: "q4", badge: "stall", question: "כמה זה יעלה לי בסוף, כולל תחזוקה?", say: "שאלה טובה, תן לי שנייה לדייק לך את המספר.", facts: [] });
-const factSsl = side({ id: "fact-d1", badge: "fact", say: "shop-example.co.il", warn: true, facts: ["תעודת SSL פגה בעוד 6 ימים (8 Nov)", "שרת: srv-demo1, PHP 8.1", "הלקוח: לוי אלקטרוניקה בע\"מ"] });
-const factClient = side({ id: "fact-c1", badge: "fact", say: "לוי אלקטרוניקה", facts: ["אתר WooCommerce, תחזוקה חודשית 1,200 ₪", "איש קשר: דנה לוי, dana@example-electronics.co.il"] });
+const factSsl = side({ id: "fact-d1", badge: "fact", say: "shop.example-shop.co.il", warn: true, facts: ["תעודת SSL פגה בעוד 6 ימים (8 Nov)", "שרת: srv-demo1, PHP 8.1", "הלקוח: לוי אלקטרוניקה בע\"מ"] });
+const factClient = side({ id: "fact-c1", badge: "fact", say: "לוי אלקטרוניקה", facts: ["אתר WooCommerce, תחזוקה חודשית 1,200 ₪", "איש קשר: דנה לוי, dana@example-shop.co.il"] });
 const propose = side({ id: "propose-client", badge: "info", say: "נראה שזו שיחה עם לוי אלקטרוניקה", facts: ["y בטרמינל = לאשר ולתת ל-AI את הפרטים"] });
 const reminder = side({ id: "reminder-1", badge: "reminder", say: "עוד לא דיברתם על:", facts: ["לוח זמנים והשקה", "מי מאשר את העיצוב אצלם", "מחיר תחזוקה שנתי"] });
 const notes = ["הלקוח רוצה השקה לפני חג המולד בחו\"ל", "תקציב משוער: 40-50 אלף ₪ + מע\"מ", "מתחרה: אתר של BUG, הם אהבו את ה-checkout שלהם"].map((n, i) => side({ id: `note-${i}`, badge: "note", say: n }));
@@ -28,12 +28,12 @@ const tip1 = card({ id: "tip-1", turnId: "tips", badge: "tip", tipType: "ask", s
 const tip2 = card({ id: "tip-2", turnId: "tips", badge: "tip", tipType: "term", say: "SLA: מה הספק מתחייב לזמינות, ומה הפיצוי כשלא עומדים בזה." });
 const vendorHero = card({ id: "q7-ai", turnId: "q7", badge: "ai", question: "אנחנו יכולים להציע שרת ייעודי עם גיבוי יומי, מתאים לך?", say: "שרת ייעודי עם גיבוי יומי נשמע מתאים. כדאי לברר כמה זמן הגיבויים נשמרים ואיפה.", facts: ["לבקש לראות את מדיניות השחזור"] });
 const cap = (kind, value) => ({ type: "capture", ch: "them", kind, value, at: now });
-const caps = [cap("phone", "052-0000000"), cap("email", "dana@example-electronics.co.il"), cap("domain", "shop-example.co.il")];
+const caps = [cap("phone", "050-1234567"), cap("email", "dana@example-shop.co.il"), cap("domain", "shop.example-shop.co.il")];
 const lines = [
   { t: now - 24000, ch: "them", text: "אז בעצם אנחנו צריכים שהאתר יתחבר ל-Salesforce, ושכל ליד מ-Facebook Ads ייכנס אוטומטית." },
   { t: now - 17000, ch: "me", text: "כן, זה אפשרי, נעבור על זה בהצעה." },
   { t: now - 11000, ch: "them", text: "והאחסון? מי אחראי על הגיבויים אם משהו נופל בשבת?" },
-  { t: now - 4000, ch: "them", text: "את המספר שלי תרשום, 052-0000000, ותשלח לי הצעה עד יום חמישי." },
+  { t: now - 4000, ch: "them", text: "את המספר שלי תרשום, 050-1234567, ותשלח לי הצעה עד יום חמישי." },
 ];
 
 // Answers for the user himself ("For you") and the calm "only you" state (invented).
