@@ -10,6 +10,7 @@ import { join, basename } from "node:path";
 import YAML from "yaml";
 import { requireKeys, DATA } from "./env.ts";
 import { decode } from "./audio.ts";
+import { errText } from "./errtext.ts";
 import { readPack } from "./pack.ts";
 import { SttStream, type SttResult } from "./stt.ts";
 import { containsPhrase } from "./normalize.ts";
@@ -43,7 +44,7 @@ const pct = (a: number[], p: number) => { const s = [...a].sort((x, y) => x - y)
 async function run(file: string) {
   const pcm = await decode(file, 1);
   const stt = new SttStream({ apiKey: keys.deepgram, channel: "them", keyterms, diarize: true, language } as any);
-  stt.on("error", (e) => console.error("stt error", e));
+  stt.on("error", (e) => console.error("stt error", errText(e)));
   const finals: SttResult[] = [];
   const delays: number[] = [];
   stt.on("result", (r: SttResult) => {

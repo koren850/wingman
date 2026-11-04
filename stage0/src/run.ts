@@ -31,6 +31,7 @@
 import { readFileSync, rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join } from "node:path";
+import { errText } from "./errtext.ts";
 import { KEY_ENV_VARS } from "./keychain.ts";
 import { requireKeys, childEnv, DATA, CALLS, ROOT } from "./env.ts";
 import { EntitySpotter, loadSnapshot, type Fact } from "./entities.ts";
@@ -1154,7 +1155,7 @@ async function shutdown() {
     log.update({ endedAt: new Date().toISOString(), crashed, phase: "ended" });
     console.log(`\nSpeakers mode (${echoMode}): mic muted ${Math.round(gatedMs / 1000)} s while the client talked · ${echoDropped} echo lines dropped`);
     console.log(`\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${me?.dropped ?? 0}, them ${them?.dropped ?? 0}`);
-  } catch (e) { console.error("call summary failed:", e); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
+  } catch (e) { console.error("call summary failed:", errText(e)); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
   // (usage was logged twice on purpose: once above so the numbers exist even if the summary hangs, again below with the summary's own cost.)
   // One last frame look so the checklist result in the review is current (a few seconds at most, never when the call is discarded or crashed).
   if (frameOn && left() > 6000 && !crashed && !discard && !discardNow && cost.llmState() !== "capped") {

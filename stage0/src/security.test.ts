@@ -46,3 +46,13 @@ test("overlay: preload bridge functions return nothing; page script is external;
   const main = read("overlay/main.cjs");
   assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/); assert.match(main, /will-navigate/);
 });
+
+import { errText } from "./errtext.ts";
+test("errText: name, status and a short message only; never the request body or the cause", () => {
+  const e: any = Object.assign(new Error("Overloaded"), { name: "APICallError", statusCode: 529, requestBodyValues: { messages: [{ content: "SECRET TRANSCRIPT" }] }, responseBody: "SECRET BODY", cause: new Error("SECRET CAUSE") });
+  const t = errText(e);
+  assert.equal(t, "APICallError (HTTP 529): Overloaded");
+  assert.doesNotMatch(t, /SECRET/);
+  assert.equal(errText(null), "unknown error"); assert.equal(errText("a\nb"), "a b");
+  assert.ok(errText(new Error("x".repeat(5000))).length < 330);
+});

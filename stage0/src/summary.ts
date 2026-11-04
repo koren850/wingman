@@ -17,6 +17,7 @@ import { guard } from "./guards.ts";
 import type { CostMeter } from "./cost.ts";
 import type { Settings } from "./settings.ts";
 import { parseFrame, missedMust, frameText, isAgencyKind, type Frame, type Kind } from "./frame.ts";
+import { errText } from "./errtext.ts";
 
 // System prompt for the summary call. Product behaviour: the no-prices/no-dates/no-promises rules are enforced again in code by guardEmail().
 export const summarySystem = (): string => { const P = getProfile(), u = userName(P); return `You are Wingman, a live meeting AI assistant, and you write the post-call summary for ${u}. You are a sharp, calm assistant. The meeting was in Hebrew with English terms; it may have been with a customer${P.business ? ` (${u} also owns a business: ${P.business})` : ""}, a supplier, colleagues, an interviewer, an advisor or a friend. ${genderNote(P)}${P.about ? ` About ${u}: ${P.about}` : ""}
@@ -313,4 +314,4 @@ async function main() {
   console.log(formatShort(r.summary!));
   console.log(`\nEmail draft:\n${r.summary!.followUpEmail}`);
 }
-if (process.argv[1] === fileURLToPath(import.meta.url)) main().catch((e) => { console.error(e); process.exit(1); });
+if (process.argv[1] === fileURLToPath(import.meta.url)) main().catch((e) => { console.error("summary failed:", errText(e)); process.exit(1); });

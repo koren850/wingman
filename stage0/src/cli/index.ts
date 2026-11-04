@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { realpathSync } from "node:fs";
 import { CliError, EXIT, makeCtx, usage, type Ctx, type Result } from "./common.ts";
 import { HELP } from "./help.ts";
+import { errText } from "../errtext.ts";
 import { start, stop, consent, quiet, client, note, speaker, ask, app } from "./control.ts";
 import { status, doctor, keys } from "./status.ts";
 import { plan } from "./plan.ts";
@@ -57,5 +58,5 @@ if (isMain) {
   const ac = new AbortController();
   process.on("SIGINT", () => ac.abort());
   process.on("SIGTERM", () => ac.abort());
-  main(process.argv.slice(2), { signal: ac.signal }).then((c) => { process.exitCode = c; }, (e) => { console.error(e); process.exitCode = 1; });
+  main(process.argv.slice(2), { signal: ac.signal }).then((c) => { process.exitCode = c; }, (e) => { console.error(errText(e)); process.exitCode = 1; });
 }
