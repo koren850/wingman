@@ -231,6 +231,14 @@ function askNative(o, box) {
   });
 }
 
+/** () => Promise of the settings state JSON (src/settings-edit-cli.ts read), or null. The child gets a bare environment: it never needs a key. */
+function settingsReader(o) {
+  const env = { HOME: process.env.HOME || "", PATH: process.env.PATH || "/usr/bin:/bin", TMPDIR: process.env.TMPDIR || "", NO_COLOR: "1", FORCE_COLOR: "0" };
+  return () => new Promise((resolve) => o.execFile(o.tsx, ["src/settings-edit-cli.ts", "read"], { cwd: o.root, timeout: 20_000, maxBuffer: 2_000_000, env }, (e, out) => {
+    try { resolve(JSON.parse(String(out || "").trim().split("\n").filter(Boolean).pop())); } catch { resolve(null); }
+  }));
+}
+
 /**
  * Reads the setting "Ask before a call started from the command line starts listening" (default on). Anything unreadable counts as ON.
  * o.run(): Promise of the settings state JSON ({values}) from src/settings-edit-cli.ts read.
@@ -263,4 +271,4 @@ async function requestQuit(o) {
   return "quit";
 }
 
-module.exports = { confirmCliStart, confirmCliStopDelete, askBeforeCliStart, CLI_CONFIRM_MS, planMenu, KEYS, OVERLAY_KEYS, createStartKey, confirmStopDelete, waitUntil, requestQuit, writeSilentWav, menuKey, PREFIX, initialState, parseStatus, reduce, notifications, view, cleanText, briefFrom, writeBrief, briefReady, readBrief, clearBrief, doctorVerdict, doctorSummary, tail, mmss };
+module.exports = { confirmCliStart, confirmCliStopDelete, askBeforeCliStart, settingsReader, CLI_CONFIRM_MS, planMenu, KEYS, OVERLAY_KEYS, createStartKey, confirmStopDelete, waitUntil, requestQuit, writeSilentWav, menuKey, PREFIX, initialState, parseStatus, reduce, notifications, view, cleanText, briefFrom, writeBrief, briefReady, readBrief, clearBrief, doctorVerdict, doctorSummary, tail, mmss };

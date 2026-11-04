@@ -56,3 +56,17 @@ test("errText: name, status and a short message only; never the request body or 
   assert.equal(errText(null), "unknown error"); assert.equal(errText("a\nb"), "a b");
   assert.ok(errText(new Error("x".repeat(5000))).length < 330);
 });
+
+import { readdirSync } from "node:fs";
+test("every folder the app creates is mode 700 (call folders hold transcripts)", () => {
+  const bad: string[] = [];
+  for (const d of ["src", "src/cli", "src/providers", "src/providers/stt", "tray", "dashboard", "shared"]) {
+    for (const f of readdirSync(join(root, d))) {
+      if (!/\.(ts|cjs|js)$/.test(f) || /\.test\.ts$/.test(f)) continue;
+      const rel = `${d}/${f}`;
+      if (rel === "tray/main.cjs") continue;   // the app startup is covered by its own change (data folder setup)
+      read(rel).split("\n").forEach((line, i) => { if (/mkdirSync\(/.test(line) && !/mode: 0o700/.test(line)) bad.push(`${rel}:${i + 1}`); });
+    }
+  }
+  assert.deepEqual(bad, []);
+});

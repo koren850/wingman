@@ -306,3 +306,12 @@ test("CLI start question setting: default and unreadable mean ask; only an expli
   assert.equal(await lib.askBeforeCliStart({ run: async () => null }), true);
   assert.equal(await lib.askBeforeCliStart({ run: async () => { throw new Error("x"); } }), true);
 });
+
+test("settingsReader: parses the last JSON line, passes a bare environment (no keys), and gives null on garbage", async () => {
+  let seen: any;
+  const mk = (out: string) => lib.settingsReader({ tsx: "/x/tsx", root: "/r", execFile: (cmd: string, args: string[], opts: any, cb: any) => { seen = { cmd, args, opts }; cb(null, out); } });
+  assert.deepEqual(await mk('noise\n{"ok":true,"values":{"a":1}}\n')(), { ok: true, values: { a: 1 } });
+  assert.deepEqual(seen.args, ["src/settings-edit-cli.ts", "read"]);
+  assert.deepEqual(Object.keys(seen.opts.env).sort(), ["FORCE_COLOR", "HOME", "NO_COLOR", "PATH", "TMPDIR"]);
+  assert.equal(await mk("not json")(), null);
+});
