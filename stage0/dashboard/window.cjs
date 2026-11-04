@@ -16,8 +16,9 @@ const Plans = require("../shared/plans.js");
 
 const ROOT = path.join(__dirname, "..");
 const BRAND_ICON = path.join(ROOT, "..", "brand", "png", "icon-512.png");
-const CALLS = process.env.WINGMAN_CALLS_DIR || path.join(ROOT, "calls");
-const BRIEFS = process.env.WINGMAN_BRIEFS_DIR || path.join(ROOT, "data", "private", "briefs");
+const userPaths = require("../shared/paths.cjs");
+const CALLS = userPaths.callsDir();
+const BRIEFS = userPaths.briefsDir();
 const TSX = path.join(ROOT, "node_modules", ".bin", "tsx");
 const BG = { dark: "#120E0B", light: "#FEF7EC" };
 const SNAP = process.env.WINGMAN_DASHBOARD_SNAPSHOT || "";
@@ -57,7 +58,7 @@ function isDashboardSender(e, win) {
  * Registers every ipcMain handler used by preload.cjs. Returns { open(o), push(), live, win, isOpen() }.
  */
 function create(ctx) {
-  const { app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller, plans } = ctx;   // plans: the prepared-meetings store (tray/plans.cjs)
+  const { app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller, plans, systemPreferences } = ctx;   // plans: the prepared-meetings store (tray/plans.cjs)
   let win, fake = fakeCall(process.env.WINGMAN_DASHBOARD_FAKE_CALL), fakeDoc = FAKE_DOCTOR[process.env.WINGMAN_DASHBOARD_FAKE_DOCTOR] || null;
   if (fakeDoc) fakeDoc = { ...fakeDoc, at: Date.now() - 4 * 60000 };
   const bgNow = () => (nativeTheme.shouldUseDarkColors ? BG.dark : BG.light);
@@ -315,6 +316,9 @@ function create(ctx) {
       return f ? (f.startsWith("~/") ? path.join(require("node:os").homedir(), f.slice(2)) : f) : path.join(require("node:os").homedir(), ".config", "wingman", "keys.env");
     },
   });
+
+  // ---- guided setup and "About you": profile, permissions, microphone, screens, pack. All logic in setup-ipc.cjs. ----
+  require("./setup-ipc.cjs").register({ handle, child, root: ROOT, systemPreferences, shell, screen, preview: !!(fake || SNAP) });
 
   return { open, push, live, get win() { return win; }, isOpen: () => !!win && !win.isDestroyed() };
 }

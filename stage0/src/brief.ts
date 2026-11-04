@@ -7,12 +7,12 @@ import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
-import { DATA } from "./env.ts";
+import { BRIEFS } from "./env.ts";
 import { tokens } from "./normalize.ts";
 
 /** What the user typed before the call. `mustCover` items are checked against the transcript with covered(). */
 export type Brief = { planId?: string; title?: string; who?: string; goal?: string; notes?: string[]; mustCover?: string[]; createdAt?: string };
-export const BRIEF_DIR = join(DATA, "private", "briefs");
+export const BRIEF_DIR = BRIEFS;
 export const LATEST_BRIEF = join(BRIEF_DIR, "latest.yaml");
 
 /**

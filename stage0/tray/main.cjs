@@ -2,7 +2,7 @@
 // The menu and the window both talk to tray/controller.cjs, which runs `src/call.ts` with WINGMAN_CONTROL=1 (stdin commands, @@wingman status lines).
 // No network of its own; the only listener is the owner-only control socket for the CLI (tray/control-socket.cjs). Start: pnpm tray (menu bar only) or pnpm dashboard (menu bar + window).
 // Snapshot mode (WINGMAN_DASHBOARD_SNAPSHOT): hidden window only, no Tray, no global shortcuts, no call is ever spawned.
-const { app, Tray, Menu, BrowserWindow, Notification, nativeImage, ipcMain, dialog, shell, globalShortcut, screen, clipboard, nativeTheme } = require("electron");
+const { app, Tray, Menu, BrowserWindow, Notification, nativeImage, ipcMain, dialog, shell, globalShortcut, screen, clipboard, nativeTheme, systemPreferences } = require("electron");
 app.setName("Wingman");   // menu bar app name, About box and notifications (the Dock name comes from .app/Wingman.app)
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
@@ -15,9 +15,12 @@ const { createControlServer } = require("./control-socket.cjs");
 const { createPlanStore } = require("./plans.cjs");
 
 const ROOT = path.join(__dirname, "..");
+const userPaths = require("../shared/paths.cjs");
+const { ensureUserData } = require("../shared/migrate.cjs");
 const ICON = path.join(ROOT, "..", "brand", "png", "trayTemplate.png");
-const LOGS = path.join(ROOT, "calls", "tray.log");
-const BRIEFS_DIR = process.env.WINGMAN_BRIEFS_DIR || path.join(ROOT, "data", "private", "briefs");
+const CALLS_DIR = userPaths.callsDir();
+const LOGS = path.join(CALLS_DIR, "tray.log");
+const BRIEFS_DIR = userPaths.briefsDir();
 const SNAPSHOT = !!process.env.WINGMAN_DASHBOARD_SNAPSHOT;
 const WANT_WINDOW = SNAPSHOT || process.argv.includes("--open-window") || process.env.WINGMAN_OPEN_WINDOW === "1";
 
@@ -150,14 +153,19 @@ app.on("second-instance", (_e, argv) => { host && host.open({ view: "home" }); }
 
 app.whenReady().then(() => {
   if (!gotLock) return;
-  if (!SNAPSHOT) fs.mkdirSync(path.join(ROOT, "calls"), { recursive: true });
+  if (!SNAPSHOT) {
+    // One-time copy of data from the old in-repo folders; the old folders stay (the owner deletes them). Never in snapshot mode.
+    const mig = ensureUserData({ log: (m) => { try { fs.mkdirSync(CALLS_DIR, { recursive: true, mode: 0o700 }); fs.appendFileSync(LOGS, m + "\n", { mode: 0o600 }); } catch { /* log only */ } } });
+    if (mig.status === "migrated" || mig.status === "failed") setTimeout(() => notify("Wingman", mig.status === "migrated" ? `Your calls and meetings now live in ${userPaths.dataDir()}. The old copy in the Wingman folder was left in place.` : "Could not copy your old data to the new folder. See Show log."), 1500);
+    fs.mkdirSync(CALLS_DIR, { recursive: true, mode: 0o700 });
+  }
   plans = createPlanStore({ dir: BRIEFS_DIR, readOnly: SNAPSHOT });   // snapshot mode never converts, sweeps or writes
   ctl = createController({
     // Snapshot mode can never start anything: the spawn function itself refuses.
     spawn: SNAPSHOT ? () => { throw new Error("snapshot mode never spawns a process"); } : spawn,
     root: ROOT, plans, logPath: SNAPSHOT ? "" : LOGS, tmpDir: app.getPath("temp"), notify: (t, b) => notify(t, b, /summary ready/i.test(t) ? { view: "call", id: ctl.getState().callId, tab: "followup" } : undefined), onChange,
   });
-  host = windowHost.create({ app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller: ctl, plans });
+  host = windowHost.create({ app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, systemPreferences, controller: ctl, plans });
   ctl.refreshPlans();
   // Local control channel for the `wingman` CLI: owner-only Unix socket, fixed command list (tray/control-socket.cjs). Never in snapshot mode.
   if (!SNAPSHOT) {

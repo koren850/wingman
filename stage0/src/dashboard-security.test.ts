@@ -10,7 +10,7 @@ import { ROOT } from "./env.ts";
 const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
 
 test("renderer scripts never inject HTML or evaluate strings", () => {
-  for (const f of ["dashboard/app.js", "dashboard/home.js", "dashboard/settings.js", "dashboard/boot.js", "dashboard/bidi.js"]) {
+  for (const f of ["dashboard/app.js", "dashboard/home.js", "dashboard/settings.js", "dashboard/setup.js", "dashboard/boot.js", "dashboard/bidi.js"]) {
     const t = read(f);
     for (const bad of [/\.innerHTML\b/, /\.outerHTML\b/, /insertAdjacentHTML/, /document\.write/, /\beval\(/, /new Function\(/, /setTimeout\(\s*["'`]/]) assert.doesNotMatch(t, bad, `${f} uses ${bad}`);
   }

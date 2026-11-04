@@ -3,12 +3,12 @@
 // The tray store is CommonJS, so it is loaded with createRequire.
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { DATA } from "./env.ts";
+import { BRIEFS } from "./env.ts";
 import { userName } from "./profile.ts";
 import { stripTag } from "./reflex.ts";
 
 const store = createRequire(import.meta.url)("../tray/attachments.cjs");
-export const ATTACH_DIR = join(DATA, "private", "briefs", "attachments");
+export const ATTACH_DIR = join(BRIEFS, "attachments");
 export type Attachment = { name: string; text: string };
 
 /**

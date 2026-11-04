@@ -15,6 +15,7 @@ async function viewSettings(focus) {
   let r; try { r = await api.getSettings(); } catch (e) { r = { ok: false, message: e.message }; }
   if (state.view !== "settings") return;
   SET.data = r; SET.errors = {}; drawSettings(); loadKeyState();
+  loadSetup().then(() => { if (state.view === "settings") drawSettings(); }).catch(() => {});
   ready();
   if (focus === "advanced") { const d = $("adv"); if (d) { d.open = true; d.scrollIntoView({ block: "start" }); loadAdvanced(); } }
   else if (focus === "keys") { const k = $("key-deepgram") || $("g-keys"); if (k) { k.scrollIntoView({ block: "center" }); k.focus({ preventScroll: true }); } else focusTop(); }
@@ -40,6 +41,8 @@ function drawSettingsBody(body) {
     h("p", {}, ico("clock"), h("span", {}, h("b", {}, "Changes apply to the next call."), " A call that is already running keeps the settings it started with.")),
     h("p", { class: "sub plain" }, r.changed ? `${plural(r.changed, "setting")} changed from the defaults. ` : "Everything is on the defaults. ", "To check the microphone, keys and AI, use the ", h("b", {}, "Readiness check"), " on ", h("button", { type: "button", class: "linkbtn", id: "to-home", onclick: () => viewHome() }, "Home"), ".")));
   main.append(keysBlock(r)); jump.push(["g-keys", "Keys"]);          // keys first: nothing works without them
+  main.append(aboutBlock()); jump.push(["g-about", "About you"]);
+  main.append(setupGuideBlock()); jump.push(["g-setup", "Setup guide"]);
   for (const g of r.groups) {
     const rows = r.items.filter((i) => i.group === g.id);
     if (!rows.length) continue;
@@ -118,7 +121,9 @@ async function keyAct(provider, fn, okMsg) {
   if (r && r.state && r.state.ok) KEYS.data = r.state;
   KEYS.msg[provider] = r && r.cancelled ? null : { ok: !!(r && r.ok), text: (r && r.message) || (r && r.ok ? okMsg : "Failed.") };
   if (KEYS.msg[provider]) (KEYS.msg[provider].ok ? announce : fail)(KEY_NAMES[provider][0] + ": " + KEYS.msg[provider].text);
+  if (KEYS.data) H.keys = KEYS.data;      // the guided setup on Home reads H.keys
   drawSettings();
+  if (state.view === "home" && typeof suRedraw === "function") suRedraw();
 }
 function testText(r) {
   if (!r || !r.ok) return (r && r.message) || "Could not test.";

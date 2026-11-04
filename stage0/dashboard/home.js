@@ -79,6 +79,7 @@ async function viewHome(focus) {
   H.attach = null; H.editId = "";
   H.keys = await api.keysStatus().then((r) => (r && r.ok ? r : null)).catch(() => null);
   loadAiMode();
+  loadSetup().then(() => { if (state.view === "home" && !isRunning()) renderSide(); }).catch(() => {});
   H.recent = await api.recentPlans().catch(() => []);
   H.editing = false; H.planOpen = false; H.draft = null;
   if (state.view !== "home") return;
@@ -361,22 +362,7 @@ function patchLive(s) {
 /* ---------- Setup (first run) ---------- */
 // Names of providers whose key is missing (status from keys:status; never the key itself).
 const keysMissing = () => (H.keys ? Object.entries(H.keys.providers || {}).filter(([, v]) => v && v.source === "missing").map(([k]) => ({ deepgram: "Deepgram", anthropic: "Anthropic" }[k] || k)) : []);
-/** A short checklist while Wingman is not set up yet: keys missing, or no full readiness check has passed. Each button goes straight to the control. */
-function setupCard() {
-  if (isRunning()) return null;
-  const d = doc(), miss = keysMissing(), practiced = state.calls.some((c) => c.mode !== "live" && !c.crashed);
-  const fullOk = !!(d && d.ok && d.at !== H.quickAt);
-  const need = miss.length > 0 || !d || (state.calls.length === 0 && !fullOk);
-  if (!need) return null;
-  const item = (done, title, why, action) => h("li", { class: done ? "done" : "" }, done ? ico("check") : h("span", { class: "tick" }), h("div", { class: "grow" }, h("div", { class: "st-t" }, title), h("div", { class: "faint st-w" }, why)), done ? null : action);
-  const items = [
-    item(!miss.length, "Add your keys", miss.length ? `Missing: ${miss.join(" and ")}. Deepgram hears the call, Anthropic writes the AI answers.` : "Both keys are saved in the Keychain.", btn("Open Settings → Keys", { id: "setup-keys", cls: "sm", icon: "settings", onclick: () => viewSettings("keys") })),
-    item(fullOk, "Run the readiness check", "Tests the microphone (Wingman needs the Microphone permission), system audio, the speech service and the AI. About 20 seconds, a few cents.", btn("Run readiness check", { id: "setup-check", cls: "sm", icon: "mic", disabled: checking(), onclick: () => runCheck(false) })),
-    item(practiced, "Try a practice call", "A pretend call through the real answer window. Free, offline.", btn("Practice call", { id: "setup-practice", cls: "sm", icon: "play", onclick: () => act(api.practice, "Practice call") })),
-  ];
-  const n = [!miss.length, fullOk, practiced].filter(Boolean).length;
-  return h("section", { class: "card-big setup", "aria-labelledby": "setup-h" }, h("div", { class: "rhead" }, h("h2", { id: "setup-h" }, "Set up Wingman"), chip(`${n} of 3 done`, n === 3 ? "good" : "warn"), h("span", { class: "grow" })), h("ul", { class: "setuplist" }, items));
-}
+// setupCard() (the guided setup) is in setup.js.
 
 /* ---------- Plan editor ---------- */
 /** The Plan editor for one prepared meeting (a new one, or H.editId). Only drawn while it is open. All plan text is set with value/textContent. */

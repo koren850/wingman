@@ -1,12 +1,12 @@
-// pnpm factscheck: false-hit check of the client/domain snapshot (data/private/entities.json, EntitySpotter) against ordinary
+// pnpm factscheck: false-hit check of the client/domain snapshot (entities.json in the Wingman data folder, EntitySpotter) against ordinary
 // call speech (gold sentences, question corpus, bank, synthetic call). Every HIT printed here is a false positive to fix.
 // Needs a private snapshot, so it only works on a machine that has one. Prints only; the exit code is always 0.
-import { DATA } from "./env.ts";
+import { DATA, ENTITIES_FILE } from "./env.ts";
 import { readPack } from "./pack.ts";
 import { readFileSync } from "node:fs";
 import YAML from "yaml";
 import { EntitySpotter, loadSnapshot } from "./entities.ts";
-const snap = loadSnapshot(DATA + "/private/entities.json")!;
+const snap = loadSnapshot(ENTITIES_FILE)!;
 const s = new EntitySpotter(snap, { sslWarnDays: 30, minAliasLen: 4 });
 const D = DATA + "/";
 const texts: string[] = [

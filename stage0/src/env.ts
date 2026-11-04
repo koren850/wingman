@@ -5,14 +5,27 @@ import { readFileSync, existsSync, statSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import paths from "../shared/paths.cjs";
+import migrate from "../shared/migrate.cjs";
 import { realKeychain, ACCOUNTS, type Keychain } from "./keychain.ts";
 export { childEnv } from "./keychain.ts";
 
 export const KEYS_FILE = join(homedir(), ".config", "wingman", "keys.env");
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+/** Shipped data only (example-pack, demo, test, gold, synthetic). The user's own data is in USER_DATA. */
 export const DATA = join(ROOT, "data");
-/** WINGMAN_CALLS_DIR redirects every call folder (the synthetic QA harness writes to qa/calls/, never into the user's real calls/). */
-export const CALLS = process.env.WINGMAN_CALLS_DIR ? resolve(process.env.WINGMAN_CALLS_DIR) : join(ROOT, "calls");
+/** The user's data folder (shared/paths.cjs): ~/Library/Application Support/Wingman, or WINGMAN_DATA_DIR. */
+export const USER_DATA: string = paths.dataDir();
+/** WINGMAN_CALLS_DIR redirects only the call folder (the synthetic QA harness writes to qa/calls/, never into the user's real calls). */
+export const CALLS: string = paths.callsDir();
+/** Prepared meetings (plans) and their background files; WINGMAN_BRIEFS_DIR redirects it. */
+export const BRIEFS: string = paths.briefsDir();
+export const ENTITIES_FILE: string = paths.entitiesFile();
+/** A path from settings: "data/private/x" means USER_DATA/x, "~/" the home folder, other relative paths are relative to stage0. */
+export const resolveUserPath = (p: string): string => paths.resolveUserPath(p);
+// One-time copy of data from the old in-repo folders (stage0/calls, stage0/data/private) to USER_DATA. Skipped when tests/QA redirect the data.
+const migration = migrate.ensureUserData({});
+export { migration };
 
 /** provider id -> env var holding its key. */
 export const KEY_VARS = {

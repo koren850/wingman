@@ -772,3 +772,21 @@ button.chip.spk-btn { height:20px; padding:0 8px; border-color:transparent; }
 button.chip.spk-btn:hover { border-color:color-mix(in srgb, var(--info) 40%, transparent); }
 button.chip.spk-btn:focus-visible, .spk-input:focus-visible { outline:2px solid var(--info); outline-offset:2px; }
 .spk-input { height:22px; width:160px; max-width:60%; padding:0 8px; font-size:12px; }
+
+/* Guided setup (setup.js) */
+.setuplist li.has-panel { flex-wrap:wrap; flex-direction:column; align-items:stretch; gap:10px; }
+.su-head { display:flex; align-items:flex-start; gap:12px; }
+.su-head > .ico { color:var(--good); margin-top:3px; }
+.su-panel { margin-inline-start:28px; padding:14px 16px; background:var(--s2); border:1px solid var(--line); border-radius:var(--r-md); }
+.su-body { display:flex; flex-direction:column; gap:12px; }
+.su-body .help { color:var(--muted); font-size:13px; line-height:20px; margin:0; }
+.su-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.su-row .grow { flex:1 1 220px; min-width:0; }
+.su-note { display:flex; gap:8px; align-items:flex-start; font-size:13px; line-height:20px; color:var(--text); margin:0; }
+.su-note .ico { color:var(--warn, var(--bad)); flex:none; margin-top:2px; }
+.su-skip { margin-top:12px; }
+.su-form { max-width:560px; padding:14px 20px; }
+.su-panel .su-form { padding:0; }
+.su-keys .keyrow { padding-inline:0; }
+.su-mic select { max-width:320px; }
+.su-settings-form { padding:4px 0; }
