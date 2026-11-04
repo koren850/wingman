@@ -1,9 +1,9 @@
 // STT registry: provider id -> adapter. Add a provider by writing an adapter and listing it here.
 // Callers: src/run.ts (builds an SttChannel per channel from sttChain) and src/doctor.ts.
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { resolve } from "node:path";
 import type { Settings } from "../../settings.ts";
-import { STAGE0 } from "../../settings.ts";
+import { STAGE0, expandHome } from "../../settings.ts";
 import { packPath } from "../../pack.ts";
 import { deepgram } from "./deepgram.ts";
 import { soniox } from "./soniox.ts";
@@ -25,7 +25,7 @@ export function sttChain(s: Settings): string[] { return [...new Set([s.stt.prov
 /** Keyterms per settings (stt.keyterms.enabled / file / max). One term per line; missing file = none. */
 export function loadKeyterms(s: Settings): string[] {
   if (s.stt.keyterms.enabled === "off") return [];
-  const f = s.stt.keyterms.file ? join(STAGE0, s.stt.keyterms.file) : packPath("keyterms.txt");   // empty setting = the pack's list
+  const f = s.stt.keyterms.file ? resolve(STAGE0, expandHome(s.stt.keyterms.file)) : packPath("keyterms.txt");   // empty setting = the pack's list; relative = from the app folder, absolute and ~/ as written
   if (!f || !existsSync(f)) return [];
   return readFileSync(f, "utf8").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, s.stt.keyterms.max);
 }

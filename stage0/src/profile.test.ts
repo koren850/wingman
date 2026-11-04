@@ -8,7 +8,7 @@ import { join } from "node:path";
 import {
   parseProfile, getProfile, checkProfile, setProfile, saveProfile, persona, nameRegex, hebrewAddressRule, userName, isMeLabel, genderNote, ProfileError, EMPTY_PROFILE, profileFile, USER_PROFILE_FILE,
 } from "./profile.ts";
-import { packPath, readPack, packDirs, EXAMPLE_PACK, USER_PACK, parseTopics, loadTopics } from "./pack.ts";
+import { packPath, readPack, packDirs, EXAMPLE_PACK, USER_PACK, parseTopics, loadTopics, packMixedIn } from "./pack.ts";
 import { main } from "./cli/index.ts";
 import { buildPrefix, reflexUserMessage, interviewBlock, nowText } from "./reflex.ts";
 import { classifySystem, classifyUserMessage } from "./assist.ts";
@@ -20,6 +20,8 @@ import { frameSystem, frameUserMessage, isAgencyTopic, resetTrackedKind } from "
 import { topicSystem } from "./flow.ts";
 import { isClearQuestion } from "./detector.ts";
 import { loadKeyterms } from "./providers/stt/index.ts";
+import { homedir } from "node:os";
+import { rmSync } from "node:fs";
 import { loadSettings } from "./settings.ts";
 
 const tmp = (n: string) => mkdtempSync(join(tmpdir(), `wm-profile-${n}-`));
@@ -282,4 +284,38 @@ test("profile: timezone must be a real IANA zone", () => {
   assert.equal(parseProfile("timezone: ''").timezone, "");
   assert.throws(() => parseProfile("timezone: Mars/Base"), ProfileError);
   assert.throws(() => parseProfile("timezone: nonsense"), /time zone/);
+});
+
+test("topics: =term is a whole word in Hebrew too; Latin terms still match whole words only", () => {
+  const t = parseTopics("=אתר\n=dns\nplugin\n");
+  assert.ok(t.loose!.test("יש לי אתר חדש"), "Hebrew whole word");
+  assert.ok(t.loose!.test("האתר שלי") === false, "prefix letter before the word: not a whole word");
+  assert.ok(t.loose!.test("אתרים רבים") === false, "longer Hebrew word");
+  assert.ok(t.loose!.test("הבעיה היא ב-DNS."));
+  assert.ok(!t.loose!.test("dnsmasq"));
+  assert.ok(t.loose!.test("a Plugins page"), "loose terms still match inside words");
+  assert.equal(parseTopics("=\n").loose, undefined);
+});
+
+test("pack: a user pack with bank.yaml but missing files is reported by packMixedIn; no user bank means no report", () => {
+  const dir = tmp("mixed");
+  const env = { WINGMAN_PACK_DIR: dir };
+  assert.deepEqual(packMixedIn(env), [], "no user bank.yaml: the example pack is simply in use");
+  writeFileSync(join(dir, "bank.yaml"), "[]");
+  const missing = packMixedIn(env);
+  assert.ok(missing.includes("topics.txt") && missing.includes("house-style.md") && !missing.includes("bank.yaml"), missing.join());
+  writeFileSync(join(dir, "topics.txt"), "x");
+  assert.ok(!packMixedIn(env).includes("topics.txt"));
+});
+
+test("keyterms file: ~/ and absolute paths are not joined to the app folder", () => {
+  const dir = tmp("kt"), f = join(dir, "terms.txt"); writeFileSync(f, "alpha\nbeta\n");
+  const S = loadSettings({ env: {}, userFile: "/nonexistent/x.yaml", argv: ["--set", `stt.keyterms.file=${f}`] }).settings;
+  assert.deepEqual(loadKeyterms(S), ["alpha", "beta"]);
+  const home = join(homedir(), `.wingman-test-kt-${process.pid}.txt`);
+  writeFileSync(home, "gamma\n");
+  try {
+    const S2 = loadSettings({ env: {}, userFile: "/nonexistent/x.yaml", argv: ["--set", `stt.keyterms.file=~/${home.split("/").pop()}`] }).settings;
+    assert.deepEqual(loadKeyterms(S2), ["gamma"]);
+  } finally { rmSync(home, { force: true }); }
 });

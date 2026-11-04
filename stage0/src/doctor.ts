@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { loadKeysWithSources, KEYS_FILE, KEY_VARS, DATA, CALLS, type KeyName } from "./env.ts";
 import { SystemSource, MicSource, peakOf } from "./audio.ts";
 import { loadBank } from "./bank.ts";
-import { readPack, packPath, EXAMPLE_PACK } from "./pack.ts";
+import { readPack, packPath, packMixedIn, packDirs, EXAMPLE_PACK } from "./pack.ts";
 import { checkProfile, profileFile } from "./profile.ts";
 import { buildPrefix, runReflex } from "./reflex.ts";
 import { loadSettings, SettingsError, formatSettingsError, expandHome, USER_SETTINGS_FILE, type Settings } from "./settings.ts";
@@ -87,6 +87,7 @@ try {
   P.name || P.spellings.length ? ok(`profile: ${P.name || P.spellings[0]} (address: ${P.address})${packPath("bank.yaml")?.startsWith(EXAMPLE_PACK) ? ", example pack in use" : ""}`)
     : warn("no user profile (name detection and the Hebrew address form are off)", `wingman profile set --name <name> --address male|female|neutral  (${profileFile()})`);
 } catch (e) { bad(`profile: ${(e as Error).message}`, "wingman profile set ... or fix the file"); }
+for (const f of packMixedIn()) warn(`your pack has no ${f}: the example pack's ${f} is used instead (invented content)`, `add ${f} to ${packDirs()[0]}`);
 const terms = loadKeyterms(S);
 S.stt.keyterms.enabled === "off" ? ok("keyterms off by setting") : terms.length ? ok(`${terms.length} keyterms (max ${S.stt.keyterms.max})`) : warn("no keyterms loaded", `check ${S.stt.keyterms.file || "the pack's keyterms.txt"}`);
 S.privacy.requireConsentAck && ok("\"Ask me before listening starts\" is on: listening starts after you confirm");

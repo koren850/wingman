@@ -15,6 +15,15 @@ export const packDirs = (env: NodeJS.ProcessEnv = process.env): string[] => [env
 export function packPath(name: string, env: NodeJS.ProcessEnv = process.env): string | undefined {
   return packDirs(env).map((d) => join(d, name)).find((f) => existsSync(f));
 }
+/**
+ * Files a user pack lacks while it does have its own bank.yaml: they are filled in from the example pack (invented content) per file.
+ * The fallback stays, but doctor shows it so a half-copied pack does not silently mix example text into the user's answers.
+ */
+export function packMixedIn(env: NodeJS.ProcessEnv = process.env): string[] {
+  const user = packDirs(env)[0];
+  if (user === EXAMPLE_PACK || !existsSync(join(user, "bank.yaml"))) return [];
+  return PACK_FILES.filter((f) => !existsSync(join(user, f)) && existsSync(join(EXAMPLE_PACK, f)));
+}
 /** Text of a pack file, or "" when no folder has it. */
 export function readPack(name: string, env: NodeJS.ProcessEnv = process.env): string {
   const f = packPath(name, env);
@@ -24,8 +33,9 @@ export function readPack(name: string, env: NodeJS.ProcessEnv = process.env): st
 export type Topics = { loose: RegExp | undefined; strict: RegExp | undefined };
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const compile = (terms: string[]): RegExp | undefined => {
-  const parts = terms.map((t) => (t.startsWith("=") ? `\\b${escapeRe(t.slice(1).trim())}\\b` : escapeRe(t))).filter((p) => p !== "\\b\\b");
-  return parts.length ? new RegExp(`(${parts.join("|")})`, "i") : undefined;
+  // "=term" is a whole-word match. \b is ASCII-only in JS (it never sees a Hebrew word edge), so the edges are Unicode letters/digits.
+  const parts = terms.map((t) => (t.startsWith("=") ? t.slice(1).trim() && `(?<![\\p{L}\\p{N}_])${escapeRe(t.slice(1).trim())}(?![\\p{L}\\p{N}_])` : escapeRe(t))).filter(Boolean);
+  return parts.length ? new RegExp(`(${parts.join("|")})`, "iu") : undefined;
 };
 /**
  * topics.txt: the words that mean "this is about the user's own services". One word or phrase per line, `#` comments.
