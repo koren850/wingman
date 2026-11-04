@@ -11,6 +11,10 @@
   // Built with text nodes + <bdi> only (never innerHTML).
   // Shared bidi tokenizer (dashboard/bidi.js) plus the overlay joins, see text.js.
   function mixed(el, text) {
+    // An English line reads left to right as a whole; inside Hebrew text it is an isolated island.
+    if (el._dir0 === undefined) el._dir0 = el.getAttribute("dir");
+    if (!el.childNodes.length) { if (WingmanText.isLatin(text)) el.dir = "ltr"; else if (el._dir0) el.dir = el._dir0; else el.removeAttribute("dir"); }
+    if (WingmanText.isLatin(text) && el.dir !== "ltr") { const b = document.createElement("bdi"); b.dir = "ltr"; b.textContent = String(text); el.append(b); return el; }
     for (const seg of WingmanText.segments(String(text ?? ""))) {
       if (!seg.ltr) { el.append(document.createTextNode(seg.text)); continue; }
       const b = document.createElement("bdi"); b.dir = "ltr"; b.textContent = seg.text; el.append(b);
@@ -172,6 +176,7 @@
   /** The bold first sentence is decided once, when that sentence is complete; after that it never changes. */
   function setSay(el, say) {
     const s = el._say;
+    s.dir = WingmanText.isLatin(say) ? "ltr" : "rtl";
     if (el._cut == null && say.length > 90) { const i = say.search(/[.!?]\s/); if (i > 15 && i < say.length - 12) { el._cut = i + 1; } }
     if (el._cut != null && !say.startsWith(el._first ?? say.slice(0, el._cut))) el._cut = null;   // text was rewritten: decide again
     if (el._cut != null) {

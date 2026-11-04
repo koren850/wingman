@@ -67,3 +67,10 @@ test("healthText: Hebrew only, with a next step", () => {
   assert.match(text.healthText("health-only-you", "I only hear you", "Ctrl+Opt+A"), /לשאול אותי: Ctrl\+Opt\+A/);
   assert.equal(text.healthText("health-mic", "המיקרופון לא קולט. בדוק הרשאה"), "המיקרופון לא קולט. בדוק הרשאה");
 });
+
+test("an English-only line is shown left to right as a whole; Hebrew with English islands is not", () => {
+  assert.equal(text.isLatin("What's the first problem you'd want solved in 90 days?"), true);
+  assert.equal(text.isLatin("מה ההבדל בין RAG ל-fine-tuning?"), false);
+  assert.equal(text.isLatin("30 יום"), false);
+  assert.equal(text.isLatin("90"), false);
+});

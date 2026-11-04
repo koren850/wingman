@@ -30,6 +30,9 @@
     return merged;
   }
 
+  /** True for a line with Latin letters and no Hebrew: it is shown left to right as a whole (an English interview card). */
+  function isLatin(text) { const t = String(text ?? ""); return /[A-Za-z]/.test(t) && !/[\u0590-\u05FF]/.test(t); }
+
   const WHO = { "stt-me": "המיקרופון שלך", "stt-them": "הצד השני" };
   /** Fault / advisory text for the window: Hebrew only, with a next step when the engine text has none. */
   function healthText(id, text, askKey) {
@@ -44,6 +47,6 @@
     return t;
   }
 
-  const api = { segments, healthText };
+  const api = { segments, healthText, isLatin };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.WingmanText = api;
 })(typeof window !== "undefined" ? window : globalThis);
