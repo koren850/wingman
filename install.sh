@@ -56,7 +56,9 @@ version_ge() { # version_ge 14.2.1 14.2
   local IFS=.; local -a a=($1) b=($2); local i
   for i in 0 1 2; do local x=${a[i]:-0} y=${b[i]:-0}; [ "$x" -gt "$y" ] && return 0; [ "$x" -lt "$y" ] && return 1; done; return 0
 }
-running_app() { pgrep -f "Wingman.app/Contents/MacOS/Wingman" >/dev/null 2>&1; }
+# Only THIS install's app counts (the /Applications copy or the one built in this folder), not any other Wingman on the machine.
+running_app() { pgrep -f "$APP_DST/Contents/MacOS/Wingman" >/dev/null 2>&1 || pgrep -f "$APP_OUT/Contents/MacOS/Wingman" >/dev/null 2>&1; }
+running_dst() { pgrep -f "$APP_DST/Contents/MacOS/Wingman" >/dev/null 2>&1; }
 bundle_id() { /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$1/Contents/Info.plist" 2>/dev/null; }
 
 # ---------------------------------------------------------------------------------------------------------------- uninstall
@@ -80,6 +82,7 @@ if [ "$MODE" = uninstall ]; then
       if [ ! -t 0 ]; then echo "install.sh: --purge needs a terminal to confirm." >&2; exit 1; fi
       read -r -p "  Type DELETE to continue, anything else cancels: " c
       if [ "$c" = "DELETE" ]; then
+        case "$DATA_DIR" in ""|/|"$HOME"|"$HOME/") echo "install.sh: refusing to delete $DATA_DIR" >&2; exit 1 ;; esac
         rm -rf "$DATA_DIR" "$CONFIG_DIR" && ok "removed $DATA_DIR and $CONFIG_DIR"
         for acct in DEEPGRAM_API_KEY ANTHROPIC_API_KEY; do security delete-generic-password -s wingman -a "$acct" >/dev/null 2>&1 && ok "removed Keychain item $acct" || say "no Keychain item $acct"; done
       else say "cancelled: nothing was deleted."; fi
@@ -204,7 +207,7 @@ step "Wingman in your Applications folder"
 INSTALLED_APP=0
 if [ -d "$APP_DST" ] && [ "$(bundle_id "$APP_DST")" != "com.wingman.app" ]; then warn "$APP_DST exists and is not Wingman: left alone"
 elif ask "Copy Wingman.app to /Applications (Launchpad, Spotlight, Dock)?" y; then
-  if running_app; then warn "Wingman is running: quit it (menu-bar icon > Quit Wingman), then run ./install.sh again to refresh /Applications."
+  if running_dst; then warn "Wingman is running from $APP_DST: quit it (menu-bar icon > Quit Wingman), then run ./install.sh again to refresh it."
   else run bash -c 'rm -rf "$1" && cp -R "$2" "$1"' _ "$APP_DST" "$APP_OUT" && { ok "installed $APP_DST"; INSTALLED_APP=1; }; fi
 else say "skipped. Later:  cd stage0 && pnpm run install-app"; fi
 say "Note: the app starts from this folder ($ROOT). If you move or delete it, run ./install.sh again from the new place."
@@ -220,7 +223,7 @@ case ":$PATH:" in *":$BIN_DIR:"*) ;; *) [ -L "$LINK" ] && warn "$BIN_DIR is not 
 
 step "Done"
 [ "$NO_FFMPEG" = 1 ] && warn "ffmpeg is still missing: the microphone will not work until you run  brew install ffmpeg"
-say "Next: open Wingman$([ "$INSTALLED_APP" = 1 ] && echo " (Spotlight: Wingman)" || echo ":  open \"$APP_OUT\""). The first window walks you through your API keys,"
+if [ "$INSTALLED_APP" = 1 ]; then say "Next: open Wingman from Spotlight or Launchpad. The first window walks you through your API keys,"; else say "Next: run  open \"$APP_OUT\"  to start Wingman. The first window walks you through your API keys,"; fi
 say "your name, the microphone and the permissions. You need a Deepgram key and an Anthropic key (both paid, a few dollars an hour at most)."
 say "Without the app: stage0/scripts/wingman.sh --open-window   (or  pnpm dashboard  inside stage0)."
 say "Update later with:  wingman update     Uninstall with:  wingman uninstall"
