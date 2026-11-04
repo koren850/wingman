@@ -145,3 +145,22 @@ test("B2 stt send never throws and counts drops when the socket is not open", as
   assert.equal(s.dropped, 1);
   assert.equal(s.audioSeconds, 0);
 });
+
+test("reflex parse: thinking out loud before the verdict never picks a card", () => {
+  const ramble = 'BANK sales-tell-me-about-yourself is not in the list; the question is technical. Interview mode: technical question → ANS.';
+  const p = parseReflex(`${ramble}\n\nANS\nאחבר דרך ה-API של ה-CRM עם webhook\n- הרשאות לפי משתמש\n`, true);
+  assert.equal(p.tagLine, "ANS");
+  assert.equal(p.say, "אחבר דרך ה-API של ה-CRM עם webhook");
+  assert.deepEqual(p.facts, ["הרשאות לפי משתמש"]);
+  assert.equal(parseTag(parseReflex(ramble, true).tagLine!).kind, "SKIP");     // no real verdict: SKIP, never a guessed card
+  assert.equal(parseReflex(`${ramble}\n`, false).tagLine, undefined);           // streaming: wait for the real verdict
+  assert.deepEqual(parseTag(parseReflex("BANK about-you\n", true).tagLine!), { kind: "BANK", bankId: "about-you" });
+  assert.deepEqual(parseTag(parseReflex("**BANK salary**\n", true).tagLine!), { kind: "BANK", bankId: "salary" });
+  assert.equal(parseReflex("BANK dns-basics: say this\n", true).say, "say this");
+});
+
+test("reflex parse: a labelled say-line shows only the words", () => {
+  assert.equal(parseReflex('ANS\nSay: "I added a verifier step."\n- fact\n', true).say, "I added a verifier step.");
+  assert.equal(parseReflex("ANS\nתגיד: חודש מקבלת הצעה\n", true).say, "חודש מקבלת הצעה");
+  assert.equal(parseReflex("ANS\nSayings differ: keep this\n", true).say, "Sayings differ: keep this");
+});

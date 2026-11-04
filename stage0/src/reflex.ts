@@ -265,7 +265,16 @@ export function parseReflex(buf: string, final: boolean): { tagLine?: string; sa
   const raw = buf.split("\n");
   const complete = final ? raw : raw.slice(0, -1);
   const partial = final ? "" : (raw.at(-1) ?? "").trim();
-  const ne = complete.map((l) => l.trim()).filter(Boolean);
+  let ne = complete.map((l) => l.trim()).filter(Boolean);
+  // The model sometimes thinks out loud before its verdict ("BANK x is not in the list; ... technical question → ANS", 4 Nov mock).
+  // A BANK line counts only as "BANK <id>" (optionally ": say-line"); lines before the first real tag line are dropped.
+  // With no real tag line at the end, a rambling BANK line is unclear: SKIP, never a guessed card.
+  const at = ne.findIndex(isTagLine);
+  if (at > 0) ne = ne.slice(at);
+  else if (at < 0 && ne.length && DIRTY_BANK.test(ne[0])) {
+    if (!final) return { tagLine: undefined, say: undefined, sayComplete: false, facts: [] };
+    return { tagLine: "SKIP (unclear verdict)", say: undefined, sayComplete: false, facts: [] };
+  }
   // The model sometimes puts the say-line on the tag line: "ANS: ..." / "BANK dns-basics: ...". Split it.
   const same = ne[0]?.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[\-–](?=\s))[ \t]*(\S.*)$/i);
   if (same) ne.splice(0, 1, same[1], same[2]);
@@ -276,8 +285,24 @@ export function parseReflex(buf: string, final: boolean): { tagLine?: string; sa
   const tagLine = ne[0];
   let say: string | undefined = ne[1] ?? (ne.length >= 1 && partial ? partial : undefined);
   if (say?.startsWith("- ")) say = undefined; // model skipped the say-line; never show a fact as the say-line
+  if (say) say = cleanSay(say);
   const facts = ne.slice(2).filter((l) => l.startsWith("- ")).map((l) => l.slice(2).trim()).filter(Boolean).slice(0, 3);
   return { tagLine, say, sayComplete: !!say && (ne.length >= 2 || final), facts };
+}
+
+/** The model sometimes labels the say-line ('Say: "..."', 'תגיד: ...'): show only the words. */
+function cleanSay(say: string): string {
+  const m = say.match(/^(?:say|answer|אמור|תגיד|תשובה)\s*:\s*(.*)$/i);
+  if (!m) return say;
+  const t = m[1].replace(/^["“”]/, "").replace(/["“”]$/, "").trim();
+  return t || say;
+}
+const DIRTY_BANK = /^[*`\s]*BANK\b/i;
+const CLEAN_BANK = /^[*`\s]*BANK[*`:\s]+[\w-]+[*`.\s]*(?:(?::|(?<=\s)[\-–](?=\s)).*)?$/i;
+/** A line that is a verdict: SKIP / STALL / ANS (any text after), or exactly "BANK <id>" (optionally ": say-line"). */
+function isTagLine(l: string): boolean {
+  if (DIRTY_BANK.test(l)) return CLEAN_BANK.test(l);
+  return /^[*`\s]*(SKIP|STALL|ANS)(?![A-Za-z])/i.test(l);
 }
 
 /** Reads the tag line leniently (markdown, colons, lower case); anything unrecognised is SKIP, the safe default. */
