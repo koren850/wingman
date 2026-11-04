@@ -1,4 +1,5 @@
 // Menu-bar remote control (WINGMAN_CONTROL=1): commands on stdin, "@@wingman" status lines on stdout. Offline.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

@@ -6,8 +6,8 @@
 - One sentence per breath.
 - Leave about 3 seconds of silence between sentences.
 - Record as WAV or M4A with QuickTime (File > New Audio Recording).
-- Three takes: (1) Dan, (2) a friend, (3) Android phone on speakerphone (play and record on another device).
-- Name files: `take1-Dan.m4a`, `take2-friend.m4a`, `take3-android.m4a`.
+- Three takes: (1) you, (2) a friend, (3) Android phone on speakerphone (play and record on another device).
+- Name files: `take1-me.m4a`, `take2-friend.m4a`, `take3-android.m4a`.
 
 ---
 

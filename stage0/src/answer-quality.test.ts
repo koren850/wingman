@@ -1,6 +1,7 @@
 // Answer-quality regressions: mixed Hebrew/English questions, speech-to-text garble of bank terms,
 // supplier / team calls, interview-style prompts. Tests detector.ts, bank.ts, reflex.ts (prompt prefix), frame.ts.
 // Offline; all sentences are invented. resetTrackedKind() clears FrameTracker's module-level state between tests.
+import "./test-setup.ts";
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { loadBank, matchBank, sttAliases } from "./bank.ts";

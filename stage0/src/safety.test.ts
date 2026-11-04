@@ -1,5 +1,6 @@
 // Safety helpers: Bluetooth mic/output detection from system_profiler JSON (devices.ts) and fixing keys.env permissions (env.ts securePerms).
 // Uses hand-built system_profiler JSON and a temp file.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, statSync, chmodSync } from "node:fs";

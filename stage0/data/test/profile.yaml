@@ -1,0 +1,7 @@
+# Invented user for the tests (src/test-setup.ts points WINGMAN_PROFILE_FILE here). Not a real person.
+name: Dan
+spellings: [דן, Dann, Den]
+address: male
+about: A freelance consultant who runs a small web and hosting business. Invented for the tests.
+business: A small web and hosting business (WordPress, WooCommerce, hosting, DNS, SSL, Cloudflare, email, backups, maintenance).
+timezone: Europe/Athens

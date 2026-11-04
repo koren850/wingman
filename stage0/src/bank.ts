@@ -1,18 +1,19 @@
-// Keyword answer bank: prepared cards (data/bank.yaml) matched against what the other side said, with no model call.
+// Keyword answer bank: prepared cards (the pack's bank.yaml, see pack.ts) matched against what the other side said, with no model call.
 // Scoring is by trigger word count; "stall" cards (price / timeline / guarantee) always win so a commitment is never answered
 // by a topical card. Used by run.ts (card or hint for the model), doctor.ts and the detector's context. No embeddings in this stage.
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import YAML from "yaml";
 import { containsPhrase, phraseWordIndex } from "./normalize.ts";
-import { DATA } from "./env.ts";
+import { packPath } from "./pack.ts";
 import { looksArithmetic } from "./calc.ts";
 
 export type BankCard = { id: string; title: string; triggers: string[]; say: string; facts: string[]; tags?: string[]; alts?: string[]; priority?: number; en?: { say: string; facts?: string[]; alts?: string[] } };
 export type BankHit = { card: BankCard; score: number; matched: string[] };
 
 /** Reads and validates the YAML bank. Throws on a card without id/say/triggers or a duplicate id. */
-export function loadBank(file = join(DATA, "bank.yaml")): BankCard[] {
+export function loadBank(file = packPath("bank.yaml") ?? ""): BankCard[] {
+  if (!file) throw new Error("no bank.yaml in the pack (~/.config/wingman/pack or data/example-pack)");
   const cards = YAML.parse(readFileSync(file, "utf8")) as BankCard[];
   // English versions live next to the bank (bank.en.yaml: id -> {say, facts, alts}); a missing file just means no English cards.
   const enFile = file.replace(/\.yaml$/, ".en.yaml");

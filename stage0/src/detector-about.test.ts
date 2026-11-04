@@ -1,4 +1,5 @@
 // "What about X" questions after a lead-in, as real STT writes them (no "?").
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { detect } from "./detector.ts";

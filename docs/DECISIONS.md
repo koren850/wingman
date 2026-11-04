@@ -1,8 +1,8 @@
 # Decision log
 
-Each entry says what we decided, why, what else we looked at, and what it costs us. Entries are in rough build order. Status is "accepted" unless noted. The original planning documents (with the long reasoning and the red-team review) are in [history/](history/README.md).
+Each entry says what we decided, why, what else we looked at, and what it costs us. Entries are in rough build order. Status is "accepted" unless noted.
 
-Context for all of them: Wingman was built by one person (Dan) for his own live calls at a small Israeli web and hosting agency. Calls are mostly Hebrew with English tech words mixed in. A wrong or slow answer on a live call is worse than no answer.
+Context for all of them: Wingman was built for one user's live calls first. Calls are mostly Hebrew with English tech words mixed in. A wrong or slow answer on a live call is worse than no answer.
 
 | # | Decision |
 |---|---|
@@ -47,15 +47,15 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 1: Personal tool first
 
-**Context.** The first plan was a general open-source product: Windows and macOS installers, auto-update, plugins, a setup wizard. A red-team review (see [history/REDTEAM.md](history/REDTEAM.md)) said the idea holds for one person and is weak as a product for strangers, and that every cost came before any proof of value.
+**Context.** The first plan was a general open-source product: Windows and macOS installers, auto-update, plugins, a setup wizard. A review said the idea holds for one person and is weak as a product for strangers, and that every cost came before any proof of value.
 
-**Decision.** Build it for one user first: the owner's Hebrew calls and tools. Publish it as source that runs on macOS. Stages for strangers (signed installer, Windows, pack installer, polished wizard) wait for a second real user who wants it.
+**Decision.** Build it for one user first: one user's Hebrew calls and tools. Publish it as source that runs on macOS. Stages for strangers (signed installer, Windows, pack installer, polished wizard) wait for a second real user who wants it.
 
 **Why.** Proof of value on real calls is the only thing that matters early. Installer and cross-platform work is large and does not help prove that.
 
 **Alternatives.** A full cross-platform product from day one (the original plan).
 
-**Consequences.** macOS only. Run from a terminal or the local app, no signed build. Some owner-specific choices (Hebrew bank, house style) are in the repo as examples to replace.
+**Consequences.** macOS only. Run from a terminal or the local app, no signed build. The bank and house style in the repo are an invented example pack; replace them with your own pack.
 
 ## ADR 2: A dogfood tool before the big structure
 
@@ -67,13 +67,13 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 **Alternatives.** Build the full six-package structure first (rejected by the red-team review as sequencing the cost before the proof).
 
-**Consequences.** The code layout is flat and pragmatic, not the layered design in [history/STRUCTURE.md](history/STRUCTURE.md). That document is history, not a map of the code.
+**Consequences.** The code layout is flat and pragmatic.
 
 ## ADR 3: Numeric gates instead of opinions
 
 **Context.** Nobody knew if Deepgram handled Hebrew with English tech words, or if the cards would help.
 
-**Decision.** Two gates with numbers. A **Hebrew STT gate**: the owner records 40 Hebrew sentences with English tech terms; pass is term recall of at least 85 percent and endpoint-to-final lag of at most about 600 ms. A **usefulness gate** after 3 to 5 real calls: the owner rates each card useful or not; pass is about 2 or more useful cards per hour.
+**Decision.** Two gates with numbers. A **Hebrew STT gate**: you record 40 Hebrew sentences with English tech terms; pass is term recall of at least 85 percent and endpoint-to-final lag of at most about 600 ms. A **usefulness gate** after 3 to 5 real calls: you rate each card useful or not; pass is about 2 or more useful cards per hour.
 
 **Why.** Numbers stop the project from drifting. If the gate fails, the fallback is clear (try another STT vendor, or keep only the bank plus the summary).
 
@@ -85,7 +85,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 **Context.** Wingman needs streaming speech to text with Hebrew, fast final results, and a way to boost English tech terms.
 
-**Decision.** Deepgram Nova-3 over its live WebSocket, behind our own provider interface. Keyterms (up to 100, from `data/keyterms.txt`) are sent when supported.
+**Decision.** Deepgram Nova-3 over its live WebSocket, behind our own provider interface. Keyterms (up to 100, from `keyterms.txt` in the pack) are sent when supported.
 
 **Why.** Nova-3 supports streaming Hebrew and keyterms, and had the fastest endpointing we measured (final lag p50 about 0.4 s at `endpointMs: 200`).
 
@@ -155,19 +155,19 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 10: The Prepared bank comes before the AI
 
-**Context.** Most agency calls repeat the same questions: DNS, SSL, backups, slow site, domain transfer.
+**Context.** Most web and hosting calls repeat the same questions: DNS, SSL, backups, slow site, domain transfer.
 
-**Decision.** Keep a local keyword bank of short answer cards written by the owner (Claude drafted the first versions). On a match, show the card at once. The AI is a second line, and it may drop a weak bank card with SKIP.
+**Decision.** Keep a local keyword bank of short answer cards written by the user (Claude drafted the first versions). On a match, show the card at once. The AI is a second line, and it may drop a weak bank card with SKIP.
 
-**Why.** The bank is fast (about half a second), free, and says exactly what the owner would say. The AI is slower, costs money and can be wrong.
+**Why.** The bank is fast (about half a second), free, and says exactly what you would say. The AI is slower, costs money and can be wrong.
 
 **Alternatives.** AI for everything; embeddings search (planned for later, not built).
 
-**Consequences.** The owner must maintain the bank. Keyword triggers can miss rephrasings, so the AI covers the gaps. Bank cards are the only ones shown as "Prepared".
+**Consequences.** You must maintain the bank. Keyword triggers can miss rephrasings, so the AI covers the gaps. Bank cards are the only ones shown as "Prepared".
 
 ## ADR 11: Claude Haiku for the live reflex
 
-**Context.** The live answer must start within about 1.5 seconds. Quality matters less than speed, because the owner reads and rephrases the card.
+**Context.** The live answer must start within about 1.5 seconds. Quality matters less than speed, because you read and rephrases the card.
 
 **Decision.** Use Claude Haiku (`anthropic:claude-haiku-5-5`) with thinking off and low effort, streamed, with a cached prompt prefix. The same small model does frame, notes, tips, the "is this for me" classifier and the summary.
 
@@ -183,11 +183,11 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 **Decision.** When the model has not tagged within 1.8 seconds, or the question is about price, timeline or guarantee, show a neutral stall line such as "I will check and come back with a proper price". Stall lines contain no time promise ("today" was removed). They are not hidden by the card rate limit.
 
-**Why.** It gives the owner a safe sentence to say while he thinks.
+**Why.** It gives you a safe sentence to say while you think.
 
 **Alternatives.** Show nothing; let the model answer and hope the guard catches it.
 
-**Consequences.** On non-client calls (team, personal), agency stall and bank cards are suppressed so they do not appear in the wrong place.
+**Consequences.** On non-client calls (team, personal), stall and bank cards are suppressed so they do not appear in the wrong place.
 
 ## ADR 13: Guards are code, not prompts
 
@@ -203,15 +203,15 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 14: House-style never-say rules
 
-**Context.** Cards are read aloud, so they must sound like the owner and never make him say something he cannot stand behind.
+**Context.** Cards are read aloud, so they must sound like you and never make you say something you cannot stand behind.
 
-**Decision.** `data/house-style.md` is the tone and rule file, and it is part of the AI prompt. Cards are short (25 words at most), spoken Hebrew, gender-neutral where possible. Never: prices, dates, timelines or SLAs, promises or guarantees, blaming the client, unexplained jargon, client-specific facts not said by the owner.
+**Decision.** `house-style.md` (in the pack) is the tone and rule file, and it is part of the AI prompt. Cards are short (25 words at most), spoken Hebrew, gender-neutral where possible. Never: prices, dates, timelines or SLAs, promises or guarantees, blaming the client, unexplained jargon, client-specific facts not said by the owner.
 
-**Why.** These are the mistakes that cost an agency money or trust.
+**Why.** These are the mistakes that cost a business money or trust.
 
 **Alternatives.** No style file (generic AI tone).
 
-**Consequences.** The file is the owner's; other users should rewrite it. Rules are enforced twice: in the prompt and, for prices, dates and promises, in the guards.
+**Consequences.** The file is yours to rewrite (the repo has an example). Rules are enforced twice: in the prompt and, for prices, dates and promises, in the guards.
 
 ## ADR 15: AI cards are labelled "not verified"
 
@@ -219,7 +219,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 **Decision.** AI cards carry a visible "AI · not verified" tag. Prepared cards carry a "Prepared" tag. Only code can mark something as checked; the model cannot.
 
-**Why.** The owner needs to know at a glance which cards he wrote and which a model made up.
+**Why.** You need to know at a glance which cards you wrote and which a model made up.
 
 **Alternatives.** One look for all cards.
 
@@ -235,7 +235,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 **Alternatives.** Live tool calls to a knowledge base (kept as a later idea); a network search.
 
-**Consequences.** The snapshot goes stale; you rebuild it. The snapshot builder is owner-specific and not in this repo, so fact cards are off unless you provide the file.
+**Consequences.** The snapshot goes stale; you rebuild it. The snapshot builder is not in this repo, so fact cards are off unless you provide the file.
 
 ## ADR 17: Math is computed locally
 
@@ -251,9 +251,9 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 18: Answers for you on the "me" channel
 
-**Context.** In a live test the owner asked Wingman a math question out loud and it worked, but the feature was an accident of the design. The owner's wish: "it is a meeting assistant, not a sales tool".
+**Context.** In a live test the user asked Wingman a math question out loud and it worked, but the feature was an accident of the design. The wish: "it is a meeting assistant, not a sales tool".
 
-**Decision.** Wingman can answer questions the owner asks it ("For you" cards): out loud when it is clearly for Wingman (`assist.answerMe: always`), only after **Ctrl+Opt+A** (`hotkey`), or never. Local cues decide first; a tiny classifier call decides only when unsure. It stays quiet when you ask the other person ("what is your budget?"). It never answers yes or no on the owner's behalf, and a For-you card is never shown within a few seconds after a card for the other side.
+**Decision.** Wingman can answer questions the user asks it ("For you" cards): out loud when it is clearly for Wingman (`assist.answerMe: always`), only after **Ctrl+Opt+A** (`hotkey`), or never. Local cues decide first; a tiny classifier call decides only when unsure. It stays quiet when you ask the other person ("what is your budget?"). It never answers yes or no on the owner's behalf, and a For-you card is never shown within a few seconds after a card for the other side.
 
 **Why.** Dual use of one tool in one call, without cards fighting for the same space.
 
@@ -263,15 +263,15 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 19: Wingman understands any call (the call frame)
 
-**Context.** The first version assumed client and sales calls. The owner said he did not want the tool built around sales: it should understand what the call is about and give relevant help.
+**Context.** The first version assumed client and sales calls. The goal was not a tool built around sales: it should understand what the call is about and give relevant help.
 
-**Decision.** About once a minute a small model writes a call frame: kind (client, support, vendor, team, consult, personal, other), topic, goal, people and a checklist. The kind changes only after two updates agree; the checklist is made once, items only go from not done to done, and at most one is added per update. On calls that are not client or support calls, agency bank cards are dimmed and the model may drop them.
+**Decision.** About once a minute a small model writes a call frame: kind (client, support, vendor, team, consult, personal, other), topic, goal, people and a checklist. The kind changes only after two updates agree; the checklist is made once, items only go from not done to done, and at most one is added per update. On calls that are not client or support calls, bank cards are dimmed and the model may drop them.
 
 **Why.** The same loop then serves vendor negotiations, team meetings and consults. Stable labels avoid flicker.
 
 **Alternatives.** Hard-coded meeting types chosen by the user in advance (the Plan still lets you set one).
 
-**Consequences.** The kind is a guess after 20 or more words. The first question before any frame still gets agency-style handling.
+**Consequences.** The kind is a guess after 20 or more words. The first question before any frame still gets client-call handling.
 
 ## ADR 20: Tips are rare and guarded
 
@@ -331,7 +331,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 **Alternatives.** Fail hard and stop the call.
 
-**Consequences.** More states to test. The full list of 121 failure modes is in [history/FAILURES.md](history/FAILURES.md).
+**Consequences.** More states to test.
 
 ## ADR 25: An Electron menu-bar app
 
@@ -347,7 +347,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 26: The answer window design
 
-**Context.** The owner reads it in a glance while talking, on a second screen, mostly in Hebrew with English words.
+**Context.** The user reads it in a glance while talking, on a second screen, mostly in Hebrew with English words.
 
 **Decision.** A frameless always-on-top window that never takes focus. The newest answer is the hero: large, fixed font size (`overlay.fontPt`, default 30), right-to-left with isolated Latin runs. Older answers are small. Colour is reserved for state: red and amber only for problems. Pause hides the window's content but keeps collecting cards, so unpausing shows what was missed. Clear, pause, rewind ("what did they say", last 30 s as text), copy and checklist are global hotkeys, because a non-focusable window cannot take key presses. Content protection is on. With a single screen the window refuses to open, so it cannot be shared by accident.
 
@@ -375,7 +375,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 **Decision.** When the last Readiness check says NOT READY, **Start call** warns and offers **Start anyway**. When the mic is blocked the check is a FAIL; when it is merely quiet it is a WARN.
 
-**Why.** Warn, but never block: Rule 3, nothing may stop the owner from using the tool when they know what they are doing.
+**Why.** Warn, but never block: Rule 3, nothing may stop the user from using the tool when they know what they are doing.
 
 **Alternatives.** A hard block on NOT READY.
 
@@ -383,11 +383,11 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 29: Consent step removed, optional "Ask me before listening starts"
 
-**Context.** The first design had a consent gate: nothing was sent to the cloud until the owner said a consent line and pressed a key. For the owner's personal use it was friction, and the wording needed a legal check.
+**Context.** The first design had a consent gate: nothing was sent to the cloud until the user said a consent line and pressed a key. For personal use it was friction, and the wording needed a legal check.
 
 **Decision.** The step is off by default (`privacy.requireConsentAck: false`): listening starts with the call. The old behaviour stays as an optional setting, "Ask me before listening starts": the call waits in the `waiting` phase until **Start listening** (Ctrl+Opt+Return, the button, or `wingman confirm --yes`). Consent wording in the UI was removed. The default consent sentence stays in the settings file as text.
 
-**Why.** It is a personal tool. Who to tell, and how, is the user's decision and responsibility.
+**Why.** Who to tell, and how, is the user's decision and responsibility.
 
 **Alternatives.** A mandatory consent gate.
 
@@ -395,7 +395,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 30: The CLI over an owner-only socket
 
-**Context.** The owner wanted an AI coding agent to be able to prepare, run and review calls ("everything Dan can do in the app, from a terminal").
+**Context.** The wish was for an AI coding agent to be able to prepare, run and review calls ("everything the user can do in the app, from a terminal").
 
 **Decision.** The menu-bar app listens on a Unix socket (`~/.config/wingman/run/control.sock`: directory mode 700, socket mode 600, owner check, no network listener). Only a fixed command list is accepted. The `wingman` CLI is a thin client with `--json` output, exit codes 0 to 9, and rate limits on start and stop. Destructive commands need `--yes`. Key commands only report present or missing. The CLI never starts a second engine and never opens the app by itself. The built-in help tells an agent not to start a real call unless asked.
 
@@ -431,7 +431,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 33: A practice call that runs offline
 
-**Context.** New users (and the owner) need to see the product work without a real call, a key or any cost.
+**Context.** New users (and the author) need to see the product work without a real call, a key or any cost.
 
 **Decision.** "Practice call" plays a scripted pretend client through the real call loop and the real answer window, offline and free. If a Plan is ready, the practice call uses it without using it up.
 
@@ -443,7 +443,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 ## ADR 34: A small user-visible glossary
 
-**Context.** The UX audit found that internal words ("consent", "briefing", "skin", "reflex") confused the owner.
+**Context.** The UX audit found that internal words ("consent", "briefing", "skin", "reflex") confused users.
 
 **Decision.** One vocabulary in the UI, CLI and docs: **Prepared** (a bank card), **AI** (a model answer), **Buy time** (a stall line), **Tip**, **For you** (an answer to your own question), **Math**, **Answer window**, **Plan** (the briefing), **Readiness check** (doctor), **Quiet mode**, **Start listening**.
 
@@ -463,7 +463,7 @@ Context for all of them: Wingman was built by one person (Dan) for his own live 
 
 **Alternatives.** Build for it (rejected).
 
-**Consequences.** Documentation and the readiness material say so.
+**Consequences.** Documentation and the readiness material say so. Interview mode (a prepared meeting of kind `interview`) is for coaching the user with their own prep notes; the rule above still applies to the user.
 
 ## ADR 36: Web lookup is not built
 

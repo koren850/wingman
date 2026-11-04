@@ -39,11 +39,11 @@ export function decide(s: Signals): { rung: Rung; reasons: string[] } {
 
 /** What each rung allows the call loop to do. */
 export function capabilities(r: Rung) {
-  // meAns: answers for Dan's own questions (assist.*) do not depend on the other side being heard, so they survive the transcript-only rung (4).
+  // meAns: answers for the user's own questions (assist.*) do not depend on the other side being heard, so they survive the transcript-only rung (4).
   return { detect: r <= 3, bank: r <= 3, llm: r <= 2, ans: r === 0 || r === 2, listening: r <= 4, meAns: r <= 4 };
 }
 
-/** Dan-facing bar text (Hebrew) and level. noAi alone is the user's own choice: info, not a warning. */
+/** User-facing bar text (Hebrew) and level. noAi alone is the user's own choice: info, not a warning. */
 export function describeRung(r: Rung, reasons: string[], userChoiceOnly = false): { level: "red" | "amber" | "info"; text: string } | null {
   const why = reasons.length ? ` (${reasons.join(", ")})` : "";
   switch (r) {

@@ -47,7 +47,7 @@ export async function start(ctx: Ctx, args: string[]): Promise<Result> {
   return {
     data: { started: true, practice: !!values.practice, noAi: !!values["no-ai"], mode, plan, reason: reply.reason ?? "", phase: st.phase, callId: st.callId || "", consentNeeded },
     text: `Call started (${PHASE_TEXT[st.phase] ?? st.phase}).${st.callId ? ` id ${st.callId}` : ""}\n${plan ? `Plan: ${plan.name} [${plan.id}]` : "Quick call: no Plan."}` +
-      (consentNeeded ? "\n\"Ask me before listening starts\" is on: it listens after Dan clicks Start listening in the app, or (only if Dan asked) `wingman confirm --yes`." : "") +
+      (consentNeeded ? "\n\"Ask me before listening starts\" is on: it listens after the user clicks Start listening in the app, or (only if the user asked) `wingman confirm --yes`." : "") +
       (st.phase === "starting" ? "\nStill starting. Check: wingman status" : ""),
   };
 }
@@ -70,7 +70,7 @@ export async function stop(ctx: Ctx, args: string[]): Promise<Result> {
 
 export async function consent(ctx: Ctx, args: string[]): Promise<Result> {
   const { values } = parse(args, { yes: { type: "boolean" } });
-  if (!values.yes) throw new CliError("needs_yes", "This starts listening on the waiting call. Only do it when Dan asked; then add --yes.", EXIT.NEEDS_YES);
+  if (!values.yes) throw new CliError("needs_yes", "This starts listening on the waiting call. Only do it when the user asked; then add --yes.", EXIT.NEEDS_YES);
   await call(ctx, "consent");
   return { data: { consented: true }, text: "Listening started." };
 }
@@ -129,10 +129,10 @@ function engineHasAsk(ctx: Ctx): boolean {
 
 export async function ask(ctx: Ctx, args: string[]): Promise<Result> {
   const { values, positionals } = parse(args, { listen: { type: "boolean" } });
-  if (values.listen) {   // the Ctrl+Opt+A key: Dan's next spoken sentence is a question for Wingman
-    if (positionals.length) throw usage("--listen takes no question; it arms the microphone for Dan's next sentence.");
+  if (values.listen) {   // the Ctrl+Opt+A key: the user's next spoken sentence is a question for Wingman
+    if (positionals.length) throw usage("--listen takes no question; it arms the microphone for the user's next sentence.");
     await call(ctx, "ask_listen");
-    return { data: { sent: true, kind: "ask-listen" }, text: "Listening: Dan's next sentence (within a few seconds) is treated as a question for Wingman." };
+    return { data: { sent: true, kind: "ask-listen" }, text: "Listening: the user's next sentence (within a few seconds) is treated as a question for Wingman." };
   }
   const t = await text(ctx, positionals, "ask");
   await call(ctx, "ask", { text: t });
@@ -150,12 +150,12 @@ export async function app(ctx: Ctx, args: string[]): Promise<Result> {
   if (sub === "status") {
     const s = await appStatus(ctx);
     const proc = s ? true : await appProcessRunning(ctx);
-    const hint = s ? "" : proc ? "The app is running but has no control socket: it was started before the CLI existed. Dan: Quit Wingman from the menu bar and open it again." : NO_APP_HINT;
+    const hint = s ? "" : proc ? "The app is running but has no control socket: it was started before the CLI existed. User: quit Wingman from the menu bar and open it again." : NO_APP_HINT;
     return { data: { running: !!s, controlSocket: !!s, processRunning: proc ?? null, pid: s?.pid ?? null, version: s?.version ?? "", hint }, text: s ? `Wingman app is running (pid ${s.pid}, control socket ok).` : `${proc ? "Wingman app process found, but no control socket." : "Wingman app is not running."}\n${hint}`, exit: s ? EXIT.OK : EXIT.NO_APP };
   }
   if (sub === "open") {
     if (await appStatus(ctx)) return { data: { running: true, opened: false }, text: "The Wingman app is already running." };
-    if (await appProcessRunning(ctx)) throw new CliError("no_socket", "The Wingman app is running but has no control socket (started before the CLI existed).", EXIT.NO_APP, "Dan: Quit Wingman from the menu bar, then run `wingman app open` again.");
+    if (await appProcessRunning(ctx)) throw new CliError("no_socket", "The Wingman app is running but has no control socket (started before the CLI existed).", EXIT.NO_APP, "User: quit Wingman from the menu bar, then run `wingman app open` again.");
     const opener = ctx.openApp ?? (() => new Promise<void>((res, rej) => {
       if (!existsSync(APP_PATH)) return rej(new CliError("not_installed", `${APP_PATH} does not exist.`, EXIT.NOT_FOUND, "Run: pnpm make-app, then copy it to /Applications."));
       execFile("/usr/bin/open", [APP_PATH], { timeout: 10_000 }, (e) => (e ? rej(new CliError("open_failed", `Could not open the app: ${e.message}`, EXIT.FAIL)) : res()));

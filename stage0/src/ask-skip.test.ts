@@ -1,4 +1,5 @@
 // Ask countdown (pure parts, tray text, controller state) and "Skip summary" (controller commands, run.ts wiring, summary abort, dashboard helpers).
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";

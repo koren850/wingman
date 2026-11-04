@@ -1,4 +1,5 @@
 // Answer-accuracy fixes before real meetings: arithmetic vs price, calc coverage, detector, bank wording/triggers, guards, keyterms.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -147,7 +148,7 @@ test("bank: stall wording is a calm professional, not a salesperson", () => {
     for (const t of [c.say, ...(c.alts ?? []), ...c.facts]) assert.doesNotMatch(t, salesy, `${c.id}: ${t}`);
   }
   assert.equal(bank.find((c) => c.id === "stall-timeline")!.say, "תלוי, אבדוק ואחזור עם הערכה.");
-  assert.doesNotMatch(readFileSync(join(DATA, "house-style.md"), "utf8"), /שאלה טובה|מטפלים בו כל הזמן/);
+  assert.doesNotMatch(readFileSync(join(DATA, "example-pack", "house-style.md"), "utf8"), /שאלה טובה|מטפלים בו כל הזמן/);
 });
 
 test("guards: relative dates and clock times are blocked", () => {
@@ -170,7 +171,7 @@ test("guardMe: Dan's own pricing question never shows an invented price; definit
 });
 
 test("keyterms: the new meeting and tech terms are there, no duplicates, within the 100-term limit", () => {
-  const terms = readFileSync(join(DATA, "keyterms.txt"), "utf8").split("\n").map((x) => x.trim()).filter(Boolean);
+  const terms = readFileSync(join(DATA, "example-pack", "keyterms.txt"), "utf8").split("\n").map((x) => x.trim()).filter(Boolean);
   for (const t of ["STAR method", "stakeholder", "Cloudflare", "Fastly", "HSTS", "WooCommerce", "SLA"]) assert.ok(terms.includes(t), t);
   assert.ok(terms.length <= 100, String(terms.length));
   assert.equal(new Set(terms.map((x) => x.toLowerCase())).size, terms.length);

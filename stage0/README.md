@@ -2,11 +2,11 @@
 
 This is the detailed guide for the app in `stage0/`. For what Wingman is, requirements and a quick start, read the [root README](../README.md). Design: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Decisions: [docs/DECISIONS.md](../docs/DECISIONS.md). Privacy: [docs/PRIVACY-AND-SECURITY.md](../docs/PRIVACY-AND-SECURITY.md). Developing: [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md). Limits: macOS only, Hebrew first, needs Deepgram and Anthropic keys, costs money per call, and is not a recording or consent tool.
 
-Wingman is a live meeting AI assistant. It listens to a call or meeting (any kind, or just you thinking aloud), answers questions the other side asks, answers questions **you** ask it, and notes, tips and summarises. It is not a sales or marketing tool. The agency answer bank is one knowledge source, used when the call is about web/hosting work.
+Wingman is a live meeting AI assistant. It listens to a call or meeting (any kind, or just you thinking aloud), answers questions the other side asks, answers questions **you** ask it, and notes, tips and summarises. It is not a sales or marketing tool. The answer bank (your pack; an example web/hosting pack is included) is one knowledge source, used when the call is about that kind of work.
 
 **Ask Wingman:** press **Ctrl+Opt+A**, then say your question within 10 s; the answer appears in a violet "For you" card. With `assist.answerMe: always` (default) it also answers questions you ask out loud that are clearly for it ("כמה זה 36 ועוד 42?", "מה ההבדל בין CDN ל-DNS?"), and stays quiet when you ask the other person ("מה התקציב שלכם?"). Arithmetic is computed locally, no AI.
 
-Stage 0: a personal tool, terminal or menu-bar launched. The original plan is in [`../docs/history/`](../docs/history/README.md). Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
+Stage 0: terminal or menu-bar launched. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
 
 ## Setup (once)
 1. Keys: open the Wingman app, **Settings → Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; makes a mode-600 backup first). Never put keys in this repo.
@@ -38,10 +38,13 @@ Stage 0: a personal tool, terminal or menu-bar launched. The original plan is in
 | `pnpm run doctor` / `--offline` | Tests the configured providers and their fallbacks, settings and the checklist. Ends with READY / NOT READY. `--offline` makes no audio, network or paid calls |
 | `pnpm test` | Unit tests |
 
-## Data you own (edit freely)
-- `data/bank.yaml` answer cards (drafted by Claude; edit into your own words)
-- `data/house-style.md` tone and never-say rules
-- `data/keyterms.txt` terms that help Deepgram hear English tech words
+## Your profile and pack
+Your name, spellings, how to address you and your business are in `~/.config/wingman/profile.yaml` (set with `wingman profile set ...`). Your answer bank, house style, keyterms and topic words are a pack in `~/.config/wingman/pack/`; without one, the example pack below is used. Nothing personal belongs in this repo.
+
+## Example pack files (copy into your pack and edit)
+- `data/example-pack/bank.yaml` answer cards (an invented web/hosting example; write your own)
+- `data/example-pack/house-style.md` tone and never-say rules
+- `data/example-pack/keyterms.txt` terms that help Deepgram hear English tech words
 - `data/aliases.yaml` (optional) extra spellings per term, e.g. `DNS: ["די אן אס"]`
 - `data/gold/SCRIPT.md` the 40 sentences to record for the STT gate
 
@@ -52,7 +55,12 @@ Files are user-only (umask 077). Delete calls you don't need with `pnpm purge`; 
 Decision rule: client call only if the gate passes (term recall >= 85% after one alias/keyterm rerun, or the miss is understood and accepted); otherwise self-call with `--no-ai`.
 
 ## It works for any kind of call
-Wingman does not assume a client call and is not a sales tool. About once a minute a small model writes the **call frame** (kind: client, support, vendor, team, consult, personal or other; topic; goal; people; a checklist of what this kind of call should cover): `src/frame.ts`, settings `frame.*`. The frame feeds the answers, the **live tips** (`src/tips.ts`, settings `tips.*`: at most one small tip per two minutes), the summary (its sections follow the kind) and the answer window / dashboard (header line, `3/6` checklist). On a call that is not with a client, agency bank cards are weak (dimmed, the model may drop them); price / timeline / guarantee stall cards stay. A prepared meeting (the "Plan") also takes background files (.txt, .md, pasted text; .pdf when `pdftotext` is installed): `tray/attachments.cjs`. QA for this: `pnpm qa vendor-hosting team-planning consult-accountant personal-casual`.
+Wingman does not assume a client call and is not a sales tool. About once a minute a small model writes the **call frame** (kind: client, support, vendor, team, consult, personal or other; topic; goal; people; a checklist of what this kind of call should cover): `src/frame.ts`, settings `frame.*`. The frame feeds the answers, the **live tips** (`src/tips.ts`, settings `tips.*`: at most one small tip per two minutes), the summary (its sections follow the kind) and the answer window / dashboard (header line, `3/6` checklist). On a call that is not with a client, bank cards are weak (dimmed, the model may drop them); price / timeline / guarantee stall cards stay. A prepared meeting (the "Plan") also takes background files (.txt, .md, pasted text; .pdf when `pdftotext` is installed): `tray/attachments.cjs`. QA for this: `pnpm qa vendor-hosting team-planning consult-accountant personal-casual`.
+
+## Several speakers and interview mode
+**Several people on the other side.** With `stt.speakers` on, the other side's voices are told apart ("Speaker 1", 2... or names taken from introductions and from the meeting's attendees). Rename a voice on the dashboard or with `wingman speaker <n> "<name>"` (`--clear` removes it). Names live only for the call. When two or more of them talk among themselves while you are quiet, a muted "talking among themselves" line shows who and what about, and answer cards wait; when someone turns to you (says your name), an orange "turned to you" alert shows who. Setting `flow.enabled` (`src/flow.ts`).
+
+**Interview mode.** A prepared meeting of kind `interview` (`wingman plan new --kind interview ...`) makes Wingman coach you as the candidate, using your background files as the source of facts (never invented experience). Add the plan note `Prepared cards: <file.yaml>` to use your own cards (bank format) instead of the normal bank. Every question gets an answer, there are no Buy time lines and no mid-call tip cards (`src/brief.ts`, `src/run.ts`). Check the rules before using it anywhere that forbids outside help.
 
 ## Settings and providers
 

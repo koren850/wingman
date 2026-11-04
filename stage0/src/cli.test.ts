@@ -1,5 +1,6 @@
 // The `wingman` CLI and the app's control socket. Offline: temp socket, temp calls/briefs/settings dirs, a fake child process
 // (or the scripted engine in file mode), invented data only. No app, no mic, no network, no window.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";

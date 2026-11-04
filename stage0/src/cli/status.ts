@@ -45,7 +45,7 @@ export async function status(ctx: Ctx, args: string[]): Promise<Result> {
     quiet: !!st?.quiet, stopPhase: st?.stopPhase || "", listeningForQuestion: !!st?.askArmed, questionSecondsLeft: st?.askArmed ? askSecondsLeft(st?.askUntil, now) : null, aiMode: st?.noAi ? "prepared-only" : "ai", notes: st?.notes ?? 0, mode: !st?.running ? "" : st?.planId ? "plan" : "quick", planId: st?.running ? st?.planId || "" : "", planName: "", elapsedSec: st?.liveAt ? Math.round((now - st.liveAt) / 1000) : 0,
   };
   if (call_.planId) { const m = store(ctx).get(call_.planId); call_.planName = m ? toMeeting(m).name : ""; }   // the meeting the live call uses (it is marked used once the call is live)
-  const hint = a ? "" : proc ? "The app is running but has no control socket (started before the CLI existed). Dan: Quit Wingman from the menu bar and open it again." : NO_APP_HINT;
+  const hint = a ? "" : proc ? "The app is running but has no control socket (started before the CLI existed). User: quit Wingman from the menu bar and open it again." : NO_APP_HINT;
   const data = {
     app: { running: !!a, controlSocket: !!a, processRunning: proc ?? null, pid: a?.pid ?? null, version: a?.version ?? "", hint },
     call: call_, health, overlayDown: a?.overlayDown || "", offReason: a?.offReason || "", lastError: a?.lastError || "",

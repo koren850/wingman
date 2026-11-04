@@ -1,5 +1,6 @@
 // Call frame (frame.ts), live tips (tips.ts), background files (attachments.ts, tray/attachments.cjs), summary kinds, live feed (dashboard/livefeed.js).
 // Pure logic and offline doubles (scripted providers, temp dirs). No network, no keys.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -136,7 +137,7 @@ test("summary prompt adapts to the call kind; client calls keep the original pro
   assert.equal(kindGuidance("client"), ""); assert.equal(kindGuidance("support"), ""); assert.equal(kindGuidance(undefined), "");
   assert.match(kindGuidance("team"), /OWNER'S NAME/); assert.match(kindGuidance("vendor"), /offered/); assert.match(kindGuidance("consult"), /advice/); assert.match(kindGuidance("personal"), /followUpEmail = ""/);
   const n = parseSummary({ summary: ["א"], nextSteps: [{ who: "יוסי", what: "לסגור באג" }, { who: "לקוח", what: "x" }, { who: "אני", what: "y" }, { what: "z" }] })!.nextSteps;
-  assert.deepEqual(n.map((x) => x.who), ["יוסי", "לקוח", "דן", "דן"]);
+  assert.deepEqual(n.map((x) => x.who), ["יוסי", "לקוח", "אני", "אני"]);
   const registry = new ModelRegistry({} as any);
   const dir = mkdtempSync(join(tmpdir(), "wingman-frsum-"));
   const { settings: S } = loadSettings({ env: {}, userFile: join(dir, "none.yaml") });

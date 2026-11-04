@@ -9,6 +9,8 @@ import { join } from "node:path";
 import { loadKeysWithSources, KEYS_FILE, KEY_VARS, DATA, CALLS, type KeyName } from "./env.ts";
 import { SystemSource, MicSource, peakOf } from "./audio.ts";
 import { loadBank } from "./bank.ts";
+import { readPack, packPath, EXAMPLE_PACK } from "./pack.ts";
+import { getProfile, profileFile } from "./profile.ts";
 import { buildPrefix, runReflex } from "./reflex.ts";
 import { loadSettings, SettingsError, formatSettingsError, expandHome, USER_SETTINGS_FILE, type Settings } from "./settings.ts";
 import { ModelRegistry, parseModelRef, ConfigError, LLM_PROVIDERS } from "./providers/llm.ts";
@@ -80,8 +82,13 @@ try {
   const bank = loadBank(); const ids = new Set(bank.map((c) => c.id));
   ids.size === bank.length && bank.length > 0 ? ok(`Prepared cards load: ${bank.length} cards, unique ids`) : bad("Prepared cards: ids are not unique or the list is empty");
 } catch (e) { bad(`Prepared cards failed to load: ${(e as Error).message}`); }
+try {
+  const P = getProfile();
+  P.name || P.spellings.length ? ok(`profile: ${P.name || P.spellings[0]} (address: ${P.address})${packPath("bank.yaml")?.startsWith(EXAMPLE_PACK) ? ", example pack in use" : ""}`)
+    : warn("no user profile (name detection and the Hebrew address form are off)", `wingman profile set --name <name> --address male|female|neutral  (${profileFile()})`);
+} catch (e) { bad(`profile: ${(e as Error).message}`, "wingman profile set ... or fix the file"); }
 const terms = loadKeyterms(S);
-S.stt.keyterms.enabled === "off" ? ok("keyterms off by setting") : terms.length ? ok(`${terms.length} keyterms (max ${S.stt.keyterms.max})`) : warn("no keyterms loaded", `check ${S.stt.keyterms.file}`);
+S.stt.keyterms.enabled === "off" ? ok("keyterms off by setting") : terms.length ? ok(`${terms.length} keyterms (max ${S.stt.keyterms.max})`) : warn("no keyterms loaded", `check ${S.stt.keyterms.file || "the pack's keyterms.txt"}`);
 S.privacy.requireConsentAck && ok("\"Ask me before listening starts\" is on: listening starts after you confirm");
 guard("זה עולה 500 ₪").ok === false && guard("נסיים עד יום חמישי").ok === false ? ok(`guards block price and date bait${dev(" (full corpus: pnpm test)")}`) : bad("guards let price/date bait through");
 detect("כמה זה עולה").isQuestion ? ok(`detector sanity${dev(" (full corpus: pnpm detector)")}`) : bad("detector failed a basic question");
@@ -186,7 +193,7 @@ for (const [i, id] of sttIds.entries()) {
 if (!S.run.noAi) {
   section("LLM reflex (primary and fallbacks; the primary is called twice to check the prompt cache)");
   // The primary model is called twice with the same prefix: the second call should read the prompt cache (checked via cache-read tokens).
-  const prefix = buildPrefix(readFileSync(join(DATA, "house-style.md"), "utf8"), loadBank());
+  const prefix = buildPrefix(readPack("house-style.md"), loadBank());
   for (const [mi, ref] of llmRefs.entries()) {
     for (const i of mi === 0 && registry.capabilities(ref).cache ? [1, 2] : [1]) {
       const t0 = Date.now(); let first = 0, tag = "";

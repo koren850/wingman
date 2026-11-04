@@ -11,6 +11,8 @@ import { fileURLToPath } from "node:url";
 import { renderScenario, loadScenario, allScenarioNames } from "./render.ts";
 import { grade, readJsonl, type Grade, type Row } from "./grade.ts";
 
+/** Name of the invented user in the scenarios (to be wired to the profile). */
+const USER_NAME = "Dan";
 const QA = dirname(fileURLToPath(import.meta.url));
 const STAGE0 = join(QA, "..");
 const argv = process.argv.slice(2);
@@ -147,12 +149,12 @@ function writeReport(rs: Grade[]) {
   L.push(`| Scenario | Min | Q recall | Q precision (false cards) | Right card | Price stall | Split join | Card p50 / p95 | STT words | Summary | Guard leaks | Cost |`, `|---|---|---|---|---|---|---|---|---|---|---|---|`);
   for (const g of rs) L.push(`| ${g.scenario} | ${(g.durationS / 60).toFixed(1)} | ${P(g.recall)} (${g.tp}/${g.expectedQ}) | ${P(g.precision)} (${g.fp} false, ${g.falseCards} w/ card) | ${P(g.cardAcc)} (${g.cardOk}/${g.cardGraded}) | ${g.priceTurns ? `${g.priceOk}/${g.priceTurns}` : "-"} | ${g.splitTested ? `${g.splitOk}/${g.splitTested}` : "-"} | ${S(g.latP50)} / ${S(g.latP95)} | ${P(g.sttWordAcc)} | ${g.summary.present ? (g.summary.emailLeaks.length ? "LEAK" : g.summary.otherLeaks.length ? "ok (soft: date word)" : "ok") : "none"} | ${g.aiGuardLeaks.length + g.summary.emailLeaks.length} | $${g.costUsd.toFixed(3)} |`);
   L.push(`| **All** | ${(sum((g) => g.durationS) / 60).toFixed(1)} | **${P(totals.questionRecall)}** | **${P(totals.questionPrecision)}** | **${P(totals.cardAccuracy)}** | ${totals.priceStall} | ${totals.splitJoin} | ${S(totals.latencyP50Ms)} / ${S(totals.latencyP95Ms)} | **${P(totals.sttWordAccuracy)}** | ${totals.summaries} | ${totals.guardLeaks} | **$${totals.costUsd.toFixed(3)}** |`, ``);
-  L.push(`## Answers for Dan ("For you" cards)`, ``, `Graded "me" turns right: ${totals.forYou} · "For you" cards shown: ${totals.forYouCards} · cards no turn asked for: ${totals.forYouUnexpected}`, ``);
+  L.push(`## Answers for ${USER_NAME} ("For you" cards)`, ``, `Graded "me" turns right: ${totals.forYou} · "For you" cards shown: ${totals.forYouCards} · cards no turn asked for: ${totals.forYouUnexpected}`, ``);
   for (const g of rs) if (g.me?.unexpected.length) { L.push(`- **${g.scenario}** unexpected:`); for (const u of g.me.unexpected) L.push(`  - ${u}`); }
   L.push(``);
   L.push(`## Call frame and tips`, ``, `| Scenario | Frame kind (first > final) | Topic | Checklist done | Frames | Tips | Irrelevant bank cards | Frame $ | Tips $ |`, `|---|---|---|---|---|---|---|---|---|`);
   for (const g of rs) { const f = g.frame; L.push(`| ${g.scenario} | ${f.frames ? `${f.firstKind} > ${f.kind}${f.kindFlips ? ` (${f.kindFlips} flips)` : ""}` : "no frame"}${f.graded ? (f.kindOk ? " ok" : " WRONG") : ""} | ${f.topic ?? "-"}${f.graded ? (f.topicOk ? " ok" : " OFF") : ""} | ${f.checklistDone}/${f.checklistN} | ${f.frames} | ${f.tips.length}${f.graded ? (f.tipsOk && f.tipRelevant ? " ok" : " CHECK") : ""} | ${f.graded || f.kind && f.kind !== "client" && f.kind !== "support" ? f.irrelevantBank.length : "-"} | $${f.frameUsd.toFixed(4)} | $${f.tipsUsd.toFixed(4)} |`); }
-  L.push(``, `Frames graded OK: ${totals.framesGraded} · tips graded OK: ${totals.tipsGraded} · tips shown: ${totals.tips} · irrelevant agency bank cards on non-client calls: ${totals.irrelevantBank}`, ``);
+  L.push(``, `Frames graded OK: ${totals.framesGraded} · tips graded OK: ${totals.tipsGraded} · tips shown: ${totals.tips} · irrelevant business bank cards on non-client calls: ${totals.irrelevantBank}`, ``);
   const tipLines = rs.filter((g) => g.frame.tips.length);
   if (tipLines.length) { L.push(`Tips shown (read them: relevance is only checked by keyword):`, ``); for (const g of tipLines) { L.push(`- **${g.scenario}**`); for (const t of g.frame.tips) L.push(`  - [${t.type}${t.source ? ` · ${t.source}` : ""}] ${t.text}`); } L.push(``); }
   L.push(`Card time = end of the question (as heard by STT) to the first card. Cost is the call's own estimate (budget.prices); questions detected: ${sum((g) => g.questionsAsked)}, of which the final card was hidden by the 3-per-minute cap in graded turns: ${sum((g) => g.hiddenByCap)}.`, ``);

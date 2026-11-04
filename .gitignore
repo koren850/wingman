@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 stage0/calls/
 stage0/data/gold/recordings/
 stage0/data/gold/report-*.md
@@ -34,3 +34,5 @@ stage0/data/briefs/
 
 # Personal session notes (never committed)
 NEXT-SESSION.md
+stage0/qa/report.json
+stage0/qa/report.md

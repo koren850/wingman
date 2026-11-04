@@ -29,7 +29,7 @@ export const schema = z.strictObject({
     provider: sttName, fallback: z.array(sttName), model: z.string().min(1), speakers: z.boolean(),
     language: z.enum(["he", "en", "multi", "auto"]),
     endpointMs: int(100, 2000), utteranceEndMs: int(500, 3000), keepAliveMs: int(2000, 8000), flushFallbackMs: int(300, 5000), joinWindowMs: int(0, 5000),
-    keyterms: z.strictObject({ enabled: z.enum(["auto", "on", "off"]), file: z.string().min(1), max: int(0, 100) }),
+    keyterms: z.strictObject({ enabled: z.enum(["auto", "on", "off"]), file: z.string(), max: int(0, 100) }),
     circuit: z.strictObject({ failures: int(1, 10), windowMs: int(1000, 120000) }),
     reconnect: z.strictObject({ ringMs: int(0, 10000) }),
     dropForeignScript: z.boolean(),

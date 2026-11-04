@@ -1,12 +1,13 @@
 // Answer behaviour: Wingman never speaks for the user on calls that are not with their customer; BANK is id-only; late SKIP / wrong language discard;
 // me-answer prompt (clock, solo, short); tips (masculine, personal = none); summary (no "לקוח" on other calls, untrusted names). Offline: scripted doubles only.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildPrefix, runReflex, resolveBankId, worldClock, reflexUserMessage, nowText, wrongLanguage, langOf, type ReflexHandlers } from "./reflex.ts";
 import { isAgencyTopic, type Frame } from "./frame.ts";
-import { classify, MeGate, CLASSIFY_SYSTEM } from "./assist.ts";
-import { parseTip, masculine, runTip, wrapUpTip, TIPS_SYSTEM } from "./tips.ts";
-import { parseSummary, fixGreeting, otherName, buildPrompt, SUMMARY_SYSTEM, kindGuidance } from "./summary.ts";
+import { classify, MeGate, classifySystem } from "./assist.ts";
+import { parseTip, masculine, runTip, wrapUpTip, tipsSystem } from "./tips.ts";
+import { parseSummary, fixGreeting, otherName, buildPrompt, summarySystem, kindGuidance } from "./summary.ts";
 import { ModelRegistry } from "./providers/llm.ts";
 import { loadSettings } from "./settings.ts";
 
@@ -25,9 +26,9 @@ test("reflex prompt: id-only BANK, STALL only on client calls, never answer for 
   const p = buildPrefix("style", [{ id: "dns", title: "DNS basics", triggers: ["dns"], say: "SAYLINE-NOT-IN-PROMPT", facts: ["FACT-NOT-IN-PROMPT"] }], "", "");
   assert.match(p, /- dns: DNS basics/); assert.doesNotMatch(p, /SAYLINE-NOT-IN-PROMPT|FACT-NOT-IN-PROMPT/);
   assert.match(p, /Output ONLY "BANK <id>"/);
-  assert.match(p, /STALL is only for a price, a date or a commitment about Dan's own services, on a call with his customer/);
+  assert.match(p, /STALL is only for a price, a date or a commitment about Dan's own services, on a call with Dan's customer/);
   assert.match(p, /Never answer yes\/no on Dan's behalf/); assert.match(p, /BEFORE you write line 1/);
-  assert.match(p, /his documents, experience, skills, availability/); assert.match(p, /why he left a job/);
+  assert.match(p, /Dan's documents, experience, skills, availability/); assert.match(p, /why Dan left a job/);
   assert.match(p, /at most 15 words/); assert.match(p, /opinions or recommendations/);
   assert.doesNotMatch(p, /sales pitch|upsell|convert the lead/i);
 });
@@ -47,13 +48,13 @@ test("reflex ME mode: no facts, short token cap, clock in the user message, solo
   assert.deepEqual(log, ["tag:ANS", "say:התשובה היא 8.", "done"]);   // facts never forwarded for ME answers
   assert.equal(stream.last.maxOutputTokens, 100);
   const msg = stream.last.messages[0].content as string;
-  assert.match(msg, /Monday, 2 November 2026|2 November 2026/); assert.match(msg, /15:00/); assert.match(msg, /Asia\/Jerusalem, UTC\+2/);
+  assert.match(msg, /Monday, 2 November 2026|2 November 2026/); assert.match(msg, /15:00/); assert.match(msg, /Europe\/Athens, UTC\+2/);
   assert.match(msg, /Dan is alone/); assert.match(msg, /at most 15 words/);
 });
 
-test("nowText: Israel winter and summer offsets", () => {
-  assert.match(nowText(new Date("2026-11-02T13:00:00Z")), /15:00 \(Asia\/Jerusalem, UTC\+2\)/);
-  assert.match(nowText(new Date("2026-07-01T13:00:00Z")), /16:00 \(Asia\/Jerusalem, UTC\+3\)/);
+test("nowText: Athens winter and summer offsets", () => {
+  assert.match(nowText(new Date("2026-11-02T13:00:00Z")), /15:00 \(Europe\/Athens, UTC\+2\)/);
+  assert.match(nowText(new Date("2026-07-01T13:00:00Z")), /16:00 \(Europe\/Athens, UTC\+3\)/);
 });
 
 test("user message: off-kind calls are told no STALL / BANK", () => {
@@ -74,7 +75,7 @@ test("classifier shares the reflex system prompt (one cached prefix) and keeps i
   assert.equal(r.verdict, "ASSIST"); assert.equal(seen.instructions.content, "REFLEX-PREFIX");
   assert.deepEqual(seen.instructions.providerOptions, { anthropic: { cacheControl: { type: "ephemeral", ttl: "1h" } } });
   assert.match(seen.messages[0].content, /You decide who Dan is talking to/);
-  assert.match(CLASSIFY_SYSTEM, /opinion or recommendation/);
+  assert.match(classifySystem(), /opinion or recommendation/);
 });
 
 test("MeGate: calc ignores the protect-them window, other answers do not", () => {
@@ -86,7 +87,7 @@ test("MeGate: calc ignores the protect-them window, other answers do not", () =>
 test("tips: masculine form, garbled-term and personal rules in the prompt, no model call on a friend call", async () => {
   assert.equal(parseTip(JSON.stringify({ type: "ask", text: "שאלי את יעל איזו מערכת היא רוצה ובדקי את ההיקף" }))!.text, "שאל את יעל איזו מערכת היא רוצה ובדוק את ההיקף");
   assert.equal(masculine("שאלי ושאלה"), "שאל ושאלה");   // only whole-word imperatives
-  assert.match(TIPS_SYSTEM, /masculine/); assert.match(TIPS_SYSTEM, /"personal"/); assert.match(TIPS_SYSTEM, /garbled/);
+  assert.match(tipsSystem(), /masculine/); assert.match(tipsSystem(), /"personal"/); assert.match(tipsSystem(), /garbled/);
   let called = false;
   const fr: Frame = { kind: "personal", topic: "t", goal: "g", people: [], entities: [], checklist: [{ item: "x", done: false, must: true }] };
   const r = await runTip({ registry: reg, model: "anthropic:a", cache: "off", frame: fr, transcript: "t", contextNotes: [], background: "", factLines: [], given: [], elapsedMin: 3, signal: new AbortController().signal, timeoutMs: 1000, generate: (async () => { called = true; return { text: "{}" }; }) as any });
@@ -103,8 +104,8 @@ test("summary: no 'לקוח' on non-client calls, names from the plan, greeting 
   assert.equal(parseSummary(raw)!.nextSteps[0].who, "לקוח");
   assert.equal(otherName(team), "וורד");
   const p = buildPrompt({ lines: [{ ch: "them", text: "שלום" }, { ch: "me", text: "היי" }], contextNotes: [], aiNotes: [], frame: team });
-  assert.match(p, /וורד: שלום/); assert.match(p, /דן: היי/); assert.doesNotMatch(p, /לקוח: /);
-  assert.match(SUMMARY_SYSTEM, /Names: speech-to-text garbles names/); assert.match(kindGuidance("team"), /never "לקוח"/);
+  assert.match(p, /וורד: שלום/); assert.match(p, /אני: היי/); assert.doesNotMatch(p, /לקוח: /);
+  assert.match(summarySystem(), /Names: speech-to-text garbles names/); assert.match(kindGuidance("team"), /never "לקוח"/);
   // greeting
   assert.equal(fixGreeting("שלום אורג,\nתודה", "אורג אמר משהו\nוורד כתבה", ["Plan: פגישה עם וורד"]), "שלום,\nתודה");     // once, not in the notes
   assert.equal(fixGreeting("שלום וורד,\nתודה", "x", ["Plan: פגישה עם וורד"]), "שלום וורד,\nתודה");                               // in the notes
@@ -122,9 +123,9 @@ test("BANK id: exact, bent id resolves to the one card sharing a word, ambiguous
   assert.equal(resolveBankId(undefined, bank), undefined);
 });
 
-test("worldClock: New York is 7 h behind Israel in November, Tokyo ahead", () => {
-  const w = worldClock(new Date("2026-11-02T13:00:00Z"));   // 15:00 in Israel
-  assert.match(w, /New York 08:00 \(7 h behind Israel\)/); assert.match(w, /London 13:00 \(2 h behind Israel\)/); assert.match(w, /Tokyo 22:00 \(7 h ahead of Israel\)/);
+test("worldClock: New York is 7 h behind home time in November, Tokyo ahead", () => {
+  const w = worldClock(new Date("2026-11-02T13:00:00Z"));   // 15:00 at home
+  assert.match(w, /New York 08:00 \(7 h behind home time\)/); assert.match(w, /London 13:00 \(2 h behind home time\)/); assert.match(w, /Tokyo 22:00 \(7 h ahead of home time\)/);
 });
 
 test("MeGate: calc and solo answers are not rate-limited; others are", () => {

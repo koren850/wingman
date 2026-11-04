@@ -1,0 +1,23 @@
+# Words that mean "this is about the user's own services" (example pack: a small web and hosting business).
+# One word or phrase per line. "=word" matches only as a whole word. Lines under [strict] are the unmistakable terms,
+# the only ones that count on supplier and team calls (the loose list is everything here plus the strict terms).
+אתר
+אתרים
+אחסון
+תחזוקת
+website
+hosting
+ווקומרס
+קלאודפלייר
+[strict]
+דומיין
+וורדפרס
+תעודת אבטחה
+=dns
+=ssl
+cloudflare
+woocommerce
+wordpress
+domain name
+=cdn
+=waf

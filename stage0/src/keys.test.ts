@@ -1,6 +1,7 @@
 // Keychain key management: keychain.ts, keys-cli.ts, env.ts key loading and dashboard/keys-ipc.cjs.
 // Everything uses a mocked `security` runner, a fake key and a temp keys.env: no real Keychain, no real keys.
 // The fake key must never show up outside the mock store (and its last 4 characters).
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

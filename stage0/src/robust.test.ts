@@ -1,6 +1,7 @@
 // Robustness: STT outage retry (providers/stt/channel.ts), health recovery, disk failures, orphan overlay,
 // tray controller linger/Start and doctor timeout. Mixes unit tests (fake streams, injected spawn) with source checks
 // of run.ts and a few real child runs of run.ts with scripted STT.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";

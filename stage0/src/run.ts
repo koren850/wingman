@@ -36,6 +36,8 @@ import { requireKeys, childEnv, DATA, CALLS, ROOT } from "./env.ts";
 import { EntitySpotter, loadSnapshot, type Fact } from "./entities.ts";
 import { takeNotes } from "./notes.ts";
 import { loadBrief, briefNotes, covered, isInterview, briefCardsFile, type Brief } from "./brief.ts";
+import { readPack } from "./pack.ts";
+import { getProfile } from "./profile.ts";
 import { loadBank, matchBank, matchBankFor, priceOffTopic, stallCard, stallSay, modelMayOverrideBank, STALL_TIER, type BankCard } from "./bank.ts";
 import { evalMath, looksArithmetic } from "./calc.ts";
 import { checkScript } from "./lang.ts";
@@ -70,6 +72,7 @@ import { createInterface } from "node:readline";
 
 const args = process.argv.slice(2);
 const { settings: S, profile } = loadSettingsOrExit(args);
+try { getProfile(); } catch (e) { console.error(`Wingman: ${(e as Error).message}\nFix ~/.config/wingman/profile.yaml (or run: wingman profile set ...).`); process.exit(2); }   // an invalid user profile stops the call before it starts
 const fileArg = S.run.file ?? undefined;
 const noAi = S.run.noAi;
 const discard = S.run.discard;
@@ -105,7 +108,7 @@ let bank: BankCard[];
 try { bank = interview ? (cardsFile ? loadBank(cardsFile) : []) : loadBank(); }
 catch (e) { console.error(`Prepared cards ${cardsFile} not loaded: ${(e as Error).message}`); bank = []; }
 const stall = stallCard(bank);
-const houseStyle = readFileSync(join(DATA, "house-style.md"), "utf8");
+const houseStyle = readPack("house-style.md");
 const keyterms = loadKeyterms(S);
 // Background files from "Plan a call": read once (and deleted: one plan = one call). A replay / --no-brief never uses them.
 const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars, { consume: !fileArg });   // a practice call with the plan never uses up the real call's files
@@ -550,7 +553,7 @@ function onQuestion(r: SttResult, reason = "") {
   lat.reqAt = Date.now();
   runReflex({
     registry, models: usable, cfg: S.llm.reflex, prefix, transcript: recent, question: r.text, context: contextNotes, signal: ac.signal,
-    frame: frameText(tracker.current) || undefined, weakBank: weakBank ? hit!.card.id : undefined, noAgency,
+    frame: frameText(tracker.current) || undefined, weakBank: weakBank ? hit!.card.id : undefined, noAgency, anyLanguage: interview,
     onFail: (model, err) => llmFailed(model, err),
     onSwitch: (from, to, err) => { log.write("events", { type: "llm.switch", turnId, from, to, kind: err.kind }); console.log(`\n↪ AI ${from} -> ${to} (${describe(err)})`); },
     h: {
@@ -571,7 +574,7 @@ function onQuestion(r: SttResult, reason = "") {
         }
         if (tag.kind === "ANS" && !allowAns) { tag = { kind: "STALL" }; lat.tag = "STALL (ans-off)"; log.write("events", { type: "ans.suppressed", turnId, rung: sup.rung }); }
         // Off-kind call: the model prefers an answer or a stall over the weak keyword card, so that card goes away.
-        // Interview: the prepared card (Dan's own words) stays; the model's own version of the same answer is not shown.
+        // Interview: the prepared card (the user's own words) stays; the model's own version of the same answer is not shown.
         if (interview && hit && shown?.badge === "bank" && shown.turnId === turnId && tag.kind === "ANS") {
           clearTimeout(stallTimer); modelIgnored = true; lat.tag = `${lat.tag} (kept prepared ${hit.card.id})`; log.write("events", { type: "interview.kept", turnId, bank: hit.card.id }); return;
         }
@@ -907,7 +910,7 @@ function flush(ch: Channel) {
   const startWall = w.length && joined.speechEndWall ? endWall - Math.max(0, (w[w.length - 1].end - w[0].start) * 1000) : now;
   const detectText = (t: string) => { const h = interview ? matchBank(t, bank) : matchBankFor(t, bank); return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) }; };
   let { hit, d } = detectText(joined.text);
-  // Interview: a line that matches one of Dan's prepared cards is a question even without a question mark ("עבדת פעם עם טלפוניה").
+  // Interview: a line that matches one of the user's prepared cards is a question even without a question mark ("עבדת פעם עם טלפוניה").
   if (interview && !d.isQuestion && hit && wordCount(joined.text) >= 3) d = { ...d, isQuestion: true, reason: "interview-card" };
   // Glue the previous short fragment only when that turns a non-question into a question (a split question: "כמה זה" ... "עולה לחודש?").
   // Never glue two different voices: one person's fragment is not the start of another person's question.

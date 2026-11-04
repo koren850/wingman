@@ -1,5 +1,6 @@
 // Health supervisor and degrade ladder (health.ts), CircuitBreaker, and CostMeter (cost.ts) budget states.
 // Time is injected through a mutable `now` object, so no real timers or sleeps.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decide, NO_SIGNALS, capabilities, describeRung, CircuitBreaker, HealthSupervisor, type Rung } from "./health.ts";

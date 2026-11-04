@@ -3,6 +3,7 @@
 // Order matters: "?" and arithmetic first, then request/multi-word cues, then statement guards (negative, interjection),
 // then head words, then context rescues (stall bank hit, strong bank match). The `reason` string is for logs and tests.
 import { tokens, tokenVariants, containsPhrase, normalize } from "./normalize.ts";
+import { nameRegex, nameWords } from "./profile.ts";
 import { evalMath } from "./calc.ts";
 
 /** Fewer tokens than this is never a question unless it carries a "?" ("מחיר?"). */
@@ -66,7 +67,7 @@ const CONFIRM = new Set(["נכון", "בטוח"].map(normalize));
 const EN_WH = new Set(["what", "how", "why", "when", "where", "who", "whom", "whose", "which"]);
 const EN_AUX = new Set(["is", "are", "am", "was", "were", "do", "does", "did", "have", "has", "had", "can", "could", "will", "would", "shall", "should", "may", "might", "must",
   "isn't", "aren't", "wasn't", "weren't", "don't", "doesn't", "didn't", "haven't", "hasn't", "can't", "couldn't", "won't", "wouldn't", "shouldn't"]);
-const EN_OPENERS = new Set(["and", "so", "but", "okay", "ok", "well", "yes", "yeah", "then", "also", "um", "uh", "hmm", "like", "now", "alright", "sorry", "actually", "just", "maybe", "perhaps", "right", "oh", "hi", "hello", "Dan", "kor"]);
+const EN_OPENERS = new Set(["and", "so", "but", "okay", "ok", "well", "yes", "yeah", "then", "also", "um", "uh", "hmm", "like", "now", "alright", "sorry", "actually", "just", "maybe", "perhaps", "right", "oh", "hi", "hello"]);
 const EN_PRON = new Set(["i", "we", "you", "they", "he", "she", "it"]);
 /** Phrases that make an English utterance a question wherever they appear (indirect questions and polite requests). */
 const EN_PHRASES = ["i was wondering", "i am wondering", "i'm wondering", "i wonder", "would like to know", "'d like to know", "like to understand", "want to understand", "wanna understand", "want to know", "wanna know",
@@ -94,7 +95,7 @@ export function enQuestion(raw: string): string {
     for (const clause of sentence.split(/,/)) {
       let w = clause.replace(/[^a-z0-9'\s]/g, " ").trim().split(/\s+/).filter(Boolean);
       if (!w.length) continue;
-      while (w.length > 3 && EN_OPENERS.has(w[0])) w = w.slice(1);
+      while (w.length > 3 && (EN_OPENERS.has(w[0]) || nameWords().has(w[0]))) w = w.slice(1);   // "hello <name>, ..." opens like a greeting
       const [a, b, c] = w;
       if (w.length < 3 && !(w.length === 2 && EN_WH.has(a))) continue;
       const base = a.replace(/'s$|'re$|'ll$|'d$/, "");
@@ -202,8 +203,7 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
 // at the start; 124 of 225 detections in a real 70-minute call, mostly statements) counts only when the line speaks to the user.
 const STRONG = /^(question-mark|request|stall-bank|confirm-tail|multi|math|clause-head|about)/;   // clause-head / about: real questions whose "?" STT dropped
 const TO_YOU = /(^|[\s,])(לכם|לך|אתם|אתה|תוכל|תוכלו|אפשר|you|your)(?![\p{L}])/iu;
-/** The user addressed by name, with the spellings speech-to-text gives it ("Dann", "Dann"). */
-export const NAME_RE = /(^|[\s,])(דן|Dan|Coren|Dann|Dann|Dann)(?![\p{L}])/iu;
+/** The user addressed by name (profile name and spellings, see profile.ts nameRegex). Matches nothing when the profile has no name. */
 export function isClearQuestion(text: string, reason: string): boolean {
-  return STRONG.test(reason) || (/^head/.test(reason) && TO_YOU.test(text)) || NAME_RE.test(text);
+  return STRONG.test(reason) || (/^head/.test(reason) && TO_YOU.test(text)) || nameRegex().test(text);
 }

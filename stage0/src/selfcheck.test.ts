@@ -1,4 +1,6 @@
+import "./test-setup.ts";
 import { test } from "node:test";
+import "./test-setup.ts";
 import assert from "node:assert/strict";
 import { detectCareful, looksFactual, parseVerdict, checkFix, SelfCheckGate, runSelfCheck, quoteOf } from "./selfcheck.ts";
 

@@ -1,5 +1,6 @@
 // End-to-end call test with no network: scripted STT plays data/test/e2e-call.json, a scripted model answers,
 // and the real call loop (src/run.ts) runs over a silent stereo wav. Checks the call folder it writes.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";

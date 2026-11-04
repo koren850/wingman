@@ -93,7 +93,7 @@ Used for UX checks and for the images in `docs/ux/`. In snapshot mode the app cr
 | `shared/` | Design tokens and shared UI helpers |
 | `config/defaults.yaml` | Every setting, documented |
 | `profiles/` | Named setting overrides (`--profile`) |
-| `data/` | Bank, house style, keyterms, question corpus, gold-set script, demo and test fixtures; `data/private/` is git-ignored |
+| `data/` | `example-pack/` (bank, house style, keyterms), question corpus, gold-set script, demo and test fixtures; `data/private/` is git-ignored |
 | `qa/` | Synthetic QA harness |
 | `scripts/` | `wingman.sh` (start the app), `wingman-cli.sh`, `make-app.sh` |
 | `../brand/` | Logo and icons |

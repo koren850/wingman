@@ -7,6 +7,9 @@ import { loadBank, STALL_TIER } from "../src/bank.ts";
 import { isAgencyKind } from "../src/frame.ts";
 import type { Scenario, TimelineTurn } from "./render.ts";
 
+/** Name of the invented user in the scenarios (to be wired to the profile). */
+const USER_NAME = "Dan";
+
 export type Row = Record<string, any>;
 /** Rows of a JSONL file; a missing file gives [] and a bad line gives {} (a half-written line must not stop grading). */
 export const readJsonl = (file: string): Row[] => existsSync(file) ? readFileSync(file, "utf8").split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return {}; } }) : [];
@@ -224,7 +227,7 @@ export function grade(sc: Scenario & { name: string }, tl: TimelineTurn[], dir: 
     meGrade.graded++;
     const ok = exp.forMe === "answer" ? !!hit : !hit;
     if (ok) meGrade.ok++;
-    else failures.push({ turn: t.i, kind: exp.forMe === "answer" ? "no For-you answer" : "unwanted For-you answer", heard: heardOf(t.i) || "(nothing transcribed)", script: t.text, expected: exp.forMe === "answer" ? "a For-you card" : "no card for Dan", got: hit ? `${hit.source ?? "ai"}: ${String(hit.say).slice(0, 70)}` : "no card" });
+    else failures.push({ turn: t.i, kind: exp.forMe === "answer" ? "no For-you answer" : "unwanted For-you answer", heard: heardOf(t.i) || "(nothing transcribed)", script: t.text, expected: exp.forMe === "answer" ? "a For-you card" : `no card for ${USER_NAME}`, got: hit ? `${hit.source ?? "ai"}: ${String(hit.say).slice(0, 70)}` : "no card" });
   }
   for (const c of meCards) if (!matched.has(c.id)) meGrade.unexpected.push(`${c.turnId}: "${String(c.question).slice(0, 60)}" -> ${String(c.say).slice(0, 50)}`);
 

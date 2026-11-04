@@ -7,7 +7,7 @@ import { execFile } from "node:child_process";
 import { CliError, EXIT, type Ctx } from "./common.ts";
 
 export const NO_APP_MESSAGE = "The Wingman app is not running (or has not been restarted since the CLI was added).";
-export const NO_APP_HINT = "Ask Dan to open the Wingman app, or run `wingman app open` (it opens /Applications/Wingman.app; the CLI never does that by itself).";
+export const NO_APP_HINT = "Ask the user to open the Wingman app, or run `wingman app open` (it opens /Applications/Wingman.app; the CLI never does that by itself).";
 
 /** Is a Wingman app process alive? Only checked when the socket is the default one (tests set their own socket). */
 export function appProcessRunning(ctx: Ctx): Promise<boolean | undefined> {

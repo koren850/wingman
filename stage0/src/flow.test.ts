@@ -1,4 +1,5 @@
 // Flow: their own discussion, its end, and the moment they turn to the user.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { FlowTracker, parseTopic, runTopic } from "./flow.ts";

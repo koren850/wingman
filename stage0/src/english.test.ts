@@ -1,5 +1,6 @@
 // English / mixed-language support: question detection without a "?", French-accented STT, English Prepared cards and stall lines,
 // the English-turn instruction and the background-files rule in the reflex prompt. All data invented.
+import "./test-setup.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { detect } from "./detector.ts";

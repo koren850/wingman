@@ -1,4 +1,5 @@
 // Fixes from the first real client call (3 Nov 2026): wrong bank hits, leaked control words, prompt rules.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadBank, matchBankFor, matchBank } from "./bank.ts";

@@ -1,4 +1,5 @@
 // Prepared meetings: the pure rules (shared/plans.js) and the store (tray/plans.cjs). Offline, temp folders, invented data only.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

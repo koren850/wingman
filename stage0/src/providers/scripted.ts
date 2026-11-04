@@ -51,18 +51,18 @@ export const script: SttProvider = {
   probe: async () => ({ ok: true }),
 };
 
-/** The reflex prompt ends with: The other side just said: <call_transcript>QUESTION</call_transcript>  (or, for Dan's own questions: Dan is asking you ... : <call_transcript>…) */
+/** The reflex prompt ends with: The other side just said: <call_transcript>QUESTION</call_transcript>  (or, for the user's own questions: "<name> is asking you ... : <call_transcript>…") */
 // Extracts the question from the reflex prompt (see the line above).
 function questionOf(prompt: string): string {
-  const m = prompt.match(/(?:The other side just said|The client just said|Dan is asking you[^<]*?): <call_transcript>([\s\S]*?)<\/call_transcript>/);
+  const m = prompt.match(/(?:The other side just said|The client just said|is asking you[^<]*?): <call_transcript>([\s\S]*?)<\/call_transcript>/);
   return m?.[1] ?? "";
 }
-/** Answers for Dan's own questions (model "scripted:*" in me-mode). Invented, deterministic. */
+/** Answers for the user's own questions (model "scripted:*" in me-mode). Invented, deterministic. */
 const ME_ANSWERS: [RegExp, string][] = [
   [/בירה.*אוסטרליה|capital of australia/i, "הבירה של אוסטרליה היא קנברה."],
   [/ההבדל.*(cdn|dns)|difference/i, "CDN מפיץ עותקים של האתר לשרתים קרובים לגולש, ו-DNS רק מתרגם שם דומיין לכתובת."],
   [/מה זה dns|what is dns/i, "DNS הוא ספר הטלפונים של האינטרנט: הוא מתרגם שם דומיין לכתובת השרת."],
-  [/טוקיו|tokyo|טיסה/i, "טיסה ישירה מתל אביב לטוקיו אין, עם עצירה זה בערך 14 עד 17 שעות."],
+  [/טוקיו|tokyo|טיסה/i, "טיסה לטוקיו עם עצירה לוקחת בערך 14 עד 17 שעות."],
   [/פורטוגל|portugal/i, "הכלכלה של פורטוגל מבוססת בעיקר על שירותים ותיירות."],
   [/ווינגמן|wingman/i, "אני כאן. מה לבדוק?"],
 ];
@@ -70,9 +70,9 @@ function meAnswer(q: string): string {
   const hit = ME_ANSWERS.find(([re]) => re.test(q));
   return hit ? `ANS\n${hit[1]}` : "SKIP";
 }
-/** Audience classifier double (CLASSIFY_SYSTEM in src/assist.ts): ASSIST for knowledge questions, OTHER for anything aimed at the other side. */
+/** Audience classifier double (classifySystem in src/assist.ts): ASSIST for knowledge questions, OTHER for anything aimed at the other side. */
 export function scriptedClassify(prompt: string): string {
-  const said = prompt.match(/Dan just said: <call_transcript>([\s\S]*?)<\/call_transcript>/)?.[1] ?? "";
+  const said = prompt.match(/just said: <call_transcript>([\s\S]*?)<\/call_transcript>/)?.[1] ?? "";
   if (/(אתם|שלכם|לכם|אצלכם|your|you guys|תקציב|דעתך|תוכל)/i.test(said)) return "OTHER";
   if (/(בירה|הבדל|difference|capital|dns|cdn|טוקיו|טיסה|תרגם|מה זה|מה זאת)/i.test(said)) return "ASSIST";
   return "NEITHER";
@@ -86,9 +86,9 @@ const bank = loadBank();
 export const SCRIPTED_SUMMARY = {
   summary: ["הלקוחה פנתה בגלל אתר שנטען לאט", "שאלה על גיבויים לאתר", "השאירה טלפון ומייל לחזרה"],
   decisions: ["בודקים את מהירות האתר"],
-  nextSteps: [{ who: "דן", what: "לבדוק את סיבת האיטיות" }, { who: "לקוח", what: "לשלוח גישה לאתר", when: "השבוע" }],
+  nextSteps: [{ who: "אני", what: "לבדוק את סיבת האיטיות" }, { who: "לקוח", what: "לשלוח גישה לאתר", when: "השבוע" }],
   openQuestions: ["כמה תעלה החבילה המלאה"],
-  followUpEmail: "שלום דנה,\nתודה על השיחה. דיברנו על מהירות האתר והגיבויים.\nהחבילה עולה 500 ש\"ח לחודש.\nנחזור אליך עד יום שני.\nבברכה,\nדן",
+  followUpEmail: "שלום דנה,\nתודה על השיחה. דיברנו על מהירות האתר והגיבויים.\nהחבילה עולה 500 ש\"ח לחודש.\nנחזור אליך עד יום שני.\nבברכה",
 };
 /** Call-frame double (model "scripted:frame"): an invented client call; checklist items tick off when their keyword is in the transcript. */
 const FRAME_ITEMS: [string, RegExp, boolean][] = [
@@ -112,9 +112,9 @@ export function scriptedAnswer(prompt: string): string {
   if (prompt.includes("You write at most one live tip")) return scriptedTip(prompt);
   if (prompt.includes("write the post-call summary")) return JSON.stringify(SCRIPTED_SUMMARY);
   if (prompt.includes("You keep short live notes")) return "- הלקוחה רוצה אתר מהיר יותר";
-  if (prompt.includes("You decide who Dan is talking to")) return scriptedClassify(prompt);
+  if (/You decide who .{1,60} is talking to/.test(prompt)) return scriptedClassify(prompt);
   const q = questionOf(prompt);
-  if (prompt.includes("Dan is asking you (the assistant) himself")) return meAnswer(q);
+  if (prompt.includes("is asking you (the assistant) directly")) return meAnswer(q);
   if (/כמה (זה )?עולה|מחיר/.test(q)) return "STALL";
   const hit = matchBank(q, bank);
   return hit ? `BANK ${hit.card.id}` : "SKIP";

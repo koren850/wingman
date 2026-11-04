@@ -12,10 +12,11 @@ import { plan } from "./plan.ts";
 import { calls } from "./calls.ts";
 import { settings } from "./settings-cmd.ts";
 import { live } from "./live.ts";
+import { profile } from "./profile-cmd.ts";
 
 type Cmd = (ctx: Ctx, args: string[]) => Promise<Result>;
 const COMMANDS: Record<string, Cmd> = {
-  status, doctor, plan, prepare: plan, start, stop, consent, confirm: consent, client, quiet, note, speaker, ask, live, calls, settings, keys, app,
+  status, doctor, plan, prepare: plan, start, stop, consent, confirm: consent, client, quiet, note, speaker, ask, live, calls, settings, profile, keys, app,
   help: async (_c, a) => ({ data: { help: HELP }, text: HELP.trimEnd() + (a.length ? "" : "") }),
 };
 

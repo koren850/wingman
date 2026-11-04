@@ -6,6 +6,7 @@
 //   the other side asks "כמה זה 12 כפול 3?" -> a calc card, never the price stall line; "כמה זה עולה לאתר" still gets the stall
 //   a Telugu final             -> dropped and counted
 //   a "For you" answer within 15 s of a card for the other side -> held back
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

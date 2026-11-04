@@ -10,6 +10,7 @@ import { join, basename } from "node:path";
 import YAML from "yaml";
 import { requireKeys, DATA } from "./env.ts";
 import { decode } from "./audio.ts";
+import { readPack } from "./pack.ts";
 import { SttStream, type SttResult } from "./stt.ts";
 import { containsPhrase } from "./normalize.ts";
 
@@ -23,7 +24,7 @@ const language = (flag("--language") ?? "multi") as "he" | "multi" | "en";   // 
 const items = idsArg ? allItems.filter((i) => idsArg.split(",").map((x) => x.trim()).includes(i.id))
   : countArg ? allItems.slice(0, Math.max(1, Number(countArg) || allItems.length)) : allItems;
 const useKeyterms = !argv.includes("--no-keyterms");
-const keyterms = useKeyterms ? readFileSync(join(DATA, "keyterms.txt"), "utf8").split("\n").map((s) => s.trim()).filter(Boolean) : [];
+const keyterms = useKeyterms ? readPack("keyterms.txt").split("\n").map((s) => s.trim()).filter(Boolean) : [];
 const fileArgs: string[] = [];
 for (let i = 0; i < argv.length; i++) { if (["--count", "--ids", "--language"].includes(argv[i])) i++; else if (!argv[i].startsWith("--")) fileArgs.push(argv[i]); }
 const aliasFile = join(DATA, "aliases.yaml");

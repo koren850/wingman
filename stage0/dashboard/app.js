@@ -526,13 +526,13 @@ function tFollowup(pane, d) {
     s.nextSteps.forEach((n, i) => {
       const cb = h("input", { type: "checkbox", id: "step-" + i }); cb.checked = !!done[i];
       const row = h("label", { class: "step" + (done[i] ? " done" : ""), for: "step-" + i }, cb,
-        chip(n.who === "דן" ? "Dan" : n.who === "לקוח" ? "Client" : n.who, n.who === "דן" ? "me" : "info"),
+        chip(n.who === "אני" ? "Me" : n.who === "לקוח" ? "Client" : n.who, n.who === "אני" ? "me" : "info"),
         h("span", { class: "what", dir: dirOf(n.what), lang: langOf(n.what) }, rich(n.what), n.when ? h("span", { class: "when", dir: dirOf(n.when), lang: langOf(n.when) }, n.when) : null));
       cb.addEventListener("change", () => { done[i] = cb.checked; saveSteps(state.id, done); row.classList.toggle("done", cb.checked); upd(); announce(`${cb.checked ? "Done" : "Reopened"}: ${n.what.slice(0, 60)}`); });
       stepsUl.append(h("li", {}, row));
     });
     upd();
-    const stepsText = () => s.nextSteps.map((n) => `- [ ] ${n.who === "דן" ? "Dan" : n.who === "לקוח" ? "Client" : n.who}: ${n.what}${n.when ? " (" + n.when + ")" : ""}`).join("\n");
+    const stepsText = () => s.nextSteps.map((n) => `- [ ] ${n.who === "אני" ? "Me" : n.who === "לקוח" ? "Client" : n.who}: ${n.what}${n.when ? " (" + n.when + ")" : ""}`).join("\n");
     const email = s.followUpEmail || "";
     const phN = (email.match(/\[להשלים[^\]\n]*\]/g) || []).length || s.guardReplaced || 0;
     const aside = h("aside", { class: "emailbox", "aria-label": "Follow-up email" },

@@ -1,4 +1,5 @@
 // Bug-hunt regressions (offline). Each block was a real failure found by adversarial inputs; names are invented.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { guard } from "./guards.ts";

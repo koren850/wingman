@@ -21,7 +21,7 @@ stt:
   joinWindowMs: 1500       # a short client fragment without an end mark is glued to the next one within this time (split questions). 0 = off
   keyterms:
     enabled: auto          # auto | on | off   (off = never send keyterms)
-    file: data/keyterms.txt  # one term per line, relative to stage0/
+    file: ""               # empty = the pack's keyterms.txt (~/.config/wingman/pack, then data/example-pack); or a path relative to stage0/. One term per line
     max: 100               # most terms sent
   circuit:
     failures: 3            # this many failures ...

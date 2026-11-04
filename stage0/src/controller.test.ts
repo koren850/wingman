@@ -1,5 +1,6 @@
 // Shared call controller (tray/controller.cjs, used by menu bar + window), driven by a fake child process: no electron, no real call.
 // fake() also injects spawn, kill and timer doubles so state changes run synchronously.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";

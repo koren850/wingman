@@ -89,7 +89,7 @@ function readSummary(dir) {
   const strs = (x, n) => (Array.isArray(x) ? x : []).filter((v) => typeof v === "string" && v).slice(0, n).map((v) => v.slice(0, 600));
   // nextSteps[].who: the client, another name (control and bidi characters stripped), or by default the user. Hebrew labels are the stored values.
   const steps = (Array.isArray(o.nextSteps) ? o.nextSteps : []).filter((n) => n && typeof n.what === "string" && n.what).slice(0, 12)
-    .map((n) => ({ who: n.who === "לקוח" ? "לקוח" : typeof n.who === "string" && n.who && n.who !== "דן" ? n.who.replace(/[\u0000-\u001f\u202a-\u202e]/g, "").slice(0, 40) : "דן", what: n.what.slice(0, 400), when: typeof n.when === "string" && n.when ? n.when.slice(0, 80) : undefined }));
+    .map((n) => ({ who: n.who === "לקוח" ? "לקוח" : typeof n.who === "string" && n.who && n.who !== "אני" ? n.who.replace(/[\u0000-\u001f\u202a-\u202e]/g, "").slice(0, 40) : "אני", what: n.what.slice(0, 400), when: typeof n.when === "string" && n.when ? n.when.slice(0, 80) : undefined }));
   return {
     generatedAt: typeof o.generatedAt === "string" ? o.generatedAt : "", model: typeof o.model === "string" ? o.model.slice(0, 80) : "",
     summary: strs(o.summary, 6), decisions: strs(o.decisions, 12), nextSteps: steps, openQuestions: strs(o.openQuestions, 12),

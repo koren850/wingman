@@ -1,4 +1,5 @@
 // The other side's voices: call-local numbers, names, labels for the models.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dominantSpeaker, SpeakerBook, lineLabel } from "./speakers.ts";

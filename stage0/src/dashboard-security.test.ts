@@ -1,5 +1,6 @@
 // Static guards for the Wingman window: no HTML injection paths, strict CSP, every IPC handler checks its sender,
 // snapshot mode can never start a call, and only fixed commands can reach a call's stdin.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

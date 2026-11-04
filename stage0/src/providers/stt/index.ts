@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Settings } from "../../settings.ts";
 import { STAGE0 } from "../../settings.ts";
+import { packPath } from "../../pack.ts";
 import { deepgram } from "./deepgram.ts";
 import { soniox } from "./soniox.ts";
 import { gladia } from "./gladia.ts";
@@ -24,8 +25,8 @@ export function sttChain(s: Settings): string[] { return [...new Set([s.stt.prov
 /** Keyterms per settings (stt.keyterms.enabled / file / max). One term per line; missing file = none. */
 export function loadKeyterms(s: Settings): string[] {
   if (s.stt.keyterms.enabled === "off") return [];
-  const f = join(STAGE0, s.stt.keyterms.file);
-  if (!existsSync(f)) return [];
+  const f = s.stt.keyterms.file ? join(STAGE0, s.stt.keyterms.file) : packPath("keyterms.txt");   // empty setting = the pack's list
+  if (!f || !existsSync(f)) return [];
   return readFileSync(f, "utf8").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, s.stt.keyterms.max);
 }
 export type { SttProvider, SttStreamLike, SttResult, SttOptions, Word, Channel } from "./types.ts";

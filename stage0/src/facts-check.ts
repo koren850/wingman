@@ -2,6 +2,7 @@
 // call speech (gold sentences, question corpus, bank, synthetic call). Every HIT printed here is a false positive to fix.
 // Needs a private snapshot, so it only works on a machine that has one. Prints only; the exit code is always 0.
 import { DATA } from "./env.ts";
+import { readPack } from "./pack.ts";
 import { readFileSync } from "node:fs";
 import YAML from "yaml";
 import { EntitySpotter, loadSnapshot } from "./entities.ts";
@@ -11,7 +12,7 @@ const D = DATA + "/";
 const texts: string[] = [
   ...JSON.parse(readFileSync(D + "gold/terms.json", "utf8")).map((x: any) => x.sentence),
   ...readFileSync(D + "questions.tsv", "utf8").split("\n").map((l) => l.split("\t")[0]),
-  ...(YAML.parse(readFileSync(D + "bank.yaml", "utf8")) as any[]).flatMap((c) => [c.say, ...c.facts, ...c.triggers]),
+  ...(YAML.parse(readPack("bank.yaml")) as any[]).flatMap((c) => [c.say, ...c.facts, ...c.triggers]),
   ...JSON.parse(readFileSync(D + "synthetic/call1.json", "utf8")).turns?.map((t: any) => t.text) ?? [],
 ];
 let hits = 0;

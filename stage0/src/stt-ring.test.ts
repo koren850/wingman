@@ -1,5 +1,6 @@
 // Ring buffer in SttChannel (providers/stt/channel.ts). Audio sent while the socket is down is kept (last ringMs) and replayed in order on reopen.
 // Uses fake provider streams; no sockets.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";

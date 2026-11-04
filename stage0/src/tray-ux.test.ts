@@ -1,6 +1,7 @@
 // Menu-bar app UX: tray/lib.cjs reducer (stop phases, ask state, AI mode), tray/controller.cjs (practice with the Plan, notifications,
 // Start key, confirmations; Electron objects and spawn are injected), mic verdict, and run.ts phase wiring.
 // Includes one real scripted engine run and a control-socket check, both with a temp calls folder.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";

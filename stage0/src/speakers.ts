@@ -45,7 +45,7 @@ export class SpeakerBook {
   get count(): number { return this.nums.size; }
 }
 
-/** How a line is labelled for the models: "me", "them" or "them (Speaker 2)" / "them (Miriam)". */
+/** How a line is labelled for the models: "me", "them" or "them (Speaker 2)" / "them (Dana)". */
 export function lineLabel(ch: "me" | "them", who?: SpeakerInfo): string {
   if (ch === "me" || !who) return ch;
   return `them (${who.name ?? `Speaker ${who.spk}`})`;

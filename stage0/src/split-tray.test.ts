@@ -1,5 +1,6 @@
 // Two areas: joining a question split by a pause (split.ts joinSplit) and the menu-bar app's pure logic (tray/lib.cjs:
 // status parsing, reducer, briefing form, menu rebuild, practice wav header). No Electron needed.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

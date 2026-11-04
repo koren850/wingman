@@ -1,9 +1,10 @@
 // Interview plans: kind "interview", the plan's own prepared cards, the interview prompt block and guard.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isInterview, briefCardsFile, briefNotes, briefKind } from "./brief.ts";
 import { guardInterview, guard } from "./guards.ts";
-import { buildPrefix, INTERVIEW_BLOCK } from "./reflex.ts";
+import { buildPrefix, interviewBlock } from "./reflex.ts";
 
 const b = { who: "Alex (Acme)", notes: ["Call kind: interview", "Topic: round 2", "Prepared cards: /tmp/cards.yaml", "Speaks fast"] };
 
@@ -28,13 +29,13 @@ test("interview guard keeps the candidate's own dates and numbers, still blocks 
 test("the interview prompt replaces the old interview rule and labels the bank as Dan's answers", () => {
   const bank = [{ id: "salary", title: "Salary", triggers: ["salary"], say: "What range did you set?", facts: [] }];
   const p = buildPrefix("style", bank, "", "<background_files>prep</background_files>", true);
-  assert.ok(p.includes(INTERVIEW_BLOCK));
+  assert.ok(p.includes(interviewBlock()));
   assert.ok(p.includes("Dan's prepared answers (id: title)"));
   assert.ok(!p.includes("mבנה STAR") && !p.includes("Interview, behavioural question"));
   assert.ok(p.includes("Dan's interview prep"));
   assert.ok(!p.includes("Using the background files:"));
   const client = buildPrefix("style", bank, "", "<background_files>prep</background_files>");
-  assert.ok(!client.includes(INTERVIEW_BLOCK) && client.includes("Interview, behavioural question"));
+  assert.ok(!client.includes(interviewBlock()) && client.includes("Interview, behavioural question"));
 });
 
 test("a say-line about the transcript itself is dropped like a leaked tag", async () => {

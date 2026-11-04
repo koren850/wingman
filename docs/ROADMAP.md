@@ -1,6 +1,6 @@
 # Roadmap, known limits and ideas
 
-State as of 3 November 2026. Wingman is a personal tool at "Stage 0". This list is honest, not a promise.
+State as of 3 November 2026. Wingman is at "Stage 0". This list is honest, not a promise.
 
 ## What is done
 
@@ -57,4 +57,4 @@ State as of 3 November 2026. Wingman is a personal tool at "Stage 0". This list 
 
 ## Stop rule
 
-The original plan had a stop rule: if Wingman is not used on a real call by a chosen date, freeze it and write down where it stopped. That is still the right way to keep a personal tool honest.
+A stop rule keeps the project honest: if Wingman is not used on a real call by a chosen date, freeze it and write down where it stopped.

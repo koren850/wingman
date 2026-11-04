@@ -2,6 +2,7 @@
 // Scripted STT replays the shape of a live call: the final arrives ~0.9 s after the end of speech with speechFinal=false.
 // A "?" or a sum flushes at once, a sum is computed locally, a solo call skips the classifier, "you / can you" is for Wingman.
 // Without those, the card took about 4 s (STT, join-window wait, classifier, then the answer).
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

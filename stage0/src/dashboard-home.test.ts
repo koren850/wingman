@@ -1,4 +1,5 @@
 // Home helpers (dashboard/homelib.js): stop steps from the real phase, the AI mode line, the Start gate, practice label, the Ask/Note input, doctor wording.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

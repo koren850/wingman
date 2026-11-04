@@ -1,14 +1,14 @@
 // `wingman help`: written for an AI agent (Claude Code) that drives Wingman from a terminal.
 // HELP is user-visible output: keep it in step with the commands in index.ts and the exit codes in common.ts.
-export const HELP = `wingman: command line for the Wingman live-call assistant. Everything Dan can do in the app, from a terminal.
+export const HELP = `wingman: command line for the Wingman live-call assistant. Everything the user can do in the app, from a terminal.
 
 HOW TO USE IT (for an AI agent)
   1. Run \`wingman status --json\` first. It tells you if the app is running, whether a call is live (call.phase), health problems and readiness.
   2. Add --json to ANY command for machine-readable output: {"ok":true,...} on success, {"ok":false,"error":{"code","message","hint"}} on failure.
      Read the exit code, then the "hint" text; it says what to do next.
   3. start / stop / ask / note / confirm drive the RUNNING menu-bar app, so the call shows in its windows. This CLI never starts a second engine.
-     If the app is not running the exit code is 3: tell Dan, or (only if he agrees) run \`wingman app open\`. The CLI never opens the app by itself.
-  4. Call content is private: never paste transcripts or cards anywhere except Dan's own terminal. Never try to read keys.
+     If the app is not running the exit code is 3: tell the user, or (only if they agree) run \`wingman app open\`. The CLI never opens the app by itself.
+  4. Call content is private: never paste transcripts or cards anywhere except the user's own terminal. Never try to read keys.
 
 TYPICAL FLOWS
   Prepare:   wingman plan new --title "Hosting move" --at "2026-11-03 14:30" --who "Dana, Levi Studio" --kind client --topic "hosting move" \\
@@ -37,7 +37,7 @@ COMMANDS
                                set without --id and without --new: makes the first meeting, edits the only one, and with several it REFUSES (exit 2): name one with --id.
                                --at is your local time ("14:30" = today); --must items become the checklist. Time rule: a meeting with a time stays until about 6 hours
                                after it; without a time it stays 14 days after its last edit. A meeting is used up by the real call started with it (Practice never does).
-                               --kind interview = a job interview: Dan is the candidate. The AI answers technical questions and questions about him from the
+                               --kind interview = a job interview: the user is the candidate. The AI answers technical questions and questions about them from the
                                background files only; no "buy time" lines, no card limit. Add --note "Prepared cards: <file.yaml>" for instant cards (bank format).
   plan attach [--id <id>] --file <.txt|.md|.pdf> | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters per meeting). --id is needed when there are several meetings.
   plan detach <file id> [--id <id>]       Remove one background file.
@@ -51,17 +51,20 @@ COMMANDS
                                               Stop and save. --delete erases the call and needs --yes. --no-summary keeps the call but
                                               skips the summary (write it later: wingman calls summary <id> --generate).
   confirm --yes                Only when the optional "Ask me before listening starts" setting is on (off by default): starts listening
-                               on a call that is waiting (the "Start listening" step). Do it only when Dan asked. (Old name: consent.)
+                               on a call that is waiting (the "Start listening" step). Do it only when the user asked. (Old name: consent.)
   client                       Confirm the proposed client (the AI may then use their details).
   quiet on|off                 Quiet mode: hide cards in the answer window (they are still saved).
   note "<text>"                Add a context note for the AI (max 300 characters; \`-\` reads stdin).
   speaker <n> "<name>"         Name the other side's voice n (1-20, the "Speaker n" in the live view); \`speaker <n> --clear\` removes the name. Needs a running call.
   ask "<question>"             Type a question to Wingman during a live call; the answer appears as a card (read it with \`wingman live\`). Needs phase "live".
-  ask --listen                 Same as the Ctrl+Opt+A key: Dan's next spoken sentence is the question.
+  ask --listen                 Same as the Ctrl+Opt+A key: the user's next spoken sentence is the question.
   live [--follow] [--last N] [--id <call>] [--timeout S]     Transcript with answer cards (NDJSON with --json --follow).
   calls list [--limit N] | show <id|latest> [--lines N] [--no-transcript] | summary <id> [--generate] | email <id>
         | rate <id> <card id> y|n|clear | purge <id> --yes
                                --generate writes a missing summary (one small paid model call).
+  profile show | set [--name N] [--spelling S ...] [--address male|female|neutral] [--about T] [--business T] [--timezone Z]
+                               Who Wingman is helping: name (and the spellings speech-to-text gives it), the Hebrew form used to address the user, a line about them
+                               and their business. Stored in ~/.config/wingman/profile.yaml, never in the repo. An empty value clears a field. Applies to the next call.
   settings list [--all] | get <key> | set <key> <value|default> [--advanced]     Same options and limits as the app's Settings. Applies to the next call.
   keys status                  Present or missing for each API key. Nothing else: keys are never printed, set or moved from here
                                (use \`pnpm keys\` in a terminal or the app's Settings > Keys).
@@ -75,5 +78,5 @@ EXIT CODES
 SAFETY
   - The app listens on an owner-only socket (~/.config/wingman/run/control.sock, mode 600). Only a fixed list of commands is accepted.
   - Output never contains API keys. Destructive commands (stop --delete, calls purge, confirm) need --yes.
-  - Do not start a real call unless Dan asked for it in this session, and never choose a Plan for him: ask which meeting (or --quick). Use --practice to test.
+  - Do not start a real call unless the user asked for it in this session, and never choose a Plan for them: ask which meeting (or --quick). Use --practice to test.
 `;

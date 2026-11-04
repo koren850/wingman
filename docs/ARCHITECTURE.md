@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes how Wingman is built today (the "Stage 0" app in `stage0/`). The original, much larger design is in [history/STRUCTURE.md](history/STRUCTURE.md). Where they differ, this document and the code are right.
+This document describes how Wingman is built today (the "Stage 0" app in `stage0/`). Where this document and the code differ, the code is right.
 
 Contents: [Big picture](#big-picture) · [Components](#components) · [Processes and data flow](#processes-and-data-flow) · [Call lifecycle](#call-lifecycle-and-phases) · [Files on disk](#files-on-disk) · [Latency budget and cost model](#latency-budget-and-cost-model) · [Testing](#testing)
 
@@ -26,12 +26,14 @@ Everything is plain files. There is no database and no server.
 | Speech to text | `stt.ts`, `providers/stt/` | One streaming connection per channel. Deepgram Nova-3 is the default. Soniox and Gladia adapters exist but are experimental (tested against a mock server only). Keyterms, reconnect buffer (last 2 s replayed), fallback provider, circuit breaker, foreign-script filter. |
 | Utterance handling | `split.ts`, `multiq.ts`, `normalize.ts` | Joins a question that was cut by a pause ("כמה זה" ... "עולה לחודש"), cuts several back-to-back questions into separate ones, and normalises Hebrew (niqqud, final letters, prefixes) for matching. |
 | Question detector | `detector.ts` | Hebrew-aware rules that decide whether a "them" line is a question. Local, free, instant. Tested on a labelled corpus (`data/questions.tsv`). |
-| Answer bank | `bank.ts`, `data/bank.yaml` | Keyword cards written by the owner (title, triggers, a short "say" line, facts). Matching is local. Returns the best card or nothing. |
+| Answer bank | `bank.ts`, pack `bank.yaml` | Keyword cards written by the user (title, triggers, a short "say" line, facts). Matching is local. Returns the best card or nothing. |
 | Reflex | `reflex.ts`, `providers/llm.ts` | One streamed call to a small model. The first line is a tag: `SKIP`, `STALL`, `BANK <id>` or `ANS`; then the card text. A stall line is shown if there is no tag after `reflex.stallAfterMs`. The prompt prefix is cached (Anthropic prompt cache). |
 | Guards | `guards.ts` | Code (regular expressions, not prompts) that blocks prices, dates, deadlines and promises in AI text, in Hebrew and English, including number words. A hit replaces the text with a stall line. |
 | Calc | `calc.ts` | Local arithmetic for "For you" questions and to keep math away from the price stall line. |
-| Assist | `assist.ts` | Answers questions the owner asks out loud (`assist.answerMe`) or after the Ctrl+Opt+A key. Local cues first, then one tiny classifier call only if unsure. |
+| Assist | `assist.ts` | Answers questions the user asks out loud (`assist.answerMe`) or after the Ctrl+Opt+A key. Local cues first, then one tiny classifier call only if unsure. |
 | Frame | `frame.ts` | About once a minute: what kind of call is this (client, support, vendor, team, consult, personal, other), topic, goal, people, and a checklist. The kind changes only after two updates agree. Feeds answers, tips and the summary. |
+| Speakers and flow | `speakers.ts`, `flow.ts` | The speech provider tells the other side's voices apart (`stt.speakers`); `speakers.ts` gives them call-local numbers and names (from introductions, a prepared meeting's attendees, or `wingman speaker`). `flow.ts` notices when several of them talk among themselves (a muted line, answer cards wait) and when someone turns to the user (an alert). Setting `flow.enabled`. Nothing is kept across calls. |
+| Interview mode | `brief.ts`, `run.ts` | A prepared meeting of kind `interview` switches to coaching: the plan's own cards (note `Prepared cards: <file.yaml>`) replace the bank, no Buy time lines, every question gets an answer built from the background notes. |
 | Tips and notes | `tips.ts`, `notes.ts`, `brief.ts` | At most one small tip every two minutes (AI or local: "you talk more than 75 percent"). Live notes every 30 s. Must-cover reminders from the Plan. |
 | Fact cards | `entities.ts`, `facts-check.ts` | Matches client and domain names in the call against a local snapshot (`data/private/entities.json`, git-ignored). No network lookup during a call. |
 | Capture | `capture.ts` | Finds phone numbers, emails and domains, including spoken Hebrew digit words. |
@@ -110,7 +112,7 @@ them audio -> Deepgram (interim + final text) -> join/split fragments
   -> answer window + cards.jsonl + events.jsonl
 ```
 
-For lines from the owner's own channel ("me"): echo filter, then `assist.ts` decides "is this for Wingman?", then the math evaluator or one model call answers into a "For you" card.
+For lines from the user's own channel ("me"): echo filter, then `assist.ts` decides "is this for Wingman?", then the math evaluator or one model call answers into a "For you" card.
 
 Background loops run beside this: call frame (every 60 s), live notes (every 30 s), tips (max one per 2 min), must-cover reminders, health supervisor (every 1 s), idle stop (15 min of silence).
 
@@ -159,7 +161,8 @@ Outside the call folders:
 | `~/.config/wingman/keys.env` | Legacy keys file. Still read if present; Settings -> Keys can move it into the Keychain. |
 | `~/.config/wingman/run/control.sock` | The control socket. |
 | `stage0/calls/tray.log` | Menu-bar app log: status lines only, no call content. |
-| `stage0/data/bank.yaml`, `house-style.md`, `keyterms.txt`, `aliases.yaml` | Your answer bank, tone rules and speech hints. |
+| `stage0/data/example-pack/` (`bank.yaml`, `house-style.md`, `keyterms.txt`) | The example pack: answer bank, tone rules and speech hints. Your own pack (`~/.config/wingman/pack/`) replaces it. |
+| `~/.config/wingman/profile.yaml` | Your profile: name, spellings, how to address you, your business. Never in the repo. |
 | `stage0/data/private/` | Git-ignored: client snapshot (`entities.json`), saved Plans and attachments (`briefs/`). |
 
 ## Latency budget and cost model

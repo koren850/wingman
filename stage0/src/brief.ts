@@ -1,7 +1,7 @@
 // Prepared start: a 1-minute briefing before the meeting. Loaded by run.ts at startup; also a small interactive CLI (below).
 //   pnpm brief            asks 4 short questions and saves data/private/briefs/latest.yaml
 //   pnpm call / start     (run.ts) loads a brief saved in the last 6 hours (or --brief <file>; --no-brief skips it)
-// The brief becomes Dan's notes for the AI, and its must-cover items become reminders during the call.
+// The brief becomes the user's notes for the AI, and its must-cover items become reminders during the call.
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";

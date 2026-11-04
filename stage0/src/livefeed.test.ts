@@ -1,6 +1,7 @@
 // Live conversation view: dashboard/livefeed.js (JSONL parsing, card cleaning and pinning, caps) and
 // dashboard/livetail.cjs (the main-process file tail).
 // Uses real temp files; the tail's setInterval is injected, so tests drive each poll by calling the captured tick().
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

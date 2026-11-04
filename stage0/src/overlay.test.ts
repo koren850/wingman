@@ -1,5 +1,6 @@
 // Answer window helpers: overlay/lib.cjs (call phase from call.json, capture chip list) and overlay/text.js (bidi segments, health text).
 // Pure functions only; no Electron needed.
+import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

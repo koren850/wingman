@@ -1,18 +1,18 @@
 # Wingman
 
-A live meeting assistant for macOS. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time, and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. It also answers questions you ask it out loud, does simple math locally, keeps a checklist of what the call should cover, and writes a summary and follow-up email draft when the call ends. It was built by Dan, who runs a small web and hosting agency in Israel, for his own Hebrew support and sales calls, so Hebrew (with English tech words mixed in) is the first-class language.
+A live meeting assistant for macOS. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time, and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. It also answers questions you ask it out loud, does simple math locally, keeps a checklist of what the call should cover, and writes a summary and follow-up email draft when the call ends. Hebrew (with English tech words mixed in) is the first-class language. The answer bank and house style are your own "pack"; an example web and hosting pack is included. Your name, how to address you and your business go in your profile.
 
 ![The Wingman answer window during a call: a "For you" card, a math result and a Prepared card, all invented examples](docs/ux/for-you-card.png)
 
 *The answer window on the second screen. The cards here are invented examples. The window is right-to-left because the cards are Hebrew.*
 
-> Wingman is a personal tool in an early stage ("Stage 0"). It works and is tested, but it is not a polished product. See [Project status](#project-status).
+> Wingman is in an early stage ("Stage 0"). It works and is tested, but it is not a polished product. See [Project status](#project-status).
 
 ## Key features
 
 | Feature | What it does |
 |---|---|
-| **Prepared** cards | A local answer bank (`stage0/data/bank.yaml`, 41 cards) answers common questions (DNS, SSL, backups, slow site...) in about half a second, with no AI call. |
+| **Prepared** cards | A local answer bank (your pack's `bank.yaml`; the example pack answers DNS, SSL, backups, slow site...) answers common questions in about half a second, with no AI call. |
 | **AI** cards | When the bank has nothing, a small Claude model writes a short answer. AI cards are always marked as not verified. |
 | **Buy time** lines | For prices, dates and promises Wingman never invents a number. It shows a safe stalling line ("I will check and come back with a proper price"). |
 | **For you** cards | Ask Wingman a question out loud (or press Ctrl+Opt+A) and the answer shows in its own card. |
@@ -21,6 +21,9 @@ A live meeting assistant for macOS. It listens to your call (the other side on s
 | **Call checklist** | Wingman works out what the call is about (client, support, vendor, team, consult, personal) and keeps a checklist for that kind of call. |
 | **Quick call and prepared meetings** | Start a **quick call** right now with no context, or save several **prepared meetings** (a Plan each: who, goal, notes, must-cover checklist, background files, optional time) and pick one at Start. A prepared meeting is used up by the call you start with it. |
 | **Fact cards** | If you build a local snapshot of your clients and domains, a mention of a known client or domain shows what you already know. No network lookups during the call. |
+| **Several speakers** | Several people on the other side are told apart ("Speaker 1", 2... or their names, from introductions or the meeting's attendees; rename with `wingman speaker <n> "<name>"`). When they talk among themselves a muted "talking among themselves" line shows who and about what, and answer cards wait. When someone turns to you, an orange "turned to you" alert shows who. Setting `flow.enabled`. |
+| **Interview mode** | A prepared meeting of kind `interview` makes Wingman coach you as the candidate, from your prep notes and an optional file of your own prepared cards (see below). |
+| **Profile and pack** | Your name, spellings, how to address you and your business live in a profile on your machine, not in the repo. The answer bank, house style and keyterms are a swappable pack. |
 | **Capture chips** | Phone numbers, emails and domains spoken in the call appear as copyable chips. |
 | **Summary** | After the call: summary, decisions, next steps, open questions and a follow-up email draft. Prices, dates and promises become `[להשלים: ...]` placeholders. |
 | **Readiness check** | One command or button that tests mic, system audio, keys, speech service and the AI before you go live. |
@@ -81,6 +84,17 @@ Notes:
 
 More operator detail (all commands, settings, hotkeys): [stage0/README.md](stage0/README.md).
 
+## Profile and pack
+
+Nothing about you is stored in this repository. Your details live on your machine:
+
+- A **profile** file (`~/.config/wingman/profile.yaml`): your name and spellings, how to address you in Hebrew, a short "about" and your business. Set it with the `wingman profile set ...` command (see `wingman help`).
+- A **pack** folder (`~/.config/wingman/pack/`): your answer bank, house style, keyterms and topic words. Without one, the invented example web/hosting pack in `stage0/data/example-pack/` is used.
+
+## Interview mode
+
+Create a prepared meeting with kind `interview` (`wingman plan new --kind interview ...`). Attach your prep notes as background files. To use your own prepared answers for that call, add a plan note `Prepared cards: <file.yaml>` (same format as the answer bank); they replace the normal bank. In this mode every question gets an answer, there are no "Buy time" lines, and answers are built only from your notes, never invented experience.
+
 ## Command line
 
 ```bash
@@ -99,13 +113,13 @@ The `wingman` command talks to the running menu-bar app over an owner-only local
 - Audio is **never saved**. Transcripts and cards are saved locally in `stage0/calls/<id>/` with owner-only permissions, until you delete them.
 - API keys live in the macOS Keychain, not in files.
 - **You are responsible for telling the other people on the call** that a transcription and AI tool is running, and for following the recording and privacy laws that apply to you. Wingman is not a consent tool and gives no legal advice.
-- Not for real job interviews or exams.
+- Some interviews, exams and meetings forbid outside help. Check the rules before using Wingman there.
 
 Full details: [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) and [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-A personal tool, built and used by one person. It is at "Stage 0": the live call loop, the app, the CLI, the summary and the QA harness are built and tested (about 380 unit tests, plus a synthetic QA harness that plays invented scenarios through real Deepgram and Haiku). It has been verified with synthetic and test calls; the real-call hand tests still open are listed in [docs/ROADMAP.md](docs/ROADMAP.md). Signed installers, Windows, plugins and a setup wizard are not built and will wait until a second real user needs them.
+It is at "Stage 0": the live call loop, the app, the CLI, the summary and the QA harness are built and tested (about 380 unit tests, plus a synthetic QA harness that plays invented scenarios through real Deepgram and Haiku). It has been verified with synthetic and test calls; the real-call hand tests still open are listed in [docs/ROADMAP.md](docs/ROADMAP.md). Signed installers, Windows, plugins and a setup wizard are not built and will wait until a second real user needs them.
 
 ## Repo map
 
@@ -115,7 +129,6 @@ A personal tool, built and used by one person. It is at "Stage 0": the live call
 | `brand/` | Logo, icons and the script that builds them |
 | `docs/` | Documentation (below) |
 | `docs/ux/` | Screenshots and UX before/after images |
-| `docs/history/` | The original plan, structure, red-team review and proposals, kept for context |
 | `CHANGELOG.md` | Milestones |
 
 ## Documentation
@@ -127,7 +140,6 @@ A personal tool, built and used by one person. It is at "Stage 0": the live call
 | [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) | What data goes where, what is stored, how keys are handled |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, scripts, tests, QA harness, building the app |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Open items, known limits, ideas |
-| [docs/history/](docs/history/README.md) | Original planning documents |
 | [stage0/README.md](stage0/README.md) | The detailed app and operator guide |
 
 ## License
