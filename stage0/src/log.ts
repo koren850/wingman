@@ -2,7 +2,7 @@
 // Written by run.ts; read by the answer window (it tails cards.jsonl and call.json via the calls/latest link),
 // the dashboard, the CLI and the summary. Audio is never saved. Files are private to the user (umask 077).
 // Delete with `pnpm purge`.
-import { mkdirSync, appendFileSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, appendFileSync, writeFileSync, rmSync, symlinkSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { ulid } from "ulid";
 import { CALLS } from "./env.ts";
@@ -17,6 +17,8 @@ export class CallLog {
   /** Failed appends so far (disk full, folder removed...). The call keeps running; run.ts shows one amber warning via onWriteFail. */
   writeFailures = 0;
   onWriteFail?: (err: Error, count: number) => void;
+  /** Second path for the answer window: called with every cards row (the exact object written), whether or not the disk write worked. Never throws out. */
+  onCardRow?: (row: Record<string, unknown>) => void;
   constructor(meta: Record<string, unknown>) {
     mkdirSync(this.dir, { recursive: true, mode: 0o700 });
     this.meta = { id: this.id, startedAt: new Date().toISOString(), ...meta };
@@ -30,11 +32,26 @@ export class CallLog {
   update(fields: Record<string, unknown>) { Object.assign(this.meta, fields); try { this.writeMeta(); } catch { /* best effort */ } }
   /** Appends one JSON line (with a `t` epoch-ms timestamp) to <stream>.jsonl. Never throws. */
   write(stream: "events" | "transcript" | "cards" | "latency" | "usage" | "live", row: Record<string, unknown>) {
-    try { appendFileSync(join(this.dir, `${stream}.jsonl`), JSON.stringify({ t: Date.now(), ...row }) + "\n", { mode: 0o600 }); }
+    const full = { t: Date.now(), ...row };
+    if (stream === "cards" && this.onCardRow) { try { this.onCardRow(full); } catch { /* the pipe is best effort */ } }
+    try { appendFileSync(join(this.dir, `${stream}.jsonl`), JSON.stringify(full) + "\n", { mode: 0o600 }); }
     catch (e) {
       // Best effort: a full disk or a vanished folder must not end the call.
       this.writeFailures++;
       if (this.writeFailures === 1) { try { this.onWriteFail?.(e as Error, 1); } catch { /* never throw from the logger */ } }
     }
   }
+}
+
+/** Removes live.jsonl files that a hard exit left behind in older call folders (interim words are not worth keeping). Skips `exceptId` and files touched in the last 2 minutes. Returns how many were removed. */
+export function sweepLive(callsDir: string, exceptId: string, now = Date.now()): number {
+  let n = 0;
+  try {
+    for (const d of readdirSync(callsDir)) {
+      if (d === exceptId || d === "latest") continue;
+      const f = join(callsDir, d, "live.jsonl");
+      try { if (existsSync(f) && now - statSync(f).mtimeMs > 120_000) { rmSync(f, { force: true }); n++; } } catch { /* next */ }
+    }
+  } catch { /* no calls folder yet */ }
+  return n;
 }

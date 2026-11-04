@@ -5,6 +5,12 @@ const { app, BrowserWindow, screen, globalShortcut, clipboard, ipcMain } = requi
 const fs = require("node:fs");
 const path = require("node:path");
 const { callPhase, pushCapture, registerCaptureKeys, unregisterCaptureKeys } = require("./lib.cjs");
+const { readNewRows, rowKey, Seen, StdinRows, Backlog, ReloadGate } = require("./resilient.cjs");
+
+// A crash in this process must never raise Electron's error dialog (it could appear on a shared screen): log one line and carry on.
+const logErr = (what, e) => { try { console.error(`(answer window: ${what}: ${String((e && e.message) || e).slice(0, 200)})`); } catch { /* stderr gone */ } };
+process.on("uncaughtException", (e) => logErr("uncaught exception", e));
+process.on("unhandledRejection", (e) => logErr("unhandled rejection", e));
 // App icon from brand/ (rebuild with brand/build.sh). Missing file = Electron default icon.
 const BRAND_ICON = path.join(__dirname, "..", "..", "brand", "png", "icon-512.png");
 
@@ -21,7 +27,11 @@ const captureKeys = [];   // Ctrl+Opt+1..3 held while the window runs
 // Orphan guard: when the engine (call.ts) that opened this window dies, even by SIGKILL, its stdin pipe closes and its pid disappears: quit.
 if (process.env.WINGMAN_WATCH_PARENT === "1") {
   const parent = process.ppid, bye = () => { try { globalShortcut.unregisterAll(); } catch {} app.exit(0); };
-  process.stdin.on("end", bye); process.stdin.on("close", bye); process.stdin.on("error", bye); process.stdin.resume();
+  process.stdin.on("end", bye); process.stdin.on("close", bye); process.stdin.on("error", bye);
+  // The same pipe also carries the engine's card rows (second path, for when cards.jsonl cannot be written): one JSON row per line.
+  const pipeRows = new StdinRows();
+  process.stdin.on("data", (b) => { try { for (const r of pipeRows.push(b)) onPipeRow(r); } catch (e) { logErr("pipe", e); } });
+  process.stdin.resume();
   setInterval(() => { try { process.kill(parent, 0); } catch { bye(); } if (process.ppid !== parent) bye(); }, 2000).unref();
 }
 // Tailed files of calls/latest: cards.jsonl (cards + captures) and transcript.jsonl (for the rewind panel).
@@ -66,8 +76,21 @@ function create() {
   win.webContents.on("did-finish-load", () => {
     win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, showLastLine: CFG.showLastLine !== false, liveTextPt: CFG.liveTextPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
     tails.cards = { file: undefined, offset: 0 }; tails.transcript = { file: undefined, offset: 0 }; tails.live = { file: undefined, offset: 0 }; capList = []; phaseKey = "";
+    pageReady = true; replayBacklog();   // rows that only came by the pipe come back after a reload
     clearInterval(timer); timer = setInterval(poll, 100);
   });
+  // Crash and hang handling: the page is reloaded (it replays the call from the files and the pipe backlog); never an error dialog, never a closed window.
+  const gate = new ReloadGate();
+  let hangTimer;
+  const reloadSoon = (why) => { pageReady = false; logErr("page " + why + "; reloading", ""); setTimeout(() => { try { if (win && !win.isDestroyed()) win.webContents.reload(); } catch (e) { logErr("reload", e); } }, gate.next()); };
+  win.webContents.on("render-process-gone", (_e, d) => reloadSoon("process gone (" + (d && d.reason) + ")"));
+  win.webContents.on("did-fail-load", (_e, code, desc, _url, isMain) => { if (isMain && code !== -3) reloadSoon("failed to load (" + desc + ")"); });
+  win.on("unresponsive", () => {
+    logErr("page unresponsive", "");
+    clearTimeout(hangTimer);
+    hangTimer = setTimeout(() => { try { win.webContents.forcefullyCrashRenderer(); } catch { reloadSoon("hung"); } }, 8000);   // still hung after 8 s: kill the page (render-process-gone reloads it)
+  });
+  win.on("responsive", () => clearTimeout(hangTimer));
   // focusable:false means Esc never reaches the window, so clear/pause are global shortcuts.
   if (SNAP) { snapshotMode(); return; }
   const ok1 = globalShortcut.register(CFG.hotkeys.clear, () => win && win.webContents.send("clear"));
@@ -96,24 +119,45 @@ function snapshotMode() {
   });
 }
 
+// Cards reach the page by two paths: cards.jsonl (tailed by poll) and the engine's pipe on stdin. `seen` makes each row show once.
+const seen = new Seen(), backlog = new Backlog();
+let pageReady = false; const waiting = [];
+function onPipeRow(c) {
+  if (!c || typeof c !== "object") return;
+  backlog.add(c);
+  if (!seen.add(rowKey(c))) return;   // the disk path already delivered it
+  if (!pageReady) { waiting.push(c); return; }
+  try { handleCardRow(c); } catch (e) { logErr("card row", e); }
+}
+/** After the page was reset (new call, reload): rows that came by the pipe come back (they may not be on disk), then disk rows fill in. */
+function replayBacklog() {
+  seen.clear(); waiting.length = 0;
+  for (const c of backlog.all()) { if (seen.add(rowKey(c))) { try { handleCardRow(c); } catch (e) { logErr("card row", e); } } }
+}
+/** Sends one cards.jsonl row to the page. */
+function handleCardRow(c) {
+  if (c.type === "capture") { lastCapture = c.value; capList = pushCapture(capList, c.value); win.webContents.send("capture", c); }
+  else if (c.type === "ask") win.webContents.send("ask", { on: !!c.on, until: Number(c.until) || 0 });
+  else if (c.type === "speaker") { if (Number.isInteger(c.spk)) win.webContents.send("speaker", { spk: c.spk, name: typeof c.name === "string" ? c.name.slice(0, 40) : "" }); }
+  else if (c.type === "flow") win.webContents.send("flow", { state: c.state === "internal" ? "internal" : "open", who: Array.isArray(c.who) ? c.who.filter((w) => typeof w === "string").slice(0, 6).map((w) => w.slice(0, 40)) : [], topic: typeof c.topic === "string" ? c.topic.slice(0, 160) : "" });
+  else if (c.type === "addressed") win.webContents.send("addressed", { who: typeof c.who === "string" ? c.who.slice(0, 40) : "", text: typeof c.text === "string" ? c.text.slice(0, 200) : "" });
+  else if (c.type === "frame") { if (c.frame && typeof c.frame === "object") win.webContents.send("frame", c.frame); }
+  else if (!c.hidden) win.webContents.send("card", c);
+}
+
 /** One 100 ms tick: follows calls/latest (a new call dir resets the page), forwards new cards/captures/lines, and checks call.json at most once a second. */
 function poll() {
+  try { if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) pollOnce(); } catch (e) { logErr("poll", e); }   // one bad tick must not stop the card feed
+}
+function pollOnce() {
   let dir;
   try { dir = fs.realpathSync(path.join(CALLS, "latest")); } catch { return; }
   const cardsFile = path.join(dir, "cards.jsonl");
-  if (cardsFile !== tails.cards.file) { tails.cards = { file: cardsFile, offset: 0 }; tails.transcript = { file: path.join(dir, "transcript.jsonl"), offset: 0 }; tails.live = { file: path.join(dir, "live.jsonl"), offset: 0 }; lastCapture = undefined; capList = []; phaseKey = ""; endedSent = false; win.webContents.send("reset"); }
-  for (const c of readNew(tails.cards)) {
-    if (c.type === "capture") { lastCapture = c.value; capList = pushCapture(capList, c.value); win.webContents.send("capture", c); }
-    else if (c.type === "ask") win.webContents.send("ask", { on: !!c.on, until: Number(c.until) || 0 });
-    else if (c.type === "speaker") { if (Number.isInteger(c.spk)) win.webContents.send("speaker", { spk: c.spk, name: typeof c.name === "string" ? c.name.slice(0, 40) : "" }); }
-    else if (c.type === "flow") win.webContents.send("flow", { state: c.state === "internal" ? "internal" : "open", who: Array.isArray(c.who) ? c.who.filter((w) => typeof w === "string").slice(0, 6).map((w) => w.slice(0, 40)) : [], topic: typeof c.topic === "string" ? c.topic.slice(0, 160) : "" });
-    else if (c.type === "addressed") win.webContents.send("addressed", { who: typeof c.who === "string" ? c.who.slice(0, 40) : "", text: typeof c.text === "string" ? c.text.slice(0, 200) : "" });
-    else if (c.type === "frame") { if (c.frame && typeof c.frame === "object") win.webContents.send("frame", c.frame); }
-    else if (!c.hidden) win.webContents.send("card", c);
-  }
-  const partials = readNew(tails.live); const p = partials[partials.length - 1];   // only the newest words matter
+  if (cardsFile !== tails.cards.file) { tails.cards = { file: cardsFile, offset: 0 }; tails.transcript = { file: path.join(dir, "transcript.jsonl"), offset: 0 }; tails.live = { file: path.join(dir, "live.jsonl"), offset: 0 }; lastCapture = undefined; capList = []; phaseKey = ""; endedSent = false; win.webContents.send("reset"); replayBacklog(); }
+  for (const c of readNewRows(tails.cards)) { if (seen.add(rowKey(c))) handleCardRow(c); }
+  const partials = readNewRows(tails.live); const p = partials[partials.length - 1];   // only the newest words matter
   if (p) win.webContents.send("partial", { t: p.t, ch: p.ch, text: p.text, spk: p.spk, name: p.name });
-  for (const l of readNew(tails.transcript)) win.webContents.send("line", { t: l.t, ch: l.ch, text: l.text, spk: l.spk, name: l.name });
+  for (const l of readNewRows(tails.transcript)) win.webContents.send("line", { t: l.t, ch: l.ch, text: l.text, spk: l.spk, name: l.name });
   // call.json: the real call phase (starting / waiting / live / ended). Sent when it changes; {phase:null} = no phase written, the page falls back to its timer.
   if (!endedSent && Date.now() - endedCheckAt > 1000) {
     endedCheckAt = Date.now();
@@ -126,24 +170,6 @@ function poll() {
       if (p.phase === "ended") { endedSent = true; capList = []; win.webContents.send("ended"); }
     }
   }
-}
-
-/** New complete JSONL rows since the last read. A half-written last line is left for the next tick (offset only advances past the last newline). */
-function readNew(tail) {
-  let size;
-  try { size = fs.statSync(tail.file).size; } catch { return []; }
-  if (size <= tail.offset) return [];
-  const fd = fs.openSync(tail.file, "r");
-  const buf = Buffer.alloc(size - tail.offset);
-  fs.readSync(fd, buf, 0, buf.length, tail.offset);
-  fs.closeSync(fd);
-  const text = buf.toString("utf8");
-  const lastNl = text.lastIndexOf("\n");
-  if (lastNl < 0) return [];
-  tail.offset += Buffer.byteLength(text.slice(0, lastNl + 1));
-  const rows = [];
-  for (const line of text.slice(0, lastNl).split("\n")) { try { rows.push(JSON.parse(line)); } catch {} }
-  return rows;
 }
 
 app.whenReady().then(create);
