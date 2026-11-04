@@ -208,8 +208,8 @@ async function flowTick() {
 const contextNotes: string[] = [];
 if (brief) contextNotes.push(...briefNotes(brief));
 const attendees = attendeeNames(brief?.who);   // first names from the prepared meeting, for naming voices from their introductions
-// Fact cards from the local client/domain snapshot.
-const snapshot = S.facts.enabled ? loadSnapshot(resolveUserPath(S.facts.file)) : undefined;
+// Fact cards from the local client/domain snapshot (not in an interview: the user's own clients and servers are noise there).
+const snapshot = S.facts.enabled && !interview ? loadSnapshot(resolveUserPath(S.facts.file)) : undefined;
 const spotter = snapshot ? new EntitySpotter(snapshot, { sslWarnDays: S.facts.sslWarnDays, minAliasLen: S.facts.minAliasLen }) : undefined;
 const factsShown = new Set<string>();
 let clientChosen = !!brief?.who, proposed: Fact | undefined;
