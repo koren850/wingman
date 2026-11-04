@@ -229,7 +229,7 @@ test("static: key values can only reach memory; no logging or persistence path t
   // 4b. Migration has exactly two triggers: the button's IPC and the CLI. Never startup.
   const callers = files.filter((f) => /migrateKeysToKeychain|keysMigrate|keys:migrate/.test(read(f)) && !/\.test\.ts$/.test(f)).sort();
   assert.deepEqual(callers, ["dashboard/keys-ipc.cjs", "dashboard/preload.cjs", "dashboard/settings.js", "src/keychain.cjs", "src/keychain.ts", "src/keys-cli.ts"]);
-  assert.doesNotMatch(read("tray/main.cjs"), /migrate/);
+  assert.doesNotMatch(read("tray/main.cjs"), /migrateKeys|keysMigrate|keys:migrate/);   // (the data-folder copy in shared/migrate.cjs is unrelated)
   // 5. Renderer: password input, no value in state/storage/attributes.
   const ui = read("dashboard/settings.js");
   assert.match(ui, /type: "password", id, autocomplete: "off", spellcheck: "false"/);
