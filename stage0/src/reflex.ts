@@ -82,8 +82,14 @@ ${index}
 ${background && interview ? `\n${u}\'s interview prep (background files, the only source of facts about ${u}):\n${background}\n` : ""}${background && !interview ? `\nUsing the background files: when a THEM question asks about facts that the background files state (scope, counts, content types, names, what was agreed or dropped), answer ANS with one short line built only from those facts, in the language of the question. If the question is about the customer's own site or content and the background does not say, never guess: reply SKIP (${u} answers; STALL stays only for a price, a date or a commitment). Never state a price, date or promise even if the background mentions one.\n${background}\n` : ""}`;
 }
 
-/** Call text is untrusted: it must not be able to close the <call_transcript> wrapper. */
-export const untag = (s: string) => s.replace(/<\s*\/?\s*call_transcript\s*>/gi, "");
+/** Removes every <tag> / </tag> of `name` from untrusted text, repeating until nothing changes, so "</call_</call_transcript>transcript>" cannot rebuild a closing tag. */
+export function stripTag(s: string, name: string): string {
+  const re = new RegExp(`<\\s*\\/?\\s*${name}\\b[^>]*>`, "gi");
+  let cur = String(s);
+  for (let i = 0; i < 50; i++) { const next = cur.replace(re, ""); if (next === cur) return cur; cur = next; }
+  return cur.replace(/[<>]/g, " ");   // absurdly nested: neutralise every angle bracket instead
+}
+export const untag = (s: string) => stripTag(s, "call_transcript");
 
 /** The llm.reflex settings that runReflex reads. */
 export type ReflexConfig = Pick<Settings["llm"]["reflex"], "timeoutMs" | "maxTokens" | "maxRetries" | "effort" | "thinking" | "cache">;
