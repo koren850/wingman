@@ -58,7 +58,7 @@ function isDashboardSender(e, win) {
  * Registers every ipcMain handler used by preload.cjs. Returns { open(o), push(), live, win, isOpen() }.
  */
 function create(ctx) {
-  const { app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller, plans } = ctx;   // plans: the prepared-meetings store (tray/plans.cjs)
+  const { app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, controller, plans, systemPreferences } = ctx;   // plans: the prepared-meetings store (tray/plans.cjs)
   let win, fake = fakeCall(process.env.WINGMAN_DASHBOARD_FAKE_CALL), fakeDoc = FAKE_DOCTOR[process.env.WINGMAN_DASHBOARD_FAKE_DOCTOR] || null;
   if (fakeDoc) fakeDoc = { ...fakeDoc, at: Date.now() - 4 * 60000 };
   const bgNow = () => (nativeTheme.shouldUseDarkColors ? BG.dark : BG.light);
@@ -316,6 +316,9 @@ function create(ctx) {
       return f ? (f.startsWith("~/") ? path.join(require("node:os").homedir(), f.slice(2)) : f) : path.join(require("node:os").homedir(), ".config", "wingman", "keys.env");
     },
   });
+
+  // ---- guided setup and "About you": profile, permissions, microphone, screens, pack. All logic in setup-ipc.cjs. ----
+  require("./setup-ipc.cjs").register({ handle, child, root: ROOT, systemPreferences, shell, screen, preview: !!(fake || SNAP) });
 
   return { open, push, live, get win() { return win; }, isOpen: () => !!win && !win.isDestroyed() };
 }
