@@ -211,6 +211,34 @@ function confirmStopDelete(o) {
   return true;
 }
 
+/** How long a command-line request waits for the user's click before it counts as "no". The CLI waits a little longer (src/cli/control.ts). */
+const CLI_CONFIRM_MS = 45_000;
+
+/** Native question for a call started from the command line. Resolves true only on a click on "Start". Cancel is the default; no answer in 45 s is "no". */
+function confirmCliStart(o) {
+  return askNative(o, { type: "question", buttons: ["Cancel", "Start the call"], defaultId: 0, cancelId: 0, message: "A program on this Mac wants to start a Wingman call.", detail: "It used the wingman command. Starting means Wingman listens to the microphone and sends the audio for transcription. Only start if you asked for this." });
+}
+/** Native question for stop-and-delete from the command line. Resolves true only on a click on "Stop and delete". */
+function confirmCliStopDelete(o) {
+  return askNative(o, { type: "warning", buttons: ["Cancel", "Stop and delete"], defaultId: 0, cancelId: 0, message: "A program on this Mac wants to stop this call and delete it.", detail: "It used the wingman command. The recording, transcript, cards and summary are erased for good. Only continue if you asked for this." });
+}
+function askNative(o, box) {
+  const st = o.setTimeout || setTimeout, ct = o.clearTimeout || clearTimeout;
+  return new Promise((resolve) => {
+    let over = false;
+    const t = st(() => { over = true; resolve(false); if (o.dismiss) try { o.dismiss(); } catch { /* ignore */ } }, o.timeoutMs || CLI_CONFIRM_MS);
+    Promise.resolve(o.dialog.showMessageBox(box)).then((r) => { ct(t); if (!over) resolve(!!r && r.response === 1); }, () => { ct(t); resolve(false); });
+  });
+}
+
+/**
+ * Reads the setting "Ask before a call started from the command line starts listening" (default on). Anything unreadable counts as ON.
+ * o.run(): Promise of the settings state JSON ({values}) from src/settings-edit-cli.ts read.
+ */
+async function askBeforeCliStart(o) {
+  try { const r = await o.run(); return !(r && r.ok && r.values && r.values["privacy.askBeforeCliStart"] === false); } catch { return true; }
+}
+
 /** Poll until pred() is true or ms passed. Resolves true when pred became true. */
 function waitUntil(pred, ms, o = {}) {
   const st = o.setTimeout || setTimeout, now = o.now || Date.now, every = o.every || 250, end = now() + ms;
@@ -235,4 +263,4 @@ async function requestQuit(o) {
   return "quit";
 }
 
-module.exports = { planMenu, KEYS, OVERLAY_KEYS, createStartKey, confirmStopDelete, waitUntil, requestQuit, writeSilentWav, menuKey, PREFIX, initialState, parseStatus, reduce, notifications, view, cleanText, briefFrom, writeBrief, briefReady, readBrief, clearBrief, doctorVerdict, doctorSummary, tail, mmss };
+module.exports = { confirmCliStart, confirmCliStopDelete, askBeforeCliStart, CLI_CONFIRM_MS, planMenu, KEYS, OVERLAY_KEYS, createStartKey, confirmStopDelete, waitUntil, requestQuit, writeSilentWav, menuKey, PREFIX, initialState, parseStatus, reduce, notifications, view, cleanText, briefFrom, writeBrief, briefReady, readBrief, clearBrief, doctorVerdict, doctorSummary, tail, mmss };

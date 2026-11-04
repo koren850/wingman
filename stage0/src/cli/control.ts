@@ -12,6 +12,8 @@ const PHASE_TEXT: Record<string, string> = {
   starting: "starting", waiting: "waiting for your OK to start listening", live: "live and listening", stopping: "stopping and saving", idle: "no call",
 };
 
+/** A real start and a delete wait for the user's click in the app (the app gives up after 45 s). */
+const CONFIRM_MS = 60_000;
 const STOP_TEXT: Record<string, string> = { saving: "saving the call", summary: "writing the summary", done: "finishing" };
 
 /** Polls the app status every 400 ms until ok(state) or `ms` passes. Returns the last status (null if the app vanished). */
@@ -39,7 +41,7 @@ export async function start(ctx: Ctx, args: string[]): Promise<Result> {
   if (values.plan !== undefined && !/^[A-Za-z0-9]{1,40}$/.test(values.plan)) throw usage("--plan needs a prepared meeting id (wingman plan list).");
   await needApp(ctx);
   const pick = { ...(values.quick ? { quick: true } : {}), ...(values.plan ? { planId: values.plan } : {}) };
-  const reply = await call(ctx, values.practice ? "practice" : "start", values.practice ? (Object.keys(pick).length ? pick : undefined) : { noAi: !!values["no-ai"], ...pick });
+  const reply = await call(ctx, values.practice ? "practice" : "start", values.practice ? (Object.keys(pick).length ? pick : undefined) : { noAi: !!values["no-ai"], ...pick }, values.practice ? undefined : CONFIRM_MS);
   const s = values["no-wait"] ? await appStatus(ctx) : await waitFor(ctx, (st) => st.phase !== "starting", 20_000);
   const st = s?.state ?? {};
   const consentNeeded = st.phase === "waiting";
@@ -58,7 +60,7 @@ export async function stop(ctx: Ctx, args: string[]): Promise<Result> {
   if (values.delete && !values.yes) throw new CliError("needs_yes", "`stop --delete` erases the whole call (transcript, cards, summary). Add --yes to confirm.", EXIT.NEEDS_YES);
   const before = await needApp(ctx);
   const callId = before.state.callId || "";
-  await call(ctx, values.delete ? "stop_delete" : "stop", values.delete ? { confirm: true } : values["no-summary"] ? { noSummary: true } : undefined);
+  await call(ctx, values.delete ? "stop_delete" : "stop", values.delete ? { confirm: true } : values["no-summary"] ? { noSummary: true } : undefined, values.delete ? CONFIRM_MS : undefined);
   let s = before;
   if (!values["no-wait"]) s = (await waitFor(ctx, (st) => !st.running, 40_000)) ?? before;
   const done = !s.state.running;

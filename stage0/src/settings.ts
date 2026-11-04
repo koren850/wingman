@@ -70,7 +70,7 @@ export const schema = z.strictObject({
     maxUsdPerCall: z.number().min(0), warnAt: z.number().min(0).max(1), maxMinutesPerCall: int(1, 600), idleStopMin: int(0, 240), maxUsdPerMonth: z.number().min(0).nullable(),
     prices: z.strictObject({ llm: z.record(z.string(), price), stt: z.record(z.string(), z.number().min(0)) }),
   }),
-  privacy: z.strictObject({ requireConsentAck: z.boolean(), consentText: z.string().min(10), storeAudio: z.literal(false), retentionDays: int(1, 365) }),
+  privacy: z.strictObject({ requireConsentAck: z.boolean(), askBeforeCliStart: z.boolean(), consentText: z.string().min(10), storeAudio: z.literal(false), retentionDays: int(1, 365) }),
   overlay: z.strictObject({
     enabled: z.boolean(), display: z.enum(["secondary", "primary"]), allowPrimary: z.boolean(), contentProtection: z.boolean(), fontPt: int(18, 60), showLastLine: z.boolean(), liveTextPt: int(14, 40),
     hotkeys: z.strictObject({ clear: z.string().min(1), pause: z.string().min(1), rewind: z.string().min(1), copy: z.string().min(1), checklist: z.string().min(1) }),

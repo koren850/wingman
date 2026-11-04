@@ -194,6 +194,7 @@ budget:
 # ---- Privacy ----
 privacy:
   requireConsentAck: false # personal use: listening starts with the call. true = the call waits until you press Start listening (Ctrl+Opt+Return) first. In the app: "Ask me before listening starts"
+  askBeforeCliStart: true  # a call started from the command line (wingman start) first asks you in a window in the app; --practice never asks. In the app: "Ask before a call started from the command line starts listening"
   # Spoken-style consent line shown as the first card when requireConsentAck is on (Hebrew; min 10 chars).
   consentText: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך? אם לא, אכבה אותו."
   storeAudio: false        # audio is never saved (must stay false: the schema rejects true)

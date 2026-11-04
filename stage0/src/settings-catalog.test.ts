@@ -14,7 +14,7 @@ const tmp = () => join(mkdtempSync(join(tmpdir(), "wingman-cat-")), "settings.ya
 
 test("every catalog key exists, its default is inside the allowed range, and the plain-words fields are filled", () => {
   const d = defaultsFlat();
-  assert.ok(cat.ITEMS.length >= 10 && cat.ITEMS.length <= 24, "about 10-24 settings");
+  assert.ok(cat.ITEMS.length >= 10 && cat.ITEMS.length <= 26, "about 10-24 settings");
   for (const i of cat.ITEMS) {
     assert.ok(i.key in d, i.key); assert.ok(i.label && i.help && i.help.length > 30 && i.help.length < 260, i.key + " help"); assert.ok(cat.GROUPS.some((g: any) => g.id === i.group));
     const shown = cat.toDisplay(i, d[i.key]);

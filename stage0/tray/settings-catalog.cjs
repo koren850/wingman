@@ -19,6 +19,9 @@ const ITEMS = [
   { key: "privacy.requireConsentAck", group: "call", label: "Ask me before listening starts", kind: "bool",
     help: "Off: a call starts listening straight away. On: it waits for your click on Start listening (or Ctrl+Opt+Return) before any audio is sent.",
   },
+  { key: "privacy.askBeforeCliStart", group: "call", label: "Ask before a call started from the command line starts listening", kind: "bool",
+    help: "On: if a program or script runs the wingman command to start a call, a window asks you first. Practice calls never ask. Stopping and deleting a call from the command line always asks.",
+  },
   { key: "budget.idleStopMin", group: "call", label: "Stop by itself after silence", kind: "int", min: 0, max: 240, step: 1, unit: "minutes",
     help: "If nobody speaks for this long, the call stops and the microphone is released. 0 means never." },
 

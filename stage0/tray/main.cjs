@@ -161,7 +161,10 @@ app.whenReady().then(() => {
   ctl.refreshPlans();
   // Local control channel for the `wingman` CLI: owner-only Unix socket, fixed command list (tray/control-socket.cjs). Never in snapshot mode.
   if (!SNAPSHOT) {
-    controlServer = createControlServer({ controller: ctl, lib, plans, log: logLine, info: () => ({ pid: process.pid, version: app.getVersion() }) });
+    // A start from the command line and every stop-and-delete ask the user in a native window first (tray/lib.cjs); settings are read when asked, so a change applies at once.
+    const askRun = () => new Promise((resolve) => require("node:child_process").execFile(path.join(ROOT, "node_modules", ".bin", "tsx"), ["src/settings-edit-cli.ts", "read"], { cwd: ROOT, timeout: 20_000, maxBuffer: 2_000_000, env: { ...require("../src/keychain.cjs").childEnv(process.env), NO_COLOR: "1", FORCE_COLOR: "0" } }, (e, out) => { try { resolve(JSON.parse(String(out || "").trim().split("\n").filter(Boolean).pop())); } catch { resolve(null); } }));
+    controlServer = createControlServer({ controller: ctl, lib, plans, log: logLine, info: () => ({ pid: process.pid, version: app.getVersion() }),
+      askCliStart: () => lib.askBeforeCliStart({ run: askRun }), confirm: { start: () => lib.confirmCliStart({ dialog }), stopDelete: () => lib.confirmCliStopDelete({ dialog }) } });
     controlServer.start().catch((e) => logLine("control socket not started: " + e.message));
   }
   if (!SNAPSHOT) {

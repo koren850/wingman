@@ -6,7 +6,10 @@
 //  * fixed allowlist of commands, every argument validated (types, lengths, no unknown keys); nothing is ever executed or interpolated;
 //  * the file system is the authentication: the folder is 700 and the socket 600 and both must belong to this user, or the server
 //    refuses to listen. Node has no peer-credential call (SO_PEERCRED / LOCAL_PEERCRED), so the uid of the peer cannot be checked in-process;
-//  * start / practice / stop are rate limited;
+//  * start / practice are rate limited (stop is not: a stop right after a start must always work);
+//  * a call started from the command line asks for a native confirmation first (setting privacy.askBeforeCliStart, default on; `practice`
+//    is exempt), and `stop_delete` ALWAYS asks, because any process of this user can reach the socket. The asking is done by o.confirm;
+//    with no o.confirm, deleting is refused and starting is allowed only if o.askCliStart says the setting is off;
 //  * call content (transcript, cards) never travels on this socket and nothing the CLI sends is written to tray.log except the command name;
 //  * keys are not reachable: there is no command that reads, sets or moves a key.
 // No electron import: unit-tested in src/cli.test.ts with a real controller driven by a fake child process.
@@ -59,6 +62,8 @@ function shape(a, fields) {
  * o.lib          tray/lib.cjs
  * o.plans        prepared-meetings store (tray/plans.cjs): `start` and `practice` choose a meeting through it; brief_refresh re-reads it
  * o.info         () => extra fields for ping/status (version, pid)
+ * o.askCliStart  async () => boolean: is "ask before a call started from the command line starts listening" on? (absent: off)
+ * o.confirm      { start(): Promise<boolean>, stopDelete(): Promise<boolean> } native dialogs (tray/lib.cjs confirmCliStart / confirmCliStopDelete)
  */
 function createControlServer(o) {
   const fs = o.fs || nodeFs, path = o.path || nodePath, net = o.net || nodeNet;
@@ -69,14 +74,23 @@ function createControlServer(o) {
   const log = o.log || (() => {});
   const Plans = require("../shared/plans.js");
   const plans = o.plans;
-  const stamps = [];            // timestamps of rate-limited commands
-  let server, clients = 0;
+  const stamps = [];            // timestamps of rate-limited commands (starts only)
+  let server, clients = 0, asking = false;
+  /** Runs one native confirmation at a time. Returns "" when the user agreed, else the refusal text. */
+  async function ask(kind, fn) {
+    if (!fn) return "This needs a confirmation in the Wingman app, which is not available here.";
+    if (asking) return "Wingman is already waiting for your answer to another request from the command line.";
+    asking = true;
+    try { return (await fn()) === true ? "" : (kind === "start" ? "Not started: it was not confirmed in the Wingman app." : "Not deleted: it was not confirmed in the Wingman app."); }
+    catch { return "The confirmation could not be shown."; }
+    finally { asking = false; }
+  }
 
   /** Each handler returns {ok:true,...} or {ok:false,code,error}. */
   const refused = (error) => err("refused", error);
   const need = (cond, error) => (cond ? null : refused(error));
   const done = (ok, error) => (ok ? { ok: true, state: view() } : refused(error));
-  /** Rate limit start/practice/stop: checked AFTER the state checks, so a refused command does not use up the budget. */
+  /** Rate limit start/practice (never stop): checked AFTER the state checks, so a refused command does not use up the budget. */
   const paced = (fn) => { const m = limited(); return m ? err("rate_limited", m) : fn(); };
   /** The state fields the CLI may see. Whitelisted by hand so no call content (transcript, cards) can leak onto the socket. */
   const view = () => {
@@ -128,10 +142,16 @@ function createControlServer(o) {
     // start: quick (no Plan) or planId (a prepared meeting). With neither, the app decides safely (see resolveStart).
     start: {
       args: (a) => { const r = shape(a, { noAi: { type: "boolean" }, quick: { type: "boolean" }, planId: { type: "string", min: 1, max: 40 } }); if (r.quick && r.planId) throw new Error('give either "quick" or "planId", not both'); return r; },
-      run: (a) => {
+      run: async (a) => {
         if (ctl.isRunning()) return refused("A call is already running. Stop it first (wingman stop).");
         const pick = resolveStart(a);
         if (!pick.ok) return pick;
+        let must = true; try { must = o.askCliStart ? (await o.askCliStart()) !== false : false; } catch { must = true; }
+        if (must) {
+          const no = await ask("start", o.confirm && o.confirm.start);
+          if (no) return refused(no);
+          if (ctl.isRunning()) return refused("A call is already running. Stop it first (wingman stop).");
+        }
         return paced(() => { const r = done(ctl.start({ noAi: !!a.noAi, planId: pick.meeting ? pick.meeting.id : "" }), "Could not start a call."); return r.ok ? { ...r, mode: pick.meeting ? "plan" : "quick", plan: summary(pick.meeting), reason: pick.reason } : r; });
       },
     },
@@ -152,21 +172,27 @@ function createControlServer(o) {
     speaker: { args: (a) => shape(a, { spk: { type: "integer", required: true, min: 1, max: 20 }, name: { type: "string", min: 0, max: 40 } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running. Start one with wingman start.") || done(ctl.speaker(a.spk, a.name || ""), "The speaker number or name was not accepted.") },
     ask: { args: (a) => shape(a, { text: { type: "string", required: true, min: 1, max: 2000 } }), run: (a) => need(ctl.getState().phase === "live", "A question can only be asked while a call is live (wingman status shows the phase).") || done(ctl.ask(a.text), "The question was empty or not accepted.") },
     ask_listen: { args: noArgs, run: () => need(ctl.getState().phase === "live", "Only while a call is live.") || done(ctl.askWingman(), "Could not arm the ask window.") },
-    stop: { args: (a) => shape(a, { noSummary: { type: "boolean" } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).") || paced(() => done(a.noSummary === true ? ctl.stopNoSummary() : ctl.stop(), "Could not stop the call.")) },
+    stop: { args: (a) => shape(a, { noSummary: { type: "boolean" } }), run: (a) => need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).") || (() => done(a.noSummary === true ? ctl.stopNoSummary() : ctl.stop(), "Could not stop the call."))() },
     stop_delete: {
       args: (a) => shape(a, { confirm: { type: "boolean", required: true } }),
-      run: (a) => need(a.confirm === true, "Deleting needs confirm:true.") || need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).") || paced(() => done(ctl.stopDelete(), "Could not stop and delete the call.")),
+      run: async (a) => {
+        const bad = need(a.confirm === true, "Deleting needs confirm:true.") || need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running (or it is already stopping).");
+        if (bad) return bad;
+        const no = await ask("delete", o.confirm && o.confirm.stopDelete);   // always asks: --yes on the command line is not enough
+        if (no) return refused(no);
+        return need(ctl.isRunning() && ctl.getState().phase !== "stopping", "The call ended while the question was open.") || done(ctl.stopDelete(), "Could not stop and delete the call.");
+      },
     },
     doctor: { long: true, args: (a) => shape(a, { offline: { type: "boolean" } }), run: async (a) => ({ ok: true, doctor: await ctl.runDoctor({ offline: !!a.offline }) }) },
     brief_refresh: { args: noArgs, run: () => { ctl.refreshPlans(); return { ok: true }; } },   // name kept for older CLIs: the prepared meetings changed on disk
   };
 
-  /** Sliding 60 s window over start/stop-type commands. Returns "" and records the stamp if allowed, else a message. */
+  /** Sliding 60 s window over start-type commands (start, practice). Returns "" and records the stamp if allowed, else a message. */
   function limited() {
     const t = now();
     while (stamps.length && t - stamps[0] > 60_000) stamps.shift();
-    if (stamps.length && t - stamps[stamps.length - 1] < RATE.minGapMs) return `Too fast: wait ${Math.ceil(RATE.minGapMs / 1000)} s between start/stop commands.`;
-    if (stamps.length >= RATE.perMinute) return `Too many start/stop commands (limit ${RATE.perMinute} per minute).`;
+    if (stamps.length && t - stamps[stamps.length - 1] < RATE.minGapMs) return `Too fast: wait ${Math.ceil(RATE.minGapMs / 1000)} s between start commands.`;
+    if (stamps.length >= RATE.perMinute) return `Too many start commands (limit ${RATE.perMinute} per minute).`;
     stamps.push(t);
     return "";
   }

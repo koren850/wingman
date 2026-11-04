@@ -47,8 +47,10 @@ COMMANDS
                                Plain \`wingman start\` (neither): no prepared meetings at all = a quick call; exactly ONE meeting scheduled within 30 minutes of now = that one;
                                anything else is refused (exit 2) with the list of ids. --json: {"mode":"quick"|"plan","plan":{id,name}|null,"reason":...}.
                                --practice = offline pretend client. --no-ai = Prepared cards only (no AI).
+                               The app asks the user to confirm a real start in a window on their screen (setting "Ask before a call started from the
+                               command line starts listening", on by default; --practice is exempt). Without their click it is refused (exit 4). Wait, do not retry.
   stop [--delete --yes] [--no-wait] [--no-summary]
-                                              Stop and save. --delete erases the call and needs --yes. --no-summary keeps the call but
+                                              Stop and save. --delete erases the call, needs --yes AND the user's click on a confirmation window in the app. --no-summary keeps the call but
                                               skips the summary (write it later: wingman calls summary <id> --generate).
   confirm --yes                Only when the optional "Ask me before listening starts" setting is on (off by default): starts listening
                                on a call that is waiting (the "Start listening" step). Do it only when the user asked. (Old name: consent.)
@@ -73,7 +75,7 @@ COMMANDS
 
 EXIT CODES
   0 ok   1 failed   2 bad usage or invalid value   3 app not running   4 refused (wrong state, e.g. no live call, or a call is already running)
-  5 not found   6 needs --yes   7 not ready (readiness check NOT READY, keys missing)   8 rate limited (start/stop: 1 per 1.5 s, 6 per minute)   9 timeout
+  5 not found   6 needs --yes   7 not ready (readiness check NOT READY, keys missing)   8 rate limited (starts: 1 per 1.5 s, 6 per minute)   9 timeout
 
 SAFETY
   - The app listens on an owner-only socket (~/.config/wingman/run/control.sock, mode 600). Only a fixed list of commands is accepted.

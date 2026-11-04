@@ -36,7 +36,9 @@ function fakeSpawn() {
   return { spawnFn, spawned };
 }
 
-async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string } = {}) {
+async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string; askCliStart?: boolean; answer?: boolean | (() => Promise<boolean>) } = {}) {
+  const asked = { start: 0, del: 0 };
+  const answer = async () => (typeof opts.answer === "function" ? opts.answer() : opts.answer !== false);
   const dir = tmp("rig");
   const sock = join(dir, "run", "control.sock");
   const logs: string[] = [];
@@ -46,7 +48,7 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string } 
   const ctl = createController({ spawn: opts.spawn ?? f.spawnFn, root: ROOT, tmpDir: dir, setTimeout: () => 0, kill: () => {}, logPath: "", plans });
   const env = { ...process.env, WINGMAN_CONTROL_SOCKET: sock, WINGMAN_CALLS_DIR: opts.callsDir ?? join(dir, "calls"), WINGMAN_BRIEFS_DIR: join(dir, "briefs"), WINGMAN_USER_SETTINGS: join(dir, "settings.yaml") };
   mkdirSync(opts.callsDir ?? join(dir, "calls"), { recursive: true });
-  const server = createControlServer({ controller: ctl, lib: trayLib, plans, socketPath: sock, log: (s: string) => logs.push(s), now: opts.now ?? (() => (clock += 2000)), info: () => ({ pid: 1, version: "t" }) });
+  const server = createControlServer({ controller: ctl, lib: trayLib, plans, socketPath: sock, log: (s: string) => logs.push(s), now: opts.now ?? (() => (clock += 2000)), info: () => ({ pid: 1, version: "t" }), askCliStart: async () => opts.askCliStart !== false, confirm: { start: async () => { asked.start++; return answer(); }, stopDelete: async () => { asked.del++; return answer(); } } });
   await server.start();
   const run = async (...argv: string[]) => {
     let out = "", err = "";
@@ -54,7 +56,7 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string } 
     return { code, out, err, json: (() => { try { return JSON.parse(out.trim().split("\n")[0]); } catch { return undefined; } })() };
   };
   const raw = (line: string) => new Promise<any>((res) => { const s = net.createConnection(sock); let b = ""; s.on("connect", () => s.write(line)); s.on("data", (d) => (b += d)); s.on("close", () => res(JSON.parse(b))); });
-  return { dir, sock, ctl, plans, server, logs, f, env, run, raw, done: async () => { await server.stop(); rmSync(dir, { recursive: true, force: true }); } };
+  return { dir, sock, ctl, plans, server, logs, f, asked, env, run, raw, done: async () => { await server.stop(); rmSync(dir, { recursive: true, force: true }); } };
 }
 
 test("socket: owner-only permissions (folder 700, socket 600)", async () => {
@@ -135,13 +137,12 @@ test("socket: practice, stop --delete --yes, rate limit on start/stop, no call c
     assert.equal((await r.run("start", "--practice", "--no-wait", "--json")).code, 0);
     assert.equal(r.f.spawned[0].opts.env.WINGMAN_STT_SCRIPT !== undefined, true, "practice uses scripted STT");
     t += 100;
-    const fast = await r.run("stop", "--json", "--no-wait");
-    assert.equal(fast.code, 8, "second start/stop within 1.5 s is rate limited");
-    t += 2000;
+    assert.equal(r.asked.start, 0, "practice never asks");
     r.f.spawned[0].say("consented");
     assert.equal((await r.run("ask", "secret question about invoice 12345", "--json")).code, 0);
     assert.equal((await r.run("stop", "--delete", "--yes", "--no-wait", "--json")).code, 0);
     assert.ok(r.f.spawned[0].written.includes("stop-delete\n"));
+    assert.equal(r.asked.del, 1, "delete asked once");
     r.f.spawned[0].emit("exit", 0);
     for (let i = 0; i < 8; i++) { t += 2000; await r.run("start", "--no-wait", "--json"); r.f.spawned.at(-1).emit("exit", 0); }
     t += 2000;
@@ -152,6 +153,60 @@ test("socket: practice, stop --delete --yes, rate limit on start/stop, no call c
     assert.match(log, /cli ask ok/);
     assert.doesNotMatch(log, /invoice|12345|secret/, "arguments never reach the log");
   } finally { await r.done(); }
+});
+
+test("socket: a stop right after a start is NOT rate limited, but a second start is", async () => {
+  let t = 1_000_000;
+  const r = await rig({ now: () => t });
+  try {
+    assert.equal((await r.run("start", "--quick", "--no-wait", "--json")).code, 0);
+    t += 100;
+    assert.equal((await r.run("stop", "--json", "--no-wait")).code, 0, "stop 100 ms after start works");
+    r.f.spawned[0].emit("exit", 0);
+    t += 100;
+    assert.equal((await r.run("start", "--quick", "--no-wait", "--json")).code, 8, "start 100 ms after start is limited");
+  } finally { await r.done(); }
+});
+
+test("socket: a CLI start asks first (setting on) and is refused without a yes; --practice and the setting off do not ask", async () => {
+  const no = await rig({ answer: false });
+  try {
+    const x = await no.run("start", "--quick", "--no-wait", "--json");
+    assert.equal(x.code, 4, x.out + x.err); assert.equal(no.f.spawned.length, 0, "nothing started"); assert.equal(no.asked.start, 1);
+    assert.equal((await no.run("start", "--practice", "--no-wait", "--json")).code, 0, "practice is exempt");
+    assert.equal(no.asked.start, 1);
+  } finally { await no.done(); }
+  const off = await rig({ askCliStart: false, answer: false });
+  try {
+    assert.equal((await off.run("start", "--quick", "--no-wait", "--json")).code, 0);
+    assert.equal(off.asked.start, 0, "setting off: no question");
+  } finally { await off.done(); }
+  const yes = await rig();
+  try {
+    assert.equal((await yes.run("start", "--quick", "--no-wait", "--json")).code, 0); assert.equal(yes.asked.start, 1);
+  } finally { await yes.done(); }
+});
+
+test("socket: stop --delete --yes always needs the user's click; a no keeps the call running; one question at a time", async () => {
+  let release: (v: boolean) => void = () => {};
+  const r = await rig({ answer: () => new Promise<boolean>((res) => { release = res; }) });
+  try {
+    assert.equal((await r.run("start", "--practice", "--no-wait", "--json")).code, 0);
+    const first = r.run("stop", "--delete", "--yes", "--no-wait", "--json");
+    await new Promise((res) => setTimeout(res, 100));
+    const second = await r.run("stop", "--delete", "--yes", "--no-wait", "--json");
+    assert.equal(second.code, 4, "second question refused while the first is open");
+    release(false);
+    const a = await first;
+    assert.equal(a.code, 4); assert.ok(!r.f.spawned[0].written.includes("stop-delete\n"), "no click, no delete");
+    assert.equal(r.ctl.isRunning(), true);
+  } finally { await r.done(); }
+  // no confirm function at all (an embedder that forgot): delete is refused
+  const { createControlServer } = req("../tray/control-socket.cjs");
+  const f = fakeSpawn(); const ctl = createController({ spawn: f.spawnFn, root: ROOT, tmpDir: tmp("nc"), setTimeout: () => 0, kill: () => {}, logPath: "" });
+  ctl.practice({ quick: true });
+  const srv = createControlServer({ controller: ctl, lib: trayLib, socketPath: join(tmp("ncs"), "c.sock") });
+  assert.equal((await srv.handle(JSON.stringify({ v: 1, cmd: "stop_delete", args: { confirm: true } }))).code, "refused");
 });
 
 test("cli: app not running -> exit 3 with a hint, and nothing is opened", async () => {

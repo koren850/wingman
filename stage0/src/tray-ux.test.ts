@@ -289,3 +289,20 @@ test("menu bar: Start prepared meeting lists ready meetings soonest first; the m
   const s1 = lib.reduce(lib.initialState(), { ev: "boot", briefReady: true, plansKey: "one" });
   assert.notEqual(lib.menuKey(s1, false), lib.menuKey(lib.reduce(s1, { ev: "boot", briefReady: true, plansKey: "two" }), false));
 });
+
+test("CLI confirmations: only the second button says yes; no answer in time, Escape, or a dialog error is no", async () => {
+  const dlg = (response: number | "never" | "throw") => ({ showMessageBox: () => (response === "never" ? new Promise(() => {}) : response === "throw" ? Promise.reject(new Error("x")) : Promise.resolve({ response })) });
+  assert.equal(await lib.confirmCliStart({ dialog: dlg(1) }), true);
+  assert.equal(await lib.confirmCliStart({ dialog: dlg(0) }), false);
+  assert.equal(await lib.confirmCliStopDelete({ dialog: dlg(1) }), true);
+  assert.equal(await lib.confirmCliStopDelete({ dialog: dlg(0) }), false);
+  assert.equal(await lib.confirmCliStopDelete({ dialog: dlg("throw") }), false);
+  assert.equal(await lib.confirmCliStart({ dialog: dlg("never"), timeoutMs: 20 }), false);
+});
+
+test("CLI start question setting: default and unreadable mean ask; only an explicit false skips it", async () => {
+  assert.equal(await lib.askBeforeCliStart({ run: async () => ({ ok: true, values: { "privacy.askBeforeCliStart": true } }) }), true);
+  assert.equal(await lib.askBeforeCliStart({ run: async () => ({ ok: true, values: { "privacy.askBeforeCliStart": false } }) }), false);
+  assert.equal(await lib.askBeforeCliStart({ run: async () => null }), true);
+  assert.equal(await lib.askBeforeCliStart({ run: async () => { throw new Error("x"); } }), true);
+});
