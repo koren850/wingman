@@ -7,7 +7,7 @@ import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
 import net from "node:net";
 import { spawn } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, statSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, statSync, existsSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
@@ -46,7 +46,7 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string; a
   const f = fakeSpawn();
   const plans = createPlanStore({ dir: join(dir, "briefs"), pdftotext: "" });   // the same folder the CLI reads (WINGMAN_BRIEFS_DIR below)
   const ctl = createController({ spawn: opts.spawn ?? f.spawnFn, root: ROOT, tmpDir: dir, setTimeout: () => 0, kill: () => {}, logPath: "", plans });
-  const env = { ...process.env, WINGMAN_CONTROL_SOCKET: sock, WINGMAN_CALLS_DIR: opts.callsDir ?? join(dir, "calls"), WINGMAN_BRIEFS_DIR: join(dir, "briefs"), WINGMAN_USER_SETTINGS: join(dir, "settings.yaml") };
+  const env = { ...process.env, HOME: dir, WINGMAN_CONTROL_SOCKET: sock, WINGMAN_CALLS_DIR: opts.callsDir ?? join(dir, "calls"), WINGMAN_BRIEFS_DIR: join(dir, "briefs"), WINGMAN_USER_SETTINGS: join(dir, "settings.yaml") };
   mkdirSync(opts.callsDir ?? join(dir, "calls"), { recursive: true });
   const server = createControlServer({ controller: ctl, lib: trayLib, plans, socketPath: sock, log: (s: string) => logs.push(s), now: opts.now ?? (() => (clock += 2000)), info: () => ({ pid: 1, version: "t" }), askCliStart: async () => opts.askCliStart !== false, confirm: { start: async () => { asked.start++; return answer(); }, stopDelete: async () => { asked.del++; return answer(); } } });
   await server.start();
@@ -207,6 +207,30 @@ test("socket: stop --delete --yes always needs the user's click; a no keeps the 
   ctl.practice({ quick: true });
   const srv = createControlServer({ controller: ctl, lib: trayLib, socketPath: join(tmp("ncs"), "c.sock") });
   assert.equal((await srv.handle(JSON.stringify({ v: 1, cmd: "stop_delete", args: { confirm: true } }))).code, "refused");
+});
+
+test("plan attach --file: refuses symlinks, secret folders, key-like names and files outside HOME (unless --force)", async () => {
+  const r = await rig();
+  try {
+    const id = (await r.run("plan", "new", "--who", "Dana", "--goal", "g", "--json")).json.plan.id;
+    const att = (...a: string[]) => r.run("plan", "attach", "--id", id, ...a, "--json");
+    mkdirSync(join(r.dir, ".ssh"), { recursive: true }); mkdirSync(join(r.dir, ".config", "wingman"), { recursive: true });
+    writeFileSync(join(r.dir, ".ssh", "id_rsa"), "PRIVATE KEY"); writeFileSync(join(r.dir, ".config", "wingman", "keys.env"), "ANTHROPIC_API_KEY=sk-x");
+    writeFileSync(join(r.dir, ".ssh", "notes.txt"), "not a key but in .ssh"); writeFileSync(join(r.dir, "real.txt"), "Invented background about a hosting migration, long enough to keep. ".repeat(5));
+    symlinkSync(join(r.dir, ".ssh", "id_rsa"), join(r.dir, "x.txt")); symlinkSync(join(r.dir, "real.txt"), join(r.dir, "link.txt"));
+    mkdirSync(join(r.dir, "linkdir")); symlinkSync(join(r.dir, ".config", "wingman", "keys.env"), join(r.dir, "linkdir", "k.md"));
+    for (const f of ["x.txt", "link.txt", "linkdir/k.md", ".ssh/notes.txt", ".config/wingman/keys.env", ".ssh/id_rsa"]) {
+      const x = await att("--file", join(r.dir, f)); assert.equal(x.code, 4, f + " " + x.out + x.err);
+    }
+    assert.doesNotMatch((await r.run("plan", "show", id, "--json")).out, /PRIVATE|sk-x/);
+    writeFileSync(join(r.dir, ".env.txt"), "A=1"); writeFileSync(join(r.dir, "secrets.env"), "A=1");
+    assert.equal((await att("--file", join(r.dir, ".env.txt"))).code, 4); assert.equal((await att("--file", join(r.dir, "secrets.env"))).code, 4);
+    assert.equal((await att("--file", join(r.dir, "real.txt"))).code, 0, "a plain file inside HOME works");
+    const out = join(tmp("outside"), "o.txt"); writeFileSync(out, "Invented outside file text, long enough. ".repeat(10));
+    assert.equal((await att("--file", out)).code, 4, "outside HOME refused");
+    assert.equal((await att("--file", out, "--force")).code, 0, "--force allows outside HOME");
+    assert.equal((await att("--file", join(r.dir, "nope.txt"))).code, 5);
+  } finally { await r.done(); }
 });
 
 test("cli: app not running -> exit 3 with a hint, and nothing is opened", async () => {

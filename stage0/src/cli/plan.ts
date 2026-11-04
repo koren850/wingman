@@ -2,7 +2,6 @@
 // Reads and writes the files directly (no engine, no network), then nudges the app with a best-effort brief_refresh over the control
 // socket (tray/control-socket.cjs); a running app also notices the change itself within a second.
 // A call uses a meeting only when it is started with it: `wingman start --plan <id>`. `wingman start --quick` uses none.
-import { readFileSync, statSync } from "node:fs";
 import { basename } from "node:path";
 import { request } from "./client.ts";
 import { CliError, EXIT, plansLib, Plans, attachments, parse, usage, ago, type Ctx, type Result } from "./common.ts";
@@ -99,17 +98,17 @@ async function setPlan(ctx: Ctx, args: string[], forceNew: boolean): Promise<Res
 
 // plan attach: exactly one of --file / --text / --stdin, into --id (or the only meeting). Size and total limits are enforced by the attachments store.
 async function attach(ctx: Ctx, args: string[]): Promise<Result> {
-  const { values } = parse(args, { id: { type: "string" }, file: { type: "string" }, text: { type: "string" }, stdin: { type: "boolean" } });
+  const { values } = parse(args, { id: { type: "string" }, file: { type: "string" }, text: { type: "string" }, stdin: { type: "boolean" }, force: { type: "boolean" } });
   const n = [values.file, values.text, values.stdin].filter((x) => x !== undefined && x !== false).length;
   if (n !== 1) throw usage("Give exactly one of: --file <path>, --text \"<text>\", --stdin   (and --id <meeting id> when there are several meetings)");
   const m = target(ctx, values.id, "attach to");
   const fs = store(ctx).files(m.id);
   let r: any;
   if (values.file !== undefined) {
-    let st; try { st = statSync(values.file); } catch { throw new CliError("not_found", `No such file: ${values.file}`, EXIT.NOT_FOUND); }
-    if (!st.isFile()) throw usage("That is not a regular file.");
-    if (st.size > attachments.MAX_BYTES) throw usage("Files can be 2 MB at most.");
-    r = await fs.addFile(basename(values.file), readFileSync(values.file));
+    let bytes: Buffer;
+    try { bytes = attachments.readSourceFile(values.file, { force: !!values.force, home: ctx.env.HOME || undefined }); }
+    catch (e: any) { throw e.code === "missing" ? new CliError("not_found", e.message, EXIT.NOT_FOUND) : new CliError("refused", e.message, EXIT.REFUSED); }
+    r = await fs.addFile(basename(values.file), bytes);
   } else {
     const text = values.text !== undefined ? values.text : await ctx.stdin();
     r = fs.addPaste(text);

@@ -5,6 +5,7 @@
 // Everything is validated here (type, size, file name); the content is never logged and never printed.
 const fs = require("node:fs");
 const path = require("node:path");
+const os = require("node:os");
 const { execFile } = require("node:child_process");
 
 const MAX_BYTES = 2 * 1024 * 1024;       // one uploaded file
@@ -24,6 +25,43 @@ const extOf = (n) => { const m = /\.([A-Za-z0-9]{1,5})$/.exec(n); return m ? m[1
 /** Text from a decoded file: control and bidi-override characters out, line breaks kept. */
 function cleanText(t) {
   return String(t).replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f‪-‮]/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// ---- Reading a file the user names on the command line (`wingman plan attach --file`) ----
+// Any process of this user can run the CLI, so a path is never trusted: a symlink called notes.txt that points at an SSH key must not become an
+// attachment (attachments are sent to the AI). Rules: no symlink as the last path part (opened with O_NOFOLLOW, so there is no swap between check and read);
+// nothing in the folders that hold secrets; no key / .env style file names; nothing outside the home folder unless force is set.
+const SECRET_DIRS = [".ssh", ".aws", ".gnupg", ".config/wingman", "Library/Keychains"];
+const SECRET_NAME = /^(\.env(\..*)?|.*\.env|\.netrc|\.npmrc|\.pgpass|\.git-credentials|\.pypirc|id_(rsa|dsa|ecdsa|ed25519)(\..*)?|.*\.(pem|key|p12|pfx|keychain|keychain-db|kdbx)|keys?|credentials|secrets?)$/i;
+const inside = (child, parent) => child === parent || child.startsWith(parent.endsWith(path.sep) ? parent : parent + path.sep);
+
+/** Returns the file's bytes, or throws an Error whose message is user-facing and whose .code is "symlink" | "secret" | "outside" | "missing" | "notfile" | "toolarge". */
+function readSourceFile(file, o = {}) {
+  const home = o.home || os.homedir(), maxBytes = o.maxBytes || MAX_BYTES;
+  const fail = (code, msg) => Object.assign(new Error(msg), { code });
+  const abs = path.resolve(String(file));
+  let l; try { l = fs.lstatSync(abs); } catch { throw fail("missing", `No such file: ${file}`); }
+  if (l.isSymbolicLink()) throw fail("symlink", "That path is a symbolic link. Wingman does not follow links: give the real file.");
+  let real; try { real = fs.realpathSync(abs); } catch { throw fail("missing", `No such file: ${file}`); }
+  let realHome = home; try { realHome = fs.realpathSync(home); } catch { /* use as given */ }
+  const name = path.basename(real);
+  for (const h of new Set([home, realHome])) for (const d of SECRET_DIRS) if (inside(real, path.join(h, d)) || inside(abs, path.join(h, d))) throw fail("secret", "That file is in a folder that holds keys or settings. It will not be attached.");
+  if (SECRET_NAME.test(name) || SECRET_NAME.test(path.basename(abs))) throw fail("secret", "That file name looks like a key or secrets file. It will not be attached.");
+  if (!o.force && !inside(real, realHome)) throw fail("outside", "That file is outside your home folder. Add --force if you really mean it.");
+  let fd;
+  try {
+    fd = fs.openSync(abs, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    const st = fs.fstatSync(fd);
+    if (!st.isFile()) throw fail("notfile", "That is not a regular file.");
+    if (st.size > maxBytes) throw fail("toolarge", "Files can be 2 MB at most.");
+    const buf = Buffer.alloc(st.size);
+    let n = 0; while (n < st.size) { const r = fs.readSync(fd, buf, n, st.size - n, n); if (r <= 0) break; n += r; }
+    return buf.subarray(0, n);
+  } catch (e) {
+    if (e && e.code && ["symlink", "notfile", "toolarge"].includes(e.code)) throw e;
+    if (e && (e.code === "ELOOP" || e.code === "EMLINK")) throw fail("symlink", "That path is a symbolic link. Wingman does not follow links: give the real file.");
+    throw fail("missing", `Cannot read that file: ${file}`);
+  } finally { if (fd !== undefined) try { fs.closeSync(fd); } catch { /* done */ } }
 }
 
 /** Looks for an executable `pdftotext` on PATH plus the usual Homebrew/system dirs (a packaged Electron app has a short PATH). Returns "" if none. */
@@ -138,4 +176,4 @@ function createStore(o) {
   return { list, addFile, addPaste, remove, clear, readAll, used, pdfAvailable: !!pdftotext };
 }
 
-module.exports = { createStore, safeName, cleanText, findPdftotext, MAX_BYTES, MAX_CHARS, MAX_FILES, MAX_AGE_MS };
+module.exports = { createStore, readSourceFile, safeName, cleanText, findPdftotext, MAX_BYTES, MAX_CHARS, MAX_FILES, MAX_AGE_MS };

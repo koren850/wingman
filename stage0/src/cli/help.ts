@@ -39,7 +39,8 @@ COMMANDS
                                after it; without a time it stays 14 days after its last edit. A meeting is used up by the real call started with it (Practice never does).
                                --kind interview = a job interview: the user is the candidate. The AI answers technical questions and questions about them from the
                                background files only; no "buy time" lines, no card limit. Add --note "Prepared cards: <file.yaml>" for instant cards (bank format).
-  plan attach [--id <id>] --file <.txt|.md|.pdf> | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters per meeting). --id is needed when there are several meetings.
+  plan attach [--id <id>] --file <.txt|.md|.pdf> [--force] | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters per meeting). --id is needed when there are several meetings.
+                               --file refuses symbolic links, key/.env style files and anything in ~/.ssh, ~/.aws, ~/.gnupg, ~/.config/wingman, ~/Library/Keychains (exit 4); files outside the home folder need --force.
   plan detach <file id> [--id <id>]       Remove one background file.
   plan delete <id> --yes       Delete a meeting and its background files (exit 6 without --yes).   (plan clear = the old name; it works only when exactly one meeting exists)
   start [--quick | --plan <id>] [--practice] [--no-ai] [--no-wait]    Start a call in the app. A Plan is never picked by guesswork:
