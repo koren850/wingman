@@ -54,6 +54,7 @@ import { getSttProvider, sttChain, loadKeyterms } from "./providers/stt/index.ts
 import { ModelRegistry, parseModelRef, ConfigError } from "./providers/llm.ts";
 import { describe, type ProviderError } from "./providers/errors.ts";
 import { SystemSource, MicSource, FileSource, peakOf } from "./audio.ts";
+import { PhoneRouter, isPhoneCall } from "./phone.ts";
 import { CallLog } from "./log.ts";
 import { loadSettingsOrExit, expandHome } from "./settings.ts";
 import { CostMeter } from "./cost.ts";
@@ -103,6 +104,10 @@ const brief: Brief | undefined = noBrief ? undefined : loadBrief(briefArg);
 // Interview plan (kind "interview"): Wingman coaches the candidate. The plan's own prepared cards replace the agency bank, no "buy time"
 // lines, no focus cap, and the AI answers technical and personal questions from the prep files (reflex.ts INTERVIEW_BLOCK).
 const interview = isInterview(brief);
+// Phone mode: a phone call on speaker next to the Mac (plan note "Phone call on speaker" or WINGMAN_PHONE=1). Both voices come in on the
+// microphone; diarization + loudness (phone.ts) decide which voice is the user. No system audio, no echo gate/filter.
+const PHONE = isPhoneCall(brief?.notes);
+const phone = PHONE ? new PhoneRouter() : undefined;
 const cardsFile = interview ? briefCardsFile(brief) : undefined;
 let bank: BankCard[];
 try { bank = interview ? (cardsFile ? loadBank(cardsFile) : []) : loadBank(); }
@@ -360,7 +365,8 @@ const ECHO = S.audio.echo;
 let echoMode: EchoMode = ECHO.mode === "auto" ? "filter" : ECHO.mode;
 let useGate = echoMode === "gate" || echoMode === "both";
 let useFilter = echoMode === "filter" || echoMode === "both";
-function setEchoMode(m: EchoMode) { echoMode = m; useGate = m === "gate" || m === "both"; useFilter = m === "filter" || m === "both"; }
+function setEchoMode(m: EchoMode) { if (PHONE) m = "off"; echoMode = m; useGate = m === "gate" || m === "both"; useFilter = m === "filter" || m === "both"; }
+if (PHONE) setEchoMode("off");
 const gate = new MicGate({ hangoverMs: ECHO.gateHangoverMs, peak: ECHO.gatePeak });
 const echo = new EchoFilter({ windowMs: ECHO.filterWindowMs, threshold: ECHO.filterThreshold });
 let gatedMs = 0, echoDropped = 0;
@@ -1271,7 +1277,7 @@ function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: stri
 function makeChannel(ch: Channel): SttChannel {
   return new SttChannel({
     channel: ch, chain: sttChain(S).map(getSttProvider), keyOf: (id) => (NO_KEY.has(id) ? "none" : (keys as Record<string, string | undefined>)[id]),
-    base: { diarize: ch === "them" && S.stt.speakers, language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
+    base: { diarize: (ch === "them" && S.stt.speakers) || (PHONE && ch === "me"), language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
     circuit: S.stt.circuit, ringMs: S.stt.reconnect.ringMs,
   });
 }
@@ -1345,7 +1351,13 @@ async function main() {
   sup.tick();
   for (const s of [me, them]) {
     const ch = s === me ? "me" : "them";
-    s.on("result", (r: SttResult) => { if (ch === "them" && r.isFinal && r.speechFinal && r.speechEndWall) sup.recordSttLag(r.arrivedAt - r.speechEndWall); onResult(r); });
+    s.on("result", (r: SttResult) => {
+      const rs = phone && ch === "me" ? phone.route(r) : [r];
+      // STT lag is measured on the whole result (a split run ends earlier than the result arrives, which is not STT lag).
+      if (rs.some((x) => x.channel === "them") && r.isFinal && r.speechFinal && r.speechEndWall) sup.recordSttLag(r.arrivedAt - r.speechEndWall);
+      for (const x of rs) onResult(x);
+      if (phone && ch === "me" && r.isFinal && r.speechFinal) log.write("events", { type: "phone.voices", ...phone.summary() });
+    });
     s.on("stt_error", (e: ProviderError) => { console.error("stt error", ch, e.message); log.write("events", { type: "stt.error", ch, kind: e.kind, error: e.message }); });
     s.on("keyterms_off", () => { console.log("keyterms off for this provider (open was rejected with them)"); log.write("events", { type: "stt.keyterms_off", ch }); });
     s.on("disconnected", (d) => health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} התנתק – מנסה להתחבר מחדש. בדוק את חיבור האינטרנט`, JSON.stringify({ code: d.code, reason: d.reason })));
@@ -1407,17 +1419,27 @@ async function main() {
 
   if (fileArg) {
     const f = new FileSource(fileArg);
-    f.on("pcm-them", (b) => { gate.noteThemPeak(peakOf(b)); them.send(b); }); f.on("pcm-me", (b) => me.send(gateMic(b)));
+    if (PHONE) {
+      // Phone replay: the Mac mic hears both. Mix L (me) + R (them, quieter: a phone speaker further away) into one mono stream.
+      let themBuf: Buffer | undefined;
+      f.on("pcm-them", (b) => { themBuf = b; });
+      f.on("pcm-me", (b) => {
+        const t = themBuf; themBuf = undefined;
+        const out = Buffer.alloc(b.length);
+        for (let i = 0; i + 1 < b.length; i += 2) out.writeInt16LE(Math.max(-32768, Math.min(32767, b.readInt16LE(i) + (t && i + 1 < t.length ? Math.round(t.readInt16LE(i) * 0.45) : 0))), i);
+        phone!.recordMic(out); me.send(out);
+      });
+    } else { f.on("pcm-them", (b) => { gate.noteThemPeak(peakOf(b)); them.send(b); }); f.on("pcm-me", (b) => me.send(gateMic(b))); }
     f.on("end", () => setTimeout(() => void shutdown(), 4000));
     await f.start(); stops.push(() => f.stop());
   } else {
     if (S.system.caffeinate) spawn("caffeinate", ["-dis", "-w", String(process.pid)], { stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
     // Client audio: audiotee (macOS tap) | device (avfoundation input such as BlackHole, via ffmpeg) | off.
     const srcKind = S.audio.system.source;
-    const sys = srcKind === "audiotee" ? new SystemSource() : srcKind === "device" ? new MicSource(S.audio.system.device) : undefined;
+    const sys = PHONE ? undefined : srcKind === "audiotee" ? new SystemSource() : srcKind === "device" ? new MicSource(S.audio.system.device) : undefined;
     const mic = new MicSource(S.audio.mic.device);
     const devsP = readAudioDevices();
-    if (ECHO.mode === "auto") void devsP.then((devs) => {
+    if (ECHO.mode === "auto" && !PHONE) void devsP.then((devs) => {
       const m = resolveEchoMode("auto", devs);
       setEchoMode(m);
       log.write("events", { type: "echo.mode", mode: m, output: devs.find((d) => d.defaultOutput)?.name ?? "" });
@@ -1434,6 +1456,7 @@ async function main() {
       if (!consented) return;
       const pk = peakOf(b); micPeakAfterStart = Math.max(micPeakAfterStart, pk); micPeakWin = Math.max(micPeakWin, pk);
       if (micSilentShown && pk >= S.audio.watchdog.micPeak) { micSilentShown = false; healthClear("mic"); }
+      phone?.recordMic(b);
       me.send(gateMic(b));
     });
     mic.on("error", (e) => { console.error("mic error:", e.message); health("mic", "red", "המיקרופון נפל. חבר אותו מחדש או בחר מיקרופון אחר ב-Settings", e.message); });
@@ -1443,6 +1466,9 @@ async function main() {
       sys.on("error", (e: Error) => { console.error("system audio error:", e.message); health("sys", "red", "לא שומעים את הצד השני. בדוק את הרשאת הקלטת המסך/שמע המערכת והרץ בדיקת מוכנות", e.message); });
       sys.on("log", (m: string) => console.log(m));
       await sys.start();
+    } else if (PHONE) {
+      console.log("Phone mode: one microphone hears both of you (phone on speaker). The louder voice is you.");
+      log.write("events", { type: "phone.mode", on: true });
     } else {
       console.log("audio.system.source is off: no audio from the other side, so only your own questions get answers (Ctrl+Opt+A).");
       sup.set({ themDead: true });
