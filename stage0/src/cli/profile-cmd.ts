@@ -17,9 +17,10 @@ const lines = (p: Profile, file: string) => [
   `about:      ${p.about || "(none)"}`,
   `business:   ${p.business || "(none)"}`,
   `timezone:   ${p.timezone || "(this machine's)"}`,
+  `claims:     ${p.claims.join(" · ") || "(none)"}`,
 ].join("\n");
 
-/** show | set [--name N] [--spelling S ...] [--address male|female|neutral] [--about T] [--business T] [--timezone Z]. An empty value clears a field. */
+/** show | set [--name N] [--spelling S ...] [--address male|female|neutral] [--about T] [--business T] [--timezone Z] [--claim C ...]. An empty value clears a field. */
 export async function profile(ctx: Ctx, args: string[]): Promise<Result> {
   const sub = args[0] || "show", rest = args.slice(1);
   const file = profileFile(ctx.env);
@@ -31,9 +32,9 @@ export async function profile(ctx: Ctx, args: string[]): Promise<Result> {
   if (sub === "set") {
     const { values, positionals } = parse(rest, {
       name: { type: "string" }, spelling: { type: "string", multiple: true }, address: { type: "string" },
-      about: { type: "string" }, business: { type: "string" }, timezone: { type: "string" },
+      about: { type: "string" }, business: { type: "string" }, timezone: { type: "string" }, claim: { type: "string", multiple: true },
     });
-    if (positionals.length) throw usage("Usage: wingman profile set [--name N] [--spelling S ...] [--address male|female|neutral] [--about T] [--business T] [--timezone Z]");
+    if (positionals.length) throw usage("Usage: wingman profile set [--name N] [--spelling S ...] [--address male|female|neutral] [--about T] [--business T] [--timezone Z] [--claim C ...]");
     const next: Profile = { ...read(file) };
     let changed = 0;
     if (values.name !== undefined) { next.name = values.name; changed++; }
@@ -43,6 +44,7 @@ export async function profile(ctx: Ctx, args: string[]): Promise<Result> {
       next.address = values.address as Profile["address"]; changed++;
     }
     if (values.about !== undefined) { next.about = values.about; changed++; }
+    if (values.claim !== undefined) { next.claims = values.claim.map((c) => c.trim()).filter(Boolean); changed++; }
     if (values.business !== undefined) { next.business = values.business; changed++; }
     if (values.timezone !== undefined) {
       if (values.timezone && !(() => { try { new Intl.DateTimeFormat("en", { timeZone: values.timezone }); return true; } catch { return false; } })()) throw usage(`--timezone: "${values.timezone}" is not a time zone name (example: Europe/Paris)`);

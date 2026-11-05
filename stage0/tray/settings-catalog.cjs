@@ -33,8 +33,8 @@ const ITEMS = [
     help: "On: a card only for clear questions to you (a question mark, a direct request, your name), at most 2 every 2 minutes. Price and date cards and the cards about what you said always show. Off: every likely question gets a card (cards.maxPerMinute)." },
   { key: "cards.quiet", group: "answers", label: "Start every call in quiet mode", kind: "bool",
     help: "Cards are saved for the review but not shown on the answer window until you switch quiet off." },
-  { key: "reflex.stallAfterMs", group: "tune", label: "Wait before a “Buy time” line", kind: "number", scale: 1000, min: 0.8, max: 3.5, step: 0.1, unit: "seconds",
-    help: "How long the AI has to find an answer before a “Buy time” line appears for you to say." },
+  { key: "reflex.stall", group: "answers", label: "“Buy time” lines", kind: "bool",
+    help: "On: when no answer is ready in time, show a line like “Let me check and get back to you”. Off (default): nothing until a real answer is ready. Price, timeline and guarantee cards show either way." },
 
   { key: "frame.enabled", group: "answers", label: "Work out what the call is about", kind: "bool",
     help: "Every minute or so the AI reads the last few minutes and shows the kind of call, its topic and a checklist at the top of the answer window. Answers and tips then fit the call." },

@@ -37,15 +37,15 @@ test("select options and booleans are valid; inverted booleans store the opposit
   for (const i of cat.ITEMS.filter((x: any) => x.kind === "select")) for (const [v] of i.options) assert.equal(applyEdits(tmp(), { [i.key]: v }).ok, true, i.key + v);
   assert.equal(cat.toStored(cat.BY_KEY.get("run.noAi"), true), false);
   assert.equal(cat.toStored(cat.BY_KEY.get("overlay.contentProtection"), false), true);
-  assert.equal(cat.toStored(cat.BY_KEY.get("reflex.stallAfterMs"), 2.5), 2500);
+  assert.equal(cat.toStored(cat.BY_KEY.get("tips.minGapMs"), 60), 60000);
   assert.throws(() => cat.toStored(cat.BY_KEY.get("stt.language"), "klingon"));
   assert.throws(() => cat.toStored(cat.BY_KEY.get("cards.quiet"), "yes"));
   assert.throws(() => cat.toStored(cat.BY_KEY.get("cards.maxPerMinute"), 2.5));
 });
 
 test("describe marks changed rows and shows screen values", () => {
-  const f = tmp(); applyEdits(f, { "run.noAi": true, "reflex.stallAfterMs": 2500 });
+  const f = tmp(); applyEdits(f, { "run.noAi": true, "tips.minGapMs": 60000 });
   const rows = cat.describe(readState(f)); const get = (k: string) => rows.find((r: any) => r.key === k);
   assert.equal(get("run.noAi").value, false); assert.equal(get("run.noAi").def, true); assert.equal(get("run.noAi").changed, true);
-  assert.equal(get("reflex.stallAfterMs").value, 2.5); assert.equal(get("cards.quiet").changed, false);
+  assert.equal(get("tips.minGapMs").value, 60); assert.equal(get("cards.quiet").changed, false);
 });

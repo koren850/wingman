@@ -75,8 +75,17 @@ export function guard(text: string): GuardResult {
 /** Interview answers: technical talk about costs, rates, dates and durations is the candidate's own content there ("$0.10 per million
  *  tokens", "2,100 tasks in 4 days"). Only a salary figure is blocked: salary comes from the prepared card, never from the model. */
 const SALARY = /(salary|compensation|gross|net pay|\bk\b|שכר|משכורת|ברוטו|נטו|אלף ש)/i;
-export function guardInterview(text: string): GuardResult {
+/** Tools, clouds and skills an interview answer must not claim unless the user's own profile, cards or plan name them (5 Nov: a card said "OpenAI API"). */
+const CLAIMABLE = ["OpenAI", "GPT", "ChatGPT", "Gemini", "Llama", "Mistral", "LangChain", "LlamaIndex", "Pinecone", "Weaviate", "Chroma", "pgvector", "AWS", "GCP", "Google Cloud", "Azure", "Kubernetes", "K8s", "Terraform", "Kafka", "Spark", "Airflow", "fine-tuning", "fine-tune", "Java", "C#", ".NET", "Go", "Golang", "Rust", "Angular", "Vue", "Django", "FastAPI", "Flask", "Spring", "PyTorch", "TensorFlow", "Snowflake", "Databricks"];
+const escapeRe = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const termRe = (w: string) => new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(w)}(?![\\p{L}\\p{N}])`, "u");   // case-sensitive: "go over it" is not Go
+/** The first claimable term in `text` that `allowed` does not contain, or undefined. */
+export function unclaimedTerm(text: string, allowed: string): string | undefined {
+  return CLAIMABLE.find((w) => termRe(w).test(text) && !termRe(w).test(allowed));
+}
+export function guardInterview(text: string, allowed?: string): GuardResult {
   if (/\d/.test(text) && SALARY.test(text)) return { ok: false, rule: "price" };
+  if (allowed !== undefined && unclaimedTerm(text, allowed)) return { ok: false, rule: "unclaimed" };
   return { ok: true };
 }
 

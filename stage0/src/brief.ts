@@ -13,6 +13,15 @@ import { tokens } from "./normalize.ts";
 /** What the user typed before the call. `mustCover` items are checked against the transcript with covered(). */
 export type Brief = { planId?: string; title?: string; who?: string; goal?: string; notes?: string[]; mustCover?: string[]; createdAt?: string };
 export const BRIEF_DIR = join(DATA, "private", "briefs");
+
+const TERM_STOP = new Set(["hr", "call", "interview", "round", "meeting", "with", "and", "the", "of", "for", "team", "lead", "screen", "phone", "intro", "manager", "or", "a", "an", "to", "on", "in", "שיחה", "ראיון", "עם", "של", "פגישה", "ראש", "צוות", "מנהל", "מנהלת", "משאבי", "אנוש", "מגייסת", "מגייס"]);
+/** Speech-to-text hints from the plan: names in "who" and "title" ("Dana Levi (Initech HR)" -> Dana, Levi, Initech). At most 10. */
+export function briefTerms(b: Brief | undefined): string[] {
+  if (!b) return [];
+  const words = `${b.who ?? ""} ${b.title ?? ""}`.split(/[\s,()·:|/–—-]+/).map((w) => w.replace(/^[.'"]+|[.'"]+$/g, "")).filter(Boolean);
+  const keep = words.filter((w) => w.length >= 2 && !TERM_STOP.has(w.toLowerCase()) && !/^\d+$/.test(w) && (/^[A-Z]/.test(w) || /[\u05d0-\u05ea]/.test(w)));
+  return [...new Set(keep)].slice(0, 10);
+}
 export const LATEST_BRIEF = join(BRIEF_DIR, "latest.yaml");
 
 /**
