@@ -264,7 +264,7 @@ function callTable(rows, label) {
       const ph = c.rated ? c.perHour : null;
       const go = () => openCall(c.id, {});
       const tr = h("tr", { class: "go" + (state.lastId === c.id ? " sel" : ""), "data-id": c.id, onclick: go },
-        h("td", {}, h("button", { type: "button", class: "rowlink", onclick: (e) => { e.stopPropagation(); go(); } }, dayLabel(c.startedAt), h("span", { class: "tm" }, tm(c.startedAt)))),
+        h("td", {}, h("button", { type: "button", class: "rowlink", onclick: (e) => { e.stopPropagation(); go(); } }, c.name ? h("span", { class: "cname", dir: "auto" }, c.name) : null, dayLabel(c.startedAt), h("span", { class: "tm" }, tm(c.startedAt)))),
         h("td", { class: "w-len" }, c.crashed && c.durationMs < 1000 ? h("span", { class: "faint" }, "–") : mins(c.durationMs)),
         h("td", {}, h("div", { class: "wait" }, waitingChips(c))),
         h("td", { class: "num val w-num " + (ph == null ? "faint" : c.mode !== "live" ? "muted" : ph >= TARGET ? "good" : "bad") }, ph == null ? "–" : ltr(ph.toFixed(1))));
@@ -279,7 +279,7 @@ function nextUpCard() {
   const go = () => openCall(c.id, { tab, filter: tab === "rate" ? "unrated" : undefined });
   return h("section", { class: "nextup", "aria-label": "Next up" },
     h("div", { class: "grow" }, h("div", { class: "eyebrow" }, "Next up"),
-      h("div", { class: "title" }, `${dayLabel(c.startedAt)} ${tm(c.startedAt)} · ${mins(c.durationMs)}`),
+      h("div", { class: "title", dir: "auto" }, `${c.name ? c.name + " · " : ""}${dayLabel(c.startedAt)} ${tm(c.startedAt)} · ${mins(c.durationMs)}`),
       h("div", { class: "why" }, p ? chip(`${plural(p, "card")} to rate`, "warn", { dot: true }) : null, c.hasSummary ? chip("Summary ready", "info", { dot: true }) : null)),
     h("button", { type: "button", class: "btn primary", onclick: go }, "Review", ico("chevron")));
 }
@@ -319,7 +319,7 @@ function viewInbox(restoreFocus) {
       out.append(h("div", { class: "results", role: "list", "aria-label": "Search results" }, hits.map((x) => {
         const c = byId.get(x.id);
         return h("button", { type: "button", role: "listitem", class: "result", onclick: () => openCall(x.id, { tab: "transcript", line: x.line, hl: state.search.trim() }) },
-          h("span", { class: "when" }, dayLabel(c.startedAt), " ", h("span", { class: "tm" }, tm(c.startedAt))),
+          h("span", { class: "when" }, c.name ? h("span", { class: "cname", dir: "auto" }, c.name) : null, dayLabel(c.startedAt), " ", h("span", { class: "tm" }, tm(c.startedAt))),
           textEl("span", "snip", x.text, state.search.trim()),
           h("span", { class: "chip mono" }, mmss(x.at)));
       })));
@@ -393,7 +393,7 @@ function renderCall(tab) {
   const empty = !d.transcript.length && !d.events.length && !d.cards.length;
   const back = btn("Calls", { icon: "back", cls: "ghost sm", onclick: backToList, title: "Back to Calls (Esc)" });
   const delBtn = btn("Delete call", { icon: "trash", cls: "danger sm", onclick: deleteCurrent });
-  const title = `${fullDay(s.startedAt)}, ${tm(s.startedAt)}`;
+  const title = s.name ? `${s.name} · ${fullDay(s.startedAt)}, ${tm(s.startedAt)}` : `${fullDay(s.startedAt)}, ${tm(s.startedAt)}`;
   if (s.crashed) {
     main.append(h("div", { class: "crumb", id: "callview" }, back),
       h("div", { class: "callcrash" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h1", { class: "sr" }, title), h("h2", {}, "This call crashed"), h("span", {}, "Nothing was saved."), h("span", { class: "faint" }, title), btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent })));
