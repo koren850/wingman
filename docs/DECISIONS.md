@@ -2,12 +2,12 @@
 
 Each entry says what we decided, why, what else we looked at, and what it costs us. Entries are in rough build order. Status is "accepted" unless noted.
 
-Context for all of them: Wingman was built for one user's live calls first. Calls are mostly Hebrew with English tech words mixed in. A wrong or slow answer on a live call is worse than no answer.
+Context for all of them: Wingman was first built around one user's live calls. Calls are mostly Hebrew with English tech words mixed in. A wrong or slow answer on a live call is worse than no answer.
 
 | # | Decision |
 |---|---|
 | [1](#adr-1-personal-tool-first) | Personal tool first, open source from source on macOS |
-| [2](#adr-2-a-dogfood-tool-before-the-big-structure) | A small dogfood tool (Stage 0) before the big structure |
+| [2](#adr-2-a-dogfood-tool-before-the-big-structure) | A small first version before the big structure |
 | [3](#adr-3-numeric-gates-instead-of-opinions) | Numeric gates instead of opinions |
 | [4](#adr-4-deepgram-nova-3-for-speech-to-text) | Deepgram Nova-3 for speech to text |
 | [5](#adr-5-two-audio-channels-me-and-them) | Two audio channels: me and them |
@@ -48,7 +48,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 ## ADR 1: Personal tool first
 
-**Context.** The first plan was a general open-source product: Windows and macOS installers, auto-update, plugins, a setup wizard. A review said the idea holds for one person and is weak as a product for strangers, and that every cost came before any proof of value.
+**Context.** The first plan was a general open-source product: Windows and macOS installers, auto-update, plugins, a setup wizard. A design review concluded the idea holds for one person and is weak as a product for strangers, and that every cost came before any proof of value.
 
 **Decision.** Build it for one user first: one user's Hebrew calls and tools. Publish it as source that runs on macOS. Stages for strangers (signed installer, Windows, pack installer, polished wizard) wait for a second real user who wants it.
 
@@ -62,11 +62,11 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 **Context.** The structure documents described a monorepo, three processes, replay clocks, encryption and more, about 3 to 4 weeks before the first call.
 
-**Decision.** Build "Stage 0" first: a rough, terminal-launched tool in `stage0/` that reuses the planned ideas but not the planned layout. A flat folder, one process per call, plain JSONL. Add a dated kill rule: if it is not used on a real call by a set date, freeze it.
+**Decision.** Build a first version: a rough, terminal-launched tool in `stage0/` that reuses the planned ideas but not the planned layout. A flat folder, one process per call, plain JSONL. Add a stop rule: if it is not used on a real call by a set date, freeze it.
 
 **Why.** It gets the value question answered in days. Infrastructure for replay, linting and process splitting can be added when it saves time on real use.
 
-**Alternatives.** Build the full six-package structure first (rejected by the red-team review as sequencing the cost before the proof).
+**Alternatives.** Build the full six-package structure first (rejected in review: it puts the cost before the proof).
 
 **Consequences.** The code layout is flat and pragmatic.
 
@@ -302,7 +302,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 **Context.** A planned design had encrypted per-call storage and a SQLite index.
 
-**Decision.** Stage 0 stores plain JSONL files per call with owner-only permissions. No database. Audio is never saved (`privacy.storeAudio: false`). Retention is manual (`pnpm purge`, "Stop and delete this call"), and the readiness check lists calls older than 30 days.
+**Decision.** The first version stores plain JSONL files per call with owner-only permissions. No database. Audio is never saved (`privacy.storeAudio: false`). Retention is manual (`pnpm purge`, "Stop and delete this call"), and the readiness check lists calls older than 30 days.
 
 **Why.** Files are easy to read, back up, delete and debug, and a crash leaves a valid log. Not saving audio removes the most sensitive data.
 
@@ -384,11 +384,11 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 ## ADR 29: Consent step removed, optional "Ask me before listening starts"
 
-**Context.** The first design had a consent gate: nothing was sent to the cloud until the user said a consent line and pressed a key. For personal use it was friction, and the wording needed a legal check.
+**Context.** The first design had a consent gate: nothing was sent to the cloud until the user said a consent line and pressed a key. For a tool run by its own user it was friction, and the wording would need a legal review.
 
 **Decision.** The step is off by default (`privacy.requireConsentAck: false`): listening starts with the call. The old behaviour stays as an optional setting, "Ask me before listening starts": the call waits in the `waiting` phase until **Start listening** (Ctrl+Opt+Return, the button, or `wingman confirm --yes`). Consent wording in the UI was removed. The default consent sentence stays in the settings file as text.
 
-**Why.** Who to tell, and how, is the user's decision and responsibility.
+**Why.** Who to tell, and how, is the user's decision and responsibility. The README and the first-run guide say so plainly.
 
 **Alternatives.** A mandatory consent gate.
 

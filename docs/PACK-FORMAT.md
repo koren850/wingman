@@ -112,7 +112,7 @@ An interview meeting can have its own cards, in the same format as `bank.yaml` (
 wingman plan set --id <id> --add-note "Prepared cards: /full/path/to/my-interview-cards.yaml"
 ```
 
-Use the full path. For that call these cards **replace** the normal bank. Card text is yours, so a salary answer can live here: the AI is never allowed to write a salary figure. See [Interview mode](../stage0/README.md#interview-mode).
+Use the full path. For that call these cards **replace** the normal bank. Card text is yours, so a salary answer can live here: the AI is never allowed to write a salary figure. See [Interview mode](../stage0/README.md#practice-and-prep-mode-kind-interview).
 
 ## Check your pack
 

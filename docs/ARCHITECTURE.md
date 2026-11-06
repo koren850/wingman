@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes how Wingman is built today (the "Stage 0" app in `stage0/`). Where this document and the code differ, the code is right.
+This document describes how Wingman is built today (the app in `stage0/`). Where this document and the code differ, the code is right.
 
 Contents: [Big picture](#big-picture) · [Components](#components) · [Processes and data flow](#processes-and-data-flow) · [Call lifecycle](#call-lifecycle-and-phases) · [Files on disk](#files-on-disk) · [Latency budget and cost model](#latency-budget-and-cost-model) · [Testing](#testing)
 
