@@ -132,6 +132,12 @@ export type DetectCtx = { bankScore?: number; stall?: boolean };
  * "math". Hebrew is matched on normalize()d tokens, so the word lists above are normalized once at load (final letters folded).
  */
 const DANGLING = /(?:^|\s)(עם|של|על|את|או|כמו|לגבי|בין|with|about|of|to|for|the|a|an|and|or|like|between)\s*$/iu;
+/** "what are you looking for", "who did you work with", "who is this for": a wh-question that ends in a stranded preposition is complete.
+ *  "do you have experience with" (no wh-word) and "what is the price of" (no pronoun subject) are still cut off. */
+function strandedPreposition(raw: string): boolean {
+  const w = raw.toLowerCase().replace(/[.,!]/g, "").split(/\s+/).filter(Boolean);
+  return w.length >= 4 && /^(what|who|whom|which|where|whose)$/.test(w[0]) && /^(with|about|for)$/.test(w[w.length - 1]) && w.slice(1, -1).some((x) => /^(you|we|they|i|he|she|it|this|that)$/.test(x));
+}
 export function detect(text: string, ctx: DetectCtx = {}): Detection {
   const raw = text.trim();
   const t = tokens(raw);
@@ -145,7 +151,7 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
   if (t.every(isFiller)) return { isQuestion: false, reason: "filler" };
   // Cut off mid-phrase ("יש לך ניסיון עם", "do you have experience with"): speech-to-text split it or lost the last word. Wait for
   // the rest (the next line), never guess an answer to half a question (seen in a mock call: it got the "about you" card).
-  if (DANGLING.test(raw)) return { isQuestion: false, reason: "unfinished" };
+  if (DANGLING.test(raw) && !strandedPreposition(raw)) return { isQuestion: false, reason: "unfinished" };
   // Fillers plus "give me a second": "אממ, רגע, כאילו, תן לי רגע" says nothing.
   if (tokens(raw.replace(TIME_ASK, " ")).every(isFiller)) return { isQuestion: false, reason: "filler" };
   // Bare arithmetic is a question for the calculator, with or without "?" or "כמה": "15 אחוז מ 2400", "3 כפול 450".
