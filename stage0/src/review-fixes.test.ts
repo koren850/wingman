@@ -21,3 +21,12 @@ test("claims: a number belonging to a neighbouring unit is not attributed to the
   assert.deepEqual(spokenNumbers("70-80 customers").map((x) => x.n), [70, 80]);
   assert.deepEqual(spokenNumbers("70 80 לקוחות").map((x) => x.n).sort(), [70, 80]);
 });
+
+import { CostTracker } from "./cost.ts";
+test("cost: call minutes are per channel, not the sum of both channels", () => {
+  const prices = { llm: {}, stt: { deepgram: 0.55 } } as never, budget = { maxUsdPerCall: 5, warnAt: 0.8, maxMinutesPerCall: 90 } as never;
+  const c = new CostTracker(prices, budget);
+  c.setSttSeconds({ deepgram: 7200 }, 2);   // 60 minute call, two channels
+  assert.equal(c.sttMinutes, 60);
+  assert.equal(c.minutesState(), "ok");
+});
