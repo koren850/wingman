@@ -233,7 +233,7 @@ Model strings are `provider:model`. Only Anthropic is installed. For others run 
 
 How it decides (`src/assist.ts`): local cues first (math, "what does X mean", "אתם / שלכם" = the other side, the ask key), then, only if unsure, one tiny Haiku call (ASSIST / OTHER / NEITHER, about $0.0002) with the call frame as context. Arithmetic ("36 ועוד 42", "15% of 200", Hebrew and English number words) is computed locally by `src/calc.ts`: no AI, instant. The same evaluator keeps arithmetic and non-service prices ("כמה עולה דולר") away from the price stall line; real "כמה זה עולה" about services still stalls. Guards: answers for you never contain promises; prices and dates are blocked only when the question is about your own business.
 
-Test it offline: `WINGMAN_CONTROL=1` plus the stdin command `ask` (see `src/me-answers.test.ts`).
+Test it offline: `WINGMAN_CONTROL=1` plus the stdin command `ask` (see `src/e2e/me-answers.test.ts`).
 
 **Only you on the line.** When the other side's audio is silent while you talk: a calm line (no call app open: "אני שומע רק אותך…": join the call or play its audio to get answers for the other side; ask me anything with Ctrl+Opt+A) or, when Zoom/Teams/FaceTime/etc. is running, the red NOT HEARING THE OTHER SIDE bar. Either way answers for you keep working; only cards for the other side pause (`WINGMAN_CALL_APP=none|zoom` forces the check in tests).
 

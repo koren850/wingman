@@ -249,7 +249,7 @@ case ":$PATH:" in *":$BIN_DIR:"*) ;; *) [ -L "$LINK" ] && warn "$BIN_DIR is not 
 step "Done"
 [ "$NO_FFMPEG" = 1 ] && warn "ffmpeg is still missing: the microphone will not work until you run  brew install ffmpeg"
 if [ "$INSTALLED_APP" = 1 ]; then say "Next: open Wingman from Spotlight or Launchpad. The first window walks you through your API keys,"; else say "Next: run  open \"$APP_OUT\"  to start Wingman. The first window walks you through your API keys,"; fi
-say "your name, the microphone and the permissions. You need a Deepgram key and an Anthropic key (both paid, a few dollars an hour at most)."
+say "your name, the microphone and the permissions. You need a Deepgram key and an Anthropic key (both paid, about \$1.20 an hour of call in total)."
 say "Without the app: app/scripts/wingman.sh --open-window   (or  pnpm dashboard  inside app)."
 say "Update later with:  wingman update     Uninstall with:  wingman uninstall"
 exit 0

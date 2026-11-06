@@ -29,11 +29,16 @@ More detail: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 From `app/`:
 
 ```bash
-./node_modules/.bin/tsc --noEmit -p .     # type check
-pnpm test                                 # unit tests
+pnpm typecheck     # type check
+pnpm lint          # ESLint
+pnpm format:check  # Prettier
+pnpm test:unit     # unit tests, about 40 s
+pnpm test:e2e      # end-to-end tests (whole calls in a subprocess), about 4 min
+pnpm eval          # detector, bank and guard numbers against qa/eval-baseline.json
+pnpm check         # all of the above except the end-to-end tests
 ```
 
-Both must pass before you open a pull request. Tests need no API keys. They use mocks and fake keys, and they never read your real keys or call data.
+All of them must pass before you open a pull request. Tests need no API keys. They use mocks and fake keys, and they never read your real keys or call data.
 
 Run one test file while you work:
 

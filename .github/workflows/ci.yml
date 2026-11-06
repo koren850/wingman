@@ -52,7 +52,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Type check
-        run: pnpm exec tsc --noEmit -p .
+        run: pnpm typecheck
 
       # Lint and formatting run once, on the supported platform.
       - name: Lint

@@ -26,7 +26,7 @@ Latency figures come from the project's own synthetic-voice test rounds, so real
 - **Guards are code, not prompts** ([ADR 13](docs/DECISIONS.md#adr-13-guards-are-code-not-prompts)). Deterministic filters for prices, dates and promises sit between the model and the screen. A hit becomes a "buy time" line instead of an invented number. Practice mode adds a salary guard and an unclaimed-term guard.
 - **Built for live audio that goes wrong.** Two audio channels, so the speaker is always known. A ring buffer replays the last 2 s after a reconnect. A circuit breaker and a six-rung degrade ladder (full, reduced AI, provider switch, bank only, transcript only, off) keep the call useful when a provider fails ([ADR 24](docs/DECISIONS.md#adr-24-a-degrade-ladder-and-cost-caps)). A per-call spend cap drops the model while prepared cards keep working.
 - **Hebrew-first.** A Hebrew-aware question detector, Unicode whole-word matching, English technical terms mixed in, and a right-to-left aware answer window.
-- **Tested without a live call.** 600+ tests in 57 files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 89% (84% branch) over the `src/`, `shared/` and `tray/` files the tests load (`pnpm test:coverage`); the Electron window code is exercised by snapshot tools, not unit tests.
+- **Tested without a live call.** 600+ tests in 63 files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 89% (84% branch) over the `src/`, `shared/` and `tray/` files the tests load (`pnpm test:coverage`); the Electron window code is exercised by snapshot tools, not unit tests.
 - **Private by design, decided in writing.** No telemetry, no cloud account, audio never stored. [docs/DECISIONS.md](docs/DECISIONS.md) holds 37 design records with context, alternatives and consequences, including what was left out on purpose ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [ADR 36](docs/DECISIONS.md#adr-36-web-lookup-is-not-built)).
 
 ## Screenshots
@@ -85,13 +85,13 @@ Everything below runs offline, with no API keys and no private data.
 | Component | Test set | Result |
 |---|---|---|
 | Question detector (Hebrew, local) | 60 labelled lines (30 question, 30 not) | precision 100%, recall 100% |
-| Question detector on call scenarios | 217 labelled turns from 32 synthetic calls | precision 96.9%, recall 100% (4 false positives, 0 misses) |
+| Question detector on call scenarios | 217 labelled turns from 32 synthetic calls | precision 97.0%, recall 100% (4 false positives, 0 misses) |
 | Answer-bank matcher | 40 held-out utterances | top-1 93% (37/40), wrong card 3% (1/40), no card 5% (2/40) |
-| Guards (price / date / promise) | 64 must-block, 29 must-pass sentences | 64/64 blocked with the right rule, 0/29 false positives |
+| Guards (price / date / promise) | 73 must-block, 48 must-pass sentences (18 technical, such as "TLS 1.3") | 73/73 blocked with the right rule, 0/48 false positives |
 | Practice-mode salary guard | 12 must-block, 6 must-pass | 12/12, 0/6 |
-| Whole suite | 600+ tests | all pass in about 5 min (about 20 s without the subprocess end-to-end tests) |
+| Whole suite | 600+ unit tests, 19 end-to-end tests | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
 
-Reproduce: `cd app && pnpm eval` prints the detector and guard tables. The older commands still work: `pnpm detector` (detector corpus), `pnpm banktest` (bank matcher) and `pnpm test` (the full suite).
+Reproduce: `cd app && pnpm eval` prints these numbers and fails if one drops below `qa/eval-baseline.json`. CI runs it on every push. The older commands still work: `pnpm detector` (detector corpus), `pnpm banktest` (bank matcher) and `pnpm test` (the full suite).
 
 Caveats: the sets are small and were used while tuning, so treat them as regression gates, not as generalisation estimates. They are Hebrew-first: English coverage is thinner. Reply latency (p50 about 0.6 s for prepared cards) comes from the project's own synthetic-voice runs; the live model is only called by `pnpm qa`, which needs paid keys.
 

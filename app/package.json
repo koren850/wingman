@@ -39,6 +39,8 @@
     "doctor": "tsx src/doctor.ts",
     "test": "tsx --test --test-concurrency=1 src/*.test.ts src/e2e/*.test.ts",
     "eval": "tsx scripts/eval.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:unit && pnpm eval",
     "test:unit": "tsx --test --test-concurrency=1 src/*.test.ts",
     "test:e2e": "tsx --test --test-concurrency=1 src/e2e/*.test.ts",
     "test:coverage": "tsx --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-include='shared/**' --test-coverage-include='tray/**' --test-coverage-exclude='**/*.test.ts' --test-coverage-exclude='src/test-*.ts' src/*.test.ts src/e2e/*.test.ts",
