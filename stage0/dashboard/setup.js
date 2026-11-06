@@ -78,13 +78,23 @@ function micChip() {
 }
 const linkBtn = (which, label) => btn(label, { cls: "sm ghost", icon: "jump", onclick: () => api.setupOpenLink(which).catch(() => {}) });
 
+/** Responsible-use notice (first step). Informational: acknowledging it is remembered like the other setup flags and never blocks listening. */
+function consentNotice() {
+  return h("div", { class: "su-row", id: "su-consent" },
+    h("div", { class: "grow" }, h("div", { class: "st-t" }, "Responsible use"),
+      h("div", { class: "faint st-w" }, "Tell the other people on the call that you use a live assistant, and follow your local recording-consent laws.")),
+    SU.acks.consent ? chip("You said you understand", "good", { dot: true })
+      : btn("I understand", { id: "su-consent-ok", cls: "sm ghost", icon: "check", onclick: () => { SU.acks.consent = true; suSave(); suRedraw(); } }));
+}
+
 const STEPS = [
   { id: "keys", title: "Add your keys", why: () => (keysMissing().length ? `Missing: ${keysMissing().join(" and ")}. Deepgram hears the call, Anthropic writes the AI answers.` : "Both keys are saved in the Keychain."),
     done: () => !!H.keys && !keysMissing().length,
     panel: () => h("div", { class: "su-body" },
       h("p", { class: "help" }, "You need two keys, both from paid services. Paste each one and press Save, then Test. Typical cost: about one dollar per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit."),
       h("div", { class: "actions" }, linkBtn("deepgram", "Get a Deepgram key"), linkBtn("anthropic", "Get an Anthropic key")),
-      h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic"))) },
+      h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic")),
+      consentNotice()) },
   { id: "about", title: "About you", why: () => (SU.profile && SU.profile.name ? `Hello ${SU.profile.name}.` : "Your name and how to address you. Used in the AI's instructions, so cards fit you."),
     done: () => !!(SU.profile && SU.profile.name), panel: () => (SU.profile ? aboutForm("su") : h("div", { class: "loading" }, "Loading…")) },
   { id: "perms", title: "Permissions", why: () => "Microphone for your voice, System Audio Recording for the other side. macOS asks once.",
