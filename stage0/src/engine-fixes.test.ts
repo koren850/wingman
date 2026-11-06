@@ -100,3 +100,34 @@ test("9. two 'me' finals of one utterance keep their order when only the first w
   const me = r.transcript.filter((t) => t.ch === "me").map((t) => t.text);
   assert.deepEqual(me, ["החלק הראשון של המשפט שלי", "והחלק השני של אותו משפט"]);
 });
+
+test("6. quiet mode keeps fact, note and reminder cards but hides them (the client proposal still shows)", { timeout: 60_000 }, async () => {
+  const script = JSON.parse(readFileSync(join(ROOT, "data", "test", "e2e-call.json"), "utf8"));
+  const run = (quiet: boolean) => runCall({ script, wavSeconds: 6, env: { WINGMAN_SCRIPT_GAP_MS: "400" }, onStatus: (m, send) => { if (quiet && m.ev === "consented") send("quiet on"); } });
+  const q = await run(true), loud = await run(false);
+  const side = (r: Run) => r.cards.filter((c) => c.type === "card" && c.turnId === "side");
+  assert.ok(side(loud).some((c) => c.badge === "fact") && side(loud).every((c) => !c.hidden), "without quiet mode side cards show");
+  assert.ok(side(q).some((c) => c.badge === "fact"), "the fact card is still written");
+  assert.ok(side(q).filter((c) => c.badge !== "info").every((c) => c.hidden && c.hiddenReason === "quiet"), `side cards are flagged hidden: ${JSON.stringify(side(q).map((c) => [c.badge, c.hidden]))}`);
+  assert.ok(side(q).filter((c) => c.badge === "info").every((c) => !c.hidden), "the client proposal (info) is never hidden");
+});
+
+test("8. the notes model gets only the recent notes", () => {
+  const notes = Array.from({ length: 200 }, (_, i) => `note ${i}`);
+  const got = recentNotes(notes);
+  assert.equal(got.length, NOTES_EXISTING_MAX);
+  assert.equal(got.at(-1), "note 199");
+  assert.deepEqual(recentNotes(["a", "b"]), ["a", "b"]);
+});
+
+test("11. interview: the 90 s answer clock restarts after a pause of the user, even when the interviewer's audio is dead", () => {
+  const T = 1_000_000;
+  // first line: the clock starts 5 s back
+  assert.equal(nextAnswerStart({ answerStart: 0, lastThemSpeech: 0, lastMeLineAt: 0, now: T }), T - 5000);
+  // a line 3 s later: same answer
+  assert.equal(nextAnswerStart({ answerStart: T - 5000, lastThemSpeech: 0, lastMeLineAt: T, now: T + 3000 }), T - 5000);
+  // the interviewer spoke in between: new answer
+  assert.equal(nextAnswerStart({ answerStart: T - 5000, lastThemSpeech: T + 1000, lastMeLineAt: T, now: T + 3000 }), T + 1000);
+  // nobody else is heard, but the user was quiet for 60 s: a new answer, not "30 minutes of talking"
+  assert.equal(nextAnswerStart({ answerStart: T - 5000, lastThemSpeech: 0, lastMeLineAt: T, now: T + 60_000 }), T + 55_000);
+});
