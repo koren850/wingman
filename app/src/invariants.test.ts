@@ -159,7 +159,7 @@ test("installer scripts: syntax, flags, no sudo, and the launcher shows both dia
   const pkg = JSON.parse(read("package.json"));
   assert.equal(pkg.engines.node, ">=24");
   assert.match(pkg.packageManager, /^pnpm@11\./);
-  assert.equal(pkg.version, "0.1.0");
+  assert.equal(pkg.version, "0.0.1");
   assert.doesNotMatch(pkg.description, /throwaway|dogfood/i);
   assert.match(pkg.scripts.postinstall, /postinstall\.cjs$/);
   assert.doesNotMatch(pkg.scripts.postinstall, /\|\|\s*true/);

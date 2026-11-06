@@ -1,6 +1,6 @@
 # Roadmap, known limits and ideas
 
-Wingman is an early release (v0.1). This page lists what is done, what is not verified yet, the known limits and ideas. It is a status page, not a promise.
+Wingman is an early release (v0.0.1). This page lists what is done, what is not verified yet, the known limits and ideas. It is a status page, not a promise.
 
 ## What is done
 

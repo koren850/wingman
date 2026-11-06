@@ -1,7 +1,7 @@
 {
   "name": "wingman-app",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Real-time answer cards for live calls on macOS: hears both sides and shows a short answer in about a second. Electron and TypeScript.",
   "author": "koren850",

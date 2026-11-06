@@ -37,7 +37,7 @@ body:
     id: version
     attributes:
       label: Wingman version or commit
-      placeholder: "0.1.0"
+      placeholder: "0.0.1"
   - type: dropdown
     id: how
     attributes:
