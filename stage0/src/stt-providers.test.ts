@@ -9,6 +9,7 @@ import { EventEmitter } from "node:events";
 import { WebSocketServer, type WebSocket as WS } from "ws";
 import { SonioxStream } from "./providers/stt/soniox.ts";
 import { GladiaStream } from "./providers/stt/gladia.ts";
+import { DeepgramStream } from "./providers/stt/deepgram.ts";
 import { SttChannel } from "./providers/stt/channel.ts";
 import { getSttProvider, STT_PROVIDERS, sttChain, loadKeyterms } from "./providers/stt/index.ts";
 import { ProviderError } from "./providers/errors.ts";
@@ -194,4 +195,12 @@ test("channel: failure at open moves to the fallback; a bad_request does not; no
   const x: FakeStream[] = [], ch4 = mkChannel([fake("deepgram", x), fake("soniox", [], new ProviderError("auth", "soniox", "401"))]);
   await ch4.open(); const ex = once(ch4, "exhausted"); x[0].emit("error", new ProviderError("quota", "deepgram", "q")); await ex;
   assert.equal(ch4.provider, "deepgram", "stays on the primary when the fallback cannot open");
+});
+
+test("deepgram: mip_opt_out=true is sent only when the setting is on", () => {
+  assert.equal(S.stt.deepgram.mipOptOut, false);   // default: off
+  assert.deepEqual(DeepgramStream.queryParams(["DNS"], false), { keyterm: ["DNS"] });
+  assert.deepEqual(DeepgramStream.queryParams([], true), { mip_opt_out: "true" });
+  assert.deepEqual(DeepgramStream.queryParams(["DNS", "SSL"], true), { keyterm: ["DNS", "SSL"], mip_opt_out: "true" });
+  assert.deepEqual(DeepgramStream.queryParams(), {});
 });

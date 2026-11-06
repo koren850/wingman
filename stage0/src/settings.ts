@@ -33,6 +33,7 @@ export const schema = z.strictObject({
     circuit: z.strictObject({ failures: int(1, 10), windowMs: int(1000, 120000) }),
     reconnect: z.strictObject({ ringMs: int(0, 10000) }),
     dropForeignScript: z.boolean(),
+    deepgram: z.strictObject({ mipOptOut: z.boolean() }),
   }),
   llm: z.strictObject({
     reflex: z.strictObject({

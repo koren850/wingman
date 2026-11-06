@@ -29,6 +29,8 @@ stt:
                            # With no fallback left, Wingman keeps reopening the same provider (backoff up to 10 s, red bar); only 401/402/quota ends the call.
   reconnect:
     ringMs: 2000           # audio kept while the socket is down and replayed on reopen/switch (0 = drop it, old behaviour)
+  deepgram:
+    mipOptOut: false       # true = send mip_opt_out=true so Deepgram does not use your audio for its model improvement program. Default false: Deepgram's docs do not give a price for opting out and community reports say it can raise the rate. See docs/PRIVACY-AND-SECURITY.md
   dropForeignScript: true  # drop finals that are mostly not Hebrew/Latin/digits (Telugu, Persian... hallucinated on short clips). Counted in events.jsonl (foreign.summary)
 
 # ---- Reflex LLM ----
@@ -52,7 +54,7 @@ reflex:
   stallAfterMs: 1800       # no tag by then: show the Buy time line and keep streaming
   dropStaleMs: 4000        # do not show an answer to a question older than this
   allowAns: true           # false = Prepared + Buy time only (a model ANS answer becomes a stall line). Use false for a first client call
-  stall: false             # true = show the generic "I'll check and get back to you" line when no answer is ready (5 Nov review: 0 of 9 useful). Price / timeline / guarantee cards still show.
+  stall: false             # true = show the generic "I'll check and get back to you" line when no answer is ready (in review, almost none were useful). Price / timeline / guarantee cards still show.
 
 # ---- Answering the user's own questions (the "me" channel) ----
 assist:

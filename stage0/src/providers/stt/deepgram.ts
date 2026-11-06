@@ -26,6 +26,10 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
 
   /** The keyterms sent as repeated keyterm= query params (first 100 only). */
   static keytermParams(keyterms: string[] = []) { return keyterms.slice(0, 100); }
+  /** Extra query params for the connect call: repeated keyterm=... and, when opted out, mip_opt_out=true (Deepgram's model improvement program). */
+  static queryParams(keyterms: string[] = [], mipOptOut = false): Record<string, string | string[]> {
+    return { ...(keyterms.length ? { keyterm: DeepgramStream.keytermParams(keyterms) } : {}), ...(mipOptOut ? { mip_opt_out: "true" } : {}) };
+  }
 
   async open() {
     try { await this.openOnce(this.opts.keyterms ?? []); }
@@ -61,7 +65,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
       utterance_end_ms: this.opts.utteranceEndMs ?? 1000,
       vad_events: "true",
       diarize: this.opts.diarize ? "true" : "false",
-      queryParams: keyterms.length ? { keyterm: DeepgramStream.keytermParams(keyterms) } : {},
+      queryParams: DeepgramStream.queryParams(keyterms, this.opts.mipOptOut),
       Authorization: `Token ${this.opts.apiKey}`,
       debug: this.opts.debug ?? false,
       // reconnectAttempts left at the SDK default (30)

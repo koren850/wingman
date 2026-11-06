@@ -18,6 +18,8 @@ export type SttResult = {
 /** Per-stream options. Audio is always 16 kHz signed 16-bit mono PCM (32 bytes per ms). */
 export type SttOptions = {
   apiKey: string; channel: Channel; language?: string; keyterms?: string[]; endpointingMs?: number; utteranceEndMs?: number;
+  /** Deepgram only: send mip_opt_out=true so the audio is not used for model improvement. */
+  mipOptOut?: boolean;
   keepAliveMs?: number; finalizeSilenceMs?: number; diarize?: boolean; model?: string; baseUrl?: string; debug?: boolean;
   /** retry once without keyterms if the provider rejects the open . Default true. */
   keytermRetry?: boolean;
