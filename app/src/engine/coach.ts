@@ -23,6 +23,7 @@ import {
 import { st } from "./state.ts";
 import { liveNotes } from "./side.ts";
 import { emitCard } from "./cards.ts";
+import { recentWindow, capTail, frameDue } from "./rules.ts";
 
 let frameBusy: Promise<void> | undefined,
   lastFrameAt = 0,
@@ -35,13 +36,7 @@ let frameBusy: Promise<void> | undefined,
   lastTalkTipAt = 0;
 /** The last `minutes` of the call as "me: …/them: …" lines, newest at the end, at most ~6000 characters. */
 export function recentTranscript(minutes: number, maxLines = 80): string {
-  const now = Date.now();
-  const t = transcript
-    .filter((l) => now - l.at <= minutes * 60_000)
-    .slice(-maxLines)
-    .map(lineOf)
-    .join("\n");
-  return t.length > 6000 ? t.slice(-6000) : t;
+  return capTail(recentWindow(transcript, Date.now(), minutes, maxLines).map(lineOf).join("\n"));
 }
 const framePct = (f: Frame) => {
   const p = progress(f);
@@ -54,8 +49,8 @@ export function frameRound(final = false): Promise<void> {
   if (!frameOn || !st.call.consented || (!final && st.call.shuttingDown) || !sup.caps.llm || cost.llmState() === "capped") return Promise.resolve();
   const now = Date.now();
   // The very first frame comes early (half the usual words, no waiting): the first question of a call should already know what the call is about.
-  const need = final ? 8 : tracker.current ? S.frame.minNewWords : Math.min(S.frame.minNewWords, 20);
-  if (frameWords < need || (!final && tracker.current && now - lastFrameAt < S.frame.everyMs)) return Promise.resolve();
+  if (!frameDue({ final, hasFrame: !!tracker.current, newWords: frameWords, minNewWords: S.frame.minNewWords, now, lastFrameAt, everyMs: S.frame.everyMs }))
+    return Promise.resolve();
   lastFrameAt = now;
   frameWords = 0;
   const run = (async () => {

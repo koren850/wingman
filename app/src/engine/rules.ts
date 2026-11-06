@@ -25,3 +25,82 @@ export function nextAnswerStart(o: { answerStart: number; lastThemSpeech: number
     return Math.max(o.lastThemSpeech, o.now - 5000);
   return o.answerStart;
 }
+
+// ---- coach.ts: transcript window and frame pacing ----
+export { wordCount } from "../text-util.ts";
+/** The newest `maxLines` lines from the last `minutes` of the call, oldest first. */
+export function recentWindow<T extends { at: number }>(lines: readonly T[], now: number, minutes: number, maxLines = 80): T[] {
+  return lines.filter((l) => now - l.at <= minutes * 60_000).slice(-maxLines);
+}
+export const TRANSCRIPT_MAX_CHARS = 6000;
+/** Keeps the newest part of a transcript when it is longer than the prompt budget. */
+export const capTail = (text: string, max = TRANSCRIPT_MAX_CHARS) => (text.length > max ? text.slice(-max) : text);
+/** Is a call-frame look due? The first frame comes early (at most 20 new words, no waiting) so the first question already knows what the call is about;
+ *  the final look at shutdown needs only 8 words and ignores the pacing. */
+export function frameDue(o: {
+  final: boolean;
+  hasFrame: boolean;
+  newWords: number;
+  minNewWords: number;
+  now: number;
+  lastFrameAt: number;
+  everyMs: number;
+}): boolean {
+  const need = o.final ? 8 : o.hasFrame ? o.minNewWords : Math.min(o.minNewWords, 20);
+  if (o.newWords < need) return false;
+  return o.final || !o.hasFrame || o.now - o.lastFrameAt >= o.everyMs;
+}
+
+// ---- degrade.ts: what a failed model call does to the model's health ----
+export const SPEND_CAP_PARK_MS = 6 * 3600_000;
+/** `hard` errors (auth, spend cap, quota, unsupported) open the circuit breaker for longer and put a red bar up; a spend-capped model is parked for 6 h;
+ *  overload-type errors tell the supervisor the AI is in trouble (the degrade ladder may step down). */
+export function llmFailurePolicy(kind: string): { hard: boolean; parkMs: number; noteTrouble: boolean } {
+  return {
+    hard: kind === "auth" || kind === "spend_cap" || kind === "quota" || kind === "unsupported",
+    parkMs: kind === "spend_cap" ? SPEND_CAP_PARK_MS : 0,
+    noteTrouble: kind === "rate" || kind === "overload" || kind === "timeout" || kind === "network",
+  };
+}
+
+// ---- question.ts: which questions get a turn at all, and which prepared cards may repeat ----
+/** Answers older than reflex.dropStaleMs are never shown. */
+export const isFresh = (speechEnd: number, now: number, dropStaleMs: number) => now - speechEnd < dropStaleMs;
+/** The same prepared card twice in one call is almost always a keyword echo. A repeat shows only for a clear question at least 2 minutes after the last time. */
+export const REPEAT_BANK_MS = 120_000;
+export function isBankRepeat(o: { shownAt: number | undefined; now: number; clearQuestion: boolean }): boolean {
+  return o.shownAt !== undefined && !(o.clearQuestion && o.now - o.shownAt > REPEAT_BANK_MS);
+}
+/** Not a client / support call and the question is not about the user's own services: no agency bank card and no stall line. An interview never gets a stall line either. */
+export function agencyGate(o: {
+  interview: boolean;
+  kind: string | undefined;
+  kindIsAgency: boolean;
+  agencyTopic: boolean;
+  agencyRecent: boolean;
+  stallEnabled: boolean;
+}) {
+  const noAgency = !o.interview && !!o.kind && !o.kindIsAgency && !o.agencyTopic && !o.agencyRecent;
+  return { noAgency, noStall: noAgency || o.interview || !o.stallEnabled };
+}
+/** Why a line is dropped before a turn starts (the event type that is logged), or undefined when it gets a turn. Inputs are thunks so the costly checks run only when reached. */
+export type SkipWhy = "ifopen.skip" | "head.skip" | "focus.skip" | "flow.hold";
+export function questionSkip(o: {
+  interview: boolean;
+  reason: string;
+  aimedAtYou: () => boolean;
+  hasBankHit: () => boolean;
+  focusOn: boolean;
+  focusWorthy: () => boolean;
+  flowHolds: () => boolean;
+}): SkipWhy | undefined {
+  if (!o.interview && o.reason.startsWith("if-open") && !o.aimedAtYou()) return "ifopen.skip";
+  if (o.interview && o.reason.startsWith("head") && !o.aimedAtYou() && !o.hasBankHit()) return "head.skip";
+  if (o.focusOn && !o.interview && !o.focusWorthy()) return "focus.skip";
+  if (o.flowHolds()) return "flow.hold";
+  return undefined;
+}
+
+// ---- boot.ts: what the call loads ----
+/** The client snapshot (domains, servers) feeds fact cards about the user's own clients. An interview is not a client call: no snapshot, so no such facts. */
+export const factsActive = (o: { factsEnabled: boolean; interview: boolean }) => o.factsEnabled && !o.interview;

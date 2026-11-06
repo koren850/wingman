@@ -1,4 +1,4 @@
-// Card review fixes: plan names for speech-to-text, the interview profile guard, "aimed at you".
+// Interview guards and card helpers: plan names for speech-to-text, the unclaimed-tool guard, "aimed at you".
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { briefTerms } from "./brief.ts";

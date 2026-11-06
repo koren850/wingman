@@ -65,8 +65,18 @@ jobs:
 
       # CI has no private word list, so the "repo guard" test skips itself. That is expected.
       # Run it on your own machine with WINGMAN_DENYLIST set (see CONTRIBUTING.md).
-      - name: Tests
-        run: pnpm test
+      - name: Unit tests
+        run: pnpm test:unit
+
+      # The subprocess tests (the real call loop with scripted speech and a scripted model) take most of the run time: macOS only.
+      - name: End-to-end tests
+        if: matrix.os == 'macos-latest'
+        run: pnpm test:e2e
+
+      # Offline evaluation (detector, bank matcher, guards). Fails when a metric drops below app/qa/eval-baseline.json.
+      - name: Evaluation
+        if: matrix.os == 'macos-latest'
+        run: pnpm eval
 
       # Informational: prints line and branch coverage (Node's built-in coverage). No threshold, and a failure here never fails the build.
       - name: Test coverage (report only)

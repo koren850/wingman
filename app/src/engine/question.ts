@@ -2,7 +2,7 @@
 import { getTurnLang, matchBank, matchBankFor, priceOffTopic, stallSay, modelMayOverrideBank, STALL_TIER, type BankHit } from "../bank.ts";
 import { evalMath } from "../calc.ts";
 import { isClearQuestion, addressesYou } from "../detector.ts";
-import { addressesUser } from "./rules.ts";
+import { addressesUser, isFresh, isBankRepeat, agencyGate, questionSkip } from "./rules.ts";
 import { guard, guardInterview } from "../guards.ts";
 import { runReflex, resolveBankId, leakedTag, type Tag, type ReflexHandlers } from "../reflex.ts";
 import type { SttResult } from "../providers/stt/types.ts";
@@ -64,7 +64,7 @@ interface Turn {
   ai: Card;
 }
 /** Answers older than reflex.dropStaleMs are never shown. */
-const fresh = (t: Turn) => Date.now() - t.speechEnd < S.reflex.dropStaleMs;
+const fresh = (t: Turn) => isFresh(t.speechEnd, Date.now(), S.reflex.dropStaleMs);
 const meSpokeSince = (t: Turn) => st.voice.lastMeVoiced > t.speechEnd;
 /** The "buy time" line for this question. */
 const stallCardFor = (t: Turn): Card => ({
@@ -154,27 +154,25 @@ function answerOrAsk(t: Turn, caps: typeof sup.caps, usable: string[], end: () =
 /** Lines that are not questions for the user (or not worth a card): logged and dropped before a turn starts. */
 function skipQuestion(r: SttResult, reason: string): boolean {
   // "If ..." openers in a work meeting are mostly people thinking aloud (in review, few were useful). Only when aimed at the user.
-  if (!interview && reason.startsWith("if-open") && !addressesYou(r.text)) {
-    log.write("events", { type: "ifopen.skip", text: r.text.slice(0, 120) });
-    return true;
-  }
   // Interview: a line that only starts with a question word ("יש משימת בית", "צריך לקחת בחשבון") is the interviewer talking, not asking.
   // In real use, most such turns ended in SKIP. Ask the model only when it speaks to the user or matches a prepared card.
-  if (interview && reason.startsWith("head") && !addressesYou(r.text) && !matchBank(r.text, bank)) {
-    log.write("events", { type: "head.skip", text: r.text.slice(0, 120) });
-    return true;
-  }
-  if (S.cards.focus && !interview && !focusWorthy(r.text, reason)) {
-    log.write("events", { type: "focus.skip", reason, text: r.text.slice(0, 120) });
-    return true;
-  }
-  // Their own discussion: the question is for one of them, not the user. Price/date ("buy time") cards still show, and so does a question aimed at the user
-  // (their name, "you", "מה דעתך"): flow mode holds only what the others ask each other.
-  if (flowOn && S.flow.holdCards && flow.internal && !addressesUser(r.text) && !matchBankFor(r.text, bank)?.card.id.startsWith("stall-")) {
-    log.write("events", { type: "flow.hold", reason, text: r.text.slice(0, 120) });
-    return true;
-  }
-  return false;
+  // Their own discussion (flow mode): the question is for one of them, not the user. Price/date ("buy time") cards still show, and so does a question
+  // aimed at the user (their name, "you", "מה דעתך"): flow mode holds only what the others ask each other.
+  const why = questionSkip({
+    interview,
+    reason,
+    aimedAtYou: () => addressesYou(r.text),
+    hasBankHit: () => !!matchBank(r.text, bank),
+    focusOn: S.cards.focus,
+    focusWorthy: () => focusWorthy(r.text, reason),
+    flowHolds: () => flowOn && S.flow.holdCards && flow.internal && !addressesUser(r.text) && !matchBankFor(r.text, bank)?.card.id.startsWith("stall-"),
+  });
+  if (!why) return false;
+  log.write(
+    "events",
+    why === "focus.skip" || why === "flow.hold" ? { type: why, reason, text: r.text.slice(0, 120) } : { type: why, text: r.text.slice(0, 120) },
+  );
+  return true;
 }
 
 /** Starts the turn: ids, the latency row, and aborts the answer to the previous question. */
@@ -215,15 +213,20 @@ function pickBank(t: Turn) {
   t.agencyTopic = isAgencyTopic(r.text);
   t.agencyRecent = Date.now() - st.turn.lastAgencyTopicAt < 60_000;
   if (t.agencyTopic) st.turn.lastAgencyTopicAt = Date.now();
-  t.noAgency = !interview && !!tracker.kind && !isAgencyKind(tracker.kind) && !t.agencyTopic && !t.agencyRecent;
-  t.noStall = t.noAgency || interview || !S.reflex.stall; // an interview never gets a "buy time" line; elsewhere only when reflex.stall is on
+  ({ noAgency: t.noAgency, noStall: t.noStall } = agencyGate({
+    interview,
+    kind: tracker.kind,
+    kindIsAgency: !!tracker.kind && isAgencyKind(tracker.kind),
+    agencyTopic: t.agencyTopic,
+    agencyRecent: t.agencyRecent,
+    stallEnabled: S.reflex.stall,
+  })); // an interview never gets a "buy time" line; elsewhere only when reflex.stall is on
   let hit = interview ? matchBank(r.text, bank) : t.noAgency ? undefined : matchBankFor(r.text, bank); // stall-price is dropped for arithmetic and for prices that are not the user's services
   // The same prepared card twice in one call is almost always a keyword echo (one card fired three times while the other side talked about their own team).
   // A repeat shows only for a clear question at least 2 minutes after the last time.
   t.lang = getTurnLang(); // fixed for this turn: a newer question must not flip a reply that is still streaming
   if (hit && !STALL_TIER.has(hit.card.id)) {
-    const seen = bankShownAt.get(hit.card.id);
-    if (seen !== undefined && !(isClearQuestion(r.text, reason) && Date.now() - seen > 120_000)) {
+    if (isBankRepeat({ shownAt: bankShownAt.get(hit.card.id), now: Date.now(), clearQuestion: isClearQuestion(r.text, reason) })) {
       log.write("events", { type: "bank.repeat", turnId, bank: hit.card.id });
       hit = undefined;
     }

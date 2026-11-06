@@ -3,7 +3,7 @@
 //   fix (red, cheap model): a factual claim contradicts the prepared meeting background. Only when the background clearly says otherwise.
 // Pure helpers + one model call (injectable `generate`, like runTip). run.ts only wires them.
 import { generateText } from "ai";
-import { ModelRegistry, generateOnce, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, temperatureFor, cacheOptionsFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { getProfile, userName, hebrewAddressRule } from "./profile.ts";
 import { guard, sanitize } from "./guards.ts";
@@ -164,6 +164,7 @@ export async function runSelfCheck(o: SelfCheckRun): Promise<{ verdict: Verdict;
     maxRetries: 0,
     abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
+    temperature: temperatureFor(o.model), // 0 for providers that accept it; omitted for Anthropic (see temperatureFor)
     instructions: { role: "system", content: `${selfcheckSystem()}\n\n${o.background}`, ...(cache ? { providerOptions: cache } : {}) },
     messages: [
       {

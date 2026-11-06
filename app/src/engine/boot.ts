@@ -30,6 +30,7 @@ import { FrameTracker } from "../frame.ts";
 import { TipGate, type TimedLine } from "../tips.ts";
 import { SelfCheckGate } from "../selfcheck.ts";
 import { loadAttachments, backgroundBlock } from "../attachments.ts";
+import { factsActive } from "./rules.ts";
 
 export const args = process.argv.slice(2);
 export const { settings: S, profile } = loadSettingsOrExit(args);
@@ -139,7 +140,7 @@ export const flow = new FlowTracker();
 export const contextNotes: string[] = [];
 if (brief) contextNotes.push(...briefNotes(brief));
 export const attendees = attendeeNames(brief?.who); // first names from the prepared meeting, for naming voices from their introductions
-export const snapshot = S.facts.enabled && !interview ? loadSnapshot(resolveUserPath(S.facts.file)) : undefined;
+export const snapshot = factsActive({ factsEnabled: S.facts.enabled, interview }) ? loadSnapshot(resolveUserPath(S.facts.file)) : undefined;
 export const spotter = snapshot ? new EntitySpotter(snapshot, { sslWarnDays: S.facts.sslWarnDays, minAliasLen: S.facts.minAliasLen }) : undefined;
 export const notesOn = S.notes.enabled && !noAi;
 export const notesAbort = new AbortController(); // also used by tips; aborted in shutdown(): no notes call outlives the call

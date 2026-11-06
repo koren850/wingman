@@ -4,7 +4,7 @@
 //   3. still unsure: answer only when the other side has been silent for a few seconds, or the call is solo.
 // Also the rate limit for these answers (MeGate) and the lighter guard that lets general facts and arithmetic through.
 import { generateText } from "ai";
-import { ModelRegistry, generateOnce, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, temperatureFor, cacheOptionsFor } from "./providers/llm.ts";
 import { containsPhrase, tokens, normalize } from "./normalize.ts";
 import { evalMath } from "./calc.ts";
 import { untag } from "./reflex.ts";
@@ -207,6 +207,7 @@ export async function classify(o: ClassifyRun): Promise<{ verdict?: "ASSIST" | "
     maxRetries: 0,
     abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
+    temperature: temperatureFor(o.model), // 0 for providers that accept it; omitted for Anthropic (see temperatureFor)
     instructions: { role: "system", content: o.system ?? classifySystem(), ...(cache ? { providerOptions: cache } : {}) },
     messages: [
       {

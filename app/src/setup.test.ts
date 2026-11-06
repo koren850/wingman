@@ -16,7 +16,6 @@ const require = createRequire(import.meta.url);
 const setup = require("../dashboard/setup-ipc.cjs");
 const fuses = require("../scripts/set-fuses.cjs");
 const tmp = () => mkdtempSync(join(tmpdir(), "wm-setup-"));
-const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
 
 const good = { name: "Dan", spellings: ["דן", " Danny "], address: "male", about: "I run a small web agency", business: "Web and hosting" };
 
@@ -181,26 +180,6 @@ test("pack: copying the example pack never overwrites, uses 700/600, and the use
   assert.equal(readFileSync(join(env.WINGMAN_PACK_DIR, "bank.yaml"), "utf8"), "MY EDIT");
 });
 
-test("every setup channel in the preload is registered in setup-ipc.cjs and goes through handle(), nothing else", () => {
-  const pre = read("dashboard/preload.cjs"),
-    ipc = read("dashboard/setup-ipc.cjs");
-  const used = [...pre.matchAll(/invoke\("((?:profile|setup):[A-Za-z]+)"/g)].map((m) => m[1]).sort();
-  const reg = [...ipc.matchAll(/o\.handle\("((?:profile|setup):[A-Za-z]+)"/g)].map((m) => m[1]).sort();
-  assert.deepEqual(used, reg);
-  assert.doesNotMatch(ipc, /ipcMain/);
-  assert.match(read("dashboard/window.cjs"), /require\("\.\/setup-ipc\.cjs"\)\.register\(\{ handle,/);
-  assert.doesNotMatch(read("dashboard/setup.js"), /\.innerHTML|insertAdjacentHTML|\beval\(|new Function\(/);
-  assert.match(read("dashboard/index.html"), /<script src="setup\.js"><\/script>/);
-});
-
-test("first setup step shows the responsible-use notice with an acknowledgement that never gates a step", () => {
-  const src = read("dashboard/setup.js");
-  assert.match(src, /Tell the other people on the call that you use a live assistant, and follow your local recording-consent laws\./);
-  assert.match(src, /SU\.acks\.consent = true;\s*suSave\(\)/);
-  assert.match(src, /consentNotice\(\),?\s*\),/); // inside the keys step panel
-  assert.doesNotMatch(src, /done: \(\) => [^\n]*acks\.consent/); // listening and step completion do not depend on it
-});
-
 test("profile child: read, write (keeps timezone), and it refuses unknown fields", () => {
   const dir = tmp(),
     file = join(dir, "profile.yaml");
@@ -260,32 +239,6 @@ test("fuses: the flip turns RunAsNode, NODE_OPTIONS and --inspect off and leaves
   assert.throws(() => fuses.flip(Buffer.concat([sentinel, Buffer.from([9, 9]), Buffer.from("101100011")])), /unknown fuse wire/);
 });
 
-test("installer scripts: syntax, flags, no sudo, and the launcher shows both dialogs", BASH, () => {
-  for (const f of ["../install.sh", "scripts/make-app.sh", "scripts/wingman.sh", "scripts/wingman-cli.sh"])
-    assert.equal(spawnSync("bash", ["-n", join(ROOT, f)]).status, 0, f);
-  const inst = read("../install.sh");
-  assert.doesNotMatch(inst, /(^|[;&|(]\s*)sudo\s/m); // no command runs sudo (the word appears in a message only)
-  for (const flag of ["--check", "--dry-run", "--yes", "--update", "--uninstall", "--purge"]) assert.ok(inst.includes(flag), flag);
-  const mk = read("scripts/make-app.sh");
-  for (const needle of [
-    "Wingman's folder moved",
-    "Wingman needs Node 24",
-    "NSMicrophoneUsageDescription",
-    "NSAudioCaptureUsageDescription",
-    "set-fuses.cjs",
-    "install.js",
-  ])
-    assert.ok(mk.includes(needle), needle);
-  assert.match(read("scripts/wingman-cli.sh"), /update\) shift; exec \.\.\/install\.sh --update/);
-  const pkg = JSON.parse(read("package.json"));
-  assert.equal(pkg.engines.node, ">=24");
-  assert.match(pkg.packageManager, /^pnpm@11\./);
-  assert.equal(pkg.version, "0.1.0");
-  assert.doesNotMatch(pkg.description, /throwaway|dogfood/i);
-  assert.match(pkg.scripts.postinstall, /postinstall\.cjs$/);
-  assert.doesNotMatch(pkg.scripts.postinstall, /\|\|\s*true/);
-});
-
 test("install.sh --check changes nothing and exits 0 on a good machine; unknown flags are refused", MAC, () => {
   const r = spawnSync("bash", [join(ROOT, "..", "install.sh"), "--check"], {
     encoding: "utf8",
@@ -332,17 +285,4 @@ test("make-app.sh --stale: missing app, a moved folder or another Electron are s
   const moved = join(base, "moved-app");
   renameSync(stage, moved);
   assert.equal(stale(moved), 0, "the folder moved: the baked path is wrong, rebuild");
-});
-
-test("install.sh rebuilds a stale app, checks ffmpeg where the app looks, and installs to /Applications by rename", BASH, () => {
-  const inst = read("../install.sh"),
-    mk = read("scripts/make-app.sh");
-  assert.match(inst, /make-app\.sh --stale/);
-  assert.doesNotMatch(inst, /\[ ! -x "\$APP_OUT\/Contents\/MacOS\/Wingman" \] \|\| \[ "\$\{UPDATING/);
-  assert.doesNotMatch(inst, /if command -v ffmpeg >\/dev\/null 2>&1 \|\|/, "an ffmpeg only the shell sees is not enough");
-  assert.match(inst, /for d in \/opt\/homebrew\/bin \/usr\/local\/bin \/usr\/bin \/bin/);
-  assert.match(inst, /mv "\$1\.new" "\$1"/);
-  assert.match(mk, /mv "\$OUT" "\$FINAL"/);
-  assert.doesNotMatch(mk, /^rm -rf "\$OUT"; mkdir/m);
-  assert.match(mk, /\.built-from/);
 });

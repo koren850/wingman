@@ -6,7 +6,7 @@
 //   - the checklist is generated once for this call and then kept stable: items keep their text, `done` only goes false -> true,
 //     and at most one new item is added per update.
 import { generateText } from "ai";
-import { ModelRegistry, generateOnce, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, temperatureFor, cacheOptionsFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { getProfile, userName } from "./profile.ts";
 import { loadTopics } from "./pack.ts";
@@ -249,6 +249,7 @@ export async function runFrame(o: FrameRun): Promise<{ frame: Frame; usage: unkn
     maxRetries: 0,
     abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
+    temperature: temperatureFor(o.model), // 0 for providers that accept it; omitted for Anthropic (see temperatureFor)
     instructions: { role: "system", content: frameSystem() + (o.background ? `\n\n${o.background}` : ""), ...(cache ? { providerOptions: cache } : {}) },
     messages: [{ role: "user", content: frameUserMessage(o) }],
   });

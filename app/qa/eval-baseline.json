@@ -1,0 +1,16 @@
+{
+  "tolerance": 1,
+  "metrics": {
+    "detector.set.precision": 100,
+    "detector.set.recall": 100,
+    "detector.scenarios.precision": 97,
+    "detector.scenarios.recall": 100,
+    "bank.top1": 92.5,
+    "bank.wrong": 2.5,
+    "bank.none": 5,
+    "guards.blocked": 100,
+    "guards.falsePositives": 0,
+    "salary.blocked": 100,
+    "salary.falsePositives": 0
+  }
+}

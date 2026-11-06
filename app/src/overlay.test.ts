@@ -4,7 +4,6 @@ import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { readFileSync as readOverlayFile } from "node:fs";
 import { resolveUiLanguage, schema } from "./settings.ts";
 const require = createRequire(import.meta.url);
 const lib = require("../overlay/lib.cjs");
@@ -128,41 +127,6 @@ test("strings: every key exists in both languages, placeholders match, and Engli
     assert.ok(strings.STRINGS.he[k].length && strings.STRINGS.en[k].length, k);
     assert.doesNotMatch(strings.STRINGS.en[k], /[֐-׿]/, k + " English label contains Hebrew");
   }
-});
-
-test("every tr('...') key used by app.js and text.js exists in the table, and Hebrew UI literals live only in strings.js", () => {
-  // Hebrew allowed outside strings.js: the one regex alternation in text.js that recognises the engine's Hebrew health texts.
-  const ALLOWED_LINES = [/healthText|englishHealth|HEB = |\/[^/\n]*[֐-׿][^/\n]*\//];
-  for (const f of ["app.js", "text.js", "index.html"]) {
-    const src = readOverlayFile(new URL("../overlay/" + f, import.meta.url), "utf8");
-    src.split("\n").forEach((line: string, i: number) => {
-      if (!/[֐-׿]/.test(line)) return;
-      const code = line.replace(/\/\/.*$/, ""); // comments may contain Hebrew examples
-      if (!/[֐-׿]/.test(code)) return;
-      assert.ok(
-        f === "text.js" && ALLOWED_LINES.some((r) => r.test(code)),
-        `${f}:${i + 1} has a Hebrew literal outside strings.js: ${line.trim().slice(0, 80)}`,
-      );
-    });
-  }
-  const used = new Set<string>();
-  for (const f of ["app.js", "text.js"])
-    for (const m of readOverlayFile(new URL("../overlay/" + f, import.meta.url), "utf8").matchAll(/\btr\("([\w.-]+)"[,)]/g)) used.add(m[1]);
-  // keys built at run time in app.js ("badge." + type, "kind." + kind, ...)
-  const dyn: Record<string, string[]> = {
-    badge: ["bank", "ai", "stall", "me", "fix", "careful", "calc", "info", "consent"],
-    kind: ["client", "support", "vendor", "team", "consult", "personal", "other"],
-    tip: ["ask", "clarify", "term", "remind", "note"],
-    cap: ["phone", "email", "domain"],
-    keys: ["ask", "rewind", "checklist", "pause", "clear", "copy"],
-    "health.who": ["stt-me", "stt-them"],
-  };
-  for (const [p, names] of Object.entries(dyn)) for (const n of names) assert.ok(`${p}.${n}` in strings.STRINGS.en, `${p}.${n}`);
-  for (const st of ["ended", "paused", "quiet", "starting", "waiting", "listening"])
-    for (const part of ["", ".title", ".sub"]) assert.ok(`state.${st}${part}` in strings.STRINGS.en, `state.${st}${part}`);
-  for (const k of used) assert.ok(k in strings.STRINGS.en, "unknown key " + k);
-  const html = readOverlayFile(new URL("../overlay/index.html", import.meta.url), "utf8");
-  for (const m of html.matchAll(/data-i18n="([\w.]+)"/g)) assert.ok(m[1] in strings.STRINGS.en, "unknown key " + m[1]);
 });
 
 test("t(): placeholders, unknown language falls back to Hebrew, direction follows the language", () => {

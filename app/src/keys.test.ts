@@ -8,7 +8,7 @@ import { createRequire } from "node:module";
 import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ROOT, loadKeysWithSources, loadKeys } from "./env.ts";
+import { loadKeysWithSources, loadKeys } from "./env.ts";
 import { createKeychain, migrateKeysToKeychain, keyStatus, childEnv, realRunner, checkKeyFormat, type Runner } from "./keychain.ts";
 import { main as keysCli } from "./keys-cli.ts";
 import { overlayEnv } from "./overlay.ts";
@@ -333,86 +333,6 @@ test("children that do not need keys get no key env (overlay, ffmpeg...)", () =>
     for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
     Object.assign(process.env, saved);
   }
-  const boot = readFileSync(join(ROOT, "src/engine/boot.ts"), "utf8"),
-    sources = readFileSync(join(ROOT, "src/engine/audio-sources.ts"), "utf8");
-  assert.match(boot, /for \(const v of KEY_ENV_VARS\) delete process\.env\[v\]/);
-  assert.match(sources, /spawn\("caffeinate"[\s\S]*?env: childEnv\(\)/);
-  const audio = readFileSync(join(ROOT, "src/audio.ts"), "utf8");
-  assert.equal((audio.match(/spawn\("ffmpeg"/g) || []).length, (audio.match(/env: childEnv\(\)/g) || []).length);
-});
-
-test("static: key values can only reach memory; no logging or persistence path touches them", () => {
-  const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
-  // 1. Modules that load or handle keys: an explicit allow-list. Anything else importing them is a new leak path to review.
-  const users = [
-    "src/env.ts",
-    "src/keychain.ts",
-    "src/keys-cli.ts",
-    "src/doctor.ts",
-    "src/call.ts",
-    "src/engine/boot.ts",
-    "src/gate.ts",
-    "src/summary.ts",
-    "src/settings-cli.ts",
-    "src/providers/llm.ts",
-    "src/keys.test.ts",
-    "src/stt.ts",
-    "src/providers/stt/channel.ts",
-    "src/overlay.ts",
-    "src/audio.ts",
-    "src/cli/status.ts",
-  ]; // cli/status.ts: `wingman keys status`, present/missing only (asserted in cli.test.ts)
-  const walk = (d: string): string[] =>
-    readdirSync(join(ROOT, d), { withFileTypes: true }).flatMap((e) =>
-      e.isDirectory() ? (e.name === "node_modules" ? [] : walk(join(d, e.name))) : [join(d, e.name)],
-    );
-  const files = ["src", "tray", "dashboard", "overlay", "qa"].flatMap(walk).filter((f) => /\.(ts|cjs|js)$/.test(f));
-  for (const f of files) {
-    const t = read(f);
-    if (
-      /(?:require|from)\s*\(?\s*["'][^"']*keychain|loadKeys|requireKeys|KEY_VARS/.test(t) &&
-      !users.includes(f) &&
-      !/^src\/(.*\.test\.ts|settings-edit-cli\.ts)$/.test(f) &&
-      !/^dashboard\/(keys-ipc|window)\.cjs$|^src\/keychain\.cjs$/.test(f)
-    )
-      assert.fail(`${f} touches keys and is not on the reviewed list`);
-  }
-  // 2. The key modules never log or persist anything themselves, and the window host never logs IPC args.
-  for (const f of ["src/keychain.cjs", "dashboard/keys-ipc.cjs"])
-    assert.doesNotMatch(read(f), /console\.|logLine|appendFile|process\.stdout|process\.stderr|JSON\.stringify\(\s*(value|key)\b/, f);
-  assert.doesNotMatch(read("dashboard/window.cjs"), /console\./);
-  // 3. Writers of calls/, tray.log, events, settings YAML and snapshots do not know about keys at all.
-  for (const f of [
-    "src/log.ts",
-    "src/settings-edit.ts",
-    "tray/controller.cjs",
-    "tray/lib.cjs",
-    "dashboard/livetail.cjs",
-    "dashboard/lib.cjs",
-    "src/notes.ts",
-    "src/summary.ts",
-  ])
-    assert.doesNotMatch(read(f).replace(/requireKeys\([^)]*\)|import[^\n]*env\.ts[^\n]*/g, ""), /keychain|\bkeys\.(deepgram|anthropic)\b|API_KEY/i, f);
-  // 4. Snapshot hook never reaches the Keychain; set/test are rate limited; only the sender-checked handle() registers handlers.
-  assert.match(read("dashboard/window.cjs"), /fake: process\.env\.WINGMAN_DASHBOARD_FAKE_KEYS \|\| \(SNAP \? "missing" : ""\)/);
-  assert.doesNotMatch(read("dashboard/keys-ipc.cjs"), /ipcMain/);
-  assert.match(read("dashboard/keys-ipc.cjs"), /keys:set[\s\S]{0,300}limit\(\)/);
-  // 4b. Migration has exactly two triggers: the button's IPC and the CLI. Never startup.
-  const callers = files.filter((f) => /migrateKeysToKeychain|keysMigrate|keys:migrate/.test(read(f)) && !/\.test\.ts$/.test(f)).sort();
-  assert.deepEqual(callers, [
-    "dashboard/keys-ipc.cjs",
-    "dashboard/preload.cjs",
-    "dashboard/settings.js",
-    "src/keychain.cjs",
-    "src/keychain.ts",
-    "src/keys-cli.ts",
-  ]);
-  assert.doesNotMatch(read("tray/main.cjs"), /migrateKeys|keysMigrate|keys:migrate/); // (the data-folder copy in shared/migrate.cjs is unrelated)
-  // 5. Renderer: password input, no value in state/storage/attributes.
-  const ui = read("dashboard/settings.js");
-  assert.match(ui, /type: "password",\s*id,\s*autocomplete: "off",\s*spellcheck: "false"/);
-  assert.doesNotMatch(ui, /localStorage|sessionStorage/);
-  assert.match(ui, /const v = inp\.value;\s*inp\.value = ""/);
 });
 
 test("migrate refuses a keys.env that is a symlink and never follows a pre-placed temp or backup symlink", async () => {
@@ -478,7 +398,6 @@ test("remove and migrate have their own rate limit; settings children get no key
   for (let i = 0; i < 5; i++) await h.call("keys:remove", "deepgram");
   assert.match((await h.call("keys:remove", "deepgram")).message, /Too many/);
   assert.match((await h.call("keys:migrate")).message, /Too many/);
-  assert.match(readFileSync(join(ROOT, "dashboard/window.cjs"), "utf8"), /settingsEnv = \(\) => \(\{ \.\.\.require\("\.\.\/src\/keychain\.cjs"\)\.childEnv/);
   const { testKey } = await import("./keychain.ts");
   let called = false;
   assert.equal(

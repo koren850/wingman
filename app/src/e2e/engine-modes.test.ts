@@ -1,16 +1,15 @@
-// Regression tests for the engine review fixes (AUDIT-2026-11-06/8-review-engine-modules.md). The call loop (src/run.ts) runs offline over a
-// silent wav with scripted speech-to-text and a scripted model; the pure rules (engine/rules.ts) are called directly.
-import "./test-setup.ts";
+// End-to-end (subprocess): engine behaviours found in the engine review (AUDIT-2026-11-06/8). The call loop (src/run.ts) runs offline over a
+// silent wav with scripted speech-to-text and a scripted model: error bar, flow mode, Stop during STT close, echo-filter order, quiet mode.
+import "../test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, readlinkSync, existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ROOT, CALLS } from "./env.ts";
-import { writeWav } from "./audio.ts";
-import { tsx } from "./test-platform.ts";
-import { addressesUser, recentNotes, NOTES_EXISTING_MAX, nextAnswerStart } from "./engine/rules.ts";
+import { ROOT, CALLS } from "../env.ts";
+import { writeWav } from "../audio.ts";
+import { tsx } from "../test-platform.ts";
 
 type Row = Record<string, any>;
 type Run = { code: number; out: string; err: string; cards: Row[]; events: Row[]; transcript: Row[] };
@@ -93,22 +92,6 @@ test("1. a hard AI error bar clears when the same model answers again", { timeou
   assert.ok(red, `a hard error raised the red bar: ${r.events.filter((e) => e.type === "health").map((e) => e.id)}`);
   const clearAt = r.events.findIndex((e) => e.type === "health.clear" && e.id === red!.id);
   assert.ok(clearAt > r.events.indexOf(red!), "the bar is cleared after the model answered again");
-});
-
-test("rules: addressesUser covers Hebrew and English forms of 'you'", () => {
-  for (const s of [
-    "מה דעתך על זה?",
-    "מה לדעתך כדאי לעשות",
-    "מה אתה חושב",
-    "מה את חושבת",
-    "תוכלי להסביר",
-    "what do you think?",
-    "can you help",
-    "do u know",
-    "you're the expert",
-  ])
-    assert.equal(addressesUser(s), true, s);
-  for (const s of ["מה אתם אומרים", "את הדומיין", "מפתחים פלטפורמה שמיועדת לארגונים", "הוא אמר שדעתו"]) assert.equal(addressesUser(s), false, s);
 });
 
 const w = (spk: number, text: string) => text.split(" ").map((word, i) => ({ word, start: i * 0.3, end: i * 0.3 + 0.25, speaker: spk }));
@@ -219,24 +202,4 @@ test("6. quiet mode keeps fact, note and reminder cards but hides them (the clie
       .every((c) => !c.hidden),
     "the client proposal (info) is never hidden",
   );
-});
-
-test("8. the notes model gets only the recent notes", () => {
-  const notes = Array.from({ length: 200 }, (_, i) => `note ${i}`);
-  const got = recentNotes(notes);
-  assert.equal(got.length, NOTES_EXISTING_MAX);
-  assert.equal(got.at(-1), "note 199");
-  assert.deepEqual(recentNotes(["a", "b"]), ["a", "b"]);
-});
-
-test("11. interview: the 90 s answer clock restarts after a pause of the user, even when the interviewer's audio is dead", () => {
-  const T = 1_000_000;
-  // first line: the clock starts 5 s back
-  assert.equal(nextAnswerStart({ answerStart: 0, lastThemSpeech: 0, lastMeLineAt: 0, now: T }), T - 5000);
-  // a line 3 s later: same answer
-  assert.equal(nextAnswerStart({ answerStart: T - 5000, lastThemSpeech: 0, lastMeLineAt: T, now: T + 3000 }), T - 5000);
-  // the interviewer spoke in between: new answer
-  assert.equal(nextAnswerStart({ answerStart: T - 5000, lastThemSpeech: T + 1000, lastMeLineAt: T, now: T + 3000 }), T + 1000);
-  // nobody else is heard, but the user was quiet for 60 s: a new answer, not "30 minutes of talking"
-  assert.equal(nextAnswerStart({ answerStart: T - 5000, lastThemSpeech: 0, lastMeLineAt: T, now: T + 60_000 }), T + 55_000);
 });

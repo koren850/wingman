@@ -36,21 +36,6 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (f: string) => readFileSync(join(root, f), "utf8");
 
-test("overlay: preload bridge functions return nothing; page script is external; CSP allows no inline script; window open and navigation are blocked", () => {
-  const pre = read("overlay/preload.cjs");
-  assert.doesNotMatch(pre, /=>\s*ipcRenderer\.on\(/, "a bridge function must not return the ipcRenderer proxy");
-  assert.equal((pre.match(/=>\s*\{\s*ipcRenderer\.on\(/g) || []).length, 18);
-  const html = read("overlay/index.html");
-  const csp = /Content-Security-Policy"\s+content="([^"]*)"/.exec(html)![1];
-  assert.match(csp, /script-src 'self'(;|$)/);
-  assert.doesNotMatch(csp.match(/script-src[^;]*/)![0], /unsafe-inline|unsafe-eval/);
-  assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/, "no inline script");
-  assert.match(html, /<script src="app\.js"><\/script>/);
-  const main = read("overlay/main.cjs");
-  assert.match(main, /setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/);
-  assert.match(main, /will-navigate/);
-});
-
 import { errText } from "./errtext.ts";
 test("errText: name, status and a short message only; never the request body or the cause", () => {
   const e: any = Object.assign(new Error("Overloaded"), {

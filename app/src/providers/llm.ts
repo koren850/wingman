@@ -102,6 +102,15 @@ export function providerOptionsFor(ref: string, cfg: { effort: "low" | "medium" 
   if (parseModelRef(ref).provider !== "anthropic") return undefined;
   return { anthropic: { thinking: cfg.thinking ? { type: "adaptive" as const } : { type: "disabled" as const }, effort: cfg.effort } };
 }
+/**
+ * Sampling temperature for the classifier-style calls (reflex, classifier, self-check, frame, topic): 0 where the provider accepts it, so a
+ * rerun of the same call gives the same answer. Anthropic is the exception on purpose: current Claude models (Haiku 5.5 included) reject
+ * non-default sampling parameters with a 400, and from 2026-10-21 any `temperature` on a Messages request does. There the reply is kept
+ * steady by the strict line protocol, the small maxOutputTokens and the parser instead, so this returns undefined and the field is omitted.
+ */
+export function temperatureFor(ref: string): number | undefined {
+  return parseModelRef(ref).provider === "anthropic" ? undefined : 0;
+}
 /** Anthropic prompt-cache marker for the system block; undefined elsewhere or when cache = off. */
 export function cacheOptionsFor(ref: string, cache: "off" | "5m" | "1h") {
   if (cache === "off" || parseModelRef(ref).provider !== "anthropic") return undefined;

@@ -2,7 +2,7 @@
 // quiet, it is their own discussion: Wingman says so (who is talking, and what about), holds its answer cards, and alerts the user
 // only when someone turns to them (their name, or "you" right after the discussion). Rules only; the topic line is one small model call.
 import { generateText } from "ai";
-import { ModelRegistry, generateOnce, providerOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, temperatureFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { nameRegex, userName } from "./profile.ts";
 
@@ -120,6 +120,7 @@ export async function runTopic(o: {
     maxRetries: 0,
     abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
+    temperature: temperatureFor(o.model), // 0 for providers that accept it; omitted for Anthropic (see temperatureFor)
     instructions: { role: "system", content: topicSystem() },
     messages: [{ role: "user", content: `<call_transcript>\n${untag(o.lines.join("\n"))}\n</call_transcript>` }],
   });

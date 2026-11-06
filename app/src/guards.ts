@@ -43,6 +43,15 @@ const PRICE = [
   // English number words before a currency: "five hundred shekels", "two thousand dollars"
   /\b(hundred|thousand|million|(?:ten|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|one|two|three|four|five|six|seven|eight|nine)(?:[- ]\w+)?)\s+(?:\w+\s+){0,2}(shekels?|nis|dollars?|euros?|bucks|usd|eur)\b/i,
   /\b(costs?|prices?|priced|charge[sd]?|fees?|rates?)\s+(of\s+|at\s+|is\s+|are\s+|about\s+|around\s+)?(\d|a hundred|hundreds?|thousands?)/i,
+  // other money nouns followed by a figure: "a monthly retainer of 800", "a deposit of 1,500", "the budget is 20000" (3+ digits, not a measure)
+  /\b(?:retainers?|deposits?|budgets?|quotes?|quoted|estimates?|invoices?|subscriptions?|instal?lments?|surcharges?|markups?)\s+(?:of\s+|at\s+|is\s+|are\s+|for\s+|about\s+|around\s+|roughly\s+)?\d[\d,.]{2,}(?!\s?(?:ms|seconds?|mb|gb|kb|requests?|users?|rows?|lines?|records?))/i,
+  // Hebrew: "הצעה של 4,500", "תקציב של 20000", "ריטיינר 800"
+  /(?<![א-ת])(?:הצעה|הצעת מחיר|תקציב|ריטיינר|מקדמה|חשבונית|הערכה)\s+(?:של\s+|בסך\s+|כ-?\s?|בערך\s+|בסביבות\s+)?\d[\d,.]{2,}/,
+  // spoken digits: "five fifty" (5.50), "nine ninety" (9.90): a unit word followed by a tens word, not a hyphenated compound ("three thirty-minute slots")
+  /\b(?:one|two|three|four|five|six|seven|eight|nine)\s+(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b(?![- ]?(?:one|two|three|four|five|six|seven|eight|nine)\b)(?!-)/i,
+  // percentage discounts and zero-price statements: "ten percent off", "20% off", "we charge nothing"
+  new RegExp(`\\b(?:\\d+|(?:${EN_NUM}))\\s?(?:%|percent|per cent)\\s+(?:off|discount|cheaper|less|reduction|rebate)\\b`, "i"),
+  /\b(?:charge|charging|charged|bill|billing)\s+(?:you\s+)?(?:nothing|zero)\b/i,
 ];
 const MONTHS = "ינואר|פברואר|מרץ|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר";
 const DATE = [
@@ -52,7 +61,7 @@ const DATE = [
   // numeric dates: 5/11, 5/11/26, 12.5.2026, and a two-part dotted "12.5" unless it is a version or a measure ("version 2.0", "4.5 years")
   /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/,
   /\b\d{1,2}\.\d{1,2}\.\d{2,4}\b/,
-  /(?<!(?:version|ver|v|python|node|ios|android|chrome|php|java|windows|macos|react|vue|angular|wordpress|wp)\s?)(?<![\d.,])(?:0?[1-9]|[12]\d|3[01])\.(?:0?[1-9]|1[0-2])(?![\d.,])(?!\s?(?:years?|months?|hours?|weeks?|days?|x|%|k\b|gb|mb|seconds?|שנ|חודש|שעות|ימים|אחוז))/i,
+  /(?<!(?:version|ver|v|python|node|ios|android|chrome|php|java|windows|macos|react|vue|angular|wordpress|wp|tls|ssl|http|https|ipv|tcp|udp|usb|ssh|oauth|openssl|nginx|apache|mysql|mariadb|postgres|postgresql|docker|laravel|django|rails|ruby|rust|go|typescript|es|css|html|bootstrap|jquery|wpa|bluetooth|wifi|wi-fi|redis|memcached|elasticsearch|mongo|mongodb|sqlite|kafka|kubernetes|k8s|helm|terraform|ansible|ubuntu|debian|centos|alpine|linux|git|npm|pnpm|yarn|webpack|vite|tailwind|svelte|next|nuxt|cuda)\s?)(?<![\d.,])(?:0?[1-9]|[12]\d|3[01])\.(?:0?[1-9]|1[0-2])(?![\d.,])(?!\s?(?:years?|months?|hours?|weeks?|days?|x|%|k\b|gb|mb|seconds?|handshakes?|protocol|spec|release|update|patch|build|api|sdk|runtime|compiler|kernel|שנ|חודש|שעות|ימים|אחוז))/i,
   /(עד|ב|ביום|לפני|אחרי)\s?(יום\s)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?![\u05D0-\u05EA])/,
   /(מחר|מחרתיים|השבוע|בשבוע הבא|בחודש הבא|עד סוף (היום|השבוע|החודש)|תוך \d+\s?(שעות|ימים|דקות))/,
   /תוך\s(שעה|שעתיים|יום|יומיים|שבוע|שבועיים|חודש|חודשיים|(שני|שלושה|שלוש|ארבעה|ארבע|חמישה|חמש|שישה|שש|שבעה|שבע|שמונה|תשעה|תשע|עשרה|עשר)\s(שעות|ימים|דקות|שבועות|חודשים))(?![א-ת])/,
@@ -103,6 +112,9 @@ const PROMISE = [
   /\b(?:i|we)(?:'ll| will|'d| would| can| do)?\s+(?:(?!(?:cannot|can't|can’t|don't|do not|won't|never)\b)\w+\s)?(?:guarantee|promise|assure)\b/i,
   /\b(?:fully |100% |totally )?guaranteed\b(?! to be)/i,
   /\b(?:100\s?%|no risk|zero risk|risk[- ]free|without (?:any )?risk|no chance (?:of|that))\b/i,
+  // Unhedged certainty about the future is a soft promise: "I am sure it will work", "we're certain this will be fine". A hedge ("pretty sure",
+  // "not sure", "I think") is not in the list on purpose: only sure / certain / positive / confident, optionally with an intensifier.
+  /\b(?:i(?:'m|’m| am)|we(?:'re|’re| are))\s+(?:absolutely |completely |totally |100% |entirely |dead )?(?:sure|certain|positive|confident)\s+(?:that\s+)?(?:it|this|that|we|everything|things|the \w+|your \w+)\s*(?:'ll|’ll|will|'d|would|is going to|are going to|won't|will not)\b/i,
 ];
 
 // More promise forms (English + Hebrew). Hedges ("can't promise", "I can't guarantee", "לא מבטיח") stay allowed.

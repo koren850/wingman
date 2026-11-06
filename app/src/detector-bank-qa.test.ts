@@ -1,5 +1,5 @@
-// Regressions found by the synthetic QA harness (qa/): detector, bank, reflex tag parsing, question split/merge.
-// Part 1 covers the first QA run; "qa2" tests cover the second replay run.
+// Detector, bank, reflex tag parsing and question split/merge cases found by the synthetic QA harness (qa/).
+// The "qa2" tests cover the second replay run.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

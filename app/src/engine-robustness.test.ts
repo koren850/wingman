@@ -1,17 +1,15 @@
-// Robustness: STT outage retry (providers/stt/channel.ts), health recovery, disk failures, orphan overlay,
-// tray controller linger/Start and doctor timeout. Mixes unit tests (fake streams, injected spawn) with source checks
-// of run.ts and a few real child runs of run.ts with scripted STT.
+// Robustness: STT outage retry (providers/stt/channel.ts), health recovery, disk failures, orphan overlay, tray controller linger/Start and
+// doctor timeout. Unit tests with fake streams and an injected spawn. The run.ts start-up checks are in e2e/run-startup.test.ts.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
-import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, readdirSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
-import { writeWav } from "./audio.ts";
 import { HealthSupervisor } from "./health.ts";
 import { SttChannel } from "./providers/stt/channel.ts";
 import { ProviderError } from "./providers/errors.ts";
@@ -113,14 +111,6 @@ test("health: other recoveries still need the stable minute", () => {
   s.tick();
   assert.equal(s.rung, 3);
 });
-test("engine: the silent-while-talking heuristic never sets themDead (source check)", () => {
-  const src = readFileSync(join(ROOT, "src", "engine", "watchdogs.ts"), "utf8");
-  const calm = src.slice(
-    src.indexOf('log.write("events", { type: "watchdog.silent-them"'),
-    src.indexOf("}), 2000).unref();", src.indexOf("watchdog.silent-them")),
-  );
-  assert.ok(calm.includes('"only-you"') && !/themDead/.test(calm), "calm branch must not touch themDead");
-});
 
 // ---- disk failures ----
 test("log: write failures are counted, warned once, and never throw", async () => {
@@ -145,72 +135,6 @@ test("log: write failures are counted, warned once, and never throw", async () =
   assert.deepEqual(JSON.parse(r.stdout.trim().split("\n").pop()!), { failures: 5, warned: 1 });
   rmSync(dir, { recursive: true, force: true });
 });
-test("run.ts: unusable calls folder = one clear line and exit 2, no stack trace", async () => {
-  const tmp = mkdtempSync(join(tmpdir(), "wm-nodisk-"));
-  const wav = join(tmp, "s.wav");
-  await writeWav(wav, Buffer.alloc(16000 * 4 * 2), 2);
-  writeFileSync(join(tmp, "afile"), "x");
-  const r = spawnSync(tsx, [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
-    cwd: ROOT,
-    encoding: "utf8",
-    timeout: 40_000,
-    env: { ...process.env, WINGMAN_CALLS_DIR: join(tmp, "afile", "calls"), WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json") },
-  });
-  assert.equal(r.status, 2, r.stdout + r.stderr);
-  assert.match(r.stderr, /cannot create the calls folder/);
-  assert.ok(!/\n\s+at /.test(r.stderr), "no stack trace");
-  rmSync(tmp, { recursive: true, force: true });
-});
-
-// ---- notes cap, WINGMAN_USER_SETTINGS ----
-test("run.ts: typed notes are capped (last 20 notes) in the context sent to the AI", async () => {
-  const tmp = mkdtempSync(join(tmpdir(), "wm-notes-")),
-    calls = join(tmp, "calls");
-  const wav = join(tmp, "s.wav");
-  await writeWav(wav, Buffer.alloc(16000 * 4 * 12), 2);
-  const c = spawn(tsx, [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
-    cwd: ROOT,
-    stdio: ["pipe", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      WINGMAN_CONTROL: "1",
-      WINGMAN_CALLS_DIR: calls,
-      WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json"),
-      WINGMAN_SCRIPT_GAP_MS: "1500",
-    },
-  });
-  let out = "";
-  c.stdout.on("data", (d) => (out += d));
-  c.stderr.on("data", (d) => (out += d));
-  await new Promise<void>((res) => {
-    const t = setInterval(() => {
-      if (/@@wingman .*"waiting"|@@wingman .*"consented"/.test(out)) {
-        clearInterval(t);
-        res();
-      }
-    }, 100);
-  });
-  for (let i = 0; i < 30; i++) c.stdin.write(`note note-number-${i}\n`);
-  const code = await new Promise<number | null>((res) => c.on("exit", res));
-  try {
-    assert.equal(code, 0, out);
-    const dir = join(
-      calls,
-      readdirSync(calls).find((d) => d !== "latest")!,
-    );
-    const ev = readFileSync(join(dir, "events.jsonl"), "utf8")
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l));
-    const snap = ev.find((e) => e.type === "context.snapshot");
-    const typed = (snap.contextNotes as string[]).filter((n) => /^note-number-/.test(n));
-    assert.equal(typed.length, 20);
-    assert.equal(typed[0], "note-number-10");
-    assert.equal(typed.at(-1), "note-number-29");
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
-  }
-});
 test("settings: WINGMAN_USER_SETTINGS is honoured by the engine loader", () => {
   const tmp = mkdtempSync(join(tmpdir(), "wm-us-")),
     f = join(tmp, "s.yaml");
@@ -218,19 +142,6 @@ test("settings: WINGMAN_USER_SETTINGS is honoured by the engine loader", () => {
   const l = loadSettings({ env: { WINGMAN_USER_SETTINGS: f }, createStarter: false });
   assert.equal(l.settings.cards.maxOnScreen, 7);
   rmSync(tmp, { recursive: true, force: true });
-});
-
-// ---- overlay orphan guard, linger, doctor ----
-test("overlay: spawned with a stdin pipe + parent watch; main.cjs quits when the parent goes away", () => {
-  const o = readFileSync(join(ROOT, "src", "overlay.ts"), "utf8"),
-    m = readFileSync(join(ROOT, "overlay", "main.cjs"), "utf8");
-  assert.match(o, /stdio: \["pipe"/);
-  assert.match(o, /WINGMAN_WATCH_PARENT/);
-  assert.match(m, /WINGMAN_WATCH_PARENT/);
-  assert.match(m, /process\.stdin\.on\("end"/);
-  assert.match(m, /process\.kill\(parent, 0\)/);
-  const c = readFileSync(join(ROOT, "src", "call.ts"), "utf8");
-  assert.match(c, /SIGKILL/, "call.ts escalates to SIGKILL for a hung overlay");
 });
 
 function fakeCtl(extra: any = {}) {
@@ -347,7 +258,4 @@ test("stt: initial open survives a server that refuses the first 2 connects (moc
   assert.equal(ch.isOpen, true);
   await ch.close();
   http.close();
-  const src = readFileSync(join(ROOT, "src", "engine", "stt.ts"), "utf8");
-  assert.match(src, /Promise\.allSettled\(\[openChannel\(chans\.me/);
-  assert.match(src, /30_000\) \{[\s\S]*sttRetryLoop/);
 });

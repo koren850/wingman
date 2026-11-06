@@ -6,16 +6,16 @@
 //   the other side asks "כמה זה 12 כפול 3?" -> a calc card, never the price stall line; "כמה זה עולה לאתר" still gets the stall
 //   a Telugu final             -> dropped and counted
 //   a "For you" answer within 15 s of a card for the other side -> held back
-import "./test-setup.ts";
+import "../test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, existsSync, readlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ROOT } from "./env.ts";
-import { writeWav } from "./audio.ts";
-import { tsx } from "./test-platform.ts";
+import { ROOT } from "../env.ts";
+import { writeWav } from "../audio.ts";
+import { tsx } from "../test-platform.ts";
 
 test("e2e: answers for Dan's own questions, the ask key, math is not a price, foreign script dropped", { timeout: 80_000 }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-e2e-me-"));
