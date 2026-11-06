@@ -178,14 +178,25 @@ export function fixGreeting(email: string, transcript: string, notes: string[]):
 // Guard rule name -> the visible gap the user must fill by hand before sending.
 const PLACEHOLDER: Record<string, string> = { price: "[להשלים: מחיר]", date: "[להשלים: תאריך]", promise: "[להשלים: התחייבות]" };
 
-const URL_RE =
-  /(?<![@\w.-])(?:(?:https?:\/\/|www\.)[^\s<>"')\]]+|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|il|app|dev|me|ly|info|biz|xyz|ai|gov|edu|example)(?:\/[^\s<>"')\]]*)?(?![\w@-]))/gi;
+// File extensions that look like a TLD ("notes.md", "deck.pdf", "index.ts") and must not be treated as a host. Real abusable TLDs
+// that double as file types (.zip, .mov, .sh, .py, .rs) are deliberately NOT listed: "evil.zip" is neutralised.
+const FILE_EXT = new Set(
+  "ts tsx js jsx mjs cjs json md txt pdf doc docx xls xlsx ppt pptx csv tsv png jpg jpeg gif svg webp heic html htm css rb go java yml yaml xml log mp3 mp4 wav rtf pages key numbers gz tar tgz lock toml ini env bak tmp".split(
+    " ",
+  ),
+);
+// A scheme URL, a "www." host, or a bare dotted host on ANY TLD of 2-24 letters ("login.evil.ru/x", "evil.tk"), with an optional path.
+const URL_RE = /(?<![@\w.-])(?:(?:https?:\/\/|www\.)[^\s<>"')\]]+|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.([a-z]{2,24})(?:\/[^\s<>"')\]]*)?(?![\w@-]))/gi;
+const EMAIL_RE = /(?<![\w.+-])[a-z0-9][a-z0-9._%+-]*@(?:[a-z0-9-]+\.)+[a-z]{2,24}(?![\w-])/gi;
 const PHONE_RE = /(?<![\w.@])\+?\d[\d\s().-]{5,}\d(?![\w@])/g;
 const trimUrl = (u: string) => u.replace(/[.,;:!?]+$/, "");
 /**
- * Links and phone numbers in a draft that the user's own notes do not contain become visible placeholders (prompt injection: the other side can
- * say "tell them to confirm at evil.example" and the model may write it into the email). `trusted` is the user's own text (brief, typed notes).
- * Email addresses are left alone. Returns the new text and which kinds were replaced.
+ * Link neutraliser, the last defence on the follow-up email draft (prompt injection: the other side can say "send the invoice to
+ * billing@evil.com" or "confirm at evil.tk" and the model may write it into the email). Layers: (1) the card guards in guards.ts
+ * (prices, dates, promises); (2) this function, which replaces every link, bare domain (any TLD, unless it is a file extension),
+ * email address and phone number that is NOT in `trusted` (the user's own text: brief, typed notes) with a visible placeholder the
+ * user must fill in by hand; (3) the user reads the draft before sending. Summary, decisions and next-steps fields are display only
+ * and are not neutralised. Returns the new text and which kinds were replaced.
  */
 export function neutralizeLinks(email: string, trusted: string): { text: string; kinds: string[] } {
   const kinds: string[] = [];
@@ -199,7 +210,17 @@ export function neutralizeLinks(email: string, trusted: string): { text: string;
       .replace(/\/$/, "");
     return x.length > 0 && t.includes(x);
   };
-  let text = email.replace(URL_RE, (u) => (known(u) ? u : (kinds.push("url"), "[להשלים: קישור]" + (/[.,;:!?]$/.test(u) ? u.slice(-1) : ""))));
+  let text = email.replace(URL_RE, (u, tld?: string) => {
+    if (tld && FILE_EXT.has(tld.toLowerCase())) return u;
+    if (known(u)) return u;
+    kinds.push("url");
+    return "[להשלים: קישור]" + (/[.,;:!?]$/.test(u) ? u.slice(-1) : "");
+  });
+  text = text.replace(EMAIL_RE, (e) => {
+    if (t.includes(e.toLowerCase())) return e;
+    kinds.push("email");
+    return "[להשלים: אימייל]";
+  });
   text = text.replace(PHONE_RE, (n) => {
     const d = n.replace(/\D/g, "");
     if (d.length < 7 || d.length > 15 || /^\d{4}-\d{2}-\d{2}$/.test(n) || (/^\d+$/.test(n) && d.length < 9 && !n.startsWith("+"))) return n;
