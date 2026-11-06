@@ -32,14 +32,14 @@ const run = (o: ReturnType<typeof oldLayout>, root: string, log: string[] = []) 
   migrate.migrateUserData({ dataDir: root, oldCalls: o.calls, oldPrivate: o.private, log: (m: string) => log.push(m) });
 
 test("paths: default is ~/Library/Application Support/Wingman, env overrides, layout inside", () => {
-  assert.equal(paths.dataDir({}, "/Users/x"), "/Users/x/Library/Application Support/Wingman");
-  assert.equal(paths.callsDir({}, "/Users/x"), "/Users/x/Library/Application Support/Wingman/calls");
-  assert.equal(paths.briefsDir({}, "/Users/x"), "/Users/x/Library/Application Support/Wingman/briefs");
+  assert.equal(paths.dataDir({}, "/Users/x", "darwin"), "/Users/x/Library/Application Support/Wingman");
+  assert.equal(paths.callsDir({}, "/Users/x", "darwin"), "/Users/x/Library/Application Support/Wingman/calls");
+  assert.equal(paths.briefsDir({}, "/Users/x", "darwin"), "/Users/x/Library/Application Support/Wingman/briefs");
   assert.equal(paths.attachDir({ WINGMAN_DATA_DIR: "/d" }), "/d/briefs/attachments");
   assert.equal(paths.entitiesFile({ WINGMAN_DATA_DIR: "/d" }), "/d/entities.json");
   assert.equal(paths.callsDir({ WINGMAN_DATA_DIR: "/d", WINGMAN_CALLS_DIR: "/c" }), "/c");
   assert.equal(paths.briefsDir({ WINGMAN_DATA_DIR: "/d", WINGMAN_BRIEFS_DIR: "/b" }), "/b");
-  assert.equal(paths.dataDir({ WINGMAN_DATA_DIR: "  " }, "/h"), "/h/Library/Application Support/Wingman");
+  assert.equal(paths.dataDir({ WINGMAN_DATA_DIR: "  " }, "/h", "darwin"), "/h/Library/Application Support/Wingman");
   assert.equal(paths.isRedirected({}), false);
   assert.equal(paths.isRedirected({ WINGMAN_DATA_DIR: "/d" }), true);
 });
@@ -221,7 +221,7 @@ test("ensureUserData migrates for a normal start (home and appDir injected)", ()
     home = tmp();
   const r = migrate.ensureUserData({ env: {}, home, appDir: o.appDir, log: () => {} });
   assert.equal(r.status, "migrated");
-  assert.ok(existsSync(join(home, "Library", "Application Support", "Wingman", "calls", "01AAA", "call.json")));
+  assert.ok(existsSync(join(paths.dataDir({}, home), "calls", "01AAA", "call.json")));
   assert.equal(readdirSync(o.calls).includes("01AAA"), true);
 });
 
@@ -234,7 +234,7 @@ test("ensureUserData also finds old data in the former app folder name (stage0),
   put(join(legacy, "data", "private", "entities.json"), "{}");
   const r = migrate.ensureUserData({ env: {}, home, appDir: join(base, "app"), log: () => {} });
   assert.equal(r.status, "migrated");
-  const data = join(home, "Library", "Application Support", "Wingman");
+  const data = paths.dataDir({}, home); // the default for this platform
   assert.ok(existsSync(join(data, "calls", "01OLD", "call.json")) && existsSync(join(data, "entities.json")));
   assert.ok(existsSync(join(legacy, "calls", "01OLD", "call.json")), "the old copy is left in place");
 });
