@@ -77,6 +77,7 @@ function onWake(gapMs: number) {
 /** Every health.tickMs: sleep detection, idle auto-stop, ladder signals, cost and call-length warnings, then the supervisor tick. */
 let lastTick = Date.now(), lastTickMono = mono(), sleepClearAt = 0, idleWarned = false;
 export function tickHealth() {
+  if (st.call.shuttingDown) return;   // during the summary no health card (cost, disk, idle) may land after phase "ended"
   // Y2: a long gap between ticks means the Mac slept (lid closed) mid-call. Wall time and monotonic time are compared, so a clock that is set
   // backwards is not mistaken for anything, and a sleep never counts as "nobody spoke" (idle time is monotonic).
   const now = Date.now(), m = mono();
