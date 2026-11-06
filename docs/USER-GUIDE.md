@@ -57,7 +57,7 @@ Do not confuse these with a **settings preset** (`app/profiles/<name>.yaml`, use
 
 ## Practice and prep mode
 
-For rehearsal: practice runs, prepared answers and a review after the call, using your own notes. It is not meant for live help during a real interview. Create a prepared meeting with kind `interview` (`wingman plan new --kind interview ...`; the kind is set from the command line). Attach your prep notes as background files.
+A mock-interview and practice coach: rehearse with your own notes, get suggested answers in your own words, and review after the call. It is not for live use in a real interview. Create a prepared meeting with kind `interview` (`wingman plan new --kind interview ...`; the kind is set from the command line). Attach your prep notes as background files.
 
 In this mode:
 

@@ -7,13 +7,13 @@ Wingman is an early release (v0.0.1). This page lists what is done, what is not 
 - Live call loop: two-channel speech to text, question detector, Prepared bank, AI answers with guards, answer window.
 - Menu-bar app with Home, Calls and Settings; prepared meetings; practice call; Readiness check; keys in the Keychain.
 - An installer (`install.sh`, with update and uninstall), a guided first-run setup, and user data in `~/Library/Application Support/Wingman` with a one-time copy migration.
-- Practice and prep mode (kind `interview`) and flow mode (several people on the other side).
+- Practice and mock-interview mode (kind `interview`, a practice coach) and flow mode (several people on the other side).
 - Reliability: audio sources restart by themselves, the call survives sleep, a stray error and a full disk, and a dead speech channel steps down to transcript-only instead of ending the call.
 - Security: confirmation in the app before a CLI start or delete, safe file attach, strict Content-Security-Policy, Electron fuses set at build time, short error text, profile validation.
 - Answers for you, local math, call frame and checklist, tips, fact cards (with your own snapshot), capture chips, summary and follow-up draft.
 - Health ladder, reconnect buffer, cost caps, idle stop, sleep recovery, disk-space warning.
 - The `wingman` CLI over an owner-only socket.
-- A test suite of 600+ tests in 57 files; a CI workflow (type check and tests on macOS); a synthetic QA harness with 32 invented scenarios; a UX review of the window and answer window with the findings fixed.
+- A test suite of 650+ tests in 67 files; a CI workflow (type check and tests on macOS); a synthetic QA harness with 32 invented scenarios; a UX review of the window and answer window with the findings fixed.
 - A deep test round (real Deepgram and Haiku, a 60-minute soak, failure injection, a 166-utterance answer-quality judge) on synthetic voices. Measured numbers: question recall 98 percent, right card about 86 percent on replay, Prepared first card p50 0.57 s and p95 1.9 s, math 0.43 s, AI answer for you 1.65 s, AI answer for them 1.4 s, 0 guard leaks, AI cost about 20 cents an hour in the longest test (roughly 5 to 20 cents an hour in normal use). Synthetic voices are cleaner than real speech, so treat these as optimistic.
 
 ## Verification status: not yet checked on real audio
@@ -34,7 +34,7 @@ Everything above ran on synthetic voices and hidden-window snapshots. Not yet ch
 
 ## Known limits
 
-- **macOS only** for the full app (system audio capture needs macOS 14.2 or newer). The engine and file replay are being made to run on Windows and Linux; the live app is not. Help wanted.
+- **macOS only** for the full app (system audio capture needs macOS 14.2 or newer). Windows and Linux are not supported. The engine, tests and file replay are being ported (CI runs them as experimental legs that may fail); the live app is macOS only. Help wanted.
 - **Hebrew first.** English works; other languages are untested.
 - Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.10 an hour for speech plus roughly 5 to 20 cents for AI. Prices in the config are estimates.
 - Not a recording or consent tool; the user is responsible for telling participants (see [PRIVACY-AND-SECURITY.md](PRIVACY-AND-SECURITY.md)).

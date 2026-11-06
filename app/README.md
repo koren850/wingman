@@ -79,7 +79,7 @@ Wingman does not assume a client call: it works for any kind of call. About once
 - Turn it all off with `flow.enabled: false`.
 
 ## Practice and prep mode (kind `interview`)
-A prepared meeting of kind `interview` is for rehearsal: practice runs, prepared answers from your own notes, and a review after the call. It is not for live help in a real interview. Real interviews and exams that forbid outside help are out of scope; check the rules first ([ADR 35](../docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams)).
+A prepared meeting of kind `interview` is a mock-interview and practice coach: practice runs, suggested answers from your own notes, and a review after the call. It is not for live help in a real interview. Real interviews and exams that forbid outside help are out of scope; check the rules first ([ADR 35](../docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams)).
 
 ```bash
 wingman plan new --kind interview --title "Practice round" --who "Dan, Acme"
