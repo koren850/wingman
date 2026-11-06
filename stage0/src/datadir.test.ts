@@ -136,14 +136,47 @@ test("migration: an interrupted copy resumes, keeps copied files, finishes and v
   assert.equal(existsSync(join(root, migrate.PENDING)), false);
 });
 
-test("migration reports failure (no marker) when a copy cannot be verified, and old data stays", () => {
+test("migration reports failure (no marker) when a copy really fails, and old data stays", () => {
   const o = oldLayout(), root = join(tmp(), "Wingman");
-  put(join(root, "calls", "01AAA", "transcript.jsonl"), "x");   // different size than the source, but pending so it is "resumed", not overwritten
+  mkdirSync(join(root, "calls", "01AAA", "transcript.jsonl"), { recursive: true });   // a folder where the file must go: the copy cannot succeed
   writeFileSync(join(root, migrate.PENDING), "{}");
   const r = run(o, root);
   assert.equal(r.status, "failed");
   assert.equal(existsSync(join(root, migrate.MARKER)), false);
   assert.equal(readFileSync(join(o.calls, "01AAA", "transcript.jsonl"), "utf8"), "line1\nline2\n");
+});
+
+test("migration repairs a truncated earlier copy (a crash in the middle of a copy) instead of failing forever", () => {
+  const o = oldLayout(), root = join(tmp(), "Wingman");
+  put(join(root, "calls", "01AAA", "transcript.jsonl"), "line1\nli");   // the first bytes of the source: what a crashed copy leaves
+  writeFileSync(join(root, migrate.PENDING), "{}");
+  const r = run(o, root);
+  assert.equal(r.status, "migrated");
+  assert.equal(readFileSync(join(root, "calls", "01AAA", "transcript.jsonl"), "utf8"), "line1\nline2\n");
+  assert.equal(run(o, root).status, "done-before");
+});
+
+test("migration never overwrites a file the user changed after the first copy, and does not fail because of it", () => {
+  const o = oldLayout(), root = join(tmp(), "Wingman"), log: string[] = [];
+  put(join(root, "calls", "01AAA", "transcript.jsonl"), "my own edit");   // not a prefix of the source: user-owned
+  put(join(root, "entities.json"), "{ \"changed\": true, \"more\": 1 }");   // longer than the source: user-owned
+  writeFileSync(join(root, migrate.PENDING), "{}");
+  const r = run(o, root, log);
+  assert.equal(r.status, "migrated");
+  assert.equal(readFileSync(join(root, "calls", "01AAA", "transcript.jsonl"), "utf8"), "my own edit");
+  assert.equal(readFileSync(join(root, "entities.json"), "utf8"), "{ \"changed\": true, \"more\": 1 }");
+  assert.match(r.message, /left as they are/);
+  assert.deepEqual(JSON.parse(readFileSync(join(root, migrate.MARKER), "utf8")).userOwned.sort(), [join("01AAA", "transcript.jsonl"), "entities.json"].sort());
+  assert.equal(run(o, root).status, "done-before");   // no failure, no repeat
+});
+
+test("migration copies through a .part file: no stray .part is left behind", () => {
+  const o = oldLayout(), root = join(tmp(), "Wingman");
+  put(join(root, "calls", "01AAA", "transcript.jsonl.part"), "junk from a crash");
+  put(join(root, "calls", "01AAA", "transcript.jsonl"), "line1");
+  writeFileSync(join(root, migrate.PENDING), "{}");
+  assert.equal(run(o, root).status, "migrated");
+  assert.equal(existsSync(join(root, "calls", "01AAA", "transcript.jsonl.part")), false);
 });
 
 test("migration ignores symlinks (never follows them out of the folder)", () => {
