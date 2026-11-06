@@ -28,8 +28,9 @@ export function rmsOf(pcm: Buffer): number {
   return n ? Math.sqrt(s / n) : 0;
 }
 
-/** Mean mic RMS (0-1) below which a lone voice is taken as the far phone speaker rather than the user next to the mic. */
-export const NEAR_MIN = 0.03;
+/** Mean mic RMS (0-1) below which a lone voice is taken as the far phone speaker rather than the user next to the mic.
+ *  A measured real call: the user about 0.046, the phone speaker about 0.013; 0.025 sits between them. */
+export const NEAR_MIN = 0.025;
 
 export class PhoneRouter {
   private frames: Frame[] = [];
