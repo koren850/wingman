@@ -182,7 +182,7 @@ export class SttChannel extends EventEmitter {
           await this.openCurrent();
           if (this.closed) {
             // close() ran while the fallback was opening: do not leave that new socket (and the old one) running.
-            void this.stream?.close().catch(() => {});
+            void (this.stream as SttStreamLike | undefined)?.close().catch(() => {});
             void old?.close().catch(() => {});
             return;
           }
