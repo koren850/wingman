@@ -1,5 +1,9 @@
 // Everything the call needs before the first audio frame: settings, API keys (kept in memory only), the prepared brief and card bank, the call log folder,
 // and the long-lived objects (cost meter, health supervisor, trackers). Importing this module starts the call's setup; it never imports another engine module.
+// Why this is a module singleton: the engine is one process per call, so settings, keys and the call log are read once at import time and every
+// engine module imports the result instead of passing a context around. Tests do not import this module: they exercise the pure modules
+// (reflex, guards, degrade ladder) with injected inputs, and the whole engine as a child process on the scripted providers.
+// A createEngine(settings) context would be the refactor if the engine ever had to run twice in one process.
 import { KEY_ENV_VARS } from "../keychain.ts";
 import { requireKeys, CALLS, resolveUserPath, type KeyName } from "../env.ts";
 import { EntitySpotter, loadSnapshot } from "../entities.ts";
