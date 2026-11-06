@@ -1,4 +1,10 @@
 // Input from the user: terminal keys (Enter, q, a, n, y, Ctrl+C) and the menu-bar app's line commands on stdin (WINGMAN_CONTROL=1).
+//
+// IPC contract with the tray app (WINGMAN_CONTROL=1):
+//   stdin  lines: consent | quiet [on|off] | client | ask [text] | note <text> | stop | stop-no-summary | skip-summary | stop-delete
+//   stdout "@@wingman {json}" lines (see out.ts). Stop sequence: {ev:"stopphase",phase:"saving"} -> "summary" -> "done", then {ev:"ended"}.
+//   call.json in the call folder also carries phase ("starting"|"waiting"|"live"|"ended") and liveAt for the answer window.
+//   The tray escalates a stop with SIGINT at 12 s and SIGKILL at 20 s, so shutdown() must finish inside that.
 import { createInterface } from "node:readline";
 import { safe, health, healthClear, status } from "./out.ts";
 import { shutdown, skipSummaryNow } from "./shutdown.ts";

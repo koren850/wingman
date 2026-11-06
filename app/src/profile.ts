@@ -6,12 +6,12 @@ import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
+import { escapeRe } from "./text-util.ts";
 
 export const USER_PROFILE_FILE = join(homedir(), ".config", "wingman", "profile.yaml");
 export const profileFile = (env: NodeJS.ProcessEnv = process.env) => env.WINGMAN_PROFILE_FILE || USER_PROFILE_FILE;
 
 export const ADDRESS = ["male", "female", "neutral"] as const;
-export type Address = (typeof ADDRESS)[number];
 
 /** Empty (= this machine's zone) or an IANA name that Intl accepts. */
 export function validTimezone(tz: string): boolean {
@@ -161,8 +161,6 @@ export function saveProfile(p: Profile, file = profileFile()): void {
 
 /** How prompts name the user: the profile name, or "the user". */
 export const userName = (p: Profile = getProfile()) => p.name || "the user";
-/** "the user's" / "Dan's" */
-export const userPoss = (p: Profile = getProfile()) => `${userName(p)}'s`;
 
 /** The Hebrew grammatical-gender rule for lines that address the user, as a short clause for prompts. */
 export function hebrewAddressRule(p: Profile = getProfile()): string {
@@ -181,7 +179,6 @@ export function persona(p: Profile = getProfile()): string {
   return lines.join("\n");
 }
 
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 let reCache: { key: string; re: RegExp } | undefined;
 /** The user addressed by name: name + spellings, escaped. Matches nothing when both are empty. Same shape as the old NAME_RE. */
 export function nameRegex(p: Profile = getProfile()): RegExp {
@@ -192,8 +189,6 @@ export function nameRegex(p: Profile = getProfile()): RegExp {
   reCache = { key, re };
   return re;
 }
-/** True when the profile names the user (so name detection can work at all). */
-export const hasName = (p: Profile = getProfile()) => !!(p.name || p.spellings.length);
 
 /** The user's time zone (profile, else this machine's). */
 export const userTimezone = (p: Profile = getProfile()) => p.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";

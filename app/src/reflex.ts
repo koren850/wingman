@@ -9,13 +9,13 @@ import { userName, getProfile, hebrewAddressRule, userTimezone } from "./profile
 import { ModelRegistry, providerOptionsFor, cacheOptionsFor, withFallbacks } from "./providers/llm.ts";
 import { classifyFinish, classifyLlmError, ProviderError } from "./providers/errors.ts";
 
-/** The model's first-line verdict. `bankId` only for BANK. */
 /** True when a model say-line contains one of the reflex control words (SKIP / STALL / BANK / ANS) as a word (for example "... לכן SKIP עדיף כרגע"). */
 export function leakedTag(say: string): boolean {
   // also the model talking about its own job instead of answering ("The say-line is about... the transcript garbled RAG")
   return /(^|[^A-Za-z])(SKIP|STALL|BANK|ANS)(?![A-Za-z])/.test(say) || /\bsay-line\b|\btranscript\s+(garbled|misheard)|\bgarbled\b|\bbank card\b/i.test(say);
 }
 
+/** The model's first-line verdict. `bankId` only for BANK. */
 export type Tag = { kind: "SKIP" | "STALL" | "ANS" | "BANK"; bankId?: string };
 /** Callbacks fired while the reply streams. Order: onTag, onSay (partial, repeated), onSayComplete, onFacts, onDone. */
 export type ReflexHandlers = {

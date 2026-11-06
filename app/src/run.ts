@@ -1,46 +1,10 @@
-// Wingman engine: live (system audio + mic) or --file <stereo.wav> (L = me, R = them).
-//   pnpm start                 live call (listening starts at once; with "Ask me before listening starts" on, press Enter first and nothing is sent before that)
-//   pnpm start --file x.wav    replay a recording in real time
-//   pnpm start --no-ai         Prepared cards only (no AI)
-//   pnpm start --discard       delete the call folder when the call ends
-//   Keys while running: Enter = start listening (only when it is waiting) · q = Quiet mode on/off (cards saved, not shown)
-//                       n = type a context note for the AI ("this is about the shop migration"), Enter to add · Ctrl+C = stop
-//   WINGMAN_CONTROL=1         remote control for the menu-bar app: line commands on stdin (consent = Start listening, quiet, client, ask, note <text>, stop)
-//                             and "@@wingman {json}" status lines on stdout (starting/waiting/consented, ask, mode, stopphase, ended...).
-//                             call.json in the call folder also gets phase ("starting"|"waiting"|"live"|"ended") and liveAt for the answer window.
-//
-// Main flow (one process = one call; the code lives in src/engine/, see the map below):
-//   audio (audio.ts: mic -> "me", system tap -> "them") -> SttChannel per side (providers/stt) -> onResult/acceptResult
-//   -> per-channel buffer, joined on speech_final or a fallback timer (flush) -> "them": question detector (detector.ts),
-//   split/merge fixes, then onQuestion: prepared bank card at once, stall line after reflex.stallAfterMs, Claude reflex
-//   answer streamed in behind it (reflex.ts) -> emitCard -> cards.jsonl (the answer window tails it).
-//   "me" finals go to handleMe: only the user's own questions to Wingman (ask key, or a detected question) get a "me" card.
-// Side jobs on timers: notes (notesRound), call frame + tips (frameRound/tipsTick), must-cover reminders, health tick.
-// State is module-level on purpose: one call per process. Everything async checks `shuttingDown` before it writes.
-//
-// Safety and cost:
-//   - Nothing is sent for transcription until `consented` (immediately, or after "Start listening" when privacy.requireConsentAck is on).
-//   - AI text passes guards.ts (no prices, dates, promises); a hit becomes a stall line.
-//   - budget.maxUsdPerCall: at "capped" (cost.llmState) every model job (reflex, notes, frame, tips, me) stops; prepared cards still work.
-//   - budget.idleStopMin: a call with no speech stops itself. STT minutes only warn.
-//
-// IPC contract with the tray app (WINGMAN_CONTROL=1):
-//   stdin  lines: consent | quiet [on|off] | client | ask [text] | note <text> | stop | stop-no-summary | skip-summary | stop-delete
-//   stdout "@@wingman {json}" lines. Stop sequence: {ev:"stopphase",phase:"saving"} -> "summary" -> "done", then {ev:"ended"}.
-//   The tray escalates a stop with SIGINT at 12 s and SIGKILL at 20 s, so shutdown() finishes inside that.
-//
-// Engine map (src/engine/):
-//   boot.ts      settings, keys, brief, prepared bank, call log: everything read once at start
-//   state.ts     the mutable state several modules share (st), and the two STT channels (chans)
-//   out.ts       "@@wingman" status lines, health bars, error helpers (errBrief, safe, survived)
-//   cards.ts     the single exit for cards (cap, quiet mode, dedupe) and the latency rows
-//   ingest.ts    STT results -> echo drop, transcript, per-channel buffer, flush into questions
-//   question.ts  a question from the other side: prepared bank, stall line, Claude reflex, guards
-//   me.ts        answers for the user's own questions (ask key, typed ask)
-//   side.ts, coach.ts, flowmode.ts, selfcheck.ts   fact cards, notes, reminders; call frame and tips; several voices; self-check cards
-//   stt.ts, audio-sources.ts, watchdogs.ts          STT channels and retry loops; mic and system audio; silence watchdogs
-//   degrade.ts   reflex model health, the degrade ladder, the health tick
-//   consent.ts, control.ts, shutdown.ts             start listening; keys and tray commands; stop, summary, crash handling
+// Wingman engine entry point: one process = one call (live audio, or --file <stereo.wav> with L = me, R = them).
+//   pnpm start                 live call      pnpm start --file x.wav   replay a recording in real time
+//   pnpm start --no-ai         prepared cards only      pnpm start --discard   delete the call folder when it ends
+// The tray app drives this process with WINGMAN_CONTROL=1 (line commands on stdin, "@@wingman {json}" lines on stdout).
+// This file only wires the modules in src/engine/ together; the engine map and data flow are in docs/ARCHITECTURE.md,
+// the tray IPC contract is at the top of engine/control.ts. State is module-level on purpose (one call per process); everything async checks `shuttingDown`.
+// Safety and cost: nothing is sent for transcription before `consented`; AI text passes guards.ts; budget.maxUsdPerCall caps model jobs.
 import { st } from "./engine/state.ts";
 import { fileArg, noAi, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO } from "./engine/boot.ts";
 import { setPhase, status, health, safe } from "./engine/out.ts";

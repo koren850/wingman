@@ -81,16 +81,28 @@ if [ "$MODE" = uninstall ]; then
     say "  $CONFIG_DIR   (settings, profile, your pack, keys.env)"
     say "  the Wingman API keys in the macOS Keychain (service \"wingman\")"
     say "The old copy inside this repo folder (calls/ and data/private/ in app/, or in its former name stage0/), if you still have one, is NOT touched."
+    # Safety check first (also in --dry-run, so it can be tested): both folders are resolved with `cd -P` (symlinks followed) before anything
+    # is judged, and a path containing ".." is refused outright, even with --force.
+    purge_refuse() { echo "install.sh: refusing to delete $1: $2" >&2; exit 1; }
+    resolve_dir() { if [ -d "$1" ]; then (cd -P "$1" 2>/dev/null && pwd -P) || return 1; else printf '%s\n' "$1"; fi; }
+    for d in "$DATA_DIR" "$CONFIG_DIR"; do
+      case "$d" in *..*) purge_refuse "$d" "the path contains \"..\"." ;; esac
+    done
+    REAL_HOME="$(resolve_dir "$HOME")" || purge_refuse "$HOME" "cannot resolve the home folder."
+    REAL_DATA="$(resolve_dir "$DATA_DIR")" || purge_refuse "$DATA_DIR" "cannot resolve the path."
+    REAL_CONFIG="$(resolve_dir "$CONFIG_DIR")" || purge_refuse "$CONFIG_DIR" "cannot resolve the path."
+    for d in "$REAL_DATA" "$REAL_CONFIG"; do
+      case "$d" in ""|/|"$HOME"|"$HOME/"|"$REAL_HOME"|"$REAL_HOME/") purge_refuse "$d" "that is the home or root folder." ;; esac
+    done
+    # WINGMAN_DATA_DIR can point anywhere. Unless --force is given, only delete a folder under ~/Library/Application Support whose path contains "Wingman".
+    if [ "$FORCE" != 1 ]; then
+      case "$REAL_DATA" in "$REAL_HOME/Library/Application Support/"*Wingman*) ;; *) purge_refuse "$DATA_DIR" "it is not a Wingman folder under ~/Library/Application Support. Add --force if you really mean it." ;; esac
+    fi
     if [ "$DRY" = 1 ]; then say "would ask you to type DELETE"; else
       if [ ! -t 0 ]; then echo "install.sh: --purge needs a terminal to confirm." >&2; exit 1; fi
       read -r -p "  Type DELETE to continue, anything else cancels: " c
       if [ "$c" = "DELETE" ]; then
-        case "$DATA_DIR" in ""|/|"$HOME"|"$HOME/") echo "install.sh: refusing to delete $DATA_DIR" >&2; exit 1 ;; esac
-        # WINGMAN_DATA_DIR can point anywhere. Unless --force is given, only delete a folder under ~/Library/Application Support whose path contains "Wingman".
-        if [ "$FORCE" != 1 ]; then
-          case "$DATA_DIR" in "$HOME/Library/Application Support/"*Wingman*) ;; *) echo "install.sh: refusing to delete $DATA_DIR: it is not a Wingman folder under ~/Library/Application Support. Add --force if you really mean it." >&2; exit 1 ;; esac
-        fi
-        rm -rf "$DATA_DIR" "$CONFIG_DIR" && ok "removed $DATA_DIR and $CONFIG_DIR"
+        rm -rf "$REAL_DATA" "$REAL_CONFIG" && ok "removed $REAL_DATA and $REAL_CONFIG"
         for acct in DEEPGRAM_API_KEY ANTHROPIC_API_KEY; do security delete-generic-password -s wingman -a "$acct" >/dev/null 2>&1 && ok "removed Keychain item $acct" || say "no Keychain item $acct"; done
       else say "cancelled: nothing was deleted."; fi
     fi

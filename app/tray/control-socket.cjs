@@ -79,7 +79,7 @@ function shape(a, fields) {
  * o.plans        prepared-meetings store (tray/plans.cjs): `start` and `practice` choose a meeting through it; brief_refresh re-reads it
  * o.info         () => extra fields for ping/status (version, pid)
  * o.askCliStart  async () => boolean: is "ask before a call started from the command line starts listening" on? (absent: off)
- * o.confirm      { start(): Promise<boolean>, stopDelete(): Promise<boolean> } native dialogs (tray/lib.cjs confirmCliStart / confirmCliStopDelete)
+ * o.confirm      { start(), consent(), stopDelete() }: each Promise<boolean>, native dialogs (tray/lib.cjs confirmCliStart / confirmCliStopDelete)
  */
 function createControlServer(o) {
   const fs = o.fs || nodeFs,
@@ -108,7 +108,9 @@ function createControlServer(o) {
         ? ""
         : kind === "start"
           ? "Not started: it was not confirmed in the Wingman app."
-          : "Not deleted: it was not confirmed in the Wingman app.";
+          : kind === "consent"
+            ? "Not started listening: it was not confirmed in the Wingman app."
+            : "Not deleted: it was not confirmed in the Wingman app.";
     } catch {
       return "The confirmation could not be shown.";
     } finally {
@@ -266,13 +268,20 @@ function createControlServer(o) {
     },
     consent: {
       args: noArgs,
-      run: () => {
+      // A call is only in "waiting" when privacy.requireConsentAck is on, and this is the step that releases the audio. The socket is open to any
+      // process of this user, so the acknowledgement must come from a human: it needs a native dialog in the Wingman app (a script cannot click it),
+      // exactly like starting or deleting a call from the command line. The tray menu, the hotkey and the dashboard button do not go through here.
+      run: async () => {
         const s = ctl.getState();
-        return (
+        const no =
           need(
             ctl.isRunning() && s.phase === "waiting",
             'No call is waiting to start listening. This only applies when "Ask me before listening starts" is on.',
-          ) || done(ctl.consent(), "Start listening was not accepted. Check wingman status.")
+          ) || (await ask("consent", o.confirm && o.confirm.consent));
+        if (no) return typeof no === "string" ? refused(no) : no;
+        return (
+          need(ctl.isRunning() && ctl.getState().phase === "waiting", "The call is no longer waiting to start listening.") ||
+          done(ctl.consent(), "Start listening was not accepted. Check wingman status.")
         );
       },
     },

@@ -50,7 +50,7 @@ function fakeSpawn() {
 }
 
 async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string; askCliStart?: boolean; answer?: boolean | (() => Promise<boolean>) } = {}) {
-  const asked = { start: 0, del: 0 };
+  const asked = { start: 0, del: 0, consent: 0 };
   const answer = async () => (typeof opts.answer === "function" ? opts.answer() : opts.answer !== false);
   const dir = tmp("rig");
   const sock = join(dir, "run", "control.sock");
@@ -82,6 +82,10 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string; a
         asked.start++;
         return answer();
       },
+      consent: async () => {
+        asked.consent++;
+        return answer();
+      },
       stopDelete: async () => {
         asked.del++;
         return answer();
@@ -94,6 +98,7 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string; a
       err = "";
     const code = await main(argv, {
       env,
+      home: dir,
       out: (s) => {
         out += s;
       },
@@ -199,6 +204,7 @@ test("socket: start/stop drive the app's controller (one call, no second engine)
     assert.equal((await r.run("consent", "--json")).code, 6, "consent needs --yes");
     assert.equal((await r.run("consent", "--yes", "--json")).code, 0);
     assert.deepEqual(c.written, ["consent\n"]);
+    assert.equal(r.asked.consent, 1, "the socket consent asks in the app first");
     c.say("consented");
     const q = await r.run("ask", "what", "is", "the", "price?", "--json");
     assert.equal(q.code, 0, q.out);
@@ -279,6 +285,21 @@ test("socket: a stop right after a start is NOT rate limited, but a second start
     assert.equal((await r.run("start", "--quick", "--no-wait", "--json")).code, 8, "start 100 ms after start is limited");
   } finally {
     await r.done();
+  }
+});
+
+test("socket: consent from the command line is refused unless it is confirmed in the app (F5)", async () => {
+  const no = await rig({ answer: false });
+  try {
+    await no.run("start", "--practice", "--no-wait", "--json");
+    const c = no.f.spawned[0];
+    c.say("waiting", { id: "01ARZ3NDEKTSV4RRFFQ69G5FAV" });
+    const x = await no.run("consent", "--yes", "--json");
+    assert.equal(x.code, 4, x.out + x.err);
+    assert.equal(no.asked.consent, 1);
+    assert.deepEqual(c.written, [], "nothing reached the engine");
+  } finally {
+    await no.done();
   }
 });
 

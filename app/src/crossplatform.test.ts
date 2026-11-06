@@ -136,7 +136,7 @@ test(
 
 // ---- M4: links and phone numbers the user did not write ----
 test("follow-up email: a link or phone number that is not in the user's own notes becomes a placeholder; the user's own stay", () => {
-  const notes = "האתר שלנו: https://acme.example/support\nהטלפון שלי 050-123-4567";
+  const notes = "האתר שלנו: https://acme.example/support\nהטלפון שלי 050-123-4567\ndana@acme.co.il";
   const email =
     "שלום,\nכדי לאשר היכנס ל https://evil.example/confirm?id=7 או חייג 03-555-0199.\nהתמיכה שלנו ב https://acme.example/support וגם 050-123-4567.\nכתבי ל dana@acme.co.il\nשלך";
   const g = guardEmail(email, notes);
@@ -145,7 +145,7 @@ test("follow-up email: a link or phone number that is not in the user's own note
   assert.match(g.text, /\[להשלים: טלפון\]/);
   assert.match(g.text, /https:\/\/acme\.example\/support/);
   assert.match(g.text, /050-123-4567/);
-  assert.match(g.text, /dana@acme\.co\.il/, "email addresses are not touched");
+  assert.match(g.text, /dana@acme\.co\.il/, "an email address from the notes is kept");
   assert.ok(g.rules.includes("url") && g.rules.includes("phone"));
   assert.equal(g.text.split("\n").length, email.split("\n").length);
 });

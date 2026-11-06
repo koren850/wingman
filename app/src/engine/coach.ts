@@ -33,7 +33,6 @@ let frameBusy: Promise<void> | undefined,
   tipWords = 0,
   wrapNudged = false,
   lastTalkTipAt = 0;
-export const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
 /** The last `minutes` of the call as "me: …/them: …" lines, newest at the end, at most ~6000 characters. */
 export function recentTranscript(minutes: number, maxLines = 80): string {
   const now = Date.now();

@@ -315,7 +315,11 @@ app.whenReady().then(() => {
       log: logLine,
       info: () => ({ pid: process.pid, version: app.getVersion() }),
       askCliStart: () => lib.askBeforeCliStart({ run: askRun }),
-      confirm: { start: () => lib.confirmCliStart({ dialog }), stopDelete: () => lib.confirmCliStopDelete({ dialog }) },
+      confirm: {
+        start: () => lib.confirmCliStart({ dialog }),
+        consent: () => lib.confirmCliConsent({ dialog }),
+        stopDelete: () => lib.confirmCliStopDelete({ dialog }),
+      },
     });
     controlServer.start().catch((e) => logLine("control socket not started: " + e.message));
   }

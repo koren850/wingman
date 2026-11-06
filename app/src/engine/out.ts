@@ -1,5 +1,5 @@
 // Output to the outside: the "@@wingman {json}" status lines the menu-bar app reads on stdout, health bars, and the error helpers (errBrief, safe, survived).
-import { errText } from "../errtext.ts";
+import { errText, errStack } from "../errtext.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
 import { log, CONTROL } from "./boot.ts";
 import { emitCard } from "./cards.ts";
@@ -50,7 +50,7 @@ export function survived(where: string, e: unknown) {
   const n = (survivedCount[where] = (survivedCount[where] ?? 0) + 1);
   if (n > 20 && n % 100) return;
   try {
-    log.write("events", { type: "error.survived", where, n, error: String((e as Error)?.stack ?? e).slice(0, 2000) });
+    log.write("events", { type: "error.survived", where, n, error: errStack(e) });
   } catch {
     /* best effort */
   }

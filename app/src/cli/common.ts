@@ -48,6 +48,8 @@ export interface Ctx {
   stdin: () => Promise<string>;
   /** Tests inject these. */
   keychain?: unknown;
+  /** Home folder for the attachment refusals; production leaves it unset (the passwd entry is used, never $HOME). */
+  home?: string;
   openApp?: () => Promise<void>;
   spawnTsx?: (args: string[], timeoutMs: number) => Promise<{ code: number; out: string }>;
   signal?: AbortSignal;

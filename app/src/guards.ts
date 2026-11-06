@@ -3,6 +3,8 @@
 // Patterns are deliberately broad (a false hit only costs a stall line; a missed price or promise would be spoken to a client).
 // Note: JS \b is ASCII-only, so Hebrew patterns use explicit lookaheads/lookbehinds on [א-ת] instead.
 
+import { escapeRe } from "./text-util.ts";
+
 // English number words and Hebrew number words, shared by the price, date and salary rules.
 const EN_NUM =
   "one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|a few|a couple of|several|a";
@@ -189,7 +191,6 @@ const CLAIMABLE = [
   "Snowflake",
   "Databricks",
 ];
-const escapeRe = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const termRe = (w: string) => new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(w)}(?![\\p{L}\\p{N}])`, "u"); // case-sensitive: "go over it" is not Go
 /** The first claimable term in `text` that `allowed` does not contain, or undefined. */
 export function unclaimedTerm(text: string, allowed: string): string | undefined {

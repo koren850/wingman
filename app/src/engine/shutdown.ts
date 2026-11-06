@@ -1,6 +1,7 @@
 // The one exit path: stop, post-call summary, deletion question, and the crash / stray-error handling that leads into it.
 import { rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
+import { errStack } from "../errtext.ts";
 import bin from "../../shared/bin.cjs";
 import { join } from "node:path";
 import { childEnv, CALLS, ROOT } from "../env.ts";
@@ -170,7 +171,7 @@ export async function shutdown() {
   } catch (e) {
     console.error("call summary failed:", errBrief(e));
     try {
-      log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e).slice(0, 2000) });
+      log.write("events", { type: "shutdown.error", error: errStack(e) });
     } catch {
       /* best effort: the log itself may be what failed */
     }
@@ -250,7 +251,7 @@ export function crash(kind: string, e: unknown) {
     );
   else console.error(`\n🔴 ${kind}: ${errBrief(e)}`);
   try {
-    log.write("events", { type: "crash", kind, error: String((e as Error)?.stack ?? e).slice(0, 2000) });
+    log.write("events", { type: "crash", kind, error: errStack(e) });
   } catch {
     /* best effort: the log may be unwritable; the crash is printed above */
   }
@@ -270,7 +271,7 @@ function stray(kind: string, e: unknown) {
     return;
   }
   try {
-    log.write("events", { type: "error.survived", kind, error: String((e as Error)?.stack ?? e).slice(0, 2000) });
+    log.write("events", { type: "error.survived", kind, error: errStack(e) });
   } catch {
     /* best effort: the log may be unwritable; the error is printed below */
   }
