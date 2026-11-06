@@ -4,13 +4,23 @@
 #   scripts/make-app.sh              build .app/Wingman.app
 #   scripts/make-app.sh --install    also copy it to /Applications (Finder, Launchpad, Spotlight, Dock)
 #   scripts/make-app.sh --check      only report whether the runtime is there and the app is built
+#   scripts/make-app.sh --stale      exit 0 if the app must be rebuilt (missing, built for another folder, or another Electron), 1 if it is current
+# The app is built next to the final one and swapped in with a rename, so a running or half-built bundle is never deleted in place.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SRC=node_modules/electron/dist/Electron.app
-OUT=.app/Wingman.app
+FINAL=.app/Wingman.app
+OUT=".app/.Wingman.app.build.$$"   # built here, then renamed over $FINAL
 ICON=../brand/Wingman.icns
 MODE="${1:-}"
-if [ "$MODE" = "--check" ]; then [ -d "$SRC" ] && echo "electron runtime: present" || echo "electron runtime: MISSING"; [ -x "$OUT/Contents/MacOS/Wingman" ] && echo "app: built ($OUT)" || echo "app: NOT built"; exit 0; fi
+# What the built app records about itself: the checkout it starts from and the Electron it was copied from. A moved folder or an Electron upgrade makes it stale.
+BUILD_ID="$(pwd)
+$(node -p 'require("./node_modules/electron/package.json").version' 2>/dev/null || echo unknown)"
+if [ "$MODE" = "--check" ]; then [ -d "$SRC" ] && echo "electron runtime: present" || echo "electron runtime: MISSING"; [ -x "$FINAL/Contents/MacOS/Wingman" ] && echo "app: built ($FINAL)" || echo "app: NOT built"; exit 0; fi
+if [ "$MODE" = "--stale" ]; then
+  [ -x "$FINAL/Contents/MacOS/Wingman" ] && [ "$(cat "$FINAL/Contents/Resources/app/.built-from" 2>/dev/null)" = "$BUILD_ID" ] && exit 1
+  exit 0
+fi
 if [ ! -d "$SRC" ]; then
   # Electron 45 downloads its binary lazily: fetch it now (Electron's own installer script, cached after the first time).
   [ -f node_modules/electron/install.js ] || { echo "make-app: Electron is not installed. Fix: cd stage0 && pnpm install" >&2; exit 1; }
@@ -18,7 +28,9 @@ if [ ! -d "$SRC" ]; then
   node node_modules/electron/install.js || { echo "make-app: the Electron download failed (see above). Fix: check your internet connection, then: cd stage0 && node node_modules/electron/install.js && pnpm run make-app" >&2; exit 1; }
   [ -d "$SRC" ] || { echo "make-app: $SRC is still missing after the download. Fix: rm -rf node_modules/electron/dist && pnpm install" >&2; exit 1; }
 fi
-rm -rf "$OUT"; mkdir -p .app
+mkdir -p .app
+rm -rf .app/.Wingman.app.build.* 2>/dev/null || true   # leftovers of an interrupted build
+trap 'rm -rf "$OUT"' EXIT
 cp -R "$SRC" "$OUT"
 mv "$OUT/Contents/MacOS/Electron" "$OUT/Contents/MacOS/Wingman"
 P="$OUT/Contents/Info.plist"
@@ -91,6 +103,7 @@ if (!fs.existsSync(path.join(STAGE0, "tray", "main.cjs"))) {
 }
 JS
 } > "$OUT/Contents/Resources/app/index.cjs"
+printf '%s\n' "$BUILD_ID" > "$OUT/Contents/Resources/app/.built-from"   # before the signature: the signature seals it
 # Electron fuses: no ELECTRON_RUN_AS_NODE, NODE_OPTIONS or --inspect for this app (scripts/set-fuses.cjs, no dependency). Before the signature.
 # A failed flip fails the build: an app with RunAsNode on is not what this script promises. WINGMAN_ALLOW_NO_FUSES=1 opts out (an Electron layout this script does not know).
 if ! node scripts/set-fuses.cjs "$OUT"; then
@@ -99,5 +112,11 @@ if ! node scripts/set-fuses.cjs "$OUT"; then
 fi
 # Helper apps keep their names; only the main bundle is shown to the user. Re-sign ad hoc after the edits (best effort, hence "|| true"): they invalidate the old signature.
 codesign --force --deep --sign - "$OUT" >/dev/null 2>&1 || true
-echo "built $OUT"
-if [ "$MODE" = "--install" ]; then rm -rf /Applications/Wingman.app && cp -R "$OUT" /Applications/Wingman.app && echo "installed /Applications/Wingman.app"; fi
+# Swap in with renames: the old bundle (maybe running: its open files stay valid) is set aside, the new one takes its place at once, then the old one goes.
+if [ -e "$FINAL" ]; then mv "$FINAL" "$FINAL.old.$$" && mv "$OUT" "$FINAL" && rm -rf "$FINAL.old.$$"; else mv "$OUT" "$FINAL"; fi
+trap - EXIT
+echo "built $FINAL"
+if [ "$MODE" = "--install" ]; then
+  DST=/Applications/Wingman.app
+  rm -rf "$DST.new.$$" && cp -R "$FINAL" "$DST.new.$$" && { [ ! -e "$DST" ] || mv "$DST" "$DST.old.$$"; } && mv "$DST.new.$$" "$DST" && rm -rf "$DST.old.$$" && echo "installed $DST"
+fi
