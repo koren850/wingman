@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- Answer window page (Hebrew or English chrome, setting ui.language). Loaded by overlay/main.cjs, which tails the call files and sends rows over IPC (preload.cjs -> window.wingman).
      Shows the newest card as the hero, older ones as small rows, plus tips, call checklist, captured phone/email/domain chips, a rewind sheet and the key legend.
-     No network: CSP allows only local files. Text is always set with textContent / text nodes (never innerHTML), because card text comes from the call. -->
+     No network: CSP allows only local files. style-src keeps 'unsafe-inline' because this page carries its own <style> block (the dashboard moved its CSS to app.css); styles can still only come from this file or local files, and scripts stay external-only. Text is always set with textContent / text nodes (never innerHTML), because card text comes from the call. -->
 <html lang="he" dir="rtl" data-theme="dark">
   <head>
     <meta charset="utf-8" />

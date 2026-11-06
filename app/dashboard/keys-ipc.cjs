@@ -42,7 +42,7 @@ function register(o) {
     return { ok: true, providers: kc.keyStatus({ keychain, file, env }), fake: false };
   };
   // The key keys:test will try: Keychain, then environment, then keys.env. Never returned to the page.
-  // Note: src/env.ts loads env before Keychain, so with both set the test and the engine can use different keys.
+  // Same order as resolveKey in keychain.cjs, which the engine (src/env.ts) uses, so this tests the key the engine will really use.
   const resolveKey = async (p) => {
     const a = kc.ACCOUNTS[p];
     try {

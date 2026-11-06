@@ -7,6 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { neutralizeLinks } from "./summary.ts";
+import { errStack } from "./errtext.ts";
 
 const PH = "[להשלים: קישור]";
 
@@ -87,3 +88,17 @@ test(
     assert.match(run(`${data}/../Wingman`, "--force").stderr, /contains "\.\."/, '".." is refused even with --force');
   },
 );
+
+// ---- Info: stack traces in events.jsonl ----
+
+test("errStack: one safe line plus at most a few frames, capped at 2000 characters", () => {
+  const e = new Error("boom");
+  e.stack = ["Error: boom", ...Array.from({ length: 30 }, (_, i) => `    at fn${i} (/x/y.ts:${i}:1)`)].join("\n");
+  const s = errStack(e);
+  assert.equal(s.split("\n").length, 1 + 4);
+  assert.match(s, /^Error: boom\n\s*at fn0/);
+  assert.ok(!s.includes("fn5"));
+  assert.ok(errStack(Object.assign(new Error("x".repeat(5000)), { stack: "" })).length <= 2000);
+  assert.equal(errStack("plain string"), "plain string");
+  assert.equal(errStack(undefined), "unknown error");
+});

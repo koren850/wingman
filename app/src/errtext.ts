@@ -11,3 +11,15 @@ export function errText(e: unknown): string {
   const extra = [typeof status === "number" ? `HTTP ${status}` : "", typeof x.code === "string" ? x.code : ""].filter(Boolean).join(" ");
   return `${name}${extra ? ` (${extra})` : ""}: ${msg.replace(/\s+/g, " ").slice(0, 300)}`.trim();
 }
+
+/** What goes into events.jsonl for an error: the safe one-liner plus the first few stack frames (at most `frames`, 2000 characters in all). */
+export function errStack(e: unknown, frames = 4): string {
+  const head = errText(e);
+  const stack = typeof (e as { stack?: unknown } | null | undefined)?.stack === "string" ? (e as { stack: string }).stack : "";
+  const at = stack
+    .split("\n")
+    .filter((l) => /^\s+at /.test(l))
+    .slice(0, frames)
+    .map((l) => l.trim());
+  return [head, ...at].join("\n").slice(0, 2000);
+}
