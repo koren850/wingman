@@ -310,6 +310,12 @@ function askModel(t: Turn, usable: string[]): Promise<void> {
     noAgency: t.noAgency,
     anyLanguage: interview,
     onFail: (model, err) => llmFailed(model, err),
+    onHung: (model, err) => {
+      if (st.call.shuttingDown) return;
+      log.write("events", { type: "reflex.hung", turnId: t.id, model, error: errBrief(err) });
+      llmFailed(model, err);
+      countReflexFailure(err);
+    },
     onSwitch: (from, to, err) => {
       log.write("events", { type: "llm.switch", turnId: t.id, from, to, kind: err.kind });
       console.log(`\n↪ AI ${from} -> ${to} (${describe(err)})`);
@@ -494,6 +500,7 @@ function onDone(t: Turn, { usage, providerMetadata, text, model }: Parameters<Re
   healthClear("ai");
   clearAiBar(model);
   breakers.get(model)?.success();
+  sup.noteLlmOk();
   refreshSignals();
   const c = cost.addLlm("reflex", model, usage, providerMetadata);
   log.write("usage", { role: "reflex", model, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.reflex.usd });
@@ -523,6 +530,9 @@ function onReflexError(t: Turn, e: ProviderError) {
     t.shown = stallCardFor(t);
     emitCard(t.shown);
   }
-  if (kind !== "refusal" && ++reflexErrors >= 2)
-    health("ai", "amber", "AI לא עונה: מוצגים רק כרטיסים מוכנים מראש. בדוק חיבור לאינטרנט ומפתח ב-Settings", String(e?.message ?? e));
+  if (kind !== "refusal") countReflexFailure(e);
+}
+/** Two failures in a row (errors, timeouts, hung requests that were replaced) raise the "AI not answering" bar. */
+function countReflexFailure(e: ProviderError) {
+  if (++reflexErrors >= 2) health("ai", "amber", "AI לא עונה: מוצגים רק כרטיסים מוכנים מראש. בדוק חיבור לאינטרנט ומפתח ב-Settings", String(e?.message ?? e));
 }

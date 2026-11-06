@@ -147,6 +147,8 @@ export type ReflexRun = {
   onSwitch?: (from: string, to: string, err: ProviderError) => void;
   /** called for every failed attempt (feed circuit breakers) */
   onFail?: (model: string, err: ProviderError) => void;
+  /** called when a superseded (aborted) attempt had waited at least half of timeoutMs for its first token: it counts as a hung request */
+  onHung?: (model: string, err: ProviderError) => void;
   /** test hook: replaces streamText */
   stream?: typeof streamText;
 };
@@ -279,12 +281,21 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
   const provider = ref.split(":")[0];
   const model = await o.registry.resolve(ref);
   const timeout = AbortSignal.timeout(o.cfg.timeoutMs); // total budget for this attempt; aborts the stream so a hung provider cannot hold the card
+  const signal = AbortSignal.any([o.signal, timeout]);
+  const t0 = Date.now();
+  let gotDelta = false;
+  // An attempt that was replaced by the next question after waiting this long for a first token was hung, not just superseded.
+  const reportIfHung = () => {
+    const waited = Date.now() - t0;
+    if (!gotDelta && waited >= o.cfg.timeoutMs / 2)
+      o.onHung?.(ref, new ProviderError("timeout", provider, `${provider}: no first token after ${waited} ms (replaced by the next question)`));
+  };
   let streamError: unknown;
   const result = (o.stream ?? streamText)({
     model,
     maxOutputTokens: o.maxTokens ?? o.cfg.maxTokens,
     maxRetries: o.cfg.maxRetries,
-    abortSignal: AbortSignal.any([o.signal, timeout]),
+    abortSignal: signal,
     providerOptions: providerOptionsFor(ref, o.cfg), // Anthropic-only options; undefined for other providers
     temperature: temperatureFor(ref), // 0 for providers that accept it; omitted for Anthropic (see temperatureFor)
     onError: ({ error }: { error: unknown }) => {
@@ -309,8 +320,20 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
   };
   // The tag is final. A later line that says SKIP means the model changed its mind after the card was chosen: the card goes away.
   const laterSkip = (lines: string[]) => kind !== undefined && kind !== "SKIP" && lines.slice(1).some((l) => /^[*`\s]*SKIP\b/.test(l));
+  // The stream is raced against the abort signal: a request that ignores abort must not hold this attempt (and the breaker) forever.
+  const STOP = Symbol("stop");
+  const stopped = new Promise<typeof STOP>((res) => (signal.aborted ? res(STOP) : signal.addEventListener("abort", () => res(STOP), { once: true })));
+  const it = result.textStream[Symbol.asyncIterator]();
   try {
-    for await (const delta of result.textStream) {
+    for (;;) {
+      const n = await Promise.race([it.next(), stopped]);
+      if (n === STOP) {
+        void Promise.resolve(it.return?.()).catch(() => {});
+        break;
+      }
+      if (n.done) break;
+      const delta = n.value;
+      gotDelta = true;
       if (o.signal.aborted) {
         bookAborted(result, ref, h);
         return ref;
@@ -352,6 +375,7 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
     if (!o.signal.aborted) streamError ??= e;
   }
   if (o.signal.aborted) {
+    reportIfHung();
     bookAborted(result, ref, h);
     return ref;
   }

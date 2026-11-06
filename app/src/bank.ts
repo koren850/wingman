@@ -226,6 +226,21 @@ export function priceOffTopic(text: string): "arithmetic" | "general" | undefine
 export function matchBankFor(text: string, bank: BankCard[]): BankHit | undefined {
   const l = questionLang(text);
   if (l && text.trim().split(/\s+/).length >= 3) turnLang = l;
+  // The same question is matched 3-5 times while it is handled: remember the last few answers (per bank, per language).
+  if (forCache.bank !== bank || forCache.len !== bank.length) {
+    forCache.bank = bank;
+    forCache.len = bank.length;
+    forCache.hits.clear();
+  }
+  const key = `${turnLang}|${text}`;
+  if (forCache.hits.has(key)) return forCache.hits.get(key);
+  const out = matchBankForUncached(text, bank);
+  if (forCache.hits.size >= 16) forCache.hits.delete(forCache.hits.keys().next().value!);
+  forCache.hits.set(key, out);
+  return out;
+}
+const forCache: { bank?: BankCard[]; len: number; hits: Map<string, BankHit | undefined> } = { len: 0, hits: new Map() };
+function matchBankForUncached(text: string, bank: BankCard[]): BankHit | undefined {
   let hit = matchBank(text, bank);
   if (hit?.card.id === "stall-price" && priceOffTopic(text))
     hit = matchBank(

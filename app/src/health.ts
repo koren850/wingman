@@ -145,7 +145,12 @@ export type HealthConfig = {
   minSamples: number;
   troubleHoldMs?: number;
   fastRecoverMs?: number;
+  /** Shortened calm period after a transient AI outage (429 / overload / timeouts, no auth or spend-cap error). Default 15 s. */
+  llmRecoverMs?: number;
 };
+
+/** The reasons a short AI outage shows (breaker open, then rate-limited). Only these may recover on the shorter `llmRecoverMs`. */
+const LLM_TRANSIENT_REASONS = new Set(["no LLM provider usable", "AI rate-limited/overloaded"]);
 
 /**
  * Turns signals into one applied rung and emits "rung" events { from, to, reasons }. Why it is not instant:
@@ -162,6 +167,7 @@ export class HealthSupervisor extends EventEmitter {
   private tags: number[] = [];
   private lags: number[] = [];
   private troubleUntil = 0;
+  private llmHard = false; // an auth / spend-cap / quota error is not cleared yet: no shortcut for recovery
   private fastRecover = false; // the other side was heard again: leave "other side not heard" after fastRecoverMs, not recoverStableMs
   private timer?: NodeJS.Timeout;
   constructor(
@@ -207,6 +213,14 @@ export class HealthSupervisor extends EventEmitter {
     this.troubleUntil = this.now() + (this.cfg.troubleHoldMs ?? 60_000);
     this.set({ llmTrouble: true });
   }
+  /** A hard LLM error (key rejected, spend cap, quota): recovery keeps the full calm period until an answer works again. */
+  noteLlmHard() {
+    this.llmHard = true;
+  }
+  /** An answer worked: clears the hard-error mark. */
+  noteLlmOk() {
+    this.llmHard = false;
+  }
   private p50(a: number[]) {
     const s = [...a].sort((x, y) => x - y);
     return s.length ? s[Math.floor(s.length / 2)] : 0;
@@ -229,7 +243,9 @@ export class HealthSupervisor extends EventEmitter {
       const need =
         this.fastRecover && this.reasons.length > 0 && this.reasons.every((r) => r === "other side not heard" || r === "other side's transcription is down")
           ? (this.cfg.fastRecoverMs ?? 2000)
-          : this.cfg.recoverStableMs;
+          : !this.llmHard && this.reasons.length > 0 && this.reasons.every((r) => LLM_TRANSIENT_REASONS.has(r))
+            ? Math.min(this.cfg.recoverStableMs, this.cfg.llmRecoverMs ?? 15_000)
+            : this.cfg.recoverStableMs;
       if (t - this.betterSince >= need) {
         this.tags = [];
         this.lags = [];

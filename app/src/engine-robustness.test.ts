@@ -121,9 +121,9 @@ test("log: write failures are counted, warned once, and never throw", async () =
       "-e",
       `
     import { CallLog } from ${JSON.stringify(join(ROOT, "src", "log.ts"))};
-    import { rmSync } from "node:fs";
+    import { rmSync, writeFileSync } from "node:fs";
     const log = new CallLog({ a: 1 }); let warned = 0; log.onWriteFail = () => warned++;
-    log.write("events", { ok: 1 }); rmSync(log.dir, { recursive: true });
+    log.write("events", { ok: 1 }); rmSync(log.dir, { recursive: true }); writeFileSync(log.dir, "blocked");
     for (let i = 0; i < 5; i++) log.write("events", { i });
     log.update({ endedAt: "x" });
     console.log(JSON.stringify({ failures: log.writeFailures, warned }));

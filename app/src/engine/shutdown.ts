@@ -202,6 +202,19 @@ export async function shutdown() {
     process.stdout.write("\nDelete this call's saved text now? y = delete, any other key (or 10 s) = keep: ");
     del = (await askKey(10_000)).toLowerCase() === "y";
   }
+  // The call folder lost rows (vanished, disk full): keep the whole transcript from memory in a rescue folder and say so.
+  let rescued: string | undefined;
+  if (!del && log.degraded) {
+    const text =
+      transcript.map((l) => `${l.who ? (speakers.name(l.who.spk) ?? `Speaker ${l.who.spk}`) : l.ch === "me" ? "me" : "them"}: ${l.text}`).join("\n") + "\n";
+    rescued = log.rescue(text);
+    log.update({ writeFailures: log.writeFailures, ...(rescued ? { rescueDir: rescued } : {}) });
+    console.log(
+      rescued
+        ? `\n⚠️ Some of this call could not be saved in its folder. A copy of the transcript is in ${rescued}`
+        : "\n⚠️ Some of this call could not be saved, and no rescue copy could be written either.",
+    );
+  }
   if (del) {
     try {
       rmSync(log.dir, { recursive: true, force: true });
@@ -235,7 +248,12 @@ export async function shutdown() {
       /* best effort */
     }
   status("stopphase", { phase: "done" });
-  status("ended", { id: log.id, deleted: del, crashed: st.call.crashed });
+  status("ended", {
+    id: log.id,
+    deleted: del,
+    crashed: st.call.crashed,
+    ...(log.degraded ? { writeFailures: log.writeFailures, saveFailed: true, rescued: rescued ?? null } : {}),
+  });
   try {
     if (process.stdin.isTTY) process.stdin.setRawMode(false);
   } catch {

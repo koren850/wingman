@@ -39,6 +39,7 @@ test("ladder changes only between questions; recovery needs a stable minute", ()
   const now = { t: 0 };
   const { s, log } = sup(now);
   s.beginQuestion();
+  s.noteLlmHard(); // a hard error keeps the full calm period (a short outage recovers sooner, see below)
   s.set({ llmDown: true });
   s.tick();
   assert.equal(s.rung, 0, "no change mid-question");
@@ -250,4 +251,48 @@ test("circuit breaker: peek never uses up the half-open probe; allow takes it", 
   assert.equal(b.allow(), true); // the real request gets the probe
   assert.equal(b.allow(), false); // one at a time
   assert.equal(b.peek(), false);
+});
+
+test("a short AI outage recovers after llmRecoverMs, not the full calm period", () => {
+  const now = { t: 0 };
+  const s = new HealthSupervisor({ tickMs: 1000, recoverStableMs: 60_000, llmRecoverMs: 15_000, slowMs: 1500, slowSttMs: 1500, minSamples: 3 }, () => now.t);
+  s.set({ llmDown: true });
+  s.tick();
+  assert.equal(s.rung, 3);
+  s.set({ llmDown: false }); // breaker cooldown over: a request may go through again
+  s.tick();
+  now.t += 14_000;
+  s.tick();
+  assert.equal(s.rung, 3, "not yet");
+  now.t += 2000;
+  s.tick();
+  assert.equal(s.rung, 0, "back after the short period");
+});
+
+test("a hard AI error (key rejected, spend cap) keeps the full calm period", () => {
+  const now = { t: 0 };
+  const s = new HealthSupervisor({ tickMs: 1000, recoverStableMs: 60_000, llmRecoverMs: 15_000, slowMs: 1500, slowSttMs: 1500, minSamples: 3 }, () => now.t);
+  s.noteLlmHard();
+  s.set({ llmDown: true });
+  s.tick();
+  s.set({ llmDown: false });
+  s.tick();
+  now.t += 20_000;
+  s.tick();
+  assert.equal(s.rung, 3);
+  now.t += 41_000;
+  s.tick();
+  assert.equal(s.rung, 0);
+});
+
+test("recovery from other reasons is not shortened", () => {
+  const now = { t: 0 };
+  const s = new HealthSupervisor({ tickMs: 1000, recoverStableMs: 60_000, llmRecoverMs: 15_000, slowMs: 1500, slowSttMs: 1500, minSamples: 3 }, () => now.t);
+  s.set({ llmDown: true, costCapped: true });
+  s.tick();
+  s.set({ llmDown: false, costCapped: false });
+  s.tick();
+  now.t += 20_000;
+  s.tick();
+  assert.equal(s.rung, 3);
 });

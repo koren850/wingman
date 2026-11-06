@@ -1,7 +1,7 @@
 // Cards that are not an answer to a question: fact cards from the local snapshot, the proposed client, live notes, must-cover reminders, the capture box (phones, emails, domains), and speaker names.
 import { type Fact } from "../entities.ts";
 import { takeNotes } from "../notes.ts";
-import { covered } from "../brief.ts";
+import { SaidIndex } from "../brief.ts";
 import type { Channel } from "../providers/stt/types.ts";
 import { extract } from "../capture.ts";
 import { status } from "./out.ts";
@@ -102,16 +102,26 @@ export async function notesRound() {
 let lastReminderAt = 0,
   reminderSeq = 0,
   lastReminderKey = "";
-const allText = () => transcript.map((l) => l.text).join(" ");
+// Must-cover check without re-reading the transcript: each line is added to the index once, and an item that is covered stays covered.
+const said = new SaidIndex();
+let saidLines = 0;
+const coveredItems = new Set<string>();
 /** Must-cover items of the brief that no transcript line has touched yet. */
 export function uncovered(): string[] {
-  return (brief?.mustCover ?? []).filter((i) => !covered(i, allText()));
+  for (; saidLines < transcript.length; saidLines++) said.add(transcript[saidLines].text);
+  return (brief?.mustCover ?? []).filter((i) => {
+    if (coveredItems.has(i)) return false;
+    if (!said.covers(i)) return true;
+    coveredItems.add(i);
+    return false;
+  });
 }
 /** Timer job: after reminders.firstAfterMin, every everyMin, lists the brief items still not covered. */
 export function reminderTick() {
   if (!S.reminders.enabled || !brief?.mustCover?.length || !st.call.consented || st.call.shuttingDown) return;
   const min = (Date.now() - callStart) / 60000;
   if (min < S.reminders.firstAfterMin || Date.now() - lastReminderAt < S.reminders.everyMin * 60000) return;
+  if (reminderSeq >= 3) return;
   const left = uncovered();
   if (!left.length) return;
   // The same list every 10 minutes was noise. Remind only when the list changed, at most 3 times a call, 3 items a card.

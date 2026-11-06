@@ -144,7 +144,7 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
   private async reconnect(cause: ProviderError) {
     if (this.reconnecting) return;
     if (!cause.retryable && cause.kind !== "network") {
-      this.emit("error", cause);
+      this.emit("error", cause, { terminal: true });
       return;
     } // auth/quota: the manager switches provider
     this.reconnecting = true;
@@ -160,7 +160,7 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
           if (!cause.retryable && cause.kind !== "network") break;
         }
       }
-      if (!this.closing) this.emit("error", cause); // terminal: SttChannel switches provider
+      if (!this.closing) this.emit("error", cause, { terminal: true }); // terminal: SttChannel switches provider
     } finally {
       this.reconnecting = false;
     }
