@@ -15,21 +15,25 @@ import { addressesUser, recentNotes, NOTES_EXISTING_MAX, nextAnswerStart } from 
 type Row = Record<string, any>;
 type Run = { code: number; out: string; err: string; cards: Row[]; events: Row[]; transcript: Row[] };
 /** Runs one offline call. `script` = the scripted speech lines; `wavSeconds` = how long the file clock runs; `stdin` = [ms after start, line] commands (control mode). */
-async function runCall(o: { script: Row[]; wavSeconds?: number; args?: string[]; env?: Record<string, string>; stdin?: [number, string][]; profile?: string }): Promise<Run> {
+async function runCall(o: { script: Row[]; wavSeconds?: number; args?: string[]; env?: Record<string, string>; stdin?: [number, string][]; onStatus?: (m: Row, send: (line: string) => void) => void; profile?: string }): Promise<Run> {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-fix-"));
   const wav = join(tmp, "silence.wav"), script = join(tmp, "script.json");
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * (o.wavSeconds ?? 5)), 2);
   writeFileSync(script, JSON.stringify(o.script));
-  const control = !!o.stdin;
+  const control = !!o.stdin || !!o.onStatus;
   const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", o.profile ?? "e2e", "--file", wav, "--no-brief", ...(o.args ?? [])]), {
     cwd: ROOT, stdio: ["pipe", "pipe", "pipe"],
     env: { ...process.env, WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: "300", ...(control ? { WINGMAN_CONTROL: "1" } : {}), ...o.env },
   });
-  let out = "", err = ""; p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (err += d));
-  const t0 = Date.now();
-  for (const [ms, line] of o.stdin ?? []) setTimeout(() => { try { p.stdin.write(line + "\n"); } catch { /* the process already exited */ } }, ms);
+  const send = (line: string) => { try { p.stdin.write(line + "\n"); } catch { /* the process already exited */ } };
+  let out = "", err = "";
+  p.stdout.on("data", (d) => {
+    out += d;
+    for (const line of d.toString().split("\n")) { if (line.startsWith("@@wingman ")) { try { o.onStatus?.(JSON.parse(line.slice(10)), send); } catch { /* not a status line */ } } }
+  });
+  p.stderr.on("data", (d) => (err += d));
+  for (const [ms, line] of o.stdin ?? []) setTimeout(() => send(line), ms);
   const code: number = await new Promise((res) => p.on("exit", (c) => res(c ?? -1)));
-  void t0;
   if (!existsSync(join(CALLS, "latest"))) throw new Error(`run.ts exited ${code} before it made a call folder\n${out.slice(-1500)}\n${err.slice(-1500)}`);
   const dir = join(CALLS, readlinkSync(join(CALLS, "latest")));
   try {
@@ -70,4 +74,29 @@ test("2. flow mode: a question aimed at the user is not held, a question between
   const between = await runCall({ args: ["--set", "stt.speakers=true"], script: [...talk, voice(2, "ויש גיבוי של האתר אם משהו נופל")] });
   assert.ok(between.events.some((e) => e.type === "flow.hold" && /גיבוי/.test(e.text)), "a question between the others is still held");
   assert.ok(!between.cards.some((c) => c.type === "card" && c.badge === "bank" && /גיבוי/.test(c.say)), "and gets no card");
+});
+
+test("3. finals that arrive while Stop closes the STT channels reach the transcript but start no new answer", { timeout: 60_000 }, async () => {
+  const r = await runCall({
+    wavSeconds: 20, args: [],
+    script: [{ speaker: "them", text: "ויש לכם גיבוי של האתר אם משהו נופל", atMs: 600 }, { speaker: "me", text: "בדיקה אחת שתיים שלוש מה שלומכם", atMs: 900 }],
+    env: { WINGMAN_SCRIPT_CLOSE_FINALS: JSON.stringify([{ speaker: "them", text: "והאתר שלי נטען ממש לאט, למה זה קורה" }, { speaker: "me", text: "שורה אחרונה של המשתמש אחרי העצירה" }]) },
+    onStatus: (m, send) => { if (m.ev === "consented") setTimeout(() => send("stop"), 1100); },   // the "me" line (900 ms) is still in its 700 ms echo delay
+  });
+  assert.equal(r.code, 0, r.err);
+  const said = r.transcript.map((t) => t.text);
+  assert.ok(said.some((t) => /בדיקה אחת שתיים שלוש/.test(t)), `the echo-delayed me final is kept: ${said}`);
+  assert.ok(said.some((t) => /נטען ממש לאט/.test(t)), "the late final of the other side is kept");
+  assert.ok(said.some((t) => /שורה אחרונה/.test(t)), "the late final of the user is kept");
+  assert.ok(!r.cards.some((c) => c.type === "card" && /נטען ממש לאט/.test(c.question ?? "")), "but the late question starts no answer turn");
+});
+
+test("9. two 'me' finals of one utterance keep their order when only the first waits for the echo filter", { timeout: 60_000 }, async () => {
+  const r = await runCall({
+    wavSeconds: 8,
+    script: [{ speaker: "them", text: "אה, רגע אחד", atMs: 100 }, { speaker: "me", text: "החלק הראשון של המשפט שלי", atMs: 3200 }, { speaker: "me", text: "והחלק השני של אותו משפט", atMs: 3400 }],
+  });
+  assert.equal(r.code, 0, r.err);
+  const me = r.transcript.filter((t) => t.ch === "me").map((t) => t.text);
+  assert.deepEqual(me, ["החלק הראשון של המשפט שלי", "והחלק השני של אותו משפט"]);
 });

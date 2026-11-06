@@ -17,7 +17,7 @@ import { frameRound } from "./coach.ts";
 import { speedSummary } from "./cards.ts";
 import { uncovered, liveNotes } from "./side.ts";
 import { sttSeconds } from "./degrade.ts";
-import { pending, meTimers } from "./ingest.ts";
+import { pending, meTimers, acceptLate } from "./ingest.ts";
 import { meTimers2 } from "./me.ts";
 
 /** Audio source stoppers, run first in shutdown(). */
@@ -58,17 +58,20 @@ async function postCallSummary() {
  *  16 s last-resort exit overall. The tray's own SIGINT (12 s) / SIGKILL (20 s) escalation comes after those. */
 export async function shutdown() {
   if (st.call.shuttingDown) return;
-  st.call.shuttingDown = true; st.turn.current?.abort(); notesAbort.abort();
+  // shuttingDown stops everything that would start something new (cards, questions, notes). `closing` lets the STT finals that are still on their
+  // way (the sockets get ~1.5 s to flush) into the transcript and the summary; it ends when the channels are closed.
+  st.call.shuttingDown = true; st.call.closing = true; st.turn.current?.abort(); notesAbort.abort();
   status("stopphase", { phase: "saving" });   // the app shows: saving, then summary, then done (tray/lib.cjs STOP_PHASES)
   const shutdownDeadline = Date.now() + 12_000;
   const hard = setTimeout(() => { console.error("shutdown stuck: forcing exit"); process.exit(1); }, 10_000);   // a hung audio/socket close must not keep the mic open
-  for (const t of meTimers) clearTimeout(t); meTimers.clear();
+  for (const [t, r] of [...meTimers]) { clearTimeout(t); acceptLate(r, true); } meTimers.clear();   // echo-delayed "me" finals: booked now, not lost
   for (const t of meTimers2) clearTimeout(t); meTimers2.clear(); st.me.current?.abort(); clearTimeout(st.ask.timer);
   for (const ch of ["me", "them"] as Channel[]) { clearTimeout(pending[ch]?.timer); delete pending[ch]; }
   for (const s of stops) await s().catch(() => {});
   sup.stop();
   try { rmSync(join(log.dir, "live.jsonl"), { force: true }); } catch { /* best effort: interim words are never worth keeping, even if the rest of the shutdown hangs */ }
   await Promise.all([chans.me?.close(), chans.them?.close()].filter(Boolean)).catch(() => {});
+  st.call.closing = false;
   clearTimeout(hard);
   setTimeout(() => process.exit(st.call.crashed ? 1 : 0), 16_000).unref();   // last resort, before the tray's SIGKILL at 20 s (files are already written)
   // Budget: the tray sends SIGINT at 12 s and SIGKILL at 20 s after Stop, so the final frame + summary share ~12 s from the start of shutdown.

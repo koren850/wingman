@@ -102,22 +102,33 @@ function onResultCore(r: SttResult) {
   if (r.channel === "them" && r.text) echo.noteThem(r.text, r.arrivedAt);
   // "me" lines wait briefly so the client line they may echo has arrived (the two channels' finals are not time-ordered), then go through the echo filter.
   // (No wait when the other side has not spoken within the filter window: there is nothing the mic could be echoing.)
-  if (r.channel === "me" && r.text && st.echo.useFilter && !st.call.shuttingDown && Date.now() - st.voice.lastThemSpeech < ECHO.filterWindowMs + ECHO.filterDelayMs) {
+  // Once one "me" final is waiting, the next one waits too (same delay, so timers fire in order): otherwise a later piece of one utterance would overtake the first.
+  if (r.channel === "me" && r.text && st.echo.useFilter && !st.call.shuttingDown && (meTimers.size > 0 || Date.now() - st.voice.lastThemSpeech < ECHO.filterWindowMs + ECHO.filterDelayMs)) {
     const t = setTimeout(() => { meTimers.delete(t); acceptResult(r, true); }, ECHO.filterDelayMs);
-    meTimers.add(t); return;
+    meTimers.set(t, r); return;
   }
-  acceptResult(r, false);
+  // Stop was pressed and the STT sockets are still flushing: the last words are kept (transcript, summary); the echo filter still applies to the user's line.
+  acceptResult(r, st.call.closing && r.channel === "me" && st.echo.useFilter);
 }
-export const meTimers = new Set<NodeJS.Timeout>();   // pending echo-filter delays (cleared in shutdown)
+/** Pending echo-filter delays: timer -> the "me" final it holds. Shutdown books them at once instead of dropping them (see closeLateFinals). */
+export const meTimers = new Map<NodeJS.Timeout, SttResult>();
+/** A final that arrives after Stop, while the STT channels flush (ws-base.ts waits ~1.5 s for them): it is part of the call, so it goes to transcript.jsonl and the summary input. */
+function bookLate(r: SttResult) {
+  const who = r.channel === "them" && S.stt.speakers ? speakers.of(r.words) : undefined;
+  transcript.push({ ch: r.channel, text: r.text, at: Date.now(), ...(who ? { who } : {}) });
+  log.write("transcript", { ch: r.channel, text: r.text, words: r.words, late: true, ...(who ? { spk: who.spk, ...(who.name ? { name: who.name } : {}) } : {}) });
+}
 /** Takes a final into the call: echo drop, side features (capture, facts, notes), transcript, then buffers it for flush(). */
 function acceptResult(r: SttResult, checkEcho: boolean) { try { acceptResultCore(r, checkEcho); } catch (e) { survived("acceptResult", e); } }
+export function acceptLate(r: SttResult, checkEcho: boolean) { acceptResult(r, checkEcho); }
 function acceptResultCore(r: SttResult, checkEcho: boolean) {
-  if (st.call.shuttingDown) return;
+  if (st.call.shuttingDown && !st.call.closing) return;
   if (r.text.length > 2000) r = { ...r, text: r.text.slice(-2000) };   // a runaway final must not stall the regex/matching
   if (checkEcho) {
     const e = echo.isEcho(r.text);
     if (e.echo) { st.echo.dropped++; log.write("events", { type: "echo.drop", text: r.text, score: Number(e.score.toFixed(2)) }); return; }
   }
+  if (st.call.shuttingDown) { if (r.text) bookLate(r); return; }   // closing: only the transcript; no card, no question, no note, no capture
   if (r.text) {
     st.voice.lastSpeechMono = mono();
     if (r.channel === "them") { st.voice.lastThemText = Date.now(); st.voice.lastThemSpeech = Date.now(); st.voice.themHeard(); }

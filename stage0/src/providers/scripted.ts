@@ -57,7 +57,14 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
     });
   }
   send(pcm: Buffer) { this.audioSeconds += pcm.length / 32000; return true; }
-  async close() { this.isOpen = false; for (const t of this.timers) clearTimeout(t); this.emit("close"); }
+  /** Like a real socket, it delivers its last finals while closing. Test hook: WINGMAN_SCRIPT_CLOSE_FINALS=[{speaker, text}] are emitted ~50 ms after close() starts. */
+  async close() {
+    this.isOpen = false; for (const t of this.timers) clearTimeout(t);
+    const late = (() => { try { return JSON.parse(process.env.WINGMAN_SCRIPT_CLOSE_FINALS ?? "[]") as { speaker: string; text: string }[]; } catch { return []; } })().filter((l) => l.speaker === this.o.channel);
+    if (late.length) await new Promise((r) => setTimeout(r, 50));
+    for (const l of late) { const now = Date.now(); this.emit("result", { channel: this.o.channel, text: l.text, isFinal: true, speechFinal: true, words: [], speechEndWall: now - 300, arrivedAt: now } as SttResult); }
+    this.emit("close");
+  }
 }
 
 /** The "script" STT provider. `id` is cast because SttProvider.id does not list it. */
