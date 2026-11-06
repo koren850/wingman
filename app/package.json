@@ -39,6 +39,7 @@
     "doctor": "tsx src/doctor.ts",
     "test": "tsx --test --test-concurrency=1 src/*.test.ts src/e2e/*.test.ts",
     "eval": "tsx scripts/eval.ts",
+    "demo": "tsx scripts/demo.ts",
     "typecheck": "tsc --noEmit -p .",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:unit && pnpm eval",
     "test:unit": "tsx --test --test-concurrency=1 src/*.test.ts",
