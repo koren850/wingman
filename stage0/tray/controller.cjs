@@ -3,6 +3,7 @@
 // No electron import: it is unit-tested with a fake child process (src/controller.test.ts).
 const nodeFs = require("node:fs");
 const nodePath = require("node:path");
+const { StringDecoder } = require("node:string_decoder");
 const defaultLib = require("./lib.cjs");
 const Plans = require("../shared/plans.js");
 
@@ -62,8 +63,10 @@ function createController(o) {
     c.on("error", (e) => { logLine("ERR spawn " + e.message); notify("Wingman could not start", `${e.message}. Quit Wingman from the menu bar and open it again; if it keeps happening, choose Show log.`); if (child === c) child = undefined; set({ ev: "stderr", text: e.message }); finished.add(c); set({ ev: "exit", code: 1 }); change(); });
     c.stdin.on("error", () => { /* the call already ended */ });
     let buf = "";
+    // A multi-byte letter (Hebrew is two bytes) can be cut between two pipe reads: decode with a stateful decoder, not chunk.toString().
+    const outDec = new StringDecoder("utf8"), errDec = new StringDecoder("utf8");
     c.stdout.on("data", (d) => {
-      buf += d.toString();
+      buf += outDec.write(d);
       let i;
       while ((i = buf.indexOf("\n")) >= 0) {
         const line = buf.slice(0, i); buf = buf.slice(i + 1);
@@ -77,7 +80,7 @@ function createController(o) {
         if (msg.ev === "ended") finish(c, msg.crashed ? 1 : 0);   // saved: Start is allowed again while call.ts lingers about 5 s for the answer window
       }
     });
-    c.stderr.on("data", (d) => { logLine("ERR " + d.toString().trimEnd()); set({ ev: "stderr", text: d.toString() }); change(); });
+    c.stderr.on("data", (d) => { const text = errDec.write(d); if (!text) return; logLine("ERR " + text.trimEnd()); set({ ev: "stderr", text }); change(); });
     c.on("exit", (code, signal) => {
       if (lingering === c) lingering = undefined;
       finish(c, code, signal);
@@ -200,7 +203,8 @@ function createController(o) {
       const p = o.spawn(dcmd, dargs, { cwd: root, env: { ...(o.env || process.env), FORCE_COLOR: "0", ...appEnv() }, detached: true });
       doctorProc = p;
       let out = "";
-      p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (out += d));
+      const dd = new StringDecoder("utf8"), de = new StringDecoder("utf8");
+      p.stdout.on("data", (d) => (out += dd.write(d))); p.stderr.on("data", (d) => (out += de.write(d)));
       set({ ev: "doctor.start" }); change();
       let done = false, timer;
       const fin = () => { if (done) return; done = true; if (timer) clearTimeout(timer); if (doctorProc === p) doctorProc = undefined; const r = lib.doctorSummary(out); set({ ev: "doctor.end", result: r }); change(); resolve(r); };

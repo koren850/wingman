@@ -155,3 +155,21 @@ test("a signal after a clean end (the lingering answer window) does not notify",
   c.emit("exit", null, "SIGTERM");
   assert.ok(!notes.includes("Wingman stopped unexpectedly"));
 });
+
+test("a Hebrew letter split across two stdout chunks is decoded intact", () => {
+  const { ctl, spawned } = fake();
+  ctl.start({}); const c = spawned[0];
+  c.say("waiting", { id: "01ABC" }); c.say("consented");
+  const bytes = Buffer.from(`@@wingman ${JSON.stringify({ ev: "propose", title: "דנה לוי" })}\n`);
+  const cut = bytes.indexOf(Buffer.from("דנה")) + 1;   // inside the first letter
+  c.stdout.emit("data", bytes.subarray(0, cut)); c.stdout.emit("data", bytes.subarray(cut));
+  assert.equal(ctl.getState().proposed, "דנה לוי");
+});
+
+test("a Hebrew letter split across two stderr chunks is decoded intact", () => {
+  const { ctl, spawned } = fake();
+  ctl.start({}); const c = spawned[0];
+  const bytes = Buffer.from("שלום עולם\n");
+  c.stderr.emit("data", bytes.subarray(0, 1)); c.stderr.emit("data", bytes.subarray(1));
+  assert.equal(ctl.getState().lastError, "שלום עולם");
+});
