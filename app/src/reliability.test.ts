@@ -294,9 +294,10 @@ test("overlay: readNewRows caps each tick, waits for half rows, skips a giant ro
   );
   writeFileSync(f, row(7));
   assert.equal(R.readNewRows(tail)[0].i, 7, "replaced (shorter) file is read from the start");
-  const fds0 = readdirSync("/dev/fd").length;
+  const fdCount = () => (existsSync("/dev/fd") ? readdirSync("/dev/fd").length : 0); // no /dev/fd on Windows: the leak check is then a no-op
+  const fds0 = fdCount();
   for (let k = 0; k < 200; k++) R.readNewRows(tail);
-  assert.ok(readdirSync("/dev/fd").length <= fds0 + 1, "no fd leak");
+  assert.ok(fdCount() <= fds0 + 1, "no fd leak");
   rmSync(dir, { recursive: true, force: true });
 });
 test("overlay: the same card by disk and by pipe is shown once; changed content of the same id is shown", () => {

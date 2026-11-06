@@ -14,7 +14,7 @@ import { ROOT } from "./env.ts";
 import { writeWav } from "./audio.ts";
 import { main } from "./cli/index.ts";
 import { HELP } from "./cli/help.ts";
-import { assertMode, tsx, POSIX } from "./test-platform.ts";
+import { assertMode, tsx, POSIX, SYMLINK } from "./test-platform.ts";
 
 const req = createRequire(import.meta.url);
 const { createController } = req("../tray/controller.cjs");
@@ -362,7 +362,7 @@ test("socket: stop --delete --yes always needs the user's click; a no keeps the 
   assert.equal((await srv.handle(JSON.stringify({ v: 1, cmd: "stop_delete", args: { confirm: true } }))).code, "refused");
 });
 
-test("plan attach --file: refuses symlinks, secret folders, key-like names and files outside HOME (unless --force)", async () => {
+test("plan attach --file: refuses symlinks, secret folders, key-like names and files outside HOME (unless --force)", SYMLINK, async () => {
   const r = await rig();
   try {
     const id = (await r.run("plan", "new", "--who", "Dana", "--goal", "g", "--json")).json.plan.id;
@@ -570,8 +570,8 @@ test("start: --plan <id> starts with that meeting, which is used up when the cal
     assert.equal(s.json.mode, "plan");
     assert.equal(s.json.plan.id, a.id);
     const args = r.f.spawned[0].args;
-    assert.equal(args[args.indexOf("--brief") + 1], r.plans.dirOf(a.id) + "/brief.yaml");
-    assert.equal(r.f.spawned[0].opts.env.WINGMAN_ATTACH_DIR, r.plans.dirOf(a.id) + "/files");
+    assert.equal(args[args.indexOf("--brief") + 1], join(r.plans.dirOf(a.id), "brief.yaml"));
+    assert.equal(r.f.spawned[0].opts.env.WINGMAN_ATTACH_DIR, join(r.plans.dirOf(a.id), "files"));
     const st = await r.run("status", "--json");
     assert.equal(st.json.call.planId, a.id);
     assert.equal(st.json.liveCallPlan.name, "Dana, Acme");

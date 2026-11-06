@@ -13,7 +13,7 @@ import { createKeychain, migrateKeysToKeychain, keyStatus, childEnv, realRunner,
 import { main as keysCli } from "./keys-cli.ts";
 import { overlayEnv } from "./overlay.ts";
 import { loadSettings } from "./settings.ts";
-import { assertMode } from "./test-platform.ts";
+import { assertMode, SYMLINK } from "./test-platform.ts";
 
 const require = createRequire(import.meta.url);
 const ipc = require("../dashboard/keys-ipc.cjs");
@@ -335,7 +335,7 @@ test("children that do not need keys get no key env (overlay, ffmpeg...)", () =>
   }
 });
 
-test("migrate refuses a keys.env that is a symlink and never follows a pre-placed temp or backup symlink", async () => {
+test("migrate refuses a keys.env that is a symlink and never follows a pre-placed temp or backup symlink", SYMLINK, async () => {
   const { symlinkSync } = await import("node:fs");
   const dir = tmpHome(),
     real = join(dir, "real.env"),

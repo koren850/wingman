@@ -28,6 +28,7 @@ jobs:
     env:
       # Skip the Electron download and the .app build: CI only needs the engine and the tests.
       WINGMAN_SKIP_APP: "1"
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     defaults:
       run:
         working-directory: app

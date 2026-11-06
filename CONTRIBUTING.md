@@ -94,7 +94,7 @@ The short version. The full list is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md
 - Say what changed and why, in a few sentences.
 - Say how you checked it (which tests, anything you tried by hand).
 - Docs change with the code. If you change a setting, a command or a path, update the docs in the same pull request.
-- CI runs the type check and the tests on macOS. It must be green.
+- CI runs the type check and the tests on macOS. It must be green. Linux and Windows run the unit tests as experimental jobs (a failure there does not block a merge, but do not make it worse). Tests that need macOS, bash or POSIX file modes skip themselves with a reason through `app/src/test-platform.ts`.
 
 ## Security problems
 

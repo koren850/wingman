@@ -7,6 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { neutralizeLinks } from "./summary.ts";
+import { TMP_OUTSIDE_HOME } from "./test-platform.ts";
 import { errStack } from "./errtext.ts";
 
 const PH = "[להשלים: קישור]";
@@ -45,7 +46,7 @@ test(
   },
 );
 
-test("attachments: $HOME from the environment does not move the home folder (F3)", () => {
+test("attachments: $HOME from the environment does not move the home folder (F3)", TMP_OUTSIDE_HOME, () => {
   const A = req("../tray/attachments.cjs");
   const fake = mkdtempSync(join(tmpdir(), "wm-hy-"));
   writeFileSync(join(fake, "a.txt"), "hello");

@@ -206,7 +206,7 @@ Tell the other people on the call that you use Wingman, and follow the recording
 | Platform | Status |
 |---|---|
 | macOS 14.2 or newer | Supported: the full app, live calls and the installer. |
-| Windows, Linux | Not supported. The engine, tests and file replay (`--file`) are being ported and run in CI as experimental legs that may fail; live system-audio capture, the menu-bar app and the installer are macOS only. Help wanted, see [CONTRIBUTING.md](CONTRIBUTING.md). |
+| Windows, Linux | Not supported yet. The engine, tests and file replay (`--file`) are being ported; live system-audio capture, the menu-bar app and the installer are macOS only. CI runs the unit tests on both as experimental jobs that may fail, and the Windows logic (data folder, named pipes, tool launch) has its own tests. Neither has been tried on a real machine yet. **Help wanted**, see [CONTRIBUTING.md](CONTRIBUTING.md). |
 
 Limits: Wingman needs the internet and both keys for live calls, and its answers are hints, not facts. More in the [roadmap](docs/ROADMAP.md).
 

@@ -4,7 +4,7 @@ import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import {
   parseProfile,
   getProfile,
@@ -500,7 +500,7 @@ test("keyterms file: ~/ and absolute paths are not joined to the app folder", ()
   const home = join(homedir(), `.wingman-test-kt-${process.pid}.txt`);
   writeFileSync(home, "gamma\n");
   try {
-    const S2 = loadSettings({ env: {}, userFile: "/nonexistent/x.yaml", argv: ["--set", `stt.keyterms.file=~/${home.split("/").pop()}`] }).settings;
+    const S2 = loadSettings({ env: {}, userFile: "/nonexistent/x.yaml", argv: ["--set", `stt.keyterms.file=~/${basename(home)}`] }).settings;
     assert.deepEqual(loadKeyterms(S2), ["gamma"]);
   } finally {
     rmSync(home, { force: true });

@@ -8,16 +8,15 @@ import { mkdtempSync, readFileSync, rmSync, readdirSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "../env.ts";
+import { tsx } from "../test-platform.ts";
 import { writeWav } from "../audio.ts";
-
-const tsx = join(ROOT, "node_modules", ".bin", "tsx");
 
 test("run.ts: unusable calls folder = one clear line and exit 2, no stack trace", async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wm-nodisk-"));
   const wav = join(tmp, "s.wav");
   await writeWav(wav, Buffer.alloc(16000 * 4 * 2), 2);
   writeFileSync(join(tmp, "afile"), "x");
-  const r = spawnSync(tsx, [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
+  const r = spawnSync(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
     cwd: ROOT,
     encoding: "utf8",
     timeout: 40_000,
@@ -35,7 +34,7 @@ test("run.ts: typed notes are capped (last 20 notes) in the context sent to the 
     calls = join(tmp, "calls");
   const wav = join(tmp, "s.wav");
   await writeWav(wav, Buffer.alloc(16000 * 4 * 12), 2);
-  const c = spawn(tsx, [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
+  const c = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
     cwd: ROOT,
     stdio: ["pipe", "pipe", "pipe"],
     env: {
