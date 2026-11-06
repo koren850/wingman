@@ -553,3 +553,14 @@ test("visible dashboard text follows the glossary (no consent, briefing, bank, s
     );
   }
 });
+
+test("every HTML page has a CSP with default-src 'none' and no unsafe-inline, and no inline style or script", () => {
+  for (const f of ["dashboard/index.html", "overlay/index.html", "tray/prompt.html"]) {
+    const t = read(f);
+    assert.match(t, /Content-Security-Policy/, f);
+    assert.match(t, /default-src 'none'/, f);
+    assert.doesNotMatch(t, /unsafe-inline|unsafe-eval/, f);
+    assert.doesNotMatch(t, /<style[\s>]|\sstyle="|\son[a-z]+="/i, `${f} has inline style or handler`);
+    assert.doesNotMatch(t.replace(/<!--[\s\S]*?-->/g, ""), /<script(?![^>]*\ssrc=)/i, `${f} has an inline script`);
+  }
+});

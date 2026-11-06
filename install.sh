@@ -98,6 +98,10 @@ if [ "$MODE" = uninstall ]; then
     if [ "$FORCE" != 1 ]; then
       case "$REAL_DATA" in "$REAL_HOME/Library/Application Support/"*Wingman*) ;; *) purge_refuse "$DATA_DIR" "it is not a Wingman folder under ~/Library/Application Support. Add --force if you really mean it." ;; esac
     fi
+    # ~/.config/wingman may be a link to somewhere else (a dotfiles repo): after resolving it must still be a folder called wingman inside the home folder.
+    if [ "$FORCE" != 1 ] && [ -d "$CONFIG_DIR" ]; then
+      case "$REAL_CONFIG" in "$REAL_HOME/"*/wingman | "$REAL_HOME/"wingman) ;; *) purge_refuse "$CONFIG_DIR" "it resolves to $REAL_CONFIG, which is not a wingman folder inside your home folder. Add --force if you really mean it." ;; esac
+    fi
     if [ "$DRY" = 1 ]; then say "would ask you to type DELETE"; else
       if [ ! -t 0 ]; then echo "install.sh: --purge needs a terminal to confirm." >&2; exit 1; fi
       read -r -p "  Type DELETE to continue, anything else cancels: " c

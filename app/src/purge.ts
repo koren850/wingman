@@ -3,6 +3,7 @@
 import { readdirSync, rmSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { CALLS } from "./env.ts";
+import { rescueBases } from "./log.ts";
 
 const args = process.argv.slice(2);
 const dirs = () => (existsSync(CALLS) ? readdirSync(CALLS).filter((d) => d !== "latest" && statSync(join(CALLS, d)).isDirectory()) : []);
@@ -40,6 +41,7 @@ if (args[0] === "--older-than") {
   console.log(`${old.length} call(s) older than ${days} day(s) deleted.`);
 } else if (args[0] === "--all") {
   for (const d of dirs()) purge(d);
+  for (const b of rescueBases()) rmSync(b, { recursive: true, force: true }); // rescue copies of transcripts (see CallLog.rescue)
 } else if (args[0]) {
   purge(args[0]);
 } else {

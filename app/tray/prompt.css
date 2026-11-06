@@ -1,0 +1,75 @@
+/* Styles for prompt.html (external file so the CSP needs no 'unsafe-inline'). */
+:root {
+  --bg: #fef7ec;
+  --ink: #3b2414;
+  --muted: #6b5240;
+  --line: #e5d6c2;
+  --accent: #f59e0b;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 18px 20px;
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    15px -apple-system,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+h1 {
+  font-size: 17px;
+  margin: 0 0 4px;
+}
+p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+input,
+textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+textarea {
+  height: 64px;
+  resize: none;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+[hidden] {
+  display: none;
+}

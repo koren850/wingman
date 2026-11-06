@@ -38,6 +38,7 @@ Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN
 | Your profile (name, "about", business, time zone) | `~/.config/wingman/profile.yaml` | Until you delete it | Never in the repo |
 | Your pack (answer cards, house style, word lists) | `~/.config/wingman/pack/` | Until you delete it | Never in the repo |
 | Menu-bar app log | `<data folder>/calls/tray.log` | Until you delete it | Status lines, short error text and the matched client name; no transcript, no keys |
+| Rescue copy (only if a call folder could not be written) | `<data folder>/rescue/<call id>/`, else `<temp folder>/wingman-rescue/<call id>/` | Until you delete it (`pnpm purge --all` removes it) | Folder 700, files 600; a shared or linked temp folder is refused |
 | API keys | macOS Keychain, service `wingman` | Until you remove them | Keychain |
 
 The data folder is also where Electron keeps its own files (cache, local storage). Wingman does not put call content there.
@@ -68,15 +69,16 @@ The menu-bar app listens on `~/.config/wingman/run/control.sock`.
 - Directory mode 700, socket mode 600, and the owner is checked at start.
 - A Unix socket: no network listener, nothing reachable from other machines.
 - A fixed list of commands. Starts are rate-limited. Destructive commands need `--yes`.
-- Any process running as your macOS user can reach the socket, so treat your user account as the trust boundary. Two things are asked of **you**, in a window in the app, because a script cannot click:
+- Any process running as your macOS user can reach the socket, so treat your user account as the trust boundary. Three things are asked of **you**, in a window in the app, because a script cannot click:
   - **Starting a real call from the command line** (`privacy.askBeforeCliStart`, on by default). Without your click the start is refused. Practice calls never ask.
   - **Stopping and deleting a call** (`wingman stop --delete`). It always asks.
+  - **"Start listening"** when `privacy.requireConsentAck` is on (`wingman consent`). It always asks.
 - `wingman plan attach --file` refuses symbolic links, key and `.env` style files, and the folders `~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.config/wingman` and `~/Library/Keychains`. A file outside your home folder needs `--force`.
 - Call content is private: the CLI help tells agents not to paste transcripts anywhere but your own terminal.
 
 ## The app itself
 
-- The window and the answer window load no web content. They run with a strict Content-Security-Policy (the answer window's script is an external file, with no inline script), navigation is blocked, and the preload bridge exposes only a fixed list of commands.
+- The window and the answer window load no web content. They run with a strict Content-Security-Policy (every page loads only its own script and style files: no inline script, no inline style, no `unsafe-inline`), navigation is blocked, and the preload bridge exposes only a fixed list of commands.
 - The built `Wingman.app` has three Electron fuses turned off: `RunAsNode`, the `NODE_OPTIONS` variable and `--inspect`. So the app cannot be used as a general Node runtime or attached to a debugger from outside.
 - Errors are printed as short text, never as the raw error object, because it can contain prompts.
 - Text the AI reads (transcript, background, notes) is wrapped in tags. Any tag-like text inside it is stripped until none is left, so a spoken or pasted payload cannot close the wrapper.
@@ -94,7 +96,7 @@ The answer window has content protection on, which asks macOS to hide it from sc
 
 - AI text passes through code guards that replace prices, dates, timelines and promises with a stall line. Guards are patterns and can miss a paraphrase. Treat every card as a hint.
 - AI cards are labelled "AI · not verified". Prepared cards are the ones you wrote.
-- The summary and the follow-up email draft are drafts. Prices, dates and promises become `[להשלים: ...]` placeholders for you to fill in.
+- The summary and the follow-up email draft are drafts, marked "Written by AI, so check it before you send". Prices, dates and promises become `[להשלים: ...]` placeholders for you to fill in. So does every link, web address (also an IP address, or one hidden with zero-width or fullwidth characters), email address and phone number that is not in your own notes, because the other side of a call can try to make the model write one into your email.
 
 ## Known gaps
 
