@@ -4,7 +4,7 @@
 // The tray app drives this process with WINGMAN_CONTROL=1 (line commands on stdin, "@@wingman {json}" lines on stdout).
 // This file only wires the modules in src/engine/ together; the engine map and data flow are in docs/ARCHITECTURE.md,
 // the tray IPC contract is at the top of engine/control.ts. State is module-level on purpose (one call per process); everything async checks `shuttingDown`.
-// Safety and cost: nothing is sent for transcription before `consented`; AI text passes guards.ts; budget.maxUsdPerCall caps model jobs.
+// Safety and cost: audio is sent for transcription only once listening has started (`consented`): at call start by default, or after "Start listening" when privacy.requireConsentAck is on (ADR 29); AI text passes guards.ts; budget.maxUsdPerCall caps model jobs.
 import { st } from "./engine/state.ts";
 import { fileArg, noAi, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO } from "./engine/boot.ts";
 import { setPhase, status, health, safe } from "./engine/out.ts";
@@ -23,6 +23,7 @@ log.onWriteFail = (e) => {
     health(
       "disk",
       "amber",
+      // User-facing health text (Hebrew, the default UI language): "The call cannot be saved to disk (no space?). The call goes on, but the recording and summary may be partial. Free some disk space."
       "לא ניתן לשמור את השיחה בדיסק (אין מקום?). השיחה ממשיכה, אבל ההקלטה והסיכום עלולים להיות חלקיים. פנה מקום בדיסק",
       String(e?.message ?? e),
     );
