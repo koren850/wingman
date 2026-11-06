@@ -34,7 +34,7 @@ Everything above ran on synthetic voices and hidden-window snapshots. Not yet ch
 
 ## Known limits
 
-- **macOS only** for the full app (system audio capture needs macOS 14.2 or newer). Windows and Linux are not supported. The engine, tests and file replay are being ported (CI runs them as experimental legs that may fail); the live app is macOS only. Help wanted.
+- **macOS only** for the full app (system audio capture needs macOS 14.2 or newer). The engine and file replay run on Linux (tested in CI) and are being made to run on Windows; the live app does not. Help wanted.
 - **Hebrew first.** English works; other languages are untested.
 - Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.10 an hour for speech plus roughly 5 to 20 cents for AI. Prices in the config are estimates.
 - Not a recording or consent tool; the user is responsible for telling participants (see [PRIVACY-AND-SECURITY.md](PRIVACY-AND-SECURITY.md)).

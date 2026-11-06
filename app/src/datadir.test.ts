@@ -223,7 +223,7 @@ test("ensureUserData migrates for a normal start (home and appDir injected)", ()
     home = tmp();
   const r = migrate.ensureUserData({ env: {}, home, appDir: o.appDir, log: () => {} });
   assert.equal(r.status, "migrated");
-  assert.ok(existsSync(join(home, "Library", "Application Support", "Wingman", "calls", "01AAA", "call.json")));
+  assert.ok(existsSync(join(paths.dataDir({}, home), "calls", "01AAA", "call.json")));
   assert.equal(readdirSync(o.calls).includes("01AAA"), true);
 });
 
@@ -236,7 +236,7 @@ test("ensureUserData also finds old data in the former app folder name (stage0),
   put(join(legacy, "data", "private", "entities.json"), "{}");
   const r = migrate.ensureUserData({ env: {}, home, appDir: join(base, "app"), log: () => {} });
   assert.equal(r.status, "migrated");
-  const data = join(home, "Library", "Application Support", "Wingman");
+  const data = paths.dataDir({}, home); // the default for this platform
   assert.ok(existsSync(join(data, "calls", "01OLD", "call.json")) && existsSync(join(data, "entities.json")));
   assert.ok(existsSync(join(legacy, "calls", "01OLD", "call.json")), "the old copy is left in place");
 });

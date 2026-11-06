@@ -15,12 +15,12 @@ permissions:
 
 jobs:
   test:
-    name: test (${{ matrix.os }})${{ matrix.os != 'macos-latest' && ' (experimental)' || '' }}
+    name: test (${{ matrix.os }})${{ matrix.os == 'windows-latest' && ' (experimental)' || '' }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
-    # macOS is the supported platform and gates the build. Linux and Windows run the same checks but may fail for now:
-    # the engine, tests and file replay are being ported (see docs). Remove this line once they are green.
-    continue-on-error: ${{ matrix.os != 'macos-latest' }}
+    # macOS is the supported platform. Linux runs the same checks and gates the build too (engine and file replay only; no live capture).
+    # Windows may still fail while it is being ported (see docs). Remove this line once it is green.
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -49,6 +49,17 @@ jobs:
       - name: Enable pnpm for Node 24
         run: corepack enable
 
+      # File replay and the end-to-end tests decode audio with ffmpeg.
+      - name: Install ffmpeg (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: .
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install ffmpeg (macOS, if missing)
+        if: matrix.os == 'macos-latest'
+        working-directory: .
+        run: command -v ffmpeg || brew install ffmpeg
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -69,14 +80,14 @@ jobs:
       - name: Unit tests
         run: pnpm test:unit
 
-      # The subprocess tests (the real call loop with scripted speech and a scripted model) take most of the run time: macOS only.
+      # The subprocess tests (the real call loop with scripted speech and a scripted model) take most of the run time: not on Windows yet.
       - name: End-to-end tests
-        if: matrix.os == 'macos-latest'
+        if: matrix.os != 'windows-latest'
         run: pnpm test:e2e
 
       # Offline evaluation (detector, bank matcher, guards). Fails when a metric drops below app/qa/eval-baseline.json.
       - name: Evaluation
-        if: matrix.os == 'macos-latest'
+        if: matrix.os != 'windows-latest'
         run: pnpm eval
 
       # Informational: prints line and branch coverage (Node's built-in coverage). No threshold, and a failure here never fails the build.
