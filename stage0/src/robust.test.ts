@@ -68,8 +68,8 @@ test("health: other recoveries still need the stable minute", () => {
   s.set({ llmDown: true, themDead: true }); s.tick(); s.set({ themDead: false }); now.t += 10_000; s.tick(); assert.equal(s.rung, 3, "llmDown keeps rung 3 and recovery waits");
   s.set({ llmDown: false }); now.t += 30_000; s.tick(); assert.equal(s.rung, 3);
 });
-test("run.ts: the silent-while-talking heuristic never sets themDead (source check)", () => {
-  const src = readFileSync(join(ROOT, "src", "run.ts"), "utf8");
+test("engine: the silent-while-talking heuristic never sets themDead (source check)", () => {
+  const src = readFileSync(join(ROOT, "src", "engine", "watchdogs.ts"), "utf8");
   const calm = src.slice(src.indexOf('log.write("events", { type: "watchdog.silent-them"'), src.indexOf('}), 2000).unref();', src.indexOf('watchdog.silent-them')));
   assert.ok(calm.includes('"only-you"') && !/themDead/.test(calm), "calm branch must not touch themDead");
 });
@@ -196,6 +196,6 @@ test("stt: initial open survives a server that refuses the first 2 connects (moc
   for (;; n++) { try { await ch.open(); break; } catch (e: any) { assert.equal(e.retryable, true, `transient: ${e.kind}`); if (n > 5) throw e; await new Promise((r) => setTimeout(r, 20)); } }
   assert.equal(n, 2); assert.equal(ch.isOpen, true);
   await ch.close(); http.close();
-  const src = readFileSync(join(ROOT, "src", "run.ts"), "utf8");
-  assert.match(src, /Promise\.allSettled\(\[openChannel\(me/); assert.match(src, /30_000\) \{[\s\S]*sttRetryLoop/);
+  const src = readFileSync(join(ROOT, "src", "engine", "stt.ts"), "utf8");
+  assert.match(src, /Promise\.allSettled\(\[openChannel\(chans\.me/); assert.match(src, /30_000\) \{[\s\S]*sttRetryLoop/);
 });

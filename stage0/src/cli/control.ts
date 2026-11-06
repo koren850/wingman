@@ -122,11 +122,15 @@ export async function speaker(ctx: Ctx, args: string[]): Promise<Result> {
 }
 
 /**
- * Compatibility check: does this checkout's src/run.ts know the `ask <text>` stdin command? An older run.ts only knows bare
- * `ask` (the hotkey) and would ignore the text. Looks for askTyped() in the source. False if the file cannot be read.
+ * Compatibility check: does this checkout's call engine know the `ask <text>` stdin command? An older engine only knows bare
+ * `ask` (the hotkey) and would ignore the text. Looks for askTyped() in the engine source (src/engine/me.ts; src/run.ts in older
+ * checkouts). False if no file can be read.
  */
 function engineHasAsk(ctx: Ctx): boolean {
-  try { return /function askTyped/.test(readFileSync(join(ctx.root, "src", "run.ts"), "utf8")); } catch { return false; }
+  for (const f of ["engine/me.ts", "run.ts"]) {
+    try { if (/function askTyped/.test(readFileSync(join(ctx.root, "src", f), "utf8"))) return true; } catch { /* not in this checkout: try the next file */ }
+  }
+  return false;
 }
 
 export async function ask(ctx: Ctx, args: string[]): Promise<Result> {

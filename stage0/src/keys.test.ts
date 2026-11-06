@@ -200,9 +200,9 @@ test("children that do not need keys get no key env (overlay, ffmpeg...)", () =>
     const o = overlayEnv(loadSettings({ argv: [], env: {} }).settings);
     assert.deepEqual(Object.keys(o).filter((k) => /API_KEY/.test(k)), []); assert.ok(!JSON.stringify(o).includes(KEY));
   } finally { for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k]; Object.assign(process.env, saved); }
-  const run = readFileSync(join(ROOT, "src/run.ts"), "utf8");
-  assert.match(run, /for \(const v of KEY_ENV_VARS\) delete process\.env\[v\]/);
-  assert.match(run, /spawn\("caffeinate"[\s\S]*?env: childEnv\(\)/);
+  const boot = readFileSync(join(ROOT, "src/engine/boot.ts"), "utf8"), sources = readFileSync(join(ROOT, "src/engine/audio-sources.ts"), "utf8");
+  assert.match(boot, /for \(const v of KEY_ENV_VARS\) delete process\.env\[v\]/);
+  assert.match(sources, /spawn\("caffeinate"[\s\S]*?env: childEnv\(\)/);
   const audio = readFileSync(join(ROOT, "src/audio.ts"), "utf8");
   assert.equal((audio.match(/spawn\("ffmpeg"/g) || []).length, (audio.match(/env: childEnv\(\)/g) || []).length);
 });
@@ -210,7 +210,7 @@ test("children that do not need keys get no key env (overlay, ffmpeg...)", () =>
 test("static: key values can only reach memory; no logging or persistence path touches them", () => {
   const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
   // 1. Modules that load or handle keys: an explicit allow-list. Anything else importing them is a new leak path to review.
-  const users = ["src/env.ts", "src/keychain.ts", "src/keys-cli.ts", "src/doctor.ts", "src/call.ts", "src/run.ts", "src/gate.ts", "src/summary.ts", "src/settings-cli.ts", "src/providers/llm.ts", "src/keys.test.ts", "src/stt.ts", "src/providers/stt/channel.ts", "src/overlay.ts", "src/audio.ts", "src/cli/status.ts"];   // cli/status.ts: `wingman keys status`, present/missing only (asserted in cli.test.ts)
+  const users = ["src/env.ts", "src/keychain.ts", "src/keys-cli.ts", "src/doctor.ts", "src/call.ts", "src/engine/boot.ts", "src/gate.ts", "src/summary.ts", "src/settings-cli.ts", "src/providers/llm.ts", "src/keys.test.ts", "src/stt.ts", "src/providers/stt/channel.ts", "src/overlay.ts", "src/audio.ts", "src/cli/status.ts"];   // cli/status.ts: `wingman keys status`, present/missing only (asserted in cli.test.ts)
   const walk = (d: string): string[] => readdirSync(join(ROOT, d), { withFileTypes: true }).flatMap((e) => e.isDirectory() ? (e.name === "node_modules" ? [] : walk(join(d, e.name))) : [join(d, e.name)]);
   const files = ["src", "tray", "dashboard", "overlay", "qa"].flatMap(walk).filter((f) => /\.(ts|cjs|js)$/.test(f));
   for (const f of files) {
