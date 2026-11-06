@@ -13,6 +13,9 @@ const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "a
  * Builds the controller. o: { root, spawn (child_process.spawn-like), lib?, fs?, path?, bin?, logPath?, tmpDir?, env?, plans?,
  * notify?(title, body), onChange?(), setTimeout?, kill?, doctorTimeoutMs? } (fs/spawn/timers are injectable for tests).
  * State lives in lib.reduce; every change calls onChange so the tray and window can redraw. Only one call child at a time.
+ * @param {object} o Options as listed above.
+ * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, confirmClient, note, ask, speaker,
+ *   stop, stopDelete, stopNoSummary, skipSummary, briefSaved, briefCleared, boot, refreshPlans, runDoctor, shutdown, logLine.
  */
 function createController(o) {
   const lib = o.lib || defaultLib, fs = o.fs || nodeFs, path = o.path || nodePath;
@@ -130,7 +133,9 @@ function createController(o) {
   }
 
   const api = {
+    /** A copy of the current state (phase, call id, health, doctor result, ...) plus `running`. */
     getState: () => ({ ...state, health: { ...state.health }, running: !!child }),
+    /** True while a call child process exists. */
     isRunning: () => !!child,
     /** Stop and save, but do not write the summary (it can be written later from Calls or `wingman calls summary <id> --generate`). */
     stopNoSummary: () => stop(false, true),
@@ -147,12 +152,17 @@ function createController(o) {
       const exp = o.plans ? o.plans.exportBrief(o2.planId) : null;
       return exp ? startCall([...ai, "--brief", exp.briefFile], { WINGMAN_ATTACH_DIR: exp.attachDir }, exp.meeting.id) : false;
     },
+    /** Starts a practice call (see `practice` above). */
     practice,
+    /** Sends the listening consent while the call waits for it. Returns false in any other phase. */
     consent: () => !!child && state.phase === "waiting" && send("consent"),
+    /** Turns quiet mode on or off during a live call. */
     setQuiet: (on) => !!child && state.phase === "live" && send(on ? "quiet on" : "quiet off"),
     /** "The next thing I say is for you": Ctrl+Opt+A. Works whenever the call is listening. */
     askWingman: () => !!child && state.phase === "live" && send("ask"),
+    /** Confirms the client Wingman has proposed. False when nothing is proposed or one is already confirmed. */
     confirmClient: () => !!child && !!state.proposed && !state.client && send("client"),
+    /** Adds a note (cleaned, at most 300 characters) to the live call. */
     note: (text) => { const t = lib.cleanText(text, 300); return !!child && state.phase !== "stopping" && !!t && send("note " + t); },
     /** A typed question for the live call (the CLI's `wingman ask`; the `ask <text>` stdin command in run.ts). */
     ask: (text) => { const t = lib.cleanText(text, 300); return !!child && state.phase === "live" && !!t && send("ask " + t); },
@@ -163,10 +173,15 @@ function createController(o) {
       if (name.trim() && !t) return false;
       return !!child && state.phase !== "stopping" && send(t ? `speaker ${n} ${t}` : `speaker ${n}`);
     },
+    /** Stops the call gracefully and saves it with its summary. */
     stop: () => stop(false),
+    /** Stops the call and deletes it. Callers must ask the user first. */
     stopDelete: () => stop(true),
+    /** Tells the state machine that a Plan was saved. */
     briefSaved: () => { set({ ev: "brief" }); change(); },
+    /** Tells the state machine that the Plan was cleared. */
     briefCleared: () => { set({ ev: "boot", briefReady: false }); change(); },
+    /** Sets the initial state at app start: whether a prepared meeting exists and the plans signature. */
     boot: (briefReady, plansKey) => { set({ ev: "boot", briefReady, plansKey }); change(); },
     /** Re-reads the prepared meetings (they change from the window, the CLI or by expiring); redraws only when the list changed. */
     refreshPlans: () => {
@@ -193,6 +208,7 @@ function createController(o) {
     }),
     /** App is quitting: ask the call to stop, force it off a bit later. */
     shutdown: () => { if (doctorProc) killGroup(doctorProc, "SIGKILL"); dropLingering(); if (!child) return; send("stop"); const c = child; st(() => killGroup(c, "SIGKILL"), 8000); },
+    /** Appends a timestamped line to the controller log (no-op without `logPath`). */
     logLine,
   };
   return api;
