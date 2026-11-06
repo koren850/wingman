@@ -7,10 +7,11 @@
 //   pnpm summary <callId|latest>   (re)generates it for a saved call from transcript.jsonl + events.jsonl.
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import type { KeyName } from "./env.ts";
 import { existsSync, readFileSync, writeFileSync, appendFileSync, realpathSync, chmodSync } from "node:fs";
 import { join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ModelRegistry, providerOptionsFor, parseModelRef } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, parseModelRef } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { getProfile, userName, genderNote, isMeLabel, ME_LABEL } from "./profile.ts";
 import { guard } from "./guards.ts";
@@ -80,15 +81,16 @@ const strList = (x: unknown, max: number): string[] => (Array.isArray(x) ? x : t
 /** Defensive parse: accepts an object, JSON text, or text with prose / ```json fences around the JSON. Missing fields become empty. */
 export function parseSummary(input: unknown, ctx: { frame?: Frame } = {}): Fields | undefined {
   const offClient = !!ctx.frame && !isAgencyKind(ctx.frame.kind);
-  let o: any = input;
+  let parsed: unknown = input;
   if (typeof input === "string") {
     const t = input.replace(/```(?:json)?/gi, "");
     const a = t.indexOf("{"), b = t.lastIndexOf("}");
     if (a < 0 || b <= a) return undefined;
-    try { o = JSON.parse(t.slice(a, b + 1)); } catch { return undefined; }
+    try { parsed = JSON.parse(t.slice(a, b + 1)); } catch { return undefined; }
   }
-  if (!o || typeof o !== "object" || Array.isArray(o)) return undefined;
-  const nextSteps: NextStep[] = (Array.isArray(o.nextSteps) ? o.nextSteps : []).flatMap((n: any): NextStep[] => {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+  const o = parsed as Record<string, unknown>;
+  const nextSteps: NextStep[] = (Array.isArray(o.nextSteps) ? o.nextSteps : []).flatMap((n: string | { what?: unknown; task?: unknown; text?: unknown; when?: unknown; who?: unknown } | null): NextStep[] => {
     if (typeof n === "string") { const what = str(n); return what ? [{ who: ME_LABEL, what }] : []; }
     const what = str(n?.what ?? n?.task ?? n?.text), when = str(n?.when, 80);
     if (!what) return [];
@@ -180,16 +182,16 @@ export async function generateSummary(o: GenerateOpts): Promise<{ fields: Fields
   let hardTimer: NodeJS.Timeout | undefined;
   const hard = new Promise<never>((_, rej) => { hardTimer = setTimeout(() => rej(new Error(`summary timed out after ${o.timeoutMs} ms`)), o.timeoutMs + 300); hardTimer.unref?.(); });
   try {
-    const call = (o.generate ?? generateText)({
+    const call = generateOnce(o.generate, {
       model, maxOutputTokens: 2000, maxRetries: 0, abortSignal: abort,
       providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
       // AI SDK 7: native structured output via `output`; `instructions` carries the system text (no cache marker: one call per call, a cache write would cost more).
       output: Output.object({ schema: fieldsSchema, name: "call_summary" }),
       instructions: { role: "system", content: summarySystem() + kindGuidance(o.data.frame?.kind) },
       messages: [{ role: "user", content: buildPrompt(o.data) }],
-    } as any);
+    });
     call.catch(() => {});   // a late rejection after the timeout must not become an unhandled rejection
-    const r: any = await Promise.race([call, hard]);
+    const r = await Promise.race([call, hard]);
     const fields = parseSummary(r.output, { frame: o.data.frame }) ?? parseSummary(r.text, { frame: o.data.frame });
     if (!fields) throw new Error("summary: the model answer had no usable fields");
     return { fields, usage: r.usage ?? r.totalUsage, providerMetadata: r.providerMetadata };
@@ -265,7 +267,8 @@ export function formatShort(s: CallSummary): string {
 }
 
 // ---------- saved calls ----------
-const readRows = (dir: string, f: string): any[] => {
+type Row = Record<string, unknown>;
+const readRows = (dir: string, f: string): Row[] => {
   try { return readFileSync(join(dir, f), "utf8").split("\n").filter(Boolean).flatMap((l) => { try { return [JSON.parse(l)]; } catch { return []; } }); } catch { return []; }
 };
 
@@ -274,7 +277,7 @@ export function loadCallData(dir: string): CallData {
   // A voice named (or renamed) during the call: the LAST "speaker" row in cards.jsonl decides its name for every line, early ones included.
   const named = new Map<number, string>();
   for (const c of readRows(dir, "cards.jsonl")) if (c.type === "speaker" && typeof c.spk === "number") named.set(c.spk, typeof c.name === "string" ? c.name.trim() : "");
-  const whoOf = (r: any): string | undefined => {
+  const whoOf = (r: Row): string | undefined => {
     if (r.ch !== "them") return undefined;
     if (typeof r.spk === "number") return (named.has(r.spk) ? named.get(r.spk) : typeof r.name === "string" ? r.name : "") || `Speaker ${r.spk}`;
     return typeof r.name === "string" && r.name ? r.name : undefined;
@@ -308,7 +311,7 @@ async function main() {
   else { console.error(`No such call: ${idArg}`); process.exit(2); }
   const { settings: S } = loadSettingsOrExit(args.filter((a) => a !== idArg));
   const provider = parseModelRef(S.summary.model).provider;
-  const keys = requireKeys(provider === "scripted" ? [] : [provider as any], expandHome(S.keys.file));
+  const keys = requireKeys(provider === "scripted" ? [] : [provider as KeyName], expandHome(S.keys.file));
   const data = loadCallData(dir);
   const callId = basename(dir);
   if (!data.lines.length) { console.error(`Call ${callId} has no transcript.`); process.exit(1); }
@@ -322,7 +325,7 @@ async function main() {
   // Keep the dashboard's cost view right: add a new totals row (the dashboard reads the last role "summary" row).
   const prev = readRows(dir, "usage.jsonl").filter((u) => u.role === "summary").at(-1);
   if (prev && typeof prev.totalUsd === "number") {
-    appendFileSync(join(dir, "usage.jsonl"), JSON.stringify({ ...prev, t: Date.now(), llmUsd: (prev.llmUsd ?? 0) + cost.llmUsd, totalUsd: prev.totalUsd + cost.llmUsd }) + "\n", { mode: 0o600 });
+    appendFileSync(join(dir, "usage.jsonl"), JSON.stringify({ ...prev, t: Date.now(), llmUsd: (typeof prev.llmUsd === "number" ? prev.llmUsd : 0) + cost.llmUsd, totalUsd: prev.totalUsd + cost.llmUsd }) + "\n", { mode: 0o600 });
   }
   console.log(formatShort(r.summary!));
   console.log(`\nEmail draft:\n${r.summary!.followUpEmail}`);

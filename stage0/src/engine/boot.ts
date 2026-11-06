@@ -1,7 +1,7 @@
 // Everything the call needs before the first audio frame: settings, API keys (kept in memory only), the prepared brief and card bank, the call log folder,
 // and the long-lived objects (cost meter, health supervisor, trackers). Importing this module starts the call's setup; it never imports another engine module.
 import { KEY_ENV_VARS } from "../keychain.ts";
-import { requireKeys, CALLS, resolveUserPath } from "../env.ts";
+import { requireKeys, CALLS, resolveUserPath, type KeyName } from "../env.ts";
 import { EntitySpotter, loadSnapshot } from "../entities.ts";
 import { loadBrief, briefNotes, isInterview, briefCardsFile, briefTerms, type Brief } from "../brief.ts";
 import { readPack } from "../pack.ts";
@@ -36,7 +36,7 @@ export const discard = S.run.discard;
 export const REFLEX_MODELS = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
 export const keyFile = expandHome(S.keys.file);
 export const NO_KEY = new Set(["script", "scripted"]);   // offline test doubles: providers that need no API key
-export const keys = requireKeys([...new Set([S.stt.provider, ...(noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any, ...(S.summary.enabled ? [parseModelRef(S.summary.model).provider as any] : [])])])].filter((k) => !NO_KEY.has(k)), keyFile);
+export const keys = requireKeys([...new Set([S.stt.provider, ...(noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as KeyName, ...(S.summary.enabled ? [parseModelRef(S.summary.model).provider as KeyName] : [])])])].filter((k): k is KeyName => !NO_KEY.has(k)), keyFile);
 for (const v of KEY_ENV_VARS) delete process.env[v];   // keys now live in `keys` (memory) only: no child of this process (audiotee, ffmpeg...) inherits them
 export const registry = new ModelRegistry(keys);
 

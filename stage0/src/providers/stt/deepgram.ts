@@ -5,9 +5,24 @@ import { EventEmitter } from "node:events";
 import { classifySttError } from "../errors.ts";
 import { speechEndWall, type SttOptions, type SttResult, type SttStreamLike, type SttProvider, type Word } from "./types.ts";
 
+/** One word of a Deepgram "Results" message. */
+interface DgWord { word: string; punctuated_word?: string; start: number; end: number; speaker?: number; confidence?: number }
+/** A Deepgram socket message: only the fields read here. */
+interface DgMessage {
+  type?: string; speech_final?: boolean; is_final?: boolean; from_finalize?: boolean;
+  channel?: { alternatives?: { transcript?: string; confidence?: number; words?: DgWord[] }[] };
+}
+/** The part of the SDK socket Wingman uses. The SDK's own types lag behind its runtime (query params, Finalize), so it is typed here. */
+interface DgSocket {
+  readyState: number;
+  on<T = unknown>(event: string, fn: (arg: T) => void): void;
+  connect(): void; waitForOpen(): Promise<unknown>; close(): void;
+  sendMedia(pcm: Buffer): void; sendKeepAlive(m: object): void; sendFinalize(m: object): void; sendCloseStream(m: object): void;
+}
+
 /** See the stall guard note below for the one non-obvious behaviour (an extra Finalize after silence). */
 export class DeepgramStream extends EventEmitter implements SttStreamLike {
-  private conn: any;
+  private conn: DgSocket | undefined;
   private connBytes = 0;   // bytes successfully sent on the CURRENT socket (re-anchored on every (re)open)
   private totalBytes = 0;  // bytes successfully sent overall (cost)
   private opens = 0;
@@ -45,14 +60,15 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   }
 
   /** A failed open must close its client, or the SDK keeps reconnecting it in the background (one leaked socket per retry). */
-  private dropConn() { try { this.conn?.close?.(); } catch { /* best effort: the socket may already be closed */ } this.conn = undefined as any; }
+  private dropConn() { try { this.conn?.close?.(); } catch { /* best effort: the socket may already be closed */ } this.conn = undefined; }
 
   private async openOnce(keyterms: string[]) {
     this.opens = 0;
-    const client = new DeepgramClient({ apiKey: this.opts.apiKey, ...(this.opts.baseUrl ? { baseUrl: this.opts.baseUrl } : {}) } as any);
+    const client = new DeepgramClient({ apiKey: this.opts.apiKey, ...(this.opts.baseUrl ? { baseUrl: this.opts.baseUrl } : {}) });
     // keyterm goes through queryParams: the SDK's own `keyterm` arg JSON-encodes an array into one bad param,
     // while queryParams are serialized as repeated keyterm=... params.
-    this.conn = await client.listen.v1.connect({
+    // (`as never` below: the SDK's option type omits queryParams / Authorization, which its runtime accepts.)
+    const conn = (await client.listen.v1.connect({
       model: this.opts.model && this.opts.model !== "default" ? this.opts.model : "nova-3",
       language: this.opts.language === "auto" ? "multi" : this.opts.language ?? "he",
       encoding: "linear16",
@@ -69,21 +85,22 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
       Authorization: `Token ${this.opts.apiKey}`,
       debug: this.opts.debug ?? false,
       // reconnectAttempts left at the SDK default (30)
-    } as any);
-    this.conn.on("message", (m: any) => this.onMessage(m));
-    this.conn.on("error", (e: unknown) => this.emit("error", classifySttError("deepgram", e)));
-    this.conn.on("open", () => {
+    } as never)) as unknown as DgSocket;
+    this.conn = conn;
+    conn.on<DgMessage>("message", (m) => this.onMessage(m));
+    conn.on("error", (e: unknown) => this.emit("error", classifySttError("deepgram", e)));
+    conn.on("open", () => {
       this.connBytes = 0; this.opens++;
       if (this.opens > 1) this.emit("reconnected", { channel: this.opts.channel, opens: this.opens });
     });
-    this.conn.on("close", (ev: any) => {
+    conn.on<{ code?: number; reason?: string } | undefined>("close", (ev) => {
       if (!this.closing) this.emit("disconnected", { channel: this.opts.channel, code: ev?.code, reason: ev?.reason, error: classifySttError("deepgram", Object.assign(new Error(ev?.reason ?? ""), { code: ev?.code })) });
       this.emit("close");
     });
-    this.conn.connect();
-    await this.conn.waitForOpen();
+    conn.connect();
+    await conn.waitForOpen();
     clearInterval(this.keepAlive);
-    this.keepAlive = setInterval(() => { try { if (this.conn.readyState === 1) this.conn.sendKeepAlive({ type: "KeepAlive" }); } catch { /* best effort: a keep-alive on a dropping socket may throw; the disconnect handler recovers */ } }, this.opts.keepAliveMs ?? 5000);
+    this.keepAlive = setInterval(() => { try { if (this.conn?.readyState === 1) this.conn.sendKeepAlive({ type: "KeepAlive" }); } catch { /* best effort: a keep-alive on a dropping socket may throw; the disconnect handler recovers */ } }, this.opts.keepAliveMs ?? 5000);
   }
 
   get isOpen() { return this.conn?.readyState === 1; }
@@ -114,12 +131,12 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   /** seconds of audio sent so far (for cost) */
   get audioSeconds() { return this.totalBytes / 32000; }
 
-  private onMessage(m: any) {
+  private onMessage(m: DgMessage) {
     if (m?.type === "UtteranceEnd") { this.emit("utteranceEnd", { channel: this.opts.channel, at: Date.now() }); return; }
     if (m?.type !== "Results") return;
     const alt = m.channel?.alternatives?.[0];
     const text: string = alt?.transcript ?? "";
-    const words: Word[] = (alt?.words ?? []).map((w: any) => ({ word: w.punctuated_word ?? w.word, start: w.start, end: w.end, speaker: w.speaker, confidence: w.confidence }));
+    const words: Word[] = (alt?.words ?? []).map((w) => ({ word: w.punctuated_word ?? w.word, start: w.start, end: w.end, speaker: w.speaker, confidence: w.confidence }));
     const last = words.at(-1);
     const arrivedAt = Date.now();
     const speechFinal = !!m.speech_final || (!!m.is_final && !!m.from_finalize);
@@ -134,9 +151,9 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   async close() {
     this.closing = true;
     clearInterval(this.keepAlive);
-    try { this.conn.sendCloseStream({ type: "CloseStream" }); } catch { /* best effort: the socket may already be closed */ }
+    try { this.conn?.sendCloseStream({ type: "CloseStream" }); } catch { /* best effort: the socket may already be closed */ }
     await new Promise((r) => setTimeout(r, this.opts.baseUrl ? 100 : 1500));
-    try { this.conn.close(); } catch { /* best effort: the socket may already be closed */ }
+    try { this.conn?.close(); } catch { /* best effort: the socket may already be closed */ }
   }
 }
 

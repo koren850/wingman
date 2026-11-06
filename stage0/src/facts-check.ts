@@ -10,10 +10,10 @@ const snap = loadSnapshot(ENTITIES_FILE)!;
 const s = new EntitySpotter(snap, { sslWarnDays: 30, minAliasLen: 4 });
 const D = DATA + "/";
 const texts: string[] = [
-  ...JSON.parse(readFileSync(D + "gold/terms.json", "utf8")).map((x: any) => x.sentence),
+  ...(JSON.parse(readFileSync(D + "gold/terms.json", "utf8")) as { sentence: string }[]).map((x) => x.sentence),
   ...readFileSync(D + "questions.tsv", "utf8").split("\n").map((l) => l.split("\t")[0]),
-  ...(YAML.parse(readPack("bank.yaml")) as any[]).flatMap((c) => [c.say, ...c.facts, ...c.triggers]),
-  ...JSON.parse(readFileSync(D + "synthetic/call1.json", "utf8")).turns?.map((t: any) => t.text) ?? [],
+  ...(YAML.parse(readPack("bank.yaml")) as { say: string; facts: string[]; triggers: string[] }[]).flatMap((c) => [c.say, ...c.facts, ...c.triggers]),
+  ...(JSON.parse(readFileSync(D + "synthetic/call1.json", "utf8")) as { turns?: { text: string }[] }).turns?.map((t) => t.text) ?? [],
 ];
 let hits = 0;
 for (const t of texts) for (const f of s.spot(t ?? "")) { hits++; console.log("HIT", f.key, "|", f.title, "|", t); }

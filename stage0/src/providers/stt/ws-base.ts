@@ -20,7 +20,7 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
   protected abstract connectUrl(): Promise<string>;
   protected connectHeaders(): Record<string, string> { return {}; }
   protected abstract onOpen(ws: WebSocket): void;               // send the config frame
-  protected abstract onMessage(msg: any): void;
+  protected abstract onMessage(msg: unknown): void;   // the parsed JSON frame: each provider narrows it to its own shape
   protected keepAliveFrame(): string | undefined { return undefined; }
   protected endFrame(): string | Buffer | undefined { return undefined; }
 
@@ -46,7 +46,7 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
       });
       ws.on("message", (data, isBinary) => {
         if (isBinary) return;
-        let msg: any; try { msg = JSON.parse(data.toString()); } catch { return; }
+        let msg: unknown; try { msg = JSON.parse(data.toString()); } catch { return; }
         try { this.onMessage(msg); } catch (e) { this.emit("error", classifySttError(this.provider, e)); }
       });
       ws.on("unexpected-response", (_req, res) => { clearTimeout(timer); reject(classifySttError(this.provider, Object.assign(new Error(`Unexpected server response: ${res.statusCode}`), { statusCode: res.statusCode }))); });

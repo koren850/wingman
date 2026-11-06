@@ -1,6 +1,6 @@
 // LLM side of the providers layer: ModelRegistry resolves "provider:model" strings to AI SDK language models. Only @ai-sdk/anthropic is installed;
 // other providers are imported on demand and give a clear "pnpm add" error when the package is missing.
-import type { LanguageModel } from "ai";
+import { generateText, type LanguageModel } from "ai";
 import { KEY_VARS, type Keys, type KeyName } from "../env.ts";
 import { classifyLlmError, ProviderError } from "./errors.ts";
 
@@ -27,8 +27,18 @@ export function parseModelRef(ref: string): { provider: string; model: string } 
   return { provider, model };
 }
 
-/** Loads a provider package; injected by tests. */
-export type Importer = (pkg: string) => Promise<any>;
+/** What Wingman reads from a generateText result. */
+export type GenerateResult = { text: string; output?: unknown; usage?: unknown; totalUsage?: unknown; providerMetadata?: unknown };
+/** One non-streamed model call. `options` goes through as is; `generate` is the injected double in tests. The AI SDK's published option
+ *  types do not list the `instructions` field (ai 7) yet, so the one cast for every such call lives here. */
+export function generateOnce(generate: typeof generateText | undefined, options: Record<string, unknown>): Promise<GenerateResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ai 7 accepts `instructions`; its option type does not list it yet
+  return (generate ?? generateText)(options as any) as unknown as Promise<GenerateResult>;
+}
+
+/** Loads a provider package; injected by tests. A package is a bag of exports (factories). */
+export type Importer = (pkg: string) => Promise<Record<string, unknown>>;
+type ModelFactory = (modelId: string) => LanguageModel;
 const defaultImporter: Importer = (pkg) => import(pkg);
 
 /** USD per million tokens for one model (cost estimates). */
@@ -36,7 +46,7 @@ export type Price = { inUsdPerM: number; outUsdPerM: number; cacheReadUsdPerM?: 
 
 /** Resolves model refs to AI SDK models. Provider factories are imported lazily and cached per provider. */
 export class ModelRegistry {
-  private factories = new Map<string, any>();
+  private factories = new Map<string, ModelFactory>();
   constructor(private keys: Keys, private importer: Importer = defaultImporter) {}
 
   /** Throws ConfigError when the package or API key is missing. The key is read when the factory is first built. */
@@ -45,10 +55,10 @@ export class ModelRegistry {
     const spec = LLM_PROVIDERS[provider];
     let make = this.factories.get(provider);
     if (!make) {
-      let mod: any;
+      let mod: Record<string, unknown>;
       try { mod = await this.importer(spec.pkg); }
       catch (e) {
-        if (/Cannot find (module|package)|ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND/.test(String((e as any)?.code ?? "") + String((e as Error)?.message))) {
+        if (/Cannot find (module|package)|ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND/.test(String((e as { code?: unknown } | undefined)?.code ?? "") + String((e as Error)?.message))) {
           throw new ConfigError(`package missing: ${spec.pkg} (needed for "${ref}"). Run: pnpm add ${spec.pkg}`, `pnpm add ${spec.pkg}`);
         }
         throw e;
@@ -57,7 +67,7 @@ export class ModelRegistry {
       if (typeof factory !== "function") throw new ConfigError(`${spec.pkg} has no ${spec.factory} export (unexpected version)`);
       const apiKey = spec.key ? this.keys[spec.key] : "none";
       if (!apiKey) throw new ConfigError(`${KEY_VARS[spec.key!]} is missing for "${ref}"`, `add it in Wingman Settings → Keys (or run: pnpm keys)`);
-      make = factory({ apiKey }); this.factories.set(provider, make);
+      make = (factory as (o: { apiKey: string }) => ModelFactory)({ apiKey }); this.factories.set(provider, make);
     }
     return make(model) as LanguageModel;
   }

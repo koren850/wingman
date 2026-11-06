@@ -11,6 +11,12 @@ import { WsStream } from "./ws-base.ts";
 export const GLADIA_API = "https://api.gladia.io";
 
 /** Gladia adapter on WsStream. connectUrl() does the init POST once; reconnects reuse the returned session url. */
+/** A Gladia socket message: only the fields read here. */
+interface GladiaMessage {
+  type?: string; message?: string;
+  data?: { message?: string; is_final?: boolean; utterance?: { text?: string; end?: number; confidence?: number; words?: { word: string; start: number; end: number; confidence?: number }[] } };
+}
+
 export class GladiaStream extends WsStream {
   private url?: string;
   constructor(opts: SttOptions) { super("gladia", opts); }
@@ -36,13 +42,14 @@ export class GladiaStream extends WsStream {
   protected onOpen(_ws: WebSocket) { /* the session is configured by the init POST: nothing to send */ }
   protected endFrame() { return JSON.stringify({ type: "stop_recording" }); }
 
-  protected onMessage(m: any) {
+  protected onMessage(raw: unknown) {
+    const m = raw as GladiaMessage;
     if (m.type === "error") { this.emit("error", classifySttError("gladia", new Error(String(m.data?.message ?? m.message ?? "error")))); return; }
     if (m.type !== "transcript") return;
     const u = m.data?.utterance; if (!u) return;
-    const words: Word[] = (u.words ?? []).map((w: any) => ({ word: w.word, start: w.start, end: w.end, confidence: w.confidence }));
+    const words: Word[] = (u.words ?? []).map((w) => ({ word: w.word, start: w.start, end: w.end, confidence: w.confidence }));
     const arrivedAt = Date.now(), endS = typeof u.end === "number" ? u.end : words.at(-1)?.end;
-    const r: SttResult = { channel: this.opts.channel, text: String(u.text ?? "").trim(), isFinal: !!m.data.is_final, speechFinal: !!m.data.is_final, words, arrivedAt,
+    const r: SttResult = { channel: this.opts.channel, text: String(u.text ?? "").trim(), isFinal: !!m.data?.is_final, speechFinal: !!m.data?.is_final, words, arrivedAt,
       confidence: typeof u.confidence === "number" ? u.confidence : undefined,
       speechEndWall: endS !== undefined ? speechEndWall(arrivedAt, this.connBytes / 32000, endS) : undefined };
     this.emit("result", r);

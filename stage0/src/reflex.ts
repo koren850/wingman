@@ -203,7 +203,7 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
     // ai 7: system text goes through `instructions` (a system message inside `messages` throws InvalidPromptError).
     instructions: { role: "system", content: o.prefix, ...(cacheOptionsFor(ref, o.cfg.cache) ? { providerOptions: cacheOptionsFor(ref, o.cfg.cache) } : {}) },
     messages: [{ role: "user", content: reflexUserMessage(o) }],
-  } as any);
+  } as never);   // the AI SDK's option type does not list `instructions` (ai 7) yet
 
   let buf = "", tagSent = false, sayDone = false, discarded = false, kind: Tag["kind"] | undefined;
   const me = o.asker === "me";

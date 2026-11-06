@@ -43,7 +43,7 @@ const pct = (a: number[], p: number) => { const s = [...a].sort((x, y) => x - y)
 /** Streams one recording at real-time pace, scores term recall (with aliases) and endpoint-to-final delay. Returns pass/fail. */
 async function run(file: string) {
   const pcm = await decode(file, 1);
-  const stt = new SttStream({ apiKey: keys.deepgram, channel: "them", keyterms, diarize: true, language } as any);
+  const stt = new SttStream({ apiKey: keys.deepgram, channel: "them", keyterms, diarize: true, language });
   stt.on("error", (e) => console.error("stt error", errText(e)));
   const finals: SttResult[] = [];
   const delays: number[] = [];

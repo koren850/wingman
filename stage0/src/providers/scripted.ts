@@ -62,6 +62,7 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
 
 /** The "script" STT provider. `id` is cast because SttProvider.id does not list it. */
 export const script: SttProvider = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the offline test double is not a real provider id
   id: "script" as any, experimental: false,
   capabilities: { keyterms: false, diarize: false, interim: false, maxKeyterms: 0 },
   create: (o) => new ScriptStream(o),
@@ -95,8 +96,9 @@ export function scriptedClassify(prompt: string): string {
   return "NEITHER";
 }
 // Flattens an AI SDK prompt (string or parts) into one string for the keyword matching above.
-function promptText(o: any): string {
-  return (o.prompt ?? []).map((m: any) => (typeof m.content === "string" ? m.content : (m.content ?? []).map((p: any) => p.text ?? "").join(""))).join("\n");
+function promptText(o: { prompt?: unknown }): string {
+  const prompt = (o.prompt ?? []) as { content?: string | { text?: string }[] }[];
+  return prompt.map((m) => (typeof m.content === "string" ? m.content : (m.content ?? []).map((p) => p.text ?? "").join(""))).join("\n");
 }
 const bank = loadBank();
 /** Post-call summary double: valid JSON; the email deliberately has a price sentence and a date sentence so tests can see the guards replace them. */
@@ -143,10 +145,12 @@ const finish = { unified: "stop" as const, raw: "end_turn" };
 export function createScripted() {
   return (modelId: string) => new MockLanguageModelV4({
     provider: "scripted", modelId,
-    doGenerate: async (o: any) => ({ content: [{ type: "text", text: scriptedAnswer(promptText(o)) }], finishReason: finish, usage, warnings: [] }) as any,
-    doStream: async (o: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the mock model's result types are stricter than the scripted reply needs
+    doGenerate: async (o) => ({ content: [{ type: "text", text: scriptedAnswer(promptText(o)) }], finishReason: finish, usage, warnings: [] }) as any,
+    doStream: async (o) => {
       const text = scriptedAnswer(promptText(o));
       const parts = [{ type: "stream-start", warnings: [] }, { type: "text-start", id: "t" }, { type: "text-delta", id: "t", delta: text }, { type: "text-end", id: "t" }, { type: "finish", usage, finishReason: finish }];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- as above: the scripted stream parts are plain objects
       return { stream: new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } }) } as any;
     },
   });

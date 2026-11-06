@@ -16,7 +16,7 @@ type Doc = { ran: boolean; ok: boolean; verdict: string; failing: { text: string
 const STOP_TEXT: Record<string, string> = { saving: "saving the call", summary: "writing the summary", done: "finishing" };
 
 // Rolls app health + the last readiness check into ready / attention / not_ready, with the reasons.
-function readiness(running: boolean, health: any[], doctor: Doc | null, phase: string) {
+function readiness(running: boolean, health: { level: string; text: string }[], doctor: Doc | null, phase: string) {
   const reasons: string[] = [];
   let level = "ready" as "ready" | "attention" | "not_ready";
   const bump = (l: typeof level, r: string) => { reasons.push(r); if (l === "not_ready") level = "not_ready"; else if (level === "ready") level = "attention"; };

@@ -17,7 +17,10 @@ const CONFIRM_MS = 60_000;
 const STOP_TEXT: Record<string, string> = { saving: "saving the call", summary: "writing the summary", done: "finishing" };
 
 /** Polls the app status every 400 ms until ok(state) or `ms` passes. Returns the last status (null if the app vanished). */
+// (`state` is the app's status JSON: its shape is checked by the callers' predicates)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function waitFor(ctx: Ctx, ok: (s: any) => boolean, ms: number) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const end = Date.now() + ms; let last: any = null;
   while (Date.now() < end) {
     last = await appStatus(ctx);

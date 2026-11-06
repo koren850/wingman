@@ -14,21 +14,26 @@ export interface Meeting {
   ready: boolean; id: string; title: string; name: string; who: string; goal: string; kind: string; topic: string; notes: string[]; mustCover: string[];
   at: string; atText: string; status: string; used: boolean; callId: string; expiresInMin: number; attachments: { id: string; name: string; chars: number }[];
 }
+/** A meeting as the plan store (tray/plans.cjs, untyped) keeps it: only the fields the CLI reads. */
+interface StoredMeeting {
+  id: string; status: string; title: string; who: string; goal: string; kind: string; topic: string; notes: string[]; mustCover: string[];
+  at?: number; callId?: string; expiresAt: number; fileList: { id: string; name: string; chars: number }[];
+}
 /** The empty answer when no meeting exists (keeps `plan.ready === false` for older callers). */
 const NONE = { ready: false };
 
 export const store = (ctx: Ctx) => plansLib.createPlanStore({ dir: ctx.briefs });
 
 /** One stored meeting -> the shape the CLI prints. */
-export function toMeeting(m: any, now = Date.now()): Meeting {
+export function toMeeting(m: StoredMeeting, now = Date.now()): Meeting {
   return {
     ready: m.status === "ready", id: m.id, title: m.title, name: Plans.label(m), who: m.who, goal: m.goal, kind: m.kind, topic: m.topic, notes: m.notes, mustCover: m.mustCover,
     at: m.at ? new Date(m.at).toISOString() : "", atText: m.at ? Plans.formatAt(m.at, now) : "", status: m.status, used: m.status === "used", callId: m.callId || "",
-    expiresInMin: Math.max(0, Math.round((m.expiresAt - now) / 60000)), attachments: m.fileList.map((f: any) => ({ id: f.id, name: f.name, chars: f.chars })),
+    expiresInMin: Math.max(0, Math.round((m.expiresAt - now) / 60000)), attachments: m.fileList.map((f) => ({ id: f.id, name: f.name, chars: f.chars })),
   };
 }
 /** All ready meetings, soonest first. */
-export function readPlans(ctx: Ctx): Meeting[] { const now = Date.now(); return store(ctx).list().map((m: any) => toMeeting(m, now)); }
+export function readPlans(ctx: Ctx): Meeting[] { const now = Date.now(); return store(ctx).list().map((m: StoredMeeting) => toMeeting(m, now)); }
 
 const item = (s: string) => s.replace(/;/g, ",").replace(/\s+/g, " ").trim();   // ';' splits items when text is typed in the app
 function describe(p: Meeting): string {
@@ -61,7 +66,7 @@ function target(ctx: Ctx, id: string | undefined, what: string) {
   const l = s.list();
   if (l.length === 1) return l[0];
   if (!l.length) throw new CliError("not_found", "There are no prepared meetings.", EXIT.NOT_FOUND, "Make one: wingman plan new --who ...");
-  throw usage(`There are ${l.length} prepared meetings, so say which one to ${what}: --id <id>.\n${listText(l.map((m: any) => toMeeting(m)))}`);
+  throw usage(`There are ${l.length} prepared meetings, so say which one to ${what}: --id <id>.\n${listText(l.map((m: StoredMeeting) => toMeeting(m)))}`);
 }
 
 // plan set|new|edit: --new makes a meeting; --id edits that one; with neither: no meeting yet = make one, exactly one = edit it, several = error.
@@ -103,17 +108,17 @@ async function attach(ctx: Ctx, args: string[]): Promise<Result> {
   if (n !== 1) throw usage("Give exactly one of: --file <path>, --text \"<text>\", --stdin   (and --id <meeting id> when there are several meetings)");
   const m = target(ctx, values.id, "attach to");
   const fs = store(ctx).files(m.id);
-  let r: any;
+  let r: { ok: boolean; id?: string; chars?: number; truncated?: boolean; error?: string };
   if (values.file !== undefined) {
     let bytes: Buffer;
     try { bytes = attachments.readSourceFile(values.file, { force: !!values.force, home: ctx.env.HOME || undefined }); }
-    catch (e: any) { throw e.code === "missing" ? new CliError("not_found", e.message, EXIT.NOT_FOUND) : new CliError("refused", e.message, EXIT.REFUSED); }
+    catch (e) { const err = e as { code?: string; message: string }; throw err.code === "missing" ? new CliError("not_found", err.message, EXIT.NOT_FOUND) : new CliError("refused", err.message, EXIT.REFUSED); }
     r = await fs.addFile(basename(values.file), bytes);
   } else {
     const text = values.text !== undefined ? values.text : await ctx.stdin();
     r = fs.addPaste(text);
   }
-  if (!r.ok) throw new CliError("attach_failed", r.error, EXIT.FAIL);
+  if (!r.ok) throw new CliError("attach_failed", r.error ?? "attaching failed", EXIT.FAIL);
   await refreshApp(ctx);
   const p = toMeeting(store(ctx).get(m.id));
   return { data: { attached: true, id: r.id, planId: m.id, chars: r.chars, truncated: !!r.truncated, attachments: p.attachments }, text: `Background added to "${p.name}" (${r.chars} characters${r.truncated ? ", cut to fit the limit" : ""}), file id ${r.id}.` };
@@ -128,8 +133,8 @@ export async function plan(ctx: Ctx, args: string[]): Promise<Result> {
       const { positionals } = parse(rest, {});
       const s = store(ctx), l = s.list();
       if (positionals.length > 1) throw usage("Usage: wingman plan show [id]");
-      if (positionals[0]) { const m = target(ctx, positionals[0], "show"); const p = toMeeting(m); return { data: { plan: p, plans: l.map((x: any) => toMeeting(x)) }, text: describe(p) }; }
-      const all = l.map((x: any) => toMeeting(x));
+      if (positionals[0]) { const m = target(ctx, positionals[0], "show"); const p = toMeeting(m); return { data: { plan: p, plans: l.map((x: StoredMeeting) => toMeeting(x)) }, text: describe(p) }; }
+      const all = l.map((x: StoredMeeting) => toMeeting(x));
       if (all.length === 1) return { data: { plan: all[0], plans: all }, text: describe(all[0]) };
       return { data: { plan: NONE, plans: all, count: all.length }, text: all.length ? listText(all) : "No prepared meetings." };
     }
@@ -141,7 +146,7 @@ export async function plan(ctx: Ctx, args: string[]): Promise<Result> {
       if (positionals.length !== 1) throw usage("Usage: wingman plan detach <file id> [--id <meeting id>]   (ids: wingman plan show)");
       if (!/^a[0-9a-z]{6,12}$/.test(positionals[0])) throw usage("That is not a background file id.");
       const s = store(ctx);
-      const owner = (values.id ? [target(ctx, values.id, "detach from")] : s.list()).find((m: any) => m.fileList.some((f: any) => f.id === positionals[0]));
+      const owner = (values.id ? [target(ctx, values.id, "detach from")] : s.list()).find((m: StoredMeeting) => m.fileList.some((f) => f.id === positionals[0]));
       if (!owner) throw new CliError("not_found", "No such background file.", EXIT.NOT_FOUND);
       s.files(owner.id).remove(positionals[0]);
       await refreshApp(ctx);
@@ -160,10 +165,10 @@ export async function plan(ctx: Ctx, args: string[]): Promise<Result> {
     case "clear": {   // older command: clears THE plan. With several meetings it refuses: delete one by id.
       parse(rest, {});
       const l = store(ctx).list();
-      if (l.length > 1) throw usage(`There are ${l.length} prepared meetings; \`plan clear\` would not know which. Use: wingman plan delete <id> --yes\n${listText(l.map((m: any) => toMeeting(m)))}`);
+      if (l.length > 1) throw usage(`There are ${l.length} prepared meetings; \`plan clear\` would not know which. Use: wingman plan delete <id> --yes\n${listText(l.map((m: StoredMeeting) => toMeeting(m)))}`);
       if (l.length === 1) store(ctx).remove(l[0].id);
       await refreshApp(ctx);
-      return { data: { cleared: true, deleted: l.map((m: any) => m.id) }, text: l.length ? "The prepared meeting and its background files were deleted." : "No prepared meeting to clear." };
+      return { data: { cleared: true, deleted: l.map((m: StoredMeeting) => m.id) }, text: l.length ? "The prepared meeting and its background files were deleted." : "No prepared meeting to clear." };
     }
     default: throw usage("Usage: wingman plan [list | show [id] | new|set [--id <id>] --title .. --at \"2026-11-03 14:30\" --who .. --goal .. --kind .. --topic .. --note .. --must .. | attach [--id <id>] --file/--text/--stdin | detach <file id> | delete <id> --yes]");
   }

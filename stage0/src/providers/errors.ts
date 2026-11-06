@@ -53,10 +53,17 @@ const ANTHROPIC_TYPES: Record<string, number> = {
   authentication_error: 401, permission_error: 403, not_found_error: 404, request_too_large: 413, rate_limit_error: 429, overloaded_error: 529, api_error: 500, invalid_request_error: 400,
 };
 
+/** The fields read off an error of unknown origin (AI SDK, fetch, ws). All optional: nothing about a thrown value can be trusted. */
+interface ErrorFields {
+  name?: string; message?: string; reason?: string; code?: unknown; type?: string; status?: number; statusCode?: number; isRetryable?: boolean;
+  responseBody?: unknown; responseHeaders?: Record<string, string>; cause?: unknown; data?: { type?: string; error?: { type?: string } };
+}
+const fieldsOf = (e: unknown): ErrorFields | undefined => (e && typeof e === "object" ? (e as ErrorFields) : undefined);
+
 /** AI SDK / Anthropic / any fetch-based LLM error (APICallError, stream error parts, aborts, network). */
 export function classifyLlmError(provider: string, e: unknown): ProviderError {
   if (isProviderError(e)) return e;
-  const x = e as any;
+  const x = fieldsOf(e);
   const name = String(x?.name ?? ""), msg = String(x?.message ?? e);
   if (name === "AbortError" || name === "TimeoutError" || x?.code === "ABORT_ERR") return new ProviderError("timeout", provider, `${provider}: timeout`, { cause: e });
   if (name === "LoadAPIKeyError" || /api key is missing|API key.*(not set|missing)/i.test(msg)) return new ProviderError("auth", provider, `${provider}: API key missing`, { cause: e });
@@ -115,7 +122,8 @@ export function describe(e: ProviderError): string {
 /** Any STT error (SDK error, handshake failure, close event) to a ProviderError. */
 export function classifySttError(provider: string, e: unknown): ProviderError {
   if (isProviderError(e)) return e;
-  const x = e as any, msg = String(x?.message ?? x?.reason ?? e);
-  if (typeof x?.statusCode === "number" || typeof x?.status === "number") return classifyHttp(provider, x.statusCode ?? x.status, msg);
+  const x = fieldsOf(e), msg = String(x?.message ?? x?.reason ?? e);
+  const http = typeof x?.statusCode === "number" ? x.statusCode : typeof x?.status === "number" ? x.status : undefined;
+  if (http !== undefined) return classifyHttp(provider, http, msg);
   return classifyWsClose(provider, typeof x?.code === "number" ? x.code : undefined, msg) ?? new ProviderError("unknown", provider, `${provider}: ${msg}`);
 }

@@ -6,7 +6,7 @@ export type AudioDevice = { name: string; transport: string; defaultInput: boole
 
 /** Parses `system_profiler SPAudioDataType -json` output. Bad JSON gives []. */
 export function parseAudioDevices(json: string): AudioDevice[] {
-  let d: any;
+  let d: { SPAudioDataType?: { _items?: Record<string, unknown>[] }[] } | undefined;
   try { d = JSON.parse(json); } catch { return []; }
   const out: AudioDevice[] = [];
   for (const g of d?.SPAudioDataType ?? []) for (const it of g?._items ?? []) {

@@ -8,8 +8,10 @@ import { CALLS } from "./env.ts";
 
 const arg = process.argv[2];
 const dir = arg ? join(CALLS, arg) : existsSync(join(CALLS, "latest")) ? realpathSync(join(CALLS, "latest")) : join(CALLS, readdirSync(CALLS).filter((d) => d !== "latest").sort().at(-1) ?? "");
-const read = (f: string) => existsSync(join(dir, f)) ? readFileSync(join(dir, f), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
-const cardsById = new Map<string, any>();
+/** One row of a call-folder .jsonl file; only the fields this tool reads. */
+type Row = { id: string; type?: string; badge: string; question?: string; say?: string; health?: boolean; withdraw?: boolean; hidden?: boolean; hiddenReason?: string; useful?: string; bankAt?: number; t?: number };
+const read = (f: string): Row[] => existsSync(join(dir, f)) ? readFileSync(join(dir, f), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Row) : [];
+const cardsById = new Map<string, Row>();
 for (const c of read("cards.jsonl")) {
   if (c.type === "capture" || !c.id) continue;
   if (c.withdraw) { cardsById.delete(c.id); continue; }
@@ -18,7 +20,7 @@ for (const c of read("cards.jsonl")) {
 const cards = [...cardsById.values()];
 if (!cards.length) { console.log(`No cards in ${dir}`); process.exit(0); }
 
-const prev = new Map<string, string>(read("tags.jsonl").map((t: any) => [t.id, t.useful]));
+const prev = new Map<string, string>(read("tags.jsonl").map((t) => [t.id, t.useful as string]));
 const rl = createInterface({ input: process.stdin });
 const lines = rl[Symbol.asyncIterator](); // works for typing and for piped input
 const ask = async (q: string) => { process.stdout.write(q); const r = await lines.next(); return r.done ? "q" : String(r.value); };
@@ -36,9 +38,9 @@ writeFileSync(join(dir, "tags.jsonl"), tags.map((t) => JSON.stringify(t)).join("
 
 // Usefulness gate numbers: useful cards per hour, and the share of questions the bank answered.
 const events = read("events.jsonl"), lat = read("latency.jsonl");
-const times = events.map((e: any) => e.t).filter(Boolean);
+const times = events.map((e) => e.t).filter((t): t is number => !!t);
 const hours = times.length ? Math.max((Math.max(...times) - Math.min(...times)) / 3_600_000, 1 / 60) : 1;
 const useful = tags.filter((t) => t.useful === "y").length;
-const questions = lat.length, bankHits = lat.filter((l: any) => l.bankAt).length;
+const questions = lat.length, bankHits = lat.filter((l) => l.bankAt).length;
 console.log(`\nUseful ${useful}/${tags.length} rated · ${(useful / hours).toFixed(1)} useful cards/hour (gate: >= 2) · bank answered ${questions ? Math.round((100 * bankHits) / questions) : 0}% of ${questions} questions`);
 console.log(`Saved ${join(dir, "tags.jsonl")}`);
