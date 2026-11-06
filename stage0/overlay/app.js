@@ -1,3 +1,7 @@
+  // UI language (setting ui.language, resolved by the engine side to "he" | "en"): the page learns it from ?lang= at load and from the config event. Labels live in strings.js.
+  let LANG = WingmanStrings.normLang(new URLSearchParams(location.search).get("lang"));
+  let UIDIR = WingmanStrings.dirOf(LANG);   // direction of the window chrome; card content keeps its own per-line direction (isLatin)
+  const tr = (key, vars) => WingmanStrings.t(LANG, key, vars);   // not named t: many functions below have a local t (a text span)
   const cardsBox = document.getElementById("cards");
   const healthBox = document.getElementById("health");
   const emptyBox = document.getElementById("empty");
@@ -15,13 +19,14 @@
     if (el._dir0 === undefined) el._dir0 = el.getAttribute("dir");
     if (!el.childNodes.length) { if (WingmanText.isLatin(text)) el.dir = "ltr"; else if (el._dir0) el.dir = el._dir0; else el.removeAttribute("dir"); }
     if (WingmanText.isLatin(text) && el.dir !== "ltr") { const b = document.createElement("bdi"); b.dir = "ltr"; b.textContent = String(text); el.append(b); return el; }
+    if (WingmanText.isLatin(text) && el.dir === "ltr") { el.append(document.createTextNode(String(text))); return el; }   // a whole English line in an LTR box: one text node (no per-word pieces in a flex box)
     for (const seg of WingmanText.segments(String(text ?? ""))) {
       if (!seg.ltr) { el.append(document.createTextNode(seg.text)); continue; }
       const b = document.createElement("bdi"); b.dir = "ltr"; b.textContent = seg.text; el.append(b);
     }
     return el;
   }
-  const div = (cls, dir = "rtl") => { const d = document.createElement("div"); if (cls) d.className = cls; d.dir = dir; return d; };
+  const div = (cls, dir = UIDIR) => { const d = document.createElement("div"); if (cls) d.className = cls; d.dir = dir; return d; };
   const span = (cls, text) => { const s = document.createElement("span"); if (cls) s.className = cls; if (text != null) s.textContent = text; return s; };
   const fmtKey = (a) => String(a || "").split("+").map((p) => ({ Control: "Ctrl", Alt: "Opt", Option: "Opt", Command: "Cmd" }[p] || p)).join("+");
 
@@ -30,22 +35,16 @@
   function refreshState() {
     const s = phase === "ended" ? "ended" : phase === "waiting" ? "waiting" : paused ? "paused" : quiet ? "quiet" : phase === "starting" ? "starting" : "listening";
     for (const n of ["ended", "paused", "quiet", "starting", "waiting"]) document.body.classList.toggle(n, s === n);
-    const T = {
-      ended: ["השיחה הסתיימה", "השיחה הסתיימה", "פרטי הלקוח נמחקו מהחלון."],
-      paused: ["⏸ מושהה", "מושהה", null],
-      quiet: ["מצב שקט", "מצב שקט", "הכרטיסים נשמרים אבל לא מוצגים בחלון."],
-      starting: ["מתחיל…", "מתחיל את השיחה…", "מתחבר לשמע ולתמלול. עוד כמה שניות."],
-      waiting: ["ממתין לאישור", "מחכה שתאשר התחלת האזנה", null],
-      listening: ["מקשיב", "מקשיב…", "אף אחד עוד לא שאל. התשובות יופיעו כאן."],
-    }[s];
+    const key = (n, part) => "state." + n + (part ? "." + part : "");
+    const T = [tr(key(s)), tr(key(s, "title")), s === "listening" || s === "ended" || s === "quiet" || s === "starting" ? tr(key(s, "sub")) : null];
     stateEl.textContent = T[0]; emptyT.textContent = T[1]; emptyS.replaceChildren();
-    if (s === "paused") mixed(emptyS, `הכרטיסים ממשיכים להישמר, ויוצגו כשתחזור. ${fmtKey(HK.pause)} להמשך.`);
-    else if (s === "waiting") mixed(emptyS, `עוד לא מקשיב. לחץ ${fmtKey("Control+Alt+Return")} או Start listening בתפריט.`);
-    else if (s === "listening" && liveAt) emptyS.textContent = T[2] + ` מקשיב כבר ${elapsed(Date.now() - liveAt)}.`;
+    if (s === "paused") mixed(emptyS, tr("state.paused.sub", { key: fmtKey(HK.pause) }));
+    else if (s === "waiting") mixed(emptyS, tr("state.waiting.sub", { key: fmtKey("Control+Alt+Return") }));
+    else if (s === "listening" && liveAt) emptyS.textContent = T[2] + tr("state.listening.for", { time: elapsed(Date.now() - liveAt) });
     else emptyS.textContent = T[2];
     emptyCheck();
   }
-  const elapsed = (ms) => { const m = Math.floor(ms / 60000); return m < 1 ? "פחות מדקה" : m === 1 ? "דקה" : `${m} דקות`; };
+  const elapsed = (ms) => { const m = Math.floor(ms / 60000); return m < 1 ? tr("time.lessThanMinute") : m === 1 ? tr("time.oneMinute") : tr("time.minutes", { n: m }); };
   let startTimer;
   // First card or line = we are live, but only when call.json writes no phase (then a 4 s timer is the fallback too).
   function listening() { if (phase === "starting" && !realPhase) { phase = "listening"; clearTimeout(startTimer); refreshState(); } }
@@ -56,9 +55,7 @@
   function clearCards() { for (const el of cards.values()) el.remove(); cards.clear(); emptyCheck(); }
 
   // ---- warnings: ONE red fault line (blind now) + ONE muted advisory line ----
-  // (ONLY_YOU_HE is not used; the same text lives in text.js healthText.)
-  const ONLY_YOU_HE = "שומע רק אותך. לתשובות לצד השני, הצטרף לשיחה או הפעל את השמע שלה.";
-  const cleanText = (id, text) => WingmanText.healthText(id, text, fmtKey(HK.ask));
+  const cleanText = (id, text) => WingmanText.healthText(id, text, fmtKey(HK.ask), LANG);
   function drawHealth() {
     healthBox.replaceChildren();
     const faults = [], advs = [];
@@ -96,9 +93,9 @@
 
   // Card types (glossary): Prepared / AI / Buy time / For you / Math / Tip. Each has a glyph + label + tint.
   const TYPE = {
-    bank: { gl: "✔", he: "מוכן מראש" }, ai: { gl: "✦", he: "AI · לא מאומת" }, stall: { gl: "◷", he: "לקנות זמן" },
-    me: { gl: "☆", he: "בשבילך" }, fix: { gl: "✕", he: "תיקון · מה שאמרת" }, careful: { gl: "!", he: "שים לב · התחייבת" }, calc: { gl: "∑", he: "חישוב" }, info: { gl: "ℹ", he: "הודעה" }, consent: { gl: "◔", he: "מחכה שתאשר התחלת האזנה" },
+    bank: { gl: "✔" }, ai: { gl: "✦" }, stall: { gl: "◷" }, me: { gl: "☆" }, fix: { gl: "✕" }, careful: { gl: "!" }, calc: { gl: "∑" }, info: { gl: "ℹ" }, consent: { gl: "◔" },
   };
+  const typeLabel = (b) => tr("badge." + b);
   /** Newest = hero, the rest = compact rows (max 2 shown). Font size is fixed per type, so nothing shrinks while text streams. */
   function layoutRoles() {
     const els = [...cards.values()], hero = els[els.length - 1];
@@ -109,7 +106,7 @@
     updateAges();
   }
   // Age: older cards say how old they are and fade by age.
-  function ageText(ms) { const s = Math.round(ms / 1000); return s < 60 ? `לפני ${s} שנ׳` : `לפני ${Math.round(s / 60)} דק׳`; }
+  function ageText(ms) { const s = Math.round(ms / 1000); return s < 60 ? tr("age.seconds", { n: s }) : tr("age.minutes", { n: Math.round(s / 60) }); }
   function updateAges() {
     const now = Date.now();
     for (const el of cards.values()) {
@@ -122,20 +119,20 @@
   setInterval(() => { updateAges(); if (phase === "listening" && liveAt && !cards.size) refreshState(); }, 10000);
 
   // ---- call frame header + checklist ----
-  const KIND_HE = { client: "לקוח", support: "תמיכה", vendor: "ספק", team: "צוות", consult: "ייעוץ", personal: "אישית", other: "אחר" };
+  const KINDS = ["client", "support", "vendor", "team", "consult", "personal", "other"];
   const frameBox = document.getElementById("frame"), frameTxt = frameBox.querySelector(".ft"), chipEl = document.getElementById("chip"), clBox = document.getElementById("cl");
   function renderFrame(f) {
     if (!f || typeof f !== "object") return;
     const list = Array.isArray(f.checklist) ? f.checklist.filter((c) => c && typeof c.item === "string").slice(0, 12) : [];
-    const kind = KIND_HE[f.kind] || KIND_HE.other, topic = typeof f.topic === "string" ? f.topic : "";
+    const kind = tr("kind." + (KINDS.includes(f.kind) ? f.kind : "other")), topic = typeof f.topic === "string" ? f.topic : "";
     frameTxt.replaceChildren(); const b = document.createElement("b"); b.textContent = kind; frameTxt.append(b);
     if (topic) { frameTxt.append(document.createTextNode(" · ")); mixed(frameTxt, topic); }
     const done = list.filter((c) => c.done).length;
     chipEl.style.display = list.length ? "" : "none"; chipEl.textContent = `${done}/${list.length}`; chipEl.classList.toggle("all", list.length > 0 && done === list.length);
     clBox.replaceChildren();
-    if (f.goal) { const g = div("goal"); g.textContent = "מטרה: "; mixed(g, f.goal); clBox.append(g); }
+    if (f.goal) { const g = div("goal"); g.textContent = tr("frame.goal"); mixed(g, f.goal); clBox.append(g); }
     const ul = document.createElement("ul");
-    for (const c of list) { const li = document.createElement("li"); li.dir = "rtl"; if (c.done) li.className = "done"; const t = document.createElement("span"); mixed(t, c.item); li.append(t); if (c.must) { const m = document.createElement("span"); m.className = "must"; m.textContent = "חובה"; li.append(m); } ul.append(li); }
+    for (const c of list) { const li = document.createElement("li"); li.dir = "rtl"; if (c.done) li.className = "done"; const t = document.createElement("span"); mixed(t, c.item); li.append(t); if (c.must) { const m = document.createElement("span"); m.className = "must"; m.textContent = tr("frame.must"); li.append(m); } ul.append(li); }
     clBox.append(ul);
     frameBox.style.display = "flex";
   }
@@ -144,28 +141,28 @@
   const flowBox = document.getElementById("flow"), youBox = document.getElementById("you"); let youTimer;
   window.wingman.onFlow((f) => {
     if (f.state !== "internal") { flowBox.classList.remove("on"); return; }
-    flowBox.querySelector(".fw").textContent = (f.who || []).map((w) => /^\d+$/.test(w) ? `דובר ${w}` : w).join(" ו") ;
+    flowBox.querySelector(".fw").textContent = (f.who || []).map((w) => /^\d+$/.test(w) ? tr("flow.speaker", { n: w }) : w).join(tr("flow.and"));
     const fx = flowBox.querySelector(".fx"); fx.replaceChildren(); if (f.topic) mixed(fx, "· " + f.topic);
     flowBox.classList.add("on");
   });
   window.wingman.onAddressed((a) => {
     flowBox.classList.remove("on");
     const yt = youBox.querySelector(".yt"); yt.replaceChildren(); mixed(yt, (a.who ? a.who + ": " : "") + (a.text || ""));
-    youBox.classList.add("on"); announce("פונים אליך", a.text || "");
+    youBox.classList.add("on"); announce(tr("flow.youLabel"), a.text || "");
     clearTimeout(youTimer); youTimer = setTimeout(() => youBox.classList.remove("on"), 10000);
   });
   window.wingman.onChecklist(() => { frameBox.classList.toggle("open"); clearTimeout(frameBox._t); if (frameBox.classList.contains("open")) frameBox._t = setTimeout(() => frameBox.classList.remove("open"), 15000); });
 
   // ---- tips ----
   const tipsBox = document.getElementById("tips"), tipEls = new Map();
-  const TIP_KIND = { ask: "לשאול", clarify: "לדייק", term: "מונח", remind: "להזכיר", note: "הערה" };
+  const TIP_KINDS = ["ask", "clarify", "term", "remind", "note"];
   const SVG = "http://www.w3.org/2000/svg";
   function tipIcon() { const s = document.createElementNS(SVG, "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true"); const p = document.createElementNS(SVG, "path"); p.setAttribute("d", "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"); s.append(p); return s; }
   function renderTip(c) {
     let el = tipEls.get(c.id);
     if (!el) { el = div("tip"); tipEls.set(c.id, el); tipsBox.append(el); while (tipEls.size > 2) { const [k, v] = tipEls.entries().next().value; v.remove(); tipEls.delete(k); } setTimeout(() => { el.remove(); tipEls.delete(c.id); }, 90000); }
     el.replaceChildren(tipIcon());
-    const k = document.createElement("span"); k.className = "k"; k.textContent = "טיפ · " + (TIP_KIND[c.tipType] || "טיפ"); el.append(k);
+    const k = document.createElement("span"); k.className = "k"; k.textContent = tr("tip.prefix") + " · " + (TIP_KINDS.includes(c.tipType) ? tr("tip." + c.tipType) : tr("tip.prefix")); el.append(k);
     const t = document.createElement("span"); t.className = "tx"; mixed(t, c.say); el.append(t);
   }
 
@@ -190,19 +187,20 @@
     const calc = c.source === "calc";
     el.className = `card ${c.badge}${c.dim ? " dim" : ""}${consent ? " consent" : ""}${calc ? " calc" : ""}${el.classList.contains("compact") ? " compact" : ""}${el.classList.contains("extra") ? " extra" : ""}`;
     el.replaceChildren(); el._cut = null; el._first = null;
-    const kind = consent ? TYPE.consent : (calc && c.badge === "ai") ? TYPE.calc : TYPE[c.badge] || { gl: "", he: c.badge };
+    const tk = consent ? "consent" : (calc && c.badge === "ai") ? "calc" : c.badge;
+    const kind = { gl: (TYPE[tk] || { gl: "" }).gl, label: TYPE[tk] ? typeLabel(tk) : c.badge };
     const top = div("top");
-    const pill = span("pill"); pill.append(span("gl", kind.gl), document.createTextNode(kind.he + (calc && c.badge === "me" ? " · חישוב" : ""))); top.append(pill, span("age"));
+    const pill = span("pill"); pill.append(span("gl", kind.gl), document.createTextNode(kind.label + (calc && c.badge === "me" ? tr("badge.calcSuffix") : ""))); top.append(pill, span("age"));
     el.append(top);
-    if (c.question && !consent) { const q = div("q"); q.append(span("ql", (c.badge === "fix" || c.badge === "careful") ? "אמרת:" : "עונה על:")); mixed(q, c.question); el.append(q); }
-    el._say = div("say"); el.append(el._say);
+    if (c.question && !consent) { const q = div("q", UIDIR === "ltr" && WingmanText.isLatin(c.question) ? "ltr" : "rtl"); q.append(span("ql", (c.badge === "fix" || c.badge === "careful") ? tr("card.youSaid") : tr("card.answering"))); mixed(q, c.question); el.append(q); }
+    el._say = div("say", "rtl"); el.append(el._say);
     if (c.facts?.length) {
       const ul = document.createElement("ul");
       for (const f of c.facts) { const li = document.createElement("li"); li.dir = "rtl"; mixed(li, f); ul.append(li); }
       el.append(ul);
     }
-    if (c.dim) { const n = div("note-line"); n.textContent = "ביטחון נמוך או שכבר דיברת"; el.append(n); }
-    el._label = kind.he;
+    if (c.dim) { const n = div("note-line"); n.textContent = tr("card.dim"); el.append(n); }
+    el._label = kind.label;
   }
 
   /** Handles one row from calls/latest/cards.jsonl. The same id arrives again as the answer streams or is rewritten, so cards are updated in place. */
@@ -237,7 +235,7 @@
   const rewindBox = document.getElementById("rewind"), rContent = document.getElementById("rcontent"), rNew = document.getElementById("rnew"), capBox = document.getElementById("capture");
   const rewindOpen = () => rewindBox.style.display === "flex";
   function showNewBar(el, c) {
-    rNew.replaceChildren(span("rl", "תשובה חדשה · " + el._label)); const t = span("rt"); mixed(t, String(c.say || "")); rNew.append(t); rNew.style.display = "block"; rNew._id = c.id;
+    rNew.replaceChildren(span("rl", tr("rewind.newAnswer") + el._label)); const t = span("rt"); mixed(t, String(c.say || "")); rNew.append(t); rNew.style.display = "block"; rNew._id = c.id;
   }
   // A new answer while the sheet is open: a bar on top of the sheet, so it is never hidden.
   function newInRewind(el, c) { if (rewindOpen() && c.badge !== "info") showNewBar(el, c); }
@@ -249,11 +247,12 @@
     let recent = lines.filter((l) => l.t >= since);
     if (!recent.length) recent = lines.slice(-4);   // quiet for a while: show the last few lines anyway
     rContent.replaceChildren(); rNew.style.display = "none";
-    const h = div("h"); const ht = document.createElement("span"); ht.textContent = fresh ? `מה אמרו · ${REWIND_S} השניות האחרונות` : "מה אמרו · השורות האחרונות"; const hk = document.createElement("span"); hk.className = "k"; hk.textContent = fmtKey(HK.rewind) + " לסגירה"; h.append(ht, hk); rContent.append(h);
+    const h = div("h"); const ht = document.createElement("span"); ht.textContent = fresh ? tr("rewind.recent", { s: REWIND_S }) : tr("rewind.latest"); const hk = document.createElement("span"); hk.className = "k"; hk.textContent = tr("rewind.close", { key: fmtKey(HK.rewind) }); h.append(ht, hk); rContent.append(h);
     const body = div("body");
-    if (!recent.length) { const e = div("l"); e.textContent = "אין טקסט מהשניות האחרונות"; body.append(e); }
+    if (!recent.length) { const e = div("l"); e.textContent = tr("rewind.empty"); body.append(e); }
     for (const l of recent) {
-      const d = div(`l ${l.ch}`); const who = document.createElement("span"); who.className = "who"; who.textContent = whoLabel(l);
+      const d = div(`l ${l.ch}`, "rtl");   // transcript text is call content: per-line direction, not the chrome direction
+      const who = document.createElement("span"); who.className = "who"; who.textContent = whoLabel(l);
       d.append(who); mixed(d, l.text); body.append(d);
     }
     rContent.append(body);
@@ -261,21 +260,21 @@
     clearTimeout(rewindTimer); rewindTimer = setTimeout(() => { rewindBox.style.display = "none"; rNew.style.display = "none"; }, 20000);
   }
   // Live strip: the newest line from either side, labelled (overlay.showLastLine). Text nodes only.
-  // A short "me" line (< 3 words: "כן", "אוקיי") does not replace the other side's sentence, so the question stays readable.
+  // A short "me" line (< 3 words: "yes", "okay") does not replace the other side's sentence, so the question stays readable.
   let SHOW_LAST = true;
   const lastBox = document.getElementById("last"), lastTxt = lastBox.querySelector(".txt"), lastWho = lastBox.querySelector(".who");
   // partial = words still being spoken (live.jsonl); the final line replaces them. A partial never re-triggers the fade-in.
-  // Who said it: "אני", the name, "דובר 2" when the voices are told apart, else "הצד השני". Text only (names come from the call).
+  // Who said it: "Me", the name, "Speaker 2" when the voices are told apart, else "Other side". Text only (names come from the call).
   // Names given during the call (an introduction, or the user renamed a voice): they also apply to lines already received.
   const NAMES = new Map();
-  const whoLabel = (l) => l.ch === "me" ? "אני" : (Number.isInteger(l.spk) && NAMES.get(l.spk)) || ((typeof l.name === "string" && l.name) ? l.name.slice(0, 40) : Number.isInteger(l.spk) ? `דובר ${l.spk}` : "הצד השני");
+  const whoLabel = (l) => l.ch === "me" ? tr("who.me") : (Number.isInteger(l.spk) && NAMES.get(l.spk)) || ((typeof l.name === "string" && l.name) ? l.name.slice(0, 40) : Number.isInteger(l.spk) ? tr("flow.speaker", { n: l.spk }) : tr("who.them"));
   function showLast(text, ch, partial, who) {
     if (!SHOW_LAST || !text) { lastBox.style.display = "none"; return; }
     const clean = String(text).replace(/\s+/g, " ").trim();
     if (ch === "me" && clean.split(" ").length < 3 && lastBox.style.display === "flex") return;
     lastBox.classList.toggle("partial", !!partial);
     lastTxt.replaceChildren(); mixed(lastTxt, clean.slice(-220));
-    lastWho.textContent = who || (ch === "me" ? "אני" : "הצד השני");
+    lastWho.textContent = who || (ch === "me" ? tr("who.me") : tr("who.them"));
     lastBox._line = { ch, spk: lastBox._spkNext };
     lastBox.classList.toggle("me", ch === "me");
     if (!partial && !lastBox._wasPartial) { lastBox.classList.remove("fresh"); void lastBox.offsetWidth; lastBox.classList.add("fresh"); }
@@ -293,7 +292,7 @@
   const numberChips = () => [...capBox.children].forEach((el, i) => { el.querySelector(".n").textContent = String(i + 1); el.setAttribute("aria-label", `${el.dataset.kind} ${el.dataset.value}, ${fmtKey("Control+Alt+" + (i + 1))}`); });
   window.wingman.onCapture((c) => {
     if (phase === "ended" || caps.has(c.value)) return;
-    const el = document.createElement("div"); el.className = "cap"; el.setAttribute("role", "button"); el.dataset.kind = { phone: "טלפון", email: "מייל", domain: "דומיין" }[c.kind] || c.kind; el.dataset.value = c.value;
+    const el = document.createElement("div"); el.className = "cap"; el.setAttribute("role", "button"); el.dataset.kind = ["phone", "email", "domain"].includes(c.kind) ? tr("cap." + c.kind) : c.kind; el.dataset.value = c.value;
     const n = document.createElement("kbd"); n.className = "n";
     const k = document.createElement("span"); k.className = "k"; k.textContent = el.dataset.kind;
     const v = document.createElement("span"); v.textContent = c.value;
@@ -304,28 +303,29 @@
   });
   window.wingman.onCopied((t) => { const el = caps.get(t); if (el) { el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 1200); } });
   window.wingman.onConfig((c) => {
+    if (c.language) setLanguage(c.language);
     SHOW_LAST = c.showLastLine !== false; if (!SHOW_LAST) lastBox.style.display = "none";
     REWIND_S = c.rewindSeconds || 30; MAX = c.maxCards; HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
     document.documentElement.style.setProperty('--say-pt', c.fontPt + 'px');
     if (c.liveTextPt) document.documentElement.style.setProperty('--live-pt', c.liveTextPt + 'px');
     // Key legend: shared modifiers once, then one key chip per action.
-    const items = [["ask", "שאל אותי"], ["rewind", "מה אמרו"], ["checklist", "רשימה"], ["pause", "השהיה"], ["clear", "ניקוי"]].filter(([k]) => HK[k]).map(([k, l]) => [fmtKey(HK[k]).split("+"), l]);
-    items.splice(Math.min(3, items.length), 0, [["Ctrl", "Opt", "1-3"], "העתק פרט"]);   // chip keys (fixed in main.cjs); Ctrl+Opt+K = chip 1, so it has no row of its own
+    const items = ["ask", "rewind", "checklist", "pause", "clear"].filter((k) => HK[k]).map((k) => [fmtKey(HK[k]).split("+"), tr("keys." + k)]);
+    items.splice(Math.min(3, items.length), 0, [["Ctrl", "Opt", "1-3"], tr("keys.copy")]);   // chip keys (fixed in main.cjs); Ctrl+Opt+K = chip 1, so it has no row of its own
     let common = items.length ? items[0][0].slice(0, -1) : [];
     for (const [p] of items) { let n = 0; while (n < common.length && p[n] === common[n] && n < p.length - 1) n++; common = common.slice(0, n); }
     const keys = document.getElementById("keys"); keys.replaceChildren();
     if (common.length) { const it = span("it"); it.dir = "ltr"; common.forEach((m, i) => { it.append(Object.assign(document.createElement("kbd"), { textContent: m })); if (i < common.length - 1) it.append("+"); }); it.append(" +"); keys.append(it); }
-    for (const [p, label] of items) { const it = span("it"); it.dir = "rtl"; const kb = document.createElement("kbd"); kb.textContent = p.slice(common.length).join("+"); it.append(kb, span("", label)); keys.append(it); }
+    for (const [p, label] of items) { const it = span("it"); it.dir = UIDIR; const kb = document.createElement("kbd"); kb.textContent = p.slice(common.length).join("+"); it.append(kb, span("", label)); keys.append(it); }
     refreshState();
   });
-  // "מקשיב לשאלה שלך…": shown from the ask key until the user has spoken or `until` passes.
+  // "Listening for your question…" indicator: shown from the ask key until the user has spoken or `until` passes.
   const askEl = document.getElementById("ask"); let askTimer, askUntil = 0;
   // seconds left come from the real armed window (run.ts askUntil), redrawn every second
   const drawAsk = () => {
     const s = WingmanAsk.askSecondsLeft(askUntil, Date.now());
     if (s === null) { askEl.style.display = "none"; clearInterval(askTimer); return; }
     askEl.style.display = "flex";
-    askEl.textContent = "מקשיב לשאלה שלך… " + (s < 60 ? s + " שנ׳" : Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"));
+    askEl.textContent = tr("ask.listening", { left: s < 60 ? tr("ask.seconds", { n: s }) : Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") });
   };
   window.wingman.onAsk((a) => {
     clearInterval(askTimer);
@@ -335,6 +335,16 @@
     if (askUntil) askTimer = setInterval(drawAsk, 500);
   });
   window.wingman.onCard(render);
+  /** Applies the UI language to the page chrome: <html lang/dir>, the direction of the strips, and every [data-i18n] label. Card content keeps its own line direction. */
+  function setLanguage(lang) {
+    const L = WingmanStrings.normLang(lang), changed = L !== LANG;
+    LANG = L; UIDIR = WingmanStrings.dirOf(L);
+    const root = document.documentElement; root.lang = L; root.dir = UIDIR;
+    for (const id of ["frame", "flow", "you", "last"]) document.getElementById(id).dir = UIDIR;
+    for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = tr(el.dataset.i18n);
+    if (changed) { refreshState(); drawHealth(); }
+  }
+  setLanguage(LANG);
   // Clears everything about the call (client data too), so nothing stays on screen after the call or when a new call starts.
   function wipe() {
     askUntil = 0; clearInterval(askTimer); askEl.style.display = "none"; frameBox.style.display = "none"; frameBox.classList.remove("open"); for (const v of tipEls.values()) v.remove(); tipEls.clear(); lastBox.style.display = "none"; clearCards();

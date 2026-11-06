@@ -21,8 +21,10 @@ const SNAP = process.env.WINGMAN_OVERLAY_SNAPSHOT;
 // Hidden snapshots: no Dock icon.
 if (SNAP && process.platform === "darwin") { try { app.setActivationPolicy("accessory"); app.dock && app.dock.hide(); } catch { /* no dock */ } }
 // Settings arrive as JSON from src/overlay.ts (call.ts / pnpm overlay). Defaults here equal config/defaults.yaml.
-const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, showLastLine: true, liveTextPt: 22, maxCards: 4, rewindSeconds: 30, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K", checklist: "Control+Alt+L" } },
+const CFG = Object.assign({ enabled: true, display: "secondary", allowPrimary: false, contentProtection: true, fontPt: 30, language: "he", showLastLine: true, liveTextPt: 22, maxCards: 4, rewindSeconds: 30, hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K", checklist: "Control+Alt+L" } },
   (() => { try { return JSON.parse(process.env.WINGMAN_OVERLAY || "{}"); } catch { return {}; } })());
+// UI language of the window: "he" (default, existing behaviour) or "en". src/overlay.ts resolves ui.language=auto before it spawns the window; WINGMAN_OVERLAY_LANG overrides it (snapshots).
+const LANGUAGE = (process.env.WINGMAN_OVERLAY_LANG || CFG.language) === "en" ? "en" : "he";
 let win, timer, lastCapture, endedSent = false, endedCheckAt = 0, phaseKey = "", capList = [];
 const captureKeys = [];   // Ctrl+Opt+1..3 held while the window runs
 // Orphan guard: when the engine (call.ts) that opened this window dies, even by SIGKILL, its stdin pipe closes and its pid disappears: quit.
@@ -74,10 +76,10 @@ function create() {
   // Content protection is ON but UNTESTED with Zoom; the second screen is the real protection.
   // overlay.contentProtection: false (WINGMAN_SHOW_IN_CAPTURE=1) turns it off for the Zoom share test.
   if (CFG.contentProtection) win.setContentProtection(true);
-  win.loadFile(path.join(__dirname, "index.html"));
+  win.loadFile(path.join(__dirname, "index.html"), { query: { lang: LANGUAGE } });   // ?lang= lets the page draw its first frame in the right language (no inline script: CSP)
   // Poll only after the page has its listeners; a reload replays the call files from the start.
   win.webContents.on("did-finish-load", () => {
-    win.webContents.send("config", { maxCards: CFG.maxCards, fontPt: CFG.fontPt, showLastLine: CFG.showLastLine !== false, liveTextPt: CFG.liveTextPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
+    win.webContents.send("config", { language: LANGUAGE, maxCards: CFG.maxCards, fontPt: CFG.fontPt, showLastLine: CFG.showLastLine !== false, liveTextPt: CFG.liveTextPt, rewindSeconds: CFG.rewindSeconds, hotkeys: CFG.hotkeys });
     tails.cards = { file: undefined, offset: 0 }; tails.transcript = { file: undefined, offset: 0 }; tails.live = { file: undefined, offset: 0 }; capList = []; phaseKey = "";
     pageReady = true; replayBacklog();   // rows that only came by the pipe come back after a reload
     clearInterval(timer); timer = setInterval(poll, 100);

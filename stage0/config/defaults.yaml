@@ -203,6 +203,10 @@ privacy:
   storeAudio: false        # audio is never saved (must stay false: the schema rejects true)
   retentionDays: 30        # the readiness check lists saved calls older than this
 
+# ---- Interface language ----
+ui:
+  language: auto           # language of the answer window labels: auto | he | en. auto = Hebrew unless stt.language is en (a profile can set that). Card text from the engine is not translated. Hebrew stays the default for existing users
+
 # ---- Answer window (Electron overlay) ----
 overlay:
   enabled: true            # false = cards only in the terminal and cards.jsonl
