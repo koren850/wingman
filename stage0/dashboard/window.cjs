@@ -275,7 +275,11 @@ function create(ctx) {
   // ---- settings ----
   // Settings read/write run the TypeScript tools as child processes; child() expects one JSON line on stdout (the last one wins).
   const settingsEnv = () => ({ ...require("../src/keychain.cjs").childEnv(process.env), NO_COLOR: "1", FORCE_COLOR: "0" });   // the settings tools never need API keys
-  const child = (args, input) => new Promise((resolve) => {
+  // Writes go one at a time: each write child reads the file, edits it and renames it over the original, so two at once lose an update.
+  // Reads are not queued (but settings:set reads again only after its own write, so the page shows the saved state).
+  const writes = require("./serial.cjs").createQueue();
+  const child = (args, input) => (args.includes("write") ? writes(() => spawnTool(args, input)) : spawnTool(args, input));
+  const spawnTool = (args, input) => new Promise((resolve) => {
     const p = execTsx(args, { cwd: ROOT, timeout: 30_000, maxBuffer: 2_000_000, env: settingsEnv() }, (err, stdout) => {
       const line = String(stdout || "").trim().split("\n").filter(Boolean).pop() || "";
       try { resolve(JSON.parse(line)); } catch { resolve({ ok: false, message: err ? String(err.message).slice(0, 300) : "no answer from the settings tool" }); }
