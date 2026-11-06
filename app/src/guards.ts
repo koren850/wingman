@@ -44,7 +44,7 @@ const PRICE = [
   /\b(hundred|thousand|million|(?:ten|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|one|two|three|four|five|six|seven|eight|nine)(?:[- ]\w+)?)\s+(?:\w+\s+){0,2}(shekels?|nis|dollars?|euros?|bucks|usd|eur)\b/i,
   /\b(costs?|prices?|priced|charge[sd]?|fees?|rates?)\s+(of\s+|at\s+|is\s+|are\s+|about\s+|around\s+)?(\d|a hundred|hundreds?|thousands?)/i,
   // other money nouns followed by a figure: "a monthly retainer of 800", "a deposit of 1,500", "the budget is 20000" (3+ digits, not a measure)
-  /\b(?:retainers?|deposits?|budgets?|quotes?|quoted|estimates?|invoices?|subscriptions?|instal?lments?|surcharges?|markups?)\s+(?:of\s+|at\s+|is\s+|are\s+|for\s+|about\s+|around\s+|roughly\s+)?\d[\d,.]{2,}(?!\s?(?:ms|seconds?|mb|gb|kb|requests?|users?|rows?|lines?|records?))/i,
+  /\b(?:retainers?|deposits?|budgets?|quotes?|quoted|estimates?|invoices?|subscriptions?|instal?lments?|surcharges?|markups?)\s+(?:of\s+|at\s+|is\s+|are\s+|for\s+|about\s+|around\s+|roughly\s+)?\d[\d,.]{2,}(?![\d,.])(?!\s?(?:ms|seconds?|mb|gb|kb|requests?|users?|rows?|lines?|records?))/i,
   // Hebrew: "הצעה של 4,500", "תקציב של 20000", "ריטיינר 800"
   /(?<![א-ת])(?:הצעה|הצעת מחיר|תקציב|ריטיינר|מקדמה|חשבונית|הערכה)\s+(?:של\s+|בסך\s+|כ-?\s?|בערך\s+|בסביבות\s+)?\d[\d,.]{2,}/,
   // spoken digits: "five fifty" (5.50), "nine ninety" (9.90): a unit word followed by a tens word, not a hyphenated compound ("three thirty-minute slots")

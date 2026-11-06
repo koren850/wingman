@@ -131,6 +131,8 @@ export const ALLOWED = [
   "three thirty-minute slots are enough for the migration",
   "the retainer covers 3 sites",
   "הצעה של 3 אפשרויות",
+  "the budget of 5000 users is the plan limit",
+  "a quote for 12000 rows is per upload",
 ];
 
 export const SALARY_BLOCKED = [
