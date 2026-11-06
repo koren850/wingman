@@ -25,7 +25,7 @@ function unitOf(word: string): string | undefined {
 }
 function numOf(word: string): number | undefined {
   const w = word.replace(/[,+]/g, "").replace(/[.?!:;"()]$/g, "");
-  if (/^\d{1,5}$/.test(w)) return Number(w);
+  if (/^\d{1,5}(\.\d{1,2})?$/.test(w)) return Number(w);
   const h = HEB_NUM[strip(w)] ?? HEB_NUM[w];
   return h;
 }
@@ -44,13 +44,26 @@ export function parseClaim(text: string): Claim | undefined {
   return undefined;
 }
 
-/** Numbers the user said, each with the unit that follows within 3 words ("70 80 לקוחות" gives 70 and 80 for customers). */
+/** Numbers the user said, each with the unit that follows. Only the number(s) right before the unit count: a number that belongs to a neighbouring
+ *  unit ("12 clients for 4 years") is skipped, a range ("70-80 customers") gives both ends, "4.5 years" gives 4.5. */
 export function spokenNumbers(line: string): { unit: string; n: number }[] {
   const words = line.split(/\s+/).filter(Boolean), out: { unit: string; n: number }[] = [];
+  const numsIn = (w: string): number[] => {
+    const range = /^(\d{1,5})[-–](\d{1,5})$/.exec(w.replace(/,/g, ""));
+    if (range) return [Number(range[1]), Number(range[2])];
+    const n = numOf(w);
+    return n !== undefined && n > 0 ? [n] : [];
+  };
   for (let i = 0; i < words.length; i++) {
     const u = unitOf(words[i]);
     if (!u) continue;
-    for (let j = Math.max(0, i - 4); j < i; j++) { const n = numOf(words[j]); if (n !== undefined && n > 0) out.push({ unit: u, n }); }
+    let found = false; const got: number[] = [];
+    for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+      const ns = numsIn(words[j]);
+      if (ns.length) { got.unshift(...ns); found = true; continue; }   // keep collecting adjacent numbers ("70 80")
+      if (found || unitOf(words[j]) || /^(and|or|ו|עם|with)$/i.test(words[j]) || /,$/.test(words[j])) break;
+    }
+    for (const n of got) out.push({ unit: u, n });
   }
   return out;
 }

@@ -281,6 +281,8 @@ export function parseReflex(buf: string, final: boolean): { tagLine?: string; sa
     if (!final) return { tagLine: undefined, say: undefined, sayComplete: false, facts: [] };
     return { tagLine: "SKIP (unclear verdict)", say: undefined, sayComplete: false, facts: [] };
   }
+  // Streaming, no real tag line yet (a prose preamble such as "Let me think about this"): wait. The verdict is decided at the end of the stream.
+  if (!final && at < 0 && ne.length) return { tagLine: undefined, say: undefined, sayComplete: false, facts: [] };
   // The model sometimes puts the say-line on the tag line: "ANS: ..." / "BANK dns-basics: ...". Split it.
   const same = ne[0]?.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[\-–](?=\s))[ \t]*(\S.*)$/i);
   if (same) ne.splice(0, 1, same[1], same[2]);
