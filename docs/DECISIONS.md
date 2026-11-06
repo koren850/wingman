@@ -464,7 +464,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 **Alternatives.** Build for it (rejected).
 
-**Consequences.** Documentation and the readiness material say so. Interview mode (a prepared meeting of kind `interview`) exists for practice and for coaching the user with their own prep notes, and it is documented that way. It is not a tool for a real interview or exam that forbids outside help. The rule above still applies to the user, and the user is responsible for following it.
+**Consequences.** Documentation and the readiness material say so. The mode for a prepared meeting of kind `interview` is a mock-interview and practice coach: the user rehearses with their own prep notes, gets suggested answers in their own words, then reviews. It is documented that way. It is not a tool for a real interview or exam that forbids outside help. The rule above still applies to the user, and the user is responsible for following it.
 
 ## ADR 36: Web lookup is not built
 

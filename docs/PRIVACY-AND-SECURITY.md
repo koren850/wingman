@@ -6,7 +6,7 @@ Wingman listens to calls. Read this before you use it on one.
 
 - **Tell the people on your call** that a transcription and AI tool is running, if the law or good manners require it. Recording, transcription and cloud processing of calls are regulated differently in different countries and states, and some require consent from everyone on the call.
 - Wingman is **not a recording or consent tool** and gives no legal advice. By default it starts listening as soon as you start a call and it does not ask for consent. If you want a pause first, turn on Settings -> "Ask me before listening starts": then nothing is sent to the cloud until you press **Start listening**.
-- Do not use it where hidden AI help is not allowed, such as job interviews or exams.
+- Do not use it where hidden AI help is not allowed, such as real job interviews or exams. The interview mode is a practice coach.
 - Do not use it on calls covered by an NDA or a client policy that forbids cloud processing.
 
 ## What leaves your Mac

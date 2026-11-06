@@ -27,7 +27,7 @@ First public release.
 - **`wingman` command line** that drives the running app over an owner-only local socket.
 - **Installer** (`install.sh`) with check, dry run, update and uninstall modes; it never uses sudo.
 - **Swappable pack and profile.** Answer bank, house style and keyterms live in a pack; your name and business live in a profile. An invented example pack is included.
-- **Test and QA tooling.** 600+ unit tests and 19 end-to-end call tests in 63 files, `pnpm eval` with a quality baseline (detector, answer bank, guards) that CI enforces, a synthetic QA harness with 32 invented scenarios, snapshot tools for the windows, and a CI workflow.
+- **Test and QA tooling.** 650+ tests (630+ unit and 19 end-to-end call tests) in 67 files, `pnpm eval` with a quality baseline (detector, answer bank, guards) that CI enforces, a synthetic QA harness with 32 invented scenarios, snapshot tools for the windows, and a CI workflow.
 - **Documentation.** Architecture, 37 architecture decision records, privacy and security guide, development guide, troubleshooting, pack format and roadmap.
 
 ### Security and privacy
