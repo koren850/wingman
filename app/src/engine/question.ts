@@ -333,6 +333,7 @@ function reflexHandlers(t: Turn): ReflexHandlers {
     },
     onSayComplete: (say) => onSayComplete(t, say),
     onDone: (info) => onDone(t, info),
+    onAbortedUsage: (info) => onAbortedUsage(t, info),
   };
 }
 
@@ -473,11 +474,17 @@ function onSayComplete(t: Turn, say: string) {
   lat.cardAt = Date.now();
 }
 
+/** Usage the SDK still reported for a reply that was aborted by the next question: it was billed, so it counts toward the cost and the budget. */
+function onAbortedUsage(t: Turn, { usage, providerMetadata, model }: { usage: unknown; providerMetadata: unknown; model: string }) {
+  const c = cost.addLlm("reflex", model, usage, providerMetadata);
+  log.write("usage", { role: "reflex", model, turnId: t.id, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.reflex.usd, aborted: true });
+}
+
 /** Stream finished: book the cost, mark the model healthy, and upsert the card with its (guarded) facts. */
 function onDone(t: Turn, { usage, providerMetadata, text, model }: Parameters<ReflexHandlers["onDone"]>[0]) {
   const { id: turnId, ai } = t;
-  // Known undercount: a turn aborted by the next question never gets here (reflex.ts returns on abort before it reads the usage), so the tokens the
-  // provider bills for it are not in budget.maxUsdPerCall. Booking them needs the stream result after an abort, which the SDK does not reliably give.
+  // A turn aborted by the next question does not get here; its usage is booked by onAbortedUsage, but only if the SDK reports it after the abort
+  // (ai 7 normally rejects the usage promise on abort, so those tokens stay an undercount in budget.maxUsdPerCall; see docs).
   if (t.ac.signal.aborted) return;
   clearTimeout(t.stallTimer);
   reflexErrors = 0;
