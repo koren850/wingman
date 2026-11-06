@@ -7,7 +7,7 @@
 <p align="center"><b>Real-time answer cards for live calls. Hears both sides, shows a short answer in about a second.<br>macOS, Electron, TypeScript.</b></p>
 
 <p align="center">
-  <a href="https://github.com/koren850/wingman/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/koren850/wingman/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="../../actions/workflows/ci.yml"><img alt="CI" src="../../actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Platform: macOS 14.2+" src="https://img.shields.io/badge/platform-macOS%2014.2%2B-lightgrey.svg">
   <img alt="Node 24" src="https://img.shields.io/badge/node-24-339933.svg">

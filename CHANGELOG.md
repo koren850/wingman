@@ -4,9 +4,9 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## Unreleased
 
-## [0.1.0] - 2026-11-06
+## 0.1.0 - 2026-11-06
 
 First public release.
 
@@ -43,6 +43,3 @@ First public release.
 - The full app supports macOS 14.2 or newer only. See [docs/ROADMAP.md](docs/ROADMAP.md).
 - Hebrew is the first-class language; English works; other languages are untested.
 - Builds are ad-hoc signed, not notarised.
-
-[Unreleased]: https://github.com/koren850/wingman/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/koren850/wingman/releases/tag/v0.1.0
