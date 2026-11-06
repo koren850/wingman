@@ -62,22 +62,55 @@ function callName(meta, events) {
   return clean(plan && plan.title);
 }
 
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+/** The time inside a call id (a ULID: the first 10 characters are milliseconds since 1970 in Crockford base32), or 0 when it is not a plausible time. */
+function idTime(id) {
+  let t = 0;
+  for (const ch of String(id).slice(0, 10)) { const v = CROCKFORD.indexOf(ch); if (v < 0) return 0; t = t * 32 + v; }
+  return t > 946684800000 && t < 4102444800000 ? t : 0;   // between 2000 and 2100
+}
+
+// The files a list row is made from. summarize() is cached per call folder on their (mtime, size): the Calls list reloads on every visit, and
+// reading every JSONL file of 300 calls on the main process froze the menu bar for over a second.
+const SUMMARY_FILES = ["call.json", "events.jsonl", "latency.jsonl", "usage.jsonl", "cards.jsonl", "tags.jsonl", "summary.json"];
+const summaryCache = new Map();   // dir -> { sig, row }
+const SUMMARY_CACHE_MAX = 2000;
+function filesSignature(dir) {
+  return SUMMARY_FILES.map((f) => { try { const st = fs.statSync(path.join(dir, f)); return `${st.mtimeMs}:${st.size}`; } catch { return "-"; } }).join("|");
+}
+
 /** One list row for a call (times, counts, ratings, cost) from its files. Throws on a bad id. Used by the list, and again after a rating changes. */
 function summarize(callsDir, id) {
   const dir = callDir(callsDir, id);
+  const sig = filesSignature(dir), hit = summaryCache.get(dir);
+  if (hit && hit.sig === sig) return { ...hit.row };
+  const row = summarizeFiles(dir, id);
+  if (summaryCache.size >= SUMMARY_CACHE_MAX) summaryCache.clear();
+  summaryCache.set(dir, { sig, row });
+  return { ...row };
+}
+
+function summarizeFiles(dir, id) {
   const meta = readJson(dir, "call.json");
   const events = read(dir, "events.jsonl"), lat = read(dir, "latency.jsonl"), usage = read(dir, "usage.jsonl");
   const cards = ratableCards(read(dir, "cards.jsonl"));
   const ids = new Set(cards.map((c) => c.id));
   const tags = read(dir, "tags.jsonl").filter((t) => ids.has(t.id) && (t.useful === "y" || t.useful === "n"));
   const g = gateNumbers(events, lat, tags);
-  const started = Date.parse(meta.startedAt) || (events[0] && events[0].t) || 0;
+  // No call.json and no events yet (a call that is starting, or a crash before the first write): the id carries the start time; last resort, the folder's.
+  let folderTime = 0; try { folderTime = Math.round(fs.statSync(dir).mtimeMs); } catch { /* gone */ }
+  const started = Date.parse(meta.startedAt) || (events[0] && events[0].t) || idTime(id) || folderTime;
   const ended = Date.parse(meta.endedAt) || (events.length ? Math.max(...events.map((e) => e.t || 0)) : started);
   return {
     id, name: callName(meta, events), startedAt: started, durationMs: Math.max(0, ended - started), mode: meta.mode || "?", profile: meta.profile || "", noAi: !!meta.noAi,
     crashed: !!meta.crashed, hasSummary: !!readSummary(dir), questions: lat.length, cardsShown: cards.filter((c) => !c.hidden).length, cardsTotal: cards.length,
     rated: g.rated, useful: g.useful, hours: g.hours, perHour: g.perHour, bankShare: g.bankShare, costUsd: costOf(usage),
   };
+}
+
+/** Why a call may not be deleted right now, or "": it is the call that is running (its engine still writes to the folder). `st` is the controller state. */
+function deleteRefusal(st, id) {
+  return st && st.running && st.callId === id && st.phase !== "idle" ? "This call is still running. Stop it first, or use Delete this call in the call panel." : "";
 }
 
 /** Summaries of every call folder, newest first. Folders that fail to read are left out. */
@@ -206,4 +239,4 @@ function recentAdd(list, plan) {
 }
 function recentClean(raw) { return (Array.isArray(raw) ? raw : []).map(cleanPlan).filter(Boolean).slice(0, RECENT_MAX); }
 
-module.exports = { callName, cleanPlan, recentAdd, recentClean, RECENT_MAX, readFrame, ID_RE, callDir, ratableCards, gateNumbers, listCalls, getCall, setTag, searchCalls, deleteCall };
+module.exports = { callName, cleanPlan, recentAdd, recentClean, RECENT_MAX, readFrame, ID_RE, callDir, ratableCards, gateNumbers, listCalls, getCall, setTag, searchCalls, deleteCall, deleteRefusal, idTime };

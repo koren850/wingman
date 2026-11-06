@@ -60,3 +60,42 @@ test("a broken user file is reported, not overwritten", () => {
   assert.equal(r.ok, false);
   assert.equal(readFileSync(f, "utf8"), "cards: [unclosed\n");
 });
+
+// ---- two saves at once must both land ----
+import { execFile } from "node:child_process";
+import { mkdirSync, utimesSync, readFileSync as rf } from "node:fs";
+import { createRequire } from "node:module";
+import { ROOT } from "./env.ts";
+
+const writeVia = (file: string, edits: object) => new Promise<string>((resolve) => {
+  const p = execFile(join(ROOT, "node_modules", ".bin", "tsx"), ["src/settings-edit-cli.ts", "write"], { cwd: ROOT, env: { ...process.env, WINGMAN_USER_SETTINGS: file, NO_COLOR: "1" } }, (_e, out) => resolve(String(out).trim().split("\n").pop() || ""));
+  p.stdin!.end(JSON.stringify(edits));
+});
+
+test("two settings writes started together (separate processes) both land", async () => {
+  for (let round = 0; round < 3; round++) {
+    const f = tmp();
+    const [a, b] = await Promise.all([writeVia(f, { "cards.quiet": true }), writeVia(f, { "privacy.askBeforeCliStart": false })]);
+    assert.equal(JSON.parse(a).ok, true); assert.equal(JSON.parse(b).ok, true);
+    const t = rf(f, "utf8");
+    assert.match(t, /quiet: true/, `round ${round}: quiet lost\n${t}`); assert.match(t, /askBeforeCliStart: false/, `round ${round}: askBeforeCliStart lost\n${t}`);
+  }
+});
+
+test("a stale lock left by a dead process is broken and the lock is released", () => {
+  const f = tmp(), lock = join(f, "..", ".settings.yaml.lock");
+  mkdirSync(lock);
+  const old = new Date(Date.now() - 60_000); utimesSync(lock, old, old);
+  assert.equal(applyEdits(f, { "cards.quiet": true }).ok, true);
+  assert.equal(existsSync(lock), false, "the lock is released afterwards");
+});
+
+test("the window host runs settings and setup writes through a one-at-a-time queue", async () => {
+  const { createQueue } = createRequire(import.meta.url)("../dashboard/serial.cjs");
+  const add = createQueue(), log: string[] = [];
+  const task = (n: string, ms: number, fail = false) => () => new Promise((res, rej) => { log.push("start " + n); setTimeout(() => { log.push("end " + n); fail ? rej(new Error(n)) : res(n); }, ms); });
+  const r = await Promise.allSettled([add(task("a", 30)), add(task("b", 1, true)), add(task("c", 1))]);
+  assert.deepEqual(log, ["start a", "end a", "start b", "end b", "start c", "end c"]);
+  assert.deepEqual(r.map((x) => x.status), ["fulfilled", "rejected", "fulfilled"]);
+  assert.match(rf(join(ROOT, "dashboard", "window.cjs"), "utf8"), /args\.includes\("write"\) \? writes\(/);
+});

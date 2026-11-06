@@ -1,7 +1,7 @@
 // Edits the user settings file (~/.config/wingman/settings.yaml) for the Settings page and `wingman settings set`.
 // Validates the result with the same zod schema as every call (loadSettings), keeps comments and other keys
 // (yaml Document API), writes mode 600 through a temp file + rename. The app reaches it through src/settings-edit-cli.ts.
-import { existsSync, readFileSync, writeFileSync, renameSync, chmodSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, renameSync, chmodSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import YAML from "yaml";
 import { flatten, loadSettings, SettingsError, STARTER, USER_SETTINGS_FILE, type Flat } from "./settings.ts";
@@ -26,13 +26,39 @@ function pruneEmpty(doc: YAML.Document, path: string[]) {
 }
 
 /**
+ * Runs fn while holding a lock next to the settings file (a directory made with mkdir, which is atomic), so two writers (the window, the
+ * `wingman settings set` command) never interleave their read-edit-rename. A lock older than 10 s belongs to a dead process and is broken.
+ * Waits up to 12 s; returns null if the lock could not be taken.
+ */
+function withLock<T>(userFile: string, fn: () => T): T | null {
+  const dir = dirname(userFile), lock = join(dir, ".settings.yaml.lock");
+  try { mkdirSync(dir, { recursive: true, mode: 0o700 }); } catch { /* the write reports it */ }
+  const sleep = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  const until = Date.now() + 12_000;
+  for (;;) {
+    try { mkdirSync(lock, { mode: 0o700 }); break; }
+    catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") break;   // cannot lock here (read-only folder...): go on, the write reports the real error
+      try { if (Date.now() - statSync(lock).mtimeMs > 10_000) { rmSync(lock, { recursive: true, force: true }); continue; } } catch { continue; }
+      if (Date.now() > until) return null;
+      sleep(20);
+    }
+  }
+  try { return fn(); } finally { rmSync(lock, { recursive: true, force: true }); }
+}
+
+/**
  * Applies {key: value|null} to the user file. Unknown keys fail. A null, or a value equal to the default, deletes the key.
  * The result is validated from a temp copy first; the real file is replaced (atomic rename) only if that passes.
  * Returns the changed keys, or a user-facing message. Never throws for bad input.
  */
 export function applyEdits(userFile: string, edits: Edits): EditResult {
+  if (!Object.keys(edits).length) return { ok: true, changed: [] };
+  return withLock(userFile, () => applyEditsLocked(userFile, edits)) ?? { ok: false, message: "Another save is still running. Try again in a moment." };
+}
+
+function applyEditsLocked(userFile: string, edits: Edits): EditResult {
   const keys = Object.keys(edits);
-  if (!keys.length) return { ok: true, changed: [] };
   let text: string;
   try { text = existsSync(userFile) ? readFileSync(userFile, "utf8") : STARTER; } catch (e) { return { ok: false, message: `Cannot read ${userFile}: ${(e as Error).message}` }; }
   const doc = YAML.parseDocument(text);

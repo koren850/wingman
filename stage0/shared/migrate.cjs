@@ -1,5 +1,5 @@
 // One-time move of the user's data from the repo folder (stage0/calls, stage0/data/private) to the data folder (shared/paths.cjs).
-// COPY, never move: the old folders stay where they are, the owner deletes them later. Never overwrites a file in the new folder.
+// COPY, never move: the old folders stay where they are, the owner deletes them later. Never overwrites a user's file in the new folder (copyOne explains the rule).
 // Safe to run twice (a marker file ends it) and safe to be interrupted (a half-done copy resumes, files already copied are kept).
 //   stage0/calls/<id>/...        -> <data>/calls/<id>/...       (the "latest" link and tray.log are not copied)
 //   stage0/data/private/<x>      -> <data>/<x>                  (briefs/, entities.json, ...; denylist.txt and node_modules are not user data)
@@ -34,13 +34,39 @@ function hasUserData(root, names = ["calls", "briefs", "entities.json"]) {
 
 function mkdir700(dir) { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); try { fs.chmodSync(dir, 0o700); } catch { /* not ours to chmod */ } }
 
-/** Copies one file without overwriting; folders 700, file 600, same modified time (the retention purge goes by it). */
-function copyOne(src, dst, mtimeMs) {
+/**
+ * Is `dst` a truncated earlier copy of `src`: shorter, and byte-for-byte the beginning of it? That is exactly what a crash in the middle of an
+ * older, non-atomic copy left behind.
+ */
+function isTruncatedCopy(src, dst, srcSize, dstSize) {
+  if (dstSize >= srcSize) return false;
+  try { return Buffer.compare(fs.readFileSync(src).subarray(0, dstSize), fs.readFileSync(dst)) === 0; } catch { return false; }
+}
+
+/**
+ * Copies one file through "<dst>.part" and a rename, so a crash can never leave a short file under the real name.
+ * Folders 700, file 600, same modified time (the retention purge goes by it). Returns:
+ *   "copied"  the file was not there and is now;
+ *   "repaired" (only while resuming) dst was a truncated earlier copy and was completed;
+ *   "kept"    dst exists and is left alone.
+ * The ownership rule: a file in the data folder is overwritten ONLY if it is provably our own unfinished copy (shorter, and a byte-prefix of the
+ * source). Anything else that differs (the app or the owner changed it after the first copy) belongs to the user: it is never touched, and it
+ * does not count against the verification, so one rewritten file can never make the migration fail on every launch.
+ */
+function copyOne(src, dst, mtimeMs, size, resuming) {
   mkdir700(path.dirname(dst));
-  try { fs.copyFileSync(src, dst, fs.constants.COPYFILE_EXCL); } catch (e) { if (e.code !== "EEXIST") throw e; return false; }
-  try { fs.chmodSync(dst, 0o600); } catch { /* no POSIX modes (Windows) */ }
-  try { fs.utimesSync(dst, mtimeMs / 1000, mtimeMs / 1000); } catch { /* cosmetic */ }
-  return true;
+  let how = "copied";
+  let st = null; try { st = fs.lstatSync(dst); } catch { /* not there */ }
+  if (st) {
+    if (!st.isFile()) throw new Error(`${dst} exists and is not a file`);
+    if (resuming && st.isFile() && isTruncatedCopy(src, dst, size, st.size)) how = "repaired"; else return "kept";
+  }
+  const part = dst + ".part";
+  fs.copyFileSync(src, part);
+  try { fs.chmodSync(part, 0o600); } catch { /* no POSIX modes (Windows) */ }
+  try { fs.utimesSync(part, mtimeMs / 1000, mtimeMs / 1000); } catch { /* cosmetic */ }
+  fs.renameSync(part, dst);
+  return how;
 }
 
 /**
@@ -48,6 +74,7 @@ function copyOne(src, dst, mtimeMs) {
  * status: "none" (nothing to migrate) | "done-before" | "skipped" (new folder already has data) | "migrated" | "failed".
  */
 function migrateUserData(o) {
+  const sameSize = (f) => { try { return fs.statSync(f.dst).size === f.size; } catch { return false; } };
   const log = o.log || (() => {});
   const root = o.dataDir, newCalls = path.join(root, "calls");
   const marker = path.join(root, MARKER), pending = path.join(root, PENDING);
@@ -70,19 +97,20 @@ function migrateUserData(o) {
   mkdir700(root);
   fs.writeFileSync(pending, JSON.stringify({ at: new Date().toISOString(), files: plan.length }) + "\n", { mode: 0o600 });
   let copied = 0, bytes = 0;
+  const kept = [];   // files already in the data folder that we do not own (see copyOne): left as they are
   try {
-    for (const f of plan) { if (copyOne(f.src, f.dst, f.mtimeMs)) copied++; bytes += f.size; }
-    // Verify: every source file is there with the same size.
-    const bad = plan.filter((f) => { try { return fs.statSync(f.dst).size !== f.size; } catch { return true; } });
+    for (const f of plan) { const how = copyOne(f.src, f.dst, f.mtimeMs, f.size, resuming); if (how === "kept") { if (!sameSize(f)) kept.push(f.rel); } else copied++; bytes += f.size; }
+    // Verify what this run wrote: every source file must be there, and the ones copied now must have the source's size.
+    const bad = plan.filter((f) => { try { return !kept.includes(f.rel) && fs.statSync(f.dst).size !== f.size; } catch { return true; } });
     if (bad.length) throw new Error(`${bad.length} file(s) did not copy correctly (first: ${bad[0].rel})`);
   } catch (e) {
     const message = `Wingman: copying your data to ${root} failed (${e.message}). Nothing was changed in the old folders; it will try again next start.`;
     log(message);
     return { status: "failed", files: plan.length, bytes, copied, message };
   }
-  fs.writeFileSync(marker, JSON.stringify({ at: new Date().toISOString(), status: "migrated", from: { calls: o.oldCalls, private: o.oldPrivate }, files: plan.length, bytes }, null, 2) + "\n", { mode: 0o600 });
+  fs.writeFileSync(marker, JSON.stringify({ at: new Date().toISOString(), status: "migrated", from: { calls: o.oldCalls, private: o.oldPrivate }, files: plan.length, bytes, ...(kept.length ? { userOwned: kept } : {}) }, null, 2) + "\n", { mode: 0o600 });
   try { fs.rmSync(pending, { force: true }); } catch { /* harmless */ }
-  const message = `Wingman: your data now lives in ${root} (${plan.length} files copied). The old copy was left in place: ${o.oldCalls} and ${o.oldPrivate}. Delete those yourself once you have checked.`;
+  const message = `Wingman: your data now lives in ${root} (${plan.length} files copied). The old copy was left in place: ${o.oldCalls} and ${o.oldPrivate}. Delete those yourself once you have checked.${kept.length ? ` ${kept.length} file(s) in the new folder differ from the old copy (changed since the first copy) and were left as they are, e.g. ${kept[0]}.` : ""}`;
   log(message);
   return { status: "migrated", files: plan.length, bytes, copied, message };
 }

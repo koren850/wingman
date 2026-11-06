@@ -317,3 +317,14 @@ test("settingsReader: parses the last JSON line, passes a bare environment (no k
   assert.deepEqual(Object.keys(seen.opts.env).sort(), ["FORCE_COLOR", "HOME", "NO_COLOR", "PATH", "TMPDIR"]);
   assert.equal(await mk("not json")(), null);
 });
+
+test("CLI confirmation timeout closes the dialog (abort signal) and a late click stays a no", async () => {
+  let signal: AbortSignal | undefined, answer: (r: { response: number }) => void = () => {};
+  const dialog = { showMessageBox: (box: { signal?: AbortSignal }) => { signal = box.signal; return new Promise((res) => { answer = res as typeof answer; }); } };
+  assert.equal(await lib.confirmCliStart({ dialog, timeoutMs: 15 }), false);
+  assert.ok(signal && signal.aborted, "the dialog was told to close");
+  answer({ response: 1 });   // a click that still got through
+  await new Promise((r) => setTimeout(r, 5));
+  let first = true;
+  assert.equal(await lib.confirmCliStart({ dialog: { showMessageBox: (b: { signal?: AbortSignal }) => { assert.equal(b.signal!.aborted, false, "a new request gets a fresh signal"); return Promise.resolve({ response: first ? 1 : 0 }); } } }), true);
+});

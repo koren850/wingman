@@ -204,3 +204,45 @@ test("install.sh --check changes nothing and exits 0 on a good machine; unknown 
   const bad = spawnSync("bash", [join(ROOT, "..", "install.sh"), "--nope"], { encoding: "utf8" });
   assert.equal(bad.status, 2);
 });
+
+// ---- install.sh / make-app.sh: stale app detection, help, ffmpeg, atomic swap ----
+import { chmodSync, copyFileSync, realpathSync, renameSync } from "node:fs";
+
+test("install.sh --help prints the whole header, including the data and Keychain lines", BASH, () => {
+  const r = spawnSync("bash", [join(ROOT, "..", "install.sh"), "--help"], { encoding: "utf8" });
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /Your data lives in/); assert.match(r.stdout, /and the macOS Keychain\. The installer only reads them/);
+  assert.doesNotMatch(r.stdout, /set -uo pipefail/);
+});
+
+test("make-app.sh --stale: missing app, a moved folder or another Electron are stale; a current build is not", BASH, () => {
+  const base = realpathSync(tmp());
+  const stage = join(base, "stage0");
+  mkdirSync(join(stage, "scripts"), { recursive: true }); mkdirSync(join(stage, "node_modules", "electron"), { recursive: true });
+  copyFileSync(join(ROOT, "scripts", "make-app.sh"), join(stage, "scripts", "make-app.sh")); chmodSync(join(stage, "scripts", "make-app.sh"), 0o755);
+  writeFileSync(join(stage, "node_modules", "electron", "package.json"), JSON.stringify({ version: "9.9.9" }));
+  const stale = (dir: string) => spawnSync("bash", [join(dir, "scripts", "make-app.sh"), "--stale"]).status;
+  assert.equal(stale(stage), 0, "no app yet: build it");
+  const fakeApp = (dir: string, stamp: string) => {
+    mkdirSync(join(dir, ".app", "Wingman.app", "Contents", "MacOS"), { recursive: true }); mkdirSync(join(dir, ".app", "Wingman.app", "Contents", "Resources", "app"), { recursive: true });
+    writeFileSync(join(dir, ".app", "Wingman.app", "Contents", "MacOS", "Wingman"), "#!/bin/sh\n", { mode: 0o755 });
+    writeFileSync(join(dir, ".app", "Wingman.app", "Contents", "Resources", "app", ".built-from"), stamp + "\n");
+  };
+  fakeApp(stage, `${stage}\n9.9.9`);
+  assert.equal(stale(stage), 1, "built for this folder and this Electron: leave it");
+  writeFileSync(join(stage, "node_modules", "electron", "package.json"), JSON.stringify({ version: "10.0.0" }));
+  assert.equal(stale(stage), 0, "Electron upgraded");
+  writeFileSync(join(stage, "node_modules", "electron", "package.json"), JSON.stringify({ version: "9.9.9" }));
+  const moved = join(base, "moved-stage0"); renameSync(stage, moved);
+  assert.equal(stale(moved), 0, "the folder moved: the baked path is wrong, rebuild");
+});
+
+test("install.sh rebuilds a stale app, checks ffmpeg where the app looks, and installs to /Applications by rename", BASH, () => {
+  const inst = read("../install.sh"), mk = read("scripts/make-app.sh");
+  assert.match(inst, /make-app\.sh --stale/); assert.doesNotMatch(inst, /\[ ! -x "\$APP_OUT\/Contents\/MacOS\/Wingman" \] \|\| \[ "\$\{UPDATING/);
+  assert.doesNotMatch(inst, /if command -v ffmpeg >\/dev\/null 2>&1 \|\|/, "an ffmpeg only the shell sees is not enough");
+  assert.match(inst, /for d in \/opt\/homebrew\/bin \/usr\/local\/bin \/usr\/bin \/bin/);
+  assert.match(inst, /mv "\$1\.new" "\$1"/);
+  assert.match(mk, /mv "\$OUT" "\$FINAL"/); assert.doesNotMatch(mk, /^rm -rf "\$OUT"; mkdir/m);
+  assert.match(mk, /\.built-from/);
+});

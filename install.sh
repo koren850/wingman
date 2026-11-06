@@ -31,7 +31,7 @@ for a in "$@"; do
   case "$a" in
     --check) MODE=check ;; --dry-run) DRY=1 ;; --yes|-y) YES=1 ;; --offline) OFFLINE=1 ;;
     --update) MODE=update ;; --uninstall) MODE=uninstall ;; --purge) PURGE=1 ;; --force) FORCE=1 ;;
-    -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,/^set -/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "install.sh: unknown option $a (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -173,7 +173,11 @@ else
 fi
 
 # ffmpeg (required: microphone), pdftotext (optional)
-if command -v ffmpeg >/dev/null 2>&1 || [ -x /opt/homebrew/bin/ffmpeg ] || [ -x /usr/local/bin/ffmpeg ]; then ok "ffmpeg"; else
+# The app started from Finder only sees /opt/homebrew/bin, /usr/local/bin, /usr/bin and /bin (scripts/make-app.sh sets that PATH), so an ffmpeg
+# that only your shell finds (MacPorts, mise, nix...) does not count.
+APP_FFMPEG=""; for d in /opt/homebrew/bin /usr/local/bin /usr/bin /bin; do [ -x "$d/ffmpeg" ] && { APP_FFMPEG="$d/ffmpeg"; break; }; done
+if [ -n "$APP_FFMPEG" ]; then ok "ffmpeg ($APP_FFMPEG)"; else
+  if command -v ffmpeg >/dev/null 2>&1; then warn "ffmpeg is at $(command -v ffmpeg), but Wingman.app does not look there (it only sees /opt/homebrew/bin and /usr/local/bin). Installing it with Homebrew gives the app one it can find."; fi
   bad "ffmpeg (needed for the microphone)"
   if command -v brew >/dev/null 2>&1; then
     if ask "Install it now with: brew install ffmpeg ?" y; then run brew install ffmpeg || { warn "brew install ffmpeg failed; install it yourself later"; NO_FFMPEG=1; }
@@ -202,7 +206,9 @@ if [ "$DRY" = 1 ]; then say "would run in stage0: pnpm ${PNPM_ARGS[*]}"; else
   (cd "$STAGE0" && pnpm "${PNPM_ARGS[@]}") || { echo; echo "install.sh: pnpm install failed (see above). Fix the reason and run ./install.sh again; it is safe to repeat." >&2; exit 1; }
 fi
 if [ "$DRY" != 1 ]; then
-  if [ ! -x "$APP_OUT/Contents/MacOS/Wingman" ] || [ "${UPDATING:-0}" = 1 ]; then
+  # pnpm only runs the postinstall build when it installs something, so a moved folder (or a new Electron) would keep the old app.
+  # make-app.sh --stale says so (missing app, built for another folder, other Electron version); a current app is left alone: fast and idempotent.
+  if [ "${UPDATING:-0}" = 1 ] || (cd "$STAGE0" && ./scripts/make-app.sh --stale); then
     (cd "$STAGE0" && ./scripts/make-app.sh) || { echo "install.sh: building the app failed (see above)." >&2; exit 1; }
   fi
   [ -x "$APP_OUT/Contents/MacOS/Wingman" ] && ok "built $APP_OUT" || { bad "the app was not built"; exit 1; }
@@ -214,7 +220,7 @@ INSTALLED_APP=0
 if [ -d "$APP_DST" ] && [ "$(bundle_id "$APP_DST")" != "com.wingman.app" ]; then warn "$APP_DST exists and is not Wingman: left alone"
 elif ask "Copy Wingman.app to /Applications (Launchpad, Spotlight, Dock)?" y; then
   if running_dst; then warn "Wingman is running from $APP_DST: quit it (menu-bar icon > Quit Wingman), then run ./install.sh again to refresh it."
-  else run bash -c 'rm -rf "$1" && cp -R "$2" "$1"' _ "$APP_DST" "$APP_OUT" && { ok "installed $APP_DST"; INSTALLED_APP=1; }; fi
+  else run bash -c 'rm -rf "$1.new" && cp -R "$2" "$1.new" && { [ ! -e "$1" ] || mv "$1" "$1.old"; } && mv "$1.new" "$1" && rm -rf "$1.old"' _ "$APP_DST" "$APP_OUT" && { ok "installed $APP_DST"; INSTALLED_APP=1; }; fi
 else say "skipped. Later:  cd stage0 && pnpm run install-app"; fi
 say "Note: the app starts from this folder ($ROOT). If you move or delete it, run ./install.sh again from the new place."
 
