@@ -60,6 +60,9 @@ const wireSource = (src: SupervisedSource, name: "mic" | "sys", id: string, down
 };
 
 /** Replay of a stereo file (--file): L = me, R = them. */
+/** Replay mix gain of the other side relative to the user: a phone speaker across the desk is about 16 dB below a voice next to the mic. */
+export const PHONE_FAR_GAIN = 0.15;
+
 export async function startFileSource(file: string) {
   const f = new FileSource(file);
   if (PHONE) {
@@ -73,7 +76,7 @@ export async function startFileSource(file: string) {
       themBuf = undefined;
       const out = Buffer.alloc(b.length);
       for (let i = 0; i + 1 < b.length; i += 2)
-        out.writeInt16LE(Math.max(-32768, Math.min(32767, b.readInt16LE(i) + (t && i + 1 < t.length ? Math.round(t.readInt16LE(i) * 0.45) : 0))), i);
+        out.writeInt16LE(Math.max(-32768, Math.min(32767, b.readInt16LE(i) + (t && i + 1 < t.length ? Math.round(t.readInt16LE(i) * PHONE_FAR_GAIN) : 0))), i);
       phone!.recordMic(out);
       chans.me.send(out);
     });

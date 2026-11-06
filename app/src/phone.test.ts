@@ -166,3 +166,29 @@ test("no speaker info: stays me (never answers the user's own words)", () => {
   const r = p.route({ channel: "me", isFinal: true, speechFinal: true, arrivedAt: 1, words: [], text: "hello" });
   assert.equal(r[0].channel, "me");
 });
+
+test("a lone quiet voice (the other side speaks first) is them; a lone near-field voice is still me", () => {
+  const words = (id: number): [string, number, number, number][] => [
+    ["tell", id, 0, 0.25],
+    ["me", id, 0.25, 0.5],
+    ["about", id, 0.5, 0.75],
+    ["yourself", id, 0.75, 1.0],
+  ];
+  const quiet = new PhoneRouter();
+  quiet.recordMic(tone(0.03, 1000), 1000); // rms ~0.02: far phone speaker
+  const q = quiet.route(res(words(0), 1000));
+  assert.equal(q[0].channel, "them");
+  // Later the user answers, louder: the louder voice becomes me and the quiet one stays them.
+  quiet.recordMic(tone(0.3, 1000), 2000);
+  const a = quiet.route(
+    res(
+      words(1).map(([w, i, s, e]) => [w, i, s + 1, e + 1]),
+      2000,
+    ),
+  );
+  assert.equal(a[0].channel, "me");
+  assert.equal(quiet.roleOf(0), "them");
+  const loud = new PhoneRouter();
+  loud.recordMic(tone(0.3, 1000), 1000);
+  assert.equal(loud.route(res(words(0), 1000))[0].channel, "me");
+});

@@ -1,7 +1,8 @@
 // Phone mode: a phone call on speaker next to the Mac. There is no system audio; the Mac microphone hears both people,
 // so the "me" STT channel runs with diarization and this module decides, per voice, who is the user and who is the other side.
 // The user sits next to the Mac microphone and the phone's speaker is further away and band-limited, so the user's voice is
-// the LOUDER one. Until two voices have been heard, the first voice is taken as the user (you answer the call first).
+// the LOUDER one. Until two voices have been heard, a lone voice is the user only if it sounds near-field (loud enough);
+// a lone quiet voice is the other side (they speak first, e.g. an interviewer on an outgoing call) and nothing is "me" yet.
 // Nothing is saved: loudness is kept for the last minute only, in memory.
 import type { SttResult, Word } from "./providers/stt/types.ts";
 
@@ -27,12 +28,15 @@ export function rmsOf(pcm: Buffer): number {
   return n ? Math.sqrt(s / n) : 0;
 }
 
+/** Mean mic RMS (0-1) below which a lone voice is taken as the far phone speaker rather than the user next to the mic. */
+export const NEAR_MIN = 0.03;
+
 export class PhoneRouter {
   private frames: Frame[] = [];
   private stats = new Map<number, Stat>();
   private meId: number | undefined;
   private swapped = false;
-  constructor(private o: { frameMs?: number; keepMs?: number; minWords?: number; margin?: number } = {}) {}
+  constructor(private o: { frameMs?: number; keepMs?: number; minWords?: number; margin?: number; nearMin?: number } = {}) {}
 
   /** Mic audio as it is captured (wall-clock ms of the END of the chunk). Split into 20 ms loudness frames. */
   recordMic(pcm: Buffer, endWall = Date.now()) {
@@ -75,7 +79,9 @@ export class PhoneRouter {
       if (!cur || ready[0].mean > cur.mean * margin) this.meId = ready[0].id;
     } else if (this.meId === undefined) {
       const first = [...this.stats.entries()].sort((a, b) => a[1].firstAt - b[1].firstAt)[0];
-      if (first) this.meId = first[0];
+      // A lone voice with enough words that is clearly far-field (quiet) is the phone speaker, not the user: no "me" yet.
+      // Re-evaluated on every call, so a louder second voice or a louder lone voice later still wins.
+      if (first && !(first[1].n >= min && first[1].sum / first[1].n < (this.o.nearMin ?? NEAR_MIN))) this.meId = first[0];
     }
     return this.meId;
   }
@@ -84,7 +90,7 @@ export class PhoneRouter {
   roleOf(id: number | undefined): "me" | "them" {
     if (id === undefined) return "me";
     const me = this.me();
-    const isMe = me === undefined ? true : id === me;
+    const isMe = me === undefined ? this.stats.size === 0 : id === me;
     return isMe !== this.swapped ? "me" : "them";
   }
 
