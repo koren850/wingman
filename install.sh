@@ -7,9 +7,10 @@
 #   ./install.sh --yes        accept the default answer to every offer (copy to /Applications, `wingman` link, brew install ffmpeg);
 #                         without a terminal and without --yes every offer is declined
 #   ./install.sh --offline    pass --offline to pnpm (uses only the local package cache)
-#   ./install.sh --update     git pull (fast-forward only), pnpm install, rebuild the app   (also: wingman update)
+#   ./install.sh --update     git pull (fast-forward only), pnpm install --frozen-lockfile, rebuild the app   (also: wingman update)
 #   ./install.sh --uninstall  remove the app copies and the `wingman` link; your data stays   (also: wingman uninstall)
 #   ./install.sh --uninstall --purge   also delete your data and settings, after you type a confirmation
+#                         (refuses a WINGMAN_DATA_DIR outside ~/Library/Application Support or without "Wingman" in its path, unless --force)
 #
 # Your data lives in ~/Library/Application Support/Wingman (calls, meetings); keys, settings and profile in ~/.config/wingman
 # and the macOS Keychain. The installer only reads them, except for --uninstall --purge.
@@ -21,6 +22,7 @@ APP_OUT="$STAGE0/.app/Wingman.app"
 APP_DST="${WINGMAN_APPS_DIR:-/Applications}/Wingman.app"
 BIN_DIR="${WINGMAN_BIN_DIR:-$HOME/.local/bin}"
 LINK="$BIN_DIR/wingman"
+FORCE=0
 DATA_DIR="${WINGMAN_DATA_DIR:-$HOME/Library/Application Support/Wingman}"
 CONFIG_DIR="$HOME/.config/wingman"
 
@@ -28,7 +30,7 @@ MODE=install; YES=0; DRY=0; PURGE=0; OFFLINE=0
 for a in "$@"; do
   case "$a" in
     --check) MODE=check ;; --dry-run) DRY=1 ;; --yes|-y) YES=1 ;; --offline) OFFLINE=1 ;;
-    --update) MODE=update ;; --uninstall) MODE=uninstall ;; --purge) PURGE=1 ;;
+    --update) MODE=update ;; --uninstall) MODE=uninstall ;; --purge) PURGE=1 ;; --force) FORCE=1 ;;
     -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "install.sh: unknown option $a (try --help)" >&2; exit 2 ;;
   esac
@@ -83,6 +85,10 @@ if [ "$MODE" = uninstall ]; then
       read -r -p "  Type DELETE to continue, anything else cancels: " c
       if [ "$c" = "DELETE" ]; then
         case "$DATA_DIR" in ""|/|"$HOME"|"$HOME/") echo "install.sh: refusing to delete $DATA_DIR" >&2; exit 1 ;; esac
+        # WINGMAN_DATA_DIR can point anywhere. Unless --force is given, only delete a folder under ~/Library/Application Support whose path contains "Wingman".
+        if [ "$FORCE" != 1 ]; then
+          case "$DATA_DIR" in "$HOME/Library/Application Support/"*Wingman*) ;; *) echo "install.sh: refusing to delete $DATA_DIR: it is not a Wingman folder under ~/Library/Application Support. Add --force if you really mean it." >&2; exit 1 ;; esac
+        fi
         rm -rf "$DATA_DIR" "$CONFIG_DIR" && ok "removed $DATA_DIR and $CONFIG_DIR"
         for acct in DEEPGRAM_API_KEY ANTHROPIC_API_KEY; do security delete-generic-password -s wingman -a "$acct" >/dev/null 2>&1 && ok "removed Keychain item $acct" || say "no Keychain item $acct"; done
       else say "cancelled: nothing was deleted."; fi
@@ -191,7 +197,7 @@ fi
 
 # Dependencies + Electron + the app (stage0 postinstall downloads Electron and builds .app/Wingman.app)
 step "Installing dependencies and building the app (first time downloads about 250 MB)"
-PNPM_ARGS=(install); [ "${UPDATING:-0}" = 1 ] || PNPM_ARGS+=(--frozen-lockfile); [ "$OFFLINE" = 1 ] && PNPM_ARGS+=(--offline)
+PNPM_ARGS=(install --frozen-lockfile); [ "$OFFLINE" = 1 ] && PNPM_ARGS+=(--offline)
 if [ "$DRY" = 1 ]; then say "would run in stage0: pnpm ${PNPM_ARGS[*]}"; else
   (cd "$STAGE0" && pnpm "${PNPM_ARGS[@]}") || { echo; echo "install.sh: pnpm install failed (see above). Fix the reason and run ./install.sh again; it is safe to repeat." >&2; exit 1; }
 fi

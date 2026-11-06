@@ -92,7 +92,11 @@ if (!fs.existsSync(path.join(STAGE0, "tray", "main.cjs"))) {
 JS
 } > "$OUT/Contents/Resources/app/index.cjs"
 # Electron fuses: no ELECTRON_RUN_AS_NODE, NODE_OPTIONS or --inspect for this app (scripts/set-fuses.cjs, no dependency). Before the signature.
-node scripts/set-fuses.cjs "$OUT" || echo "make-app: warning, could not set the Electron fuses (the app still works)" >&2
+# A failed flip fails the build: an app with RunAsNode on is not what this script promises. WINGMAN_ALLOW_NO_FUSES=1 opts out (an Electron layout this script does not know).
+if ! node scripts/set-fuses.cjs "$OUT"; then
+  if [ "${WINGMAN_ALLOW_NO_FUSES:-0}" = 1 ]; then echo "make-app: WARNING: could not set the Electron fuses; continuing because WINGMAN_ALLOW_NO_FUSES=1. This app has ELECTRON_RUN_AS_NODE and --inspect enabled." >&2
+  else echo "make-app: ERROR: could not set the Electron fuses, so the app would keep ELECTRON_RUN_AS_NODE and --inspect enabled. Build stopped. If this Electron version has a layout the script does not know, fix scripts/set-fuses.cjs, or set WINGMAN_ALLOW_NO_FUSES=1 to build anyway." >&2; rm -rf "$OUT"; exit 1; fi
+fi
 # Helper apps keep their names; only the main bundle is shown to the user. Re-sign ad hoc after the edits (best effort, hence "|| true"): they invalidate the old signature.
 codesign --force --deep --sign - "$OUT" >/dev/null 2>&1 || true
 echo "built $OUT"
