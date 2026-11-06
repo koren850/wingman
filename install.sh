@@ -221,7 +221,7 @@ INSTALLED_APP=0
 if [ -d "$APP_DST" ] && [ "$(bundle_id "$APP_DST")" != "com.wingman.app" ]; then warn "$APP_DST exists and is not Wingman: left alone"
 elif ask "Copy Wingman.app to /Applications (Launchpad, Spotlight, Dock)?" y; then
   if running_dst; then warn "Wingman is running from $APP_DST: quit it (menu-bar icon > Quit Wingman), then run ./install.sh again to refresh it."
-  else run bash -c 'rm -rf "$1.new" && cp -R "$2" "$1.new" && { [ ! -e "$1" ] || mv "$1" "$1.old"; } && mv "$1.new" "$1" && rm -rf "$1.old"' _ "$APP_DST" "$APP_OUT" && { ok "installed $APP_DST"; INSTALLED_APP=1; }; fi
+  else run bash -c 'mkdir -p "$(dirname "$1")" && rm -rf "$1.new" && cp -R "$2" "$1.new" && { [ ! -e "$1" ] || mv "$1" "$1.old"; } && mv "$1.new" "$1" && rm -rf "$1.old"' _ "$APP_DST" "$APP_OUT" && { ok "installed $APP_DST"; INSTALLED_APP=1; }; fi
 else say "skipped. Later:  cd app && pnpm run install-app"; fi
 say "Note: the app starts from this folder ($ROOT). If you move or delete it, run ./install.sh again from the new place."
 
