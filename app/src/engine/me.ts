@@ -261,6 +261,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
         if (dead()) return;
         clearAiBar(model);
         breakers.get(model)?.success();
+        sup.noteLlmOk();
         refreshSignals();
         const c = cost.addLlm("me", model, usage, providerMetadata);
         log.write("usage", { role: "me", model, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.me.usd });

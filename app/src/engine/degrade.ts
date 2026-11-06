@@ -24,6 +24,7 @@ export function llmFailed(model: string, err: ProviderError) {
   const { hard, parkMs, noteTrouble } = llmFailurePolicy(err.kind);
   breakers.get(model)?.failure(hard);
   if (parkMs) downUntil.set(model, Date.now() + parkMs);
+  if (hard) sup.noteLlmHard();
   if (noteTrouble) sup.noteLlmTrouble();
   log.write("events", { type: "llm.error", model, kind: err.kind, retryable: err.retryable, switchProvider: err.switchProvider, status: err.status });
   if (hard) {

@@ -137,3 +137,54 @@ test("runReflex: the system prompt goes through `instructions` (with the cache m
   );
   assert.equal("temperature" in seen && seen.temperature !== undefined, false, "no sampling parameter is sent to Anthropic");
 });
+
+// ---- a request that ignores abort and never answers ----
+const hangingStream = (() => ({
+  textStream: (async function* () {
+    await new Promise(() => {}); // never settles, ignores the abort signal like a stuck socket
+    yield "";
+  })(),
+  finishReason: new Promise(() => {}),
+  usage: new Promise(() => {}),
+  providerMetadata: new Promise(() => {}),
+})) as any;
+const hangRun = (o: { timeoutMs: number; signal: AbortSignal; onHung?: (m: string, e: any) => void }) => {
+  const noop: ReflexHandlers = { onTag() {}, onSay() {}, onFacts() {}, onSayComplete() {}, onDone() {} };
+  const cfg = { ...loadSettings({ env: {}, userFile: "/nonexistent/x.yaml" }).settings.llm.reflex, timeoutMs: o.timeoutMs, maxRetries: 0 };
+  return runReflex({
+    registry: { resolve: async (ref: string) => ({ ref }) } as unknown as ModelRegistry,
+    models: ["anthropic:claude-haiku-5-5"],
+    cfg,
+    prefix: "P",
+    transcript: "t",
+    question: "q?",
+    signal: o.signal,
+    h: noop,
+    stream: hangingStream,
+    onHung: o.onHung,
+  });
+};
+
+test("runReflex: a request that ignores abort still ends at the timeout, as a timeout error", async () => {
+  await assert.rejects(hangRun({ timeoutMs: 80, signal: new AbortController().signal }), (e: any) => e.kind === "timeout");
+});
+
+test("runReflex: a hung request replaced by the next question ends at once and is reported as hung", async () => {
+  const ac = new AbortController();
+  const hung: any[] = [];
+  const p = hangRun({ timeoutMs: 200, signal: ac.signal, onHung: (m, e) => hung.push([m, e.kind]) });
+  await new Promise((r) => setTimeout(r, 120)); // waited more than half of the timeout
+  ac.abort();
+  await p; // resolves quietly although the stream never settles
+  assert.deepEqual(hung, [["anthropic:claude-haiku-5-5", "timeout"]]);
+});
+
+test("runReflex: a request replaced quickly is not counted as hung", async () => {
+  const ac = new AbortController();
+  const hung: any[] = [];
+  const p = hangRun({ timeoutMs: 400, signal: ac.signal, onHung: (m) => hung.push(m) });
+  await new Promise((r) => setTimeout(r, 30));
+  ac.abort();
+  await p;
+  assert.deepEqual(hung, []);
+});
