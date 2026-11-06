@@ -98,10 +98,10 @@ test("a skipped summary gives no 'No call summary' notification", () => {
   assert.equal(trayLib.notifications(s0, s0, { ev: "summary", ok: false }).length, 1);
 });
 
-test("run.ts: fixed stdin commands stop-no-summary and skip-summary, abort signal passed to the summary call", () => {
-  const t = read("src/run.ts");
-  assert.match(t, /cmd === "stop-no-summary"\) \{ skipSummaryNow\(\); void shutdown\(\); \}/);
-  assert.match(t, /cmd === "skip-summary"\) \{ if \(shuttingDown\) skipSummaryNow\(\); \}/);
+test("engine: fixed stdin commands stop-no-summary and skip-summary, abort signal passed to the summary call", () => {
+  const t = read("src/engine/shutdown.ts"), ctl = read("src/engine/control.ts");   // (the stdin commands live in control.ts, the summary in shutdown.ts)
+  assert.match(ctl, /cmd === "stop-no-summary"\) \{ skipSummaryNow\(\); void shutdown\(\); \}/);
+  assert.match(ctl, /cmd === "skip-summary"\) \{ if \(st\.call\.shuttingDown\) skipSummaryNow\(\); \}/);
   assert.match(t, /signal: summaryAbort\.signal/);
   assert.match(t, /Promise\.race\(\[postCallSummary\(\), summarySkipWait,/);
   assert.match(t, /reason: "user"/);

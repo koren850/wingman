@@ -17,7 +17,10 @@ const CONFIRM_MS = 60_000;
 const STOP_TEXT: Record<string, string> = { saving: "saving the call", summary: "writing the summary", done: "finishing" };
 
 /** Polls the app status every 400 ms until ok(state) or `ms` passes. Returns the last status (null if the app vanished). */
+// (`state` is the app's status JSON: its shape is checked by the callers' predicates)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function waitFor(ctx: Ctx, ok: (s: any) => boolean, ms: number) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const end = Date.now() + ms; let last: any = null;
   while (Date.now() < end) {
     last = await appStatus(ctx);
@@ -122,11 +125,15 @@ export async function speaker(ctx: Ctx, args: string[]): Promise<Result> {
 }
 
 /**
- * Compatibility check: does this checkout's src/run.ts know the `ask <text>` stdin command? An older run.ts only knows bare
- * `ask` (the hotkey) and would ignore the text. Looks for askTyped() in the source. False if the file cannot be read.
+ * Compatibility check: does this checkout's call engine know the `ask <text>` stdin command? An older engine only knows bare
+ * `ask` (the hotkey) and would ignore the text. Looks for askTyped() in the engine source (src/engine/me.ts; src/run.ts in older
+ * checkouts). False if no file can be read.
  */
 function engineHasAsk(ctx: Ctx): boolean {
-  try { return /function askTyped/.test(readFileSync(join(ctx.root, "src", "run.ts"), "utf8")); } catch { return false; }
+  for (const f of ["engine/me.ts", "run.ts"]) {
+    try { if (/function askTyped/.test(readFileSync(join(ctx.root, "src", f), "utf8"))) return true; } catch { /* not in this checkout: try the next file */ }
+  }
+  return false;
 }
 
 export async function ask(ctx: Ctx, args: string[]): Promise<Result> {

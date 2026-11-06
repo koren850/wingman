@@ -10,6 +10,12 @@ import { WsStream } from "./ws-base.ts";
 
 export const SONIOX_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 
+/** A Soniox socket message: only the fields read here. */
+interface SonioxMessage {
+  error_code?: number | string; error_type?: string; error_message?: string; finished?: boolean;
+  tokens?: { text: string; is_final?: boolean; start_ms: number; end_ms: number; confidence?: number; speaker?: number }[];
+}
+
 /** Soniox adapter on WsStream. Final tokens are collected and emitted as one final result at an endpoint marker. */
 export class SonioxStream extends WsStream {
   private finals: { text: string; start: number; end: number; conf?: number; speaker?: number }[] = [];
@@ -32,7 +38,8 @@ export class SonioxStream extends WsStream {
   protected keepAliveFrame() { return JSON.stringify({ type: "keepalive" }); }
   protected endFrame() { return ""; }
 
-  protected onMessage(m: any) {
+  protected onMessage(raw: unknown) {
+    const m = raw as SonioxMessage;
     if (m.error_code) { this.emit("error", classifyHttp("soniox", Number(m.error_code), `${m.error_type ?? ""} ${m.error_message ?? ""}`)); return; }
     const interim: string[] = [];
     for (const t of m.tokens ?? []) {

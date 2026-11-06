@@ -3,7 +3,7 @@
 //   fix (red, cheap model): a factual claim contradicts the prepared meeting background. Only when the background clearly says otherwise.
 // Pure helpers + one model call (injectable `generate`, like runTip). run.ts only wires them.
 import { generateText } from "ai";
-import { ModelRegistry, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { getProfile, userName, hebrewAddressRule } from "./profile.ts";
 import { guard, sanitize } from "./guards.ts";
@@ -55,7 +55,7 @@ export function parseVerdict(input: unknown): Verdict {
   const t = input.replace(/```(?:json)?/gi, "");
   const a = t.indexOf("{"), b = t.lastIndexOf("}");
   if (a < 0 || b <= a) return ok;
-  let o: any;
+  let o: { verdict?: unknown; correct?: unknown; said?: unknown; source?: unknown } | null;
   try { o = JSON.parse(t.slice(a, b + 1)); } catch { return ok; }
   if (o?.verdict !== "fix" || typeof o.correct !== "string") return ok;
   const clip = (s: unknown, n: number) => { const x = masculine(sanitize(String(s ?? "").replace(/\s+/g, " "))); return x.length > n ? x.slice(0, n).replace(/\s+\S*$/, "") : x; };
@@ -108,11 +108,11 @@ export async function runSelfCheck(o: SelfCheckRun): Promise<{ verdict: Verdict;
   if (!o.background.trim()) return { verdict: { verdict: "ok" }, usage: undefined, providerMetadata: undefined };
   const model = await o.registry.resolve(o.model);
   const cache = cacheOptionsFor(o.model, o.cache);
-  const r: any = await (o.generate ?? generateText)({
+  const r = await generateOnce(o.generate, {
     model, maxOutputTokens: 250, maxRetries: 0, abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
     instructions: { role: "system", content: `${selfcheckSystem()}\n\n${o.background}`, ...(cache ? { providerOptions: cache } : {}) },
     messages: [{ role: "user", content: `<call_transcript>\n${untag(o.transcript)}\n</call_transcript>\n\nSentence ${userName()} just said (check this one):\n${o.line.replace(/\s+/g, " ").slice(0, 400)}\n\nAnswer with the JSON only.` }],
-  } as any);
+  });
   return { verdict: parseVerdict(r.text), usage: r.usage ?? r.totalUsage, providerMetadata: r.providerMetadata };
 }

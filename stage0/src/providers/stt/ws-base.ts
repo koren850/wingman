@@ -20,7 +20,7 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
   protected abstract connectUrl(): Promise<string>;
   protected connectHeaders(): Record<string, string> { return {}; }
   protected abstract onOpen(ws: WebSocket): void;               // send the config frame
-  protected abstract onMessage(msg: any): void;
+  protected abstract onMessage(msg: unknown): void;   // the parsed JSON frame: each provider narrows it to its own shape
   protected keepAliveFrame(): string | undefined { return undefined; }
   protected endFrame(): string | Buffer | undefined { return undefined; }
 
@@ -34,19 +34,19 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
     await new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(url, { headers: this.connectHeaders() });
       this.ws = ws;
-      const timer = setTimeout(() => { reject(new ProviderError("timeout", this.provider, `${this.provider}: open timed out`)); try { ws.terminate(); } catch {} }, 10_000);
+      const timer = setTimeout(() => { reject(new ProviderError("timeout", this.provider, `${this.provider}: open timed out`)); try { ws.terminate(); } catch { /* best effort: the socket may already be gone */ } }, 10_000);
       ws.once("open", () => {
         clearTimeout(timer); this.connBytes = 0; this.opens++;
         try { this.onOpen(ws); } catch (e) { reject(classifySttError(this.provider, e)); return; }
         const ka = this.keepAliveFrame();
         clearInterval(this.keepAliveTimer);
-        if (ka) this.keepAliveTimer = setInterval(() => { try { if (this.isOpen) ws.send(ka); } catch {} }, this.opts.keepAliveMs ?? 5000);
+        if (ka) this.keepAliveTimer = setInterval(() => { try { if (this.isOpen) ws.send(ka); } catch { /* best effort: a keep-alive on a dropping socket may throw; the close handler recovers */ } }, this.opts.keepAliveMs ?? 5000);
         if (this.opens > 1) this.emit("reconnected", { channel: this.opts.channel, opens: this.opens });
         resolve();
       });
       ws.on("message", (data, isBinary) => {
         if (isBinary) return;
-        let msg: any; try { msg = JSON.parse(data.toString()); } catch { return; }
+        let msg: unknown; try { msg = JSON.parse(data.toString()); } catch { return; }
         try { this.onMessage(msg); } catch (e) { this.emit("error", classifySttError(this.provider, e)); }
       });
       ws.on("unexpected-response", (_req, res) => { clearTimeout(timer); reject(classifySttError(this.provider, Object.assign(new Error(`Unexpected server response: ${res.statusCode}`), { statusCode: res.statusCode }))); });
@@ -82,9 +82,9 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
   async close() {
     this.closing = true; clearInterval(this.keepAliveTimer);
     const end = this.endFrame();
-    try { if (end !== undefined && this.isOpen) this.ws!.send(end); } catch {}
+    try { if (end !== undefined && this.isOpen) this.ws!.send(end); } catch { /* best effort: the end-of-stream message on a closing socket */ }
     // (a custom baseUrl means a test server: no need to wait)
     await new Promise((r) => setTimeout(r, this.opts.baseUrl ? 100 : 1500));   // let the final results arrive
-    try { this.ws?.close(); } catch {}
+    try { this.ws?.close(); } catch { /* best effort: the socket may already be closed */ }
   }
 }

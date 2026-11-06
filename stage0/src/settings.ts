@@ -109,11 +109,11 @@ export function flatten(obj: unknown, prefix = "", out: Flat = {}): Flat {
   return out;
 }
 /** Inverse of flatten(): dotted keys -> nested object. */
-export function unflatten(flat: Flat): Record<string, any> {
-  const root: Record<string, any> = {};
+export function unflatten(flat: Flat): Record<string, unknown> {
+  const root: Record<string, unknown> = {};
   for (const [path, v] of Object.entries(flat)) {
     const parts = path.split("."); let o = root;
-    for (const p of parts.slice(0, -1)) { if (typeof o[p] !== "object" || o[p] === null || Array.isArray(o[p])) o[p] = {}; o = o[p]; }
+    for (const p of parts.slice(0, -1)) { if (typeof o[p] !== "object" || o[p] === null || Array.isArray(o[p])) o[p] = {}; o = o[p] as Record<string, unknown>; }
     o[parts.at(-1)!] = v;
   }
   return root;
@@ -233,10 +233,10 @@ function issuesFor(iss: z.core.$ZodIssue, sources: Record<string, Source>): Sett
     return sources[sub ?? ""] ?? { layer: "default", file: DEFAULTS_FILE };
   };
   const mk = (key: string, message: string, allowed?: string): SettingsIssue => { const s = find(key); return { file: s.detail ? `${s.file} (${s.detail})` : s.file ?? "?", key, layer: s.layer, message, allowed }; };
-  if (iss.code === "unrecognized_keys") return (iss as any).keys.map((k: string) => mk(base ? `${base}.${k}` : k, "unknown key (typo?)", "see config/defaults.yaml for every valid key"));
-  if (iss.code === "invalid_value") return [mk(base, "value not allowed", ((iss as any).values as unknown[]).map(String).join(" | "))];
-  if (iss.code === "invalid_type" && /received undefined/.test(iss.message)) return [mk(base, "missing (config/defaults.yaml is out of sync with the schema)", String((iss as any).expected))];
-  if (iss.code === "invalid_type") return [mk(base, iss.message, String((iss as any).expected))];
+  if (iss.code === "unrecognized_keys") return iss.keys.map((k: string) => mk(base ? `${base}.${k}` : k, "unknown key (typo?)", "see config/defaults.yaml for every valid key"));
+  if (iss.code === "invalid_value") return [mk(base, "value not allowed", iss.values.map(String).join(" | "))];
+  if (iss.code === "invalid_type" && /received undefined/.test(iss.message)) return [mk(base, "missing (config/defaults.yaml is out of sync with the schema)", String(iss.expected))];
+  if (iss.code === "invalid_type") return [mk(base, iss.message, String(iss.expected))];
   return [mk(base, iss.message, iss.message.replace(/^(Too small|Too big): /, ""))];
 }
 

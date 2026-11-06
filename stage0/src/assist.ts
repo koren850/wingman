@@ -4,7 +4,7 @@
 //   3. still unsure: answer only when the other side has been silent for a few seconds, or the call is solo.
 // Also the rate limit for these answers (MeGate) and the lighter guard that lets general facts and arithmetic through.
 import { generateText } from "ai";
-import { ModelRegistry, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
 import { containsPhrase, tokens, normalize } from "./normalize.ts";
 import { evalMath } from "./calc.ts";
 import { untag } from "./reflex.ts";
@@ -85,12 +85,12 @@ export function classifyUserMessage(o: Pick<ClassifyRun, "text" | "frame" | "rec
 export async function classify(o: ClassifyRun): Promise<{ verdict?: "ASSIST" | "OTHER" | "NEITHER"; usage: unknown; providerMetadata: unknown }> {
   const model = await o.registry.resolve(o.model);
   const cache = cacheOptionsFor(o.model, o.cache);
-  const r: any = await (o.generate ?? generateText)({
+  const r = await generateOnce(o.generate, {
     model, maxOutputTokens: 8, maxRetries: 0, abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
     instructions: { role: "system", content: o.system ?? classifySystem(), ...(cache ? { providerOptions: cache } : {}) },
     messages: [{ role: "user", content: o.system ? `A different task from the reply format above: ignore that format. ${classifySystem()}\n\n${classifyUserMessage(o)}` : classifyUserMessage(o) }],
-  } as any);
+  });
   return { verdict: parseClassification(r.text), usage: r.usage ?? r.totalUsage, providerMetadata: r.providerMetadata };
 }
 

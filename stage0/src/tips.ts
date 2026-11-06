@@ -5,7 +5,7 @@
 //   - local tips (no AI): "you talk too much" (talk ratio of the last 5 min) and a one-time nudge for missed must-cover items.
 //   - every tip goes through the same guards as answer cards: no prices, dates or promises.
 import { generateText } from "ai";
-import { ModelRegistry, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { getProfile, userName, hebrewAddressRule } from "./profile.ts";
 import { guard, sanitize } from "./guards.ts";
@@ -139,11 +139,11 @@ export async function runTip(o: TipRun): Promise<{ tip?: Tip; usage: unknown; pr
   if (o.frame?.kind === "personal") return { tip: undefined, usage: undefined, providerMetadata: undefined };   // a friend call: never coach, and no model call
   const model = await o.registry.resolve(o.model);
   const cache = cacheOptionsFor(o.model, o.cache);
-  const r: any = await (o.generate ?? generateText)({
+  const r = await generateOnce(o.generate, {
     model, maxOutputTokens: 200, maxRetries: 0, abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
     instructions: { role: "system", content: tipsSystem() + (o.background ? `\n\n${o.background}` : ""), ...(cache ? { providerOptions: cache } : {}) },
     messages: [{ role: "user", content: tipUserMessage(o) }],
-  } as any);
+  });
   return { tip: parseTip(r.text), usage: r.usage ?? r.totalUsage, providerMetadata: r.providerMetadata };
 }

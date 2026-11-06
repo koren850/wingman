@@ -2,7 +2,7 @@
 // quiet, it is their own discussion: Wingman says so (who is talking, and what about), holds its answer cards, and alerts the user
 // only when someone turns to them (their name, or "you" right after the discussion). Rules only; the topic line is one small model call.
 import { generateText } from "ai";
-import { ModelRegistry, providerOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { nameRegex, userName } from "./profile.ts";
 
@@ -86,11 +86,11 @@ export function parseTopic(text: string): string | undefined {
 /** One topic call over the last lines. */
 export async function runTopic(o: { registry: ModelRegistry; model: string; lines: string[]; signal: AbortSignal; timeoutMs: number; generate?: typeof generateText }): Promise<{ topic?: string; usage: any; providerMetadata: any }> {
   const model = await o.registry.resolve(o.model);
-  const r: any = await (o.generate ?? generateText)({
+  const r = await generateOnce(o.generate, {
     model, maxOutputTokens: 60, maxRetries: 0, abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
     instructions: { role: "system", content: topicSystem() },
     messages: [{ role: "user", content: `<call_transcript>\n${untag(o.lines.join("\n"))}\n</call_transcript>` }],
-  } as any);
+  });
   return { topic: parseTopic(r.text ?? ""), usage: r.usage, providerMetadata: r.providerMetadata };
 }

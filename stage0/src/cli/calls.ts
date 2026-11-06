@@ -25,11 +25,16 @@ export function resolveId(ctx: Ctx, id: string | undefined): string {
 }
 
 // Plain-text rendering of a call summary.
-function summaryText(s: any): string {
+/** Rows from the call-folder reader (dashboard/lib.cjs, untyped): only the fields printed here. */
+interface SavedCall { id: string; startedAt: number; durationMs: number; mode: string; noAi?: boolean; crashed?: boolean; cardsShown: number; rated: number; hasSummary: boolean }
+interface SavedCard { id: string; badge: string; question?: string; say?: string; hidden?: boolean; health?: boolean; at?: number; t?: number }
+/** The saved summary.json fields this view prints. */
+interface SavedSummary { summary: string[]; decisions: string[]; nextSteps: { who: string; what: string; when?: string }[]; openQuestions: string[] }
+function summaryText(s: SavedSummary): string {
   const L: string[] = [];
   if (s.summary.length) L.push("Summary:", ...s.summary.map((x: string) => `  - ${x}`));
   if (s.decisions.length) L.push("Decisions:", ...s.decisions.map((x: string) => `  - ${x}`));
-  if (s.nextSteps.length) L.push("Next steps:", ...s.nextSteps.map((n: any) => `  - ${n.who}: ${n.what}${n.when ? ` (${n.when})` : ""}`));
+  if (s.nextSteps.length) L.push("Next steps:", ...s.nextSteps.map((n) => `  - ${n.who}: ${n.what}${n.when ? ` (${n.when})` : ""}`));
   if (s.openQuestions.length) L.push("Open questions:", ...s.openQuestions.map((x: string) => `  - ${x}`));
   return L.join("\n");
 }
@@ -50,7 +55,7 @@ export async function calls(ctx: Ctx, args: string[]): Promise<Result> {
       const n = values.limit === undefined ? 20 : Number(values.limit);
       if (!Number.isInteger(n) || n < 1 || n > 500) throw usage("--limit must be 1 to 500");
       const all = dataLib.listCalls(ctx.calls), list = all.slice(0, n);
-      const text = list.length ? list.map((c: any) => `${c.id}  ${when(c.startedAt)}  ${mmss(c.durationMs).padStart(6)}  ${c.mode}${c.noAi ? " no-ai" : ""}${c.crashed ? " CRASHED" : ""}  cards ${c.cardsShown}  rated ${c.rated}  ${c.hasSummary ? "summary" : "no summary"}`).join("\n") + (all.length > n ? `\n(${all.length - n} older not shown: --limit)` : "") : "No saved calls.";
+      const text = list.length ? list.map((c: SavedCall) => `${c.id}  ${when(c.startedAt)}  ${mmss(c.durationMs).padStart(6)}  ${c.mode}${c.noAi ? " no-ai" : ""}${c.crashed ? " CRASHED" : ""}  cards ${c.cardsShown}  rated ${c.rated}  ${c.hasSummary ? "summary" : "no summary"}`).join("\n") + (all.length > n ? `\n(${all.length - n} older not shown: --limit)` : "") : "No saved calls.";
       return { data: { total: all.length, calls: list }, text };
     }
     case "show": {
@@ -61,7 +66,7 @@ export async function calls(ctx: Ctx, args: string[]): Promise<Result> {
       const max = values.lines === undefined ? Infinity : Number(values.lines);
       if (!(max > 0)) throw usage("--lines must be a positive number");
       const tr = values["no-transcript"] ? [] : c.transcript.slice(-max);
-      const cards = c.cards.filter((x: any) => !x.hidden && x.badge !== "info" && !x.health).map((x: any) => ({ id: x.id, badge: x.badge, question: x.question || "", say: x.say || "", rating: c.tags[x.id] || "", t: x.at ?? x.t ?? 0 }));
+      const cards = c.cards.filter((x: SavedCard) => !x.hidden && x.badge !== "info" && !x.health).map((x: SavedCard) => ({ id: x.id, badge: x.badge, question: x.question || "", say: x.say || "", rating: c.tags[x.id] || "", t: x.at ?? x.t ?? 0 }));
       const s = c.summary;
       const data = { call: s, meta: c.meta, frame: c.callFrame, transcript: tr, cards, hasSummary: !!c.callSummary };
       const L = [`Call ${id}  ${when(s.startedAt)}  ${mmss(s.durationMs)}  ${s.mode}${s.noAi ? " no-ai" : ""}${s.crashed ? "  CRASHED" : ""}  cost $${s.costUsd.toFixed(3)}`];

@@ -6,7 +6,7 @@
 //   - the checklist is generated once for this call and then kept stable: items keep their text, `done` only goes false -> true,
 //     and at most one new item is added per update.
 import { generateText } from "ai";
-import { ModelRegistry, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor, cacheOptionsFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { getProfile, userName } from "./profile.ts";
 import { loadTopics } from "./pack.ts";
@@ -54,16 +54,17 @@ export function sameItem(a: string, b: string): boolean {
 
 /** Defensive parse of the model answer (object, JSON text, or prose / ``` fences around the JSON). Unknown kind becomes "other"; undefined when nothing usable is in it. */
 export function parseFrame(input: unknown): Frame | undefined {
-  let o: any = input;
+  let parsed: unknown = input;
   if (typeof input === "string") {
     const t = input.replace(/```(?:json)?/gi, ""), a = t.indexOf("{"), b = t.lastIndexOf("}");
     if (a < 0 || b <= a) return undefined;
-    try { o = JSON.parse(t.slice(a, b + 1)); } catch { return undefined; }
+    try { parsed = JSON.parse(t.slice(a, b + 1)); } catch { return undefined; }
   }
-  if (!o || typeof o !== "object" || Array.isArray(o)) return undefined;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+  const o = parsed as Record<string, unknown>;
   const kindRaw = str(o.kind, 20).toLowerCase();
   const kind: Kind = (KINDS as readonly string[]).includes(kindRaw) ? (kindRaw as Kind) : "other";
-  const people = (Array.isArray(o.people) ? o.people : []).flatMap((p: any) => { const who = str(p?.who ?? p, 40), role = str(p?.role, 40); return who ? [{ who, role }] : []; }).slice(0, 6);
+  const people = (Array.isArray(o.people) ? o.people : []).flatMap((p: { who?: unknown; role?: unknown } | string | null) => { const who = str((p as { who?: unknown } | null)?.who ?? p, 40), role = str((p as { role?: unknown } | null)?.role, 40); return who ? [{ who, role }] : []; }).slice(0, 6);
   const entities = (Array.isArray(o.entities) ? o.entities : []).map((e: unknown) => str(e, 40)).filter(Boolean).slice(0, 10);
   const checklist: ChecklistItem[] = [];
   for (const c of Array.isArray(o.checklist) ? o.checklist : []) {
@@ -165,12 +166,12 @@ export function frameUserMessage(o: Pick<FrameRun, "transcript" | "contextNotes"
 export async function runFrame(o: FrameRun): Promise<{ frame: Frame; usage: unknown; providerMetadata: unknown }> {
   const model = await o.registry.resolve(o.model);
   const cache = cacheOptionsFor(o.model, o.cache);
-  const r: any = await (o.generate ?? generateText)({
+  const r = await generateOnce(o.generate, {
     model, maxOutputTokens: 700, maxRetries: 0, abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
     instructions: { role: "system", content: frameSystem() + (o.background ? `\n\n${o.background}` : ""), ...(cache ? { providerOptions: cache } : {}) },
     messages: [{ role: "user", content: frameUserMessage(o) }],
-  } as any);
+  });
   const frame = parseFrame(r.text);
   if (!frame) throw new Error("frame: the model answer had no usable JSON");
   return { frame, usage: r.usage ?? r.totalUsage, providerMetadata: r.providerMetadata };

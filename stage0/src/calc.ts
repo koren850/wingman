@@ -214,7 +214,7 @@ function evaluate(toks: Tok[]): number | undefined {
   if (t.length < 1 || t.length % 2 === 0 || t.some((x, i) => (i % 2 === 0) !== (x.t === "num"))) return undefined;
   type V = { v: number; pct: boolean };
   const nums: V[] = [], ops: string[] = [];
-  t.forEach((x, i) => (i % 2 === 0 ? nums.push({ v: (x as Num).v, pct: !!(x as Num).pct }) : ops.push((x as any).v)));
+  t.forEach((x, i) => (i % 2 === 0 ? nums.push({ v: (x as Num).v, pct: !!(x as Num).pct }) : ops.push((x as Extract<Tok, { t: "op" }>).v)));
   if (ops.length === 0 && !squared) return undefined;                  // a lone number or lone percent is not a calculation
   const pv = (n: V) => (n.pct ? n.v / 100 : n.v);
   // × ÷ first, then + -

@@ -2,7 +2,7 @@
 // ("budget about 20k", "wants it before Passover", "I promised a quote by Tuesday"). Notes only record
 // what was said; they never suggest prices or promises. Notes also feed the post-call summary.
 import { generateText } from "ai";
-import { ModelRegistry, providerOptionsFor } from "./providers/llm.ts";
+import { ModelRegistry, generateOnce, providerOptionsFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { getProfile, userName } from "./profile.ts";
 
@@ -38,15 +38,15 @@ export function dedupeNotes(fresh: string[], existing: string[]): string[] {
 export async function takeNotes(o: {
   registry: ModelRegistry; model: string; existing: string[]; lines: string[]; signal: AbortSignal; timeoutMs: number;
   generate?: typeof generateText;
-}): Promise<{ notes: string[]; usage: any; providerMetadata: any }> {
+}): Promise<{ notes: string[]; usage: unknown; providerMetadata: unknown }> {
   const model = await o.registry.resolve(o.model);
-  const r = await (o.generate ?? generateText)({
+  const r = await generateOnce(o.generate, {
     model, maxOutputTokens: 160, maxRetries: 0,
     abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
     instructions: { role: "system", content: notesSystem() },
     // untag() removes <call_transcript> tags from the lines, so spoken words cannot close the block early (prompt injection).
     messages: [{ role: "user", content: `Notes so far:\n${o.existing.map((n) => `- ${n}`).join("\n") || "(none)"}\n\n<call_transcript>\n${untag(o.lines.join("\n"))}\n</call_transcript>` }],
-  } as any);
+  });
   return { notes: dedupeNotes(parseNotes(r.text), o.existing), usage: r.usage, providerMetadata: r.providerMetadata };
 }

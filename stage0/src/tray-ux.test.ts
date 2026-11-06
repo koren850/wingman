@@ -223,15 +223,17 @@ test("mic check: 0 peak fails (blocked), 0.017 warns (quiet voice), 0.05 is ok",
 });
 
 // ---- run.ts: phases and stop steps are wired in order ----
-test("run.ts writes call.json phases and emits stop steps in order", () => {
-  const src = readFileSync(join(ROOT, "src", "run.ts"), "utf8");
-  for (const p of ['setPhase("starting")', 'setPhase("waiting")', 'setPhase("live", { liveAt']) assert.ok(src.includes(p), p);
+test("engine writes call.json phases and emits stop steps in order", () => {
+  const read = (f: string) => readFileSync(join(ROOT, "src", f), "utf8");
+  const src = read("engine/shutdown.ts"), consent = read("engine/consent.ts");   // (phases: run.ts "starting", consent.ts "waiting" / "live"; stop steps: shutdown.ts)
+  assert.ok(read("run.ts").includes('setPhase("starting")'), 'setPhase("starting")');
+  for (const p of ['setPhase("waiting")', 'setPhase("live", { liveAt']) assert.ok(consent.includes(p), p);
   const at = (t: string) => src.indexOf(t);
   assert.ok(at('status("stopphase", { phase: "saving" })') < at('status("stopphase", { phase: "summary" })'));
   assert.ok(at('status("stopphase", { phase: "summary" })') < at('status("stopphase", { phase: "done" })'));
   assert.ok(at('status("stopphase", { phase: "done" })') < at('status("ended"'));
   assert.match(src, /phase: "ended"/);
-  assert.match(src, /loadAttachments\(S\.attachments\.maxChars, \{ consume: !fileArg \}\)/, "a practice call never deletes the real call's files");
+  assert.match(read("engine/boot.ts"), /loadAttachments\(S\.attachments\.maxChars, \{ consume: !fileArg \}\)/, "a practice call never deletes the real call's files");
 });
 
 // ---- real engine run (offline, scripted, temp calls folder): statuses and call.json phases ----

@@ -9,14 +9,17 @@ const file = (ctx: Ctx) => ctx.userSettings || USER_SETTINGS_FILE;
 const show = (v: unknown) => (v === null || v === undefined ? "" : String(v));
 const FORBIDDEN = /^keys\./;   // where keys live is not something the CLI changes
 
+/** One row of the app's settings catalog (src/settings-catalog; a CommonJS module, so untyped). */
+interface CatalogItem { key: string; label: string; group: string; kind: string; value: unknown; def: unknown; changed: boolean; unit?: string; options?: string[][]; min?: number; max?: number; help?: string }
+
 function items(ctx: Ctx) {
   const st = readState(file(ctx));
-  return { st, items: catalog.describe(st) as any[] };
+  return { st, items: catalog.describe(st) as CatalogItem[] };
 }
-const brief = (i: any) => ({ key: i.key, label: i.label, group: i.group, kind: i.kind, value: i.value, default: i.def, changed: i.changed, unit: i.unit || "", options: i.options ? i.options.map((o: string[]) => o[0]) : undefined, min: i.min, max: i.max, help: i.help });
+const brief = (i: CatalogItem) => ({ key: i.key, label: i.label, group: i.group, kind: i.kind, value: i.value, default: i.def, changed: i.changed, unit: i.unit || "", options: i.options ? i.options.map((o: string[]) => o[0]) : undefined, min: i.min, max: i.max, help: i.help });
 
 /** Text typed on the command line -> the value the Settings page would hold for this item. */
-function typed(item: any, raw: string): unknown {
+function typed(item: CatalogItem, raw: string): unknown {
   if (item.kind === "bool") {
     if (/^(on|true|yes|1)$/i.test(raw)) return true;
     if (/^(off|false|no|0)$/i.test(raw)) return false;
@@ -37,7 +40,7 @@ export async function settings(ctx: Ctx, args: string[]): Promise<Result> {
     const L: string[] = [];
     let g = "";
     for (const i of its) {
-      if (i.group !== g) { g = i.group; L.push("", `[${(catalog.GROUPS.find((x: any) => x.id === g) || { title: g }).title}]`); }
+      if (i.group !== g) { g = i.group; L.push("", `[${(catalog.GROUPS.find((x: { id: string }) => x.id === g) || { title: g }).title}]`); }
       L.push(`  ${i.key.padEnd(30)} ${show(i.value).padEnd(10)} ${i.unit || ""}${i.changed ? "  (changed)" : ""}  ${clip(i.label, 50)}`);
     }
     const data: Record<string, unknown> = { userFile: st.userFile, settings: its.map(brief) };

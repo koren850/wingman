@@ -12,7 +12,7 @@ export const NO_APP_HINT = "Ask the user to open the Wingman app, or run `wingma
 /** Is a Wingman app process alive? Only checked when the socket is the default one (tests set their own socket). */
 export function appProcessRunning(ctx: Ctx): Promise<boolean | undefined> {
   if (ctx.env.WINGMAN_CONTROL_SOCKET) return Promise.resolve(undefined);
-  return new Promise((res) => execFile("pgrep", ["-f", "Wingman.app/Contents/MacOS/Wingman"], { timeout: 3000 }, (e, out) => res(e ? (typeof (e as any).code === "number" && (e as any).code === 1 ? false : undefined) : String(out).trim().length > 0)));
+  return new Promise((res) => execFile("pgrep", ["-f", "Wingman.app/Contents/MacOS/Wingman"], { timeout: 3000 }, (e, out) => res(e ? ((e as { code?: unknown }).code === 1 ? false : undefined) : String(out).trim().length > 0)));
 }
 
 // True only for a real socket owned by the current user.
@@ -24,6 +24,7 @@ export function ownSocket(path: string, platform: string = process.platform) {
 }
 
 /** The app's answer. ok=false carries `code` and `error` (refused, rate_limited, bad_args...). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the app's JSON reply: extra fields differ per command and are read by the callers that know them
 export type Reply = { ok: boolean; code?: string; error?: string; [k: string]: any };
 
 /** Raw request. Rejects with CliError(NO_APP) when nothing listens. A refusal from the app comes back as a normal reply with ok:false. */

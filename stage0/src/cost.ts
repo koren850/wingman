@@ -18,7 +18,7 @@ export class CostMeter {
   /** Cost of one LLM call in USD (also added to the role total). Unknown models cost 0 and are listed in `unpriced`. */
   addLlm(role: string, modelRef: string, usage: unknown, providerMetadata?: unknown): { usd: number; tokens: Omit<RoleTotals, "calls" | "usd"> } {
     const u = (usage ?? {}) as LlmUsage, d = u.inputTokenDetails ?? {};
-    const pm = ((providerMetadata as any)?.anthropic ?? {}) as { cacheCreationInputTokens?: number };
+    const pm = ((providerMetadata as { anthropic?: object } | undefined)?.anthropic ?? {}) as { cacheCreationInputTokens?: number };
     // A NaN/negative count from a provider must not poison the running total (NaN >= cap is false: the budget cap would never trip).
     const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x > 0 ? x : 0);
     const input = n(u.inputTokens), output = n(u.outputTokens);

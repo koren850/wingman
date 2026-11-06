@@ -13,7 +13,7 @@ function purge(id: string) {
   if (!existsSync(dir)) { console.error(`No such call: ${id}`); process.exitCode = 2; return; }
   rmSync(dir, { recursive: true, force: true });
   // existsSync follows the link: false means calls/latest now dangles (it pointed at the folder just deleted), so remove it.
-  try { if (existsSync(join(CALLS, "latest")) === false) rmSync(join(CALLS, "latest"), { force: true }); } catch {}
+  try { if (existsSync(join(CALLS, "latest")) === false) rmSync(join(CALLS, "latest"), { force: true }); } catch { /* best effort: the latest link is only a convenience */ }
   console.log(`Deleted ${id}`);
 }
 if (args[0] === "--older-than") {

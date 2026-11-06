@@ -122,7 +122,7 @@ section("Budget and data hygiene");
     if (Date.now() - st.mtimeMs > S.privacy.retentionDays * 86400_000) old++;
     const uf = join(dir, "usage.jsonl");
     if (existsSync(uf)) for (const line of readFileSync(uf, "utf8").split("\n").filter(Boolean)) {
-      try { const r = JSON.parse(line); if (r.role === "summary" && new Date(r.t).getMonth() === now.getMonth()) month += Number(r.totalUsd) || 0; } catch {}
+      try { const r = JSON.parse(line); if (r.role === "summary" && new Date(r.t).getMonth() === now.getMonth()) month += Number(r.totalUsd) || 0; } catch { /* a log row that is not valid JSON is skipped */ }
     }
   }
   S.budget.maxUsdPerMonth === null ? ok(`month-to-date $${month.toFixed(2)} (no monthly cap set)`) : month < S.budget.maxUsdPerMonth ? ok(`month-to-date $${month.toFixed(2)} of $${S.budget.maxUsdPerMonth}`) : warn(`month-to-date $${month.toFixed(2)} reached budget.maxUsdPerMonth $${S.budget.maxUsdPerMonth}`);
@@ -137,7 +137,7 @@ section("Screens and audio devices");
   const bt = bluetoothInUse(await readAudioDevices());
   bt ? warn(`${bt.device.name} is the ${bt.role === "mic" ? "microphone" : "speaker output"}: Bluetooth call audio lowers transcript quality`, "use the Mac microphone, or wired headphones") : ok("no Bluetooth headset in use");
   const screens = await new Promise<number>((res) => execFile("system_profiler", ["SPDisplaysDataType", "-json"], { timeout: 5000 }, (e, out) => {
-    try { res(e ? -1 : (JSON.parse(out).SPDisplaysDataType ?? []).flatMap((g: any) => g.spdisplays_ndrvs ?? []).length); } catch { res(-1); }
+    try { res(e ? -1 : ((JSON.parse(out).SPDisplaysDataType ?? []) as { spdisplays_ndrvs?: unknown[] }[]).flatMap((g) => g.spdisplays_ndrvs ?? []).length); } catch { res(-1); }
   }));
   if (screens < 0) warn("could not count screens");
   else if (screens >= 2) ok(`${screens} screens: the answer window opens on the second one`);
@@ -165,7 +165,7 @@ if (!IS_APP && process.env.TERM_PROGRAM && process.env.TERM_PROGRAM !== "Apple_T
 section(`System audio source: ${S.audio.system.source}`);
 if (S.audio.system.source === "off") warn("audio.system.source is off: the client cannot be heard (transcript-only)");
 else {
-  const sys: any = S.audio.system.source === "audiotee" ? new SystemSource() : new MicSource(S.audio.system.device);
+  const sys: SystemSource | MicSource = S.audio.system.source === "audiotee" ? new SystemSource() : new MicSource(S.audio.system.device);
   let err = "", peak = 0;
   sys.on("error", (e: Error) => { err = e.message; }); sys.on("pcm", (b: Buffer) => { peak = Math.max(peak, peakOf(b)); });
   try {
@@ -206,7 +206,8 @@ if (!S.run.noAi) {
           h: {
             onTag: (t) => { first ||= Date.now() - t0; tag = t.kind; }, onSay() {}, onFacts() {}, onSayComplete() {},
             onDone: ({ usage, providerMetadata }) => {
-              const u = usage as any, pm = (providerMetadata as any)?.anthropic ?? {};
+              const u = usage as { inputTokens?: number; inputTokenDetails?: { cacheReadTokens?: number }; cachedInputTokens?: number } | undefined;
+              const pm = (providerMetadata as { anthropic?: { cacheReadInputTokens?: number } } | undefined)?.anthropic ?? {};
               const read = u?.inputTokenDetails?.cacheReadTokens ?? u?.cachedInputTokens ?? pm.cacheReadInputTokens ?? 0;
               console.log(`  ${ref} call ${i}: first tag ${first} ms (${tag}) · input ${u?.inputTokens} · cache read ${read}`);
               if (!["SKIP", "STALL", "ANS", "BANK"].includes(tag)) bad(`${ref}: reply had no valid tag`);
