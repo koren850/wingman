@@ -3,7 +3,28 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Wingman: a live meeting assistant for macOS (menu-bar app plus engine, Hebrew first). Listens locally, shows short answer cards on a second screen.",
+  "description": "Real-time answer cards for live calls on macOS: hears both sides and shows a short answer in about a second. Electron and TypeScript.",
+  "author": "koren850",
+  "homepage": "https://github.com/koren850/wingman#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/koren850/wingman.git",
+    "directory": "app"
+  },
+  "bugs": {
+    "url": "https://github.com/koren850/wingman/issues"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "speech-to-text",
+    "electron",
+    "typescript",
+    "copilot",
+    "real-time",
+    "deepgram",
+    "claude"
+  ],
   "license": "MIT",
   "packageManager": "pnpm@11.22.0",
   "engines": {
@@ -61,5 +82,6 @@
     "tsx": "^4.23.15",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.72.1"
-  }
+  },
+  "//": "Compilers: ESLint (typescript-eslint) needs the TypeScript 6 JS API, so 'typescript' is aliased to @typescript/typescript6. '@typescript/native' is TypeScript 7 and provides the 'tsc' binary used for type checking."
 }
