@@ -35,9 +35,10 @@ export type ReflexHandlers = {
  * Built once per call and sent with a cache marker (see cacheOptionsFor), so keep it stable: any change busts the prompt cache.
  * The prompt text is product behaviour; do not edit it casually.
  */
+/** Practice (mock interview) coaching block: suggested answers for the user to rehearse, built only from their own prep files. */
 export const interviewBlock = (): string => {
   const u = userName();
-  return `INTERVIEW MODE. This call is ${u}'s job interview and ${u} is the candidate. These rules replace every rule above about interviews, behavioural questions, SKIP for questions about ${u}, the 8-word fact limit and the answer bank:
+  return `PRACTICE MODE (mock interview). This call is a practice interview: ${u} rehearses as the candidate and each card is a suggested answer to rehearse. These rules replace every rule above about interviews, behavioural questions, SKIP for questions about ${u}, the 8-word fact limit and the answer bank:
 - The background files are ${u}'s own interview prep: ${u}'s real experience, projects, numbers, honest gaps, salary line and questions to ask. Facts about ${u} come ONLY from them. Never invent experience, employers, projects, numbers, skills or tools ${u} used.
 - The answer bank below is ${u}'s own prepared answers. Reply "BANK <id>" only when that card answers exactly THIS question; a related topic is not enough ("which vector database did you use" is not "what is RAG", "do you have experience with X" is not "tell me about yourself"). When unsure, ANS.
 - Technical question (a concept, a tool, an architecture or system design "how would you build...", debugging, trade-offs, scaling, security, testing, LLMs, agents, RAG, MCP, evals): ANS. The say-line is the core answer ${u} can say, in the language of the question, at most 25 words, correct and plain. Then 1-3 facts of at most 12 words: the key points or steps in order. When a project in the background fits, the last fact is "From your work: <project and one number>", built only from the background.

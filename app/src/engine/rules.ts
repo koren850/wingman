@@ -17,8 +17,8 @@ export function recentNotes(notes: readonly string[]): string[] {
   return notes.slice(-NOTES_EXISTING_MAX);
 }
 
-/** Interview: when the current answer of the user began. An answer is the user talking since the other side last spoke; a pause of more than 10 s
- *  between the user's lines starts a new one (if the interviewer's audio is dead, the other-side clock never moves and the answer would never end). */
+/** Practice mode: when the user's current rehearsed answer began. An answer is the user talking since the other side (the mock interviewer) last spoke; a pause of more than 10 s
+ *  between the user's lines starts a new one (if the other side's audio is dead, its clock never moves and the answer would never end). */
 export const ANSWER_PAUSE_MS = 10_000;
 export function nextAnswerStart(o: { answerStart: number; lastThemSpeech: number; lastMeLineAt: number; now: number }): number {
   if (!o.answerStart || o.lastThemSpeech > o.answerStart || (o.lastMeLineAt > 0 && o.now - o.lastMeLineAt > ANSWER_PAUSE_MS))
