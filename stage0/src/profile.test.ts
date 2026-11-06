@@ -251,6 +251,30 @@ test("repo guard: no tracked source, data or config file contains a word from th
   assert.deepEqual(hits.slice(0, 20), [], "personal words in the repo");
 });
 
+/** Markdown files anywhere in the repo (root, docs/, stage0/, brand/) plus LICENSE, as paths relative to the REPO root (this test runs with cwd stage0). */
+const CLONE_URL = "https://github.com/koren850/wingman.git";
+function trackedDocs(): string[] {
+  const top = join(ROOT, "..");
+  try { return execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.md", "LICENSE"], { cwd: top, encoding: "utf8" }).split("\0").filter(Boolean); } catch { return []; }
+}
+test("repo guard: no tracked Markdown file or LICENSE contains a word from the private denylist", (t) => {
+  const re = denylist();
+  const files = trackedDocs();
+  if (!files.length) return t.skip("not a git checkout");
+  assert.ok(files.includes("README.md") && files.includes("LICENSE") && files.some((f) => f.startsWith("docs/")), "the scan lists the root, docs/ and LICENSE");
+  if (!re) return t.skip("no denylist configured (set WINGMAN_DENYLIST or data/private/denylist.txt)");
+  const hits: string[] = [];
+  for (const rel of files) {
+    let text: string; try { text = readFileSync(join(ROOT, "..", rel), "utf8"); } catch { continue; }
+    // The LICENSE copyright holder is the owner's public GitHub handle on purpose: allow exactly that word, in LICENSE only.
+    if (rel === "LICENSE") text = text.replace(/koren850/g, "");
+    // The README clone URL names the owner's public GitHub account on purpose (the one place the URL lives): allow exactly that URL, in README.md only.
+    if (rel === "README.md") text = text.replace(CLONE_URL, "");
+    text.split("\n").forEach((l, i) => { if (re.test(l) || re.test(rel)) hits.push(`${rel}:${i + 1}`); });
+  }
+  assert.deepEqual(hits.slice(0, 20), [], "personal words in Markdown or LICENSE");
+});
+
 test("profile: a file that becomes invalid mid-call keeps the last good profile; only checkProfile (startup) throws", () => {
   const dir = tmp("badreread"), f = join(dir, "profile.yaml"), env = { WINGMAN_PROFILE_FILE: f };
   saveProfile({ ...EMPTY_PROFILE, name: "Noa" }, f);
