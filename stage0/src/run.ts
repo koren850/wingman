@@ -41,6 +41,7 @@
 //   stt.ts, audio-sources.ts, watchdogs.ts          STT channels and retry loops; mic and system audio; silence watchdogs
 //   degrade.ts   reflex model health, the degrade ladder, the health tick
 //   consent.ts, control.ts, shutdown.ts             start listening; keys and tray commands; stop, summary, crash handling
+import { st } from "./engine/state.ts";
 import { fileArg, noAi, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO } from "./engine/boot.ts";
 import { setPhase, status, health, safe } from "./engine/out.ts";
 import { crash, installProcessHandlers } from "./engine/shutdown.ts";
@@ -91,6 +92,7 @@ async function main() {
   sup.tick();
   wireChannels();
   printBanner();
+  if (st.call.shuttingDown) return;   // Stop came during startup: shutdown() is already closing the call, so start nothing new
   startConsent();
   if (fileArg) await startFileSource(fileArg); else await startLiveSources();
 }

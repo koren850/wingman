@@ -24,9 +24,13 @@ export function llmFailed(model: string, err: ProviderError) {
   if (err.kind === "spend_cap") downUntil.set(model, Date.now() + 6 * 3600_000);
   if (err.kind === "rate" || err.kind === "overload" || err.kind === "timeout" || err.kind === "network") sup.noteLlmTrouble();
   log.write("events", { type: "llm.error", model, kind: err.kind, retryable: err.retryable, switchProvider: err.switchProvider, status: err.status });
-  if (hard) health(`ai-${model}`, "red", `AI ${describe(err)}${REFLEX_MODELS.length > 1 ? "" : ". בנק בלבד"}`);
+  if (hard) { aiBars.add(model); health(`ai-${model}`, "red", `AI ${describe(err)}${REFLEX_MODELS.length > 1 ? "" : ". בנק בלבד"}`); }
   refreshSignals();
 }
+/** Models whose hard-error bar ("AI authentication failed") is on screen. */
+const aiBars = new Set<string>();
+/** An answer from `model` worked again (a top-up, a new key, a half-open breaker that closed): its red bar goes. */
+export function clearAiBar(model: string) { if (aiBars.delete(model)) healthClear(`ai-${model}`); }
 
 /** Push the current facts to the supervisor (called every tick and after events). */
 export function refreshSignals() {
@@ -73,6 +77,7 @@ function onWake(gapMs: number) {
 /** Every health.tickMs: sleep detection, idle auto-stop, ladder signals, cost and call-length warnings, then the supervisor tick. */
 let lastTick = Date.now(), lastTickMono = mono(), sleepClearAt = 0, idleWarned = false;
 export function tickHealth() {
+  if (st.call.shuttingDown) return;   // during the summary no health card (cost, disk, idle) may land after phase "ended"
   // Y2: a long gap between ticks means the Mac slept (lid closed) mid-call. Wall time and monotonic time are compared, so a clock that is set
   // backwards is not mistaken for anything, and a sleep never counts as "nobody spoke" (idle time is monotonic).
   const now = Date.now(), m = mono();

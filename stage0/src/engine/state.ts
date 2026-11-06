@@ -16,7 +16,9 @@ const startEcho: EchoMode = PHONE ? "off" : ECHO.mode === "auto" ? "filter" : EC
 
 export const st = {
   /** Call lifecycle. consented: audio may be sent for transcription. */
-  call: { consented: false, shuttingDown: false, crashed: false, quiet: S.cards.quiet, discardNow: false,
+  call: { consented: false, shuttingDown: false,
+    closing: false as boolean,   // shutdown is closing the STT channels: finals still arriving are written to the transcript, but start nothing (no card, no question, no note)
+    crashed: false, quiet: S.cards.quiet, discardNow: false,
     orphaned: false as boolean,   // the menu-bar app's pipe closed (it crashed): the call goes on, but stops itself after ORPHAN_IDLE_MIN of silence
     consentedMono: 0 },
   /** Last time a card for the other side appeared: answers for the user must not push it off the screen. */

@@ -5,10 +5,11 @@ import { detectCareful, looksFactual, runSelfCheck, checkFix, MIN_WORDS } from "
 import { selfGate, S, log, cost, notesAbort, background, registry, noAi, sup, interview, brief, bank, claims } from "./boot.ts";
 import { emitCard, emitSide } from "./cards.ts";
 import { st } from "./state.ts";
+import { nextAnswerStart } from "./rules.ts";
 import { recentTranscript } from "./coach.ts";
 
 const claimShown = new Set<string>();
-let answerStart = 0, longNudgedFor = 0;
+let answerStart = 0, longNudgedFor = 0, lastMeLineAt = 0;
 /** What the user said in an interview: a quiet card when a number is bigger than the CV, and one nudge when an answer passes 90 seconds. */
 function interviewSelfCheck(text: string) {
   const miss = checkClaims(text, claims);
@@ -19,7 +20,8 @@ function interviewSelfCheck(text: string) {
   }
   // One answer = the user talking since the other side last spoke.
   const now = Date.now();
-  if (!answerStart || st.voice.lastThemSpeech > answerStart) answerStart = Math.max(st.voice.lastThemSpeech, now - 5000);
+  answerStart = nextAnswerStart({ answerStart, lastThemSpeech: st.voice.lastThemSpeech, lastMeLineAt, now });
+  lastMeLineAt = now;
   if (now - answerStart > 90_000 && longNudgedFor !== answerStart) {
     longNudgedFor = answerStart;
     emitSide({ id: `long-${++selfSeq}`, badge: "tip", say: "התשובה עברה 90 שניות: סכם במשפט אחד ושאל אם להרחיב.", facts: [] });

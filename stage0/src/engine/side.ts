@@ -8,6 +8,7 @@ import { status } from "./out.ts";
 import { log, S, callStart, brief, transcript, cost, notesAbort, registry, sup, notesOn, contextNotes, CONTROL, spotter, speakers } from "./boot.ts";
 import { emitSide } from "./cards.ts";
 import { st } from "./state.ts";
+import { recentNotes } from "./rules.ts";
 
 /** Name speaker `spk` for the rest of the call (source "intro" = from their own introduction, "user" = the user renamed them). The
  *  answer window and the dashboard follow the cards.jsonl "speaker" row; later transcript rows carry the name. */
@@ -58,7 +59,7 @@ export async function notesRound() {
   if (words < S.notes.minNewWords) return;
   const lines = notesLines; notesLines = []; notesBusy = true;
   try {
-    const r = await takeNotes({ registry, model: S.notes.model, existing: liveNotes, lines, signal: notesAbort.signal, timeoutMs: S.notes.timeoutMs });
+    const r = await takeNotes({ registry, model: S.notes.model, existing: recentNotes(liveNotes), lines, signal: notesAbort.signal, timeoutMs: S.notes.timeoutMs });
     if (st.call.shuttingDown) return;
     const c = cost.addLlm("notes", S.notes.model, r.usage, r.providerMetadata);
     log.write("usage", { role: "notes", model: S.notes.model, usage: r.usage, usd: c.usd });

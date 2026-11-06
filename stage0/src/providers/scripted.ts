@@ -57,7 +57,14 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
     });
   }
   send(pcm: Buffer) { this.audioSeconds += pcm.length / 32000; return true; }
-  async close() { this.isOpen = false; for (const t of this.timers) clearTimeout(t); this.emit("close"); }
+  /** Like a real socket, it delivers its last finals while closing. Test hook: WINGMAN_SCRIPT_CLOSE_FINALS=[{speaker, text}] are emitted ~50 ms after close() starts. */
+  async close() {
+    this.isOpen = false; for (const t of this.timers) clearTimeout(t);
+    const late = (() => { try { return JSON.parse(process.env.WINGMAN_SCRIPT_CLOSE_FINALS ?? "[]") as { speaker: string; text: string }[]; } catch { return []; } })().filter((l) => l.speaker === this.o.channel);
+    if (late.length) await new Promise((r) => setTimeout(r, 50));
+    for (const l of late) { const now = Date.now(); this.emit("result", { channel: this.o.channel, text: l.text, isFinal: true, speechFinal: true, words: [], speechEndWall: now - 300, arrivedAt: now } as SttResult); }
+    this.emit("close");
+  }
 }
 
 /** The "script" STT provider. `id` is cast because SttProvider.id does not list it. */
@@ -142,6 +149,9 @@ const usage = { inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrit
 const finish = { unified: "stop" as const, raw: "end_turn" };
 
 /** Factory used by ModelRegistry (spec.factory): returns modelId -> a mock model. Streaming sends the whole answer as one delta. */
+// Fault injection for tests: WINGMAN_LLM_FAIL=<n>:<http status> makes the first n reflex calls (questions from the other side) fail like a real provider.
+let llmFailsLeft = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[0]) || 0;
+const llmFailStatus = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[1]) || 401;
 export function createScripted() {
   return (modelId: string) => new MockLanguageModelV4({
     provider: "scripted", modelId,
@@ -149,6 +159,7 @@ export function createScripted() {
     doGenerate: async (o) => ({ content: [{ type: "text", text: scriptedAnswer(promptText(o)) }], finishReason: finish, usage, warnings: [] }) as any,
     doStream: async (o) => {
       const text = scriptedAnswer(promptText(o));
+      if (llmFailsLeft > 0 && questionOf(promptText(o))) { llmFailsLeft--; throw Object.assign(new Error(`HTTP ${llmFailStatus} (injected)`), { statusCode: llmFailStatus }); }
       const parts = [{ type: "stream-start", warnings: [] }, { type: "text-start", id: "t" }, { type: "text-delta", id: "t", delta: text }, { type: "text-end", id: "t" }, { type: "finish", usage, finishReason: finish }];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- as above: the scripted stream parts are plain objects
       return { stream: new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } }) } as any;

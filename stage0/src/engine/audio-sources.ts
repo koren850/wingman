@@ -55,11 +55,15 @@ export async function startFileSource(file: string) {
     });
   } else { f.on("pcm-them", (b) => { gate.noteThemPeak(peakOf(b)); chans.them.send(b); }); f.on("pcm-me", (b) => chans.me.send(gateMic(b))); }
   f.on("end", () => setTimeout(() => void shutdown(), 4000));
-  await f.start(); stops.push(() => f.stop());
+  await f.start();
+  const stop = () => f.stop();
+  stops.push(stop);
+  if (st.call.shuttingDown) await stop().catch(() => {});   // Stop came while the source was starting: shutdown ran with nothing to stop yet
 }
 
 /** Live capture: starts the supervised mic and system-audio sources and the watchdogs around them. */
 export async function startLiveSources() {
+  if (st.call.shuttingDown) return;
   if (S.system.caffeinate && process.platform === "darwin") spawn("caffeinate", ["-dis", "-w", String(process.pid)], { stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
   // Client audio: audiotee (macOS tap) | device (avfoundation input such as BlackHole, via ffmpeg) | off.
   const srcKind = S.audio.system.source;
@@ -115,6 +119,9 @@ export async function startLiveSources() {
   }
   await sys?.start();   // neither start() can fail the call: a source that will not start is retried in the background
   await mic.start();
-  stops.push(async () => { await sys?.stop(); }, () => mic.stop(), async () => { stopMicWatch(); stopConsentTimer(); });
+  const stoppers = [async () => { await sys?.stop(); }, () => mic.stop(), async () => { stopMicWatch(); stopConsentTimer(); }];
+  stops.push(...stoppers);
+  // Stop came while the sources were starting (about a second after launch): shutdown ran with an empty `stops`, so close the mic and the tap here.
+  if (st.call.shuttingDown) { for (const s of stoppers) await s().catch(() => {}); return; }
   startTapWatchdog(sys, deadFrameMs);
 }
