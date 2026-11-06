@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { neutralizeLinks } from "./summary.ts";
@@ -58,3 +59,31 @@ test("attachments: $HOME from the environment does not move the home folder (F3)
     else process.env.HOME = before;
   }
 });
+
+// ---- F4: install.sh --purge guard ----
+test(
+  "install.sh --purge: refuses '..' paths, symlinks out of the Wingman folder and the home folder; accepts a real Wingman folder (F4)",
+  { skip: process.platform === "win32" },
+  () => {
+    const root = mkdtempSync(join(tmpdir(), "wm-purge-"));
+    const home = join(root, "h");
+    const data = join(home, "Library", "Application Support", "Wingman");
+    mkdirSync(data, { recursive: true });
+    mkdirSync(join(home, "Documents"));
+    symlinkSync(join(home, "Documents"), join(home, "Library", "Application Support", "Wingman-link"));
+    const run = (dir: string, ...extra: string[]) =>
+      spawnSync("bash", [join(import.meta.dirname, "..", "..", "install.sh"), "--uninstall", "--purge", "--dry-run", ...extra], {
+        env: { ...process.env, HOME: home, WINGMAN_DATA_DIR: dir },
+        encoding: "utf8",
+      });
+    const ok = run(data);
+    assert.equal(ok.status, 0, ok.stderr);
+    assert.match(ok.stdout, /would ask you to type DELETE/);
+    for (const bad of [`${data}/../../../Documents`, join(home, "Library", "Application Support", "Wingman-link"), join(home, "Documents"), home]) {
+      const r = run(bad);
+      assert.equal(r.status, 1, bad);
+      assert.match(r.stderr, /refusing to delete/);
+    }
+    assert.match(run(`${data}/../Wingman`, "--force").stderr, /contains "\.\."/, '".." is refused even with --force');
+  },
+);
