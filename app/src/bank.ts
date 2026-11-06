@@ -108,6 +108,9 @@ export function sttAliases(text: string): string {
 }
 
 /** matchBank on one piece of text, without the last-sentence rule. Applies sttAliases first. */
+// Known limit, left as is on purpose: a pack whose only trigger for a card is one common word ("transfer", "update") matches any question that
+// contains it. A higher global minScore would also drop cards whose single trigger is the right one ("ssl", "dns"), and a per-card rule needs a
+// topic-word list the pack format does not have. The model's tag still decides: it replies BANK <id> only when the card answers that question.
 function matchBankWhole(raw: string, bank: BankCard[], minScore = 1): BankHit | undefined {
   const text = sttAliases(raw);
   const hits: BankHit[] = [];
