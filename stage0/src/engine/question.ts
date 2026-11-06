@@ -1,5 +1,5 @@
 // A question from the other side: prepared bank card, "buy time" line, calc, and the streamed Claude reflex answer behind them. One Turn per question.
-import { matchBank, matchBankFor, priceOffTopic, stallSay, modelMayOverrideBank, STALL_TIER, type BankHit } from "../bank.ts";
+import { getTurnLang, matchBank, matchBankFor, priceOffTopic, stallSay, modelMayOverrideBank, STALL_TIER, type BankHit } from "../bank.ts";
 import { evalMath } from "../calc.ts";
 import { isClearQuestion, addressesYou } from "../detector.ts";
 import { guard, guardInterview } from "../guards.ts";
@@ -26,13 +26,13 @@ interface Turn {
   agencyTopic: boolean; agencyRecent: boolean;
   noAgency: boolean; noStall: boolean;
   weak: boolean; weakBank: boolean; bgBank: boolean; bankOnly: boolean; allowAns: boolean;
-  shown?: Card; modelIgnored: boolean; stallTimer?: NodeJS.Timeout; stallId: string; ai: Card;
+  lang?: "he" | "en"; shown?: Card; modelIgnored: boolean; stallTimer?: NodeJS.Timeout; stallId: string; ai: Card;
 }
 /** Answers older than reflex.dropStaleMs are never shown. */
 const fresh = (t: Turn) => Date.now() - t.speechEnd < S.reflex.dropStaleMs;
 const meSpokeSince = (t: Turn) => st.voice.lastMeVoiced > t.speechEnd;
 /** The "buy time" line for this question. */
-const stallCardFor = (t: Turn): Card => ({ id: t.stallId, turnId: t.id, badge: "stall", question: t.r.text, say: stallSay(stall, turnSeq), facts: [], at: Date.now() });
+const stallCardFor = (t: Turn): Card => ({ id: t.stallId, turnId: t.id, badge: "stall", question: t.r.text, say: stallSay(stall, turnSeq, t.lang), facts: [], at: Date.now() });
 
 /** A question from the other side. Order of work:
  *  1. calc: pure arithmetic is answered locally, no model.
@@ -115,6 +115,7 @@ function pickBank(t: Turn) {
   let hit = interview ? matchBank(r.text, bank) : t.noAgency ? undefined : matchBankFor(r.text, bank);   // stall-price is dropped for arithmetic and for prices that are not the user's services
   // The same prepared card twice in one call is almost always a keyword echo (one card fired three times while the other side talked about their own team).
   // A repeat shows only for a clear question at least 2 minutes after the last time.
+  t.lang = getTurnLang();   // fixed for this turn: a newer question must not flip a reply that is still streaming
   if (hit && !STALL_TIER.has(hit.card.id)) {
     const seen = bankShownAt.get(hit.card.id);
     if (seen !== undefined && !(isClearQuestion(r.text, reason) && Date.now() - seen > 120_000)) { log.write("events", { type: "bank.repeat", turnId, bank: hit.card.id }); hit = undefined; }
@@ -217,11 +218,11 @@ function onTag(t: Turn, tagIn: Tag) {
   }
   if (tag.kind === "STALL") {
     clearTimeout(t.stallTimer);
-    if (!t.shown && !t.noStall && fresh(t)) { t.shown = { ...ai, id: t.stallId, badge: "stall", say: stallSay(stall, turnSeq), at: Date.now() }; emitCard(t.shown); }
+    if (!t.shown && !t.noStall && fresh(t)) { t.shown = { ...ai, id: t.stallId, badge: "stall", say: stallSay(stall, turnSeq, t.lang), at: Date.now() }; emitCard(t.shown); }
     return;
   }
   if (tag.kind === "BANK" && tag.bankId && hit?.card.id !== tag.bankId) {
-    const card = resolveBankId(tag.bankId, bank);
+    const card = resolveBankId(tag.bankId, bank, t.lang);
     if (card && hit?.card.id === card.id) { clearTimeout(t.stallTimer); return; }   // the model bent the id of the card already on screen
     if (card && fresh(t)) {
       clearTimeout(t.stallTimer);
@@ -256,7 +257,7 @@ function onSayComplete(t: Turn, say: string) {
   const g = interview ? guardInterview(ai.say, interviewAllowed()) : guard(ai.say);
   if (!g.ok) log.write("events", { type: "guard", turnId, rule: g.rule });
   if (!g.ok && t.noStall) { clearTimeout(t.stallTimer); return; }   // a blocked answer on a call that is not with a customer: nothing, never a stall line
-  const card: Card = g.ok ? { ...ai, at: Date.now() } : { ...ai, id: t.stallId, badge: "stall", say: stallSay(stall, turnSeq), facts: [], at: Date.now() };
+  const card: Card = g.ok ? { ...ai, at: Date.now() } : { ...ai, id: t.stallId, badge: "stall", say: stallSay(stall, turnSeq, t.lang), facts: [], at: Date.now() };
   if (meSpokeSince(t)) card.dim = true;
   clearTimeout(t.stallTimer);
   // The "buy time" line went up while the model was still deciding; the real answer replaces it (never both on screen).

@@ -122,8 +122,8 @@ function beats(a: BankHit, aTier: boolean, b: BankHit, bTier: boolean): boolean 
 }
 
 /** The stall line, rotating through the card's `alts` so repeated stalls do not look canned. */
-export function stallSay(card: BankCard, n: number): string {
-  const en = turnLang === "en" && card.en;
+export function stallSay(card: BankCard, n: number, lang: "he" | "en" = turnLang): string {
+  const en = lang === "en" && card.en;
   const all = en ? [en.say, ...(en.alts ?? [])] : [card.say, ...(card.alts ?? [])];
   return all[Math.abs(n) % all.length];
 }

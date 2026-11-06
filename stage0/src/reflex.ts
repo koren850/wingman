@@ -250,16 +250,17 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
 }
 
 /** The card a BANK tag names. Haiku sometimes bends an id ("wordpress-basics" for "builder-vs-wordpress"): when the exact id is unknown, take the one card that shares a distinctive word. */
-export function resolveBankId(id: string | undefined, bank: BankCard[]): BankCard | undefined {
+export function resolveBankId(id: string | undefined, bank: BankCard[], lang?: "he" | "en"): BankCard | undefined {
   if (!id) return undefined;
   const exact = bank.find((c) => c.id === id);
-  if (exact) return localizeCard(exact);   // English turn: the English text, or nothing when the card has none
+  if (exact) return localizeCard(exact, lang);   // English turn: the English text, or nothing when the card has none
   const stop = new Set(["basics", "vs", "the", "and", "stall"]);
   const toks = (x: string) => x.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !stop.has(t));
   const want = new Set(toks(id));
   if (!want.size) return undefined;
   const scored = bank.filter((c) => !c.id.startsWith("stall")).map((c) => ({ c, n: toks(c.id).filter((t) => want.has(t)).length })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
-  return scored.length && (scored.length === 1 || scored[0].n > scored[1].n) ? scored[0].c : undefined;
+  const pick = scored.length && (scored.length === 1 || scored[0].n > scored[1].n) ? scored[0].c : undefined;
+  return pick && localizeCard(pick, lang);
 }
 
 /**

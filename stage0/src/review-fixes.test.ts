@@ -45,3 +45,26 @@ test("bank loader: numeric triggers and ids are coerced to strings, an empty fil
   writeFileSync(join(d, "empty.yaml"), "");
   assert.deepEqual(loadBank(join(d, "empty.yaml")), []);
 });
+
+import { parseCli } from "./settings.ts";
+test("cli: --flag=value works like --flag value", () => {
+  const c = parseCli(["--profile=practice", "--file=x.wav", "--model=anthropic:foo", "--no-ai", "--set=cards.quiet=true", "--endpoint-ms=800"], {});
+  assert.equal(c.profile, "practice");
+  assert.equal(c.flat["run.file"], "x.wav");
+  assert.equal(c.flat["llm.reflex.model"], "anthropic:foo");
+  assert.equal(c.flat["run.noAi"], true);
+  assert.equal(c.flat["cards.quiet"], true);
+  assert.equal(c.flat["stt.endpointMs"], 800);
+});
+
+import { resolveBankId } from "./reflex.ts";
+import { setTurnLang, stallSay, type BankCard } from "./bank.ts";
+test("turn language: resolveBankId and stallSay use the turn's language, not the module global", () => {
+  const card: BankCard = { id: "dns-basics", title: "dns", triggers: ["dns"], say: "שלום", facts: [], en: { say: "hello" } };
+  setTurnLang("en");   // a newer English question has just arrived
+  assert.equal(resolveBankId("dns-basics", [card], "he")?.say, "שלום");
+  assert.equal(stallSay(card, 0, "he"), "שלום");
+  setTurnLang("he");
+  assert.equal(resolveBankId("dns-basics", [card], "en")?.say, "hello");
+  assert.equal(stallSay(card, 0, "en"), "hello");
+});

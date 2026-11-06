@@ -156,8 +156,10 @@ const ENV_MAP: { env: string; key: string; map?: (v: string) => unknown }[] = [
 
 /** Parsed command line: the chosen profile, flat overrides and, per key, the flag that set it (for error messages). */
 export type Cli = { profile?: string; flat: Flat; details: Record<string, string> };
-/** Flags: --file X, --no-ai, --discard, --quiet, --profile N, --stt P, --stt-fallback a,b, --model M, --endpoint-ms N, --set key=value (repeatable). Other flags are ignored. */
-export function parseCli(argv: string[], defaults: Flat): Cli {
+/** Flags: --file X, --no-ai, --discard, --quiet, --profile N, --stt P, --stt-fallback a,b, --model M, --endpoint-ms N, --set key=value (repeatable). Each also takes the --flag=value form. Other flags are ignored. */
+export function parseCli(rawArgv: string[], defaults: Flat): Cli {
+  // "--profile=x" is the same as "--profile x" (split on the first "="; "--set a=b" stays two arguments).
+  const argv = rawArgv.flatMap((a) => { const eq = a.indexOf("="); return a.startsWith("--") && eq > 2 ? [a.slice(0, eq), a.slice(eq + 1)] : [a]; });
   const flat: Flat = {}, details: Record<string, string> = {}; let profile: string | undefined;
   const set = (key: string, v: unknown, flag: string) => { flat[key] = v; details[key] = flag; };
   for (let i = 0; i < argv.length; i++) {
