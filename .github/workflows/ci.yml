@@ -55,6 +55,12 @@ jobs:
       - name: Tests
         run: pnpm test
 
+      # Informational: prints line and branch coverage (Node's built-in coverage). No threshold, and a failure here never fails the build.
+      - name: Test coverage (report only)
+        if: matrix.os == 'macos-latest'
+        continue-on-error: true
+        run: pnpm test:coverage
+
   # The installer is a bash script for macOS: check that it still parses its flags and plans every step, without changing anything.
   install-script:
     name: install.sh smoke (macOS)

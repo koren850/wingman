@@ -27,7 +27,7 @@ export class SttChannel extends EventEmitter {
   private failures: number[] = [];
   private switching = false;
   private closed = false;
-  private lastFailureAt = -Infinity;
+  private lastFailure?: { stream: SttStreamLike | undefined; kind: string; at: number };
   private seconds: Record<string, number> = {};
   private droppedOld = 0;
   private ring: Buffer[] = []; // ring: most recent ringMs of audio while the socket is not open
@@ -146,22 +146,24 @@ export class SttChannel extends EventEmitter {
     s.on("disconnected", (d) => {
       if (s !== this.stream) return;
       this.emit("disconnected", d);
-      this.onFailure(d.error ?? classifySttError(this.provider, d));
+      this.onFailure(d.error ?? classifySttError(this.provider, d), s, "disconnected");
     });
     s.on("error", (e) => {
       if (s !== this.stream && this.stream) return;
       const err = classifySttError(this.provider, e);
       this.emit("stt_error", err);
-      this.onFailure(err);
+      this.onFailure(err, s, "error");
     });
   }
 
   /** Decide: wait for the SDK/adapter to reconnect, or switch provider now. */
-  private onFailure(err: ProviderError) {
+  private onFailure(err: ProviderError, stream: SttStreamLike | undefined, kind: "error" | "disconnected") {
     const t = this.now();
-    // One socket failure can surface twice (an "error" event, then the "disconnected" for the same close). Count it once toward the circuit.
-    const sameFailure = t - this.lastFailureAt < SAME_FAILURE_MS;
-    this.lastFailureAt = t;
+    // One socket failure can surface twice: an "error" event, then the "disconnected" for the same close (or the other way round).
+    // An event of the other kind from the same stream within SAME_FAILURE_MS is the same failure: count it once toward the circuit.
+    const last = this.lastFailure;
+    const sameFailure = !!last && last.stream === stream && last.kind !== kind && t - last.at < SAME_FAILURE_MS;
+    this.lastFailure = { stream, kind, at: t };
     if (!sameFailure) this.failures = [...this.failures.filter((x) => t - x < this.o.circuit.windowMs), t];
     const nonRetryable = err.switchProvider && !err.retryable;
     if (nonRetryable || (err.switchProvider && this.failures.length >= this.o.circuit.failures)) void this.switchNext(err);
