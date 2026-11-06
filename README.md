@@ -14,7 +14,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6.svg">
 </p>
 
-Wingman is a live call copilot for client, sales and support calls. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. After the call it writes a summary and a follow-up email draft. The UI is Hebrew-first (the answer window labels are Hebrew; the main window is English) and English works too.
+Wingman is a live call copilot for client, sales and support calls. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. After the call it writes a summary and a follow-up email draft. It is Hebrew-first and works in English too: the main window is English, and the answer window's labels switch between Hebrew and English (setting `ui.language`).
 
 ## Why it's interesting
 
@@ -28,7 +28,9 @@ Wingman is a live call copilot for client, sales and support calls. It listens t
 |---|---|
 | ![The answer window with an AI card, a buy-time line and a prepared card](docs/ux/answer-window-hero.png) | ![The Home view of the main window during a live call](docs/ux/home-window.png) |
 
-All screenshots use invented data. The answer window turns right-to-left by itself for Hebrew cards:
+All screenshots use invented data. The answer window with English labels, and with Hebrew cards (it turns right-to-left by itself):
+
+![The answer window with English labels: an AI card, a buy-time line, captured details and notes](docs/ux/answer-window-en-ui.png)
 
 ![The answer window with Hebrew cards](docs/ux/for-you-card.png)
 
