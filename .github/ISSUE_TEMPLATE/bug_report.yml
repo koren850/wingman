@@ -1,0 +1,55 @@
+name: Bug report
+description: Something does not work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do not paste API keys, call transcripts, recordings or client data. Use invented examples. For security problems use private reporting (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the app
+        2. Start a practice call
+        3. ...
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "14.5"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: "24.x"
+  - type: input
+    id: version
+    attributes:
+      label: Wingman version or commit
+      placeholder: "0.1.0"
+  - type: dropdown
+    id: how
+    attributes:
+      label: How you run it
+      options:
+        - Wingman.app
+        - Terminal (pnpm start / pnpm dashboard)
+        - wingman CLI
+        - Replay of an audio file
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output of the readiness check or logs
+      description: "`pnpm run doctor` output is useful. Remove anything personal first."
+      render: shell

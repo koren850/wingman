@@ -7,7 +7,7 @@ Thank you for helping. Wingman is a small project with one maintainer, so short 
 You need a Mac (macOS 14.2 or newer), Node 24 or newer, and `ffmpeg`.
 
 ```bash
-# clone the repository (see Install in the README), then:
+git clone https://github.com/koren850/wingman.git
 cd wingman
 ./install.sh --check        # what is present, what is missing
 ./install.sh                # installs, builds the app

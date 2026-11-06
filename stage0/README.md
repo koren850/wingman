@@ -6,10 +6,10 @@ Wingman is a live meeting AI assistant. It listens to a call or meeting (any kin
 
 **Ask Wingman:** press **Ctrl+Opt+A**, then say your question within 10 s; the answer appears in a violet "For you" card. With `assist.answerMe: always` (default) it also answers questions you ask out loud that are clearly for it ("כמה זה 36 ועוד 42?", "מה ההבדל בין CDN ל-DNS?"), and stays quiet when you ask the other person ("מה התקציב שלכם?"). Arithmetic is computed locally, no AI.
 
-Stage 0: launched from the app or the terminal. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
+Launched from the app or the terminal. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
 
 ## Setup (once)
-1. Install with `./install.sh` at the repo root (see the [root README](../README.md#install)). Then open Wingman. The first window is a guided setup: keys, About you, permissions, microphone, screens, pack, readiness check, practice call. You can reopen it from **Settings, Setup guide**.
+1. Install with `./install.sh` at the repo root (see the [root README](../README.md#quick-start)). Then open Wingman. The first window is a guided setup: keys, About you, permissions, microphone, screens, pack, readiness check, practice call. You can reopen it from **Settings, Setup guide**.
 2. Keys: in the setup, or **Settings → Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; makes a mode-600 backup first). Never put keys in this repo.
 3. Permissions: allow **Microphone** and **System Audio Recording** for Wingman. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it.
    When you run from a terminal instead of the app, the permission belongs to the terminal. Use Terminal.app. In iTerm/Warp/IDE terminals add the app by hand under Privacy & Security > Screen & System Audio Recording > System Audio Recording Only.

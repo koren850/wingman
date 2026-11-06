@@ -1,62 +1,114 @@
-# Wingman
+<p align="center">
+  <img src="docs/ux/hero.gif" alt="The Wingman answer window during a call: a client asks about a CDN, a migration and a price, and answer cards appear within about a second (invented example)" width="560">
+</p>
 
-A live call copilot for client, sales and support calls, for macOS. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time, and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. It also answers questions you ask it out loud, does simple math locally, keeps a checklist of what the call should cover, and writes a summary and follow-up email draft when the call ends. Hebrew (with English tech words mixed in) is the first-class language. The answer bank and house style are your own "pack"; an example web and hosting pack is included. Your name, how to address you and your business go in your profile.
+<h1 align="center">Wingman</h1>
 
-![The Wingman answer window during a call, with English cards: a "For you" answer, a Prepared card and a math result, all invented examples](docs/ux/answer-window-en.png)
+<p align="center"><b>Real-time answer cards for live calls. Hears both sides, shows a short answer in about a second.<br>macOS, Electron, TypeScript.</b></p>
 
-*The answer window on the second screen, with English cards (invented examples). The main app window is English; only the labels of this answer window are Hebrew today. English cards read left to right.*
+<p align="center">
+  <a href="https://github.com/koren850/wingman/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/koren850/wingman/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <img alt="Platform: macOS 14.2+" src="https://img.shields.io/badge/platform-macOS%2014.2%2B-lightgrey.svg">
+  <img alt="Node 24" src="https://img.shields.io/badge/node-24-339933.svg">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6.svg">
+</p>
 
-![The answer window with Hebrew cards: the window is right-to-left](docs/ux/for-you-card.png)
+Wingman is a live call copilot for client, sales and support calls. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. After the call it writes a summary and a follow-up email draft. The UI is Hebrew-first (the answer window labels are Hebrew; the main window is English) and English works too.
 
-*The same window with Hebrew cards (invented examples). It turns right-to-left by itself.*
+## Why it's interesting
 
-> Wingman is in an early stage ("Stage 0"). It works and is tested, but it is not a polished product. See [Project status](#project-status).
+- **Fast, and fast without AI.** Prepared answers from a local bank appear about 0.6 s after the speaker stops (p95 about 1.9 s). Only questions the bank cannot answer go to Claude Haiku, behind a stall line.
+- **Guards are code, not prompts.** Every AI line passes deterministic filters for prices, dates and promises before it can be shown. A hit becomes a "buy time" line instead of an invented number.
+- **Built for live audio that goes wrong.** Two audio channels, reconnect buffers, a circuit breaker and a degrade ladder keep the call useful when a provider fails, instead of failing the call.
 
-## Key features
+## Screenshots
+
+| Answer window | Main window |
+|---|---|
+| ![The answer window with an AI card, a buy-time line and a prepared card](docs/ux/answer-window-hero.png) | ![The Home view of the main window during a live call](docs/ux/home-window.png) |
+
+All screenshots use invented data. The answer window turns right-to-left by itself for Hebrew cards:
+
+![The answer window with Hebrew cards](docs/ux/for-you-card.png)
+
+## Features
 
 | Feature | What it does |
 |---|---|
-| **Prepared** cards | A local answer bank (your pack's `bank.yaml`; the example pack answers DNS, SSL, backups, slow site...) answers common questions in about half a second, with no AI call. |
-| **AI** cards | When the bank has nothing, a small Claude model writes a short answer. AI cards are always marked as not verified. |
-| **Buy time** lines | For prices, dates and promises Wingman never invents a number. It shows a safe stalling line ("I will check and come back with a proper price"). |
-| **For you** cards | Ask Wingman a question out loud (or press Ctrl+Opt+A) and the answer shows in its own card. |
-| **Math** | Arithmetic ("36 plus 42", "15% of 200", Hebrew and English number words) is computed locally. No AI, instant. |
-| **Tip** cards | At most one short tip every two minutes (a question to ask, a reminder), never during an answer. |
-| **Call checklist** | Wingman works out what the call is about (client, support, vendor, team, consult, personal) and keeps a checklist for that kind of call. |
-| **Quick call and prepared meetings** | Start a **quick call** right now with no context, or save several **prepared meetings** (a Plan each: who, goal, notes, must-cover checklist, background files, optional time) and pick one at Start. A prepared meeting is used up by the call you start with it. |
-| **Fact cards** | If you build a local snapshot of your clients and domains, a mention of a known client or domain shows what you already know. No network lookups during the call. |
-| **Several speakers and flow** | Several people on the other side are told apart ("Speaker 1", 2... or their names, from introductions or the meeting's attendees; rename with `wingman speaker <n> "<name>"`). When they talk among themselves, a muted "talking among themselves" line shows who and about what, and answer cards wait. When someone turns to you, an orange "turned to you" alert shows who. See [Flow mode](#flow-mode). |
-| **Practice and prep mode** | A prepared meeting of kind `interview` is for rehearsal: practice runs with your own notes and prepared answers, then a review after the call. See [Practice and prep mode](#practice-and-prep-mode). |
-| **Important cards only** | On by default (`cards.focus`). A card only for a clear question to you: a question mark, a direct request or your name. At most 2 cards every 2 minutes. Price and date cards and cards about what you said always show. Turn it off in Settings for more cards. |
-| **Profile and pack** | Your name, spellings, how to address you and your business live in a profile on your machine, not in the repo. The answer bank, house style and keyterms are a swappable pack. |
-| **Capture chips** | Phone numbers, emails and domains spoken in the call appear as copyable chips. |
-| **Summary** | After the call: summary, decisions, next steps, open questions and a follow-up email draft. Prices, dates and promises become `[להשלים: ...]` placeholders. |
-| **Readiness check** | One command or button that tests mic, system audio, keys, speech service and the AI before you go live. |
-| **Health and fallbacks** | A visible bar if something degrades. A degrade ladder keeps the call going (reduced AI, bank only, transcript only). Audio sources restart by themselves, the call survives sleep and a stray error, and Wingman warns when the disk is nearly full. Nothing blocks the call. |
-| **Guided setup** | The first time you open the app, a short guide walks you through your keys, your name, permissions, the microphone, your screens, the answer pack, a readiness check and a practice call. |
-| **Menu-bar app and CLI** | An Electron menu-bar app with a Home / Calls / Settings window, and a `wingman` command line that drives the running app. |
+| **Prepared** cards | A local answer bank (your pack's `bank.yaml`) answers common questions in about half a second, with no AI call. |
+| **AI** cards | When the bank has nothing, a small Claude model writes a short answer, always marked "not verified". |
+| **Buy time** lines | For prices, dates and promises Wingman never invents a number. It shows a safe line such as "I will check and come back with a proper price". |
+| **For you** and math | Ask out loud (Ctrl+Opt+A) and get an answer in its own card. Arithmetic, in Hebrew or English, is computed locally. |
+| **Call frame, tips and checklist** | Detects what kind of call it is, keeps a checklist of what it should cover and shows at most one tip every two minutes. |
+| **Flow mode** | Tells several speakers apart. When they talk among themselves, cards wait; when someone turns to you, an alert shows who. |
+| **Practice and prep mode** | Rehearse with a pretend client and your own notes, then review. See [responsible use](#responsible-use). |
+| **Summary** | Summary, decisions, next steps, open questions and a follow-up email draft. Prices and promises become placeholders for you to fill in. |
+| **Health and fallbacks** | A visible bar when something degrades, and a ladder that keeps the call going. See [How it works](#how-it-works). |
+| **Menu-bar app and CLI** | Home, Calls and Settings in an Electron app, a guided first-run setup, a readiness check and a `wingman` command line. |
+
+More in the [user guide](docs/USER-GUIDE.md) and the [operator guide](stage0/README.md).
 
 ## How it works
 
+```mermaid
+flowchart LR
+  mic["Microphone (you)"] --> stt
+  sys["System audio (them)<br/>AudioTee, Core Audio tap"] --> stt
+  stt["Deepgram Nova-3<br/>one stream per channel"] --> det["Question detector<br/>(local, Hebrew-aware)"]
+  det --> bank["Prepared bank<br/>(local, about 0.6 s)"]
+  det --> llm["Claude Haiku reflex<br/>skip, stall, bank pick or answer<br/>(about 1-2 s)"]
+  bank --> guards["Guards<br/>price, date, promise"]
+  llm --> guards
+  guards --> overlay["Answer window<br/>(second screen)"]
+  health["Health supervisor<br/>degrade ladder + cost cap"] -. "full, reduced AI,<br/>provider switch, bank only,<br/>transcript only" .-> llm
+  health -.-> stt
 ```
-mic (you) ----------------+                                   +--> Prepared bank (local, ~0.5 s)
-                          +--> Deepgram Nova-3 --> question --+
-system audio (them) ------+     speech to text     detector   +--> Claude Haiku (short AI answer
- (AudioTee, macOS)             (two channels)                       or "Buy time" line, ~1-2 s)
-                                                                          |
-                                                                          v
-                                                         guards (no prices, dates, promises)
-                                                                          |
-                                                                          v
-                                                    Answer window on your second screen
+
+Two audio channels go to the speech service, one per side, so Wingman always knows who said what. A local detector decides whether a line from the other side is a question. The bank is tried first because it is fast, free and written by you. A small AI model decides whether to skip, stall, pick a bank card or write an answer, and every AI line passes the code guards before it can be shown. If a provider fails or the spend cap is reached, the health supervisor steps down a rung (reduced AI, provider switch, bank only, transcript only) between questions, and steps back up when things are stable. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Engineering highlights
+
+For reviewers who want the short version. Numbers come from this repository; latency figures are from the project's own synthetic-voice test rounds, so real calls with room noise will be slower.
+
+- **Latency budget.** Prepared card p50 about 0.6 s and p95 about 1.9 s after the speaker stops (including about 0.4 s of speech-to-text final lag). A Haiku answer reaches its first words at about 1 to 2 s; a stall line is forced at 1.8 s, and answers to questions older than 4 s are dropped. Each call writes a `latency.jsonl`. See [the latency budget](docs/ARCHITECTURE.md#latency-budget-and-cost-model).
+- **Guards are code, not prompts** ([ADR 13](docs/DECISIONS.md#adr-13-guards-are-code-not-prompts)). Three deterministic rules (price, date, promise) apply to every AI line, plus a salary guard and an unclaimed-term guard in practice mode.
+- **Two audio channels, always known who spoke.** Mic and system audio go to two Deepgram Nova-3 streams; a ring buffer replays the last 2 s after a reconnect.
+- **Degrade ladder and cost caps** ([ADR 24](docs/DECISIONS.md#adr-24-a-degrade-ladder-and-cost-caps)). Six rungs: full, reduced AI, provider switch, bank only, transcript only, off (user stop only). Rungs change only between questions, and recovery needs a stable period. A per-call USD cap (default $2) drops the model while prepared cards keep working; a circuit breaker stops calling a failing model.
+- **Tested without a live call.** More than 500 test cases in 52 files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)).
+- **Hebrew-first.** A Hebrew-aware question detector, Unicode whole-word matching, English technical terms mixed in, and a right-to-left aware answer window.
+- **Privacy by design.** No telemetry, no cloud account, audio never stored, keys in the macOS Keychain, owner-only files and control socket, strict Content-Security-Policy in the Electron windows.
+- **37 written design decisions.** [docs/DECISIONS.md](docs/DECISIONS.md) records context, decision, alternatives and consequences, including what was left out on purpose ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [ADR 36](docs/DECISIONS.md#adr-36-web-lookup-is-not-built)).
+
+## Tech stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| Engine | TypeScript on Node 24 (tsx), zod | One typed process per call; plain JSONL files, no database |
+| Speech to text | Deepgram Nova-3 (Soniox and Gladia adapters, experimental) | Streaming, per-channel, handles Hebrew with English terms |
+| AI | Claude Haiku through the Vercel AI SDK | Low time to first token; prompt prefix cached |
+| System audio | AudioTee (Core Audio tap), ffmpeg for the microphone | No virtual audio driver needed |
+| App | Electron (menu-bar app, window, answer window) | Content protection and second-screen placement |
+| Tests and CI | Node test runner, GitHub Actions on macOS | Offline end-to-end replay, synthetic QA |
+
+## Quick start
+
+Needs macOS 14.2 or newer, Node 24 and, if you do not have them, [Homebrew](https://brew.sh) and Xcode Command Line Tools (`xcode-select --install`) for git.
+
+```bash
+brew install node@24                       # skip if you already have Node 24
+git clone https://github.com/koren850/wingman.git
+cd wingman && ./install.sh                 # checks the Mac, installs, builds Wingman.app
 ```
 
-Two audio channels go to the speech service, one for each side, so Wingman always knows who said what. A local detector decides whether a line from the other side is a question. The bank is tried first because it is fast, free and written by you. A small AI model decides whether to skip, stall, pick a bank card or write an answer. Every AI line passes through code guards before it can be shown. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+`./install.sh --check` shows what is present and changes nothing; `--dry-run` shows every step; `--uninstall` removes it. The installer never uses sudo and asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg`. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`).
 
-## Requirements
+Then open **Wingman**. A guided setup walks you through keys, your name, permissions, microphone, screens, the answer pack, a readiness check and a **practice call** (a pretend client; free, offline, no keys needed). Full steps: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#first-run). Problems: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
-- **macOS 14.2 or newer, only.** System audio is captured with AudioTee (a Core Audio tap). There is no Windows or Linux support.
-- **Node.js 24 or newer.** The installer does not install it for you.
+Requirements in full:
+
+- **macOS 14.2 or newer** for the full app. System audio is captured with AudioTee (a Core Audio tap). See [Platform support](#platform-support) for Windows and Linux.
+- **Node.js 24 or newer.** The installer does not install it for you (`brew install node@24`).
 - **pnpm 11**, which comes through corepack (the installer turns it on).
 - **`ffmpeg`** (used for the microphone and for replaying audio files). The installer offers `brew install ffmpeg`.
 - Optional: **poppler** (`brew install poppler`) to attach PDF files to a meeting.
@@ -65,27 +117,6 @@ Two audio channels go to the speech service, one for each side, so Wingman alway
 - Microphone and System Audio Recording permission for Wingman (or for the terminal that runs it). The guided setup shows you how.
 
 Honest limits: Hebrew-first (English works, other languages are untested); needs the internet and both keys; not a recording or consent tool; answers are hints, not facts.
-
-## Install
-
-```bash
-git clone https://github.com/koren850/wingman.git
-cd wingman
-./install.sh --check     # optional: shows what is present and what is missing; changes nothing
-./install.sh             # checks the Mac, installs, builds Wingman.app
-```
-
-`install.sh` asks before it does anything extra: copy Wingman.app to `/Applications`, add the `wingman` command in `~/.local/bin`, and `brew install ffmpeg` if it is missing. It never uses sudo. It is safe to run again.
-
-Other flags: `--dry-run` (show every step), `--yes` (accept the default answers), `--offline` (use only the local package cache), `--update`, `--uninstall`. Details are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#install-update-uninstall).
-
-Put `~/.local/bin` on your PATH so the `wingman` command works:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"     # add this line to ~/.zshrc
-```
-
-Something went wrong? See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Get your API keys
 
@@ -96,97 +127,11 @@ Wingman needs two keys (both are paid services, billed to you by the provider):
 
 Paste both keys into the first-run setup (step 1, "Keys") or later in **Settings, Keys**. They are stored in the macOS Keychain. From a terminal you can use `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never put keys in the repo.
 
-Cost: about $1.10 an hour of call for speech plus roughly 5 to 20 cents an hour for AI, so roughly $1.15 to $1.30 an hour. Set spend limits in both consoles.
+## Cost
 
-## First run
+About $1.10 an hour of call for speech (Deepgram Nova-3, two channels at about $0.55 per hour each) plus roughly 5 to 20 cents an hour for AI, so roughly $1.15 to $1.30 an hour. A per-call cap (default $2) limits AI spend. Prices in the config are estimates; check your providers' price pages. See [the cost model](docs/ARCHITECTURE.md#latency-budget-and-cost-model).
 
-Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup:
-
-1. **Keys.** Paste your Deepgram and Anthropic keys. They go into the macOS Keychain.
-2. **About you.** Your name and how to address you. (Also in Settings later.)
-3. **Permissions.** Allow the microphone and System Audio Recording. After you allow System Audio Recording, **quit and reopen Wingman**. macOS gives no live status for it.
-4. **Microphone.** Pick the one you use. Avoid AirPods for the first call.
-5. **Your screens.** With one screen, you can allow the answer window on it. Never share that screen.
-6. **Answer pack.** Use the invented example pack, or copy it to your own folder and edit it.
-7. **Readiness check.** Tests the mic, system audio, keys, speech service and the AI.
-8. **Practice call.** A pretend client plays through the real call loop and the real answer window. Free, and nothing leaves your Mac.
-
-Every step can be skipped and reopened from **Settings, Setup guide**. When you are ready, press **Quick call**, or **Start** on a prepared meeting.
-
-Without the app, from the terminal: `cd stage0 && pnpm dashboard`. See [stage0/README.md](stage0/README.md) for all commands, settings and hotkeys.
-
-Notes:
-- `pnpm run doctor`, not `pnpm doctor` (the second one is pnpm's own command).
-- Never put keys in the repo. They belong in the Keychain.
-- No second screen yet? Turn on the one-screen option in the setup, and never share that screen.
-
-## Update and uninstall
-
-```bash
-wingman update                 # git pull (fast-forward only), install, rebuild the app
-wingman uninstall              # removes the app copies and the wingman link; your data stays
-wingman uninstall --purge      # also deletes your data and settings, after you type DELETE
-```
-
-The same work is done by `./install.sh --update` and `./install.sh --uninstall [--purge]`. The app starts from the folder you cloned. If you move that folder, run `./install.sh` again from the new place.
-
-## Where your files live
-
-Nothing about you is stored in this repository.
-
-| Folder | What is there |
-|---|---|
-| `~/Library/Application Support/Wingman/` | Your data: `calls/` (transcripts, cards, summaries), `briefs/` (prepared meetings, with `briefs/attachments/`), `entities.json` (optional client snapshot). Override with `WINGMAN_DATA_DIR`. |
-| `~/.config/wingman/` | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
-| macOS Keychain, service `wingman` | Your API keys. |
-
-If you used an older version that kept calls in the repo folder (`stage0/calls`, `stage0/data/private`), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
-
-## Profile and pack
-
-- A **profile** file (`~/.config/wingman/profile.yaml`): your name and spellings, how to address you in Hebrew, a short "about", your business and your time zone (for example `Asia/Jerusalem`). Set it in **Settings, About you**, or with `wingman profile set ...` (see `wingman help`).
-- A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answer bank, house style, keyterms and topic words. Without one, the invented example web/hosting pack in `stage0/data/example-pack/` is used. File formats: [docs/PACK-FORMAT.md](docs/PACK-FORMAT.md).
-
-Do not confuse these with a **settings preset** (`stage0/profiles/<name>.yaml`, used with `--profile <name>`). A preset is a set of setting overrides, such as `first-client-call`. It has nothing to do with `profile.yaml`.
-
-## Practice and prep mode
-
-For rehearsal: practice runs, prepared answers and a review after the call, using your own notes. It is not meant for live help during a real interview. Create a prepared meeting with kind `interview` (`wingman plan new --kind interview ...`; the kind is set from the command line). Attach your prep notes as background files.
-
-In this mode:
-
-- Every question gets an answer, with no card limit.
-- There are no "Buy time" lines.
-- Answers are built from your notes only, never invented experience.
-- The AI may not write a salary figure. Salary comes only from your own prepared card.
-- There are no fact cards and no self-check cards.
-- To use your own prepared answers, add the meeting note `Prepared cards: /full/path/cards.yaml`. The file has the same format as the answer bank ([docs/PACK-FORMAT.md](docs/PACK-FORMAT.md#cards-for-an-interview)). For that call it replaces the normal bank. Each meeting can point to its own file.
-
-Real interviews and exams that forbid outside help are out of scope ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams)). You are responsible for following the rules that apply to you.
-
-## Flow mode
-
-For calls with several people on the other side (needs `stt.speakers`, on by default; turn flow off with `flow.enabled: false`).
-
-- When two or more of them talk to each other and you are quiet, a muted line shows who is talking and about what. Answer cards wait (`flow.holdCards`). Price and date cards, and questions with your name, still show.
-- When someone turns to you (says your name, or "you" right after their own discussion), an orange alert shows who.
-- Nothing is kept between calls. Names only live for the call.
-
-## Command line
-
-```bash
-cd stage0
-pnpm -s wingman help         # full help
-pnpm -s wingman status       # is the app running, is a call live
-pnpm -s wingman start --practice
-pnpm -s wingman start --quick           # no Plan; or: wingman plan list, then wingman start --plan <id>
-```
-
-After `./install.sh` you can type `wingman ...` from any folder.
-
-The `wingman` command talks to the running menu-bar app over an owner-only local socket. It cannot read API keys. By default the app asks you in a window before it starts a real call that came from the command line (setting `privacy.askBeforeCliStart`), and before it deletes a call.
-
-## Privacy and safety in short
+## Privacy and security
 
 - Audio goes to **Deepgram** to be transcribed. Text of the call goes to **Anthropic** for AI answers and the summary. Nothing else leaves your Mac.
 - Audio is **never saved**. Transcripts and cards are saved locally in `~/Library/Application Support/Wingman/calls/<id>/` with owner-only permissions, until you delete them.
@@ -200,38 +145,44 @@ Full details: [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) and [
 
 ## Responsible use
 
-Wingman listens to call audio and sends it to Deepgram and Anthropic. Tell the other people on the call that you use it, and follow the recording and privacy laws that apply to you (some places require everyone's consent). It is not a recording or consent tool and gives no legal advice. It does not store audio. Do not use it where outside help is forbidden, such as exams or job interviews that prohibit assistance. Keep practice and prep mode (kind `interview`) for rehearsal with your own notes.
+Wingman listens to call audio and sends it to Deepgram and Anthropic. Tell the other people on the call that you use it, and follow the recording and privacy laws that apply to you (some places require everyone's consent). It is not a recording or consent tool and gives no legal advice. It does not store audio. Do not use it where outside help is forbidden, such as exams or job interviews that prohibit assistance. Practice and prep mode (a prepared meeting of kind `interview`) is for rehearsal with your own notes: practice runs, prepared answers and a review after the call. See [ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams) and the [user guide](docs/USER-GUIDE.md#practice-and-prep-mode).
 
-## Project status
+## Platform support
 
-It is an early release ("Stage 0"): the live call loop, the app, the CLI, the summary and the QA harness are built and tested (a unit test suite of over 500 tests, plus a synthetic QA harness with 32 invented scenarios that play through real Deepgram and Haiku). It has been verified with synthetic and test calls; the real-call hand tests still open are listed in [docs/ROADMAP.md](docs/ROADMAP.md). A guided first-run setup and an installer script exist. Signed installers, Windows and plugins are not built and will wait until a second real user needs them.
-
-## Repo map
-
-| Path | What is there |
+| Platform | Status |
 |---|---|
-| `install.sh` | The installer, updater and uninstaller |
-| `stage0/` | The app: engine (`src/`), menu-bar app (`tray/`), window (`dashboard/`), answer window (`overlay/`), QA harness (`qa/`), settings (`config/`), shipped data (`data/`: example pack, test fixtures) |
-| `.github/workflows/` | CI (type check and tests on macOS) |
-| `brand/` | Logo, icons and the script that builds them |
-| `docs/` | Documentation (below) |
-| `docs/ux/` | Screenshots and UX before/after images |
-| `CONTRIBUTING.md` | How to help |
-| `CHANGELOG.md` | Milestones |
+| macOS 14.2 or newer | Supported: the full app, live calls and the installer. |
+| Windows, Linux | The engine and file replay (`--file`) are being made to run there; live system-audio capture, the menu-bar app and the installer are macOS only. **Help wanted.** See [CONTRIBUTING.md](CONTRIBUTING.md). |
+
+Languages: Hebrew first, English works, other languages are untested. Wingman needs the internet and both keys.
+
+## Roadmap
+
+Wingman is an early release (v0.1.0): the live call loop, the app, the CLI, the summary and the QA harness are built and tested on synthetic and test calls. Still open: checking the hotkeys, stop sequence and screen-share behaviour on real calls, a clean-Mac install check, a signed and notarised build, and Windows and Linux support for the live app. See [docs/ROADMAP.md](docs/ROADMAP.md) for the full list and the known limits.
 
 ## Documentation
 
 | Doc | Read it for |
 |---|---|
+| [docs/USER-GUIDE.md](docs/USER-GUIDE.md) | First run, updating, where files live, profile and pack, practice mode, flow mode, command line |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, call lifecycle, files, latency and cost, tests |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log: what we chose and why |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | 37 architecture decision records: what was chosen and why |
 | [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) | What data goes where, what is stored, how keys are handled |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, install, scripts, tests, QA harness, building the app |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, scripts, tests, QA harness, snapshot tools, building the app |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | No sound, permissions, install problems, slow AI, disk, sleep |
 | [docs/PACK-FORMAT.md](docs/PACK-FORMAT.md) | How to write your answer cards and word lists |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Verification status, known limits, ideas |
+| [stage0/README.md](stage0/README.md) | The detailed app and operator guide: settings, hotkeys, commands |
+| [brand/README.md](brand/README.md) | The capybara logo and how the icons are built |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests, commit style, no private data |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Open items, known limits, ideas |
-| [stage0/README.md](stage0/README.md) | The detailed app and operator guide |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability |
+| [CHANGELOG.md](CHANGELOG.md) | Release notes |
+
+Repo layout: `install.sh` (installer), `stage0/` (engine `src/`, menu-bar app `tray/`, window `dashboard/`, answer window `overlay/`, QA `qa/`, settings `config/`, shipped data `data/`), `docs/`, `brand/`, `.github/`.
+
+## Contributing
+
+Issues and pull requests are welcome; small focused changes are the easiest to review. Read [CONTRIBUTING.md](CONTRIBUTING.md) first (setup, checks, commit style, and the rule that no real people, companies or call data go in the repo). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md) and report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

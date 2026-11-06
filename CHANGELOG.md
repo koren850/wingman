@@ -1,34 +1,48 @@
 # Changelog
 
-Milestones from the git history. Wingman has no versioned releases yet.
+All notable changes to this project are documented in this file.
 
-## 2026-11-04
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-- Installer: `./install.sh` (check, dry run, update, uninstall, purge), `wingman update` and `wingman uninstall`, a postinstall that downloads Electron and fails loudly, Node 24 and macOS 14.2 checks, Electron fuses turned off, permission texts in the app.
-- Guided first-run setup: keys, About you, permissions, microphone, screens, answer pack, readiness check, practice call.
-- User data moved to `~/Library/Application Support/Wingman` (a one-time copy, never a move). Pack lookup per file and Unicode whole-word topics. Profile validation (time zone) and a kept last-good profile.
-- Security: the app asks before a call started from the command line (`privacy.askBeforeCliStart`) and before a delete; `plan attach` refuses symlinks and secret folders; strict Content-Security-Policy for the answer window; short error text; nested prompt tags are stripped.
-- Reliability: audio sources restart by themselves; a relay socket and a disk-space check; sleep and wake recovery; stray errors are survived; a dead speech channel steps down to transcript-only.
-- Interview mode (a cards file per meeting, no Buy time lines, salary-only guard, no fact cards) and flow mode (their own discussion, the "turned to you" alert). English cards read left to right.
-- Docs: CONTRIBUTING, troubleshooting, pack format, CI workflow; numbers and paths corrected.
+## [Unreleased]
 
-## 2026-11-03
+## [0.1.0] - 2026-11-06
 
-- Live meeting assistant: answers for you ("For you" cards, Ctrl+Opt+A, local math), the `wingman` CLI over an owner-only socket, API keys moved to the macOS Keychain.
-- Deep-test fixes: a speech outage no longer ends a call, socket leak, orphan answer window, disk errors, price-versus-math, guard patterns, Deepgram `multi` stall, and more.
-- UX audit (54 problems, 52 fixed): glossary (Prepared, AI, Buy time, Tip, For you, Math, Answer window, Plan, Readiness check, Quiet mode, Start listening), conversation hidden behind a button, Start anyway, call phases and stop steps, Skip summary, copy chips Ctrl+Opt+1/2/3.
-- Consent step is off by default; the optional "Ask me before listening starts" setting is kept. Consent wording removed from the CLI, readiness check and docs.
-- Documentation rewritten for publishing.
+First public release.
 
-## 2026-11-02
+### Added
 
-- Menu-bar app, reconnect buffer, split-question joining, sleep warning.
-- Wingman brand: capybara logo, icons, wordmark.
-- Dashboard (calls, card rating, speed, cost, settings), offline end-to-end call test.
-- Stage 0b: speakers mode (mic gate and echo filter), capture box, rewind panel, typed AI notes, fact cards from a local snapshot, live notes, Plan with must-cover reminders.
-- Default speech language `multi` (better English terms).
-- Dashboard v3, synthetic QA harness, post-call summary, practice call, safety and bug-hunt fixes. Call frame, tips and background files (understands any kind of call).
+- **Live call loop.** Two audio channels (microphone for you, system audio for the other side through a Core Audio tap) go to two Deepgram Nova-3 streams, so the speaker is always known. A reconnect buffer replays the last two seconds after a dropped connection.
+- **Answer cards in about a second.** A Hebrew-aware question detector feeds a local answer bank ("Prepared" cards, no AI call) and a Claude Haiku reflex that skips, stalls, picks a bank card or writes a short answer. AI cards are labelled "not verified".
+- **Guards in code.** Deterministic filters for prices, dates and promises turn a risky AI line into a "Buy time" line. House-style never-say rules. Practice mode adds a salary guard and an unclaimed-term guard.
+- **Answers for you.** Ask out loud (Ctrl+Opt+A) and get a "For you" card. Arithmetic is computed locally.
+- **Call frame and tips.** The call type is detected, a checklist of what the call should cover is kept, and at most one short tip is shown every two minutes.
+- **Flow mode.** Several speakers on the other side are told apart; their own discussion is shown muted and answer cards wait; an alert shows when someone turns to you.
+- **Practice and prep mode** for rehearsal with your own notes, and an offline **practice call** with a pretend client.
+- **Post-call summary** with decisions, next steps, open questions and a follow-up email draft; prices, dates and promises become placeholders.
+- **Fact cards** from an optional local snapshot of clients and domains, and copyable capture chips for phone numbers, emails and domains.
+- **Degrade ladder and cost caps.** Reduced AI, provider switch, bank only, transcript only, with a per-call spend cap, a circuit breaker and experimental fallback speech providers (Soniox, Gladia).
+- **Reliability.** Audio sources restart by themselves; the call survives sleep, stray errors and a full disk; a dead speech channel steps down instead of ending the call.
+- **Electron menu-bar app** with Home, Calls and Settings, a guided first-run setup, a readiness check, quick calls and prepared meetings, and a separate answer window for the second screen (right-to-left aware).
+- **`wingman` command line** that drives the running app over an owner-only local socket.
+- **Installer** (`install.sh`) with check, dry run, update and uninstall modes; it never uses sudo.
+- **Swappable pack and profile.** Answer bank, house style and keyterms live in a pack; your name and business live in a profile. An invented example pack is included.
+- **Test and QA tooling.** More than 500 unit tests, an offline end-to-end call test, a synthetic QA harness with 32 invented scenarios, snapshot tools for the windows, and a CI workflow.
+- **Documentation.** Architecture, 37 architecture decision records, privacy and security guide, development guide, troubleshooting, pack format and roadmap.
 
-## 2026-11-01
+### Security and privacy
 
-- First commit: the Stage 0 tool (live listening, Deepgram Hebrew, question detector, 41-card bank, Haiku answers with guards, answer window, health bars, `pnpm call`, `pnpm tag`, `pnpm purge`, readiness check, STT gate), verified by a review round, plus settings and swappable providers.
+- No telemetry and no cloud account. Audio is never stored.
+- API keys are kept in the macOS Keychain.
+- The control socket and call files are owner-only. The app asks for confirmation before a call is started or deleted from the command line.
+- Strict Content-Security-Policy in the Electron windows; Electron fuses are set at build time.
+- Optional Deepgram model-improvement opt-out (`stt.deepgram.mipOptOut`).
+
+### Known limits
+
+- The full app supports macOS 14.2 or newer only. See [docs/ROADMAP.md](docs/ROADMAP.md).
+- Hebrew is the first-class language; English works; other languages are untested.
+- Builds are ad-hoc signed, not notarised.
+
+[Unreleased]: https://github.com/koren850/wingman/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/koren850/wingman/releases/tag/v0.1.0
