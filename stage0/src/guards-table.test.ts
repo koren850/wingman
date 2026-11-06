@@ -9,7 +9,7 @@ const BLOCKED: [string, "price" | "date" | "promise"][] = [
   ["It's £500 a month", "price"], ["That is 500 ILS", "price"], ["USD 500 upfront", "price"], ["GBP 200 per day", "price"],
   ["around 5 grand", "price"], ["roughly 1.2K", "price"], ["about 5K a month", "price"], ["we charge a flat 300", "price"],
   ["35 thousand shekels", "price"], ["thirty five thousand", "price"], ["it is €250", "price"], ["NIS 1200", "price"],
-  ["800 EUR plus tax", "price"], ["a couple of grand", "price"], ["התעריף 300 לשעה", "price"], ["300 לשעה", "price"],
+  ["800 EUR plus tax", "price"], ["a couple of grand", "price"], ["התעריף 300 לשעה", "price"], ["500 לחודש", "price"], ["300 לשעה", "price"],
   ["זה חמש מאות", "price"], ["אלף וחמש מאות", "price"], ["מאתיים ושלושים", "price"], ["1200 ש''ח", "price"],
   ["שלושים אלף", "price"],
   // dates
@@ -18,7 +18,7 @@ const BLOCKED: [string, "price" | "date" | "promise"][] = [
   ["within two weeks", "date"], ["in a fortnight", "date"], ["by end of month", "date"], ["tomorrow morning", "date"],
   ["we deliver next week", "date"], ["on the 15th", "date"], ["it lands in Q4", "date"], ["in ninety days", "date"],
   ["later today", "date"], ["by Dec", "date"], ["שבוע הבא נחזור אליך", "date"], ["בקרוב מאוד", "date"],
-  ["תוך שלושים יום", "date"], ["תוך 30 יום", "date"], ["ביום ה' בבוקר", "date"], ["הערב נשלח", "date"], ["ב-5.11 נפגש", "date"],
+  ["תוך שלושים יום", "date"], ["תוך 30 יום", "date"], ["ביום ה' בבוקר", "date"], ["הערב נשלח", "date"], ["ב-5.11 נפגש", "date"], ["נסיים ב-15 לחודש", "date"],
   // promises
   ["You have my word", "promise"], ["We'll make sure it works", "promise"], ["I guarantee it", "promise"], ["it is guaranteed", "promise"],
   ["I promise", "promise"], ["No problem, it will be done by the weekend", "promise"], ["consider it done", "promise"],
@@ -32,7 +32,7 @@ const ALLOWED = [
   "we don't promise results", "I'm not sure about that", "let me check and come back", "I may need to check", "the march of progress",
   "we have two teams", "a grand opening", "there are hundreds of options", "SLA is a document defined in a contract",
   "יש לנו 30 אתרים", "אני לא מבטיח, אבדוק", "אי אפשר להבטיח זמינות", "גרסה 2.0", "יש לי ארבע שנות ניסיון", "הפגישה עוסקת בתמחור",
-  "אני לא בטוח", "מה השאלה", "נשמח לעזור",
+  "אני לא בטוח", "מה השאלה", "נשמח לעזור", "An SLA is a guarantee defined in a contract",
 ];
 test("guards table: prices, dates and promises in English and Hebrew are blocked with the right rule", () => {
   assert.ok(BLOCKED.length >= 40, `table size ${BLOCKED.length}`);

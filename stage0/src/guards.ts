@@ -18,7 +18,7 @@ const PRICE = [
   /\b(?:a|one) thousand\b/i,
   /\b(?:a|one|two|three|four|five|ten|twenty|fifty|few|couple of|several) grand\b(?!\s+(?:opening|total|tour|piano|slam|plan|scheme|prize))/i,
   // Hebrew: per-unit rates and bare big number words ("300 לשעה", "התעריף 300", "חמש מאות", "אלף וחמש מאות")
-  /\d[\d,.]*\s?(?:ל(?:שעה|חודש|יום|שנה|משתמש|לקוח)|בחודש|בשעה)(?![א-ת])/,
+  /\d[\d,.]*\s?(?:ל(?:שעה|יום|שנה|משתמש|לקוח)|בשעה)(?![א-ת])/, /\d{3}[\d,.]*\s?(?:לחודש|בחודש)(?![א-ת])/,   // "300 לשעה", "500 לחודש" but not the date "15 לחודש"
   /(?<![א-ת])(?:ה)?תעריף\s+(?:של\s+|כ-?\s?)?\d/,
   /(?<![א-ת])ו?(?:מאתיים|מאות|אלפיים|אלפים|אלף)(?![א-ת])/,
   // "we charge a flat 300", "quoted 1200" (a bare figure after a charging word)
@@ -93,7 +93,7 @@ const PROMISE = [
 
 // More promise forms (English + Hebrew). Hedges ("can't promise", "I can't guarantee", "לא מבטיח") stay allowed.
 PROMISE.push(
-  /(?<!n['’]t\s)(?<!\b(?:not|never|cannot|no)\s)\b(?:promise[sd]?|guarantee[sd]?)\b/i,
+  /(?<!n['’]t\s)(?<!\b(?:not|never|cannot|no|a|an|the|money-back)\s)\b(?:promise[sd]?|guarantee[sd]?)\b/i,
   /\bmy word\b|\bconsider it done\b|\bcount on (?:us|me|it)\b|\brest assured\b|\b(?:i|we)\s+swear\b/i,
   /\b(?:i|we)(?:'ll|'d| will| would| can)?\s+(?:definitely |certainly |absolutely |surely |personally )?make sure\b/i,
   /\b(?:i|we)(?:'ll| will)\s+(?:definitely|certainly|absolutely|surely)\b/i,
