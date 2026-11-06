@@ -46,6 +46,7 @@ function main(): number {
     return r.status ?? 1;
   } finally {
     rmSync(tmp, { recursive: true, force: true });
+    console.log("\nDemo done. It ran in a temporary folder, now deleted, so ignore the 'pnpm tag / pnpm purge' hint above.");
   }
 }
 

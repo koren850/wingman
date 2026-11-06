@@ -90,7 +90,7 @@ Everything below runs offline, with no API keys and no private data.
 | Question detector (Hebrew, local) | 60 labelled lines (30 question, 30 not) | precision 100%, recall 100% |
 | Question detector on call scenarios | 217 labelled turns from 32 synthetic calls | precision 97.0%, recall 100% (4 false positives, 0 misses) |
 | Answer-bank matcher | 40 held-out utterances | top-1 93% (37/40), wrong card 3% (1/40), no card 5% (2/40) |
-| Guards (price / date / promise) | 73 must-block, 48 must-pass sentences (18 technical, such as "TLS 1.3") | 73/73 blocked with the right rule, 0/48 false positives |
+| Guards (price / date / promise) | 76 must-block, 53 must-pass sentences (technical ones such as "TLS 1.3" and "nginx 1.5", invoice numbers) | 76/76 blocked with the right rule, 0/53 false positives |
 | Practice-mode salary guard | 12 must-block, 6 must-pass | 12/12, 0/6 |
 | Whole suite | 650+ tests (630+ unit, 19 end-to-end) in 67 files | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
 
