@@ -495,6 +495,9 @@ function askNative(o, box) {
     // On timeout the dialog is closed through an AbortSignal (Electron: the box then behaves as cancelled), so a late click on "Start the call"
     // cannot look like it did something, and the next request does not stack a second dialog. (Electron ignores the signal for a macOS box without
     // a parent window; the answer is still "no" there.)
+    // Known limitation, left as is on purpose: the only way to make it close is a parent window, and a hidden parent never shows a macOS sheet
+    // (the user could not answer at all), while a visible one would pop up a blank window. A late click is ignored (over is true), so the
+    // worst case is a leftover dialog that does nothing when clicked.
     const ac = new AbortController();
     const t = st(() => {
       over = true;
