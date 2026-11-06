@@ -36,7 +36,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement through GitHub's private reporting on this repository (the **Security** tab, then **Report a vulnerability**), or, if that is not available, by opening a GitHub issue that says only that you have a conduct report, with no details, and asking for a private way to send them. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement through GitHub's private reporting on this repository (the **Security** tab, then **Report a vulnerability**: open a private security advisory and say it is a conduct report), or, if that is not available, by opening a GitHub issue that says only that you have a conduct report, with no details, and asking for a private way to send them. All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 

@@ -14,10 +14,11 @@ Wingman listens to calls. Read this before you use it on one.
 | Data | Goes to | When | Why |
 |---|---|---|---|
 | **Audio** of both channels (your microphone and the system audio, 16 kHz) | **Deepgram** (speech to text) | While a call is listening | Transcription. Also sent during the full Readiness check (a short test tone or silence) and the STT gate. |
+| **Name and term hints**: up to 100 keyterms, made of the people and company names from your Plan (who, title) plus your pack's `keyterms.txt` | **Deepgram** | When a call connects | They improve recognition of names and terms. They travel as `keyterm=` parameters in the connection URL, so they can appear in Deepgram's request logs or in a proxy you use. Leave the Plan's who and title empty, and keep names out of `keyterms.txt`, if you do not want that. |
 | **Text**: transcript lines, the Plan (who, goal, notes, must-cover items), background files you attach, the answer bank text, house style, your profile (name, "about", business), the call frame, client facts matched in the call | **Anthropic** (the Claude model) | During a call (answers, frame, notes, tips, "is this for me" classifier) and after (summary and follow-up email) | AI answers and the summary |
 | A tiny test request with your key | Deepgram, Anthropic | When you press Test on a key, or run the Readiness check | Checks the key works |
 
-Nothing else is sent. There is no telemetry, no analytics, no automatic update check and no cloud account. (`wingman update` runs only when you start it, and talks to your git remote.) The window and the answer window load no web content (strict Content-Security-Policy, navigation blocked). If you configure a fallback provider (Soniox, Gladia, or another model vendor), the same data goes to that vendor when it is used.
+Nothing else is sent: no other host is contacted. There is no telemetry, no analytics, no automatic update check and no cloud account. (`wingman update` runs only when you start it, and talks to your git remote.) The window and the answer window load no web content (strict Content-Security-Policy, navigation blocked). If you configure a fallback provider (Soniox, Gladia, or another model vendor), the same data goes to that vendor when it is used.
 
 **Deepgram model improvement.** By default Deepgram may use audio sent to it for its Model Improvement Program, under its own terms. Setting `stt.deepgram.mipOptOut: true` makes Wingman send `mip_opt_out=true` with every connection, which is Deepgram's documented opt-out ([docs](https://developers.deepgram.com/docs/the-deepgram-model-improvement-partnership-program)). The default here is **off**: Deepgram's documentation states no price for opting out, and community reports say that opting out can raise the rate, so Wingman does not change your bill without you choosing it. If call audio is sensitive, turn it on (and check the price with Deepgram).
 
@@ -36,7 +37,7 @@ Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN
 | Your settings | `~/.config/wingman/settings.yaml` | Until you delete it | Mode 600; never contains keys |
 | Your profile (name, "about", business, time zone) | `~/.config/wingman/profile.yaml` | Until you delete it | Never in the repo |
 | Your pack (answer cards, house style, word lists) | `~/.config/wingman/pack/` | Until you delete it | Never in the repo |
-| Menu-bar app log | `<data folder>/calls/tray.log` | Until you delete it | Status lines only, no call content, no keys |
+| Menu-bar app log | `<data folder>/calls/tray.log` | Until you delete it | Status lines, short error text and the matched client name; no transcript, no keys |
 | API keys | macOS Keychain, service `wingman` | Until you remove them | Keychain |
 
 The data folder is also where Electron keeps its own files (cache, local storage). Wingman does not put call content there.
@@ -45,13 +46,13 @@ Delete a call: **Stop and delete this call** (asks first), `wingman calls purge 
 
 Delete everything: `wingman uninstall --purge` removes the data folder, `~/.config/wingman` and the Keychain keys, after you type `DELETE`. Plain `wingman uninstall` removes only the app and the command link.
 
-**Older versions** kept calls in `calls/` and meetings in `data/private/` inside the app folder (`stage0/` before it was renamed to `app/`). The first start of a newer version **copies** them into the data folder. It never moves or overwrites anything and writes a marker so it runs once. The old folders stay where they were: **delete them yourself** when you are happy with the copy, and check they are not in a backup you share.
+**Older versions** kept calls in `calls/` and meetings in `data/private/` inside the app folder (older versions stored data in the repo folder, `stage0/`). The first start of a newer version **copies** them into the data folder. It never moves or overwrites anything and writes a marker so it runs once. The old folders stay where they were: **delete them yourself** when you are happy with the copy, and check they are not in a backup you share.
 
 Important: the transcript and the summary of a real call can contain personal data and client secrets. Keep them out of backups you do not control and do not share the calls folder or the `qa/` output of real calls.
 
 ## API keys
 
-- Stored in the macOS Keychain (service `wingman`). A legacy `~/.config/wingman/keys.env` is still read if present; **Settings -> Keys -> Move to Keychain** (or `pnpm keys migrate`) moves it: each key is written to the Keychain and read back, and only then is its line removed from `keys.env`. No backup copy is made (it would be one more plaintext copy of the key); if the Keychain write fails, `keys.env` is left untouched.
+- Stored in the macOS Keychain (service `wingman`). A legacy `~/.config/wingman/keys.env` is still read if present; **Settings, Keys, Move to Keychain** (or `pnpm keys migrate`) moves it: each key is written to the Keychain and read back, and only then is its line removed from `keys.env`. No backup copy is made (it would be one more plaintext copy of the key); if the Keychain write fails, `keys.env` is left untouched.
 - **What the Keychain does and does not protect.** Items are created through `/usr/bin/security`, so `security` itself is the trusted program in the item's access list. Any other program you run as the same macOS user can run `security find-generic-password -s wingman ...` and read a key **without a prompt** while your login keychain is unlocked. The threat model: this protects against copies of files, backups, synced folders, screenshots and keys leaking into the repo. It does **not** protect against malware or a malicious script that runs as you. Run only code you trust, and set spend limits in the Deepgram and Anthropic consoles.
 - All Keychain access goes through one module that runs `/usr/bin/security` without a shell. Keys are written through stdin, so they never show in the process list or the environment, and each write is read back.
 - Keys are held in memory only. They are never written to call folders, logs, settings, events or snapshots. The engine removes key variables from its own environment after loading and starts the answer window, ffmpeg and caffeinate without them.

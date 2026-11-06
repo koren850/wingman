@@ -13,6 +13,8 @@ Wingman is one TypeScript engine (a Node process per call) plus an Electron host
 - The **answer window** (`app/overlay/`) is a second Electron process, started by `call.ts`, shown on the second screen.
 - The **CLI** (`wingman`) is a thin client of the control socket.
 
+**Why TypeScript and plain JavaScript are both here.** The engine and CLI are TypeScript (strict, run through `tsx`). The Electron main process (`tray/`), the window (`dashboard/`) and the answer window (`overlay/`) are CommonJS and classic browser scripts on purpose: Electron loads CommonJS main-process code with no build step, and the renderers run under a strict Content-Security-Policy as plain scripts, with no bundler and no `eval`. Code both sides need (`shared/`) is written once as a small UMD module. The cost is less type checking in that glue code, which the unit and snapshot tests cover. The plan is to type-check these files with `checkJs` and JSDoc types as they are touched, rather than adding a build step. See [ADR 25](DECISIONS.md#adr-25-an-electron-menu-bar-app) for the app decision.
+
 Everything is plain files. There is no database and no server.
 
 ## Process diagram
@@ -65,7 +67,7 @@ The tray app starts one call at a time through the controller, which runs `call.
 | Speakers and flow | `speakers.ts`, `flow.ts` | The speech provider tells the other side's voices apart (`stt.speakers`); `speakers.ts` gives them call-local numbers and names (from introductions, a prepared meeting's attendees, or `wingman speaker`). `flow.ts` (`FlowTracker`) notices when several of them talk among themselves (a muted line, answer cards wait) and when someone turns to the user (an alert). Setting `flow.enabled`. Renaming a voice relabels the earlier lines. Nothing is kept across calls. |
 | Practice and prep mode (kind `interview`) | `brief.ts`, `run.ts`, `guards.ts` | A prepared meeting of kind `interview` switches to rehearsal coaching from your own notes. The meeting's own cards (note `Prepared cards: <file.yaml>`, bank format, one file per meeting) replace the bank. No Buy time lines, no card limit, every question gets an answer built from the background notes. The guard blocks only a salary figure (`guardInterview`). No fact cards and no self-check cards. Tips follow the normal settings. |
 | Tips and notes | `tips.ts`, `notes.ts`, `brief.ts` | At most one small tip every two minutes (AI or local: "you talk more than 75 percent"). Live notes every 30 s. Must-cover reminders from the Plan. |
-| Fact cards | `entities.ts`, `facts-check.ts` | Matches client and domain names in the call against a local snapshot (`entities.json` in the data folder). No network lookup during a call. Off in interview mode. |
+| Fact cards | `entities.ts`, `facts-check.ts` | Matches client and domain names in the call against a local snapshot (`entities.json` in the data folder). No network lookup during a call. Off in practice and prep mode. |
 | Capture | `capture.ts` | Finds phone numbers, emails and domains, including spoken Hebrew digit words. |
 | Summary | `summary.ts` | When a call ends: one model call over the saved transcript. Writes `summary.json` (summary, decisions, next steps, open questions, follow-up email draft). The email passes through the guards, so prices, dates and promises become `[להשלים: ...]`. |
 | Health | `health.ts` | A supervisor that turns signals (STT lag, LLM errors, audio silence, cost) into the degrade ladder: full, reduced AI, provider switch, bank only, transcript only, off. A dead speech channel for the other side is "transcript only" (rung 4) and is retried slowly, never "off". "Off" is only for a user stop. |
@@ -152,7 +154,7 @@ Other lifecycle rules: Stop and delete asks first (Cancel is the default); Quit 
 
 ## Files on disk
 
-Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN_DATA_DIR`; `WINGMAN_CALLS_DIR` and `WINGMAN_BRIEFS_DIR` still work). It holds `calls/`, `briefs/` (with `briefs/attachments/`) and `entities.json`. It is outside the repo. Older versions kept these in `calls/` and `data/private/` inside the app folder (`stage0/` before it was renamed to `app/`); a one-time migration copies them (never moves). Settings, keys, profile and pack stay in `~/.config/wingman`.
+Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN_DATA_DIR`; `WINGMAN_CALLS_DIR` and `WINGMAN_BRIEFS_DIR` still work). It holds `calls/`, `briefs/` (with `briefs/attachments/`) and `entities.json`. It is outside the repo. Older versions kept these in `calls/` and `data/private/` inside the app folder (older versions stored data in the repo folder, `stage0/`); a one-time migration copies them (never moves). Settings, keys, profile and pack stay in `~/.config/wingman`.
 
 Per call, in `<data folder>/calls/<ulid>/` (owner-only, umask 077; audio is never saved):
 
@@ -173,7 +175,7 @@ Outside the call folders:
 |---|---|
 | macOS Keychain, service `wingman` | `DEEPGRAM_API_KEY`, `ANTHROPIC_API_KEY`. |
 | `~/.config/wingman/settings.yaml` | Your personal settings (mode 600, comments kept). |
-| `~/.config/wingman/keys.env` | Legacy keys file. Still read if present; Settings -> Keys can move it into the Keychain. |
+| `~/.config/wingman/keys.env` | Legacy keys file. Still read if present; Settings, Keys can move it into the Keychain. |
 | `~/.config/wingman/run/control.sock` | The control socket. |
 | `<data folder>/calls/tray.log` | Menu-bar app log: status lines only, no call content. |
 | `app/data/example-pack/` (`bank.yaml`, `bank.en.yaml`, `house-style.md`, `keyterms.txt`, `topics.txt`) | The example pack: answer bank, tone rules, speech hints and topic words. Your own pack (`~/.config/wingman/pack/`) replaces it, file by file. |
@@ -208,7 +210,7 @@ Caps: `budget.maxUsdPerCall` (default $2) drops AI to bank-only when reached; `b
 
 | Layer | What | Run |
 |---|---|---|
-| Unit tests | Over 500 tests in `app/src/*.test.ts` (node's test runner through tsx, run one file at a time): detector, bank, guards, calc, split, echo, settings, keys (mocked `security`), CLI, control socket, controller (fake child), dashboard security, overlay logic, health ladder, supervised audio, sleep and disk handling, survived errors, install and migration, setup, profile and pack, flow, interview mode, summary, frame, tips, a repo guard (no private words in tracked files, when you set a list), and an offline end-to-end call with scripted speech and scripted AI. CI runs the type check and the tests on macOS. | `pnpm test` |
+| Unit tests | 600+ tests in 57 files in `app/src/*.test.ts` (node's test runner through tsx, run one file at a time): detector, bank, guards, calc, split, echo, settings, keys (mocked `security`), CLI, control socket, controller (fake child), dashboard security, overlay logic, health ladder, supervised audio, sleep and disk handling, survived errors, install and migration, setup, profile and pack, flow, interview mode, summary, frame, tips, a repo guard (no private words in tracked files, when you set a list), and an offline end-to-end call with scripted speech and scripted AI. CI runs the type check and the tests on macOS. | `pnpm test` |
 | Corpora | Detector precision/recall on `data/questions.tsv`; bank accuracy on 40 held-out utterances. | `pnpm detector`, `pnpm banktest` |
 | STT gate | Scores Deepgram on your recording of 40 Hebrew sentences with English tech terms (term recall, endpoint-to-final lag). | `pnpm gate` |
 | QA harness | `qa/scenarios/*.json` (32 invented call scripts) are rendered with macOS voices to stereo WAV (left = me, right = them, with pauses and overlaps), played in real time through the real engine with real Deepgram and real Haiku, and graded: question recall and precision, right card, price questions stall, split-question join, first-card time, STT word accuracy, summary present, guard leaks, cost. Output: `qa/report.md`. `--replay` re-plays what Deepgram heard for pennies; `--dry` only estimates cost; `--cap` sets a spend cap. | `pnpm qa --all` |

@@ -17,7 +17,7 @@ For code work only (no Electron download, no app):
 cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
-pnpm test                               # unit tests (over 500, about 2 minutes)
+pnpm test                               # unit tests (600+, about 5 minutes)
 ```
 
 Needs macOS 14.2 or newer, Node 24 or newer, pnpm 11 (through `corepack enable`; the version is pinned in `package.json`) and `ffmpeg`. Poppler (`pdftotext`) is optional, for PDF attachments. Keys are not needed for unit tests: they use mocks and fake keys, and the real Keychain runner refuses to run under the test runner. For live work, add keys with `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never commit keys.
@@ -79,7 +79,7 @@ What `pnpm install` does in `app/`:
 
 ## Tests
 
-- Unit tests are `src/*.test.ts` (over 500), run with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards.test.ts` (use the file you need).
+- Unit tests are `src/*.test.ts` (600+), run with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards.test.ts` (use the file you need).
 - Do not start a second `pnpm test` while one is running; they share ports and files.
 - Test names say what they protect. Bug fixes should come with a regression test.
 - The "repo guard" test fails if a tracked source, data or config file contains a word from your private word list. Set it with `WINGMAN_DENYLIST="word1,word2" pnpm test`, or one word per line in the git-ignored `app/data/private/denylist.txt`. With no list it skips. How and why: [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).

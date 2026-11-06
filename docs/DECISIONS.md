@@ -7,7 +7,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | # | Decision |
 |---|---|
 | [1](#adr-1-personal-tool-first) | Personal tool first, open source from source on macOS |
-| [2](#adr-2-a-dogfood-tool-before-the-big-structure) | A small first version before the big structure |
+| [2](#adr-2-a-first-version-before-the-big-structure) | A small first version before the big structure |
 | [3](#adr-3-numeric-gates-instead-of-opinions) | Numeric gates instead of opinions |
 | [4](#adr-4-deepgram-nova-3-for-speech-to-text) | Deepgram Nova-3 for speech to text |
 | [5](#adr-5-two-audio-channels-me-and-them) | Two audio channels: me and them |
@@ -48,9 +48,9 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 1: Personal tool first
 
-**Context.** The first plan was a general open-source product: Windows and macOS installers, auto-update, plugins, a setup wizard. A design review concluded the idea holds for one person and is weak as a product for strangers, and that every cost came before any proof of value.
+**Context.** The first plan was a general product: Windows and macOS installers, auto-update, plugins, a setup wizard. Every cost in that plan came before any proof of value.
 
-**Decision.** Build it for one user first: one user's Hebrew calls and tools. Publish it as source that runs on macOS. Stages for strangers (signed installer, Windows, pack installer, polished wizard) wait for a second real user who wants it.
+**Decision.** Build for one user's real calls first and publish it as source for macOS. Broader packaging (signed installer, Windows, pack installer, polished wizard) follows demand.
 
 **Why.** Proof of value on real calls is the only thing that matters early. Installer and cross-platform work is large and does not help prove that.
 
@@ -58,11 +58,11 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 **Consequences.** macOS only. Run from a terminal or the local app, no signed build. The bank and house style in the repo are an invented example pack; replace them with your own pack.
 
-## ADR 2: A dogfood tool before the big structure
+## ADR 2: A first version before the big structure
 
 **Context.** The structure documents described a monorepo, three processes, replay clocks, encryption and more, about 3 to 4 weeks before the first call.
 
-**Decision.** Build a first version: a rough, terminal-launched tool in `app/` that reuses the planned ideas but not the planned layout. A flat folder, one process per call, plain JSONL. Add a stop rule: if it is not used on a real call by a set date, freeze it.
+**Decision.** Build a first version: a rough, terminal-launched tool in `app/` that reuses the planned ideas but not the planned layout. A flat folder, one process per call, plain JSONL. Add an exit check: if it is not used on a real call by a set date, stop and rethink.
 
 **Why.** It gets the value question answered in days. Infrastructure for replay, linting and process splitting can be added when it saves time on real use.
 

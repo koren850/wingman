@@ -18,5 +18,7 @@ To regenerate every asset, run `./build.sh` (it needs `app/node_modules`, so run
 | `svg/lockup.svg`, `svg/lockup-dark.svg`, `png/lockup*.png` | Character + "wingman" wordmark |
 | `svg/banner.svg`, `png/banner.png` | 1200x630 README / social banner |
 
+The GitHub social preview image is [`docs/ux/social-preview.png`](../docs/ux/social-preview.png) (upload it under the repository's Settings, Social preview).
+
 Colours: capy brown `#9A6B3F`, yuzu `#F59E0B`, mint `#CDE8D8`, night navy `#12263A`, cocoa `#3B2414`.
 Fonts: Unbounded Bold for the wordmark and Baloo 2 for the tagline and labels (both Google Fonts, SIL OFL). The lockup and banner SVGs need these fonts installed to render text; the PNGs do not.

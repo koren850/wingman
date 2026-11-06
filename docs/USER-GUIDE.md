@@ -46,7 +46,7 @@ Nothing about you is stored in this repository.
 | `~/.config/wingman/` | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
 | macOS Keychain, service `wingman` | Your API keys. |
 
-If you used an older version that kept calls in the repo folder (`calls/` and `data/private/` inside the app folder, which was called `stage0/` until it was renamed to `app/`), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
+If you used an older version that kept calls in the repo folder (`calls/` and `data/private/` inside the repo folder, `stage0/`), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
 
 ## Profile and pack
 
@@ -66,7 +66,7 @@ In this mode:
 - Answers are built from your notes only, never invented experience.
 - The AI may not write a salary figure. Salary comes only from your own prepared card.
 - There are no fact cards and no self-check cards.
-- To use your own prepared answers, add the meeting note `Prepared cards: /full/path/cards.yaml`. The file has the same format as the answer bank ([docs/PACK-FORMAT.md](PACK-FORMAT.md#cards-for-an-interview)). For that call it replaces the normal bank. Each meeting can point to its own file.
+- To use your own prepared answers, add the meeting note `Prepared cards: /full/path/cards.yaml`. The file has the same format as the answer bank ([docs/PACK-FORMAT.md](PACK-FORMAT.md#cards-for-a-practice-meeting)). For that call it replaces the normal bank. Each meeting can point to its own file.
 
 Real interviews and exams that forbid outside help are out of scope ([ADR 35](DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams)). You are responsible for following the rules that apply to you.
 

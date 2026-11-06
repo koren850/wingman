@@ -6,7 +6,7 @@ Find your problem, then follow the steps. Run `./install.sh --check` any time to
 
 Signs: a red bar "NOT HEARING THE OTHER SIDE" (when Zoom, Teams or a similar app is open), or a calm line "I only hear you" (when no call app is open).
 
-1. Is the other side's audio playing on this Mac? Wingman records what the Mac plays. If the call plays on another device, there is nothing to hear.
+1. Is the other side's audio playing on this Mac? Wingman captures what the Mac plays. If the call plays on another device, there is nothing to hear.
 2. Check System Audio Recording permission (next section).
 3. Run the Readiness check (**Home, Run readiness check**). It tests the system audio.
 4. If you only wanted to test alone, the calm line is fine. Ask Wingman anything with Ctrl+Opt+A.

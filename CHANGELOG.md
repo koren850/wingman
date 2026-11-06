@@ -13,7 +13,7 @@ First public release.
 ### Added
 
 - **Live call loop.** Two audio channels (microphone for you, system audio for the other side through a Core Audio tap) go to two Deepgram Nova-3 streams, so the speaker is always known. A reconnect buffer replays the last two seconds after a dropped connection.
-- **Answer cards in about a second.** A Hebrew-aware question detector feeds a local answer bank ("Prepared" cards, no AI call) and a Claude Haiku reflex that skips, stalls, picks a bank card or writes a short answer. AI cards are labelled "not verified".
+- **Answer cards in about a second.** A Hebrew-aware question detector feeds a local answer bank ("Prepared" cards, no AI call) and a Claude Haiku step that skips, stalls, picks a bank card or writes a short answer. AI cards are labelled "not verified".
 - **Guards in code.** Deterministic filters for prices, dates and promises turn a risky AI line into a "Buy time" line. House-style never-say rules. Practice mode adds a salary guard and an unclaimed-term guard.
 - **Answers for you.** Ask out loud (Ctrl+Opt+A) and get a "For you" card. Arithmetic is computed locally.
 - **Call frame and tips.** The call type is detected, a checklist of what the call should cover is kept, and at most one short tip is shown every two minutes.
@@ -27,7 +27,7 @@ First public release.
 - **`wingman` command line** that drives the running app over an owner-only local socket.
 - **Installer** (`install.sh`) with check, dry run, update and uninstall modes; it never uses sudo.
 - **Swappable pack and profile.** Answer bank, house style and keyterms live in a pack; your name and business live in a profile. An invented example pack is included.
-- **Test and QA tooling.** More than 500 unit tests, an offline end-to-end call test, a synthetic QA harness with 32 invented scenarios, snapshot tools for the windows, and a CI workflow.
+- **Test and QA tooling.** 600+ unit tests in 57 files, an offline end-to-end call test, a synthetic QA harness with 32 invented scenarios, snapshot tools for the windows, and a CI workflow.
 - **Documentation.** Architecture, 37 architecture decision records, privacy and security guide, development guide, troubleshooting, pack format and roadmap.
 
 ### Security and privacy

@@ -38,7 +38,7 @@ Both must pass before you open a pull request. Tests need no API keys. They use 
 Run one test file while you work:
 
 ```bash
-pnpm exec tsx --test src/guards.test.ts
+pnpm exec tsx --test src/guards-table.test.ts
 ```
 
 Do not run two test runs at the same time. They share ports and files.
@@ -55,7 +55,7 @@ Make your own list:
 
 Use words that must never appear: your name, your employer, client names, your own domains, your phone number. If no list is set, the test skips itself. That is what happens in CI.
 
-The guard scans the code, data, config and scripts folders. It does not scan the Markdown docs, so check those yourself before you commit.
+The guard scans the code, data, config and scripts folders and the Markdown docs.
 
 ## No private data
 
@@ -80,7 +80,7 @@ The short version. The full list is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md
 ## Commit style
 
 - Small, logical commits. One idea each.
-- A short first line in the imperative: "Guard: block a salary figure in interview mode". Under 72 characters.
+- A short first line in the imperative: "Guard: block a salary figure in practice mode". Under 72 characters.
 - If it needs it, a blank line and a few plain sentences about why.
 - Do not mix a refactor with a behavior change.
 

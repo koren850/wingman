@@ -104,15 +104,15 @@ wordpress
 
 Whole-word matching works for Hebrew too.
 
-## Cards for an interview
+## Cards for a practice meeting
 
-An interview meeting can have its own cards, in the same format as `bank.yaml` (and an optional `.en.yaml` file next to it). Save the file anywhere you like, then add this note to the meeting:
+A practice meeting (kind `interview`) can have its own cards, in the same format as `bank.yaml` (and an optional `.en.yaml` file next to it). Save the file anywhere you like, then add this note to the meeting:
 
 ```bash
 wingman plan set --id <id> --add-note "Prepared cards: /full/path/to/my-interview-cards.yaml"
 ```
 
-Use the full path. For that call these cards **replace** the normal bank. Card text is yours, so a salary answer can live here: the AI is never allowed to write a salary figure. See [Interview mode](../app/README.md#practice-and-prep-mode-kind-interview).
+Use the full path. For that call these cards **replace** the normal bank. Card text is yours, so a salary answer can live here: the AI is never allowed to write a salary figure. See [Practice and prep mode](../app/README.md#practice-and-prep-mode-kind-interview).
 
 ## Check your pack
 
