@@ -227,22 +227,27 @@ test("one badge legend: both windows get the card hues from shared/tokens.css, n
   const tok = read("shared/tokens.css"),
     css = read("dashboard/app.css"),
     ov = read("overlay/index.html"),
+    ovCss = read("overlay/overlay.css"),
     dh = read("dashboard/index.html");
   // one definition: dark and light hues for every card type live in the shared file
   for (const k of ["prep", "ai", "stall", "tip", "me", "fact", "fix", "careful"])
     assert.match(tok, new RegExp(`--t-${k}:\\s*#[0-9a-f]{6}`, "i"), `--t-${k} missing in tokens.css`);
   for (const [n, f] of [
     ["dashboard", css],
-    ["answer window", ov],
+    ["answer window", ovCss],
   ] as const)
     assert.ok(!/--t-(prep|ai|stall|tip|me|fact):\s*#/i.test(f), `${n} redefines a card hue`);
   // both pages load it, and the answer window's CSP lets the stylesheet in and stays dark
   assert.match(dh, /<link rel="stylesheet" href="\.\.\/shared\/tokens\.css"\s*\/?>/);
   assert.match(ov, /<link rel="stylesheet" href="\.\.\/shared\/tokens\.css"\s*\/?>/);
-  assert.match(ov, /style-src [^;]*file:/);
+  assert.match(ov, /<link rel="stylesheet" href="overlay\.css"\s*\/?>/);
+  const ovCsp = /Content-Security-Policy"\s+content="([^"]*)"/.exec(ov)![1];
+  assert.match(ovCsp, /style-src file:(;|$)/);
+  assert.doesNotMatch(ovCsp, /unsafe-inline|unsafe-eval/, "no inline style or script");
+  assert.doesNotMatch(ov, /<style[\s>]|\sstyle=/, "no inline style block or style attribute");
   assert.match(ov, /<html[^>]*data-theme="dark"/);
   // the answer window's own hex values are neutrals, tints and its two brighter alert tones only
-  const root = /:root \{([^}]*)\}/.exec(ov)![1];
+  const root = /:root \{([^}]*)\}/.exec(ovCss)![1];
   const names = [...root.matchAll(/(--[a-z0-9-]+):/g)].map((m) => m[1]);
   for (const n of names)
     assert.ok(
