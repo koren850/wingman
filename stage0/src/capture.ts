@@ -35,7 +35,7 @@ export function digitWords(s: string): string {
   let run = "";
   const flush = () => { if (run) { out.push(run); run = ""; } };
   for (const w of words) {
-    const bare = w.replace(/^ו/, "").replace(/[,.\-]$/, "");
+    const bare = w.replace(/^ו/, "").replace(/[,.-]$/, "");
     if (DIGITS[bare] !== undefined) run += DIGITS[bare];
     else if (/^\d[\d-]*$/.test(bare)) {
       // A token that is already a whole number (9+ digits: "0541234567", "054-1234567") stands alone, so a stray

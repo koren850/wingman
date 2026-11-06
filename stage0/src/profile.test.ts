@@ -2,7 +2,7 @@
 // Offline: temp folders only; the real ~/.config/wingman is never read (WINGMAN_PROFILE_FILE / WINGMAN_PACK_DIR point elsewhere).
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync, statSync, existsSync, utimesSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, existsSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {

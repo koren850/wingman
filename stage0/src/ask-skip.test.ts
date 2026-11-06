@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
 import { runSummary } from "./summary.ts";
-import { ModelRegistry } from "./providers/llm.ts";
+import {  } from "./providers/llm.ts";
 import { CostMeter } from "./cost.ts";
 import { loadSettings } from "./settings.ts";
 

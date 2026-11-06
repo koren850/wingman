@@ -2,7 +2,7 @@
 // Ctx carries the control socket path (tray/control-socket.cjs) and injectable hooks so tests never touch the real app.
 import { createRequire } from "node:module";
 import { parseArgs, type ParseArgsConfig } from "node:util";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { ROOT, CALLS, BRIEFS } from "../env.ts";
 
 const req = createRequire(import.meta.url);

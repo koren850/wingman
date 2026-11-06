@@ -5,7 +5,7 @@ import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { mkdtempSync, readFileSync, writeFileSync, statSync, existsSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT, loadKeysWithSources, loadKeys } from "./env.ts";
@@ -239,7 +239,7 @@ test("static: key values can only reach memory; no logging or persistence path t
 });
 
 test("migrate refuses a keys.env that is a symlink and never follows a pre-placed temp or backup symlink", async () => {
-  const { symlinkSync, mkdirSync } = await import("node:fs");
+  const { symlinkSync } = await import("node:fs");
   const dir = tmpHome(), real = join(dir, "real.env"), victim = join(dir, "victim.txt");
   writeFileSync(real, `DEEPGRAM_API_KEY=${DG}\n`, { mode: 0o600 }); writeFileSync(victim, "precious");
   const link = join(dir, "keys.env"); symlinkSync(real, link);

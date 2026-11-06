@@ -67,7 +67,7 @@ export async function settings(ctx: Ctx, args: string[]): Promise<Result> {
     if (positionals.length !== 2) throw usage("Usage: wingman settings set <key> <value|default> [--advanced]");
     const [key, raw] = positionals;
     if (FORBIDDEN.test(key)) throw new CliError("refused", "Key storage settings are not changed from the CLI.", EXIT.REFUSED, "Use the app: Settings > Keys.");
-    const { st, items: its } = items(ctx);
+    const { st } = items(ctx);
     const item = catalog.BY_KEY.get(key);
     let stored: unknown;
     if (item) {

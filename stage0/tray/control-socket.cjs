@@ -76,7 +76,7 @@ function shape(a, fields) {
  */
 function createControlServer(o) {
   const fs = o.fs || nodeFs, path = o.path || nodePath, net = o.net || nodeNet;
-  const ctl = o.controller, lib = o.lib;
+  const ctl = o.controller;
   const now = o.now || Date.now;
   const platform = o.platform || process.platform;
   const onPipe = pipes.usesPipes(platform);   // Windows: a named pipe, no folder, no file modes, no uid

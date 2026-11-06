@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { call, appStatus, needApp, NO_APP_HINT, appProcessRunning } from "./client.ts";
-import { CliError, EXIT, parse, usage, mmss, type Ctx, type Result } from "./common.ts";
+import { CliError, EXIT, parse, usage, type Ctx, type Result } from "./common.ts";
 
 const APP_PATH = "/Applications/Wingman.app";
 const PHASE_TEXT: Record<string, string> = {

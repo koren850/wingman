@@ -230,7 +230,7 @@ test("the nativeTheme listener is added once per window host, not on every open"
 });
 
 // ---- Calls list: start time without call.json, and the per-folder cache ----
-import { mkdtempSync, mkdirSync, writeFileSync, appendFileSync, utimesSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, utimesSync } from "node:fs";
 import * as nodeFs from "node:fs";
 import { tmpdir } from "node:os";
 import { join as pjoin } from "node:path";

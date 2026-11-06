@@ -91,6 +91,7 @@ export function parseTopic(text: string): string | undefined {
 }
 
 /** Runs one small-model call over the last `lines` and returns the parsed topic with the raw usage for cost tracking. `generate` is injectable for tests. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- usage and provider metadata are passed through untouched to the usage log
 export async function runTopic(o: { registry: ModelRegistry; model: string; lines: string[]; signal: AbortSignal; timeoutMs: number; generate?: typeof generateText }): Promise<{ topic?: string; usage: any; providerMetadata: any }> {
   const model = await o.registry.resolve(o.model);
   const r = await generateOnce(o.generate, {

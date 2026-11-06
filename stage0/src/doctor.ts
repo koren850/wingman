@@ -6,7 +6,7 @@
 import { execFile, execFileSync, spawn } from "node:child_process";
 import { readFileSync, statSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { loadKeysWithSources, KEYS_FILE, KEY_VARS, DATA, CALLS, type KeyName } from "./env.ts";
+import { loadKeysWithSources, KEYS_FILE, KEY_VARS, CALLS, type KeyName } from "./env.ts";
 import { SystemSource, MicSource, peakOf } from "./audio.ts";
 import { loadBank } from "./bank.ts";
 import { readPack, packPath, packMixedIn, packDirs, EXAMPLE_PACK } from "./pack.ts";
@@ -25,7 +25,8 @@ import { micVerdict } from "./mic-check.ts";
 const IS_APP = !!process.versions.electron || process.env.WINGMAN_APP === "1";
 const argv = process.argv.slice(2);
 const offline = argv.includes("--offline");
-let blocking: string[] = [], warnings = 0;
+const blocking: string[] = [];
+let warnings = 0;
 // Result printers: ok = pass, bad = blocking (exit 1), warn = counted but not blocking.
 const ok = (m: string) => console.log(`  ✅ ${m}`);
 const bad = (m: string, fix?: string) => { blocking.push(m); console.log(`  ❌ ${m}${fix ? `\n     fix: ${fix}` : ""}`); };
@@ -104,7 +105,7 @@ run("ffmpeg", ["-version"]) ? ok("ffmpeg present") : bad("ffmpeg not found", "in
 const batt = run("pmset", ["-g", "batt"]);
 if (batt) { const pct = Number(batt.match(/(\d+)%/)?.[1]); /AC Power/.test(batt) || pct > 20 ? ok(`power ok (${pct}%${/AC Power/.test(batt) ? ", charging" : ""})`) : warn(`battery ${pct}% and not charging`, "plug in"); }
 const df = run("df", ["-m", "."]).split("\n")[1]?.split(/\s+/); const freeMb = df ? Number(df[3]) : NaN;
-Number.isFinite(freeMb) ? (freeMb > 500 ? ok(`free disk ${Math.round(freeMb / 1024)} GB`) : warn(`free disk ${freeMb} MB`, "free some space")) : null;
+if (Number.isFinite(freeMb)) { freeMb > 500 ? ok(`free disk ${Math.round(freeMb / 1024)} GB`) : warn(`free disk ${freeMb} MB`, "free some space"); }
 const orphans = run("pgrep", ["-f", "ffmpeg.*avfoundation|audiotee"]);
 orphans ? warn("leftover ffmpeg/audiotee process found", IS_APP ? "quit Wingman from the menu bar and open it again" : "pkill -f 'ffmpeg.*avfoundation|audiotee'") : ok("no orphan audio processes");
 if (S.overlay.enabled) {

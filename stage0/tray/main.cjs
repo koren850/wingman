@@ -150,7 +150,7 @@ function refresh() {
 }
 
 // A second launch (e.g. the .app clicked again) just brings up the window.
-app.on("second-instance", (_e, argv) => { host && host.open({ view: "home" }); });
+app.on("second-instance", () => { host && host.open({ view: "home" }); });
 
 app.whenReady().then(() => {
   if (!gotLock) return;

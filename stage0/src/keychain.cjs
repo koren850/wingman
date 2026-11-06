@@ -17,6 +17,7 @@
 // write is verified by reading the value back and comparing in memory.
 const fs = require("node:fs");
 const os = require("node:os");
+// eslint-disable-next-line no-redeclare -- CommonJS module scope; deliberately shadows the global `crypto` with the node: module
 const crypto = require("node:crypto");
 const { spawnSync } = require("node:child_process");
 

@@ -2,7 +2,7 @@
 // Scoring is by trigger word count; "stall" cards (price / timeline / guarantee) always win so a commitment is never answered
 // by a topical card. Used by run.ts (card or hint for the model), doctor.ts and the detector's context. No embeddings in this stage.
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import {  } from "node:path";
 import YAML from "yaml";
 import { containsPhrase, phraseWordIndex } from "./normalize.ts";
 import { packPath } from "./pack.ts";

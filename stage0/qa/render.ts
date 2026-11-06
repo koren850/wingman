@@ -1,7 +1,7 @@
 // Synthetic call renderer: scenario JSON -> stereo 16 kHz 16-bit WAV (L = me / the user's mic, R = them / the other side), with real timing.
 //   tsx qa/render.ts <scenario…|--all>      writes qa/out/<scenario>.wav + qa/out/<scenario>.timeline.json
 // Speech comes from macOS `say` (Carmit for Hebrew, Samantha/Daniel for English), cached by text hash in qa/cache/. No network, no keys.
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join, dirname, basename } from "node:path";

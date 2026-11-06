@@ -36,7 +36,7 @@ class Fake extends EventEmitter implements Source {
   async stop() { this.stopped = true; clearInterval(this.timer); }
   die(msg = "exited") { clearInterval(this.timer); this.emit("error", new Error(msg)); }
 }
-const fast = (n: number) => 20;
+const fast = () => 20;
 
 test("supervisor: a start failure does not reject; it retries, then reports up when frames flow", async () => {
   const made: Fake[] = []; const seen: number[] = [];
@@ -165,7 +165,7 @@ test("overlay: readNewRows caps each tick, waits for half rows, skips a giant ro
   appendFileSync(f, '{"half":'); assert.deepEqual(R.readNewRows(tail), []);
   appendFileSync(f, "1}\n"); assert.deepEqual(R.readNewRows(tail), [{ half: 1 }]);
   appendFileSync(f, "y".repeat(3000) + "\n" + row(99));
-  let got: any[] = []; for (let k = 0; k < 10; k++) got.push(...R.readNewRows(tail, 1000));
+  const got: any[] = []; for (let k = 0; k < 10; k++) got.push(...R.readNewRows(tail, 1000));
   assert.ok(got.some((r) => r.i === 99), "a row bigger than the cap is skipped, the next one still arrives");
   writeFileSync(f, row(7)); assert.equal(R.readNewRows(tail)[0].i, 7, "replaced (shorter) file is read from the start");
   const fds0 = readdirSync("/dev/fd").length; for (let k = 0; k < 200; k++) R.readNewRows(tail); assert.ok(readdirSync("/dev/fd").length <= fds0 + 1, "no fd leak");

@@ -14,6 +14,7 @@ import { RowRelay, nextRestartCount, listenForRows } from "./relay.ts";
 
 const rest = process.argv.slice(2);
 const { settings: S } = loadSettingsOrExit(rest);   // exits with code 2 and a clear message when settings are invalid
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- "script"/"scripted" are not real key names; they are filtered out just below
 requireKeys([S.stt.provider, ...(S.run.noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])].filter((k) => k !== "script" && k !== "scripted"), expandHome(S.keys.file));
 try { rmSync(join(CALLS, "latest"), { force: true }); } catch { /* removed so the new window waits for run.ts's own folder instead of replaying the previous call */ }
 

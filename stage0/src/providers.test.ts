@@ -96,7 +96,7 @@ const fakeRegistry = { resolve: async (ref: string) => ({ ref }) } as unknown as
 const fakeStream = (script: Record<string, { chunks?: string[]; error?: unknown; finish?: string }>) => ((opts: any) => {
   const s = script[opts.model.ref];
   return {
-    textStream: (async function* () { for (const c of s.chunks ?? []) yield c; if (s.error) { opts.onError({ error: s.error }); } })(),
+    textStream: (  async function* () { for (const c of s.chunks ?? []) yield c; if (s.error) { opts.onError({ error: s.error }); } })(),
     finishReason: Promise.resolve(s.finish ?? "stop"), usage: Promise.resolve({ inputTokens: 10, outputTokens: 5 }), providerMetadata: Promise.resolve({}),
   };
 }) as any;
@@ -133,6 +133,7 @@ test("fallback: never after the answer started, never on a timeout", async () =>
 });
 test("reflex hard timeout throws a timeout ProviderError", async () => {
   const { h } = handlers();
+  // eslint-disable-next-line require-yield -- a stream that never yields, it only waits for the abort
   const stream = ((opts: any) => ({ textStream: (async function* () { await new Promise((r) => opts.abortSignal.addEventListener("abort", r)); })(), finishReason: Promise.resolve("stop"), usage: Promise.resolve({}), providerMetadata: Promise.resolve({}) })) as any;
   await assert.rejects(runReflex({ ...base, cfg: { ...S.llm.reflex, timeoutMs: 30 }, models: ["anthropic:a"], h, stream }), (e: any) => e.kind === "timeout");
 });

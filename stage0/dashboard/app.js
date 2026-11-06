@@ -511,7 +511,6 @@ function writeSummaryBtn() {
 // Tab renderers below (tFollowup, tRate, tTranscript, tMissed, tDetails) all take (pane, detail, opts) and fill the pane.
 function tFollowup(pane, d) {
   const s = d.callSummary, box = h("div", { class: "pane" }); pane.append(box);
-  const sections = [];
   if (!s) {
     const why = summaryWhy(d);
     box.append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "No summary for this call"), why ? h("span", {}, why) : null, writeSummaryBtn(), h("span", { class: "faint" }, "Or from Terminal: ", h("code", {}, "wingman calls summary " + state.id + " --generate"), " ", copyBtn("Copy", () => "wingman calls summary " + state.id + " --generate", { cls: "ghost sm", what: "Command", aria: "Copy command" }))));

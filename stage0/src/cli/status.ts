@@ -5,7 +5,7 @@ import { join } from "node:path";
 import bin from "../../shared/bin.cjs";
 import { call, appStatus, appProcessRunning, NO_APP_HINT } from "./client.ts";
 import { readPlans, store, toMeeting } from "./plan.ts";
-import { CliError, EXIT, trayLib, parse, usage, ago, type Ctx, type Result } from "./common.ts";
+import { CliError, EXIT, trayLib, parse, ago, type Ctx, type Result } from "./common.ts";
 import { keyStatus, realKeychain, ACCOUNTS, PROVIDERS, type Keychain } from "../keychain.ts";
 import { loadSettings, expandHome } from "../settings.ts";
 import { KEYS_FILE } from "../env.ts";

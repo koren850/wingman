@@ -3,7 +3,7 @@
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, statSync, chmodSync } from "node:fs";
+import { mkdtempSync, writeFileSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseAudioDevices, bluetoothInUse } from "./devices.ts";

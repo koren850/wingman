@@ -41,6 +41,11 @@ jobs:
       - name: Type check
         run: pnpm exec tsc --noEmit -p .
 
+      # Lint and formatting run once, on the supported platform.
+      - name: Lint
+        if: matrix.os == 'macos-latest'
+        run: pnpm lint
+
       # CI has no private word list, so the "repo guard" test skips itself. That is expected.
       # Run it on your own machine with WINGMAN_DENYLIST set (see CONTRIBUTING.md).
       - name: Tests

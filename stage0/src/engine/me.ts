@@ -133,7 +133,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
   // 2b. everything else needs the model
   if (!canMeAi()) { meLog(turnId, text, "skip", noAi ? "no-ai" : "ai-unavailable"); return; }
   const reserved = usableModels(true), usable = reserved.length ? reserved : usableModels();   // a half-open probe slot is taken only right before the request
-  let tag: Tag | undefined, said = "", facts: string[] = [], shownOnce = false;
+  let tag: Tag | undefined, shownOnce = false;
   await runReflex({
     registry, models: usable, cfg: S.llm.reflex, prefix, transcript: transcript.slice(-12).map(lineOf).join("\n"), question: text, context: contextNotes, signal: ac.signal,
     frame: frameText(tracker.current) || undefined, asker: "me", solo, maxTokens: Math.min(S.llm.reflex.maxTokens, 100),
@@ -142,12 +142,12 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
     h: {
       onTag(t) { tag = t; },
       onSay() {},
-      onFacts(f) { facts = f; },
+      onFacts() {},
       onSayComplete(say) {
         if (dead() || tag?.kind !== "ANS") return;
         const g = guardMe(say, text);
         if (!g.ok) { meLog(turnId, text, "skip", `guard:${g.rule}`); return; }
-        said = say; shownOnce = true; show(say, [], "ai");
+        shownOnce = true; show(say, [], "ai");
       },
       onDone({ usage, providerMetadata, text: raw, model }) {
         if (dead()) return;

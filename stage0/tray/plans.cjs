@@ -123,7 +123,6 @@ function createPlanStore(o) {
   function list(opts = {}) {
     prep();
     let names = []; try { names = fs.readdirSync(root); } catch { return []; }
-    const t = now();
     const all = names.filter((n) => ID_RE.test(n)).map(readMeeting).filter(Boolean).map(view).filter((m) => m.status !== "expired" && (opts.includeUsed || m.status === "ready"));
     const ord = P.order(all);
     return opts.includeUsed ? [...ord.filter((m) => m.status === "ready"), ...ord.filter((m) => m.status === "used").sort((a, b) => b.usedAt - a.usedAt)] : ord;

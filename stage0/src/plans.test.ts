@@ -3,7 +3,7 @@ import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readdirSync, statSync, utimesSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readdirSync, utimesSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadBrief, briefNotes } from "./brief.ts";

@@ -5,7 +5,7 @@
 import { streamText } from "ai";
 import { localizeCard, englishCardIds, questionLang, type BankCard } from "./bank.ts";
 import type { Settings } from "./settings.ts";
-import { userName, getProfile, hebrewAddressRule, persona, userTimezone } from "./profile.ts";
+import { userName, getProfile, hebrewAddressRule, userTimezone } from "./profile.ts";
 import { ModelRegistry, providerOptionsFor, cacheOptionsFor, withFallbacks } from "./providers/llm.ts";
 import { classifyFinish, classifyLlmError, ProviderError } from "./providers/errors.ts";
 
@@ -77,9 +77,9 @@ Hard rules: for THEM requests never state prices, amounts, dates, deadlines, SLA
 House style (for lines ${u} says aloud to the other side, THEM requests; in ME requests you speak to ${u}, so the current date and time, general facts and plain wording are fine):
 ${houseStyle}
 ${profileText ? `\nClient profile:\n${profileText}\n` : ""}
-${interview ? `\n${interviewBlock()}\n\n${u}\'s prepared answers (id: title). Reply "BANK <id>" and nothing else when one of these answers the question:` : `Answer bank (id: title). Reply "BANK <id>" and nothing else when one of these answers the question:`}
+${interview ? `\n${interviewBlock()}\n\n${u}'s prepared answers (id: title). Reply "BANK <id>" and nothing else when one of these answers the question:` : `Answer bank (id: title). Reply "BANK <id>" and nothing else when one of these answers the question:`}
 ${index}
-${background && interview ? `\n${u}\'s interview prep (background files, the only source of facts about ${u}):\n${background}\n` : ""}${background && !interview ? `\nUsing the background files: when a THEM question asks about facts that the background files state (scope, counts, content types, names, what was agreed or dropped), answer ANS with one short line built only from those facts, in the language of the question. If the question is about the customer's own site or content and the background does not say, never guess: reply SKIP (${u} answers; STALL stays only for a price, a date or a commitment). Never state a price, date or promise even if the background mentions one.\n${background}\n` : ""}`;
+${background && interview ? `\n${u}'s interview prep (background files, the only source of facts about ${u}):\n${background}\n` : ""}${background && !interview ? `\nUsing the background files: when a THEM question asks about facts that the background files state (scope, counts, content types, names, what was agreed or dropped), answer ANS with one short line built only from those facts, in the language of the question. If the question is about the customer's own site or content and the background does not say, never guess: reply SKIP (${u} answers; STALL stays only for a price, a date or a commitment). Never state a price, date or promise even if the background mentions one.\n${background}\n` : ""}`;
 }
 
 /** Removes every <tag> / </tag> of `name` from untrusted text, repeating until nothing changes, so "</call_</call_transcript>transcript>" cannot rebuild a closing tag. */
@@ -286,10 +286,10 @@ export function parseReflex(buf: string, final: boolean): { tagLine?: string; sa
   // Streaming, no real tag line yet (a prose preamble such as "Let me think about this"): wait. The verdict is decided at the end of the stream.
   if (!final && at < 0 && ne.length) return { tagLine: undefined, say: undefined, sayComplete: false, facts: [] };
   // The model sometimes puts the say-line on the tag line: "ANS: ..." / "BANK dns-basics: ...". Split it.
-  const same = ne[0]?.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[\-–](?=\s))[ \t]*(\S.*)$/i);
+  const same = ne[0]?.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[-–](?=\s))[ \t]*(\S.*)$/i);
   if (same) ne.splice(0, 1, same[1], same[2]);
   else if (!final && !ne.length) {
-    const p = partial.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[\-–](?=\s))[ \t]*(\S.*)$/i);
+    const p = partial.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[-–](?=\s))[ \t]*(\S.*)$/i);
     if (p) return { tagLine: p[1], say: p[2], sayComplete: false, facts: [] };
   }
   const tagLine = ne[0];
@@ -308,7 +308,7 @@ function cleanSay(say: string): string {
   return t || say;
 }
 const DIRTY_BANK = /^[*`\s]*BANK\b/i;
-const CLEAN_BANK = /^[*`\s]*BANK[*`:\s]+[\w-]+[*`.\s]*(?:(?::|(?<=\s)[\-–](?=\s)).*)?$/i;
+const CLEAN_BANK = /^[*`\s]*BANK[*`:\s]+[\w-]+[*`.\s]*(?:(?::|(?<=\s)[-–](?=\s)).*)?$/i;
 /** A line that is a verdict: SKIP / STALL / ANS (any text after), or exactly "BANK <id>" (optionally ": say-line"). */
 function isTagLine(l: string): boolean {
   if (DIRTY_BANK.test(l)) return CLEAN_BANK.test(l);

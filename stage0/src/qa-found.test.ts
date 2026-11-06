@@ -83,11 +83,10 @@ test("qa: 'היי דן, כמה שאלות מהירות' is an opener, 'כמה ש
 });
 
 // Second QA run (replay fixes): the "qa2" tests below. Imports sit here, next to the tests that use them.
-import { splitMulti, joinSplit as joinSplit2 } from "./split.ts";
-import { bankStarts as bankStarts2, matchBank as matchBank2, loadBank as loadBank2 } from "./bank.ts";
+import { joinSplit as joinSplit2 } from "./split.ts";
+import { matchBank as matchBank2, loadBank as loadBank2 } from "./bank.ts";
 import { detect as detect2 } from "./detector.ts";
 const bank2 = loadBank2();
-const isQ2 = (s: string) => { const h = matchBank2(s, bank2); return detect2(s, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }).isQuestion; };
 import { splitMergedQuestions } from "./multiq.ts";
 const cut = (s: string) => splitMergedQuestions(s, bank2);
 

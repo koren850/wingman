@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, existsSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";

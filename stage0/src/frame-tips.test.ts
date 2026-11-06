@@ -4,7 +4,7 @@ import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { mkdtempSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, readdirSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseFrame, FrameTracker, isAgencyKind, missedMust, progress, frameText, runFrame, sameItem, type Frame } from "./frame.ts";
@@ -173,7 +173,7 @@ test("attachments: .txt and .md are stored as text, mode 600 in a 700 folder; na
   const r = await st.addFile("../../etc/passwd..<script>.md", txt("# הצעה\nשרת ייעודי עם גיבוי."));
   assert.ok(r.ok, JSON.stringify(r));
   const files = readdirSync(dir); assert.equal(files.length, 1);
-  assert.match(files[0], /^a[0-9a-z]+__[\p{L}\p{N}._ -]+\.txt$/u); assert.ok(!/[\/<>]/.test(files[0]));
+  assert.match(files[0], /^a[0-9a-z]+__[\p{L}\p{N}._ -]+\.txt$/u); assert.ok(!/[/<>]/.test(files[0]));
   assertMode(join(dir, files[0]), 0o600); assertMode(dir, 0o700);
   assert.equal(att.safeName("a/b\\c‮d.txt"), "cd.txt"); assert.equal(att.safeName("..."), "file"); assert.ok(att.safeName("x".repeat(500)).length <= 60);
   const list = st.list(); assert.equal(list.files.length, 1); assert.equal(list.pdf, false); assert.ok(!JSON.stringify(list).includes("שרת"));   // the list never carries content

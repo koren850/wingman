@@ -247,8 +247,7 @@ test("cli: app not running -> exit 3 with a hint, and nothing is opened", async 
       assert.ok(j.error?.hint?.includes("wingman app open") || j.app?.hint?.includes("wingman app open"));
     }
     assert.equal(opened, 0, "the CLI never opens the app implicitly");
-    let out = "";
-    assert.equal(await main(["app", "open", "--json"], { env, out: (s) => { out += s; }, err: () => {}, sleep: () => Promise.resolve(), openApp: async () => { opened++; } }), 9, "opens only on `app open` (test opener does not create the socket)");
+    assert.equal(await main(["app", "open", "--json"], { env, out: () => {}, err: () => {}, sleep: () => Promise.resolve(), openApp: async () => { opened++; } }), 9, "opens only on `app open` (test opener does not create the socket)");
     assert.equal(opened, 1);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -542,7 +541,7 @@ test("stop --no-summary: keeps the call, sends stop-no-summary, refuses --delete
     assert.equal(st.code, 0, st.out); assert.deepEqual(c.written, ["stop-no-summary\n"]);
     assert.equal(st.json.summarySkipped, true); assert.equal(st.json.deleted, false);
     r.f.spawned[0].emit("exit", 0);
-    const again = await r.run("start", "--json", "--no-wait"); const c2 = r.f.spawned[1]; c2.say("consented", { id: "S5" });
+    await r.run("start", "--json", "--no-wait"); const c2 = r.f.spawned[1]; c2.say("consented", { id: "S5" });
     assert.match((await r.run("stop", "--no-summary", "--no-wait")).out, /wingman calls summary S5 --generate/);
   } finally { await r.done(); }
 });

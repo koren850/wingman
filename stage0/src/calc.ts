@@ -60,7 +60,7 @@ const clean = (s: string) => s.toLowerCase()
   .replace(/(?<![\d/.])(\d+)\/(\d+)(?![\d/])/g, "$1_$2")  // 3/4 stays one token (a fraction)
   .replace(/(\d)\s*%/g, "$1 % ")
   .replace(/%/g, " % ")
-  .replace(/([×÷*\/+])/g, " $1 ")
+  .replace(/([×÷*/+])/g, " $1 ")
   .replace(/(\d)\s*x\s*(\d)/g, "$1 x $2")
   .replace(/(?<=\d)-(?=\d)/g, " - ")                     // 5-3
   .replace(/(?<![\dא-ת])-(?=\s)/g, " - ")
@@ -287,6 +287,6 @@ export function looksArithmetic(text: string): boolean {
   const body = clean(String(text ?? ""));
   if (hasPriceVerb(body)) return false;
   if (evalMath(text)) return true;
-  return /\d/.test(body) && /(^| )(ועוד|פלוס|מינוס|פחות|כפול|חלקי|plus|minus|times|divided|multiplied|[+×÷*\/])( |$)/.test(body)
+  return /\d/.test(body) && /(^| )(ועוד|פלוס|מינוס|פחות|כפול|חלקי|plus|minus|times|divided|multiplied|[+×÷*/])( |$)/.test(body)
     && !/(שקל|ש ח|₪|\$|דולר|יורו|nis|usd|eur)/.test(body) && !SERVICE_HINT.test(body);
 }

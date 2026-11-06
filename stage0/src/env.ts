@@ -3,7 +3,7 @@
 // so child processes (ffmpeg, audiotee) cannot inherit them.
 import { readFileSync, existsSync, statSync, chmodSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import paths from "../shared/paths.cjs";
 import migrate from "../shared/migrate.cjs";

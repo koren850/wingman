@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { ROOT } from "./env.ts";
 import { micVerdict } from "./mic-check.ts";
@@ -325,6 +325,6 @@ test("CLI confirmation timeout closes the dialog (abort signal) and a late click
   assert.ok(signal && signal.aborted, "the dialog was told to close");
   answer({ response: 1 });   // a click that still got through
   await new Promise((r) => setTimeout(r, 5));
-  let first = true;
+  const first = true;
   assert.equal(await lib.confirmCliStart({ dialog: { showMessageBox: (b: { signal?: AbortSignal }) => { assert.equal(b.signal!.aborted, false, "a new request gets a fresh signal"); return Promise.resolve({ response: first ? 1 : 0 }); } } }), true);
 });

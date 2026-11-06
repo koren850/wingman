@@ -11,7 +11,6 @@ import { assertMode } from "./test-platform.ts";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "wm-datadir-"));
 const put = (f: string, s: string) => { mkdirSync(join(f, ".."), { recursive: true }); writeFileSync(f, s); };
-const mode = (f: string) => statSync(f).mode & 0o777;
 
 /** An old-style checkout: stage0/calls/<id>/..., stage0/data/private/briefs/..., entities.json, denylist.txt */
 function oldLayout() {

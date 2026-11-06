@@ -122,7 +122,7 @@ const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
 function startsShort(text: string, m: RegExpExecArray): boolean {
   const before = text.slice(0, m.index);
   const sentStart = Math.max(before.lastIndexOf("."), before.lastIndexOf("!"), before.lastIndexOf("?")) + 1;
-  const lead = before.slice(sentStart).replace(/[,;:\-]+/g, " ");
+  const lead = before.slice(sentStart).replace(/[,;:-]+/g, " ");
   if (wordCount(lead) > 2) return false;
   let end = text.slice(m.index + m[0].length).search(/[.!?]/);
   end = end < 0 ? text.length : m.index + m[0].length + end;

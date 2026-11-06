@@ -3,7 +3,6 @@
 // RTL/bidi: Hebrew text with Latin or number "islands" (brand names, dates) is split into segments so the page can isolate each island and keep its order.
 (function (root) {
   const bidi = typeof module !== "undefined" && module.exports ? require("../dashboard/bidi.js") : root.WingmanBidi;
-  const SHORT = /^[A-Za-z0-9]{1,2}$/;
 
   /** Shared bidi tokenizer plus the overlay rule: a short number or word next to an island ("8 Nov", "Node 18", "Facebook Ads") joins it, so word order never flips. */
   function segments(text) {
@@ -67,7 +66,7 @@
     if (id === "health-only-you") return S.t(L, "health.onlyYou") + (askKey ? S.t(L, "health.askMe", { key: askKey }) : "");
     const key = String(id).replace(/^health-/, "");
     if (L === "en" && HEB.test(raw)) { const e = englishHealth(key, raw); if (e) return e; }
-    const m = /^[A-Z][A-Za-z0-9 ()_.,\/]*?\s[–-]\s(.+)$/.exec(raw);   // "NOT HEARING THE OTHER SIDE – ...", "STT (them) – ...": drop the English tag
+    const m = /^[A-Z][A-Za-z0-9 ()_.,/]*?\s[–-]\s(.+)$/.exec(raw);   // "NOT HEARING THE OTHER SIDE – ...", "STT (them) – ...": drop the English tag
     let t = m ? m[1] : raw;
     if (S.STRINGS[L]["health.who." + key] && m) t = `${S.t(L, "health.who." + key)}: ${t}`;
     if (/^stt-(me|them)$/.test(key) && !/בדוק|מנסה/.test(t)) t += S.t(L, "health.checkNet");
