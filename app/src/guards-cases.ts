@@ -73,7 +73,7 @@ export const BLOCKED: [string, "price" | "date" | "promise"][] = [
   // held-out probe, round 2: spoken digits, bare figures after a money noun, percentage discounts, zero price, unhedged certainty
   ["It is five fifty", "price"],
   ["הצעה של 4,500", "price"],
-  ["חשבונית 20000 ש\"ח", "price"],
+  ['חשבונית 20000 ש"ח', "price"],
   ["הצעה 4500", "price"],
   ["we can do it yes 12.5 works", "date"],
   ["a monthly retainer of 800", "price"],
