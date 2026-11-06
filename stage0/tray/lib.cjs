@@ -226,8 +226,12 @@ function askNative(o, box) {
   const st = o.setTimeout || setTimeout, ct = o.clearTimeout || clearTimeout;
   return new Promise((resolve) => {
     let over = false;
-    const t = st(() => { over = true; resolve(false); if (o.dismiss) try { o.dismiss(); } catch { /* ignore */ } }, o.timeoutMs || CLI_CONFIRM_MS);
-    Promise.resolve(o.dialog.showMessageBox(box)).then((r) => { ct(t); if (!over) resolve(!!r && r.response === 1); }, () => { ct(t); resolve(false); });
+    // On timeout the dialog is closed through an AbortSignal (Electron: the box then behaves as cancelled), so a late click on "Start the call"
+    // cannot look like it did something, and the next request does not stack a second dialog. (Electron ignores the signal for a macOS box without
+    // a parent window; the answer is still "no" there.)
+    const ac = new AbortController();
+    const t = st(() => { over = true; resolve(false); try { ac.abort(); } catch { /* ignore */ } if (o.dismiss) try { o.dismiss(); } catch { /* ignore */ } }, o.timeoutMs || CLI_CONFIRM_MS);
+    Promise.resolve(o.dialog.showMessageBox({ ...box, signal: ac.signal })).then((r) => { ct(t); if (!over) resolve(!!r && r.response === 1); }, () => { ct(t); resolve(false); });
   });
 }
 
