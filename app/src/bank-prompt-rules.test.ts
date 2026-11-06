@@ -1,4 +1,4 @@
-// Regression tests for fixes found in call reviews: wrong bank hits, leaked control words, prompt rules.
+// Bank matching and prompt rules found in call reviews: wrong bank hits, leaked control words, prompt rules.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

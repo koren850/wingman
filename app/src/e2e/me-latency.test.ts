@@ -2,16 +2,16 @@
 // Scripted STT replays the shape of a live call: the final arrives ~0.9 s after the end of speech with speechFinal=false.
 // A "?" or a sum flushes at once, a sum is computed locally, a solo call skips the classifier, "you / can you" is for Wingman.
 // Without those, the card took about 4 s (STT, join-window wait, classifier, then the answer).
-import "./test-setup.ts";
+import "../test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, existsSync, readlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ROOT } from "./env.ts";
-import { writeWav } from "./audio.ts";
-import { tsx } from "./test-platform.ts";
+import { ROOT } from "../env.ts";
+import { writeWav } from "../audio.ts";
+import { tsx } from "../test-platform.ts";
 
 test("solo call: second-person question answered, sum computed locally, and the card is up within 100 ms of the final", { timeout: 60_000 }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-me-lat-"));

@@ -1,4 +1,4 @@
-# Offline end-to-end test (src/e2e.test.ts): scripted STT + scripted AI, no network, no keys.
+# Offline end-to-end test (src/e2e/scripted-call.test.ts): scripted STT + scripted AI, no network, no keys.
 stt:
   provider: script
   fallback: []

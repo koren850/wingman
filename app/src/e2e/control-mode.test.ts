@@ -1,5 +1,5 @@
 // Menu-bar remote control (WINGMAN_CONTROL=1): commands on stdin, "@@wingman" status lines on stdout. Offline.
-import "./test-setup.ts";
+import "../test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -7,11 +7,11 @@ import { mkdtempSync, readFileSync, rmSync, readlinkSync, existsSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
-import { ROOT, CALLS } from "./env.ts";
-import { writeWav } from "./audio.ts";
-import { tsx } from "./test-platform.ts";
+import { ROOT, CALLS } from "../env.ts";
+import { writeWav } from "../audio.ts";
+import { tsx } from "../test-platform.ts";
 
-const lib = createRequire(import.meta.url)("../tray/lib.cjs");
+const lib = createRequire(import.meta.url)("../../tray/lib.cjs");
 
 test("control mode: note, quiet, client confirm and stop work from stdin; statuses reach the menu bar", { timeout: 60_000 }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-ctl-"));

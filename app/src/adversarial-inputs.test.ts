@@ -1,4 +1,5 @@
-// Bug-hunt regressions (offline). Each block was a real failure found by adversarial inputs; names are invented.
+// Adversarial inputs (offline): number-word prices, month and weekday dates, spoken phone and email, zero-width characters, NaN timestamps,
+// odd spacing in the transcript wrapper. Names are invented.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

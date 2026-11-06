@@ -1,5 +1,5 @@
-// Core pure-logic basics: normalize.ts, detector.ts, guards.ts, bank.ts matching, reflex tag parsing, plus later regression blocks.
-// Offline, no fixtures. Note: later imports sit mid-file, next to the regression tests that use them.
+// Pure-logic fundamentals: normalize.ts, detector.ts, guards.ts, bank.ts matching and the reflex tag parser. Offline, no fixtures.
+// Later imports sit mid-file, next to the tests that use them.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

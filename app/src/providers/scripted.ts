@@ -1,4 +1,4 @@
-// Offline test doubles for a whole call with no network and no keys (pnpm e2e, src/e2e.test.ts).
+// Offline test doubles for a whole call with no network and no keys (pnpm e2e, src/e2e/scripted-call.test.ts).
 // Registered as STT provider "script" (providers/stt/index.ts) and LLM provider "scripted" (providers/llm.ts).
 // Answers are deterministic and keyed on phrases in the real prompts, so a prompt wording change can break these doubles.
 //   stt.provider: script      -> plays a transcript JSON ([{speaker: me|them, text}]) as STT finals, ignores audio.

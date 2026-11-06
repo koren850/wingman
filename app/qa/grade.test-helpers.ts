@@ -1,4 +1,4 @@
-// Offline checks for the QA grader helpers (used by src/qa-found.test.ts so `pnpm test` covers the harness too).
+// Offline checks for the QA grader helpers (used by src/detector-bank-qa.test.ts so `pnpm test` covers the harness too).
 import assert from "node:assert/strict";
 import { normWords, wordEdits } from "./grade.ts";
 
