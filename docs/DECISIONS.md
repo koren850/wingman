@@ -1,6 +1,6 @@
 # Decision log
 
-Each entry says what we decided, why, what else we looked at, and what it costs us. Entries are in rough build order. Status is "accepted" unless noted.
+Each entry says what we decided, why, what else we looked at, and what it costs us. Entries are in rough build order. Status is "accepted" unless noted. Each entry carries the date it was first written down in this repository.
 
 Context for all of them: Wingman was first built around one user's live calls. Calls are mostly Hebrew with English tech words mixed in. A wrong or slow answer on a live call is worse than no answer.
 
@@ -48,6 +48,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 1: Personal tool first
 
+Date: 2026-11-03
+
 **Context.** The first plan was a general product: Windows and macOS installers, auto-update, plugins, a setup wizard. Every cost in that plan came before any proof of value.
 
 **Decision.** Build for one user's real calls first and publish it as source for macOS. Broader packaging (signed installer, Windows, pack installer, polished wizard) follows demand.
@@ -59,6 +61,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** macOS only. Run from a terminal or the local app, no signed build. The bank and house style in the repo are an invented example pack; replace them with your own pack.
 
 ## ADR 2: A first version before the big structure
+
+Date: 2026-11-03
 
 **Context.** The structure documents described a monorepo, three processes, replay clocks, encryption and more, about 3 to 4 weeks before the first call.
 
@@ -72,6 +76,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 3: Numeric gates instead of opinions
 
+Date: 2026-11-03
+
 **Context.** Nobody knew if Deepgram handled Hebrew with English tech words, or if the cards would help.
 
 **Decision.** Two gates with numbers. A **Hebrew STT gate**: you record 40 Hebrew sentences with English tech terms; pass is term recall of at least 85 percent and endpoint-to-final lag of at most about 600 ms. A **usefulness gate** after 3 to 5 real calls: you rate each card useful or not; pass is about 2 or more useful cards per hour.
@@ -83,6 +89,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** `pnpm gate`, `pnpm tag` and the rating UI exist for this. The usefulness gate has not been completed on enough real calls yet (see [ROADMAP.md](ROADMAP.md)).
 
 ## ADR 4: Deepgram Nova-3 for speech to text
+
+Date: 2026-11-03
 
 **Context.** Wingman needs streaming speech to text with Hebrew, fast final results, and a way to boost English tech terms.
 
@@ -96,6 +104,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 5: Two audio channels: me and them
 
+Date: 2026-11-03
+
 **Context.** To answer the other side's question and to not answer your own words, Wingman must know who spoke. Mixed-audio speaker detection is weaker, especially in Hebrew.
 
 **Decision.** Capture system audio (the call app's output) as "them" and the microphone as "me", and open two separate streams to the speech service.
@@ -107,6 +117,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** Speech cost is doubled. Needs two permissions (Microphone and System Audio Recording). If the other side is silent while you talk, Wingman says so ("I only hear you").
 
 ## ADR 6: AudioTee for system audio
+
+Date: 2026-11-03
 
 **Context.** On macOS, capturing what a call app plays usually needed a virtual device like BlackHole.
 
@@ -120,6 +132,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 7: Speakers mode, no headphones needed
 
+Date: 2026-11-03
+
 **Context.** On laptop speakers the mic also hears the other side, so their words would be answered as if "me".
 
 **Decision.** Two cheap layers, on by default: a mic gate (the mic sends silence while the other side is loud) and an echo text filter (drop a "me" line that mostly repeats a recent "them" line). A voice print and real echo cancellation are left for later.
@@ -131,6 +145,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** Talking over each other on speakers loses some of your words. With headphones, the `filter` mode keeps your words when you interrupt.
 
 ## ADR 8: Hebrew first, with multi-language speech to text
+
+Date: 2026-11-03
 
 **Context.** Calls are Hebrew with English tech terms ("cache", "plugin", "staging"). Hebrew-only recognition writes English words phonetically.
 
@@ -144,6 +160,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 9: A Hebrew-aware question detector
 
+Date: 2026-11-03
+
 **Context.** A simple "four words or a question mark" rule misses real Hebrew questions ("כמה זה עולה?", "יש גיבוי?") and fires on "כן נכון".
 
 **Decision.** A local rule-based detector with a head-word lexicon (כמה, יש, אפשר, מתי, האם, איך, למה...), a 2-word minimum, Hebrew prefixes, and a labelled test corpus with precision and recall targets. Ambiguity is left to the model's SKIP tag. Related: fragments cut by a pause are joined, and one final containing several questions is cut apart.
@@ -155,6 +173,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** A rule list needs upkeep as new phrasings appear. Recall was 98 percent in the project's deep test.
 
 ## ADR 10: The Prepared bank comes before the AI
+
+Date: 2026-11-03
 
 **Context.** Most web and hosting calls repeat the same questions: DNS, SSL, backups, slow site, domain transfer.
 
@@ -168,6 +188,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 11: Claude Haiku for the live reflex
 
+Date: 2026-11-03
+
 **Context.** The live answer must start within about 1.5 seconds. Quality matters less than speed, because you read and rephrases the card.
 
 **Decision.** Use Claude Haiku (`anthropic:claude-haiku-5-5`) with thinking off and low effort, streamed, with a cached prompt prefix. The same small model does frame, notes, tips, the "is this for me" classifier and the summary.
@@ -179,6 +201,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** Haiku sometimes picks a wrong bank card or invents detail, which is why the guards exist (ADR 13). Needs an Anthropic key.
 
 ## ADR 12: "Buy time" stall lines
+
+Date: 2026-11-03
 
 **Context.** A live question about a price, a date or a promise must not get an invented number. A silent screen is also bad.
 
@@ -192,6 +216,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 13: Guards are code, not prompts
 
+Date: 2026-11-03
+
 **Context.** Telling a model "never say prices" works most of the time, not all of the time.
 
 **Decision.** Every AI text passes through regular-expression guards before display: currency and numbers, price verbs with number words, relative dates, weekday and month names, deadlines, SLAs, promises and guarantees, in Hebrew and English. A hit replaces the text with a stall line. The same guards run on the summary email.
@@ -203,6 +229,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** More false positives (a harmless sentence replaced by a stall line) rather than false negatives. Regex guards will not catch every paraphrase. The test corpus requires 0 leaks and the QA harness counts "guard leaks" (0 in the last run).
 
 ## ADR 14: House-style never-say rules
+
+Date: 2026-11-03
 
 **Context.** Cards are read aloud, so they must sound like you and never make you say something you cannot stand behind.
 
@@ -216,6 +244,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 15: AI cards are labelled "not verified"
 
+Date: 2026-11-03
+
 **Context.** An AI answer looks as confident as a bank answer.
 
 **Decision.** AI cards carry a visible "AI · not verified" tag. Prepared cards carry a "Prepared" tag. Only code can mark something as checked; the model cannot.
@@ -227,6 +257,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** AI cards are shown a little quieter than Prepared ones.
 
 ## ADR 16: Fact cards from a local snapshot
+
+Date: 2026-11-03
 
 **Context.** It is useful to see what you already know about a client or domain when it is mentioned. A live lookup in a client database during a call is slow, can fail, and could show the wrong client's data.
 
@@ -240,6 +272,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 17: Math is computed locally
 
+Date: 2026-11-03
+
 **Context.** A model is slow and sometimes wrong at arithmetic, and a question like "what is 36 plus 42" must not trigger the price stall line.
 
 **Decision.** A small evaluator (`calc.ts`) handles digits and Hebrew and English number words, percentages and fillers. It answers in under half a second with no AI. It also keeps arithmetic and non-service prices ("how much is a dollar") away from the price stall.
@@ -251,6 +285,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** Only simple arithmetic is covered.
 
 ## ADR 18: Answers for you on the "me" channel
+
+Date: 2026-11-03
 
 **Context.** In a live test the user asked Wingman a math question out loud and it worked, but the feature was an accident of the design. The wish: "it is a meeting assistant, not a sales tool".
 
@@ -264,6 +300,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 19: Wingman understands any call (the call frame)
 
+Date: 2026-11-03
+
 **Context.** The first version assumed client and sales calls. The goal was not a tool built around sales: it should understand what the call is about and give relevant help.
 
 **Decision.** About once a minute a small model writes a call frame: kind (client, support, vendor, team, consult, personal, other), topic, goal, people and a checklist. The kind changes only after two updates agree; the checklist is made once, items only go from not done to done, and at most one is added per update. On calls that are not client or support calls, bank cards are dimmed and the model may drop them.
@@ -275,6 +313,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** The kind is a guess after 20 or more words. The first question before any frame still gets client-call handling.
 
 ## ADR 20: Tips are rare and guarded
+
+Date: 2026-11-03
 
 **Context.** Extra suggestions during a live call distract.
 
@@ -288,6 +328,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 21: API keys in the macOS Keychain
 
+Date: 2026-11-03
+
 **Context.** Keys were first in `~/.config/wingman/keys.env`. A plain file can leak through backups, sync or a stray `cat`.
 
 **Decision.** Keys live in the macOS Keychain (service `wingman`). All access goes through one module that calls `/usr/bin/security` without a shell. Writes use stdin so a key never appears in `ps` or the environment, and every write is read back. The settings page only ever sees the last four characters. Migration from the old file is an explicit button or command (each key is read back from the Keychain before its line leaves keys.env; no plaintext backup is made), never automatic. Keys are removed from the engine's own environment after loading and are not passed to child processes.
@@ -299,6 +341,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** macOS only. A key typed in the app is never shown again. Tests use a mocked `security` runner, and the real runner refuses to run under the test runner.
 
 ## ADR 22: Plain files, no database, audio never saved
+
+Date: 2026-11-03
 
 **Context.** A planned design had encrypted per-call storage and a SQLite index.
 
@@ -312,6 +356,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 23: Swappable providers behind settings
 
+Date: 2026-11-03
+
 **Context.** Vendors fail, change prices and add languages. A call must survive a provider outage.
 
 **Decision.** Speech, the AI model and audio capture sit behind small interfaces. A provider is chosen by a setting, with an ordered fallback list that is used mid-call after repeated failures (auth, quota, outage). One error model classifies provider failures. The setting layers are defaults, user file, profile, environment, then command line, and unknown keys are errors.
@@ -323,6 +369,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** Fallback providers are only tested with mocks. Other LLM vendors need an extra package install. A fallback is never tried after an answer has started streaming.
 
 ## ADR 24: A degrade ladder and cost caps
+
+Date: 2026-11-03
 
 **Context.** Slow or failing services must never block the call, and silence is the failure we cannot afford.
 
@@ -336,6 +384,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 25: An Electron menu-bar app
 
+Date: 2026-11-03
+
 **Context.** A terminal tool is not enough on a call: you need start/stop, a plan form, settings and a place to rate cards. The answer window also needs a native window that does not steal focus.
 
 **Decision.** One Electron app (menu-bar icon plus a window), run from the repo. The engine runs as a child process per call, controlled over stdin and status lines. One call controller, one window, single instance. `pnpm make-app` builds a renamed Electron copy so the Dock and notifications say "Wingman", with a launcher that loads the repo code, so updates need no rebuild.
@@ -347,6 +397,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** A larger install. No signed or notarised build yet; macOS permissions attach to the app that runs it.
 
 ## ADR 26: The answer window design
+
+Date: 2026-11-03
 
 **Context.** The user reads it in a glance while talking, on a second screen, mostly in Hebrew with English words.
 
@@ -360,6 +412,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 27: The window hides the live conversation
 
+Date: 2026-11-03
+
 **Context.** A UX audit (4 reviewers, 54 problems, 52 fixed) found that the Home window showed the live transcript during a call, which pulls the eyes away from the person you are talking to.
 
 **Decision.** During a call the Home page shows the timer, phase, warnings, Quiet mode, notes and Stop, and hides the live conversation behind a **Show conversation** button.
@@ -371,6 +425,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** One more click to see the transcript live. The window never opens or takes focus by itself during a call.
 
 ## ADR 28: Start gate with "Start anyway"
+
+Date: 2026-11-03
 
 **Context.** Starting a call when the system is not ready (no mic permission, no key) gives a bad call and a confusing error.
 
@@ -384,6 +440,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 29: Consent step removed, optional "Ask me before listening starts"
 
+Date: 2026-11-03
+
 **Context.** The first design had a consent gate: nothing was sent to the cloud until the user said a consent line and pressed a key. For a tool run by its own user it was friction, and the wording would need a legal review.
 
 **Decision.** The step is off by default (`privacy.requireConsentAck: false`): listening starts with the call. The old behaviour stays as an optional setting, "Ask me before listening starts": the call waits in the `waiting` phase until **Start listening** (Ctrl+Opt+Return, the button, or `wingman confirm --yes`). Consent wording in the UI was removed. The default consent sentence stays in the settings file as text.
@@ -395,6 +453,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** Wingman will not remind you to tell the other party. The documentation says clearly that this is your responsibility (see [PRIVACY-AND-SECURITY.md](PRIVACY-AND-SECURITY.md)).
 
 ## ADR 30: The CLI over an owner-only socket
+
+Date: 2026-11-03
 
 **Context.** The wish was for an AI coding agent to be able to prepare, run and review calls ("everything the user can do in the app, from a terminal").
 
@@ -408,6 +468,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 31: Stop is a sequence, with "Skip summary"
 
+Date: 2026-11-03
+
 **Context.** Stopping a call saves files and then waits for a summary model call. During the deep test the stop could look stuck.
 
 **Decision.** Stopping has visible steps (`stopPhase`: saving, summary, done) and a **Skip summary** action. The summary has a 20-second limit and is skipped on timeout. A skipped summary can be written later. A stuck stop is forced off. Quit during a call asks first.
@@ -419,6 +481,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** The call may end without a summary.
 
 ## ADR 32: Synthetic QA instead of live test calls
+
+Date: 2026-11-03
 
 **Context.** Live test calls need another person and are not repeatable.
 
@@ -432,6 +496,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 33: A practice call that runs offline
 
+Date: 2026-11-03
+
 **Context.** New users (and the author) need to see the product work without a real call, a key or any cost.
 
 **Decision.** "Practice call" plays a scripted pretend client through the real call loop and the real answer window, offline and free. If a Plan is ready, the practice call uses it without using it up.
@@ -443,6 +509,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** The script is fixed, so it shows the bank and stall paths, not live AI.
 
 ## ADR 34: A small user-visible glossary
+
+Date: 2026-11-03
 
 **Context.** The UX audit found that internal words ("consent", "briefing", "skin", "reflex") confused users.
 
@@ -456,6 +524,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 35: Scope: no real job interviews or exams
 
+Date: 2026-11-03
+
 **Context.** A live AI helper can be misused to deceive an interviewer or an examiner. Several similar tools are built for that.
 
 **Decision.** Out of scope: real job interviews, exams or assessments where outside help is not allowed. Wingman starts only when the user starts it; there is no always-on mode. The rule is social, not technical, and stated honestly: a label cannot stop misuse.
@@ -468,6 +538,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 ## ADR 36: Web lookup is not built
 
+Date: 2026-11-03
+
 **Context.** "Give relevant data live" could mean searching the web during a call.
 
 **Decision.** Not built. An idea is recorded: a Tip type that searches for a named company or term and shows a one-line fact with its source.
@@ -479,6 +551,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 **Consequences.** Wingman knows only what it is told (Plan, bank, snapshot) plus what the model knows.
 
 ## ADR 37: Quick call and several prepared meetings
+
+Date: 2026-11-03
 
 **Context.** There was one saved Plan. Any real Start silently used it, so a Plan written for the 14:30 meeting could be used up by an unrelated spontaneous call, and a second meeting could not be prepared until the first was used or expired (6 h).
 
