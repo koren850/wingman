@@ -73,6 +73,9 @@ export const BLOCKED: [string, "price" | "date" | "promise"][] = [
   // held-out probe, round 2: spoken digits, bare figures after a money noun, percentage discounts, zero price, unhedged certainty
   ["It is five fifty", "price"],
   ["הצעה של 4,500", "price"],
+  ['חשבונית 20000 ש"ח', "price"],
+  ["הצעה 4500", "price"],
+  ["we can do it yes 12.5 works", "date"],
   ["a monthly retainer of 800", "price"],
   ["ten percent off", "price"],
   ["We charge nothing for this", "price"],
@@ -131,6 +134,11 @@ export const ALLOWED = [
   "three thirty-minute slots are enough for the migration",
   "the retainer covers 3 sites",
   "הצעה של 3 אפשרויות",
+  "חשבונית 12345 נשלחה",
+  "שלחתי את הצעה 54321",
+  "we run nginx 1.5 and TLS 1.3",
+  "the budget of 5000 users is the plan limit",
+  "a quote for 12000 rows is per upload",
 ];
 
 export const SALARY_BLOCKED = [
