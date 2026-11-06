@@ -1,86 +1,11 @@
 <!doctype html>
-<!-- Small always-on-top input window (opened by tray/main.cjs): a quick note for the AI, plus an unused-by-main "brief" form. Hebrew, RTL. Script is prompt.js. Strict CSP: no network, no inline script. -->
+<!-- Small always-on-top input window (opened by tray/main.cjs): a quick note for the AI, plus an unused-by-main "brief" form. Hebrew, RTL. Script is prompt.js. Strict CSP: no network, no inline script or style. -->
 <html lang="he" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'" />
     <title>Wingman</title>
-    <style>
-      :root {
-        --bg: #fef7ec;
-        --ink: #3b2414;
-        --muted: #6b5240;
-        --line: #e5d6c2;
-        --accent: #f59e0b;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        padding: 18px 20px;
-        background: var(--bg);
-        color: var(--ink);
-        font:
-          15px -apple-system,
-          "Segoe UI",
-          Arial,
-          sans-serif;
-      }
-      h1 {
-        font-size: 17px;
-        margin: 0 0 4px;
-      }
-      p {
-        margin: 0 0 12px;
-        color: var(--muted);
-        font-size: 13px;
-      }
-      label {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        margin: 10px 0 4px;
-      }
-      input,
-      textarea {
-        width: 100%;
-        padding: 8px 10px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: #fff;
-        color: var(--ink);
-        font: inherit;
-      }
-      textarea {
-        height: 64px;
-        resize: none;
-      }
-      .row {
-        display: flex;
-        gap: 8px;
-        justify-content: flex-start;
-        margin-top: 14px;
-      }
-      button {
-        padding: 8px 16px;
-        border-radius: 8px;
-        border: 1px solid var(--line);
-        background: #fff;
-        color: var(--ink);
-        font: inherit;
-        cursor: pointer;
-      }
-      button.primary {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #fff;
-        font-weight: 700;
-      }
-      [hidden] {
-        display: none;
-      }
-    </style>
+    <link rel="stylesheet" href="prompt.css" />
   </head>
   <body>
     <form id="note" hidden>

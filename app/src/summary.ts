@@ -189,6 +189,17 @@ const FILE_EXT = new Set(
 const URL_RE = /(?<![@\w.-])(?:(?:https?:\/\/|www\.)[^\s<>"')\]]+|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.([a-z]{2,24})(?:\/[^\s<>"')\]]*)?(?![\w@-]))/gi;
 const EMAIL_RE = /(?<![\w.+-])[a-z0-9][a-z0-9._%+-]*@(?:[a-z0-9-]+\.)+[a-z]{2,24}(?![\w-])/gi;
 const PHONE_RE = /(?<![\w.@])\+?\d[\d\s().-]{5,}\d(?![\w@])/g;
+// Other things that open as links: scheme:// of any kind, javascript:/data:/file:/mailto:, a bare IPv4 address with an optional port and path.
+const SCHEME_RE = /(?<![\w.-])(?:[a-z][a-z0-9+.-]{1,15}:\/\/|(?:javascript|vbscript|data|file|mailto):)[^\s<>"')\]]*/gi;
+const IPV4_RE = /(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.]*\d)(?::\d{1,5})?(?:\/[^\s<>"')\]]*)?/g;
+/** Undoes tricks that hide a host from the patterns but not from a mail app or browser: zero-width characters inside a host, ideographic and
+ *  fullwidth dots, fullwidth Latin letters and "@". Only touches runs next to ASCII host characters, so Hebrew text and emoji are left alone. */
+function unhide(t: string): string {
+  return t
+    .replace(/(?<=[a-z0-9.@-])[\u200b-\u200d\u2060\ufeff\u00ad]+(?=[a-z0-9.@/-])/gi, "")
+    .replace(/(?<=[a-z0-9])[\u3002\uff0e\uff61](?=[a-z0-9])/gi, ".")
+    .replace(/[\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff20\uff0e\uff0f\uff1a]+/g, (m) => String.fromCharCode(...[...m].map((c) => c.charCodeAt(0) - 0xfee0)));
+}
 const trimUrl = (u: string) => u.replace(/[.,;:!?]+$/, "");
 /**
  * Link neutraliser, the last defence on the follow-up email draft (prompt injection: the other side can say "send the invoice to
@@ -210,7 +221,17 @@ export function neutralizeLinks(email: string, trusted: string): { text: string;
       .replace(/\/$/, "");
     return x.length > 0 && t.includes(x);
   };
-  let text = email.replace(URL_RE, (u, tld?: string) => {
+  let text = unhide(email).replace(SCHEME_RE, (u) => {
+    if (known(u)) return u;
+    kinds.push("url");
+    return "[להשלים: קישור]" + (/[.,;:!?]$/.test(u) ? u.slice(-1) : "");
+  });
+  text = text.replace(IPV4_RE, (ip) => {
+    if (known(ip)) return ip;
+    kinds.push("url");
+    return "[להשלים: קישור]";
+  });
+  text = text.replace(URL_RE, (u, tld?: string) => {
     if (tld && FILE_EXT.has(tld.toLowerCase())) return u;
     if (known(u)) return u;
     kinds.push("url");

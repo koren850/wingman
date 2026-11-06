@@ -2,7 +2,7 @@
 // Written by run.ts; read by the answer window (it tails cards.jsonl and call.json via the calls/latest link),
 // the dashboard, the CLI and the summary. Audio is never saved. Files are private to the user (umask 077).
 // Delete with `pnpm purge`.
-import { mkdirSync, appendFileSync, writeFileSync, rmSync, symlinkSync, readdirSync, statSync, existsSync } from "node:fs";
+import { mkdirSync, appendFileSync, writeFileSync, rmSync, symlinkSync, readdirSync, statSync, existsSync, lstatSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ulid } from "ulid";
@@ -12,6 +12,18 @@ import { CALLS, USER_DATA } from "./env.ts";
 const MAX_UNSAVED_BYTES = 16 * 1024 * 1024;
 
 process.umask(0o077); // side effect on import: every file this process creates is owner-only
+
+/** The two places rescue() may write, in order. The temp one is shared on Linux and Windows, so it is checked before use (see privateDir). */
+export const rescueBases = (): string[] => [join(USER_DATA, "rescue"), join(tmpdir(), "wingman-rescue")];
+
+/** Creates `base` (700) or accepts an existing one only if it is a real folder (not a link) owned by this user; loosens nothing, tightens to 700. Throws otherwise. */
+function privateDir(base: string) {
+  mkdirSync(base, { recursive: true, mode: 0o700 });
+  const st = lstatSync(base);
+  if (!st.isDirectory()) throw new Error("not a folder");
+  if (process.getuid && st.uid !== process.getuid()) throw new Error("folder belongs to someone else");
+  if (process.platform !== "win32" && st.mode & 0o077) chmodSync(base, 0o700);
+}
 
 /** One call's folder. The id is a ULID, so folders sort by start time. */
 export class CallLog {
@@ -133,10 +145,11 @@ export class CallLog {
   /** Saves what the call folder could not hold to a fallback folder (the data dir, then the OS temp dir): the unsaved rows per stream, plus
    *  `transcript.txt` built from the in-memory transcript. Returns the folder, or undefined if nothing could be written anywhere. */
   rescue(transcriptText = ""): string | undefined {
-    for (const base of [join(USER_DATA, "rescue"), join(tmpdir(), "wingman-rescue")]) {
+    for (const base of rescueBases()) {
       const dir = join(base, this.id);
       try {
-        mkdirSync(dir, { recursive: true, mode: 0o700 });
+        privateDir(base);
+        mkdirSync(dir, { mode: 0o700 }); // fails if it already exists (a planted folder or link), then the next place is tried
         const byStream = new Map<string, string>();
         for (const r of this.unsaved) byStream.set(r.stream, (byStream.get(r.stream) ?? "") + r.line);
         for (const [stream, text] of byStream) writeFileSync(join(dir, `${stream}.unsaved.jsonl`), text, { mode: 0o600 });

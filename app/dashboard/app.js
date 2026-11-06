@@ -1275,7 +1275,7 @@ function tFollowup(pane, d) {
       h(
         "div",
         { class: "foot" },
-        "Draft only, never sent anywhere. ",
+        "Written by AI, so check it before you send. Never sent anywhere. ",
         s.model ? ltr(s.model) : null,
         s.costUsd ? [" · ", ltr("$" + s.costUsd.toFixed(4))] : null,
       ),

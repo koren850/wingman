@@ -85,6 +85,12 @@ test(
       assert.equal(r.status, 1, bad);
       assert.match(r.stderr, /refusing to delete/);
     }
+    // A settings folder that is a link to somewhere else (a dotfiles repo, Documents) is not deleted either.
+    mkdirSync(join(home, ".config"));
+    symlinkSync(join(home, "Documents"), join(home, ".config", "wingman"));
+    const viaLink = run(data);
+    assert.equal(viaLink.status, 1);
+    assert.match(viaLink.stderr, /not a wingman folder inside your home folder/);
     assert.match(run(`${data}/../Wingman`, "--force").stderr, /contains "\.\."/, '".." is refused even with --force');
   },
 );
@@ -101,4 +107,28 @@ test("errStack: one safe line plus at most a few frames, capped at 2000 characte
   assert.ok(errStack(Object.assign(new Error("x".repeat(5000)), { stack: "" })).length <= 2000);
   assert.equal(errStack("plain string"), "plain string");
   assert.equal(errStack(undefined), "unknown error");
+});
+
+test("neutralizeLinks: hidden hosts (zero-width, ideographic dot, fullwidth), IP addresses and odd schemes are replaced", () => {
+  const ph = PH;
+  for (const bad of [
+    "evil\u3002com",
+    "evil\u200b.com/x",
+    "evil.com\u200b/pay",
+    "\uff45\uff56\uff49\uff4c\uff0e\uff43\uff4f\uff4d",
+    "1.2.3.4/pay",
+    "javascript:alert(1)",
+    "ftp://x.y/z",
+    "\uff28\uff34\uff34\uff30://x.y",
+  ])
+    assert.ok(neutralizeLinks(`see ${bad} now`, "").text.includes(ph), bad);
+  assert.equal(neutralizeLinks("שלום, נדבר בשלוש. \u200d👍", "").text, "שלום, נדבר בשלוש. \u200d👍", "Hebrew and emoji joiners untouched");
+  assert.equal(neutralizeLinks("use 1.2.3.4", "1.2.3.4").text, "use 1.2.3.4", "a trusted address stays");
+});
+
+test("errText scrubs credentials that a provider error echoes", async () => {
+  const { errText } = await import("./errtext.ts");
+  const t = errText(new Error("bad key sk-ant-api03-ABCDEF123456 and Authorization: Token 0123456789abcdef0123456789abcdef01234567"));
+  assert.ok(!/ABCDEF|0123456789abcdef/.test(t), t);
+  assert.ok(errText("plain text error").includes("plain text"));
 });
