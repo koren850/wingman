@@ -16,7 +16,7 @@ export function startConsent() {
   // privacy.requireConsentAck ("Ask me before listening starts", default off): wait for Start listening before any audio leaves the Mac.
   const needAck = S.privacy.requireConsentAck && !fileArg && (process.stdin.isTTY || CONTROL);
   const startForwarding = () => {
-    if (st.call.consented) return;
+    if (st.call.consented || st.call.shuttingDown) return;   // a "consent" queued behind Stop must not write phase "live" over "ended"
     st.call.consented = true; clearInterval(reemit); log.write("events", { type: needAck ? "consent.confirmed" : "listening.start" });
     if (needAck) { emitCard({ ...consentCard(), id: "consent", say: "ההאזנה התחילה. התמלול פעיל.", facts: [] }); console.log("\nListening started: audio is now being sent for transcription."); }
     status("consented", { id: log.id });
@@ -25,7 +25,7 @@ export function startConsent() {
     if (!fileArg) startMicWatch();
   };
   if (needAck) emitCard(consentCard());
-  reemit = setInterval(() => { if (!st.call.consented && needAck) emitCard(consentCard()); }, 20_000);
+  reemit = setInterval(() => { if (!st.call.consented && !st.call.shuttingDown && needAck) emitCard(consentCard()); }, 20_000);
   if (!needAck) startForwarding();
   if (CONTROL) setupControl(startForwarding); else setupKeys(startForwarding);
   if (!st.call.consented) { console.log(`\nWaiting for you to start listening: nothing is sent to the cloud until you ${CONTROL ? "click \"Start listening\" in the menu bar" : "press Enter"}.`); setPhase("waiting"); status("waiting", { id: log.id }); }
