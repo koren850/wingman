@@ -273,6 +273,8 @@ function onSayComplete(t: Turn, say: string) {
 /** Stream finished: book the cost, mark the model healthy, and upsert the card with its (guarded) facts. */
 function onDone(t: Turn, { usage, providerMetadata, text, model }: Parameters<ReflexHandlers["onDone"]>[0]) {
   const { id: turnId, ai } = t;
+  // Known undercount: a turn aborted by the next question never gets here (reflex.ts returns on abort before it reads the usage), so the tokens the
+  // provider bills for it are not in budget.maxUsdPerCall. Booking them needs the stream result after an abort, which the SDK does not reliably give.
   if (t.ac.signal.aborted) return;
   clearTimeout(t.stallTimer);
   reflexErrors = 0; healthClear("ai"); clearAiBar(model); breakers.get(model)?.success(); refreshSignals();
