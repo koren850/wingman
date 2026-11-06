@@ -141,26 +141,29 @@ function readKeysFile(file) {
   }
 }
 
+/**
+ * The one lookup order for an API key, used by the engine (env.ts) and by Settings (keyStatus), so both always agree:
+ * the macOS Keychain first (it is where Settings saves, so a saved key always wins), then the process environment, then the legacy keys.env.
+ * `provider` is set only for the two providers that can live in the Keychain; `account` is the env var / keys.env name.
+ * Returns the value and where it came from; a missing key is { value: null, source: "missing" }. A Keychain error counts as "not there".
+ */
+function resolveKey({ provider = null, account, keychain = null, env = process.env, fromFile = {} }) {
+  const kc = provider && keychain ? safe(() => keychain.get(provider)) : null;
+  if (kc) return { value: kc, source: "keychain" };
+  const e = env[account] && String(env[account]).trim();
+  if (e) return { value: e, source: "env" };
+  if (fromFile[account]) return { value: fromFile[account], source: "file" };
+  return { value: null, source: "missing" };
+}
+
 /** Where each key comes from. Values never leave this function except as the last 4 characters. */
 function keyStatus({ keychain, file, env = process.env }) {
   const fromFile = readKeysFile(file);
   const out = {};
   for (const p of PROVIDERS) {
     const a = ACCOUNTS[p];
-    let v = null,
-      source = "missing";
-    const kc = safe(() => keychain.get(p));
-    if (kc) {
-      v = kc;
-      source = "keychain";
-    } else if (env[a] && String(env[a]).trim()) {
-      v = String(env[a]).trim();
-      source = "env";
-    } else if (fromFile[a]) {
-      v = fromFile[a];
-      source = "file";
-    }
-    out[p] = { source, last4: last4(v), inFile: !!fromFile[a], inKeychain: !!kc };
+    const r = resolveKey({ provider: p, account: a, keychain, env, fromFile });
+    out[p] = { source: r.source, last4: last4(r.value), inFile: !!fromFile[a], inKeychain: r.source === "keychain" || !!safe(() => keychain.get(p)) };
   }
   return out;
 }
@@ -298,6 +301,7 @@ module.exports = {
   last4,
   parseKeysFile,
   keyStatus,
+  resolveKey,
   migrateKeysToKeychain,
   createRateLimiter,
   testKey,

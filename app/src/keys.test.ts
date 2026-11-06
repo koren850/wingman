@@ -139,7 +139,7 @@ test("format checks: length, charset, sk-ant- prefix, provider allow-list; messa
   }
 });
 
-test("load order: process env, then Keychain, then keys.env; sources reported, keys not written anywhere", () => {
+test("load order: Keychain, then process env, then keys.env (same as Settings); sources reported, keys not written anywhere", () => {
   const m = mockSecurity(),
     kc = createKeychain(m.run),
     file = fileWith(`DEEPGRAM_API_KEY=${DG}\nANTHROPIC_API_KEY=file-${KEY}\nGROQ_API_KEY=groq-from-file\n`);
@@ -148,7 +148,16 @@ test("load order: process env, then Keychain, then keys.env; sources reported, k
   assert.deepEqual(r.sources, { deepgram: "file", anthropic: "keychain", groq: "file" });
   assert.equal(r.keys.anthropic, KEY);
   r = loadKeysWithSources(file, { ANTHROPIC_API_KEY: "env-" + KEY }, kc);
-  assert.equal(r.sources.anthropic, "env");
+  assert.equal(r.sources.anthropic, "keychain", "a saved Keychain key wins over an exported variable");
+  assert.equal(r.keys.anthropic, KEY);
+  r = loadKeysWithSources(file, { ANTHROPIC_API_KEY: "env-" + KEY, DEEPGRAM_API_KEY: "env-dg" }, kc);
+  assert.deepEqual([r.sources.deepgram, r.keys.deepgram], ["env", "env-dg"], "env beats the legacy file");
+  // The engine and Settings must agree for every combination.
+  for (const env of [{}, { ANTHROPIC_API_KEY: "env-" + KEY }]) {
+    const st = keyStatus({ keychain: kc, file, env });
+    assert.equal(st.anthropic.source, loadKeysWithSources(file, env, kc).sources.anthropic);
+    assert.equal(st.deepgram.source, loadKeysWithSources(file, env, kc).sources.deepgram);
+  }
   assert.equal(loadKeys(file, {}).anthropic, `file-${KEY}`, "no keychain unless asked: tests never reach the real one");
 });
 
