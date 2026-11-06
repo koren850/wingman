@@ -1,8 +1,9 @@
-// One-time move of the user's data from the repo folder (stage0/calls, stage0/data/private) to the data folder (shared/paths.cjs).
+// One-time move of the user's data from the repo folder (app/calls, app/data/private; before the rename: stage0/calls, stage0/data/private) to the data folder (shared/paths.cjs).
 // COPY, never move: the old folders stay where they are, the owner deletes them later. Never overwrites a user's file in the new folder (copyOne explains the rule).
 // Safe to run twice (a marker file ends it) and safe to be interrupted (a half-done copy resumes, files already copied are kept).
-//   stage0/calls/<id>/...        -> <data>/calls/<id>/...       (the "latest" link and tray.log are not copied)
-//   stage0/data/private/<x>      -> <data>/<x>                  (briefs/, entities.json, ...; denylist.txt and node_modules are not user data)
+//   <app>/calls/<id>/...         -> <data>/calls/<id>/...       (the "latest" link and tray.log are not copied)
+//   <app>/data/private/<x>       -> <data>/<x>                  (briefs/, entities.json, ...; denylist.txt and node_modules are not user data)
+// <app> is the app folder or its former name "stage0" (see paths.legacyCandidates): existing checkouts still have their data in stage0/.
 const fs = require("node:fs");
 const path = require("node:path");
 const paths = require("./paths.cjs");
@@ -210,7 +211,9 @@ function ensureUserData(o = {}) {
   const env = o.env || process.env;
   try {
     if (paths.isRedirected(env) && !o.force) return { status: "redirected", files: 0, bytes: 0, copied: 0 };
-    const old = paths.legacyDirs(o.stage0);
+    // Existing checkouts keep their data in the old "stage0" folder; take the first candidate that has any.
+    const candidates = paths.legacyCandidates(o.appDir);
+    const old = candidates.find((c) => fs.existsSync(c.calls) || fs.existsSync(c.private)) || candidates[candidates.length - 1];
     return migrateUserData({ dataDir: paths.dataDir(env, o.home), oldCalls: old.calls, oldPrivate: old.private, log: o.log || ((m) => console.error(m)) });
   } catch (e) {
     return { status: "failed", files: 0, bytes: 0, copied: 0, message: String((e && e.message) || e) };

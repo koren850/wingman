@@ -24,7 +24,7 @@ jobs:
       WINGMAN_SKIP_APP: "1"
     defaults:
       run:
-        working-directory: stage0
+        working-directory: app
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 

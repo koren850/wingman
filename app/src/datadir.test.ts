@@ -15,18 +15,18 @@ const put = (f: string, s: string) => {
   writeFileSync(f, s);
 };
 
-/** An old-style checkout: stage0/calls/<id>/..., stage0/data/private/briefs/..., entities.json, denylist.txt */
+/** An old-style checkout: <app>/calls/<id>/..., <app>/data/private/briefs/..., entities.json, denylist.txt */
 function oldLayout() {
-  const stage0 = tmp();
-  put(join(stage0, "calls", "01AAA", "call.json"), '{"id":"01AAA"}');
-  put(join(stage0, "calls", "01AAA", "transcript.jsonl"), "line1\nline2\n");
-  put(join(stage0, "calls", "tray.log"), "log");
-  symlinkSync("01AAA", join(stage0, "calls", "latest"));
-  put(join(stage0, "data", "private", "briefs", "m1", "meeting.json"), "{}");
-  put(join(stage0, "data", "private", "briefs", "attachments", "a.txt"), "background");
-  put(join(stage0, "data", "private", "entities.json"), "{}");
-  put(join(stage0, "data", "private", "denylist.txt"), "secret");
-  return { stage0, calls: join(stage0, "calls"), private: join(stage0, "data", "private") };
+  const appDir = tmp();
+  put(join(appDir, "calls", "01AAA", "call.json"), '{"id":"01AAA"}');
+  put(join(appDir, "calls", "01AAA", "transcript.jsonl"), "line1\nline2\n");
+  put(join(appDir, "calls", "tray.log"), "log");
+  symlinkSync("01AAA", join(appDir, "calls", "latest"));
+  put(join(appDir, "data", "private", "briefs", "m1", "meeting.json"), "{}");
+  put(join(appDir, "data", "private", "briefs", "attachments", "a.txt"), "background");
+  put(join(appDir, "data", "private", "entities.json"), "{}");
+  put(join(appDir, "data", "private", "denylist.txt"), "secret");
+  return { appDir, calls: join(appDir, "calls"), private: join(appDir, "data", "private") };
 }
 const run = (o: ReturnType<typeof oldLayout>, root: string, log: string[] = []) =>
   migrate.migrateUserData({ dataDir: root, oldCalls: o.calls, oldPrivate: o.private, log: (m: string) => log.push(m) });
@@ -131,9 +131,9 @@ test("migration: Electron's own files in the data folder (it is Electron's userD
 });
 
 test("migration: nothing old means nothing happens (fresh install, no marker)", () => {
-  const stage0 = tmp(),
+  const appDir = tmp(),
     root = join(tmp(), "Wingman");
-  const r = migrate.migrateUserData({ dataDir: root, oldCalls: join(stage0, "calls"), oldPrivate: join(stage0, "data", "private"), log: () => {} });
+  const r = migrate.migrateUserData({ dataDir: root, oldCalls: join(appDir, "calls"), oldPrivate: join(appDir, "data", "private"), log: () => {} });
   assert.equal(r.status, "none");
   assert.equal(existsSync(root), false);
 });
@@ -216,11 +216,25 @@ test("ensureUserData does nothing while tests/QA redirect the data folder", () =
   assert.equal(r.status, "redirected");
 });
 
-test("ensureUserData migrates for a normal start (home and stage0 injected)", () => {
+test("ensureUserData migrates for a normal start (home and appDir injected)", () => {
   const o = oldLayout(),
     home = tmp();
-  const r = migrate.ensureUserData({ env: {}, home, stage0: o.stage0, log: () => {} });
+  const r = migrate.ensureUserData({ env: {}, home, appDir: o.appDir, log: () => {} });
   assert.equal(r.status, "migrated");
   assert.ok(existsSync(join(home, "Library", "Application Support", "Wingman", "calls", "01AAA", "call.json")));
   assert.equal(readdirSync(o.calls).includes("01AAA"), true);
+});
+
+// Backward compatibility: this folder was called "stage0" before it was renamed to "app". Updated checkouts keep their data there.
+test("ensureUserData also finds old data in the former app folder name (stage0), next to the new app folder", () => {
+  const base = tmp(),
+    home = tmp();
+  const legacy = join(base, "stage0");
+  put(join(legacy, "calls", "01OLD", "call.json"), '{"id":"01OLD"}');
+  put(join(legacy, "data", "private", "entities.json"), "{}");
+  const r = migrate.ensureUserData({ env: {}, home, appDir: join(base, "app"), log: () => {} });
+  assert.equal(r.status, "migrated");
+  const data = join(home, "Library", "Application Support", "Wingman");
+  assert.ok(existsSync(join(data, "calls", "01OLD", "call.json")) && existsSync(join(data, "entities.json")));
+  assert.ok(existsSync(join(legacy, "calls", "01OLD", "call.json")), "the old copy is left in place");
 });

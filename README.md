@@ -49,7 +49,7 @@ All screenshots use invented data. The answer window with English labels, and wi
 | **Health and fallbacks** | A visible bar when something degrades, and a ladder that keeps the call going. See [How it works](#how-it-works). |
 | **Menu-bar app and CLI** | Home, Calls and Settings in an Electron app, a guided first-run setup, a readiness check and a `wingman` command line. |
 
-More in the [user guide](docs/USER-GUIDE.md) and the [operator guide](stage0/README.md).
+More in the [user guide](docs/USER-GUIDE.md) and the [operator guide](app/README.md).
 
 ## How it works
 
@@ -193,13 +193,13 @@ Wingman is an early release (v0.1.0): the live call loop, the app, the CLI, the 
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | No sound, permissions, install problems, slow AI, disk, sleep |
 | [docs/PACK-FORMAT.md](docs/PACK-FORMAT.md) | How to write your answer cards and word lists |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Verification status, known limits, ideas |
-| [stage0/README.md](stage0/README.md) | The detailed app and operator guide: settings, hotkeys, commands |
+| [app/README.md](app/README.md) | The detailed app and operator guide: settings, hotkeys, commands |
 | [brand/README.md](brand/README.md) | The capybara logo and how the icons are built |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests, commit style, no private data |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
-Repo layout: `install.sh` (installer), `stage0/` (engine `src/`, menu-bar app `tray/`, window `dashboard/`, answer window `overlay/`, QA `qa/`, settings `config/`, shipped data `data/`), `docs/`, `brand/`, `.github/`.
+Repo layout: `install.sh` (installer), `app/` (engine `src/`, menu-bar app `tray/`, window `dashboard/`, answer window `overlay/`, QA `qa/`, settings `config/`, shipped data `data/`), `docs/`, `brand/`, `.github/`.
 
 ## Contributing
 

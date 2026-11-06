@@ -7,7 +7,7 @@ A **pack** is the business content Wingman answers from: your answer cards, your
 For each file, in this order:
 
 1. The folder in `WINGMAN_PACK_DIR`, if you set it. Otherwise `~/.config/wingman/pack/`.
-2. `stage0/data/example-pack/` (an invented web and hosting example).
+2. `app/data/example-pack/` (an invented web and hosting example).
 
 The lookup is **per file**. If your pack has `bank.yaml` but no `topics.txt`, the example `topics.txt` is used. That would mix invented example words into your setup, so the Readiness check lists every file that falls back. Copy all the files you need into your pack.
 
@@ -112,8 +112,8 @@ An interview meeting can have its own cards, in the same format as `bank.yaml` (
 wingman plan set --id <id> --add-note "Prepared cards: /full/path/to/my-interview-cards.yaml"
 ```
 
-Use the full path. For that call these cards **replace** the normal bank. Card text is yours, so a salary answer can live here: the AI is never allowed to write a salary figure. See [Interview mode](../stage0/README.md#practice-and-prep-mode-kind-interview).
+Use the full path. For that call these cards **replace** the normal bank. Card text is yours, so a salary answer can live here: the AI is never allowed to write a salary figure. See [Interview mode](../app/README.md#practice-and-prep-mode-kind-interview).
 
 ## Check your pack
 
-Run the Readiness check (**Home, Run readiness check**, or `pnpm run doctor` in `stage0/`). It shows how many cards loaded, whether the ids are unique, how many keyterms were found, and which files fell back to the example pack.
+Run the Readiness check (**Home, Run readiness check**, or `pnpm run doctor` in `app/`). It shows how many cards loaded, whether the ids are unique, how many keyterms were found, and which files fell back to the example pack.

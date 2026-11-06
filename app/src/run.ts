@@ -1,4 +1,4 @@
-// Wingman Stage 0: live (system audio + mic) or --file <stereo.wav> (L = me, R = them).
+// Wingman engine: live (system audio + mic) or --file <stereo.wav> (L = me, R = them).
 //   pnpm start                 live call (listening starts at once; with "Ask me before listening starts" on, press Enter first and nothing is sent before that)
 //   pnpm start --file x.wav    replay a recording in real time
 //   pnpm start --no-ai         Prepared cards only (no AI)
@@ -98,7 +98,7 @@ function printStartup() {
 }
 function printBanner() {
   console.log(
-    `Wingman Stage 0 · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} prepared cards${noAi ? " · prepared only" : ""}${discard ? " · --discard" : ""}`,
+    `Wingman · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} prepared cards${noAi ? " · prepared only" : ""}${discard ? " · --discard" : ""}`,
   );
   console.log(
     `Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = start listening (when waiting) · q = Quiet mode · a = ask Wingman · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`,

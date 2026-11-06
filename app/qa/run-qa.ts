@@ -14,7 +14,7 @@ import { grade, readJsonl, type Grade, type Row } from "./grade.ts";
 /** Name of the invented user in the scenarios (to be wired to the profile). */
 const USER_NAME = "Dan";
 const QA = dirname(fileURLToPath(import.meta.url));
-const STAGE0 = join(QA, "..");
+const APP_DIR = join(QA, "..");
 const argv = process.argv.slice(2);
 const flag = (n: string) => argv.includes(n);
 const opt = (n: string, d: string) => {
@@ -77,7 +77,7 @@ async function runOne(name: string): Promise<Grade> {
   const callsDir = join(QA, "calls", `${stamp}-${name}`);
   mkdirSync(callsDir, { recursive: true });
   const log = createWriteStream(join(callsDir, "run.log"));
-  const args = [join(STAGE0, "src", "run.ts"), "--profile", "qa", "--file", r.wav, "--no-brief", ...(noAi ? ["--no-ai"] : []), ...setArgs];
+  const args = [join(APP_DIR, "src", "run.ts"), "--profile", "qa", "--file", r.wav, "--no-brief", ...(noAi ? ["--no-ai"] : []), ...setArgs];
   const env: NodeJS.ProcessEnv = { ...process.env, WINGMAN_CALLS_DIR: callsDir };
   if (replay && !regrade) {
     env.WINGMAN_STT_SCRIPT = buildReplay(name);
@@ -88,7 +88,7 @@ async function runOne(name: string): Promise<Grade> {
   const t0 = Date.now();
   if (!regrade)
     await new Promise<void>((res) => {
-      const p = spawn(join(STAGE0, "node_modules", ".bin", "tsx"), args, { cwd: STAGE0, env, stdio: ["ignore", "pipe", "pipe"] });
+      const p = spawn(join(APP_DIR, "node_modules", ".bin", "tsx"), args, { cwd: APP_DIR, env, stdio: ["ignore", "pipe", "pipe"] });
       p.stdout.pipe(log, { end: false });
       p.stderr.pipe(log, { end: false });
       // Safety net: a stuck run must not hang the whole batch; allow the audio length plus 2 minutes.

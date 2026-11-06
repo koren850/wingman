@@ -342,7 +342,7 @@ test("wingman profile: show defaults, set fields (repeatable --spelling, empty c
 
 // ---- the repo itself carries no personal words ----
 // Tracked files plus new files that are not ignored (so it also works before the first commit). The denylist is NOT in the repo: set WINGMAN_DENYLIST (words separated by commas) or put one word or regex per line in the untracked
-// stage0/data/private/denylist.txt. Without either, this test only checks that the mechanism works.
+// app/data/private/denylist.txt. Without either, this test only checks that the mechanism works.
 import { execFileSync } from "node:child_process";
 import { ROOT } from "./env.ts";
 const SCANNED = ["src", "tray", "dashboard", "overlay", "shared", "config", "data", "profiles", "scripts"];
@@ -374,10 +374,10 @@ test("repo guard: no tracked source, data or config file contains a word from th
   if (!re) return t.skip("no denylist configured (set WINGMAN_DENYLIST or data/private/denylist.txt)");
   const hits: string[] = [];
   for (const rel of files) {
-    if (EXCLUDE.test(rel.replace(/^stage0\//, ""))) continue;
+    if (EXCLUDE.test(rel)) continue;
     let text: string;
     try {
-      text = readFileSync(join(ROOT, rel.replace(/^stage0\//, "")), "utf8");
+      text = readFileSync(join(ROOT, rel), "utf8");
     } catch {
       continue;
     }
@@ -388,7 +388,7 @@ test("repo guard: no tracked source, data or config file contains a word from th
   assert.deepEqual(hits.slice(0, 20), [], "personal words in the repo");
 });
 
-/** Markdown files anywhere in the repo (root, docs/, stage0/, brand/) plus LICENSE, as paths relative to the REPO root (this test runs with cwd stage0). */
+/** Markdown files anywhere in the repo (root, docs/, app/, brand/) plus LICENSE, as paths relative to the REPO root (this test runs with cwd app/). */
 const REPO_URL = /https:\/\/github\.com\/koren850\/wingman(?:\.git|\/actions\/workflows\/ci\.yml(?:\/badge\.svg)?)?(?![\w/.-])/g;
 function trackedDocs(): string[] {
   const top = join(ROOT, "..");

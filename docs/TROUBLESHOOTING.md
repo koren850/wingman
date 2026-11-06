@@ -52,7 +52,7 @@ Signs: a bar "MIC SILENT" ten seconds after listening starts, or the wrong mic i
 The install stops with "could not download the Electron runtime". The cause is almost always the network or a proxy.
 
 ```bash
-cd stage0
+cd app
 node node_modules/electron/install.js
 pnpm run make-app
 ```
@@ -88,7 +88,7 @@ The command is a link in `~/.local/bin`. That folder must be on your PATH. Add t
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-No link yet? Run `./install.sh` and say yes to the `wingman` command question. Without the link you can run `stage0/scripts/wingman-cli.sh`.
+No link yet? Run `./install.sh` and say yes to the `wingman` command question. Without the link you can run `app/scripts/wingman-cli.sh`.
 
 ## The AI is slow
 
@@ -109,7 +109,7 @@ Signs: an amber bar under 500 MB free, a red bar under 100 MB.
 
 A call that cannot write loses its transcript and summary, and a notification tells you. Free some space now.
 
-- Delete calls you do not need: **Calls, Delete call**, or `wingman calls purge <id> --yes`, or `pnpm purge --older-than 30` in `stage0/`.
+- Delete calls you do not need: **Calls, Delete call**, or `wingman calls purge <id> --yes`, or `pnpm purge --older-than 30` in `app/`.
 - Your calls are in `~/Library/Application Support/Wingman/calls/`.
 - Cards still reach the answer window over a second channel while the disk is full.
 

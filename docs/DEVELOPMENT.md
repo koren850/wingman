@@ -1,6 +1,6 @@
 # Development
 
-Everything is in `stage0/`. Run commands from there.
+Everything is in `app/`. Run commands from there.
 
 ## Setup
 
@@ -14,7 +14,7 @@ For the full app, use the installer at the repo root:
 For code work only (no Electron download, no app):
 
 ```bash
-cd stage0
+cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
 pnpm test                               # unit tests (over 500, about 2 minutes)
@@ -32,7 +32,7 @@ Live work needs two paid keys. Deepgram (speech to text): sign up at [console.de
 
 | Command | What it does |
 |---|---|
-| `./install.sh` | Checks macOS, Node, pnpm, ffmpeg. Runs `pnpm install --frozen-lockfile`. Builds `stage0/.app/Wingman.app`. Offers: copy it to `/Applications`, add the `wingman` link in `~/.local/bin`, `brew install ffmpeg`. |
+| `./install.sh` | Checks macOS, Node, pnpm, ffmpeg. Runs `pnpm install --frozen-lockfile`. Builds `app/.app/Wingman.app`. Offers: copy it to `/Applications`, add the `wingman` link in `~/.local/bin`, `brew install ffmpeg`. |
 | `./install.sh --check` | Only reports. Changes nothing. |
 | `./install.sh --dry-run` | Prints every step it would run. |
 | `./install.sh --yes` | Takes the default answer to each offer. Without a terminal and without `--yes`, every offer is declined. |
@@ -40,11 +40,11 @@ Live work needs two paid keys. Deepgram (speech to text): sign up at [console.de
 | `./install.sh --update` (or `wingman update`) | `git pull --ff-only`, `pnpm install`, rebuild the app. |
 | `./install.sh --uninstall` (or `wingman uninstall`) | Removes the app copies and the `wingman` link. Your data stays. |
 | `./install.sh --uninstall --purge` | Also deletes `~/Library/Application Support/Wingman`, `~/.config/wingman` and the Keychain keys, after you type `DELETE`. It refuses a `WINGMAN_DATA_DIR` outside `~/Library/Application Support` or without "Wingman" in its path, unless you add `--force`. |
-| `cd stage0 && pnpm run install-app` | Builds the app and copies it to `/Applications` (`make-app.sh --install`). |
+| `cd app && pnpm run install-app` | Builds the app and copies it to `/Applications` (`make-app.sh --install`). |
 
 Environment: `WINGMAN_APPS_DIR` (default `/Applications`), `WINGMAN_BIN_DIR` (default `~/.local/bin`), `WINGMAN_SKIP_APP=1` (skip the Electron download and the app build: CI and tests).
 
-What `pnpm install` does in `stage0/`:
+What `pnpm install` does in `app/`:
 
 - `scripts/check-env.cjs` (preinstall) stops early with a clear message on Node older than 24 or macOS older than 14.2.
 - `scripts/postinstall.cjs` downloads the Electron runtime (Electron 45 does not do it by itself) and builds the app. A failure stops the install and prints the fix. It is not swallowed.
@@ -82,7 +82,7 @@ What `pnpm install` does in `stage0/`:
 - Unit tests are `src/*.test.ts` (over 500), run with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards.test.ts` (use the file you need).
 - Do not start a second `pnpm test` while one is running; they share ports and files.
 - Test names say what they protect. Bug fixes should come with a regression test.
-- The "repo guard" test fails if a tracked source, data or config file contains a word from your private word list. Set it with `WINGMAN_DENYLIST="word1,word2" pnpm test`, or one word per line in the git-ignored `stage0/data/private/denylist.txt`. With no list it skips. How and why: [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
+- The "repo guard" test fails if a tracked source, data or config file contains a word from your private word list. Set it with `WINGMAN_DENYLIST="word1,word2" pnpm test`, or one word per line in the git-ignored `app/data/private/denylist.txt`. With no list it skips. How and why: [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
 - Tests redirect user data with `WINGMAN_DATA_DIR`, `WINGMAN_CALLS_DIR` and friends, so they never touch your real calls.
 - CI (`.github/workflows/ci.yml`) runs on macOS with Node 24: `WINGMAN_SKIP_APP=1 pnpm install --frozen-lockfile`, the type check, then the tests. There is no private word list in CI, so the repo guard skips there.
 - There is an offline end-to-end test (`src/e2e.test.ts`) that runs a whole call with scripted speech and a scripted AI (`src/providers/scripted.ts`).
@@ -106,12 +106,12 @@ Scenarios are in `qa/scenarios/*.json` (32 of them) and use invented clients onl
 Used for UX checks and for the images in `docs/ux/`. In snapshot mode the app creates a hidden window, no tray, no global shortcuts, and never starts a call. Run snapshots one at a time.
 
 - Window: set `WINGMAN_DASHBOARD_SNAPSHOT=<out.png>` and optionally `_VIEW=home|inbox|settings`, `_THEME`, `_SIZE`, `_OPEN`, `_FOCUS`, `_SCROLL`, `_EVAL`; `WINGMAN_DASHBOARD_FAKE_CALL=waiting|live|live-warn|stopping|ended`; `WINGMAN_DASHBOARD_FAKE_DOCTOR=ready|notready`. Use `WINGMAN_CALLS_DIR`, `WINGMAN_BRIEFS_DIR` (or `WINGMAN_DATA_DIR`) and `WINGMAN_USER_SETTINGS` to point at fixtures so real data is never shown.
-- Answer window: `overlay/snapshot.sh <outDir> [scenario:keys ...]` (scenarios such as full, empty, listening, waiting, overflow, quiet, foryou, flow, flowyou, speakers; keys such as rewind, pause). Fixtures are in `overlay/fixtures.cjs`. For your own cards, write a `cards.jsonl` in a temp folder and run `WINGMAN_CALLS_DIR=<temp> WINGMAN_OVERLAY_SNAPSHOT=<out.png> stage0/node_modules/.bin/electron stage0/overlay/main.cjs`.
+- Answer window: `overlay/snapshot.sh <outDir> [scenario:keys ...]` (scenarios such as full, empty, listening, waiting, overflow, quiet, foryou, flow, flowyou, speakers; keys such as rewind, pause). Fixtures are in `overlay/fixtures.cjs`. For your own cards, write a `cards.jsonl` in a temp folder and run `WINGMAN_CALLS_DIR=<temp> WINGMAN_OVERLAY_SNAPSHOT=<out.png> app/node_modules/.bin/electron app/overlay/main.cjs`.
 - Use only invented data in anything you publish.
 
 ## Building the .app
 
-`pnpm make-app` (also run by `pnpm install` and `install.sh`) copies the Electron runtime to `stage0/.app/Wingman.app`, renames it to Wingman, sets the icon from `brand/Wingman.icns`, sets the permission texts in `Info.plist` (microphone and system audio), turns off three Electron fuses, and adds a small launcher that runs this repo's `tray/main.cjs`.
+`pnpm make-app` (also run by `pnpm install` and `install.sh`) copies the Electron runtime to `app/.app/Wingman.app`, renames it to Wingman, sets the icon from `brand/Wingman.icns`, sets the permission texts in `Info.plist` (microphone and system audio), turns off three Electron fuses, and adds a small launcher that runs this repo's `tray/main.cjs`.
 
 - **Thin launcher.** It loads the repo code, so quit and reopen the app to pick up code changes. Re-run it after an Electron upgrade (`pnpm install` does).
 - **The checkout path is baked in.** If you move the folder, the app says so in a dialog. Run `./install.sh` again from the new place.
@@ -129,7 +129,7 @@ Used for UX checks and for the images in `docs/ux/`. In snapshot mode the app cr
 - A failure must never produce a wrong card; when unsure, show nothing or the stall line. A failure must be visible (bar, terminal line, `events.jsonl` row). Nothing may block the call.
 - User-visible words follow the glossary (Prepared, AI, Buy time, Tip, For you, Math, Answer window, Plan, Readiness check, Quiet mode, Start listening).
 - Examples, fixtures and docs use invented names (Dan, Dana, Acme, example.com, example.co.il). Do not commit real client data. See [CONTRIBUTING.md](../CONTRIBUTING.md).
-- User data paths come from `shared/paths.cjs` (and `src/env.ts`). Never hard-code `calls/` or `data/private/`. `stage0/data/` is for shipped data only.
+- User data paths come from `shared/paths.cjs` (and `src/env.ts`). Never hard-code `calls/` or `data/private/`. `app/data/` is for shipped data only.
 - Print errors with `errText` (`src/errtext.ts`), not the raw error object: it can contain prompts.
 
 ## Folder map

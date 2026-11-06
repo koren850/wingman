@@ -62,7 +62,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 **Context.** The structure documents described a monorepo, three processes, replay clocks, encryption and more, about 3 to 4 weeks before the first call.
 
-**Decision.** Build a first version: a rough, terminal-launched tool in `stage0/` that reuses the planned ideas but not the planned layout. A flat folder, one process per call, plain JSONL. Add a stop rule: if it is not used on a real call by a set date, freeze it.
+**Decision.** Build a first version: a rough, terminal-launched tool in `app/` that reuses the planned ideas but not the planned layout. A flat folder, one process per call, plain JSONL. Add a stop rule: if it is not used on a real call by a set date, freeze it.
 
 **Why.** It gets the value question answered in days. Infrastructure for replay, linting and process splitting can be added when it saves time on real use.
 

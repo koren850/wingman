@@ -1,6 +1,6 @@
 # User guide
 
-Everyday use of Wingman after it is installed: first run, updating, where your files live, profile and pack, practice and prep mode, flow mode and the command line. For install and requirements see the [README](../README.md); for every setting and hotkey see [stage0/README.md](../stage0/README.md).
+Everyday use of Wingman after it is installed: first run, updating, where your files live, profile and pack, practice and prep mode, flow mode and the command line. For install and requirements see the [README](../README.md); for every setting and hotkey see [app/README.md](../app/README.md).
 
 Contents: [First run](#first-run) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Flow mode](#flow-mode) · [Command line](#command-line)
 
@@ -19,7 +19,7 @@ Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup:
 
 Every step can be skipped and reopened from **Settings, Setup guide**. When you are ready, press **Quick call**, or **Start** on a prepared meeting.
 
-Without the app, from the terminal: `cd stage0 && pnpm dashboard`. See [stage0/README.md](../stage0/README.md) for all commands, settings and hotkeys.
+Without the app, from the terminal: `cd app && pnpm dashboard`. See [app/README.md](../app/README.md) for all commands, settings and hotkeys.
 
 Notes:
 - `pnpm run doctor`, not `pnpm doctor` (the second one is pnpm's own command).
@@ -46,14 +46,14 @@ Nothing about you is stored in this repository.
 | `~/.config/wingman/` | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
 | macOS Keychain, service `wingman` | Your API keys. |
 
-If you used an older version that kept calls in the repo folder (`stage0/calls`, `stage0/data/private`), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
+If you used an older version that kept calls in the repo folder (`calls/` and `data/private/` inside the app folder, which was called `stage0/` until it was renamed to `app/`), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
 
 ## Profile and pack
 
 - A **profile** file (`~/.config/wingman/profile.yaml`): your name and spellings, how to address you in Hebrew, a short "about", your business and your time zone (for example `Asia/Jerusalem`). Set it in **Settings, About you**, or with `wingman profile set ...` (see `wingman help`).
-- A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answer bank, house style, keyterms and topic words. Without one, the invented example web/hosting pack in `stage0/data/example-pack/` is used. File formats: [docs/PACK-FORMAT.md](PACK-FORMAT.md).
+- A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answer bank, house style, keyterms and topic words. Without one, the invented example web/hosting pack in `app/data/example-pack/` is used. File formats: [docs/PACK-FORMAT.md](PACK-FORMAT.md).
 
-Do not confuse these with a **settings preset** (`stage0/profiles/<name>.yaml`, used with `--profile <name>`). A preset is a set of setting overrides, such as `first-client-call`. It has nothing to do with `profile.yaml`.
+Do not confuse these with a **settings preset** (`app/profiles/<name>.yaml`, used with `--profile <name>`). A preset is a set of setting overrides, such as `first-client-call`. It has nothing to do with `profile.yaml`.
 
 ## Practice and prep mode
 
@@ -81,7 +81,7 @@ For calls with several people on the other side (needs `stt.speakers`, on by def
 ## Command line
 
 ```bash
-cd stage0
+cd app
 pnpm -s wingman help         # full help
 pnpm -s wingman status       # is the app running, is a call live
 pnpm -s wingman start --practice

@@ -1,6 +1,6 @@
 # Wingman built-in defaults. This is layer 1 (lowest) and documents EVERY setting.
 # Do not edit for personal changes: put overrides in ~/.config/wingman/settings.yaml
-# (or a profile in stage0/profiles/<name>.yaml, used with --profile <name>).
+# (or a profile in app/profiles/<name>.yaml, used with --profile <name>).
 # Layers, lowest to highest: this file < user file < profile < env vars < CLI flags.
 # Check the result with: pnpm settings
 # Unknown keys are errors (typos should not pass silently). Secrets (API keys) never go here: use Settings → Keys (macOS Keychain).
@@ -21,7 +21,7 @@ stt:
   joinWindowMs: 1500 # a short client fragment without an end mark is glued to the next one within this time (split questions). 0 = off
   keyterms:
     enabled: auto # auto | on | off   (off = never send keyterms)
-    file: "" # empty = the pack's keyterms.txt (~/.config/wingman/pack, then data/example-pack); or a path relative to stage0/. One term per line
+    file: "" # empty = the pack's keyterms.txt (~/.config/wingman/pack, then data/example-pack); or a path relative to app/. One term per line
     max: 100 # most terms sent
   circuit:
     failures: 3 # this many failures ...

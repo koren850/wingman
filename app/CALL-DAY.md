@@ -11,7 +11,7 @@ A checklist for using Wingman on a real call. For first-time setup see the [user
 - Keys: **Settings, Keys**, then Test both. Each should read "Saved in Keychain". If you still have an old `keys.env` file, use Move to Keychain once.
 - Spend limits are set with Deepgram and Anthropic. For a first call, consider **Quick call without AI** (or `--no-ai`), which shows prepared cards only.
 - Start a call from **Home**: **Quick call** (no Plan) or **Start** on a prepared meeting. To prepare one, use **Prepare a meeting** (who, goal, notes, must-cover points, background files). `pnpm call` in Terminal also works.
-- Rehearsal: create the meeting with `--kind interview` (see the [stage0 README](README.md#practice-and-prep-mode-kind-interview)). Real interviews and exams that forbid outside help are out of scope.
+- Rehearsal: create the meeting with `--kind interview` (see the [app README](README.md#practice-and-prep-mode-kind-interview)). Real interviews and exams that forbid outside help are out of scope.
 - Tell the other people on the call that you use a live assistant, and follow the recording-consent laws that apply to you. Listening starts with the call; to require a click first, turn on Settings, "Ask me before listening starts".
 
 ## During the call

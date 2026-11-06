@@ -1,4 +1,4 @@
-// Stage 0b helpers: echo filter and mic gate (echo.ts), spoken digits/phones/emails (capture.ts),
+// Echo filter, mic gate (echo.ts), spoken digits/phones/emails (capture.ts),
 // client and domain spotting (entities.ts), call notes and brief coverage. All fixtures are made-up data.
 import "./test-setup.ts";
 import { test } from "node:test";

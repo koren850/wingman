@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes how Wingman is built today (the app in `stage0/`). Where this document and the code differ, the code is right.
+This document describes how Wingman is built today (the app in `app/`). Where this document and the code differ, the code is right.
 
 Contents: [Big picture](#big-picture) · [Process diagram](#process-diagram) · [Components](#components) · [Processes and data flow](#processes-and-data-flow) · [Call lifecycle](#call-lifecycle-and-phases) · [Files on disk](#files-on-disk) · [Latency budget and cost model](#latency-budget-and-cost-model) · [Testing](#testing)
 
@@ -8,9 +8,9 @@ Contents: [Big picture](#big-picture) · [Process diagram](#process-diagram) · 
 
 Wingman is one TypeScript engine (a Node process per call) plus an Electron host that starts, stops and shows it.
 
-- The **engine** (`stage0/src/run.ts`) does everything during a call: audio in, speech to text, detection, answers, logging.
-- The **menu-bar app** (`stage0/tray/`) is an Electron process. It owns one call controller, starts the engine as a child process, hosts the Home / Calls / Settings window and the control socket.
-- The **answer window** (`stage0/overlay/`) is a second Electron process, started by `call.ts`, shown on the second screen.
+- The **engine** (`app/src/run.ts`) does everything during a call: audio in, speech to text, detection, answers, logging.
+- The **menu-bar app** (`app/tray/`) is an Electron process. It owns one call controller, starts the engine as a child process, hosts the Home / Calls / Settings window and the control socket.
+- The **answer window** (`app/overlay/`) is a second Electron process, started by `call.ts`, shown on the second screen.
 - The **CLI** (`wingman`) is a thin client of the control socket.
 
 Everything is plain files. There is no database and no server.
@@ -47,7 +47,7 @@ The tray app starts one call at a time through the controller, which runs `call.
 
 ## Components
 
-### Engine (`stage0/src/`)
+### Engine (`app/src/`)
 
 | Component | File | What it does |
 |---|---|---|
@@ -79,7 +79,7 @@ The tray app starts one call at a time through the controller, which runs `call.
 | Logging | `log.ts` | Writes the call folder (files are mode 600). |
 | Data paths | `env.ts`, `../shared/paths.cjs`, `../shared/migrate.cjs` | One module decides where user data lives (the data folder). `migrate.cjs` copies the old in-repo folders once (never moves, never overwrites, writes a marker). |
 
-### Menu-bar app (`stage0/tray/`)
+### Menu-bar app (`app/tray/`)
 
 - `main.cjs`: Electron main process. Tray icon and menu, global shortcuts, notifications, the single window.
 - `controller.cjs`: the one call controller. Starts and stops the engine child process, tracks the call phase, rate-limits start/stop, handles Quit during a call. Unit-tested with a fake child process.
@@ -88,25 +88,25 @@ The tray app starts one call at a time through the controller, which runs `call.
 - `plans.cjs` and `../shared/plans.js`: the **prepared meetings** store and its pure rules. Several Plans can wait at once, each in `<data folder>/briefs/plans/<id>/` (`meeting.json`, `files/`, and `brief.yaml` written for the engine when a call starts). A meeting has an optional title and time. Expiry: a meeting with a time stays until 6 h after it, one without a time 14 days after its last edit, a used one is kept 7 days (so Calls can show which Plan a call used) and its background files are dropped when it is used. The single Plan of earlier versions (`latest.yaml` plus flat `attachments/`) becomes one meeting the first time the store is opened (`migrate()`, idempotent). A call starts either **quick** (the engine gets `--no-brief`, nothing is used up) or with **one chosen meeting** (`--brief <its brief.yaml>` and `WINGMAN_ATTACH_DIR=<its files>`); the controller marks that meeting used when the call goes live, never for a practice call.
 - `settings-catalog.cjs`: the plain-words Settings page definitions (25 options in 6 groups, and an Advanced list).
 
-### Window (`stage0/dashboard/`)
+### Window (`app/dashboard/`)
 
 A local-only HTML/JS UI (no framework, no network, strict Content-Security-Policy, sandboxed, no navigation). Pages: **Home** (readiness, Start with a Quick call and the Prepared meetings list, the Plan editor, what is waiting, live call panel), **Calls** (list, call review, ratings, summary and follow-up), **Settings** (including Keys, About you and the Setup guide). The first time, Home shows the guided setup (`setup.js`, `setup-ipc.cjs`): keys, About you, permissions, microphone, screens, answer pack, readiness check, practice call. System Audio Recording has no live status in macOS, so the guide asks you to confirm and restart. It talks to the main process through a preload bridge with an allow-list.
 
-### Answer window (`stage0/overlay/`)
+### Answer window (`app/overlay/`)
 
 A frameless, always-on-top, non-focusable Electron window on the second screen (content protection is on, but untested with Zoom, so the second screen is the real protection). It shows the newest answer large, older answers small, health bars, the checklist, capture chips and the "what did they say" rewind sheet. It is started by `call.ts` (the per-call launcher). It reads the call's `cards.jsonl` and also receives rows over the relay socket (see above). Its script is an external file (`app.js`) under a strict Content-Security-Policy; the preload bridge is a fixed list, navigation and `window.open` are blocked, and if the window process crashes it reloads.
 
 ### Control socket and CLI
 
-The app listens on `~/.config/wingman/run/control.sock` (directory mode 700, socket mode 600, owner check). Only a fixed list of commands is accepted. The CLI (`stage0/src/cli/`, `wingman` command, exit codes 0 to 9) sends commands such as `status`, `start` (`--quick`, or `--plan <id>` for a prepared meeting; plain `start` never guesses, see ADR 37), `stop`, `ask`, `note`, `plan` (list, new, set --id, attach, delete), `calls` and `settings`. It never starts a second engine, never prints keys, and destructive commands need `--yes`. A real start from the CLI asks the user in a window in the app (`privacy.askBeforeCliStart`), and `stop --delete` always asks. `wingman update` and `wingman uninstall` are handled by `install.sh` and need no running app. It was built so that an AI coding agent can drive Wingman safely, with `--json` output on every command.
+The app listens on `~/.config/wingman/run/control.sock` (directory mode 700, socket mode 600, owner check). Only a fixed list of commands is accepted. The CLI (`app/src/cli/`, `wingman` command, exit codes 0 to 9) sends commands such as `status`, `start` (`--quick`, or `--plan <id>` for a prepared meeting; plain `start` never guesses, see ADR 37), `stop`, `ask`, `note`, `plan` (list, new, set --id, attach, delete), `calls` and `settings`. It never starts a second engine, never prints keys, and destructive commands need `--yes`. A real start from the CLI asks the user in a window in the app (`privacy.askBeforeCliStart`), and `stop --delete` always asks. `wingman update` and `wingman uninstall` are handled by `install.sh` and need no running app. It was built so that an AI coding agent can drive Wingman safely, with `--json` output on every command.
 
-### Shared tokens (`stage0/shared/`)
+### Shared tokens (`app/shared/`)
 
 `tokens.css` holds the design tokens (colours, fonts, spacing, dark and light) used by the window and the answer window. `ask.js` is shared UI logic for the ask countdown.
 
 ### Brand (`brand/`)
 
-The capybara logo with a yuzu on its head, icons and the build script. `scripts/make-app.sh` copies the Electron runtime to `stage0/.app/Wingman.app`, renames it, turns off three Electron fuses (`scripts/set-fuses.cjs`) and adds a launcher that loads this repo's code, so the Dock and notifications say "Wingman". `install.sh` at the repo root checks the machine, installs, builds the app and can copy it to `/Applications` (see [DEVELOPMENT.md](DEVELOPMENT.md#install-update-uninstall)).
+The capybara logo with a yuzu on its head, icons and the build script. `scripts/make-app.sh` copies the Electron runtime to `app/.app/Wingman.app`, renames it, turns off three Electron fuses (`scripts/set-fuses.cjs`) and adds a launcher that loads this repo's code, so the Dock and notifications say "Wingman". `install.sh` at the repo root checks the machine, installs, builds the app and can copy it to `/Applications` (see [DEVELOPMENT.md](DEVELOPMENT.md#install-update-uninstall)).
 
 ## Processes and data flow
 
@@ -152,7 +152,7 @@ Other lifecycle rules: Stop and delete asks first (Cancel is the default); Quit 
 
 ## Files on disk
 
-Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN_DATA_DIR`; `WINGMAN_CALLS_DIR` and `WINGMAN_BRIEFS_DIR` still work). It holds `calls/`, `briefs/` (with `briefs/attachments/`) and `entities.json`. It is outside the repo. Older versions kept these in `stage0/calls` and `stage0/data/private`; a one-time migration copies them (never moves). Settings, keys, profile and pack stay in `~/.config/wingman`.
+Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN_DATA_DIR`; `WINGMAN_CALLS_DIR` and `WINGMAN_BRIEFS_DIR` still work). It holds `calls/`, `briefs/` (with `briefs/attachments/`) and `entities.json`. It is outside the repo. Older versions kept these in `calls/` and `data/private/` inside the app folder (`stage0/` before it was renamed to `app/`); a one-time migration copies them (never moves). Settings, keys, profile and pack stay in `~/.config/wingman`.
 
 Per call, in `<data folder>/calls/<ulid>/` (owner-only, umask 077; audio is never saved):
 
@@ -176,7 +176,7 @@ Outside the call folders:
 | `~/.config/wingman/keys.env` | Legacy keys file. Still read if present; Settings -> Keys can move it into the Keychain. |
 | `~/.config/wingman/run/control.sock` | The control socket. |
 | `<data folder>/calls/tray.log` | Menu-bar app log: status lines only, no call content. |
-| `stage0/data/example-pack/` (`bank.yaml`, `bank.en.yaml`, `house-style.md`, `keyterms.txt`, `topics.txt`) | The example pack: answer bank, tone rules, speech hints and topic words. Your own pack (`~/.config/wingman/pack/`) replaces it, file by file. |
+| `app/data/example-pack/` (`bank.yaml`, `bank.en.yaml`, `house-style.md`, `keyterms.txt`, `topics.txt`) | The example pack: answer bank, tone rules, speech hints and topic words. Your own pack (`~/.config/wingman/pack/`) replaces it, file by file. |
 | `~/.config/wingman/profile.yaml` | Your profile: name, spellings, how to address you, your business. Never in the repo. |
 | `<data folder>/briefs/`, `<data folder>/entities.json` | Saved prepared meetings with their background files, and the optional client snapshot. |
 
@@ -208,7 +208,7 @@ Caps: `budget.maxUsdPerCall` (default $2) drops AI to bank-only when reached; `b
 
 | Layer | What | Run |
 |---|---|---|
-| Unit tests | Over 500 tests in `stage0/src/*.test.ts` (node's test runner through tsx, run one file at a time): detector, bank, guards, calc, split, echo, settings, keys (mocked `security`), CLI, control socket, controller (fake child), dashboard security, overlay logic, health ladder, supervised audio, sleep and disk handling, survived errors, install and migration, setup, profile and pack, flow, interview mode, summary, frame, tips, a repo guard (no private words in tracked files, when you set a list), and an offline end-to-end call with scripted speech and scripted AI. CI runs the type check and the tests on macOS. | `pnpm test` |
+| Unit tests | Over 500 tests in `app/src/*.test.ts` (node's test runner through tsx, run one file at a time): detector, bank, guards, calc, split, echo, settings, keys (mocked `security`), CLI, control socket, controller (fake child), dashboard security, overlay logic, health ladder, supervised audio, sleep and disk handling, survived errors, install and migration, setup, profile and pack, flow, interview mode, summary, frame, tips, a repo guard (no private words in tracked files, when you set a list), and an offline end-to-end call with scripted speech and scripted AI. CI runs the type check and the tests on macOS. | `pnpm test` |
 | Corpora | Detector precision/recall on `data/questions.tsv`; bank accuracy on 40 held-out utterances. | `pnpm detector`, `pnpm banktest` |
 | STT gate | Scores Deepgram on your recording of 40 Hebrew sentences with English tech terms (term recall, endpoint-to-final lag). | `pnpm gate` |
 | QA harness | `qa/scenarios/*.json` (32 invented call scripts) are rendered with macOS voices to stereo WAV (left = me, right = them, with pauses and overlaps), played in real time through the real engine with real Deepgram and real Haiku, and graded: question recall and precision, right card, price questions stall, split-question join, first-card time, STT word accuracy, summary present, guard leaks, cost. Output: `qa/report.md`. `--replay` re-plays what Deepgram heard for pennies; `--dry` only estimates cost; `--cap` sets a spend cap. | `pnpm qa --all` |

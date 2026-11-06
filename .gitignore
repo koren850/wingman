@@ -1,23 +1,26 @@
 node_modules
-stage0/calls/
-stage0/data/gold/recordings/
-stage0/data/gold/report-*.md
+# Backward compatibility: the app folder was called "stage0" before the rename. Checkouts that were updated keep their
+# own calls and private data there as untracked files; keep them out of git.
+stage0/
+app/calls/
+app/data/gold/recordings/
+app/data/gold/report-*.md
 *.env
 .DS_Store
 
-# Generated test audio (rebuild with: cd stage0 && pnpm run synth)
-stage0/data/synthetic/*.wav
-stage0/data/gold/synthetic.wav
+# Generated test audio (rebuild with: cd app && pnpm run synth)
+app/data/synthetic/*.wav
+app/data/gold/synthetic.wav
 
 # Client data snapshots (never committed)
-stage0/data/private/
+app/data/private
 
-# Synthetic QA (stage0/qa): rendered audio, TTS cache, QA call folders
-stage0/qa/out/
-stage0/qa/cache/
-stage0/qa/calls/
-stage0/qa/report-replay.*
-stage0/.app/
+# Synthetic QA (app/qa): rendered audio, TTS cache, QA call folders
+app/qa/out/
+app/qa/cache/
+app/qa/calls/
+app/qa/report-replay.*
+app/.app/
 
 # Never commit: logs, audio, local settings, secrets, builds, scratch
 *.log
@@ -29,10 +32,10 @@ stage0/.app/
 *.pem
 *.p12
 *.dmg
-stage0/data/briefs/
+app/data/briefs/
 .claude/
 
 # Personal session notes (never committed)
 NEXT-SESSION.md
-stage0/qa/report.json
-stage0/qa/report.md
+app/qa/report.json
+app/qa/report.md

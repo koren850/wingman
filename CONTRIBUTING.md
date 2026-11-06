@@ -16,17 +16,17 @@ cd wingman
 To work on code only (no app, no Electron download):
 
 ```bash
-cd stage0
+cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ```
 
-pnpm 11 comes through corepack (`corepack enable`). The version is fixed in `stage0/package.json`.
+pnpm 11 comes through corepack (`corepack enable`). The version is fixed in `app/package.json`.
 
 More detail: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Run the checks
 
-From `stage0/`:
+From `app/`:
 
 ```bash
 ./node_modules/.bin/tsc --noEmit -p .     # type check
@@ -51,7 +51,7 @@ Make your own list:
 
 - Put the words in the environment, separated by commas:
   `WINGMAN_DENYLIST="word1,word2" pnpm test`
-- Or put one word (or regex) per line in `stage0/data/private/denylist.txt`. That file is git-ignored.
+- Or put one word (or regex) per line in `app/data/private/denylist.txt`. That file is git-ignored.
 
 Use words that must never appear: your name, your employer, client names, your own domains, your phone number. If no list is set, the test skips itself. That is what happens in CI.
 
@@ -71,7 +71,7 @@ This repo must contain nothing personal and nothing from a real call.
 The short version. The full list is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#code-conventions).
 
 - A bug fix comes with a regression test.
-- Every new setting goes in `stage0/config/defaults.yaml` (with a comment) and in the schema in `stage0/src/settings.ts`.
+- Every new setting goes in `app/config/defaults.yaml` (with a comment) and in the schema in `app/src/settings.ts`.
 - Anything the AI says passes through `src/guards.ts`. Add a test for each new pattern it must block.
 - Keys and secrets are never logged, saved in settings, or put in a call folder.
 - A failure must never produce a wrong card. When unsure, show nothing or a "Buy time" line.

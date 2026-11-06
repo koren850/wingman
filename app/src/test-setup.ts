@@ -4,8 +4,8 @@ import { join, dirname } from "node:path";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-const STAGE0 = join(dirname(fileURLToPath(import.meta.url)), "..");
-process.env.WINGMAN_PROFILE_FILE = join(STAGE0, "data", "test", "profile.yaml");
+const APP_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
+process.env.WINGMAN_PROFILE_FILE = join(APP_DIR, "data", "test", "profile.yaml");
 // The user data folder (calls, prepared meetings, snapshot) is a temp folder: tests never touch the real ~/Library/Application Support/Wingman.
 process.env.WINGMAN_DATA_DIR ||= mkdtempSync(join(tmpdir(), "wingman-test-data-"));
-process.env.WINGMAN_PACK_DIR = join(STAGE0, "data", "test", "no-pack"); // does not exist: the pack falls back to data/example-pack
+process.env.WINGMAN_PACK_DIR = join(APP_DIR, "data", "test", "no-pack"); // does not exist: the pack falls back to data/example-pack

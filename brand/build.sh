@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 python3 build.py "$@"
-../stage0/node_modules/.bin/electron render.cjs
+../app/node_modules/.bin/electron render.cjs
 
 # Mac .icns
 rm -rf Wingman.iconset && mkdir Wingman.iconset

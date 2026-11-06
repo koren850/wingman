@@ -17,8 +17,8 @@
 set -uo pipefail
 
 ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAGE0="$ROOT/stage0"
-APP_OUT="$STAGE0/.app/Wingman.app"
+APP_DIR="$ROOT/app"
+APP_OUT="$APP_DIR/.app/Wingman.app"
 APP_DST="${WINGMAN_APPS_DIR:-/Applications}/Wingman.app"
 BIN_DIR="${WINGMAN_BIN_DIR:-$HOME/.local/bin}"
 LINK="$BIN_DIR/wingman"
@@ -70,8 +70,9 @@ if [ "$MODE" = uninstall ]; then
   if [ -e "$APP_DST" ]; then
     if [ "$(bundle_id "$APP_DST")" = "com.wingman.app" ]; then run rm -rf "$APP_DST" && ok "removed $APP_DST"; else warn "$APP_DST is not Wingman (bundle id differs): left alone"; fi
   else say "no $APP_DST"; fi
-  if [ -d "$STAGE0/.app" ]; then run rm -rf "$STAGE0/.app" && ok "removed $STAGE0/.app"; else say "no built app in the repo"; fi
-  if [ -L "$LINK" ] && [[ "$(readlink "$LINK")" == "$STAGE0/"* ]]; then run rm -f "$LINK" && ok "removed $LINK"
+  if [ -d "$APP_DIR/.app" ]; then run rm -rf "$APP_DIR/.app" && ok "removed $APP_DIR/.app"; else say "no built app in the repo"; fi
+  # (a link made before the folder was renamed from stage0/ to app/ points into stage0/: remove that one too)
+  if [ -L "$LINK" ] && [[ "$(readlink "$LINK")" == "$APP_DIR/"* || "$(readlink "$LINK")" == "$ROOT/stage0/"* ]]; then run rm -f "$LINK" && ok "removed $LINK"
   elif [ -e "$LINK" ]; then warn "$LINK is not a link into this folder: left alone"; else say "no $LINK"; fi
   if [ "$PURGE" = 1 ]; then
     step "Purge your data"
@@ -79,7 +80,7 @@ if [ "$MODE" = uninstall ]; then
     say "  $DATA_DIR      (all calls, transcripts, summaries, prepared meetings, attachments)"
     say "  $CONFIG_DIR   (settings, profile, your pack, keys.env)"
     say "  the Wingman API keys in the macOS Keychain (service \"wingman\")"
-    say "The old copy inside this repo folder (stage0/calls, stage0/data/private), if you still have one, is NOT touched."
+    say "The old copy inside this repo folder (calls/ and data/private/ in app/, or in its former name stage0/), if you still have one, is NOT touched."
     if [ "$DRY" = 1 ]; then say "would ask you to type DELETE"; else
       if [ ! -t 0 ]; then echo "install.sh: --purge needs a terminal to confirm." >&2; exit 1; fi
       read -r -p "  Type DELETE to continue, anything else cancels: " c
@@ -125,7 +126,7 @@ fi
 # ---------------------------------------------------------------------------------------------------------------- install / check
 [ "$MODE" = check ] && step "Checking this Mac (nothing is changed)" || step "Checking this Mac"
 
-[ -d "$STAGE0" ] && [ -f "$STAGE0/package.json" ] || { bad "stage0/package.json not found next to install.sh. Run it from a complete Wingman folder."; exit 1; }
+[ -d "$APP_DIR" ] && [ -f "$APP_DIR/package.json" ] || { bad "app/package.json not found next to install.sh. Run it from a complete Wingman folder."; exit 1; }
 
 # macOS and CPU
 if [ "$(uname -s)" != Darwin ]; then bad "Wingman runs on macOS only (found $(uname -s))."; exit 1; fi
@@ -155,19 +156,19 @@ fi
 if [ "$FAILED" = 1 ]; then echo; echo "Fix the missing items above, then run ./install.sh again."; exit 1; fi
 
 # pnpm (through corepack)
-PNPM_WANT="$(node -p 'require(process.argv[1]).packageManager.split("@")[1]' "$STAGE0/package.json" 2>/dev/null)"
-if command -v pnpm >/dev/null 2>&1 && [ "$(cd "$STAGE0" && pnpm -v 2>/dev/null | cut -d. -f1)" = "${PNPM_WANT%%.*}" ]; then
-  ok "pnpm $(cd "$STAGE0" && pnpm -v)"
+PNPM_WANT="$(node -p 'require(process.argv[1]).packageManager.split("@")[1]' "$APP_DIR/package.json" 2>/dev/null)"
+if command -v pnpm >/dev/null 2>&1 && [ "$(cd "$APP_DIR" && pnpm -v 2>/dev/null | cut -d. -f1)" = "${PNPM_WANT%%.*}" ]; then
+  ok "pnpm $(cd "$APP_DIR" && pnpm -v)"
 else
   warn "pnpm ${PNPM_WANT%%.*} not available yet: enabling it with corepack (comes with Node, no sudo)"
   if command -v corepack >/dev/null 2>&1; then
     if [ "$MODE" != check ] && [ "$DRY" != 1 ]; then
       corepack enable >/dev/null 2>&1 || { mkdir -p "$BIN_DIR" && corepack enable --install-directory "$BIN_DIR" >/dev/null 2>&1; }
       case ":$PATH:" in *":$BIN_DIR:"*) ;; *) export PATH="$BIN_DIR:$PATH" ;; esac
-      (cd "$STAGE0" && corepack prepare "pnpm@$PNPM_WANT" --activate >/dev/null 2>&1) || true
+      (cd "$APP_DIR" && corepack prepare "pnpm@$PNPM_WANT" --activate >/dev/null 2>&1) || true
     else say "would run: corepack enable"; fi
     if [ "$MODE" != check ] && [ "$DRY" != 1 ]; then
-      if command -v pnpm >/dev/null 2>&1 && (cd "$STAGE0" && pnpm -v >/dev/null 2>&1); then ok "pnpm $(cd "$STAGE0" && pnpm -v)"; else bad "could not enable pnpm. Try: corepack enable   or   npm install -g pnpm@$PNPM_WANT"; exit 1; fi
+      if command -v pnpm >/dev/null 2>&1 && (cd "$APP_DIR" && pnpm -v >/dev/null 2>&1); then ok "pnpm $(cd "$APP_DIR" && pnpm -v)"; else bad "could not enable pnpm. Try: corepack enable   or   npm install -g pnpm@$PNPM_WANT"; exit 1; fi
     fi
   else bad "corepack not found. Install pnpm yourself: npm install -g pnpm@$PNPM_WANT"; FAILED=1; fi
 fi
@@ -189,8 +190,8 @@ command -v git >/dev/null 2>&1 && ok "git" || warn "git not found: needed only f
 
 if [ "$MODE" = check ]; then
   step "Install state"
-  [ -d "$STAGE0/node_modules/.pnpm" ] && ok "dependencies installed" || warn "dependencies not installed yet"
-  (cd "$STAGE0" && ./scripts/make-app.sh --check | sed 's/^/  /')
+  [ -d "$APP_DIR/node_modules/.pnpm" ] && ok "dependencies installed" || warn "dependencies not installed yet"
+  (cd "$APP_DIR" && ./scripts/make-app.sh --check | sed 's/^/  /')
   [ -d "$APP_DST" ] && ok "$APP_DST present" || say "$APP_DST not installed"
   [ -L "$LINK" ] && ok "wingman command: $LINK" || say "no wingman command link ($LINK)"
   [ -d "$DATA_DIR" ] && ok "data folder: $DATA_DIR" || say "data folder not created yet: $DATA_DIR"
@@ -199,17 +200,17 @@ if [ "$MODE" = check ]; then
 fi
 [ "$FAILED" = 1 ] && { echo; echo "Fix the missing items above, then run ./install.sh again."; exit 1; }
 
-# Dependencies + Electron + the app (stage0 postinstall downloads Electron and builds .app/Wingman.app)
+# Dependencies + Electron + the app (app postinstall downloads Electron and builds .app/Wingman.app)
 step "Installing dependencies and building the app (first time downloads about 250 MB)"
 PNPM_ARGS=(install --frozen-lockfile); [ "$OFFLINE" = 1 ] && PNPM_ARGS+=(--offline)
-if [ "$DRY" = 1 ]; then say "would run in stage0: pnpm ${PNPM_ARGS[*]}"; else
-  (cd "$STAGE0" && pnpm "${PNPM_ARGS[@]}") || { echo; echo "install.sh: pnpm install failed (see above). Fix the reason and run ./install.sh again; it is safe to repeat." >&2; exit 1; }
+if [ "$DRY" = 1 ]; then say "would run in app: pnpm ${PNPM_ARGS[*]}"; else
+  (cd "$APP_DIR" && pnpm "${PNPM_ARGS[@]}") || { echo; echo "install.sh: pnpm install failed (see above). Fix the reason and run ./install.sh again; it is safe to repeat." >&2; exit 1; }
 fi
 if [ "$DRY" != 1 ]; then
   # pnpm only runs the postinstall build when it installs something, so a moved folder (or a new Electron) would keep the old app.
   # make-app.sh --stale says so (missing app, built for another folder, other Electron version); a current app is left alone: fast and idempotent.
-  if [ "${UPDATING:-0}" = 1 ] || (cd "$STAGE0" && ./scripts/make-app.sh --stale); then
-    (cd "$STAGE0" && ./scripts/make-app.sh) || { echo "install.sh: building the app failed (see above)." >&2; exit 1; }
+  if [ "${UPDATING:-0}" = 1 ] || (cd "$APP_DIR" && ./scripts/make-app.sh --stale); then
+    (cd "$APP_DIR" && ./scripts/make-app.sh) || { echo "install.sh: building the app failed (see above)." >&2; exit 1; }
   fi
   [ -x "$APP_OUT/Contents/MacOS/Wingman" ] && ok "built $APP_OUT" || { bad "the app was not built"; exit 1; }
 else say "would build $APP_OUT"; fi
@@ -221,15 +222,15 @@ if [ -d "$APP_DST" ] && [ "$(bundle_id "$APP_DST")" != "com.wingman.app" ]; then
 elif ask "Copy Wingman.app to /Applications (Launchpad, Spotlight, Dock)?" y; then
   if running_dst; then warn "Wingman is running from $APP_DST: quit it (menu-bar icon > Quit Wingman), then run ./install.sh again to refresh it."
   else run bash -c 'rm -rf "$1.new" && cp -R "$2" "$1.new" && { [ ! -e "$1" ] || mv "$1" "$1.old"; } && mv "$1.new" "$1" && rm -rf "$1.old"' _ "$APP_DST" "$APP_OUT" && { ok "installed $APP_DST"; INSTALLED_APP=1; }; fi
-else say "skipped. Later:  cd stage0 && pnpm run install-app"; fi
+else say "skipped. Later:  cd app && pnpm run install-app"; fi
 say "Note: the app starts from this folder ($ROOT). If you move or delete it, run ./install.sh again from the new place."
 
 # wingman command
 step "The wingman command"
-if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$STAGE0/scripts/wingman-cli.sh" ]; then ok "$LINK already points here"
+if [ -L "$LINK" ] && [ "$(readlink "$LINK")" = "$APP_DIR/scripts/wingman-cli.sh" ]; then ok "$LINK already points here"
 else
   if [ -e "$LINK" ] || [ -L "$LINK" ]; then Q="Replace the existing $LINK with a link to this Wingman?"; else Q="Add a 'wingman' command ($LINK)?"; fi
-  if ask "$Q" y; then run mkdir -p "$BIN_DIR" && run ln -sf "$STAGE0/scripts/wingman-cli.sh" "$LINK" && ok "linked $LINK"; else say "skipped. Use:  stage0/scripts/wingman-cli.sh <command>"; fi
+  if ask "$Q" y; then run mkdir -p "$BIN_DIR" && run ln -sf "$APP_DIR/scripts/wingman-cli.sh" "$LINK" && ok "linked $LINK"; else say "skipped. Use:  app/scripts/wingman-cli.sh <command>"; fi
 fi
 case ":$PATH:" in *":$BIN_DIR:"*) ;; *) [ -L "$LINK" ] && warn "$BIN_DIR is not on your PATH. Add this line to ~/.zshrc, then open a new Terminal:   export PATH=\"$BIN_DIR:\$PATH\"" ;; esac
 
@@ -237,6 +238,6 @@ step "Done"
 [ "$NO_FFMPEG" = 1 ] && warn "ffmpeg is still missing: the microphone will not work until you run  brew install ffmpeg"
 if [ "$INSTALLED_APP" = 1 ]; then say "Next: open Wingman from Spotlight or Launchpad. The first window walks you through your API keys,"; else say "Next: run  open \"$APP_OUT\"  to start Wingman. The first window walks you through your API keys,"; fi
 say "your name, the microphone and the permissions. You need a Deepgram key and an Anthropic key (both paid, a few dollars an hour at most)."
-say "Without the app: stage0/scripts/wingman.sh --open-window   (or  pnpm dashboard  inside stage0)."
+say "Without the app: app/scripts/wingman.sh --open-window   (or  pnpm dashboard  inside app)."
 say "Update later with:  wingman update     Uninstall with:  wingman uninstall"
 exit 0

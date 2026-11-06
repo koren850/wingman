@@ -403,7 +403,7 @@ if (!S.run.noAi) {
                   ? ok("prompt cache works")
                   : warn(
                       "cache read is 0 on call 2: the prefix may be under the model's cache minimum",
-                      IS_APP ? "safe to ignore: calls just cost a little more" : "pad buildPrefix() in src/reflex.ts (safe to ignore in Stage 0)",
+                      IS_APP ? "safe to ignore: calls just cost a little more" : "pad buildPrefix() in src/reflex.ts (safe to ignore)",
                     );
               if (i === 1) ok(`${ref} answers${mi ? " (fallback)" : ""}`);
             },

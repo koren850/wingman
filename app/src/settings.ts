@@ -11,9 +11,9 @@ import YAML from "yaml";
 import { z } from "zod";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-export const STAGE0 = join(HERE, "..");
-export const DEFAULTS_FILE = join(STAGE0, "config", "defaults.yaml");
-export const PROFILES_DIR = join(STAGE0, "profiles");
+export const APP_DIR = join(HERE, "..");
+export const DEFAULTS_FILE = join(APP_DIR, "config", "defaults.yaml");
+export const PROFILES_DIR = join(APP_DIR, "profiles");
 export const USER_SETTINGS_FILE = join(homedir(), ".config", "wingman", "settings.yaml");
 export const expandHome = (p: string) => (p.startsWith("~/") ? join(homedir(), p.slice(2)) : p);
 
@@ -418,7 +418,7 @@ export function redact(key: string, v: unknown): string {
 
 /** Template for the user's settings file: everything commented out, so nothing changes until a line is uncommented. */
 export const STARTER = `# Wingman personal settings (layer 2). Everything here is commented out, so nothing changes until you uncomment a line.
-# Every key and its default is documented in stage0/config/defaults.yaml. Check the result with: pnpm settings
+# Every key and its default is documented in app/config/defaults.yaml. Check the result with: pnpm settings
 # API keys do NOT go here: they live in ~/.config/wingman/keys.env.
 
 # stt:

@@ -45,7 +45,7 @@ Delete a call: **Stop and delete this call** (asks first), `wingman calls purge 
 
 Delete everything: `wingman uninstall --purge` removes the data folder, `~/.config/wingman` and the Keychain keys, after you type `DELETE`. Plain `wingman uninstall` removes only the app and the command link.
 
-**Older versions** kept calls in `stage0/calls/` and meetings in `stage0/data/private/` inside the repo folder. The first start of a newer version **copies** them into the data folder. It never moves or overwrites anything and writes a marker so it runs once. The old folders stay where they were: **delete them yourself** when you are happy with the copy, and check they are not in a backup you share.
+**Older versions** kept calls in `calls/` and meetings in `data/private/` inside the app folder (`stage0/` before it was renamed to `app/`). The first start of a newer version **copies** them into the data folder. It never moves or overwrites anything and writes a marker so it runs once. The old folders stay where they were: **delete them yourself** when you are happy with the copy, and check they are not in a backup you share.
 
 Important: the transcript and the summary of a real call can contain personal data and client secrets. Keep them out of backups you do not control and do not share the calls folder or the `qa/` output of real calls.
 
@@ -83,7 +83,7 @@ The menu-bar app listens on `~/.config/wingman/run/control.sock`.
 
 ## Git-ignored private folders
 
-These are in `.gitignore` and must never be committed: `stage0/calls/` and `stage0/data/private/` (the old in-repo locations and the optional denylist), `stage0/data/gold/recordings/`, `stage0/qa/out/`, `stage0/qa/cache/`, `stage0/qa/calls/`, `*.env`. Your real data is outside the repo, in the data folder and `~/.config/wingman`. The QA scenarios and the demo call use invented clients only. Before you publish a fork, check `git status` and your history for anything from a real call. A test (the repo guard) can check the tracked files against your own private word list: see [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
+These are in `.gitignore` and must never be committed: `app/calls/` and `app/data/private/` (and the former `app/` folder) (the old in-repo locations and the optional denylist), `app/data/gold/recordings/`, `app/qa/out/`, `app/qa/cache/`, `app/qa/calls/`, `*.env`. Your real data is outside the repo, in the data folder and `~/.config/wingman`. The QA scenarios and the demo call use invented clients only. Before you publish a fork, check `git status` and your history for anything from a real call. A test (the repo guard) can check the tracked files against your own private word list: see [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
 
 ## The answer window and screen sharing
 

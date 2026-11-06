@@ -310,7 +310,7 @@ test("install.sh --help prints the whole header, including the data and Keychain
 
 test("make-app.sh --stale: missing app, a moved folder or another Electron are stale; a current build is not", BASH, () => {
   const base = realpathSync(tmp());
-  const stage = join(base, "stage0");
+  const stage = join(base, "app");
   mkdirSync(join(stage, "scripts"), { recursive: true });
   mkdirSync(join(stage, "node_modules", "electron"), { recursive: true });
   copyFileSync(join(ROOT, "scripts", "make-app.sh"), join(stage, "scripts", "make-app.sh"));
@@ -329,7 +329,7 @@ test("make-app.sh --stale: missing app, a moved folder or another Electron are s
   writeFileSync(join(stage, "node_modules", "electron", "package.json"), JSON.stringify({ version: "10.0.0" }));
   assert.equal(stale(stage), 0, "Electron upgraded");
   writeFileSync(join(stage, "node_modules", "electron", "package.json"), JSON.stringify({ version: "9.9.9" }));
-  const moved = join(base, "moved-stage0");
+  const moved = join(base, "moved-app");
   renameSync(stage, moved);
   assert.equal(stale(moved), 0, "the folder moved: the baked path is wrong, rebuild");
 });

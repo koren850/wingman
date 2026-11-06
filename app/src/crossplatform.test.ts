@@ -95,12 +95,12 @@ test("bin helper: .bin/<tool> on macOS and Linux; node + the tsx CLI, or the rea
   const root = "/r";
   assert.deepEqual(bin.binCommand("tsx", ["a.ts"], root, { platform: "darwin" }), { cmd: "/r/node_modules/.bin/tsx", args: ["a.ts"] });
   assert.deepEqual(bin.binCommand("electron", ["m.cjs"], root, { platform: "linux" }), { cmd: "/r/node_modules/.bin/electron", args: ["m.cjs"] });
-  const w = bin.binCommand("tsx", ["src\\run.ts", "--file", "x.wav"], "C:\\w\\stage0", { platform: "win32", execPath: "C:\\node\\node.exe" });
+  const w = bin.binCommand("tsx", ["src\\run.ts", "--file", "x.wav"], "C:\\w\\app", { platform: "win32", execPath: "C:\\node\\node.exe" });
   assert.equal(w.cmd, "C:\\node\\node.exe");
-  assert.deepEqual(w.args, ["C:\\w\\stage0\\node_modules\\tsx\\dist\\cli.mjs", "src\\run.ts", "--file", "x.wav"]);
+  assert.deepEqual(w.args, ["C:\\w\\app\\node_modules\\tsx\\dist\\cli.mjs", "src\\run.ts", "--file", "x.wav"]);
   const fs = { readFileSync: () => "electron.exe" };
-  const e = bin.binCommand("electron", ["overlay\\main.cjs"], "C:\\w\\stage0", { platform: "win32", fs, env: {} });
-  assert.equal(e.cmd, "C:\\w\\stage0\\node_modules\\electron\\dist\\electron.exe");
+  const e = bin.binCommand("electron", ["overlay\\main.cjs"], "C:\\w\\app", { platform: "win32", fs, env: {} });
+  assert.equal(e.cmd, "C:\\w\\app\\node_modules\\electron\\dist\\electron.exe");
   assert.deepEqual(e.args, ["overlay\\main.cjs"]);
   const e2 = bin.binCommand("electron", [], "C:\\w", {
     platform: "win32",

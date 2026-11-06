@@ -1,6 +1,6 @@
-# Wingman app and operator guide (stage0)
+# Wingman app and operator guide (app)
 
-This is the detailed guide for the app in `stage0/`. For what Wingman is, requirements and install steps, read the [root README](../README.md). Problems: [TROUBLESHOOTING](../docs/TROUBLESHOOTING.md). Writing your answer cards: [PACK-FORMAT](../docs/PACK-FORMAT.md). Design: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Decisions: [docs/DECISIONS.md](../docs/DECISIONS.md). Privacy: [docs/PRIVACY-AND-SECURITY.md](../docs/PRIVACY-AND-SECURITY.md). Developing: [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md). Limits: macOS only, Hebrew first, needs Deepgram and Anthropic keys, costs money per call, and is not a recording or consent tool.
+This is the detailed guide for the app in `app/`. For what Wingman is, requirements and install steps, read the [root README](../README.md). Problems: [TROUBLESHOOTING](../docs/TROUBLESHOOTING.md). Writing your answer cards: [PACK-FORMAT](../docs/PACK-FORMAT.md). Design: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Decisions: [docs/DECISIONS.md](../docs/DECISIONS.md). Privacy: [docs/PRIVACY-AND-SECURITY.md](../docs/PRIVACY-AND-SECURITY.md). Developing: [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md). Limits: macOS only, Hebrew first, needs Deepgram and Anthropic keys, costs money per call, and is not a recording or consent tool.
 
 Wingman is a live meeting AI assistant. It listens to a call or meeting (any kind, or just you thinking aloud), answers questions the other side asks, answers questions **you** ask it, and notes, tips and summarises. It is not a sales or marketing tool. The answer bank (your pack; an example web/hosting pack is included) is one knowledge source, used when the call is about that kind of work.
 
@@ -16,7 +16,7 @@ Launched from the app or the terminal. Audio goes to Deepgram (and text to Anthr
 4. `pnpm run doctor` (the app calls it "Readiness check") checks keys, mic, system audio, Deepgram and Haiku (incl. prompt cache).
 5. Set `audio.mic.device` (or `WINGMAN_MIC`) if the default mic is wrong (the setup has a microphone picker; or list devices with `ffmpeg -f avfoundation -list_devices true -i ""`, then e.g. `WINGMAN_MIC=":1"`). Avoid AirPods for the first call.
 
-Working on the code without the app? `cd stage0 && WINGMAN_SKIP_APP=1 pnpm install` skips the Electron download.
+Working on the code without the app? `cd app && WINGMAN_SKIP_APP=1 pnpm install` skips the Electron download.
 
 ## Commands
 | Command | What it does |
@@ -57,7 +57,7 @@ Naming: the **profile** is `profile.yaml` (you). A **settings preset** is a file
 - `data/gold/SCRIPT.md` the 40 sentences to record for the STT gate
 
 ## Each call is saved to `<data folder>/calls/<id>/`
-The data folder is `~/Library/Application Support/Wingman` (override: `WINGMAN_DATA_DIR`; only the calls folder: `WINGMAN_CALLS_DIR`; only the prepared meetings: `WINGMAN_BRIEFS_DIR`). Inside: `calls/`, `briefs/` (with `briefs/attachments/`) and `entities.json`. Settings, keys, profile and pack stay in `~/.config/wingman`. The data folder is also where Electron keeps its own files (cache, local storage), so extra entries there are normal. Older versions kept calls in `stage0/calls` and meetings in `stage0/data/private`: the first start copies them over (never moves, never overwrites). Delete the old folders yourself once the new ones look right.
+The data folder is `~/Library/Application Support/Wingman` (override: `WINGMAN_DATA_DIR`; only the calls folder: `WINGMAN_CALLS_DIR`; only the prepared meetings: `WINGMAN_BRIEFS_DIR`). Inside: `calls/`, `briefs/` (with `briefs/attachments/`) and `entities.json`. Settings, keys, profile and pack stay in `~/.config/wingman`. The data folder is also where Electron keeps its own files (cache, local storage), so extra entries there are normal. Older versions kept calls in `app/calls` and meetings in `app/data/private`: the first start copies them over (never moves, never overwrites). Delete the old folders yourself once the new ones look right.
 
 `events.jsonl`, `transcript.jsonl`, `cards.jsonl`, `latency.jsonl` (speech end → bank card / tag / first words), `usage.jsonl` (tokens, STT seconds).
 Files are user-only (umask 077). Delete calls you don't need with `pnpm purge`; no encryption yet (interim privacy policy). Env (still work, mapped onto settings): `WINGMAN_ENDPOINT_MS` (= `stt.endpointMs`, default 200; try 700-1000 if questions get split at pauses), `WINGMAN_SHOW_IN_CAPTURE=1` (= `overlay.contentProtection: false`, for the Zoom share test), `WINGMAN_MIC`, `WINGMAN_ALLOW_PRIMARY=1`.
