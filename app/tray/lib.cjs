@@ -476,6 +476,18 @@ function confirmCliStart(o) {
       "It used the wingman command. Starting means Wingman listens to the microphone and sends the audio for transcription. Only start if you asked for this.",
   });
 }
+/** Native question for "Start listening" from the command line (privacy.requireConsentAck is the consent gate). Resolves true only on a click on "Start listening". */
+function confirmCliConsent(o) {
+  return askNative(o, {
+    type: "question",
+    buttons: ["Cancel", "Start listening"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "A program on this Mac wants Wingman to start listening.",
+    detail:
+      "You asked Wingman to wait for your go-ahead. Starting means it listens to the microphone and sends the audio for transcription. Only continue if you asked for this.",
+  });
+}
 /** Native question for stop-and-delete from the command line. Resolves true only on a click on "Stop and delete". */
 function confirmCliStopDelete(o) {
   return askNative(o, {
@@ -608,6 +620,7 @@ async function requestQuit(o) {
 
 module.exports = {
   confirmCliStart,
+  confirmCliConsent,
   confirmCliStopDelete,
   askBeforeCliStart,
   settingsReader,
