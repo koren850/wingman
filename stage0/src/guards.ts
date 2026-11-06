@@ -3,8 +3,26 @@
 // Patterns are deliberately broad (a false hit only costs a stall line; a missed price or promise would be spoken to a client).
 // Note: JS \b is ASCII-only, so Hebrew patterns use explicit lookaheads/lookbehinds on [א-ת] instead.
 
+// English number words and Hebrew number words, shared by the price, date and salary rules.
+const EN_NUM = "one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|a few|a couple of|several|a";
+const HE_NUM = "אחד|אחת|שניים|שתיים|שני|שתי|שלושה|שלוש|ארבעה|ארבע|חמישה|חמש|שישה|שש|שבעה|שבע|שמונה|תשעה|תשע|עשרה|עשר|עשרים|שלושים|ארבעים|חמישים|שישים|שבעים|שמונים|תשעים|מאה|מאתיים|מאות";
+const CURRENCY_CODES = "nis|ils|usd|eur|gbp|dollars?|shekels?|euros?|pounds?|quid|bucks";
 const PRICE = [
-  /[₪$€]\s?\d/, /\d[\d,.]*\s?(₪|ש"?ח|שקל|שקלים|דולר|יורו|nis|usd|eur|dollars?|shekels?|euros?|bucks)(?![\p{L}])/iu,
+  /[₪$€£]\s?\d/, new RegExp(`\\d[\\d,.]*\\s?(₪|ש"?ח|ש''ח|שקל|שקלים|דולר|יורו|${CURRENCY_CODES})(?![\\p{L}])`, "iu"),
+  // currency code before the number: "USD 500", "GBP 200", "NIS 1200"
+  /\b(?:nis|ils|usd|eur|gbp)\s?\d/i,
+  // k / K / 1.2K / grand / spelled-out thousands, with or without a currency: "5K a month", "5 grand", "35 thousand", "thirty five thousand"
+  /\d[\d,.]*\s?k\b(?!\s?(?:requests|users|tokens|rows|records|lines))/i,
+  /\d[\d,.]*\s?(?:grand|thousand)\b/i,
+  new RegExp(`\\b(?:${EN_NUM})(?:[- ](?:${EN_NUM}))?\\s+(?:thousand|grand\\b(?!\\s+(?:opening|total|tour|piano|slam|plan|scheme|prize)))\\b`, "i"),
+  /\b(?:a|one) thousand\b/i,
+  /\b(?:a|one|two|three|four|five|ten|twenty|fifty|few|couple of|several) grand\b(?!\s+(?:opening|total|tour|piano|slam|plan|scheme|prize))/i,
+  // Hebrew: per-unit rates and bare big number words ("300 לשעה", "התעריף 300", "חמש מאות", "אלף וחמש מאות")
+  /\d[\d,.]*\s?(?:ל(?:שעה|יום|שנה|משתמש|לקוח)|בשעה)(?![א-ת])/, /\d{3}[\d,.]*\s?(?:לחודש|בחודש)(?![א-ת])/,   // "300 לשעה", "500 לחודש" but not the date "15 לחודש"
+  /(?<![א-ת])(?:ה)?תעריף\s+(?:של\s+|כ-?\s?)?\d/,
+  /(?<![א-ת])ו?(?:מאתיים|מאות|אלפיים|אלפים|אלף)(?![א-ת])/,
+  // "we charge a flat 300", "quoted 1200" (a bare figure after a charging word)
+  /\b(?:charge|charging|charged|flat|quote|quoted|billed?|billing)\s+(?:you\s+|a\s+|an\s+|of\s+|at\s+|is\s+|fee\s+|rate\s+|flat\s+)*\d{3,}/i,
   /(עולה|עולים|מחיר|מחירו|יעלה|יעלו|עלות|עלותו|תשלום)\s+(של\s+|כ-?\s?|בערך\s+|בסביבות\s+)?\d/, /\d+\s?(אלף|אלפים)\s?(שקל|₪)?/,
   // a price verb followed shortly by a big number word, no currency said: "יעלה אלף חמש מאות", "עלות כעשרים אלף"
   /(עולה|עולים|יעלה|יעלו|עלות|עלותו|מחיר|מחירו|תעריף)\s+(?:\S+\s+){0,3}?ו?(מאה|מאתיים|מאות|אלף|אלפיים|אלפים|עשרות|עשרים|שלושים|ארבעים|חמישים|שישים|שבעים|שמונים|תשעים)(?![א-ת])/,
@@ -24,7 +42,9 @@ const DATE = [
   new RegExp(`(?<![א-ת])(עד\\s|ב-?|ל|מ)?(${MONTHS})(?![א-ת])`),   // "בנובמבר", "עד דצמבר"
   /\d{1,2}\s?(ל|ב)חודש(?![א-ת])/,                                  // "ב-15 לחודש"
   /(?<![א-ת])יום\s(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?![א-ת])/,   // bare weekday: "נעלה את זה יום שני"
-  /\b\d{1,2}[./]\d{1,2}([./]\d{2,4})?\b/,
+  // numeric dates: 5/11, 5/11/26, 12.5.2026, and a two-part dotted "12.5" unless it is a version or a measure ("version 2.0", "4.5 years")
+  /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/, /\b\d{1,2}\.\d{1,2}\.\d{2,4}\b/,
+  /(?<!(?:version|ver|v|python|node|ios|android|chrome|php|java|windows|macos|react|vue|angular|wordpress|wp)\s?)(?<![\d.,])(?:0?[1-9]|[12]\d|3[01])\.(?:0?[1-9]|1[0-2])(?![\d.,])(?!\s?(?:years?|months?|hours?|weeks?|days?|x|%|k\b|gb|mb|seconds?|שנ|חודש|שעות|ימים|אחוז))/i,
   /(עד|ב|ביום|לפני|אחרי)\s?(יום\s)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?![\u05D0-\u05EA])/,
   /(מחר|מחרתיים|השבוע|בשבוע הבא|בחודש הבא|עד סוף (היום|השבוע|החודש)|תוך \d+\s?(שעות|ימים|דקות))/,
   /תוך\s(שעה|שעתיים|יום|יומיים|שבוע|שבועיים|חודש|חודשיים|(שני|שלושה|שלוש|ארבעה|ארבע|חמישה|חמש|שישה|שש|שבעה|שבע|שמונה|תשעה|תשע|עשרה|עשר)\s(שעות|ימים|דקות|שבועות|חודשים))(?![א-ת])/,
@@ -44,6 +64,21 @@ const DATE = [
   /\b(?:next|this coming|coming)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|year|weekend)\b/i,
   /\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b/i,
   /\b(?:at|by|before|after)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b\d{1,2}:\d{2}\b/i,
+  // English month names and abbreviations, with or without a day ("Nov 12", "March 5th", "in November"). "may" only with a day or a preposition.
+  /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch(?!\s+(?:of|on|to|into|through|forward)\b))?|apr(?:il)?|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b(?!-)/i,
+  /\bmay\s+\d{1,2}\b|\b(?:in|of|by|until|till|since|from|early|late|mid|end of|beginning of)\s+may\b/i,
+  /\b\d{1,2}(?:st|nd|rd|th)\b/i,
+  // weekdays, any use ("this Thursday", "see you Thursday"), quarters, vague deadlines
+  /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b/i,
+  /\bQ[1-4]\b|\b(?:asap|a\.s\.a\.p|fortnight|(?:later|by|until|before|sometime|earlier) today)\b/i,
+  /\b(?:this|next|by|end of the|by the end of the)\s+(?:week|month|quarter|year)\b/i,
+  /\bwithin\s+(?:\S+\s+){0,3}?(?:minutes?|hours?|days?|weeks?|months?|years?)\b/i,
+  /\bin\s+(?:the\s+)?(?:next|coming|following)\s+(?:\w+\s+)?(?:minutes?|hours?|days?|weeks?|months?|years?)\b/i,
+  /\bin\s+(?:\w+[- ])?(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|\w+teen)\s+(?:minutes?|hours?|days?|weeks?|months?)\b/i,
+  // Hebrew additions: "בשבוע הבא", "בקרוב", "הערב", "ביום ה'", "תוך 30 יום", "בתוך שלושים יום"
+  /(?<![א-ת])(?:ב?שבוע הבא|ב?חודש הבא|ב?שנה הבאה|ברבעון הבא|בקרוב|בימים הקרובים|בשבועות הקרובים|הערב|הלילה|היום בערב|בסוף היום|אחרי החגים|לפני החגים)(?![א-ת])/,
+  /ביום\s[א-ו]['׳]/,
+  new RegExp(`(?<![א-ת])תוך\\s+(?:\\d+|(?:${HE_NUM})(?:\\s+ו?(?:${HE_NUM}))?)\\s+(?:שעות|שעה|דקות|ימים|יום|שבועות|חודשים|שנים)(?![א-ת])`),
   /\b(?:eod|eow|end of (?:the )?(?:day|week|month|quarter)|tonight|this (?:evening|afternoon|weekend))\b/i,
 ];
 // Promises are first-person: "אני מבטיח", "נבטיח", "אפשר להבטיח". A definition ("SLA: הספק מתחייב לזמינות") or a hedge ("אי אפשר להבטיח", "אני לא מבטיח") is fine.
@@ -53,8 +88,23 @@ const PROMISE = [
   /(?<![א-ת])ש?(אני|אנחנו|אנו|אתה|את|אתם|אתן)\s(?!לא\s)(?:\S+\s)?(?!לא\s)(מבטיח|מבטיחה|מבטיחים|מתחייב|מתחייבת|מתחייבים|ערב|ערבה|ערבים)(?![א-ת])/,
   /(?<![א-ת])(נבטיח|אבטיח|נתחייב|אתחייב|מובטח|מובטחת|אחריות מלאה|בוודאות|100\s?%)(?![א-ת])/,
   /(?<!(?:לא|אי|אין)\s(?:\S+\s){0,2})(?<![א-ת])(אפשר|ניתן|אוכל|נוכל|אני יכול|אני יכולה|אנחנו יכולים|יכול|יכולים)\s(ל)?הבטיח(?![א-ת])/, /(?<!(?:לא|אי|אין)\s(?:\S+\s){0,2})(?<![א-ת])להבטיח(?![א-ת])/,
-  /\b(?:i|we)(?:'ll| will|'d| would| can| do)?\s+(?:\w+\s)?(?:guarantee|promise|assure)\b/i, /\b(?:fully |100% |totally )?guaranteed\b(?! to be)/i, /\b(?:100\s?%|no risk|zero risk|risk[- ]free|without (?:any )?risk|no chance (?:of|that))\b/i,
+  /\b(?:i|we)(?:'ll| will|'d| would| can| do)?\s+(?:(?!(?:cannot|can't|can’t|don't|do not|won't|never)\b)\w+\s)?(?:guarantee|promise|assure)\b/i, /\b(?:fully |100% |totally )?guaranteed\b(?! to be)/i, /\b(?:100\s?%|no risk|zero risk|risk[- ]free|without (?:any )?risk|no chance (?:of|that))\b/i,
 ];
+
+// More promise forms (English + Hebrew). Hedges ("can't promise", "I can't guarantee", "לא מבטיח") stay allowed.
+PROMISE.push(
+  /(?<!n['’]t\s)(?<!\b(?:not|never|cannot|no|a|an|the|money-back)\s)\b(?:promise[sd]?|guarantee[sd]?)\b/i,
+  /\bmy word\b|\bconsider it done\b|\bcount on (?:us|me|it)\b|\brest assured\b|\b(?:i|we)\s+swear\b/i,
+  /\b(?:i|we)(?:'ll|'d| will| would| can)?\s+(?:definitely |certainly |absolutely |surely |personally )?make sure\b/i,
+  /\b(?:i|we)(?:'ll| will)\s+(?:definitely|certainly|absolutely|surely)\b/i,
+  /\b(?:we(?:'re| are)|i(?:'m| am)) (?:committed|commit(?:ting)?) to\b|\b(?:i|we) commit to\b/i,
+  /\b(?:it|this|that)(?:'ll| will)\s+(?:definitely |certainly |absolutely )?(?:be (?:done|ready|fixed|live|sorted|resolved|finished|delivered)|get done)\b/i,
+  /\b(?:i|we)(?:'ll| will)\s+(?:definitely |certainly )?get (?:it|this|that) (?:done|sorted|fixed)\b/i,
+  /\bno problem\b[^.?!]{0,30}\b(?:will|'ll|by)\b/i,
+  /(?<!לא\s)(?<!אי\s)(?<![א-ת])(?:מבטיח|מבטיחה|מבטיחים|מבטיחות|הבטחה|הבטחתי|הבטחנו)(?![א-ת])/,
+  /(?<!לא\s)(?<![א-ת])(?:נדאג|אדאג|ידאגו|נעשה את זה|אעשה את זה|אני אעשה|אנחנו נעשה|נסגור את זה|נסיים את זה|אסיים את זה)(?![א-ת])/,
+  /(?<![א-ת])(?:המילה שלי|מילה שלי|יש לך את המילה|תהיה בטוח|תהיי בטוחה|אתה יכול לסמוך|תסמוך עלינו|זה ייעשה|זה יהיה מוכן|זה יסתדר|בהחלט נעשה|בהחלט נדאג|בוודאי נעשה)(?![א-ת])/,
+);
 
 export type GuardResult = { ok: boolean; rule?: string };
 
@@ -74,7 +124,15 @@ export function guard(text: string): GuardResult {
 
 /** Interview answers: technical talk about costs, rates, dates and durations is the candidate's own content there ("$0.10 per million
  *  tokens", "2,100 tasks in 4 days"). Only a salary figure is blocked: salary comes from the prepared card, never from the model. */
-const SALARY = /(salary|compensation|gross|net pay|\bk\b|שכר|משכורת|ברוטו|נטו|אלף ש)/i;
+const SALARY = /(salary|compensation|gross|net pay|שכר|משכורת|ברוטו|נטו|אלף ש)/i;
+/** Salary figures that need no salary word: "25k", "$120k", "1.2K", "35 thousand", "thirty five thousand", "שלושים אלף". Technical counts ("30 thousand requests") pass. */
+const TECH_NOUN = "(?:requests?|users?|tokens?|rows?|records?|lines?|sites?|pages?|documents?|messages?|calls?|tasks?|files?|events?|customers?|visitors?|items?|products?|דפים|משתמשים|בקשות|שורות|אתרים|מסמכים|הודעות|קבצים|לקוחות|מוצרים)";
+const SALARY_FIGURE = [
+  /\d[\d,.]*\s?k\b(?!\s?(?:requests?|users?|tokens?|rows?|records?|lines?|sites?|pages?|calls?|tasks?|hz|fps))/i,
+  new RegExp(`\\b(?:\\d[\\d,.]*|(?:${EN_NUM})(?:[- ](?:${EN_NUM}))?)\\s+(?:thousand|grand)\\b(?!\\s+${TECH_NOUN})`, "i"),
+  /\b(?:a|one) (?:thousand|grand)\b(?!\s+(?:requests?|users?|tokens?|rows?|records?|lines?|sites?|pages?|calls?|tasks?))/i,
+  new RegExp(`(?<![א-ת])(?:\\d+|(?:${HE_NUM})(?:\\s+ו?(?:${HE_NUM}))?)\\s+אלף(?![א-ת])(?!\\s+${TECH_NOUN})`),
+];
 /** Tools, clouds and skills an interview answer must not claim unless the user's own profile, cards or plan name them (a card once said "OpenAI API" with no basis). */
 const CLAIMABLE = ["OpenAI", "GPT", "ChatGPT", "Gemini", "Llama", "Mistral", "LangChain", "LlamaIndex", "Pinecone", "Weaviate", "Chroma", "pgvector", "AWS", "GCP", "Google Cloud", "Azure", "Kubernetes", "K8s", "Terraform", "Kafka", "Spark", "Airflow", "fine-tuning", "fine-tune", "Java", "C#", ".NET", "Go", "Golang", "Rust", "Angular", "Vue", "Django", "FastAPI", "Flask", "Spring", "PyTorch", "TensorFlow", "Snowflake", "Databricks"];
 const escapeRe = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -85,6 +143,7 @@ export function unclaimedTerm(text: string, allowed: string): string | undefined
 }
 export function guardInterview(text: string, allowed?: string): GuardResult {
   if (/\d/.test(text) && SALARY.test(text)) return { ok: false, rule: "price" };
+  if (SALARY_FIGURE.some((r) => r.test(text))) return { ok: false, rule: "price" };
   if (allowed !== undefined && unclaimedTerm(text, allowed)) return { ok: false, rule: "unclaimed" };
   return { ok: true };
 }

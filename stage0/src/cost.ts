@@ -34,11 +34,12 @@ export class CostMeter {
   }
 
   /** Audio seconds sent so far per STT provider, summed over both channels (set, not added). */
-  setSttSeconds(bySeconds: Record<string, number>) { this.sttSeconds = bySeconds; }
+  setSttSeconds(bySeconds: Record<string, number>, channels = 1) { this.sttSeconds = bySeconds; this.sttChannels = Math.max(1, channels); }
+  private sttChannels = 1;
   get llmUsd() { return Object.values(this.roles).reduce((a, r) => a + r.usd, 0); }
   get sttUsd() { return Object.entries(this.sttSeconds).reduce((a, [prov, s]) => a + (s / 3600) * (this.prices.stt[prov] ?? 0), 0); }
   get totalUsd() { return this.llmUsd + this.sttUsd; }
-  get sttMinutes() { return Math.max(0, ...Object.values(this.sttSeconds)) / 60; }   // per-channel minutes ≈ call length
+  get sttMinutes() { return Math.max(0, ...Object.values(this.sttSeconds)) / this.sttChannels / 60; }   // the seconds sum both channels: divide by the channel count to get the call length
 
   /** ok / warn (>= warnAt of the cap) / capped (>= cap). A cap of 0 means "no LLM spend allowed" (capped once anything was spent; a priced-zero call stays ok). */
   llmState(): CostState {

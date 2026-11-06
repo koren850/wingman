@@ -92,7 +92,7 @@ export function tickHealth() {
     else if (idleWarned && idle < 60_000) { idleWarned = false; healthClear("idle"); }
   }
   refreshSignals();
-  cost.setSttSeconds(sttSeconds());
+  cost.setSttSeconds(sttSeconds(), [chans.me, chans.them].filter(Boolean).length);
   sup.set({ sttOnFallback: sttSwitchedCh.size > 0 });
   const costState = cost.llmState();
   if (costState === "warn" && !costWarned) { costWarned = true; health("cost", "amber", `עלות AI ${cost.line()}. אפשר להמשיך; לעצירה לחץ Stop call`); log.write("events", { type: "cost.warn", line: cost.line() }); }

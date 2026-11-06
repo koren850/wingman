@@ -14,7 +14,16 @@ export type BankHit = { card: BankCard; score: number; matched: string[] };
 /** Reads and validates the YAML bank. Throws on a card without id/say/triggers or a duplicate id. */
 export function loadBank(file = packPath("bank.yaml") ?? ""): BankCard[] {
   if (!file) throw new Error("no bank.yaml in the pack (~/.config/wingman/pack or data/example-pack)");
-  const cards = YAML.parse(readFileSync(file, "utf8")) as BankCard[];
+  const parsed = YAML.parse(readFileSync(file, "utf8")) as BankCard[] | null;   // an empty file parses to null: no cards
+  const cards = parsed ?? [];
+  if (!Array.isArray(cards)) throw new Error("bank.yaml must be a list of cards");
+  // YAML turns bare 2024 / 404 / yes into numbers and booleans: ids and triggers are always strings.
+  for (const c of cards) {
+    if (c && typeof c === "object") {
+      if (c.id !== undefined && c.id !== null) c.id = String(c.id);
+      if (Array.isArray(c.triggers)) c.triggers = c.triggers.map((t) => String(t));
+    }
+  }
   // English versions live next to the bank (bank.en.yaml: id -> {say, facts, alts}); a missing file just means no English cards.
   const enFile = file.replace(/\.yaml$/, ".en.yaml");
   if (enFile !== file && existsSync(enFile)) {
@@ -113,8 +122,8 @@ function beats(a: BankHit, aTier: boolean, b: BankHit, bTier: boolean): boolean 
 }
 
 /** The stall line, rotating through the card's `alts` so repeated stalls do not look canned. */
-export function stallSay(card: BankCard, n: number): string {
-  const en = turnLang === "en" && card.en;
+export function stallSay(card: BankCard, n: number, lang: "he" | "en" = turnLang): string {
+  const en = lang === "en" && card.en;
   const all = en ? [en.say, ...(en.alts ?? [])] : [card.say, ...(card.alts ?? [])];
   return all[Math.abs(n) % all.length];
 }

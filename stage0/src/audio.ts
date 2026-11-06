@@ -44,7 +44,15 @@ export class MicSource extends EventEmitter implements Source {
     // Any exit we did not ask for is a drop (a vanished device can end ffmpeg with code 0 too). ffmpeg exits 255 on SIGINT: that is our own stop().
     this.p.on("exit", (code, sig) => { if (!this.stopping) this.emit("error", new Error(`ffmpeg mic exited ${code ?? sig}`)); });
   }
-  async stop() { this.stopping = true; this.p?.kill("SIGINT"); }
+  async stop() {
+    this.stopping = true;
+    const p = this.p;
+    if (!p) return;
+    p.kill("SIGINT");
+    // A wedged ffmpeg can hold the mic and ignore SIGINT: escalate after 2 s.
+    const t = setTimeout(() => { if (p.exitCode === null && p.signalCode === null) p.kill("SIGKILL"); }, 2000);
+    t.unref(); p.once("exit", () => clearTimeout(t));
+  }
 }
 
 /** Reconnect delay after the n-th failure in a row (n = 0 first): 1, 2, 4 s, then every 10 s. */
@@ -188,7 +196,7 @@ export function decode(file: string, channels: 1 | 2): Promise<Buffer> {
     const out: Buffer[] = [];
     p.stdout.on("data", (b) => out.push(b));
     p.on("error", (e) => rej(new Error(`ffmpeg not runnable: ${e.message}`)));
-    p.on("exit", (c) => (c ? rej(new Error(`ffmpeg decode failed (${c}) for ${file}`)) : res(Buffer.concat(out))));
+    p.on("close", (c) => (c ? rej(new Error(`ffmpeg decode failed (${c}) for ${file}`)) : res(Buffer.concat(out))));
   });
 }
 

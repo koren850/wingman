@@ -127,13 +127,16 @@ export function unflatten(flat: Flat): Record<string, unknown> {
 }
 
 /** Reads a settings YAML into flat keys. An empty file is fine; invalid YAML or a non-mapping top level throws SettingsError. */
-function readYaml(file: string, label: string): Flat {
+function readYaml(file: string, label: string, defaults?: Flat): Flat {
   let doc: unknown;
   try { doc = YAML.parse(readFileSync(file, "utf8")); }
   catch (e) { throw new SettingsError([{ file, key: "(file)", layer: "user", message: `${label} is not valid YAML: ${(e as Error).message.split("\n")[0]}` }]); }
   if (doc == null) return {};
   if (typeof doc !== "object" || Array.isArray(doc)) throw new SettingsError([{ file, key: "(file)", layer: "user", message: "top level must be a mapping of keys" }]);
-  return flatten(doc);
+  const flat = flatten(doc);
+  // A section header with every child commented out ("stt:") parses to null: it means "no overrides", not "set stt to null".
+  if (defaults) for (const k of Object.keys(flat)) if (flat[k] === null && !(k in defaults) && Object.keys(defaults).some((d) => d.startsWith(`${k}.`))) delete flat[k];
+  return flat;
 }
 
 /** Parse a string from env or the CLI the way YAML would; comma lists become arrays where the default is an array. */
@@ -163,8 +166,10 @@ const ENV_MAP: { env: string; key: string; map?: (v: string) => unknown }[] = [
 
 /** Parsed command line: the chosen profile, flat overrides and, per key, the flag that set it (for error messages). */
 export type Cli = { profile?: string; flat: Flat; details: Record<string, string> };
-/** Flags: --file X, --no-ai, --discard, --quiet, --profile N, --stt P, --stt-fallback a,b, --model M, --endpoint-ms N, --set key=value (repeatable). Other flags are ignored. */
-export function parseCli(argv: string[], defaults: Flat): Cli {
+/** Flags: --file X, --no-ai, --discard, --quiet, --profile N, --stt P, --stt-fallback a,b, --model M, --endpoint-ms N, --set key=value (repeatable). Each also takes the --flag=value form. Other flags are ignored. */
+export function parseCli(rawArgv: string[], defaults: Flat): Cli {
+  // "--profile=x" is the same as "--profile x" (split on the first "="; "--set a=b" stays two arguments).
+  const argv = rawArgv.flatMap((a) => { const eq = a.indexOf("="); return a.startsWith("--") && eq > 2 ? [a.slice(0, eq), a.slice(eq + 1)] : [a]; });
   const flat: Flat = {}, details: Record<string, string> = {}; let profile: string | undefined;
   const set = (key: string, v: unknown, flag: string) => { flat[key] = v; details[key] = flag; };
   for (let i = 0; i < argv.length; i++) {
@@ -202,13 +207,13 @@ export function loadSettings(o: LoadOptions = {}): Loaded {
     try { mkdirSync(dirname(userFile), { recursive: true, mode: 0o700 }); writeFileSync(userFile, STARTER, { mode: 0o600 }); } catch { /* read-only home: ignore */ }
   }
   const layers: Layer[] = [{ name: "default", file: o.defaultsFile ?? DEFAULTS_FILE, flat: defaults }];
-  if (existsSync(userFile)) layers.push({ name: "user", file: userFile, flat: readYaml(userFile, "settings file") });
+  if (existsSync(userFile)) layers.push({ name: "user", file: userFile, flat: readYaml(userFile, "settings file", defaults) });
   const cli = parseCli(o.argv ?? [], defaults);
   const profile = cli.profile ?? env.WINGMAN_PROFILE;
   if (profile) {   // the name is checked before it becomes a path: no "../" out of profiles/
     const pf = join(o.profilesDir ?? PROFILES_DIR, `${profile}.yaml`);
     if (!/^[\w-]+$/.test(profile) || !existsSync(pf)) throw new SettingsError([{ file: pf, key: "--profile", layer: "profile", message: `profile "${profile}" not found`, allowed: "a file profiles/<name>.yaml" }]);
-    layers.push({ name: "profile", file: pf, flat: readYaml(pf, "profile") });
+    layers.push({ name: "profile", file: pf, flat: readYaml(pf, "profile", defaults) });
   }
   const envFlat: Flat = {}, envDetails: Record<string, string> = {};
   for (const m of ENV_MAP) {

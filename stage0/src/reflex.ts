@@ -138,9 +138,10 @@ const ZONES: [string, string][] = [["New York", "America/New_York"], ["London", 
 /** The same moment in a few common cities, with the gap to home time: "New York 08:00 (7 h behind home time)". The model reads time-zone answers off this instead of doing the arithmetic. */
 export function worldClock(d = new Date(), home = userTimezone()): string {
   const hm = (tz: string) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
-  const mins = (tz: string) => { const [h, m] = hm(tz).split(":").map(Number); return h * 60 + m; };
+  // Real UTC offsets (not wrapped clock minutes): Kolkata to Los Angeles is 12.5 h behind, not 11.5 ahead.
+  const offMin = (tz: string) => { const m = new Intl.DateTimeFormat("en-GB", { timeZone: tz, timeZoneName: "shortOffset" }).format(d).match(/GMT([+-])(\d+)(?::(\d+))?/); return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0)) : 0; };
   return ZONES.map(([name, tz]) => {
-    let diff = Math.round(((mins(tz) - mins(home) + 1440 + 720) % 1440 - 720) / 60 * 2) / 2;   // hours, -12..+12
+    let diff = Math.round((offMin(tz) - offMin(home)) / 60 * 2) / 2;   // hours
     if (diff === 0) diff = 0;
     return `${name} ${hm(tz)} (${diff === 0 ? "same time as home time" : `${Math.abs(diff)} h ${diff < 0 ? "behind" : "ahead of"} home time`})`;
   }).join(", ");
@@ -250,16 +251,17 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
 }
 
 /** The card a BANK tag names. Haiku sometimes bends an id ("wordpress-basics" for "builder-vs-wordpress"): when the exact id is unknown, take the one card that shares a distinctive word. */
-export function resolveBankId(id: string | undefined, bank: BankCard[]): BankCard | undefined {
+export function resolveBankId(id: string | undefined, bank: BankCard[], lang?: "he" | "en"): BankCard | undefined {
   if (!id) return undefined;
   const exact = bank.find((c) => c.id === id);
-  if (exact) return localizeCard(exact);   // English turn: the English text, or nothing when the card has none
+  if (exact) return localizeCard(exact, lang);   // English turn: the English text, or nothing when the card has none
   const stop = new Set(["basics", "vs", "the", "and", "stall"]);
   const toks = (x: string) => x.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !stop.has(t));
   const want = new Set(toks(id));
   if (!want.size) return undefined;
   const scored = bank.filter((c) => !c.id.startsWith("stall")).map((c) => ({ c, n: toks(c.id).filter((t) => want.has(t)).length })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
-  return scored.length && (scored.length === 1 || scored[0].n > scored[1].n) ? scored[0].c : undefined;
+  const pick = scored.length && (scored.length === 1 || scored[0].n > scored[1].n) ? scored[0].c : undefined;
+  return pick && localizeCard(pick, lang);
 }
 
 /**
@@ -281,6 +283,8 @@ export function parseReflex(buf: string, final: boolean): { tagLine?: string; sa
     if (!final) return { tagLine: undefined, say: undefined, sayComplete: false, facts: [] };
     return { tagLine: "SKIP (unclear verdict)", say: undefined, sayComplete: false, facts: [] };
   }
+  // Streaming, no real tag line yet (a prose preamble such as "Let me think about this"): wait. The verdict is decided at the end of the stream.
+  if (!final && at < 0 && ne.length) return { tagLine: undefined, say: undefined, sayComplete: false, facts: [] };
   // The model sometimes puts the say-line on the tag line: "ANS: ..." / "BANK dns-basics: ...". Split it.
   const same = ne[0]?.match(/^[*`\s]*(ANS|STALL|BANK[ \t]+[\w-]+)[*`\s]*(?::|(?<=\s)[\-–](?=\s))[ \t]*(\S.*)$/i);
   if (same) ne.splice(0, 1, same[1], same[2]);

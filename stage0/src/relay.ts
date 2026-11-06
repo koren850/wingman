@@ -8,17 +8,21 @@ import { connect, createServer, type Socket, type Server } from "node:net";
 import { mkdtempSync, rmSync, chmodSync } from "node:fs";
 import pipe from "../shared/pipe.cjs";
 import { tmpdir } from "node:os";
+import { StringDecoder } from "node:string_decoder";
 import { join } from "node:path";
 
 /** Splits a byte stream into lines; a partial last line waits for the next chunk. Lines over `max` chars are dropped. */
 export class LineSplitter {
   private rest = "";
+  private skipping = false;   // inside an oversize line that was dropped: ignore up to its newline
+  private decoder = new StringDecoder("utf8");   // a multi-byte character split across chunks stays whole
   constructor(private max = 1_000_000) {}
   push(chunk: Buffer | string): string[] {
-    this.rest += chunk.toString();
+    this.rest += typeof chunk === "string" ? chunk : this.decoder.write(chunk);
     const parts = this.rest.split("\n");
     this.rest = parts.pop() ?? "";
-    if (this.rest.length > this.max) this.rest = "";
+    if (this.skipping) { parts.shift(); this.skipping = false; }   // the tail of a dropped line is not a line
+    if (this.rest.length > this.max) { this.rest = ""; this.skipping = true; }
     return parts.filter((l) => l.trim() && l.length <= this.max);
   }
 }

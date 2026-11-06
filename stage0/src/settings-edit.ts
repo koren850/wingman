@@ -71,7 +71,11 @@ function applyEditsLocked(userFile: string, edits: Edits): EditResult {
     if (!(key in defaults) || !/^[A-Za-z0-9_.]+$/.test(key)) return { ok: false, message: `Unknown setting "${key}".` };
     const path = key.split("."), v = edits[key];
     if (v === null || same(v, defaults[key])) { if (doc.contents != null && doc.deleteIn(path)) pruneEmpty(doc, path); }
-    else doc.setIn(path, v);
+    else {
+      // A bare section header ("stt:" with nothing under it) is a null scalar: replace it with a map before writing below it.
+      for (let n = 1; n < path.length; n++) { const node = doc.getIn(path.slice(0, n), true); if (node !== undefined && !YAML.isMap(node)) doc.setIn(path.slice(0, n), new YAML.YAMLMap()); }
+      doc.setIn(path, v);
+    }
     changed.push(key);
   }
   const out = doc.toString();
