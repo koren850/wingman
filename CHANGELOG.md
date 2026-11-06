@@ -22,12 +22,12 @@ First public release.
 - **Post-call summary** with decisions, next steps, open questions and a follow-up email draft; prices, dates and promises become placeholders.
 - **Fact cards** from an optional local snapshot of clients and domains, and copyable capture chips for phone numbers, emails and domains.
 - **Degrade ladder and cost caps.** Reduced AI, provider switch, bank only, transcript only, with a per-call spend cap, a circuit breaker and experimental fallback speech providers (Soniox, Gladia).
-- **Reliability.** Audio sources restart by themselves; the call survives sleep, stray errors and a full disk; a dead speech channel steps down instead of ending the call.
+- **Reliability.** Audio sources restart by themselves; the call survives sleep, stray errors and a full disk; a dead speech channel reconnects or steps down instead of ending the call; if the call folder fails, the call is kept in memory and saved as a rescue copy.
 - **Electron menu-bar app** with Home, Calls and Settings (the Calls list loads in chunks, so a large history never freezes the menu bar), a guided first-run setup, a readiness check, quick calls and prepared meetings, and a separate answer window for the second screen (right-to-left aware).
 - **`wingman` command line** that drives the running app over an owner-only local socket.
 - **Installer** (`install.sh`) with check, dry run, update and uninstall modes; it never uses sudo.
 - **Swappable pack and profile.** Answer bank, house style and keyterms live in a pack; your name and business live in a profile. An invented example pack is included.
-- **Test and QA tooling.** 600+ unit tests in 57 files, an offline end-to-end call test, a synthetic QA harness with 32 invented scenarios, snapshot tools for the windows, and a CI workflow.
+- **Test and QA tooling.** 600+ unit tests and 19 end-to-end call tests in 63 files, `pnpm eval` with a quality baseline (detector, answer bank, guards) that CI enforces, a synthetic QA harness with 32 invented scenarios, snapshot tools for the windows, and a CI workflow.
 - **Documentation.** Architecture, 37 architecture decision records, privacy and security guide, development guide, troubleshooting, pack format and roadmap.
 
 ### Security and privacy
