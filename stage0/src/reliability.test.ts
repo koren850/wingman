@@ -19,10 +19,11 @@ import { diskLevel, diskText, DISK_AMBER_BYTES, DISK_RED_BYTES } from "./diskspa
 import { LineSplitter, RowRelay, nextRestartCount, listenForRows, CardPipe } from "./relay.ts";
 import { sweepLive } from "./log.ts";
 import { ProviderError } from "./providers/errors.ts";
+import { tsx } from "./test-platform.ts";
+import pipe from "../shared/pipe.cjs";
 
 const require = createRequire(import.meta.url);
 const R = require("../overlay/resilient.cjs");
-const tsx = join(ROOT, "node_modules", ".bin", "tsx");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const until = async (f: () => boolean, ms = 8000) => { const t0 = Date.now(); while (!f()) { if (Date.now() - t0 > ms) throw new Error("timed out waiting"); await sleep(20); } };
 
@@ -199,7 +200,7 @@ const scriptFile = (dir: string, lines: unknown[]) => { const f = join(dir, "scr
 const readRows = (dir: string, f: string) => (existsSync(join(dir, f)) ? readFileSync(join(dir, f), "utf8").split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return {}; } }) : []);
 const callDir = (calls: string) => { const d = readdirSync(calls).filter((x) => x !== "latest"); return d.length ? join(calls, d[0]) : ""; };
 function runEngine(args: string[], env: Record<string, string>) {
-  const p = spawn(tsx, [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--no-brief", ...args], { cwd: ROOT, env: { ...process.env, WINGMAN_CALL_APP: "none", ...env } });
+  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--no-brief", ...args]), { cwd: ROOT, env: { ...process.env, WINGMAN_CALL_APP: "none", ...env } });
   let out = ""; p.stdout.on("data", (b) => (out += b)); p.stderr.on("data", (b) => (out += b));
   const done = new Promise<number | null>((res) => p.on("exit", (c) => res(c)));
   return { p, done, out: () => out };
@@ -210,7 +211,7 @@ test("engine: cards.jsonl cannot be written (disk full) and the answer-window pi
   const tmp = mkdtempSync(join(tmpdir(), "wm-disk-")); const calls = join(tmp, "calls"); mkdirSync(calls);
   const wav = join(tmp, "s.wav"); await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 9), 2);
   const rows: any[] = [];
-  const sock = join(tmp, "c.sock"); const lines = new LineSplitter();
+  const sock = pipe.endpoint(`rel-${process.pid}-${Date.now()}`, join(tmp, "c.sock")); const lines = new LineSplitter();
   const srv = createServer((c) => c.on("data", (b) => { for (const l of lines.push(b)) rows.push(JSON.parse(l)); })); srv.listen(sock);
   const e = runEngine(["--file", wav], { WINGMAN_CALLS_DIR: calls, WINGMAN_OVERLAY_SOCK: sock, WINGMAN_FREE_BYTES: String(50 * 1024 * 1024),
     WINGMAN_STT_SCRIPT: scriptFile(tmp, [Q("them", "האתר שלי נטען ממש לאט, למה זה קורה", 1500), Q("them", "וגם אני רוצה לדעת אם יש לכם גיבוי של האתר", 4000)]) });

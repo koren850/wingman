@@ -234,7 +234,11 @@ function askNative(o, box) {
 /** () => Promise of the settings state JSON (src/settings-edit-cli.ts read), or null. The child gets a bare environment: it never needs a key. */
 function settingsReader(o) {
   const env = { HOME: process.env.HOME || "", PATH: process.env.PATH || "/usr/bin:/bin", TMPDIR: process.env.TMPDIR || "", NO_COLOR: "1", FORCE_COLOR: "0" };
-  return () => new Promise((resolve) => o.execFile(o.tsx, ["src/settings-edit-cli.ts", "read"], { cwd: o.root, timeout: 20_000, maxBuffer: 2_000_000, env }, (e, out) => {
+  // Windows needs a few system variables to start any process (and %APPDATA% to find the data folder); none of them is a secret.
+  if ((o.platform || process.platform) === "win32") for (const k of ["USERPROFILE", "APPDATA", "LOCALAPPDATA", "SystemRoot", "SystemDrive", "TEMP", "TMP", "ComSpec", "PATHEXT", "WINGMAN_DATA_DIR"]) if (process.env[k]) env[k] = process.env[k];
+  // o.tsx (tests) replaces the tool path; otherwise shared/bin.cjs picks .bin/tsx or, on Windows, node + the tsx CLI.
+  const t = o.tsx ? { cmd: o.tsx, args: [] } : require("../shared/bin.cjs").binCommand("tsx", [], o.root);
+  return () => new Promise((resolve) => o.execFile(t.cmd, [...t.args, "src/settings-edit-cli.ts", "read"], { cwd: o.root, timeout: 20_000, maxBuffer: 2_000_000, env }, (e, out) => {
     try { resolve(JSON.parse(String(out || "").trim().split("\n").filter(Boolean).pop())); } catch { resolve(null); }
   }));
 }

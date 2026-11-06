@@ -13,6 +13,7 @@ import { createKeychain, migrateKeysToKeychain, keyStatus, childEnv, realRunner,
 import { main as keysCli } from "./keys-cli.ts";
 import { overlayEnv } from "./overlay.ts";
 import { loadSettings } from "./settings.ts";
+import { assertMode } from "./test-platform.ts";
 
 const require = createRequire(import.meta.url);
 const ipc = require("../dashboard/keys-ipc.cjs");
@@ -157,7 +158,7 @@ test("migrate: moves both keys, keeps other lines, file is 600, NO backup left b
   assert.deepEqual(r.moved, ["deepgram", "anthropic"]);
   assert.equal(h.m.store.get("ANTHROPIC_API_KEY"), KEY); assert.equal(h.m.store.get("DEEPGRAM_API_KEY"), DG);
   assert.equal(readFileSync(file, "utf8"), "# my keys\nGROQ_API_KEY=keep-me\n");
-  assert.equal(statSync(file).mode & 0o777, 0o600);
+  assertMode(file, 0o600);
   assert.deepEqual(readdirSync(dir), ["keys.env"]);   // no plaintext backup, no temp file
   const again = await h.call("keys:migrate"); assert.deepEqual(again.moved, []); assert.deepEqual(readdirSync(dir), ["keys.env"]);
 });

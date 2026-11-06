@@ -9,6 +9,7 @@ import { ROOT, CALLS, requireKeys } from "./env.ts";
 import { loadSettingsOrExit, expandHome } from "./settings.ts";
 import { parseModelRef } from "./providers/llm.ts";
 import { spawnOverlay } from "./overlay.ts";
+import bin from "../shared/bin.cjs";
 import { RowRelay, nextRestartCount, listenForRows } from "./relay.ts";
 
 const rest = process.argv.slice(2);
@@ -16,7 +17,6 @@ const { settings: S } = loadSettingsOrExit(rest);   // exits with code 2 and a c
 requireKeys([S.stt.provider, ...(S.run.noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])].filter((k) => k !== "script" && k !== "scripted"), expandHome(S.keys.file));
 try { rmSync(join(CALLS, "latest"), { force: true }); } catch { /* removed so the new window waits for run.ts's own folder instead of replaying the previous call */ }
 
-const bin = (n: string) => join(ROOT, "node_modules", ".bin", n);
 // U1: the answer window is reopened if it crashes (overlay.restartMax). Exit code 3 = it refused a single shared screen.
 let overlay: ReturnType<typeof spawnOverlay>, restarts = 0, overlayStartedAt = 0;
 // Second path for the cards (when writing cards.jsonl fails): run.ts sends card rows to a private socket, forwarded to the window's stdin.
@@ -44,7 +44,8 @@ function openOverlay() {
   });
 }
 openOverlay();
-const run = spawn(bin("tsx"), [join(ROOT, "src", "run.ts"), ...rest], { cwd: ROOT, stdio: "inherit", env: { ...process.env, ...(rows ? { WINGMAN_OVERLAY_SOCK: rows.path } : {}) } });
+const runCmd = bin.binCommand("tsx", [join(ROOT, "src", "run.ts"), ...rest], ROOT);
+const run = spawn(runCmd.cmd, runCmd.args, { cwd: ROOT, stdio: "inherit", env: { ...process.env, ...(rows ? { WINGMAN_OVERLAY_SOCK: rows.path } : {}) } });
 
 // stopping = a stop was requested; runExited = run.ts is gone (only the window lingers); exiting = finalExit() already started.
 let stopping = false, runExited = false, exiting = false;

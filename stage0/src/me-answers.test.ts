@@ -15,12 +15,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
 import { writeWav } from "./audio.ts";
+import { tsx } from "./test-platform.ts";
 
 test("e2e: answers for Dan's own questions, the ask key, math is not a price, foreign script dropped", { timeout: 80_000 }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-e2e-me-"));
   const wav = join(tmp, "silence.wav"), CALLS = join(tmp, "calls");   // own calls folder: other test runs on this machine delete from the shared one
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 16), 2);
-  const child = spawn(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "run.ts"), "--profile", "e2e-me", "--file", wav, "--no-brief"], {
+  const child = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e-me", "--file", wav, "--no-brief"]), {
     cwd: ROOT, stdio: ["pipe", "pipe", "pipe"],
     env: { ...process.env, WINGMAN_CONTROL: "1", WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-me-call.json"), WINGMAN_SCRIPT_GAP_MS: "1100", WINGMAN_CALL_APP: "none", WINGMAN_CALLS_DIR: CALLS },
   });

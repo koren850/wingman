@@ -23,6 +23,7 @@ import { loadKeyterms } from "./providers/stt/index.ts";
 import { homedir } from "node:os";
 import { rmSync } from "node:fs";
 import { loadSettings } from "./settings.ts";
+import { assertMode } from "./test-platform.ts";
 
 const tmp = (n: string) => mkdtempSync(join(tmpdir(), `wm-profile-${n}-`));
 afterEach(() => { setProfile(undefined); });
@@ -50,7 +51,7 @@ test("profile: parses a file, trims text, rejects unknown keys and bad values (n
 test("profile: a changed file is re-read; save writes mode 600 and round-trips", () => {
   const dir = tmp("save"), f = join(dir, "sub", "profile.yaml");
   saveProfile({ ...EMPTY_PROFILE, name: "Noa", address: "female", spellings: ["נועה"] }, f);
-  assert.equal(statSync(f).mode & 0o777, 0o600);
+  assertMode(f, 0o600);
   assert.equal(getProfile({ WINGMAN_PROFILE_FILE: f }).name, "Noa");
   saveProfile({ ...EMPTY_PROFILE, name: "Ori" }, f);
   const later = new Date(Date.now() + 5000);
@@ -203,7 +204,7 @@ test("wingman profile: show defaults, set fields (repeatable --spelling, empty c
   assert.equal(r.code, 0); assert.equal(r.json.exists, false); assert.equal(r.json.profile.address, "neutral");
   r = await cli(f, "profile", "set", "--name", "Ada", "--spelling", "עדה", "--spelling", "Adah", "--address", "female", "--about", "an engineer", "--business", "a studio", "--timezone", "Europe/Paris", "--json");
   assert.equal(r.code, 0); assert.deepEqual(r.json.profile.spellings, ["עדה", "Adah"]);
-  assert.equal(statSync(f).mode & 0o777, 0o600);
+  assertMode(f, 0o600);
   assert.equal(getProfile({ WINGMAN_PROFILE_FILE: f }).name, "Ada");
   r = await cli(f, "profile", "set", "--about", "", "--json");
   assert.equal(r.code, 0); assert.equal(r.json.profile.about, ""); assert.equal(r.json.profile.name, "Ada", "other fields are kept");
@@ -298,7 +299,7 @@ test("profile: saveProfile is atomic (tmp + rename, no leftovers, mode 600) and 
   saveProfile({ ...EMPTY_PROFILE, name: "Noa" }, f);
   saveProfile({ ...EMPTY_PROFILE, name: "Ori" }, f);
   assert.deepEqual(readdirSync(dir), ["profile.yaml"]);
-  assert.equal(statSync(f).mode & 0o777, 0o600);
+  assertMode(f, 0o600);
   assert.throws(() => saveProfile({ ...EMPTY_PROFILE, name: "x", address: "robot" as any }, f));
   assert.match(readFileSync(f, "utf8"), /name: Ori/);
 });

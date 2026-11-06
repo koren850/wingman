@@ -38,7 +38,7 @@ function mkdir700(dir) { fs.mkdirSync(dir, { recursive: true, mode: 0o700 }); tr
 function copyOne(src, dst, mtimeMs) {
   mkdir700(path.dirname(dst));
   try { fs.copyFileSync(src, dst, fs.constants.COPYFILE_EXCL); } catch (e) { if (e.code !== "EEXIST") throw e; return false; }
-  fs.chmodSync(dst, 0o600);
+  try { fs.chmodSync(dst, 0o600); } catch { /* no POSIX modes (Windows) */ }
   try { fs.utimesSync(dst, mtimeMs / 1000, mtimeMs / 1000); } catch { /* cosmetic */ }
   return true;
 }

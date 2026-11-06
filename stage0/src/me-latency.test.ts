@@ -11,12 +11,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
 import { writeWav } from "./audio.ts";
+import { tsx } from "./test-platform.ts";
 
 test("solo call: second-person question answered, sum computed locally, and the card is up within 100 ms of the final", { timeout: 60_000 }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-me-lat-"));
   const wav = join(tmp, "silence.wav"), CALLS = join(tmp, "calls");
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 12), 2);
-  const child = spawn(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "run.ts"), "--profile", "e2e-me", "--file", wav, "--no-brief"], {
+  const child = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e-me", "--file", wav, "--no-brief"]), {
     cwd: ROOT, stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-me-solo.json"), WINGMAN_CALL_APP: "none", WINGMAN_CALLS_DIR: CALLS },
   });

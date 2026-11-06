@@ -16,7 +16,9 @@ const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "a
  */
 function createController(o) {
   const lib = o.lib || defaultLib, fs = o.fs || nodeFs, path = o.path || nodePath;
-  const root = o.root, bin = o.bin || ((n) => path.join(root, "node_modules", ".bin", n));
+  const root = o.root;
+  // [command, args] to run a local tool (tsx): .bin/tsx on macOS/Linux, node + the tsx CLI on Windows (shared/bin.cjs). o.bin (tests) replaces the path.
+  const binCmd = (n, args) => o.bin ? [o.bin(n), args] : (({ cmd, args: a }) => [cmd, a])(require("../shared/bin.cjs").binCommand(n, args, root));
   const logPath = o.logPath, tmpDir = o.tmpDir || require("node:os").tmpdir();
   const st = o.setTimeout || setTimeout, killProc = o.kill || ((pid, sig) => process.kill(pid, sig));
   const logLine = (s) => { if (!logPath) return; try { fs.appendFileSync(logPath, `${new Date().toISOString()} ${s}\n`, { mode: 0o600 }); } catch { /* calls/ may not exist yet */ } };
@@ -49,7 +51,8 @@ function createController(o) {
     const env = { ...(o.env || process.env), WINGMAN_CONTROL: "1", FORCE_COLOR: "0", ...appEnv(), ...extraEnv };
     if (logPath) try { fs.writeFileSync(logPath, "", { mode: 0o600 }); fs.chmodSync(logPath, 0o600); } catch { /* best effort */ }
     // detached: call.ts leads its own process group, so a stuck call can be force-killed with everything under it.
-    const c = o.spawn(bin("tsx"), [path.join(root, "src", "call.ts"), ...extraArgs], { cwd: root, env, stdio: ["pipe", "pipe", "pipe"], detached: true });
+    const [cmd, cargs] = binCmd("tsx", [path.join(root, "src", "call.ts"), ...extraArgs]);
+    const c = o.spawn(cmd, cargs, { cwd: root, env, stdio: ["pipe", "pipe", "pipe"], detached: true });
     child = c;
     c.on("error", (e) => { logLine("ERR spawn " + e.message); notify("Wingman could not start", `${e.message}. Quit Wingman from the menu bar and open it again; if it keeps happening, choose Show log.`); if (child === c) child = undefined; set({ ev: "stderr", text: e.message }); finished.add(c); set({ ev: "exit", code: 1 }); change(); });
     c.stdin.on("error", () => { /* the call already ended */ });
@@ -176,7 +179,8 @@ function createController(o) {
     runDoctor: (opts = {}) => new Promise((resolve) => {
       if (child) return resolve({ ran: false, ok: false, verdict: "BUSY", failing: [{ text: "A call is running. Check again after it ends.", fix: "" }], warnings: [], at: Date.now() });
       if (state.doctorRunning) return resolve(state.doctor);
-      const p = o.spawn(bin("tsx"), [path.join(root, "src", "doctor.ts"), ...(opts.offline ? ["--offline"] : [])], { cwd: root, env: { ...(o.env || process.env), FORCE_COLOR: "0", ...appEnv() }, detached: true });
+      const [dcmd, dargs] = binCmd("tsx", [path.join(root, "src", "doctor.ts"), ...(opts.offline ? ["--offline"] : [])]);
+      const p = o.spawn(dcmd, dargs, { cwd: root, env: { ...(o.env || process.env), FORCE_COLOR: "0", ...appEnv() }, detached: true });
       doctorProc = p;
       let out = "";
       p.stdout.on("data", (d) => (out += d)); p.stderr.on("data", (d) => (out += d));

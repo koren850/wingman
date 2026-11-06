@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { ROOT, childEnv } from "./env.ts";
 import { loadSettingsOrExit, type Settings } from "./settings.ts";
 import { fileURLToPath } from "node:url";
+import bin from "../shared/bin.cjs";
 
 /** Child environment for the window: childEnv() (no API keys) plus WINGMAN_OVERLAY with the overlay settings as JSON. */
 export function overlayEnv(s: Settings): NodeJS.ProcessEnv {
@@ -15,7 +16,8 @@ export function overlayEnv(s: Settings): NodeJS.ProcessEnv {
 export function spawnOverlay(s: Settings, detached = false): ChildProcess | undefined {
   if (!s.overlay.enabled) { console.log("(overlay.enabled is false: cards go to the terminal and cards.jsonl only)"); return undefined; }
   // stdin is a pipe only so the window can see its parent die (pipe closes even on SIGKILL) and exit instead of being orphaned: overlay/main.cjs, WINGMAN_WATCH_PARENT.
-  const p = spawn(join(ROOT, "node_modules", ".bin", "electron"), [join(ROOT, "overlay", "main.cjs")], { cwd: ROOT, stdio: ["pipe", "inherit", "inherit"], env: { ...overlayEnv(s), WINGMAN_WATCH_PARENT: "1" }, detached });
+  const t = bin.binCommand("electron", [join(ROOT, "overlay", "main.cjs")], ROOT);
+  const p = spawn(t.cmd, t.args, { cwd: ROOT, stdio: ["pipe", "inherit", "inherit"], env: { ...overlayEnv(s), WINGMAN_WATCH_PARENT: "1" }, detached });
   p.stdin?.on("error", () => {});
   return p;
 }

@@ -6,6 +6,7 @@
 import type { Writable } from "node:stream";
 import { connect, createServer, type Socket, type Server } from "node:net";
 import { mkdtempSync, rmSync, chmodSync } from "node:fs";
+import pipe from "../shared/pipe.cjs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -55,15 +56,17 @@ export function nextRestartCount(restarts: number, upMs: number, stableMs = 10 *
 }
 
 /** call.ts side: listens on a private socket and feeds everything received into `relay`. close() removes the socket folder. */
-export function listenForRows(relay: RowRelay): { path: string; server: Server; close: () => void } | undefined {
+export function listenForRows(relay: RowRelay, platform: string = process.platform): { path: string; server: Server; close: () => void } | undefined {
   try {
-    const dir = mkdtempSync(join(tmpdir(), "wm-"));
-    try { chmodSync(dir, 0o700); } catch { /* mkdtemp is already 0700 */ }
-    const path = join(dir, "c.sock");
+    // Windows: a per-process named pipe (\\.\pipe\wingman-<user>-rows-<pid>-<random>), no folder. POSIX: a private folder with a Unix socket.
+    const onPipe = pipe.usesPipes(platform);
+    const dir = onPipe ? "" : mkdtempSync(join(tmpdir(), "wm-"));
+    if (dir) try { chmodSync(dir, 0o700); } catch { /* mkdtemp is already 0700 */ }
+    const path = onPipe ? pipe.pipeName(`rows-${process.pid}-${Math.random().toString(36).slice(2, 10)}`) : join(dir, "c.sock");
     const server = createServer((c) => { c.on("data", (b) => { try { relay.feed(b); } catch { /* ignore */ } }); c.on("error", () => {}); });
     server.on("error", () => {});
     server.listen(path);
-    return { path, server, close: () => { try { server.close(); } catch {} try { rmSync(dir, { recursive: true, force: true }); } catch {} } };
+    return { path, server, close: () => { try { server.close(); } catch {} if (dir) try { rmSync(dir, { recursive: true, force: true }); } catch {} } };
   } catch { return undefined; }
 }
 

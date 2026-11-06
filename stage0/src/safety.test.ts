@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseAudioDevices, bluetoothInUse } from "./devices.ts";
 import { securePerms } from "./env.ts";
+import { assertMode } from "./test-platform.ts";
 
 const sp = (items: any[]) => JSON.stringify({ SPAudioDataType: [{ _items: items }] });
 
@@ -31,7 +32,7 @@ test("keys file: too-open permissions are fixed to 600", () => {
   const f = join(mkdtempSync(join(tmpdir(), "wm-keys-")), "keys.env");
   writeFileSync(f, "DEEPGRAM_API_KEY=x\n"); chmodSync(f, 0o644);
   assert.equal(securePerms(f), "fixed");
-  assert.equal(statSync(f).mode & 0o777, 0o600);
+  assertMode(f, 0o600);
   assert.equal(securePerms(f), "ok");
   assert.equal(securePerms(f + ".nope"), "missing");
 });

@@ -7,6 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readdirSync, statSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadBrief, briefNotes } from "./brief.ts";
+import { assertMode } from "./test-platform.ts";
 
 const req = createRequire(import.meta.url);
 const P = req("../shared/plans.js");
@@ -93,8 +94,8 @@ test("store: create, list in order, edit, delete; fields are cleaned and capped"
     assert.equal(existsSync(r.store.dirOf(c.meeting.id)), false, "the folder is gone");
     assert.equal(r.store.list().length, 2);
     assert.equal(r.store.remove(c.meeting.id).ok, false);
-    const mode = statSync(join(r.store.dirOf(a.meeting.id), "meeting.json")).mode & 0o777;
-    assert.equal(mode, 0o600); assert.equal(statSync(r.store.dirOf(a.meeting.id)).mode & 0o777, 0o700);
+    assertMode(join(r.store.dirOf(a.meeting.id), "meeting.json"), 0o600);
+    assertMode(r.store.dirOf(a.meeting.id), 0o700);
   } finally { r.done(); }
 });
 
@@ -263,8 +264,8 @@ test("files: a meeting folder is the only place its background lives, and it is 
     const m = r.store.create({ who: "Dana" }).meeting;
     await r.store.files(m.id).addPaste("Invented text.");
     const f = join(r.store.dirOf(m.id), "files");
-    assert.equal(statSync(f).mode & 0o777, 0o700);
-    const n = readdirSync(f)[0]; assert.equal(statSync(join(f, n)).mode & 0o777, 0o600);
+    assertMode(f, 0o700);
+    const n = readdirSync(f)[0]; assertMode(join(f, n), 0o600);
     assert.equal(r.store.files("nope"), null);
     mkdirSync(join(r.dir, "plans", "junk"), { recursive: true });
     assert.equal(r.store.list().length, 1, "stray folders are ignored");

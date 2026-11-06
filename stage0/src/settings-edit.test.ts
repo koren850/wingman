@@ -7,6 +7,7 @@ import { mkdtempSync, readFileSync, writeFileSync, statSync, existsSync } from "
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { applyEdits, readState } from "./settings-edit.ts";
+import { assertMode } from "./test-platform.ts";
 
 const tmp = () => join(mkdtempSync(join(tmpdir(), "wingman-set-")), "settings.yaml");
 
@@ -17,7 +18,7 @@ test("edit writes only the changed key, keeps comments and other keys, mode 600"
   assert.equal(r.ok, true);
   const t = readFileSync(f, "utf8");
   assert.match(t, /# my note/); assert.match(t, /keep this comment/); assert.match(t, /allowAns: false/); assert.match(t, /maxPerMinute: 5/);
-  assert.equal(statSync(f).mode & 0o777, 0o600);
+  assertMode(f, 0o600);
   const s = readState(f);
   assert.equal(s.values["cards.maxPerMinute"], 5);
   assert.deepEqual(s.changed.sort(), ["budget.maxUsdPerCall", "cards.maxPerMinute", "reflex.allowAns"]);

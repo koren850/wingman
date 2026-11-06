@@ -19,7 +19,9 @@ const BRAND_ICON = path.join(ROOT, "..", "brand", "png", "icon-512.png");
 const userPaths = require("../shared/paths.cjs");
 const CALLS = userPaths.callsDir();
 const BRIEFS = userPaths.briefsDir();
-const TSX = path.join(ROOT, "node_modules", ".bin", "tsx");
+const binCommand = require("../shared/bin.cjs").binCommand;
+/** execFile of a TypeScript tool through tsx (.bin/tsx on macOS/Linux; node + the tsx CLI on Windows). */
+const execTsx = (args, opts, cb) => { const t = binCommand("tsx", args, ROOT); return execFile(t.cmd, t.args, opts, cb); };
 const BG = { dark: "#120E0B", light: "#FEF7EC" };
 const SNAP = process.env.WINGMAN_DASHBOARD_SNAPSHOT || "";
 const SIZE = /^(\d{3,4})x(\d{3,4})$/.test(process.env.WINGMAN_DASHBOARD_SIZE || "") ? process.env.WINGMAN_DASHBOARD_SIZE.split("x").map(Number) : null;
@@ -153,7 +155,7 @@ function create(ctx) {
     const st = controller.getState(); if (st.running && st.callId === id) return resolve({ ok: false, error: "This call is still running." });
     if (writing.has(id)) return resolve({ ok: false, error: "Already writing it." });
     writing.add(id);
-    execFile(TSX, [path.join(ROOT, "src", "summary.ts"), id], { cwd: ROOT, timeout: 180_000, maxBuffer: 4_000_000, env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" } }, (err) => { writing.delete(id); resolve(err ? { ok: false, error: "The summary could not be written (missing key, no transcript, or the model failed). Check Settings → Keys." } : { ok: true }); });
+    execTsx([path.join(ROOT, "src", "summary.ts"), id], { cwd: ROOT, timeout: 180_000, maxBuffer: 4_000_000, env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" } }, (err) => { writing.delete(id); resolve(err ? { ok: false, error: "The summary could not be written (missing key, no transcript, or the model failed). Check Settings → Keys." } : { ok: true }); });
   }));
   handle("calls:search", (q) => data.searchCalls(CALLS, q));
   handle("calls:setTag", (id, cardId, useful) => data.setTag(CALLS, id, cardId, useful));
@@ -274,7 +276,7 @@ function create(ctx) {
   // Settings read/write run the TypeScript tools as child processes; child() expects one JSON line on stdout (the last one wins).
   const settingsEnv = () => ({ ...require("../src/keychain.cjs").childEnv(process.env), NO_COLOR: "1", FORCE_COLOR: "0" });   // the settings tools never need API keys
   const child = (args, input) => new Promise((resolve) => {
-    const p = execFile(TSX, args, { cwd: ROOT, timeout: 30_000, maxBuffer: 2_000_000, env: settingsEnv() }, (err, stdout) => {
+    const p = execTsx(args, { cwd: ROOT, timeout: 30_000, maxBuffer: 2_000_000, env: settingsEnv() }, (err, stdout) => {
       const line = String(stdout || "").trim().split("\n").filter(Boolean).pop() || "";
       try { resolve(JSON.parse(line)); } catch { resolve({ ok: false, message: err ? String(err.message).slice(0, 300) : "no answer from the settings tool" }); }
     });
@@ -304,7 +306,7 @@ function create(ctx) {
     });
   });
   // Advanced (read-only) list for debugging.
-  handle("tools:settings", () => new Promise((resolve) => execFile(TSX, ["src/settings-cli.ts"], { cwd: ROOT, timeout: 60_000, maxBuffer: 2_000_000, env: settingsEnv() }, (err, stdout, stderr) => resolve({ ok: !err, text: String(stdout || "") + (stderr ? "\n" + String(stderr) : "") || (err ? String(err.message) : "") }))));
+  handle("tools:settings", () => new Promise((resolve) => execTsx(["src/settings-cli.ts"], { cwd: ROOT, timeout: 60_000, maxBuffer: 2_000_000, env: settingsEnv() }, (err, stdout, stderr) => resolve({ ok: !err, text: String(stdout || "") + (stderr ? "\n" + String(stderr) : "") || (err ? String(err.message) : "") }))));
 
   // ---- keys: Keychain storage, write-only input. All logic in keys-ipc.cjs (main process only). ----
   require("./keys-ipc.cjs").register({

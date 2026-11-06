@@ -9,12 +9,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT, CALLS } from "./env.ts";
 import { writeWav } from "./audio.ts";
+import { assertMode, tsx } from "./test-platform.ts";
 
 test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, a note, and drops echo", { timeout: 60_000 }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-e2e-"));
   const wav = join(tmp, "silence.wav");
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 14), 2);   // 14 s of stereo silence: the file clock ends the call
-  const r = spawnSync(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
+  const r = spawnSync(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
     cwd: ROOT, encoding: "utf8", timeout: 50_000,
     env: { ...process.env, WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json"), WINGMAN_SCRIPT_GAP_MS: "1100", WINGMAN_ECHO: "both" },
   });
@@ -48,7 +49,7 @@ test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, 
     // Post-call summary (profile e2e: scripted summary model, minWords 20): written before the shutdown ends, price/date sentences replaced.
     const sumFile = join(dir, "summary.json");
     assert.ok(existsSync(sumFile), "summary.json written");
-    assert.equal(statSync(sumFile).mode & 0o777, 0o600);
+    assertMode(sumFile, 0o600);
     const sum = JSON.parse(readFileSync(sumFile, "utf8"));
     assert.ok(sum.summary.length >= 3 && sum.nextSteps.length >= 1, "summary fields");
     assert.match(sum.followUpEmail, /\[להשלים: מחיר\]/); assert.doesNotMatch(sum.followUpEmail, /500/);

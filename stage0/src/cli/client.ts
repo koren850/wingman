@@ -16,7 +16,9 @@ export function appProcessRunning(ctx: Ctx): Promise<boolean | undefined> {
 }
 
 // True only for a real socket owned by the current user.
-function ownSocket(path: string) {
+// On Windows the endpoint is a named pipe (no file to inspect); the pipe name carries the user name and a missing pipe fails with ENOENT below.
+export function ownSocket(path: string, platform: string = process.platform) {
+  if (platform === "win32") return path.startsWith("\\\\.\\pipe\\");
   let st; try { st = lstatSync(path); } catch { return false; }
   return st.isSocket() && (!process.getuid || st.uid === process.getuid());
 }

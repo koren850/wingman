@@ -14,6 +14,7 @@ import { ROOT } from "./env.ts";
 import { writeWav } from "./audio.ts";
 import { main } from "./cli/index.ts";
 import { HELP } from "./cli/help.ts";
+import { assertMode, tsx, POSIX } from "./test-platform.ts";
 
 const req = createRequire(import.meta.url);
 const { createController } = req("../tray/controller.cjs");
@@ -55,15 +56,15 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string; a
     const code = await main(argv, { env, out: (s) => { out += s; }, err: (s) => { err += s; }, sleep: (ms: number) => new Promise((res) => setTimeout(res, Math.min(ms, 30))), stdin: async () => "from stdin" });
     return { code, out, err, json: (() => { try { return JSON.parse(out.trim().split("\n")[0]); } catch { return undefined; } })() };
   };
-  const raw = (line: string) => new Promise<any>((res) => { const s = net.createConnection(sock); let b = ""; s.on("connect", () => s.write(line)); s.on("data", (d) => (b += d)); s.on("close", () => res(JSON.parse(b))); });
+  const raw = (line: string) => new Promise<any>((res) => { const s = net.createConnection(req("../tray/control-socket.cjs").endpointFor(sock)); let b = ""; s.on("connect", () => s.write(line)); s.on("data", (d) => (b += d)); s.on("close", () => res(JSON.parse(b))); });
   return { dir, sock, ctl, plans, server, logs, f, asked, env, run, raw, done: async () => { await server.stop(); rmSync(dir, { recursive: true, force: true }); } };
 }
 
-test("socket: owner-only permissions (folder 700, socket 600)", async () => {
+test("socket: owner-only permissions (folder 700, socket 600)", POSIX, async () => {
   const r = await rig();
   try {
-    assert.equal(statSync(r.sock).mode & 0o777, 0o600);
-    assert.equal(statSync(join(r.dir, "run")).mode & 0o777, 0o700);
+    assertMode(r.sock, 0o600);
+    assertMode(join(r.dir, "run"), 0o700);
   } finally { await r.done(); }
 });
 
@@ -259,7 +260,7 @@ test("plan: new, list, show, edit by --id, attach, detach, delete (several meeti
     assert.equal(a.code, 0, a.out + a.err); assert.equal(a.json.created, true);
     const id = a.json.plan.id;
     assert.equal(a.json.plan.kind, "vendor"); assert.deepEqual(a.json.plan.mustCover, ["price", "downtime"]); assert.equal(a.json.plan.name, "Hosting move");
-    assert.equal(statSync(join(r.dir, "briefs", "plans", id, "meeting.json")).mode & 0o777, 0o600);
+    assertMode(join(r.dir, "briefs", "plans", id, "meeting.json"), 0o600);
     const b = await r.run("plan", "new", "--who", "Noam Beta", "--at", "23:59", "--json");
     assert.equal(b.code, 0, b.out + b.err); assert.ok(b.json.plan.at.length > 0 && b.json.plan.atText.endsWith("23:59"));
     const list = await r.run("plan", "list", "--json");
@@ -282,7 +283,7 @@ test("plan: new, list, show, edit by --id, attach, detach, delete (several meeti
     const att2 = await r.run("plan", "attach", "--id", id.slice(0, 9), "--file", md, "--json");
     assert.equal(att2.json.attachments.length, 2, "a unique id prefix works");
     assert.equal((await r.run("plan", "attach", "--id", id, "--file", join(r.dir, "x.exe"), "--json")).code, 5);
-    writeFileSync(join(r.dir, "bin.dat"), "x"); assert.equal((await r.run("plan", "attach", "--id", id, "--file", join(r.dir, "bin.dat"), "--json")).code, 1);
+    writeFileSync(join(r.dir, "bin.dat"), "x"); assert.equal((await r.run("plan", "attach", "--id", id, "--file", join(r.dir, "bin.dat"), "--json")).code, 4, "other extensions are refused up front (allow-list)");
     const show = await r.run("plan", "show", id, "--json");
     assert.equal(show.json.plan.attachments.length, 2);
     assert.ok(!JSON.stringify(show.json).includes("Levi Studio runs"), "background text is not echoed");
@@ -495,7 +496,7 @@ test("hidden instance: the real controller + scripted engine (file mode) driven 
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 30), 2);
   // Same controller as the app; only the child command is swapped from call.ts (which opens the answer window) to run.ts in scripted file mode.
   const realSpawn = spawn;
-  const spawnEngine = (bin: string, args: string[], opts: any) => realSpawn(bin, [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
+  const spawnEngine = (bin: string, args: string[], opts: any) => realSpawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
     ...opts, env: { ...opts.env, WINGMAN_CALLS_DIR: join(dir, "calls"), WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json"), WINGMAN_SCRIPT_GAP_MS: "1100" },
   });
   const r = await rig({ spawn: spawnEngine, callsDir: join(dir, "calls") });

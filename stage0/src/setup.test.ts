@@ -10,6 +10,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { ROOT } from "./env.ts";
 import { parseAvfoundationInputs } from "./devices.ts";
+import { assertMode, BASH, MAC } from "./test-platform.ts";
 
 const require = createRequire(import.meta.url);
 const setup = require("../dashboard/setup-ipc.cjs");
@@ -114,8 +115,8 @@ test("pack: copying the example pack never overwrites, uses 700/600, and the use
   assert.equal(setup.packInfo(root, env, home).using, "example");
   const c = setup.copyExamplePack(root, env, home);
   assert.equal(c.ok, true); assert.deepEqual(c.copied.sort(), ["bank.yaml", "house-style.md"]);
-  assert.equal(statSync(env.WINGMAN_PACK_DIR).mode & 0o777, 0o700);
-  assert.equal(statSync(join(env.WINGMAN_PACK_DIR, "bank.yaml")).mode & 0o777, 0o600);
+  assertMode(env.WINGMAN_PACK_DIR, 0o700);
+  assertMode(join(env.WINGMAN_PACK_DIR, "bank.yaml"), 0o600);
   assert.equal(setup.packInfo(root, env, home).using, "user");
   writeFileSync(join(env.WINGMAN_PACK_DIR, "bank.yaml"), "MY EDIT");
   const again = setup.copyExamplePack(root, env, home);
@@ -141,7 +142,7 @@ test("profile child: read, write (keeps timezone), and it refuses unknown fields
   writeFileSync(file, "name: Old\ntimezone: Europe/Paris\n", { mode: 0o600 });
   const w = run("write", JSON.stringify(good));
   assert.equal(w.ok, true); assert.equal(w.profile.name, "Dan"); assert.equal(w.profile.timezone, "Europe/Paris"); assert.deepEqual(w.profile.spellings, ["דן", "Danny"]);
-  assert.equal(statSync(file).mode & 0o777, 0o600);
+  assertMode(file, 0o600);
   assert.equal(run("write", JSON.stringify({ ...good, timezone: "UTC" })).ok, false);
   assert.equal(run("write", JSON.stringify({ ...good, address: "x" })).ok, false);
   assert.equal(run("write", "[]").ok, false);
@@ -173,7 +174,7 @@ test("fuses: the flip turns RunAsNode, NODE_OPTIONS and --inspect off and leaves
   assert.throws(() => fuses.flip(Buffer.concat([sentinel, Buffer.from([9, 9]), Buffer.from("101100011")])), /unknown fuse wire/);
 });
 
-test("installer scripts: syntax, flags, no sudo, and the launcher shows both dialogs", () => {
+test("installer scripts: syntax, flags, no sudo, and the launcher shows both dialogs", BASH, () => {
   for (const f of ["../install.sh", "scripts/make-app.sh", "scripts/wingman.sh", "scripts/wingman-cli.sh"]) assert.equal(spawnSync("bash", ["-n", join(ROOT, f)]).status, 0, f);
   const inst = read("../install.sh");
   assert.doesNotMatch(inst, /(^|[;&|(]\s*)sudo\s/m);   // no command runs sudo (the word appears in a message only)
@@ -188,7 +189,7 @@ test("installer scripts: syntax, flags, no sudo, and the launcher shows both dia
   assert.doesNotMatch(pkg.scripts.postinstall, /\|\|\s*true/);
 });
 
-test("install.sh --check changes nothing and exits 0 on a good machine; unknown flags are refused", () => {
+test("install.sh --check changes nothing and exits 0 on a good machine; unknown flags are refused", MAC, () => {
   const r = spawnSync("bash", [join(ROOT, "..", "install.sh"), "--check"], { encoding: "utf8", env: { ...process.env, HOME: tmp(), WINGMAN_DATA_DIR: join(tmp(), "none") } });
   assert.match(r.stdout, /Checking this Mac \(nothing is changed\)/);
   assert.notEqual(r.status === 0 || r.status === 1, false);

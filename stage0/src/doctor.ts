@@ -52,7 +52,7 @@ S = S!;
 
 section("Keys (source and last 4 characters only; values are never shown)");
 const keyFile = expandHome(S.keys.file) || KEYS_FILE;
-if (existsSync(keyFile)) {
+if (existsSync(keyFile) && process.platform !== "win32") {   // Windows has no POSIX modes
   const mode = statSync(keyFile).mode & 0o777;
   mode === 0o600 ? ok(`keys file mode 600`) : bad(`keys file mode is ${mode.toString(8)}`, `chmod 600 ${keyFile}`);
 }

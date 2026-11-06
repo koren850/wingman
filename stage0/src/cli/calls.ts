@@ -2,6 +2,7 @@
 // Only `purge` and `live` ask the app (over the control socket, tray/control-socket.cjs) whether a call is still running.
 import { execFile } from "node:child_process";
 import { join } from "node:path";
+import bin from "../../shared/bin.cjs";
 import { appStatus } from "./client.ts";
 import { CliError, EXIT, dataLib, feedLib, parse, usage, clip, mmss, type Ctx, type Result } from "./common.ts";
 
@@ -36,7 +37,7 @@ function summaryText(s: any): string {
 // Writes a missing summary by running src/summary.ts in a child (one small paid model call). Its output is dropped on purpose.
 function generate(ctx: Ctx, id: string): Promise<boolean> {
   const run = ctx.spawnTsx ?? ((a: string[], ms: number) => new Promise<{ code: number; out: string }>((res) =>
-    execFile(join(ctx.root, "node_modules", ".bin", "tsx"), a, { cwd: ctx.root, timeout: ms, maxBuffer: 4_000_000, env: { ...ctx.env, FORCE_COLOR: "0" } }, (e) => res({ code: e ? 1 : 0, out: "" }))));
+    { const t = bin.binCommand("tsx", a, ctx.root); execFile(t.cmd, t.args, { cwd: ctx.root, timeout: ms, maxBuffer: 4_000_000, env: { ...ctx.env, FORCE_COLOR: "0" } }, (e) => res({ code: e ? 1 : 0, out: "" })); }));
   return run([join(ctx.root, "src", "summary.ts"), id], 180_000).then((r) => r.code === 0);   // output is dropped: it contains call content
 }
 

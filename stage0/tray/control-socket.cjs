@@ -17,15 +17,24 @@ const nodeFs = require("node:fs");
 const nodePath = require("node:path");
 const nodeOs = require("node:os");
 const nodeNet = require("node:net");
+const pipes = require("../shared/pipe.cjs");
 
 const MAX_LINE = 4096;
 const READ_TIMEOUT_MS = 5000;
 const MAX_CLIENTS = 8;
 const RATE = { minGapMs: 1500, perMinute: 6 };
 
-/** WINGMAN_CONTROL_SOCKET (tests) or ~/.config/wingman/run/control.sock */
-function socketPath(env = process.env, os = nodeOs) {
+/** The endpoint for a socket file path: the path itself on macOS/Linux; on Windows a pipe named after a hash of the path (tests, second profiles). */
+function endpointFor(file, platform = process.platform) {
+  if (!pipes.usesPipes(platform)) return nodePath.resolve(file);
+  return pipes.pipeName("control-" + require("node:crypto").createHash("sha256").update(nodePath.resolve(file)).digest("hex").slice(0, 12));
+}
+
+/** WINGMAN_CONTROL_SOCKET (tests) or ~/.config/wingman/run/control.sock. On Windows: the named pipe \\.\pipe\wingman-<user>-control
+ *  (with WINGMAN_CONTROL_SOCKET set, a pipe named after a hash of that path, so tests and second profiles stay apart). `platform` is injectable. */
+function socketPath(env = process.env, os = nodeOs, platform = process.platform) {
   const e = env.WINGMAN_CONTROL_SOCKET;
+  if (pipes.usesPipes(platform)) return e ? endpointFor(e, platform) : pipes.pipeName("control");
   return e ? nodePath.resolve(e) : nodePath.join(os.homedir(), ".config", "wingman", "run", "control.sock");
 }
 
@@ -69,7 +78,9 @@ function createControlServer(o) {
   const fs = o.fs || nodeFs, path = o.path || nodePath, net = o.net || nodeNet;
   const ctl = o.controller, lib = o.lib;
   const now = o.now || Date.now;
-  const sockPath = o.socketPath || socketPath(o.env);
+  const platform = o.platform || process.platform;
+  const onPipe = pipes.usesPipes(platform);   // Windows: a named pipe, no folder, no file modes, no uid
+  const sockPath = o.socketPath ? endpointFor(o.socketPath, platform) : socketPath(o.env, nodeOs, platform);
   const uid = o.uid !== undefined ? o.uid : (process.getuid ? process.getuid() : -1);
   const log = o.log || (() => {});
   const Plans = require("../shared/plans.js");
@@ -239,6 +250,7 @@ function createControlServer(o) {
 
   /** The run folder and any old socket must be ours, or we do not listen at all. */
   function prepare() {
+    if (onPipe) return;   // the pipe name carries the user name; nothing on disk to check
     const dir = path.dirname(sockPath);
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     const ds = fs.lstatSync(dir);
@@ -259,13 +271,13 @@ function createControlServer(o) {
       try { prepare(); } catch (e) { return reject(e); }
       server = net.createServer(onConnection);
       server.on("error", reject);
-      const prev = process.umask(0o177);   // the socket is created 600 from the start, no window where others could connect
+      const prev = onPipe ? 0 : process.umask(0o177);   // the socket is created 600 from the start, no window where others could connect
       server.listen(sockPath, () => {
-        process.umask(prev);
-        try { fs.chmodSync(sockPath, 0o600); } catch { /* best effort */ }
+        if (!onPipe) process.umask(prev);
+        if (!onPipe) try { fs.chmodSync(sockPath, 0o600); } catch { /* best effort */ }
         resolve(sockPath);
       });
-      server.once("error", () => { try { process.umask(prev); } catch { /* done */ } });
+      server.once("error", () => { try { if (!onPipe) process.umask(prev); } catch { /* done */ } });
     });
   }
   /** Stops listening and removes the socket file. */
@@ -274,10 +286,10 @@ function createControlServer(o) {
       if (!server) return resolve();
       const s = server; server = undefined;
       s.close(() => resolve());
-      try { fs.rmSync(sockPath, { force: true }); } catch { /* gone */ }
+      if (!onPipe) try { fs.rmSync(sockPath, { force: true }); } catch { /* gone */ }
     });
   }
   return { start, stop, path: sockPath, handle, COMMANDS: Object.keys(COMMANDS) };
 }
 
-module.exports = { createControlServer, socketPath, MAX_LINE, RATE };
+module.exports = { createControlServer, socketPath, endpointFor, MAX_LINE, RATE };

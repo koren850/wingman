@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import paths from "../shared/paths.cjs";
 import migrate from "../shared/migrate.cjs";
+import { assertMode } from "./test-platform.ts";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "wm-datadir-"));
 const put = (f: string, s: string) => { mkdirSync(join(f, ".."), { recursive: true }); writeFileSync(f, s); };
@@ -74,11 +75,11 @@ test("migration sets folder mode 700 and file mode 600 and keeps modified times"
   const o = oldLayout(), root = join(tmp(), "Wingman");
   const t = new Date("2026-01-02T03:04:05Z"); utimesSync(join(o.calls, "01AAA", "call.json"), t, t);
   run(o, root);
-  assert.equal(mode(root), 0o700);
-  assert.equal(mode(join(root, "calls")), 0o700);
-  assert.equal(mode(join(root, "calls", "01AAA")), 0o700);
-  assert.equal(mode(join(root, "calls", "01AAA", "call.json")), 0o600);
-  assert.equal(mode(join(root, "briefs", "attachments", "a.txt")), 0o600);
+  assertMode(root, 0o700);
+  assertMode(join(root, "calls"), 0o700);
+  assertMode(join(root, "calls", "01AAA"), 0o700);
+  assertMode(join(root, "calls", "01AAA", "call.json"), 0o600);
+  assertMode(join(root, "briefs", "attachments", "a.txt"), 0o600);
   assert.equal(Math.round(statSync(join(root, "calls", "01AAA", "call.json")).mtimeMs / 1000), Math.round(t.getTime() / 1000));
 });
 

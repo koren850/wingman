@@ -48,8 +48,9 @@ export function parseKeysFile(text: string): Record<string, string> {
 
 /** The keys file must be readable by its owner only. Too-open permissions are fixed (chmod 600) and reported once per process. */
 let permsChecked = false;
-export function securePerms(file: string): "ok" | "fixed" | "missing" {
+export function securePerms(file: string, platform: string = process.platform): "ok" | "fixed" | "missing" {
   if (!existsSync(file)) return "missing";
+  if (platform === "win32") return "ok";   // no POSIX mode bits on Windows: the file is protected by the user profile's access list
   const mode = statSync(file).mode & 0o777;
   if ((mode & 0o077) === 0) return "ok";
   chmodSync(file, 0o600);

@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { createRequire } from "node:module";
 import { ROOT, CALLS } from "./env.ts";
 import { writeWav } from "./audio.ts";
+import { tsx } from "./test-platform.ts";
 
 const lib = createRequire(import.meta.url)("../tray/lib.cjs");
 
@@ -16,7 +17,7 @@ test("control mode: note, quiet, client confirm and stop work from stdin; status
   const tmp = mkdtempSync(join(tmpdir(), "wingman-ctl-"));
   const wav = join(tmp, "silence.wav");
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 30), 2);   // long file: the stop command must end the call, not the file
-  const p = spawn(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
+  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
     cwd: ROOT, stdio: ["pipe", "pipe", "pipe"],
     env: { ...process.env, WINGMAN_CONTROL: "1", WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json"), WINGMAN_SCRIPT_GAP_MS: "1100" },
   });
@@ -56,7 +57,7 @@ test("control mode: stop-delete removes the call folder", { timeout: 60_000 }, a
   const tmp = mkdtempSync(join(tmpdir(), "wingman-ctl-"));
   const wav = join(tmp, "silence.wav");
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 30), 2);
-  const p = spawn(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
+  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
     cwd: ROOT, stdio: ["pipe", "pipe", "pipe"],
     env: { ...process.env, WINGMAN_CONTROL: "1", WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json"), WINGMAN_SCRIPT_GAP_MS: "1100" },
   });

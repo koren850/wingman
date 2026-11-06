@@ -2,6 +2,7 @@
 // when it is not running, status reports that and doctor runs src/doctor.ts directly. keys status reads the Keychain only.
 import { execFile } from "node:child_process";
 import { join } from "node:path";
+import bin from "../../shared/bin.cjs";
 import { call, appStatus, appProcessRunning, NO_APP_HINT } from "./client.ts";
 import { readPlans, store, toMeeting } from "./plan.ts";
 import { CliError, EXIT, trayLib, parse, usage, ago, type Ctx, type Result } from "./common.ts";
@@ -70,7 +71,8 @@ export async function status(ctx: Ctx, args: string[]): Promise<Result> {
 /** Same child the app uses for its own doctor, when the app is not there to do it. */
 function runDoctorDirect(ctx: Ctx, offline: boolean): Promise<string> {
   const run = ctx.spawnTsx ?? ((a: string[], ms: number) => new Promise<{ code: number; out: string }>((res) => {
-    execFile(join(ctx.root, "node_modules", ".bin", "tsx"), a, { cwd: ctx.root, timeout: ms, maxBuffer: 4_000_000, env: { ...ctx.env, FORCE_COLOR: "0" } }, (e, so, se) => res({ code: e ? 1 : 0, out: String(so) + String(se) }));
+    const t = bin.binCommand("tsx", a, ctx.root);
+    execFile(t.cmd, t.args, { cwd: ctx.root, timeout: ms, maxBuffer: 4_000_000, env: { ...ctx.env, FORCE_COLOR: "0" } }, (e, so, se) => res({ code: e ? 1 : 0, out: String(so) + String(se) }));
   }));
   return run([join(ctx.root, "src", "doctor.ts"), ...(offline ? ["--offline"] : [])], 240_000).then((r) => r.out);
 }

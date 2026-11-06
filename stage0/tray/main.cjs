@@ -10,6 +10,7 @@ const path = require("node:path");
 const lib = require("./lib.cjs");
 const { askClock } = require("../shared/ask.js");
 const { createController } = require("./controller.cjs");
+require("../shared/permissions.cjs").install(app);   // no browser permission is ever granted to a window
 const windowHost = require("../dashboard/window.cjs");
 const { createControlServer } = require("./control-socket.cjs");
 const { createPlanStore } = require("./plans.cjs");
@@ -170,7 +171,7 @@ app.whenReady().then(() => {
   // Local control channel for the `wingman` CLI: owner-only Unix socket, fixed command list (tray/control-socket.cjs). Never in snapshot mode.
   if (!SNAPSHOT) {
     // A start from the command line and every stop-and-delete ask the user in a native window first (tray/lib.cjs); settings are read when asked, so a change applies at once.
-    const askRun = lib.settingsReader({ execFile: require("node:child_process").execFile, tsx: path.join(ROOT, "node_modules", ".bin", "tsx"), root: ROOT });
+    const askRun = lib.settingsReader({ execFile: require("node:child_process").execFile, root: ROOT });
     controlServer = createControlServer({ controller: ctl, lib, plans, log: logLine, info: () => ({ pid: process.pid, version: app.getVersion() }),
       askCliStart: () => lib.askBeforeCliStart({ run: askRun }), confirm: { start: () => lib.confirmCliStart({ dialog }), stopDelete: () => lib.confirmCliStopDelete({ dialog }) } });
     controlServer.start().catch((e) => logLine("control socket not started: " + e.message));

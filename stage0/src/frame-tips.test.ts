@@ -16,6 +16,7 @@ import { CostMeter } from "./cost.ts";
 import { loadSettings } from "./settings.ts";
 import { guard } from "./guards.ts";
 import { scriptedFrame, scriptedTip } from "./providers/scripted.ts";
+import { assertMode } from "./test-platform.ts";
 
 const req = createRequire(import.meta.url);
 const att = req("../tray/attachments.cjs");
@@ -173,7 +174,7 @@ test("attachments: .txt and .md are stored as text, mode 600 in a 700 folder; na
   assert.ok(r.ok, JSON.stringify(r));
   const files = readdirSync(dir); assert.equal(files.length, 1);
   assert.match(files[0], /^a[0-9a-z]+__[\p{L}\p{N}._ -]+\.txt$/u); assert.ok(!/[\/<>]/.test(files[0]));
-  assert.equal(statSync(join(dir, files[0])).mode & 0o777, 0o600); assert.equal(statSync(dir).mode & 0o777, 0o700);
+  assertMode(join(dir, files[0]), 0o600); assertMode(dir, 0o700);
   assert.equal(att.safeName("a/b\\c‮d.txt"), "cd.txt"); assert.equal(att.safeName("..."), "file"); assert.ok(att.safeName("x".repeat(500)).length <= 60);
   const list = st.list(); assert.equal(list.files.length, 1); assert.equal(list.pdf, false); assert.ok(!JSON.stringify(list).includes("שרת"));   // the list never carries content
   assert.match(st.readAll()[0].text, /שרת ייעודי/);

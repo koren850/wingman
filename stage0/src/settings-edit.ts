@@ -60,9 +60,9 @@ export function applyEdits(userFile: string, edits: Edits): EditResult {
       return { ok: false, message: (e as Error).message };
     } finally { rmSync(cand, { force: true }); }
     writeFileSync(tmp, out, { mode: 0o600 });
-    chmodSync(tmp, 0o600);
+    try { chmodSync(tmp, 0o600); } catch { /* no POSIX modes (Windows) */ }
     renameSync(tmp, userFile);
-    chmodSync(userFile, 0o600);
+    try { chmodSync(userFile, 0o600); } catch { /* no POSIX modes (Windows) */ }
   } catch (e) { rmSync(tmp, { force: true }); return { ok: false, message: `Could not save: ${(e as Error).message}` }; }
   return { ok: true, changed };
 }
