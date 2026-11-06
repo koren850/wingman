@@ -31,7 +31,7 @@ function ratableCards(rows) {
   for (const c of rows) {
     if (c.type === "capture" || !c.id) continue;
     if (c.withdraw) { byId.delete(c.id); continue; }
-    if (c.badge !== "info" && c.badge !== "note" && !c.health) byId.set(c.id, c);   // notes: 59 of 69 useful on 5 Nov, rating them is busywork
+    if (c.badge !== "info" && c.badge !== "note" && !c.health) byId.set(c.id, c);   // notes are mostly useful, rating them is busywork
   }
   return [...byId.values()];
 }

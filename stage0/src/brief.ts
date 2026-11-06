@@ -15,7 +15,7 @@ export type Brief = { planId?: string; title?: string; who?: string; goal?: stri
 export const BRIEF_DIR = BRIEFS;
 
 const TERM_STOP = new Set(["hr", "call", "interview", "round", "meeting", "with", "and", "the", "of", "for", "team", "lead", "screen", "phone", "intro", "manager", "or", "a", "an", "to", "on", "in", "שיחה", "ראיון", "עם", "של", "פגישה", "ראש", "צוות", "מנהל", "מנהלת", "משאבי", "אנוש", "מגייסת", "מגייס"]);
-/** Speech-to-text hints from the plan: names in "who" and "title" ("Dana Levi (Initech HR)" -> Dana, Levi, Initech). At most 10. */
+/** Speech-to-text hints from the plan: names in "who" and "title" ("Dana Levi (Acme HR)" -> Dana, Levi, Acme). At most 10. */
 export function briefTerms(b: Brief | undefined): string[] {
   if (!b) return [];
   const words = `${b.who ?? ""} ${b.title ?? ""}`.split(/[\s,()·:|/–—-]+/).map((w) => w.replace(/^[.'"]+|[.'"]+$/g, "")).filter(Boolean);

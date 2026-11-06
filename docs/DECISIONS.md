@@ -60,7 +60,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 ## ADR 2: A dogfood tool before the big structure
 
-**Context.** The structure documents described a monorepo, three processes, replay clocks, encryption and more, about 3 to 4 weeks before the first real call.
+**Context.** The structure documents described a monorepo, three processes, replay clocks, encryption and more, about 3 to 4 weeks before the first call.
 
 **Decision.** Build "Stage 0" first: a rough, terminal-launched tool in `stage0/` that reuses the planned ideas but not the planned layout. A flat folder, one process per call, plain JSONL. Add a dated kill rule: if it is not used on a real call by a set date, freeze it.
 
@@ -134,7 +134,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 **Context.** Calls are Hebrew with English tech terms ("cache", "plugin", "staging"). Hebrew-only recognition writes English words phonetically.
 
-**Decision.** Default `stt.language: multi`. A synthetic test (2 Nov) found 52 percent of English terms recognised in `multi` against 18 percent in `he`. `he` stays as "Hebrew only" for steadier short clips. In `multi`, finals written mostly in other scripts (Telugu, Persian and so on, hallucinated on short clips) are dropped and counted.
+**Decision.** Default `stt.language: multi`. A synthetic test found 52 percent of English terms recognised in `multi` against 18 percent in `he`. `he` stays as "Hebrew only" for steadier short clips. In `multi`, finals written mostly in other scripts (Telugu, Persian and so on, hallucinated on short clips) are dropped and counted.
 
 **Why.** Term recall was the project's main risk, and `multi` measured better.
 
@@ -360,7 +360,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 ## ADR 27: The window hides the live conversation
 
-**Context.** A 3 November UX audit (4 reviewers, 54 problems, 52 fixed) found that the Home window showed the live transcript during a call, which pulls the eyes away from the person you are talking to.
+**Context.** A UX audit (4 reviewers, 54 problems, 52 fixed) found that the Home window showed the live transcript during a call, which pulls the eyes away from the person you are talking to.
 
 **Decision.** During a call the Home page shows the timer, phase, warnings, Quiet mode, notes and Stop, and hides the live conversation behind a **Show conversation** button.
 
@@ -426,7 +426,7 @@ Context for all of them: Wingman was built for one user's live calls first. Call
 
 **Why.** Repeatable, cheap (about $0.35 for the full set at the time), and it exercises the real services.
 
-**Alternatives.** Only manual tests; only mocked tests (we also have those: 515).
+**Alternatives.** Only manual tests; only mocked tests (we also have those, hundreds of them).
 
 **Consequences.** Synthetic speech is cleaner than real speech, so accuracy numbers are optimistic. A real recording and the 40-sentence gold set are still needed.
 

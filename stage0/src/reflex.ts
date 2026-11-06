@@ -10,7 +10,7 @@ import { ModelRegistry, providerOptionsFor, cacheOptionsFor, withFallbacks } fro
 import { classifyFinish, classifyLlmError, ProviderError } from "./providers/errors.ts";
 
 /** The model's first-line verdict. `bankId` only for BANK. */
-/** True when a model say-line contains one of the reflex control words (SKIP / STALL / BANK / ANS) as a word (3 Nov call: "... לכן SKIP עדיף כרגע"). */
+/** True when a model say-line contains one of the reflex control words (SKIP / STALL / BANK / ANS) as a word (for example "... לכן SKIP עדיף כרגע"). */
 export function leakedTag(say: string): boolean {
   // also the model talking about its own job instead of answering ("The say-line is about... the transcript garbled RAG")
   return /(^|[^A-Za-z])(SKIP|STALL|BANK|ANS)(?![A-Za-z])/.test(say) || /\bsay-line\b|\btranscript\s+(garbled|misheard)|\bgarbled\b|\bbank card\b/i.test(say);
@@ -272,7 +272,7 @@ export function parseReflex(buf: string, final: boolean): { tagLine?: string; sa
   const complete = final ? raw : raw.slice(0, -1);
   const partial = final ? "" : (raw.at(-1) ?? "").trim();
   let ne = complete.map((l) => l.trim()).filter(Boolean);
-  // The model sometimes thinks out loud before its verdict ("BANK x is not in the list; ... technical question → ANS", 4 Nov mock).
+  // The model sometimes thinks out loud before its verdict ("BANK x is not in the list; ... technical question → ANS", seen in a mock call).
   // A BANK line counts only as "BANK <id>" (optionally ": say-line"); lines before the first real tag line are dropped.
   // With no real tag line at the end, a rambling BANK line is unclear: SKIP, never a guessed card.
   const at = ne.findIndex(isTagLine);

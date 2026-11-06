@@ -144,7 +144,7 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
   if (t.length < MIN_WORDS) return { isQuestion: false, reason: "too-short" };
   if (t.every(isFiller)) return { isQuestion: false, reason: "filler" };
   // Cut off mid-phrase ("יש לך ניסיון עם", "do you have experience with"): speech-to-text split it or lost the last word. Wait for
-  // the rest (the next line), never guess an answer to half a question (4 Nov mock: it got the "about you" card).
+  // the rest (the next line), never guess an answer to half a question (seen in a mock call: it got the "about you" card).
   if (DANGLING.test(raw)) return { isQuestion: false, reason: "unfinished" };
   // Fillers plus "give me a second": "אממ, רגע, כאילו, תן לי רגע" says nothing.
   if (tokens(raw.replace(TIME_ASK, " ")).every(isFiller)) return { isQuestion: false, reason: "filler" };

@@ -120,7 +120,7 @@ try { bank = interview ? (cardsFile ? loadBank(cardsFile) : []) : loadBank(); }
 catch (e) { console.error(`Prepared cards ${cardsFile} not loaded: ${(e as Error).message}`); bank = []; }
 const stall = stallCard(bank);
 const houseStyle = readPack("house-style.md");
-// Names from the plan go first (the cap cuts the end of the list): "Dana Levi (Initech HR)" -> Dana, Levi, Initech.
+// Names from the plan go first (the cap cuts the end of the list): "Dana Levi (Acme HR)" -> Dana, Levi, Acme.
 const keyterms = [...new Set([...briefTerms(brief), ...loadKeyterms(S)])].slice(0, Math.max(S.stt.keyterms.max, 1));
 // Background files from "Plan a call": read once (and deleted: one plan = one call). A replay / --no-brief never uses them.
 const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars, { consume: !fileArg });   // a practice call with the plan never uses up the real call's files
@@ -288,7 +288,7 @@ function reminderTick() {
   if (min < S.reminders.firstAfterMin || Date.now() - lastReminderAt < S.reminders.everyMin * 60000) return;
   const left = uncovered();
   if (!left.length) return;
-  // 5 Nov review: the same list every 10 minutes was noise. Remind only when the list changed, at most 3 times a call, 3 items a card.
+  // The same list every 10 minutes was noise. Remind only when the list changed, at most 3 times a call, 3 items a card.
   const key = left.join("|");
   if (key === lastReminderKey || reminderSeq >= 3) return;
   lastReminderAt = Date.now(); lastReminderKey = key;
@@ -420,14 +420,14 @@ let current: AbortController | undefined;   // the running answer for the other 
 let quiet = S.cards.quiet, consented = false, shuttingDown = false;   // set by startForwarding() (at once when no consent click is needed)
 const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay (a card keeps its first decision when it is updated, so it never flips)
 // Cards that took a slot of the per-minute cap. A withdrawn card gives its slot back, and "buy time" lines never take one
-// (3 Nov call: stall lines and replaced cards used up the cap, and the best answer of the call was hidden).
+// (in a real call stall lines and replaced cards used up the cap, and the best answer of the call was hidden).
 let shownTimes: { id: string; t: number }[] = [];
 const turnsWithCard = new Set<string>();
 
 /** The single exit for every card. Sanitizes text, decides hidden (quiet mode, or the per-minute cap unless priority), appends to cards.jsonl
  *  (hidden cards are logged too, flagged) and prints to the terminal. Health/info/tip cards are never hidden or counted. */
 // "Important cards only" (cards.focus): 2 cards per 2 minutes, and only for clear questions. The detector's weaker cues ("head": a
-// question word at the start, 124 of 225 detections on 3 Nov, mostly statements) do not count; price/date cards and cards about
+// question word at the start, over half of all detections in a real call, mostly statements) do not count; price/date cards and cards about
 // what the user said are not affected.
 const capMax = () => (interview ? 99 : S.cards.focus ? Math.min(2, S.cards.maxPerMinute) : S.cards.maxPerMinute);   // an interview: every question gets its card
 const capWindow = () => (S.cards.focus && !interview ? 120_000 : S.cards.windowMs);
@@ -503,10 +503,10 @@ let lastAgencyTopicAt = 0;
 const bankShownAt = new Map<string, number>();
 function onQuestion(r: SttResult, reason = "") { try { onQuestionCore(r, reason); } catch (e) { survived("onQuestion", e); } }
 function onQuestionCore(r: SttResult, reason = "") {
-  // "If ..." openers in a work meeting are mostly people thinking aloud (5 Nov: 2 of 8 useful). Only when aimed at the user.
+  // "If ..." openers in a work meeting are mostly people thinking aloud (in review, few were useful). Only when aimed at the user.
   if (!interview && reason.startsWith("if-open") && !addressesYou(r.text)) { log.write("events", { type: "ifopen.skip", text: r.text.slice(0, 120) }); return; }
   // Interview: a line that only starts with a question word ("יש משימת בית", "צריך לקחת בחשבון") is the interviewer talking, not asking.
-  // 5 Nov Acme Corp: 29 of 44 such turns ended in SKIP. Ask the model only when it speaks to the user or matches a prepared card.
+  // In real use, most such turns ended in SKIP. Ask the model only when it speaks to the user or matches a prepared card.
   if (interview && reason.startsWith("head") && !addressesYou(r.text) && !matchBank(r.text, bank)) { log.write("events", { type: "head.skip", text: r.text.slice(0, 120) }); return; }
   if (S.cards.focus && !interview && !focusWorthy(r.text, reason)) { log.write("events", { type: "focus.skip", reason, text: r.text.slice(0, 120) }); return; }
   // Their own discussion: the question is for one of them, not the user. Price/date ("buy time") cards still show.
@@ -526,7 +526,7 @@ function onQuestionCore(r: SttResult, reason = "") {
   const noAgency = !interview && !!tracker.kind && !isAgencyKind(tracker.kind) && !agencyTopic && !agencyRecent;
   const noStall = noAgency || interview || !S.reflex.stall;   // an interview never gets a "buy time" line; elsewhere only when reflex.stall is on
   let hit = interview ? matchBank(r.text, bank) : noAgency ? undefined : matchBankFor(r.text, bank);   // stall-price is dropped for arithmetic and for prices that are not the user's services
-  // The same prepared card twice in one call is almost always a keyword echo (5 Nov: one card three times while HR talked about her team).
+  // The same prepared card twice in one call is almost always a keyword echo (one card fired three times while the other side talked about their own team).
   // A repeat shows only for a clear question at least 2 minutes after the last time.
   if (hit && !STALL_TIER.has(hit.card.id)) {
     const seen = bankShownAt.get(hit.card.id);
@@ -547,7 +547,7 @@ function onQuestionCore(r: SttResult, reason = "") {
   // except the price / timeline / guarantee stall tier, which always stays.
   const offKind = !interview && !!tracker.kind && !isAgencyKind(tracker.kind);
   // A prepared meeting with background files: a general topical card (SEO basics, "move a site") may be the wrong card for this meeting,
-  // so it shows dimmed and an AI answer from the background replaces it (3 Nov: "old links and Google ranking" got the generic SEO card).
+  // so it shows dimmed and an AI answer from the background replaces it ("old links and Google ranking" got the generic SEO card).
   const bgBank = !interview && !!background && !!hit && !STALL_TIER.has(hit.card.id);
   const weakBank = offKind && !!hit && !STALL_TIER.has(hit.card.id) && !agencyTopic && !agencyRecent;
   // weak = a bank card may be the wrong card, so it is dimmed and the model may withdraw it. Before the first call frame a topical card
@@ -979,7 +979,7 @@ function flushCore(ch: Channel) {
   const detectText = (t: string) => { const h = interview ? matchBank(t, bank) : matchBankFor(t, bank); return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) }; };
   let { hit, d } = detectText(joined.text);
   // Interview: a line that matches one of the user's prepared cards is a question even without a question mark ("עבדת פעם עם טלפוניה").
-  // Only when it is aimed at the user or matches a multi-word trigger: on 5 Nov, 6 of 7 such cards fired while HR described her own company
+  // Only when it is aimed at the user or matches a multi-word trigger: in review, most such cards fired while the other side described their own company
   // ("מפתחים פלטפורמה שמיועדת לארגונים גדולים" matched the one-word trigger "פלטפורמה").
   if (interview && !d.isQuestion && hit && wordCount(joined.text) >= 3 && (hit.score >= 2 || addressesYou(joined.text))) d = { ...d, isQuestion: true, reason: "interview-card" };
   // Glue the previous short fragment only when that turns a non-question into a question (a split question: "כמה זה" ... "עולה לחודש?").
@@ -1262,7 +1262,7 @@ async function shutdown() {
     console.log(`\nDeleted ${log.dir}`);
   } else {
     console.log(`\nSaved ${log.dir}\nRate the cards: pnpm tag · delete later: pnpm purge ${log.id}`);
-    // A long call's summary does not fit the ~12 s stop budget (3 Nov: 70 minutes, no summary). It is finished by a separate
+    // A long call's summary does not fit the ~12 s stop budget (a 70-minute call ended with no summary). It is finished by a separate
     // background process that outlives this one (same code as `wingman calls summary <id> --generate`).
     if (!summaryDone && !summarySkipped && !crashed && !noAi && S.summary.enabled) {
       summaryAbort.abort();
@@ -1416,7 +1416,7 @@ function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: stri
 function makeChannel(ch: Channel): SttChannel {
   return new SttChannel({
     channel: ch, chain: sttChain(S).map(getSttProvider), keyOf: (id) => (NO_KEY.has(id) ? "none" : (keys as Record<string, string | undefined>)[id]),
-    base: { diarize: (ch === "them" && S.stt.speakers) || (PHONE && ch === "me"), language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
+    base: { diarize: (ch === "them" && S.stt.speakers) || (PHONE && ch === "me"), language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model, mipOptOut: S.stt.deepgram.mipOptOut },
     circuit: S.stt.circuit, ringMs: S.stt.reconnect.ringMs,
   });
 }
@@ -1537,7 +1537,7 @@ async function main() {
     status("consented", { id: log.id });
     consentedAt = Date.now(); consentedMono = mono();
     setPhase("live", { liveAt: consentedAt });
-    // Mic watchdog. Silence is normal while the user listens (3 Nov: a quiet Bluetooth mic raised "mic not picking up" about 20 times).
+    // Mic watchdog. Silence is normal while the user listens (a quiet Bluetooth mic raised "mic not picking up" about 20 times).
     // Red only when the mic was NEVER heard since listening started (permission, wrong device). Once it was heard, only a long silence
     // (micLongSilentMs) gives one calm amber line, cleared as soon as the mic is heard again.
     if (!fileArg) { micPeakWin = 0; let silentSince = Date.now(); micWatch = setInterval(() => {
@@ -1678,7 +1678,7 @@ async function main() {
       }
       if (shownKind || checking) return;
       // "I only hear you" only after a long one-sided stretch: the other side is silent while the user talks for a while in any call
-      // (3 Nov: shown 8 times while Zoom audio worked). At most once every 10 minutes.
+      // (it was shown 8 times while Zoom audio worked). At most once every 10 minutes.
       if (!(Date.now() - lastThemSound > ONLY_YOU_MS && Date.now() - lastMeVoiced < 3000 && Date.now() - lastOnlyYouAt > 10 * 60_000)) return;
       checking = true;
       void callAppRunning().then((app) => {

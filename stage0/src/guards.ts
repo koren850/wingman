@@ -75,7 +75,7 @@ export function guard(text: string): GuardResult {
 /** Interview answers: technical talk about costs, rates, dates and durations is the candidate's own content there ("$0.10 per million
  *  tokens", "2,100 tasks in 4 days"). Only a salary figure is blocked: salary comes from the prepared card, never from the model. */
 const SALARY = /(salary|compensation|gross|net pay|\bk\b|שכר|משכורת|ברוטו|נטו|אלף ש)/i;
-/** Tools, clouds and skills an interview answer must not claim unless the user's own profile, cards or plan name them (5 Nov: a card said "OpenAI API"). */
+/** Tools, clouds and skills an interview answer must not claim unless the user's own profile, cards or plan name them (a card once said "OpenAI API" with no basis). */
 const CLAIMABLE = ["OpenAI", "GPT", "ChatGPT", "Gemini", "Llama", "Mistral", "LangChain", "LlamaIndex", "Pinecone", "Weaviate", "Chroma", "pgvector", "AWS", "GCP", "Google Cloud", "Azure", "Kubernetes", "K8s", "Terraform", "Kafka", "Spark", "Airflow", "fine-tuning", "fine-tune", "Java", "C#", ".NET", "Go", "Golang", "Rust", "Angular", "Vue", "Django", "FastAPI", "Flask", "Spring", "PyTorch", "TensorFlow", "Snowflake", "Databricks"];
 const escapeRe = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const termRe = (w: string) => new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(w)}(?![\\p{L}\\p{N}])`, "u");   // case-sensitive: "go over it" is not Go

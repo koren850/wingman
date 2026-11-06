@@ -11,7 +11,7 @@ export type EchoSetting = EchoMode | "auto";
 
 /**
  * "auto" (the default): the mic gate is only for speakers. With headphones there is no echo, and the gate would mute the
- * user whenever the client makes any sound (3 Nov call: 53 of 70 minutes of the user's speech were lost that way).
+ * user whenever the client makes any sound (in a long real call most of the user's speech was lost that way).
  * Headphones (Bluetooth, wired, USB headset) = "filter"; the Mac's own speakers = "both"; unknown output = "filter".
  */
 export function resolveEchoMode(setting: EchoSetting, devs: AudioDevice[]): EchoMode {

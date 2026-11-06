@@ -1,5 +1,5 @@
 # pnpm call --profile first-client-call
-# Cautious settings for the first real client call: bank + stall lines only (no free-form AI answers).
+# Cautious settings for a first call with a new client: bank + stall lines only (no free-form AI answers).
 reflex:
   allowAns: false
 cards:
