@@ -56,6 +56,9 @@ const SECRET_DIRS = [
   ".kube",
   ".docker",
   ".config/wingman",
+  ".config/gcloud",
+  ".config/gh",
+  ".local/share/keyrings",
   "Library/Keychains",
   "AppData/Roaming/Microsoft/Credentials",
   "AppData/Local/Microsoft/Credentials",
@@ -63,7 +66,7 @@ const SECRET_DIRS = [
 ];
 const ALLOWED_EXT = Object.freeze(["txt", "md", "pdf"]);
 const SECRET_NAME =
-  /^(\.env(\..*)?|.*\.env|\.netrc|\.npmrc|\.pgpass|\.git-credentials|\.pypirc|id_(rsa|dsa|ecdsa|ed25519)(\..*)?|.*\.(pem|key|p12|pfx|keychain|keychain-db|kdbx)|keys?|credentials|secrets?)$/i;
+  /^(\.env(\..*)?|.*\.env|\.netrc|\.npmrc|\.pgpass|\.git-credentials|\.pypirc|id_(rsa|dsa|ecdsa|ed25519)(\..*)?|.*\.(pem|key|p12|pfx|keychain|keychain-db|kdbx)|keys?|credentials|secrets?|\.(bash|zsh|sh|python|node|psql|mysql)_history)$/i;
 const inside = (child, parent) => child === parent || child.startsWith(parent.endsWith(path.sep) ? parent : parent + path.sep);
 
 /** Returns the file's bytes, or throws an Error whose message is user-facing and whose .code is "symlink" | "secret" | "outside" | "missing" | "notfile" | "toolarge". */

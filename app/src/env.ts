@@ -1,4 +1,4 @@
-// Paths (ROOT, DATA, CALLS) and API-key loading. Order: process env, then macOS Keychain, then the legacy
+// Paths (ROOT, DATA, CALLS) and API-key loading. Order (shared with Settings, see resolveKey in keychain.cjs): macOS Keychain, then process env, then the legacy
 // ~/.config/wingman/keys.env (never from the repo). Keys are held in memory only; run.ts also deletes them from process.env
 // so child processes (ffmpeg, audiotee) cannot inherit them.
 import { readFileSync, existsSync, statSync, chmodSync } from "node:fs";
@@ -7,7 +7,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import paths from "../shared/paths.cjs";
 import migrate from "../shared/migrate.cjs";
-import { realKeychain, ACCOUNTS, type Keychain } from "./keychain.ts";
+import { realKeychain, resolveKey, ACCOUNTS, type Keychain } from "./keychain.ts";
 export { childEnv } from "./keychain.ts";
 
 export const KEYS_FILE = join(homedir(), ".config", "wingman", "keys.env");
@@ -71,7 +71,7 @@ export function securePerms(file: string, platform: string = process.platform): 
 /** Where each loaded key came from (never the value). */
 export type KeySources = Partial<Record<KeyName, "env" | "keychain" | "file">>;
 
-/** Order: process env, then the macOS Keychain (Deepgram + Anthropic only), then keys.env (legacy fallback). Keys live in memory only.
+/** Order: the macOS Keychain (Deepgram + Anthropic only), then process env, then keys.env (legacy fallback), via resolveKey. Keys live in memory only.
  *  `keychain` is opt-in: null (default) means no Keychain lookup, so tests and tools that pass a file never reach the real one. */
 export function loadKeysWithSources(
   file = KEYS_FILE,
@@ -88,21 +88,10 @@ export function loadKeysWithSources(
     sources: KeySources = {};
   for (const [name, v] of Object.entries(KEY_VARS)) {
     const n = name as KeyName;
-    let val = env[v]?.trim(),
-      src: "env" | "keychain" | "file" = "env";
-    if (!val && keychain && n in ACCOUNTS) {
-      try {
-        val = keychain.get(n as "deepgram" | "anthropic") || undefined;
-      } catch {
-        val = undefined;
-      }
-      src = "keychain";
-    }
-    if (!val && fromFile[v]) {
-      val = fromFile[v];
-      src = "file";
-    }
-    if (val) {
+    const r = resolveKey({ provider: n in ACCOUNTS ? (n as "deepgram" | "anthropic") : null, account: v, keychain, env, fromFile });
+    const val = r.value;
+    const src = r.source;
+    if (val && src !== "missing") {
       keys[n] = val;
       sources[n] = src;
     }

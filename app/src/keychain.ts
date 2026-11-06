@@ -38,6 +38,10 @@ const m = createRequire(import.meta.url)("./keychain.cjs") as {
   scrub(t: unknown, secrets?: string[]): string;
   last4(v: unknown): string;
   keyStatus(o: { keychain: Keychain; file: string; env?: NodeJS.ProcessEnv }): Record<Provider, KeyStatus>;
+  resolveKey(o: { provider?: Provider | null; account: string; keychain?: Keychain | null; env?: NodeJS.ProcessEnv; fromFile?: Record<string, string> }): {
+    value: string | null;
+    source: KeySource;
+  };
   migrateKeysToKeychain(o: { keychain: Keychain; file: string }): MigrateResult;
   testKey(p: string, key: string, f?: typeof fetch): Promise<"ok" | "invalid" | "network">;
 };
@@ -53,6 +57,7 @@ export const {
   scrub,
   last4,
   keyStatus,
+  resolveKey,
   migrateKeysToKeychain,
   testKey,
 } = m;

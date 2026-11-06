@@ -5,6 +5,9 @@ import { EventEmitter } from "node:events";
 import { classifySttError, type ProviderError } from "../errors.ts";
 import type { Channel, SttOptions, SttProvider, SttResult, SttStreamLike } from "./types.ts";
 
+/** Two failure events closer together than this are one socket failure. */
+const SAME_FAILURE_MS = 250;
+
 /** chain = providers in fallback order; circuit = switch after `failures` errors within `windowMs`. */
 export type ChannelOpts = {
   channel: Channel;
@@ -23,6 +26,8 @@ export class SttChannel extends EventEmitter {
   private stream?: SttStreamLike;
   private failures: number[] = [];
   private switching = false;
+  private closed = false;
+  private lastFailure?: { stream: SttStreamLike | undefined; kind: string; at: number };
   private seconds: Record<string, number> = {};
   private droppedOld = 0;
   private ring: Buffer[] = []; // ring: most recent ringMs of audio while the socket is not open
@@ -141,20 +146,25 @@ export class SttChannel extends EventEmitter {
     s.on("disconnected", (d) => {
       if (s !== this.stream) return;
       this.emit("disconnected", d);
-      this.onFailure(d.error ?? classifySttError(this.provider, d));
+      this.onFailure(d.error ?? classifySttError(this.provider, d), s, "disconnected");
     });
     s.on("error", (e) => {
       if (s !== this.stream && this.stream) return;
       const err = classifySttError(this.provider, e);
       this.emit("stt_error", err);
-      this.onFailure(err);
+      this.onFailure(err, s, "error");
     });
   }
 
   /** Decide: wait for the SDK/adapter to reconnect, or switch provider now. */
-  private onFailure(err: ProviderError) {
+  private onFailure(err: ProviderError, stream: SttStreamLike | undefined, kind: "error" | "disconnected") {
     const t = this.now();
-    this.failures = [...this.failures.filter((x) => t - x < this.o.circuit.windowMs), t];
+    // One socket failure can surface twice: an "error" event, then the "disconnected" for the same close (or the other way round).
+    // An event of the other kind from the same stream within SAME_FAILURE_MS is the same failure: count it once toward the circuit.
+    const last = this.lastFailure;
+    const sameFailure = !!last && last.stream === stream && last.kind !== kind && t - last.at < SAME_FAILURE_MS;
+    this.lastFailure = { stream, kind, at: t };
+    if (!sameFailure) this.failures = [...this.failures.filter((x) => t - x < this.o.circuit.windowMs), t];
     const nonRetryable = err.switchProvider && !err.retryable;
     if (nonRetryable || (err.switchProvider && this.failures.length >= this.o.circuit.failures)) void this.switchNext(err);
   }
@@ -172,6 +182,12 @@ export class SttChannel extends EventEmitter {
         try {
           this.stream = undefined;
           await this.openCurrent();
+          if (this.closed) {
+            // close() ran while the fallback was opening: do not leave that new socket (and the old one) running.
+            void (this.stream as SttStreamLike | undefined)?.close().catch(() => {});
+            void old?.close().catch(() => {});
+            return;
+          }
           this.seconds[from] = (this.seconds[from] ?? 0) + (old?.audioSeconds ?? 0);
           this.droppedOld += old?.dropped ?? 0;
           this.failures = [];
@@ -222,6 +238,7 @@ export class SttChannel extends EventEmitter {
     return this.stream.send(pcm);
   }
   async close() {
+    this.closed = true;
     await this.stream?.close();
   }
 }

@@ -24,6 +24,8 @@ export type ReflexHandlers = {
   onFacts(facts: string[]): void;
   onSayComplete(text: string): void; // say-line finished (show the card now)
   onDone(info: { usage: unknown; providerMetadata: unknown; text: string; model: string }): void;
+  /** An aborted reply (the next question replaced it) whose SDK result still reported usage. Optional and best effort: see bookAborted. */
+  onAbortedUsage?(info: { usage: unknown; providerMetadata: unknown; model: string }): void;
   /** the card this reply produced must go away: a later line contradicted the tag (BANK/STALL/ANS then SKIP) or the say-line is in the wrong language */
   onDiscard?(why: "late-skip" | "language"): void;
 };
@@ -236,6 +238,27 @@ export function wrongLanguage(question: string, say: string): boolean {
   return h > l && h >= 3;
 }
 
+/** How long to wait for the SDK's usage after an abort before giving up. */
+export const ABORT_USAGE_WAIT_MS = 300;
+
+/**
+ * An aborted stream is still billed by the provider, so book its usage if the SDK reports it. With ai 7 the usage promise normally REJECTS
+ * with an AbortError after an abort (verified), so this is a no-op today; it starts counting if a provider or a later SDK resolves it.
+ * Never awaited by the caller and capped by ABORT_USAGE_WAIT_MS, so an abort cannot hang or delay the next turn; rejections are swallowed.
+ */
+function bookAborted(result: { usage: PromiseLike<unknown>; providerMetadata: PromiseLike<unknown> }, ref: string, h: ReflexHandlers): void {
+  if (!h.onAbortedUsage) return;
+  const wait = new Promise<undefined>((r) => {
+    const id = setTimeout(r, ABORT_USAGE_WAIT_MS);
+    (id as unknown as { unref?: () => void }).unref?.();
+  });
+  void Promise.race([Promise.all([result.usage, result.providerMetadata]), wait])
+    .then((v) => {
+      if (v) h.onAbortedUsage?.({ usage: v[0], providerMetadata: v[1], model: ref });
+    })
+    .catch(() => {});
+}
+
 /**
  * One streamed attempt on one model. Parses the buffer after every chunk and fires the handlers as soon as each part is complete.
  * Three failure paths: abort by the caller (returns quietly), the hard timeout (ProviderError "timeout") and a stream error or bad
@@ -276,7 +299,10 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
   const laterSkip = (lines: string[]) => kind !== undefined && kind !== "SKIP" && lines.slice(1).some((l) => /^[*`\s]*SKIP\b/.test(l));
   try {
     for await (const delta of result.textStream) {
-      if (o.signal.aborted) return ref;
+      if (o.signal.aborted) {
+        bookAborted(result, ref, h);
+        return ref;
+      }
       buf += delta;
       const p = parseReflex(buf, false);
       if (!tagSent && p.tagLine !== undefined) {
@@ -313,7 +339,10 @@ async function runOne(o: ReflexRun, ref: string, h: ReflexHandlers): Promise<str
   } catch (e) {
     if (!o.signal.aborted) streamError ??= e;
   }
-  if (o.signal.aborted) return ref;
+  if (o.signal.aborted) {
+    bookAborted(result, ref, h);
+    return ref;
+  }
   if (timeout.aborted) throw new ProviderError("timeout", provider, `${provider}: no complete answer in ${o.cfg.timeoutMs} ms`);
   if (streamError) throw classifyLlmError(provider, streamError);
   const finish = await Promise.resolve(result.finishReason).catch(() => undefined);

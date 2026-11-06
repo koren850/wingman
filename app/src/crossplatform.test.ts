@@ -181,6 +181,11 @@ test("attachments from the command line: only .txt, .md and .pdf; the secret fol
   for (const f of ["a.txt", "b.md", "c.pdf", "i.TXT"]) assert.equal(code(f), "ok", f);
   for (const f of ["d.json", "e.yaml", "f.yml", "g.png", "h.sh", "history"]) assert.equal(code(f), "type", f);
   assert.equal(code(".kube/x.txt"), "secret");
+  mkdirSync(join(home, ".config", "gcloud"), { recursive: true });
+  writeFileSync(join(home, ".config", "gcloud", "notes.txt"), "cred");
+  writeFileSync(join(home, ".zsh_history"), "x");
+  assert.equal(code(".config/gcloud/notes.txt"), "secret");
+  assert.equal(code(".zsh_history"), "secret");
   assert.equal(code("AppData/Roaming/Microsoft/Credentials/c.txt"), "secret");
 });
 

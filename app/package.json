@@ -17,6 +17,7 @@
     "synth": "tsx src/synth.ts",
     "doctor": "tsx src/doctor.ts",
     "test": "tsx --test --test-concurrency=1 src/*.test.ts",
+    "test:coverage": "tsx --test --test-concurrency=1 --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-include='shared/**' --test-coverage-include='tray/**' --test-coverage-exclude='**/*.test.ts' --test-coverage-exclude='src/test-*.ts' src/*.test.ts",
     "call": "tsx src/call.ts",
     "brief": "tsx src/brief.ts",
     "factscheck": "tsx src/facts-check.ts",

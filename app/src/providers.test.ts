@@ -227,3 +227,49 @@ test("reflex hard timeout throws a timeout ProviderError", async () => {
   })) as any;
   await assert.rejects(runReflex({ ...base, cfg: { ...S.llm.reflex, timeoutMs: 30 }, models: ["anthropic:a"], h, stream }), (e: any) => e.kind === "timeout");
 });
+
+// ---- aborted turns ----
+const abortable = (usage: Promise<unknown>) =>
+  ((opts: any) => ({
+    textStream: (async function* () {
+      yield "ANS\nשל";
+      await new Promise((r) => setTimeout(r, 20)); // the caller aborts here
+      yield "ום\n";
+    })(),
+    finishReason: Promise.resolve("stop"),
+    usage,
+    providerMetadata: Promise.resolve({}),
+    _signal: opts.abortSignal,
+  })) as any;
+const abortedRun = async (usage: Promise<unknown>, onAbortedUsage: (i: any) => void) => {
+  const ac = new AbortController();
+  const { h } = handlers();
+  const p = runReflex({
+    ...base,
+    models: ["anthropic:a"],
+    signal: ac.signal,
+    h: { ...h, onSay: () => ac.abort(), onAbortedUsage },
+    stream: abortable(usage),
+  });
+  return p;
+};
+test("aborted turn: usage the SDK still reports is booked, without delaying the return", async () => {
+  const seen: any[] = [];
+  const t0 = Date.now();
+  await abortedRun(Promise.resolve({ inputTokens: 7, outputTokens: 3 }), (i) => seen.push(i));
+  assert.ok(Date.now() - t0 < 200);
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(
+    seen.map((i) => [i.model, i.usage.inputTokens]),
+    [["anthropic:a", 7]],
+  );
+});
+test("aborted turn: a rejected or never-resolving usage promise books nothing and never hangs", async () => {
+  const seen: any[] = [];
+  const rejected = Promise.reject(new Error("AbortError"));
+  rejected.catch(() => {});
+  await abortedRun(rejected, (i) => seen.push(i));
+  await abortedRun(new Promise(() => {}), (i) => seen.push(i));
+  await new Promise((r) => setTimeout(r, 400));
+  assert.equal(seen.length, 0);
+});

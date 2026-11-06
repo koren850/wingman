@@ -76,7 +76,7 @@ for (const [i, c] of cards.entries()) {
   if (a === "y" || a === "n") tags.push({ id: c.id, useful: a, badge: c.badge });
 }
 rl.close();
-writeFileSync(join(dir, "tags.jsonl"), tags.map((t) => JSON.stringify(t)).join("\n") + "\n");
+writeFileSync(join(dir, "tags.jsonl"), tags.map((t) => JSON.stringify(t)).join("\n") + "\n", { mode: 0o600 });
 
 // Usefulness gate numbers: useful cards per hour, and the share of questions the bank answered.
 const events = read("events.jsonl"),

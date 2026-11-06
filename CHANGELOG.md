@@ -23,7 +23,7 @@ First public release.
 - **Fact cards** from an optional local snapshot of clients and domains, and copyable capture chips for phone numbers, emails and domains.
 - **Degrade ladder and cost caps.** Reduced AI, provider switch, bank only, transcript only, with a per-call spend cap, a circuit breaker and experimental fallback speech providers (Soniox, Gladia).
 - **Reliability.** Audio sources restart by themselves; the call survives sleep, stray errors and a full disk; a dead speech channel steps down instead of ending the call.
-- **Electron menu-bar app** with Home, Calls and Settings, a guided first-run setup, a readiness check, quick calls and prepared meetings, and a separate answer window for the second screen (right-to-left aware).
+- **Electron menu-bar app** with Home, Calls and Settings (the Calls list loads in chunks, so a large history never freezes the menu bar), a guided first-run setup, a readiness check, quick calls and prepared meetings, and a separate answer window for the second screen (right-to-left aware).
 - **`wingman` command line** that drives the running app over an owner-only local socket.
 - **Installer** (`install.sh`) with check, dry run, update and uninstall modes; it never uses sudo.
 - **Swappable pack and profile.** Answer bank, house style and keyterms live in a pack; your name and business live in a profile. An invented example pack is included.
@@ -33,7 +33,7 @@ First public release.
 ### Security and privacy
 
 - No telemetry and no cloud account. Audio is never stored.
-- API keys are kept in the macOS Keychain.
+- API keys are kept in the macOS Keychain. One lookup order everywhere (Keychain, then environment variable, then the legacy `keys.env`), so the source Settings shows is the key a call uses.
 - The control socket and call files are owner-only. The app asks for confirmation before a call is started or deleted from the command line.
 - Strict Content-Security-Policy in the Electron windows; Electron fuses are set at build time.
 - Optional Deepgram model-improvement opt-out (`stt.deepgram.mipOptOut`).
