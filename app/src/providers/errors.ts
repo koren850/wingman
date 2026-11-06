@@ -50,6 +50,9 @@ export function classifyHttp(provider: string, status: number, body = "", header
   if (status === 402) return mk("quota");
   if (status === 429)
     return mk(/enforced_spend_limit_reached|spend limit|usage limit/.test(b) ? "spend_cap" : /insufficient_quota|credit|billing/.test(b) ? "quota" : "rate");
+  // 408/504 stay "timeout" on purpose (pinned by tests): the request may have reached the model and an answer or stall line can already be
+  // on screen, so we retry the same provider and never fall back mid-answer. A gateway timeout before the first token is the rarer case
+  // and the retry handles it; switching vendors on it would risk a duplicate, differently worded answer.
   if (status === 408 || status === 504) return mk("timeout");
   if (status === 404) return mk("unsupported");
   if (status === 400 && /credit balance is too low|insufficient/.test(b)) return mk("quota");
