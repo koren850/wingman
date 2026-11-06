@@ -138,14 +138,33 @@ export function stems(w: string): Set<string> {
  * Words of 4+ letters also match by prefix of each other ("תקציב" ~ "תקציבים"), since speech-to-text varies endings.
  */
 export function covered(item: string, transcript: string): boolean {
-  const want = tokens(item)
-    .filter((w) => w.length >= 2)
-    .map(stems);
-  if (!want.length) return false;
-  const said = new Set(tokens(transcript).flatMap((w) => [...stems(w)]));
-  const hit = (cands: Set<string>) =>
-    [...cands].some((c) => said.has(c) || (c.length >= 4 && [...said].some((s) => s.length >= 4 && (s.startsWith(c) || c.startsWith(s)))));
-  return want.filter(hit).length / want.length >= 0.6;
+  const idx = new SaidIndex();
+  idx.add(transcript);
+  return idx.covers(item);
+}
+
+/** The words said so far, kept as a set of stems so new lines are added one at a time (no re-reading of the whole transcript). */
+export class SaidIndex {
+  private said = new Set<string>();
+  /** Stems of 4+ letters, for the prefix match. */
+  private long: string[] = [];
+  add(text: string): void {
+    for (const w of tokens(text))
+      for (const s of stems(w)) {
+        if (this.said.has(s)) continue;
+        this.said.add(s);
+        if (s.length >= 4) this.long.push(s);
+      }
+  }
+  covers(item: string): boolean {
+    const want = tokens(item)
+      .filter((w) => w.length >= 2)
+      .map(stems);
+    if (!want.length) return false;
+    const hit = (cands: Set<string>) =>
+      [...cands].some((c) => this.said.has(c) || (c.length >= 4 && this.long.some((s) => s.startsWith(c) || c.startsWith(s))));
+    return want.filter(hit).length / want.length >= 0.6;
+  }
 }
 
 // CLI mode (pnpm brief): only when this file is run directly, not when run.ts imports it.
