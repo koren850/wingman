@@ -10,7 +10,8 @@ import { sttChain } from "../providers/stt/index.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
 import { runSummary, formatShort, backgroundSummaryArgs } from "../summary.ts";
 import { progress, missedMust } from "../frame.ts";
-import { errBrief, status } from "./out.ts";
+import { errBrief, status, health, healthClear } from "./out.ts";
+import { strayCounter, strayAction, STRAY_WINDOW_MS, STRAY_WARN_ABOVE } from "./strays.ts";
 import { log, S, profile, noAi, discard, cost, tracker, frameOn, ECHO, brief, sup, notesAbort, contextNotes, speakers, transcript, registry } from "./boot.ts";
 import { st, chans } from "./state.ts";
 import { askKey } from "./control.ts";
@@ -278,22 +279,33 @@ export function crash(kind: string, e: unknown) {
   setTimeout(() => process.exit(1), 5000).unref(); // never hang on a broken shutdown
   void shutdown();
 }
-// During a live call one stray error must not end the call: log it and keep listening. Only repeated errors (more than 3 in a
-// minute) or an error before the call is live end it.
-let strayErrors: number[] = [];
+// During a live call stray errors must not end the call: log them and keep listening and recording. Repeated errors (more than 3 in a minute)
+// raise an amber bar; only a runaway loop (strays.ts) or an error before the call is live ends it, through crash(), which saves everything first.
+const countStray = strayCounter();
+let strayBarTimer: NodeJS.Timeout | undefined;
 function stray(kind: string, e: unknown) {
-  const now = Date.now();
-  strayErrors = [...strayErrors.filter((t) => now - t < 60_000), now];
-  if (!st.call.consented || st.call.shuttingDown || strayErrors.length > 3) {
+  const count = countStray(Date.now());
+  const action = strayAction(count, st.call.consented, st.call.shuttingDown);
+  if (action === "crash") {
     crash(kind, e);
     return;
   }
   try {
-    log.write("events", { type: "error.survived", kind, error: errStack(e) });
+    log.write("events", { type: "error.survived", kind, count, error: errStack(e) });
   } catch {
     /* best effort: the log may be unwritable; the error is printed below */
   }
   console.error(`\n⚠️ ${kind} (call continues): ${errBrief(e)}`);
+  if (count > STRAY_WARN_ABOVE) {
+    try {
+      if (action === "warn") health("stray-errors", "amber", "Internal errors are repeating. The call is still being recorded.");
+      clearTimeout(strayBarTimer);
+      strayBarTimer = setTimeout(() => healthClear("stray-errors"), STRAY_WINDOW_MS);
+      strayBarTimer.unref();
+    } catch {
+      /* best effort: the bar is only a hint */
+    }
+  }
 }
 /** Registers the crash and signal handlers (once, at startup). */
 export function installProcessHandlers() {
