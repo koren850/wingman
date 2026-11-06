@@ -224,7 +224,11 @@ Issues and pull requests are welcome; small focused changes are the easiest to r
 
 ## How it was built
 
-Built by [the author](https://github.com/koren850/wingman) with Claude Code as a pair-programming agent; design decisions are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
+Wingman is a solo project by [koren850](https://github.com/koren850), built in about a week with [Claude Code](https://claude.com/claude-code) as the coding agent. Most commits carry a `Co-Authored-By: Claude` trailer, and that is accurate.
+
+- **My part:** the product idea and scope (a second screen for my own client calls, Hebrew first), the architecture and the trade-offs recorded in [docs/DECISIONS.md](docs/DECISIONS.md), the quality bars (answer in about a second, guards in code rather than in the prompt, a numeric gate before a change ships), reviewing what the agent wrote, and using it on my own calls and practice sessions to find what was wrong.
+- **The agent's part:** most of the code, tests and documentation, written to those decisions and reviewed before merging.
+- **How it was checked:** the tests and `pnpm eval` gates above, scripted end-to-end calls, separate review passes (architecture, security, reliability, docs) whose findings were fixed before release, and real use.
 
 ## License
 
