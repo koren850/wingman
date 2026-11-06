@@ -76,14 +76,13 @@ import { execFile } from "node:child_process";
 import { mkdirSync, utimesSync, readFileSync as rf } from "node:fs";
 import { createRequire } from "node:module";
 import { ROOT } from "./env.ts";
+import { tsx } from "./test-platform.ts";
 
 const writeVia = (file: string, edits: object) =>
   new Promise<string>((resolve) => {
-    const p = execFile(
-      join(ROOT, "node_modules", ".bin", "tsx"),
-      ["src/settings-edit-cli.ts", "write"],
-      { cwd: ROOT, env: { ...process.env, WINGMAN_USER_SETTINGS: file, NO_COLOR: "1" } },
-      (_e, out) => resolve(String(out).trim().split("\n").pop() || ""),
+    const [cmd, args] = tsx(["src/settings-edit-cli.ts", "write"]);
+    const p = execFile(cmd, args, { cwd: ROOT, env: { ...process.env, WINGMAN_USER_SETTINGS: file, NO_COLOR: "1" } }, (_e, out) =>
+      resolve(String(out).trim().split("\n").pop() || ""),
     );
     p.stdin!.end(JSON.stringify(edits));
   });

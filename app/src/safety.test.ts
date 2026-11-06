@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseAudioDevices, bluetoothInUse } from "./devices.ts";
 import { securePerms } from "./env.ts";
-import { assertMode } from "./test-platform.ts";
+import { assertMode, POSIX } from "./test-platform.ts";
 
 const sp = (items: any[]) => JSON.stringify({ SPAudioDataType: [{ _items: items }] });
 
@@ -34,7 +34,7 @@ test("bluetooth: AirPods as default mic is flagged as mic; built-in is fine", ()
   assert.deepEqual(parseAudioDevices("not json"), []);
 });
 
-test("keys file: too-open permissions are fixed to 600", () => {
+test("keys file: too-open permissions are fixed to 600", POSIX, () => {
   const f = join(mkdtempSync(join(tmpdir(), "wm-keys-")), "keys.env");
   writeFileSync(f, "DEEPGRAM_API_KEY=x\n");
   chmodSync(f, 0o644);

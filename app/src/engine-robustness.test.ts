@@ -9,7 +9,9 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { ROOT } from "./env.ts";
+import { tsx } from "./test-platform.ts";
 import { HealthSupervisor } from "./health.ts";
 import { SttChannel } from "./providers/stt/channel.ts";
 import { ProviderError } from "./providers/errors.ts";
@@ -17,7 +19,6 @@ import { loadSettings } from "./settings.ts";
 import type { SttProvider, SttStreamLike } from "./providers/stt/types.ts";
 
 const { createController } = createRequire(import.meta.url)("../tray/controller.cjs");
-const tsx = join(ROOT, "node_modules", ".bin", "tsx");
 
 // ---- short STT outage with no fallback: the channel can reopen the same provider ----
 class Fake extends EventEmitter implements SttStreamLike {
@@ -116,11 +117,10 @@ test("health: other recoveries still need the stable minute", () => {
 test("log: write failures are counted, warned once, and never throw", async () => {
   const dir = mkdtempSync(join(tmpdir(), "wm-log-"));
   const r = spawnSync(
-    tsx,
-    [
+    ...tsx([
       "-e",
       `
-    import { CallLog } from ${JSON.stringify(join(ROOT, "src", "log.ts"))};
+    import { CallLog } from ${JSON.stringify(pathToFileURL(join(ROOT, "src", "log.ts")).href)};
     import { rmSync, writeFileSync } from "node:fs";
     const log = new CallLog({ a: 1 }); let warned = 0; log.onWriteFail = () => warned++;
     log.write("events", { ok: 1 }); rmSync(log.dir, { recursive: true }); writeFileSync(log.dir, "blocked");
@@ -128,7 +128,7 @@ test("log: write failures are counted, warned once, and never throw", async () =
     log.update({ endedAt: "x" });
     console.log(JSON.stringify({ failures: log.writeFailures, warned }));
   `,
-    ],
+    ]),
     { cwd: ROOT, encoding: "utf8", env: { ...process.env, WINGMAN_CALLS_DIR: dir } },
   );
   assert.equal(r.status, 0, r.stderr);

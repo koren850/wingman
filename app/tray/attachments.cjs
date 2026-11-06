@@ -148,12 +148,14 @@ function findPdftotext(env = process.env) {
     .concat(["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]);
   for (const d of dirs) {
     if (!d) continue;
-    const f = path.join(d, "pdftotext");
-    try {
-      fs.accessSync(f, fs.constants.X_OK);
-      return f;
-    } catch {
-      /* not here */
+    for (const name of process.platform === "win32" ? ["pdftotext.exe"] : ["pdftotext"]) {
+      const f = path.join(d, name);
+      try {
+        fs.accessSync(f, fs.constants.X_OK);
+        return f;
+      } catch {
+        /* not here */
+      }
     }
   }
   return "";

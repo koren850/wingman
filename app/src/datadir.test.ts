@@ -4,10 +4,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, statSync, existsSync, symlinkSync, readdirSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import paths from "../shared/paths.cjs";
 import migrate from "../shared/migrate.cjs";
-import { assertMode } from "./test-platform.ts";
+import { assertMode, SYMLINK } from "./test-platform.ts";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "wm-datadir-"));
 const put = (f: string, s: string) => {
@@ -21,7 +21,7 @@ function oldLayout() {
   put(join(appDir, "calls", "01AAA", "call.json"), '{"id":"01AAA"}');
   put(join(appDir, "calls", "01AAA", "transcript.jsonl"), "line1\nline2\n");
   put(join(appDir, "calls", "tray.log"), "log");
-  symlinkSync("01AAA", join(appDir, "calls", "latest"));
+  if (SYMLINK.skip === false) symlinkSync("01AAA", join(appDir, "calls", "latest"));
   put(join(appDir, "data", "private", "briefs", "m1", "meeting.json"), "{}");
   put(join(appDir, "data", "private", "briefs", "attachments", "a.txt"), "background");
   put(join(appDir, "data", "private", "entities.json"), "{}");
@@ -32,24 +32,26 @@ const run = (o: ReturnType<typeof oldLayout>, root: string, log: string[] = []) 
   migrate.migrateUserData({ dataDir: root, oldCalls: o.calls, oldPrivate: o.private, log: (m: string) => log.push(m) });
 
 test("paths: default is ~/Library/Application Support/Wingman, env overrides, layout inside", () => {
-  assert.equal(paths.dataDir({}, "/Users/x"), "/Users/x/Library/Application Support/Wingman");
-  assert.equal(paths.callsDir({}, "/Users/x"), "/Users/x/Library/Application Support/Wingman/calls");
-  assert.equal(paths.briefsDir({}, "/Users/x"), "/Users/x/Library/Application Support/Wingman/briefs");
-  assert.equal(paths.attachDir({ WINGMAN_DATA_DIR: "/d" }), "/d/briefs/attachments");
-  assert.equal(paths.entitiesFile({ WINGMAN_DATA_DIR: "/d" }), "/d/entities.json");
-  assert.equal(paths.callsDir({ WINGMAN_DATA_DIR: "/d", WINGMAN_CALLS_DIR: "/c" }), "/c");
-  assert.equal(paths.briefsDir({ WINGMAN_DATA_DIR: "/d", WINGMAN_BRIEFS_DIR: "/b" }), "/b");
-  assert.equal(paths.dataDir({ WINGMAN_DATA_DIR: "  " }, "/h"), "/h/Library/Application Support/Wingman");
+  const mac = "darwin"; // the default folder depends on the platform: pin it so the expectations hold on every machine
+  assert.equal(paths.dataDir({}, "/Users/x", mac), "/Users/x/Library/Application Support/Wingman");
+  assert.equal(paths.callsDir({}, "/Users/x", mac), "/Users/x/Library/Application Support/Wingman/calls");
+  assert.equal(paths.briefsDir({}, "/Users/x", mac), "/Users/x/Library/Application Support/Wingman/briefs");
+  // An override goes through path.resolve (on Windows "/d" becomes "C:\\d"), so the expectations use resolve/join too.
+  assert.equal(paths.attachDir({ WINGMAN_DATA_DIR: "/d" }), join(resolve("/d"), "briefs", "attachments"));
+  assert.equal(paths.entitiesFile({ WINGMAN_DATA_DIR: "/d" }), join(resolve("/d"), "entities.json"));
+  assert.equal(paths.callsDir({ WINGMAN_DATA_DIR: "/d", WINGMAN_CALLS_DIR: "/c" }), resolve("/c"));
+  assert.equal(paths.briefsDir({ WINGMAN_DATA_DIR: "/d", WINGMAN_BRIEFS_DIR: "/b" }), resolve("/b"));
+  assert.equal(paths.dataDir({ WINGMAN_DATA_DIR: "  " }, "/h", mac), "/h/Library/Application Support/Wingman");
   assert.equal(paths.isRedirected({}), false);
   assert.equal(paths.isRedirected({ WINGMAN_DATA_DIR: "/d" }), true);
 });
 
 test("paths: settings paths (facts.file) map the old data/private location to the data folder", () => {
   const env = { WINGMAN_DATA_DIR: "/d" };
-  assert.equal(paths.resolveUserPath("data/private/entities.json", env, "/h", "/s0"), "/d/entities.json");
-  assert.equal(paths.resolveUserPath("~/x.json", env, "/h", "/s0"), "/h/x.json");
+  assert.equal(paths.resolveUserPath("data/private/entities.json", env, "/h", "/s0"), join(resolve("/d"), "entities.json"));
+  assert.equal(paths.resolveUserPath("~/x.json", env, "/h", "/s0"), join("/h", "x.json"));
   assert.equal(paths.resolveUserPath("/abs/x.json", env, "/h", "/s0"), "/abs/x.json");
-  assert.equal(paths.resolveUserPath("other/x.json", env, "/h", "/s0"), "/s0/other/x.json");
+  assert.equal(paths.resolveUserPath("other/x.json", env, "/h", "/s0"), join("/s0", "other", "x.json"));
 });
 
 test("tests run with a temp data folder, never the real one", () => {
@@ -199,7 +201,7 @@ test("migration copies through a .part file: no stray .part is left behind", () 
   assert.equal(existsSync(join(root, "calls", "01AAA", "transcript.jsonl.part")), false);
 });
 
-test("migration ignores symlinks (never follows them out of the folder)", () => {
+test("migration ignores symlinks (never follows them out of the folder)", SYMLINK, () => {
   const o = oldLayout(),
     root = join(tmp(), "Wingman"),
     outside = tmp();

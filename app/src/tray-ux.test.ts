@@ -106,8 +106,8 @@ test("practice: uses the next prepared meeting (--brief <its file>, its files fo
   assert.equal(ctl.practice(), true);
   const a = spawned[0].args;
   assert.ok(!a.includes("--no-brief"));
-  assert.equal(a[a.indexOf("--brief") + 1], plans.dirOf(m.id) + "/brief.yaml");
-  assert.equal(spawned[0].opts.env.WINGMAN_ATTACH_DIR, plans.dirOf(m.id) + "/files");
+  assert.equal(a[a.indexOf("--brief") + 1], join(plans.dirOf(m.id), "brief.yaml"));
+  assert.equal(spawned[0].opts.env.WINGMAN_ATTACH_DIR, join(plans.dirOf(m.id), "files"));
   assert.ok(a.includes("--file") && a.includes("demo"), "still the offline file mode with the demo profile");
   assert.match(notes.find((n) => n[0] === "Practice call")![1], /Dana, Acme.*in use/);
   spawned[0].say("consented", { id: "P1" });
@@ -147,7 +147,7 @@ test("start: a quick call passes --no-brief and touches no meeting; a chosen mee
   spawned[0].emit("exit", 0);
   assert.equal(ctl.start({ planId: b.id, noAi: true }), true);
   const args = spawned[1].args;
-  assert.equal(args[args.indexOf("--brief") + 1], plans.dirOf(b.id) + "/brief.yaml");
+  assert.equal(args[args.indexOf("--brief") + 1], join(plans.dirOf(b.id), "brief.yaml"));
   assert.ok(args.includes("--no-ai") && !args.includes("--no-brief"));
   assert.equal(ctl.getState().planId, b.id);
   spawned[1].say("waiting", { id: "R1" });
@@ -447,6 +447,7 @@ test("settingsReader: parses the last JSON line, passes a bare environment (no k
   const mk = (out: string) =>
     lib.settingsReader({
       tsx: "/x/tsx",
+      platform: "darwin", // Windows adds system variables to the child environment (own test in crossplatform)
       root: "/r",
       execFile: (cmd: string, args: string[], opts: any, cb: any) => {
         seen = { cmd, args, opts };

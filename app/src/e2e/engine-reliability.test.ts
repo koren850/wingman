@@ -11,7 +11,7 @@ import { createServer } from "node:net";
 import { ROOT } from "../env.ts";
 import { writeWav } from "../audio.ts";
 import { LineSplitter } from "../relay.ts";
-import { tsx } from "../test-platform.ts";
+import { tsx, FAKE_BIN } from "../test-platform.ts";
 import pipe from "../../shared/pipe.cjs";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -260,7 +260,7 @@ const stopSoon = async (e: ReturnType<typeof runEngine>, afterMs: number) => {
 
 test(
   "engine (live, fake ffmpeg): mic drops and returns, the other side's audio cannot start at first; the call stays up, bars appear and clear",
-  { timeout: 90_000 },
+  { timeout: 90_000, ...FAKE_BIN },
   async () => {
     const tmp = mkdtempSync(join(tmpdir(), "wm-live-"));
     const calls = join(tmp, "calls");
@@ -314,7 +314,7 @@ test(
 
 test(
   "engine (live): a sleep gap (wall clock jumps 20 min, monotonic does not) restarts audio and STT and does not trip the 1-minute idle stop",
-  { timeout: 90_000 },
+  { timeout: 90_000, ...FAKE_BIN },
   async () => {
     const tmp = mkdtempSync(join(tmpdir(), "wm-sleep-"));
     const calls = join(tmp, "calls");
@@ -361,7 +361,7 @@ test(
 
 test(
   "engine (live): the menu-bar app's pipe closing mid-call does not end a live call (it stops itself after 5 quiet minutes); before listening starts it stops cleanly",
-  { timeout: 60_000 },
+  { timeout: 60_000, ...FAKE_BIN },
   async () => {
     const tmp = mkdtempSync(join(tmpdir(), "wm-orphan-"));
     const calls = join(tmp, "calls");

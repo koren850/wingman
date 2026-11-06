@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { ROOT } from "../env.ts";
+import { tsx } from "../test-platform.ts";
 
 const req = createRequire(import.meta.url);
 const lib = req("../../tray/lib.cjs");
@@ -20,7 +21,7 @@ test("engine: control-mode run emits mode + stop steps in order and call.json en
     calls = join(tmp, "calls"),
     wav = join(tmp, "silence.wav");
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 8), 2);
-  const r = spawnSync(join(ROOT, "node_modules", ".bin", "tsx"), [join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"], {
+  const r = spawnSync(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
     cwd: ROOT,
     encoding: "utf8",
     timeout: 50_000,

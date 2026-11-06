@@ -10,7 +10,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { ROOT } from "./env.ts";
 import { parseAvfoundationInputs } from "./devices.ts";
-import { assertMode, BASH, MAC } from "./test-platform.ts";
+import { assertMode, BASH, MAC, tsx } from "./test-platform.ts";
 
 const require = createRequire(import.meta.url);
 const setup = require("../dashboard/setup-ipc.cjs");
@@ -185,7 +185,7 @@ test("profile child: read, write (keeps timezone), and it refuses unknown fields
     file = join(dir, "profile.yaml");
   const run = (mode: string, input = "") =>
     JSON.parse(
-      execFileSync("./node_modules/.bin/tsx", ["src/profile-edit-cli.ts", mode], {
+      execFileSync(...tsx(["src/profile-edit-cli.ts", mode]), {
         cwd: ROOT,
         input,
         env: { ...process.env, WINGMAN_PROFILE_FILE: file },

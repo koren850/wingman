@@ -310,8 +310,8 @@ test("loadCallData: a speaker renamed later relabels the earlier lines; the last
 
 test("background summary: the settings profile of the call is forwarded (and nothing extra without one)", async () => {
   const { backgroundSummaryArgs } = await import("./summary.ts");
-  assert.deepEqual(backgroundSummaryArgs("/app", "C1"), ["/app/src/summary.ts", "C1"]);
-  assert.deepEqual(backgroundSummaryArgs("/app", "C1", "practice"), ["/app/src/summary.ts", "C1", "--profile", "practice"]);
+  assert.deepEqual(backgroundSummaryArgs("/app", "C1"), [join("/app", "src", "summary.ts"), "C1"]);
+  assert.deepEqual(backgroundSummaryArgs("/app", "C1", "practice"), [join("/app", "src", "summary.ts"), "C1", "--profile", "practice"]);
 });
 
 test("prompt wording: AI notes are untrusted context, only the user's own notes are trusted", () => {
