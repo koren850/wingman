@@ -22,11 +22,26 @@ test("claims: a number belonging to a neighbouring unit is not attributed to the
   assert.deepEqual(spokenNumbers("70 80 לקוחות").map((x) => x.n).sort(), [70, 80]);
 });
 
-import { CostTracker } from "./cost.ts";
+import { CostMeter } from "./cost.ts";
 test("cost: call minutes are per channel, not the sum of both channels", () => {
   const prices = { llm: {}, stt: { deepgram: 0.55 } } as never, budget = { maxUsdPerCall: 5, warnAt: 0.8, maxMinutesPerCall: 90 } as never;
-  const c = new CostTracker(prices, budget);
+  const c = new CostMeter(prices, budget);
   c.setSttSeconds({ deepgram: 7200 }, 2);   // 60 minute call, two channels
   assert.equal(c.sttMinutes, 60);
   assert.equal(c.minutesState(), "ok");
+});
+
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { loadBank, matchBank } from "./bank.ts";
+test("bank loader: numeric triggers and ids are coerced to strings, an empty file is no cards", () => {
+  const d = mkdtempSync(join(tmpdir(), "bank-"));
+  writeFileSync(join(d, "bank.yaml"), `- id: 404\n  title: t\n  say: hello\n  triggers: [2024, hosting]\n  facts: []\n`);
+  const bank = loadBank(join(d, "bank.yaml"));
+  assert.equal(bank[0].id, "404");
+  assert.deepEqual(bank[0].triggers, ["2024", "hosting"]);
+  assert.doesNotThrow(() => matchBank("what about 2024 hosting", bank));
+  writeFileSync(join(d, "empty.yaml"), "");
+  assert.deepEqual(loadBank(join(d, "empty.yaml")), []);
 });
