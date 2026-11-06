@@ -9,8 +9,16 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-latest
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    # macOS is the supported platform and gates the build. Linux and Windows run the same checks but may fail for now:
+    # the engine, tests and file replay are being ported (see docs). Remove this line once they are green.
+    continue-on-error: ${{ matrix.os != 'macos-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
     env:
       # Skip the Electron download and the .app build: CI only needs the engine and the tests.
       WINGMAN_SKIP_APP: "1"
@@ -18,9 +26,9 @@ jobs:
       run:
         working-directory: stage0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
 
@@ -31,9 +39,36 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Type check
-        run: ./node_modules/.bin/tsc --noEmit -p .
+        run: pnpm exec tsc --noEmit -p .
 
       # CI has no private word list, so the "repo guard" test skips itself. That is expected.
       # Run it on your own machine with WINGMAN_DENYLIST set (see CONTRIBUTING.md).
       - name: Tests
         run: pnpm test
+
+  # The installer is a bash script for macOS: check that it still parses its flags and plans every step, without changing anything.
+  install-script:
+    name: install.sh smoke (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Syntax
+        run: bash -n install.sh
+
+      # --check exits 1 when it finds a problem on this runner (for example a missing optional tool); only a crash or a usage error (2 or more) fails the job.
+      - name: install.sh --check
+        env:
+          WINGMAN_DATA_DIR: ${{ runner.temp }}/wingman-data
+        run: |
+          set +e
+          ./install.sh --check
+          code=$?
+          echo "exit code: $code"
+          [ "$code" -le 1 ]
+
+      - name: install.sh --dry-run
+        env:
+          WINGMAN_DATA_DIR: ${{ runner.temp }}/wingman-data
+        run: ./install.sh --dry-run
