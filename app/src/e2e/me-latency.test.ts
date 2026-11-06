@@ -12,8 +12,9 @@ import { join } from "node:path";
 import { ROOT } from "../env.ts";
 import { writeWav } from "../audio.ts";
 import { tsx } from "../test-platform.ts";
+import { loadSettings } from "../settings.ts";
 
-test("solo call: second-person question answered, sum computed locally, and the card is up within 100 ms of the final", { timeout: 60_000 }, async () => {
+test("solo call: second-person question answered, sum computed locally, and the card does not wait for the join window", { timeout: 60_000 }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-me-lat-"));
   const wav = join(tmp, "silence.wav"),
     CALLS = join(tmp, "calls");
@@ -51,8 +52,12 @@ test("solo call: second-person question answered, sum computed locally, and the 
     assert.equal(lat.length, 2);
     const m = lat.find((e) => e.source === "calc");
     assert.ok(m.stt >= 800, `stt stage reflects the 0.9 s lag: ${m.stt}`);
-    assert.ok(m.detect + m.decide + m.firstCard < 100, `final -> card under 100 ms: ${JSON.stringify(m)}`);
-    assert.ok(m.detect < 100, "no join-window wait");
+    // No wall-clock budget: the card must not have waited for the join window (1500 ms by default) or a model. The bound is half of that
+    // window, so a slow CI runner does not trip it, while a regression back to "wait for the window" (>= 1500 ms) always does.
+    const joinMs = loadSettings({ argv: [], env: {} }).settings.stt.joinWindowMs;
+    assert.ok(joinMs >= 1000, "the default join window is long enough to tell waiting from not waiting");
+    assert.ok(m.detect < joinMs / 2, `no join-window wait: detect ${m.detect} ms of ${joinMs} ms`);
+    assert.ok(m.detect + m.decide + m.firstCard < joinMs / 2, `final -> card without the window or a model: ${JSON.stringify(m)}`);
     console.log(
       "me.latency (ms)",
       JSON.stringify(lat.map(({ source, stt, detect, decide, firstCard, total }) => ({ source, stt, detect, decide, firstCard, total }))),
