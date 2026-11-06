@@ -2,6 +2,15 @@
 // Used by run.ts (reflex answers) and assist.ts (guardMe). A hit replaces the AI text with the stall line.
 // Patterns are deliberately broad (a false hit only costs a stall line; a missed price or promise would be spoken to a client).
 // Note: JS \b is ASCII-only, so Hebrew patterns use explicit lookaheads/lookbehinds on [א-ת] instead.
+//
+// What the rule families cover (the patterns are mostly Hebrew and English, with English glosses here):
+//   PRICE    any money figure or price statement: ₪ / $ / € amounts, "300 לשעה" (300 per hour), "חמש מאות שקל" (five hundred shekels),
+//            "5K a month", "אלף" (a thousand), "עולה / מחיר / תעריף" (costs / price / rate) + number, "בחינם / הנחה" (free / discount), "20% off"
+//   DATE     any date or deadline: month names (נובמבר), "יום שני" (Monday), "מחר" (tomorrow), "בעוד שלושה ימים" (in three days), "תוך שעה" (within an hour),
+//            clock times (14:30), 5/11 and 12.5.2026, holidays (פסח), years 2020-2049, "next week", "by Friday", "ASAP"
+//   PROMISE  first-person promises and certainty: "אני מבטיח" (I promise), "אחריות מלאה" (full guarantee), "בוודאות" (for sure), "אל תדאג" (do not worry),
+//            "I guarantee", "100%", "no risk", "rest assured", "I'll make sure". Hedges such as "לא מבטיח" (I do not promise) pass
+//   SALARY / SALARY_FIGURE / CLAIMABLE   practice-mode only: no salary figure ("25k", "שלושים אלף") and no tool the user's own profile does not name
 
 import { escapeRe } from "./text-util.ts";
 
