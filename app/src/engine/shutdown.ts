@@ -170,7 +170,7 @@ export async function shutdown() {
   } catch (e) {
     console.error("call summary failed:", errBrief(e));
     try {
-      log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) });
+      log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e).slice(0, 2000) });
     } catch {
       /* best effort: the log itself may be what failed */
     }
@@ -250,7 +250,7 @@ export function crash(kind: string, e: unknown) {
     );
   else console.error(`\n🔴 ${kind}: ${errBrief(e)}`);
   try {
-    log.write("events", { type: "crash", kind, error: String((e as Error)?.stack ?? e) });
+    log.write("events", { type: "crash", kind, error: String((e as Error)?.stack ?? e).slice(0, 2000) });
   } catch {
     /* best effort: the log may be unwritable; the crash is printed above */
   }

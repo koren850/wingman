@@ -116,8 +116,9 @@ if ! node scripts/set-fuses.cjs "$OUT"; then
   if [ "${WINGMAN_ALLOW_NO_FUSES:-0}" = 1 ]; then echo "make-app: WARNING: could not set the Electron fuses; continuing because WINGMAN_ALLOW_NO_FUSES=1. This app has ELECTRON_RUN_AS_NODE and --inspect enabled." >&2
   else echo "make-app: ERROR: could not set the Electron fuses, so the app would keep ELECTRON_RUN_AS_NODE and --inspect enabled. Build stopped. If this Electron version has a layout the script does not know, fix scripts/set-fuses.cjs, or set WINGMAN_ALLOW_NO_FUSES=1 to build anyway." >&2; rm -rf "$OUT"; exit 1; fi
 fi
-# Helper apps keep their names; only the main bundle is shown to the user. Re-sign ad hoc after the edits (best effort, hence "|| true"): they invalidate the old signature.
-codesign --force --deep --sign - "$OUT" >/dev/null 2>&1 || true
+# Helper apps keep their names; only the main bundle is shown to the user. Re-sign ad hoc after the edits: they invalidate the old signature,
+# and an app with a broken signature may not start, so a failure stops the build instead of being hidden.
+if ! codesign --force --deep --sign - "$OUT" >/dev/null 2>&1; then echo "make-app: ERROR: ad-hoc code signing failed. Build stopped." >&2; rm -rf "$OUT"; exit 1; fi
 # Swap in with renames: the old bundle (maybe running: its open files stay valid) is set aside, the new one takes its place at once, then the old one goes.
 if [ -e "$FINAL" ]; then mv "$FINAL" "$FINAL.old.$$" && mv "$OUT" "$FINAL" && rm -rf "$FINAL.old.$$"; else mv "$OUT" "$FINAL"; fi
 trap - EXIT

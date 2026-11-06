@@ -401,7 +401,7 @@ function writeSilentWav(file, seconds) {
   h.writeUInt16LE(16, 34);
   h.write("data", 36);
   h.writeUInt32LE(data, 40);
-  fs.writeFileSync(file, Buffer.concat([h, Buffer.alloc(data)]));
+  fs.writeFileSync(file, Buffer.concat([h, Buffer.alloc(data)]), { mode: 0o600 });
 }
 
 // ---- Global keys and confirmations (pure: Electron objects are injected so these are unit-tested) ----

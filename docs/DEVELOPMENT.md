@@ -84,6 +84,7 @@ What `pnpm install` does in `app/`:
 - Test names say what they protect. Bug fixes should come with a regression test.
 - The "repo guard" test fails if a tracked source, data or config file contains a word from your private word list. Set it with `WINGMAN_DENYLIST="word1,word2" pnpm test`, or one word per line in the git-ignored `app/data/private/denylist.txt`. With no list it skips. How and why: [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
 - Tests redirect user data with `WINGMAN_DATA_DIR`, `WINGMAN_CALLS_DIR` and friends, so they never touch your real calls.
+- Some `WINGMAN_*` variables are test hooks and are not part of the product (for example `WINGMAN_DASHBOARD_EVAL`, which runs a script inside the dashboard page, `WINGMAN_KEYS_FILE` and `WINGMAN_PACK_DIR`). They only matter to someone who controls the environment a program is started from, which already means they run code as you.
 - CI (`.github/workflows/ci.yml`) runs on macOS with Node 24: `WINGMAN_SKIP_APP=1 pnpm install --frozen-lockfile`, the type check, then the tests. There is no private word list in CI, so the repo guard skips there.
 - There is an offline end-to-end test (`src/e2e.test.ts`) that runs a whole call with scripted speech and a scripted AI (`src/providers/scripted.ts`).
 

@@ -290,7 +290,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 
 **Context.** Keys were first in `~/.config/wingman/keys.env`. A plain file can leak through backups, sync or a stray `cat`.
 
-**Decision.** Keys live in the macOS Keychain (service `wingman`). All access goes through one module that calls `/usr/bin/security` without a shell. Writes use stdin so a key never appears in `ps` or the environment, and every write is read back. The settings page only ever sees the last four characters. Migration from the old file is an explicit button or command (it makes a backup first), never automatic. Keys are removed from the engine's own environment after loading and are not passed to child processes.
+**Decision.** Keys live in the macOS Keychain (service `wingman`). All access goes through one module that calls `/usr/bin/security` without a shell. Writes use stdin so a key never appears in `ps` or the environment, and every write is read back. The settings page only ever sees the last four characters. Migration from the old file is an explicit button or command (each key is read back from the Keychain before its line leaves keys.env; no plaintext backup is made), never automatic. Keys are removed from the engine's own environment after loading and are not passed to child processes.
 
 **Why.** The Keychain is the platform's secret store; leaks through files are the common failure.
 
