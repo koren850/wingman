@@ -140,3 +140,51 @@ test("ring: results ending inside flushed audio lose speechEndWall (burst send w
   assert.equal(got[0].speechEndWall, undefined);
   assert.equal(got[1].speechEndWall, 5000);
 });
+
+test("circuit: an error followed by the close of the same socket counts as one failure", async () => {
+  const a: Fake[] = [],
+    b: Fake[] = [];
+  let t = 0;
+  const ch = new SttChannel({
+    channel: "them",
+    chain: [fake("deepgram", a), fake("soniox", b)],
+    keyOf: () => "k",
+    base: {},
+    circuit: { failures: 2, windowMs: 10_000 },
+    now: () => t,
+  });
+  await ch.open();
+  const err = new ProviderError("network", "deepgram", "closed");
+  a[0].emit("error", err);
+  a[0].emit("disconnected", { channel: "them", error: err });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(ch.provider, "deepgram", "one real failure must not trip a 2-failure circuit");
+  t = 1000;
+  a[0].emit("error", err);
+  await new Promise((r) => setImmediate(r));
+  assert.equal(ch.provider, "soniox", "a second, separate failure does");
+});
+
+test("close() during a provider switch closes the stream that was being opened", async () => {
+  const a: Fake[] = [],
+    b: Fake[] = [];
+  let release!: () => void;
+  const slow: SttProvider = {
+    ...fake("soniox", b),
+    create: () => {
+      const s = new Fake();
+      s.open = () => new Promise<void>((r) => (release = r));
+      b.push(s);
+      return s;
+    },
+  };
+  const ch = mk([fake("deepgram", a), slow]);
+  await ch.open();
+  const sw = ch.switchNext(new ProviderError("auth", "deepgram", "key rejected"));
+  await new Promise((r) => setImmediate(r));
+  await ch.close();
+  release();
+  await sw;
+  assert.equal(b[0].closed, true, "the switching stream is closed, not leaked");
+  assert.equal(a[0].closed, true);
+});
