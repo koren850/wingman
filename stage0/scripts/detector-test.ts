@@ -1,8 +1,8 @@
 // Precision/recall of the Hebrew question detector on data/questions.tsv (pass/fail gate below). pnpm detector.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { detect } from "./detector.ts";
-import { DATA } from "./env.ts";
+import { detect } from "../src/detector.ts";
+import { DATA } from "../src/env.ts";
 
 const rows = readFileSync(join(DATA, "questions.tsv"), "utf8").split("\n").filter((l) => l.trim()).map((l) => {
   const [text, label] = l.split("\t");
