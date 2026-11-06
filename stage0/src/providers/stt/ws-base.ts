@@ -34,13 +34,13 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
     await new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(url, { headers: this.connectHeaders() });
       this.ws = ws;
-      const timer = setTimeout(() => { reject(new ProviderError("timeout", this.provider, `${this.provider}: open timed out`)); try { ws.terminate(); } catch {} }, 10_000);
+      const timer = setTimeout(() => { reject(new ProviderError("timeout", this.provider, `${this.provider}: open timed out`)); try { ws.terminate(); } catch { /* best effort: the socket may already be gone */ } }, 10_000);
       ws.once("open", () => {
         clearTimeout(timer); this.connBytes = 0; this.opens++;
         try { this.onOpen(ws); } catch (e) { reject(classifySttError(this.provider, e)); return; }
         const ka = this.keepAliveFrame();
         clearInterval(this.keepAliveTimer);
-        if (ka) this.keepAliveTimer = setInterval(() => { try { if (this.isOpen) ws.send(ka); } catch {} }, this.opts.keepAliveMs ?? 5000);
+        if (ka) this.keepAliveTimer = setInterval(() => { try { if (this.isOpen) ws.send(ka); } catch { /* best effort: a keep-alive on a dropping socket may throw; the close handler recovers */ } }, this.opts.keepAliveMs ?? 5000);
         if (this.opens > 1) this.emit("reconnected", { channel: this.opts.channel, opens: this.opens });
         resolve();
       });
@@ -82,9 +82,9 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
   async close() {
     this.closing = true; clearInterval(this.keepAliveTimer);
     const end = this.endFrame();
-    try { if (end !== undefined && this.isOpen) this.ws!.send(end); } catch {}
+    try { if (end !== undefined && this.isOpen) this.ws!.send(end); } catch { /* best effort: the end-of-stream message on a closing socket */ }
     // (a custom baseUrl means a test server: no need to wait)
     await new Promise((r) => setTimeout(r, this.opts.baseUrl ? 100 : 1500));   // let the final results arrive
-    try { this.ws?.close(); } catch {}
+    try { this.ws?.close(); } catch { /* best effort: the socket may already be closed */ }
   }
 }

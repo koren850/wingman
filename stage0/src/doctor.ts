@@ -122,7 +122,7 @@ section("Budget and data hygiene");
     if (Date.now() - st.mtimeMs > S.privacy.retentionDays * 86400_000) old++;
     const uf = join(dir, "usage.jsonl");
     if (existsSync(uf)) for (const line of readFileSync(uf, "utf8").split("\n").filter(Boolean)) {
-      try { const r = JSON.parse(line); if (r.role === "summary" && new Date(r.t).getMonth() === now.getMonth()) month += Number(r.totalUsd) || 0; } catch {}
+      try { const r = JSON.parse(line); if (r.role === "summary" && new Date(r.t).getMonth() === now.getMonth()) month += Number(r.totalUsd) || 0; } catch { /* a log row that is not valid JSON is skipped */ }
     }
   }
   S.budget.maxUsdPerMonth === null ? ok(`month-to-date $${month.toFixed(2)} (no monthly cap set)`) : month < S.budget.maxUsdPerMonth ? ok(`month-to-date $${month.toFixed(2)} of $${S.budget.maxUsdPerMonth}`) : warn(`month-to-date $${month.toFixed(2)} reached budget.maxUsdPerMonth $${S.budget.maxUsdPerMonth}`);

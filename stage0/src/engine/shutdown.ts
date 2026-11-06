@@ -47,7 +47,7 @@ async function postCallSummary() {
     if (r.skipped) return;
     if (r.ok) console.log(formatShort(r.summary!)); else console.log(`\nSummary failed: ${r.error}`);
     status("summary", { ok: r.ok, id: log.id });
-  } catch (e) { try { log.write("events", { type: "summary.error", error: String((e as Error)?.message ?? e) }); } catch {} }
+  } catch (e) { try { log.write("events", { type: "summary.error", error: String((e as Error)?.message ?? e) }); } catch { /* best effort: the log itself may be what failed */ } }
 }
 
 /** The one exit path (stop command, Ctrl+C, SIGTERM/SIGHUP, idle stop, file end, crash, rung 5). Idempotent.
@@ -87,7 +87,7 @@ export async function shutdown() {
     log.update({ endedAt: new Date().toISOString(), crashed: st.call.crashed, phase: "ended" });
     console.log(`\nSpeakers mode (${st.echo.mode}): mic muted ${Math.round(st.echo.gatedMs / 1000)} s while the client talked · ${st.echo.dropped} echo lines dropped`);
     console.log(`\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${chans.me?.dropped ?? 0}, them ${chans.them?.dropped ?? 0}`);
-  } catch (e) { console.error("call summary failed:", errBrief(e)); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch {} }
+  } catch (e) { console.error("call summary failed:", errBrief(e)); try { log.write("events", { type: "shutdown.error", error: String((e as Error)?.stack ?? e) }); } catch { /* best effort: the log itself may be what failed */ } }
   // (usage was logged twice on purpose: once above so the numbers exist even if the summary hangs, again below with the summary's own cost.)
   // One last frame look so the checklist result in the review is current (a few seconds at most, never when the call is discarded or crashed).
   if (frameOn && left() > 6000 && !st.call.crashed && !discard && !st.call.discardNow && cost.llmState() !== "capped") {
@@ -98,15 +98,15 @@ export async function shutdown() {
   status("stopphase", { phase: "summary" });
   await Promise.race([postCallSummary(), summarySkipWait, new Promise((res) => setTimeout(res, Math.max(1500, left())))]);
   if (summarySkipped) status("summary", { ok: false, skipped: true });
-  try { log.write("usage", { role: "summary", llmUsd: cost.llmUsd, sttUsd: cost.sttUsd, totalUsd: cost.totalUsd, roles: cost.roles, unpriced: [...cost.unpriced] }); } catch {}
-  try { log.update({ endedAt: new Date().toISOString(), crashed: st.call.crashed, phase: "ended" }); } catch {}
+  try { log.write("usage", { role: "summary", llmUsd: cost.llmUsd, sttUsd: cost.sttUsd, totalUsd: cost.totalUsd, roles: cost.roles, unpriced: [...cost.unpriced] }); } catch { /* best effort: the call files were already written above */ }
+  try { log.update({ endedAt: new Date().toISOString(), crashed: st.call.crashed, phase: "ended" }); } catch { /* best effort: the call files were already written above */ }
   let del = discard || st.call.discardNow;
   if (!del && !st.call.crashed && process.stdin.isTTY) {
     process.stdout.write("\nDelete this call's saved text now? y = delete, any other key (or 10 s) = keep: ");
     del = (await askKey(10_000)).toLowerCase() === "y";
   }
   if (del) {
-    try { rmSync(log.dir, { recursive: true, force: true }); if (!existsSync(join(CALLS, "latest"))) rmSync(join(CALLS, "latest"), { force: true }); } catch {}
+    try { rmSync(log.dir, { recursive: true, force: true }); if (!existsSync(join(CALLS, "latest"))) rmSync(join(CALLS, "latest"), { force: true }); } catch { /* best effort: a folder that cannot be deleted is left for `pnpm purge` */ }
     console.log(`\nDeleted ${log.dir}`);
   } else {
     console.log(`\nSaved ${log.dir}\nRate the cards: pnpm tag · delete later: pnpm purge ${log.id}`);
@@ -124,14 +124,14 @@ export async function shutdown() {
   if (!del) try { rmSync(join(log.dir, "live.jsonl"), { force: true }); } catch { /* best effort */ }
   status("stopphase", { phase: "done" });
   status("ended", { id: log.id, deleted: del, crashed: st.call.crashed });
-  try { if (process.stdin.isTTY) process.stdin.setRawMode(false); } catch {}
+  try { if (process.stdin.isTTY) process.stdin.setRawMode(false); } catch { /* best effort: stdin may not be a terminal any more */ }
   process.exit(st.call.crashed ? 1 : 0);
 }
 /** Fatal error path: print, log, then shut down in order to save what we have (crashed=true lands in call.json). A second crash during shutdown exits at once. */
 export function crash(kind: string, e: unknown) {
   if (kind === "main" && (e as ProviderError)?.kind) console.error(`\n🔴 ${describe(e as ProviderError)} – ${(e as Error).message}\n   (providers: stt ${sttChain(S).join(" -> ")}; fix the key/credit or set stt.fallback; pnpm run doctor checks all of them)`);
   else console.error(`\n🔴 ${kind}: ${errBrief(e)}`);
-  try { log.write("events", { type: "crash", kind, error: String((e as Error)?.stack ?? e) }); } catch {}
+  try { log.write("events", { type: "crash", kind, error: String((e as Error)?.stack ?? e) }); } catch { /* best effort: the log may be unwritable; the crash is printed above */ }
   if (st.call.shuttingDown) process.exit(1);
   st.call.crashed = true;
   setTimeout(() => process.exit(1), 5000).unref(); // never hang on a broken shutdown
@@ -144,7 +144,7 @@ function stray(kind: string, e: unknown) {
   const now = Date.now();
   strayErrors = [...strayErrors.filter((t) => now - t < 60_000), now];
   if (!st.call.consented || st.call.shuttingDown || strayErrors.length > 3) { crash(kind, e); return; }
-  try { log.write("events", { type: "error.survived", kind, error: String((e as Error)?.stack ?? e).slice(0, 2000) }); } catch {}
+  try { log.write("events", { type: "error.survived", kind, error: String((e as Error)?.stack ?? e).slice(0, 2000) }); } catch { /* best effort: the log may be unwritable; the error is printed below */ }
   console.error(`\n⚠️ ${kind} (call continues): ${errBrief(e)}`);
 }
 /** Registers the crash and signal handlers (once, at startup). */

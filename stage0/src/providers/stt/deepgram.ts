@@ -45,7 +45,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   }
 
   /** A failed open must close its client, or the SDK keeps reconnecting it in the background (one leaked socket per retry). */
-  private dropConn() { try { this.conn?.close?.(); } catch {} this.conn = undefined as any; }
+  private dropConn() { try { this.conn?.close?.(); } catch { /* best effort: the socket may already be closed */ } this.conn = undefined as any; }
 
   private async openOnce(keyterms: string[]) {
     this.opens = 0;
@@ -83,7 +83,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
     this.conn.connect();
     await this.conn.waitForOpen();
     clearInterval(this.keepAlive);
-    this.keepAlive = setInterval(() => { try { if (this.conn.readyState === 1) this.conn.sendKeepAlive({ type: "KeepAlive" }); } catch {} }, this.opts.keepAliveMs ?? 5000);
+    this.keepAlive = setInterval(() => { try { if (this.conn.readyState === 1) this.conn.sendKeepAlive({ type: "KeepAlive" }); } catch { /* best effort: a keep-alive on a dropping socket may throw; the disconnect handler recovers */ } }, this.opts.keepAliveMs ?? 5000);
   }
 
   get isOpen() { return this.conn?.readyState === 1; }
@@ -107,7 +107,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
     this.silentBytes += pcm.length;
     if (this.voicedSince && !this.finalizeSent && this.silentBytes / 32 >= ms) {
       this.finalizeSent = true;
-      try { if (this.conn?.readyState === 1) this.conn.sendFinalize({ type: "Finalize" }); } catch {}
+      try { if (this.conn?.readyState === 1) this.conn.sendFinalize({ type: "Finalize" }); } catch { /* best effort: finalize on a closing socket */ }
     }
   }
 
@@ -134,9 +134,9 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   async close() {
     this.closing = true;
     clearInterval(this.keepAlive);
-    try { this.conn.sendCloseStream({ type: "CloseStream" }); } catch {}
+    try { this.conn.sendCloseStream({ type: "CloseStream" }); } catch { /* best effort: the socket may already be closed */ }
     await new Promise((r) => setTimeout(r, this.opts.baseUrl ? 100 : 1500));
-    try { this.conn.close(); } catch {}
+    try { this.conn.close(); } catch { /* best effort: the socket may already be closed */ }
   }
 }
 
@@ -149,6 +149,6 @@ export const deepgram: SttProvider = {
     const s = new DeepgramStream({ ...o, channel: "them" });
     s.on("error", () => {});
     try { await Promise.race([s.open(), new Promise((_, rej) => setTimeout(() => rej(classifySttError("deepgram", new Error("open timed out after 10 s"))), 10_000))]); await s.close(); return { ok: true }; }
-    catch (e) { try { await s.close(); } catch {} return { ok: false, error: classifySttError("deepgram", e) }; }
+    catch (e) { try { await s.close(); } catch { /* best effort: the socket may already be closed */ } return { ok: false, error: classifySttError("deepgram", e) }; }
   },
 };
