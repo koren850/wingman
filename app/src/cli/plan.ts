@@ -199,7 +199,7 @@ async function attach(ctx: Ctx, args: string[]): Promise<Result> {
   if (values.file !== undefined) {
     let bytes: Buffer;
     try {
-      bytes = attachments.readSourceFile(values.file, { force: !!values.force, home: ctx.env.HOME || undefined });
+      bytes = attachments.readSourceFile(values.file, { force: !!values.force, home: ctx.home });
     } catch (e) {
       const err = e as { code?: string; message: string };
       throw err.code === "missing" ? new CliError("not_found", err.message, EXIT.NOT_FOUND) : new CliError("refused", err.message, EXIT.REFUSED);

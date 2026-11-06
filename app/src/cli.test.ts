@@ -94,6 +94,7 @@ async function rig(opts: { now?: () => number; spawn?: any; callsDir?: string; a
       err = "";
     const code = await main(argv, {
       env,
+      home: dir,
       out: (s) => {
         out += s;
       },

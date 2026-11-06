@@ -67,11 +67,20 @@ const SECRET_DIRS = [
 const ALLOWED_EXT = Object.freeze(["txt", "md", "pdf"]);
 const SECRET_NAME =
   /^(\.env(\..*)?|.*\.env|\.netrc|\.npmrc|\.pgpass|\.git-credentials|\.pypirc|id_(rsa|dsa|ecdsa|ed25519)(\..*)?|.*\.(pem|key|p12|pfx|keychain|keychain-db|kdbx)|keys?|credentials|secrets?|\.(bash|zsh|sh|python|node|psql|mysql)_history)$/i;
-const inside = (child, parent) => child === parent || child.startsWith(parent.endsWith(path.sep) ? parent : parent + path.sep);
+// macOS (APFS/HFS+ default) and Windows compare paths without regard to case, so "~/.SSH" is the same folder as "~/.ssh".
+const CASE_INSENSITIVE = process.platform === "darwin" || process.platform === "win32";
+const fold = (p) => (CASE_INSENSITIVE ? p.toLowerCase() : p);
+const inside = (child, parent) => {
+  const c = fold(child),
+    r = fold(parent);
+  return c === r || c.startsWith(r.endsWith(path.sep) ? r : r + path.sep);
+};
 
 /** Returns the file's bytes, or throws an Error whose message is user-facing and whose .code is "symlink" | "secret" | "outside" | "missing" | "notfile" | "toolarge". */
 function readSourceFile(file, o = {}) {
-  const home = o.home || os.homedir(),
+  // The home folder comes from the passwd entry, never from $HOME: the caller (a CLI run by any process) controls its own environment.
+  // `o.home` exists for tests only.
+  const home = o.home || os.userInfo().homedir,
     maxBytes = o.maxBytes || MAX_BYTES;
   const fail = (code, msg) => Object.assign(new Error(msg), { code });
   const abs = path.resolve(String(file));
