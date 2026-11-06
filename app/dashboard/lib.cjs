@@ -176,20 +176,40 @@ function deleteRefusal(st, id) {
     : "";
 }
 
-/** Summaries of every call folder, newest first. Folders that fail to read are left out. */
-function listCalls(callsDir) {
-  let names = [];
+const byNewest = (a, b) => b.startedAt - a.startedAt || (a.id < b.id ? 1 : -1);
+const callIds = (callsDir) => {
   try {
-    names = fs.readdirSync(callsDir);
-  } catch {}
+    return fs.readdirSync(callsDir).filter((n) => n !== "latest" && ID_RE.test(n));
+  } catch {
+    return [];
+  }
+};
+
+/** Summaries of every call folder, newest first. Folders that fail to read are left out. Synchronous: use listCallsAsync on the main process. */
+function listCalls(callsDir) {
   const out = [];
-  for (const n of names) {
-    if (n === "latest" || !ID_RE.test(n)) continue;
+  for (const n of callIds(callsDir)) {
     try {
       out.push(summarize(callsDir, n));
     } catch {}
   }
-  return out.sort((a, b) => b.startedAt - a.startedAt || (a.id < b.id ? 1 : -1));
+  return out.sort(byNewest);
+}
+
+/**
+ * Same result as listCalls, but it gives the event loop back after every `chunk` calls (default 15), so the first load of hundreds of uncached
+ * calls does not freeze the main process (the tray menu, the windows). Later loads are fast anyway: rows are cached per call folder.
+ */
+async function listCallsAsync(callsDir, chunk = 15) {
+  const out = [];
+  const ids = callIds(callsDir);
+  for (let i = 0; i < ids.length; i++) {
+    try {
+      out.push(summarize(callsDir, ids[i]));
+    } catch {}
+    if ((i + 1) % chunk === 0) await new Promise((r) => setImmediate(r));
+  }
+  return out.sort(byNewest);
 }
 
 /** summary.json (written by src/summary.ts), re-validated: the renderer only ever gets plain strings and short arrays. Null when missing or unreadable. */
@@ -380,6 +400,7 @@ module.exports = {
   ratableCards,
   gateNumbers,
   listCalls,
+  listCallsAsync,
   getCall,
   setTag,
   searchCalls,

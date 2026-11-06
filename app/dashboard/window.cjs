@@ -250,7 +250,7 @@ function create(ctx) {
   }
 
   // ---- calls (review) ----
-  handle("calls:list", () => data.listCalls(CALLS));
+  handle("calls:list", () => data.listCallsAsync(CALLS));
   handle("calls:get", (id) => data.getCall(CALLS, id));
   // "Write summary" for a saved call that has none: the same tool as `wingman calls summary <id> --generate` (one small AI call, up to 3 min). Output is dropped: it contains call content.
   const writing = new Set();

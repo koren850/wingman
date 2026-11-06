@@ -374,3 +374,15 @@ test("listCalls caches a call's row until one of its files changes", () => {
     (nodeFs as any).default.readFileSync = real;
   }
 });
+
+test("listCallsAsync returns the same rows as listCalls and yields to the event loop while it works", async () => {
+  const dir = newCalls();
+  for (let i = 0; i < 40; i++) mkdirSync(pjoin(dir, "01JC1QZ8" + String(10 + i) + "0".repeat(16)));
+  let ticks = 0;
+  const timer = setInterval(() => ticks++, 0);
+  const rows = await callsLib.listCallsAsync(dir, 5);
+  clearInterval(timer);
+  assert.deepEqual(rows, callsLib.listCalls(dir));
+  assert.equal(rows.length, 40);
+  assert.ok(ticks > 0, "the event loop ran between chunks");
+});
