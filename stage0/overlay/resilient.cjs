@@ -5,6 +5,7 @@
 //  - Backlog: the last pipe rows, replayed after a window reload / call switch (they may exist nowhere on disk)
 //  - ReloadGate: how long to wait before reloading a crashed page (fast at first, slower when it keeps crashing)
 const fs = require("node:fs");
+const { StringDecoder } = require("node:string_decoder");
 
 const MAX_READ = 512 * 1024;
 
@@ -50,9 +51,9 @@ class Seen {
 
 /** Bytes -> JSON rows (one per line). Bad lines and over-long lines are dropped. */
 class StdinRows {
-  constructor(max = 1_000_000) { this.rest = ""; this.max = max; }
+  constructor(max = 1_000_000) { this.rest = ""; this.max = max; this.dec = new StringDecoder("utf8"); }   // the decoder keeps a letter split across two reads whole
   push(chunk) {
-    this.rest += chunk.toString();
+    this.rest += typeof chunk === "string" ? chunk : this.dec.write(chunk);
     const parts = this.rest.split("\n");
     this.rest = parts.pop();
     if (this.rest.length > this.max) this.rest = "";

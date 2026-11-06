@@ -177,6 +177,9 @@ test("overlay: the same card by disk and by pipe is shown once; changed content 
   assert.equal(seen.add(R.rowKey({ ...card, say: "b", t: 6 })), true, "an update of the card is a new row");
   for (let i = 0; i < 5; i++) seen.add("k" + i); assert.equal(seen.size, 3, "bounded");
   const p = new R.StdinRows(); assert.deepEqual(p.push('{"a":1}\nnot json\n{"b"'), [{ a: 1 }]); assert.deepEqual(p.push(':2}\n'), [{ b: 2 }]);
+  // A Hebrew letter split across two pipe reads stays whole.
+  const row = Buffer.from(JSON.stringify({ text: "שלום עולם" }) + "\n"); const cut = row.indexOf(Buffer.from("ש")) + 1;
+  const q = new R.StdinRows(); assert.deepEqual(q.push(row.subarray(0, cut)), []); assert.deepEqual(q.push(row.subarray(cut)), [{ text: "שלום עולם" }]);
   const bl = new R.Backlog(2); bl.add(1); bl.add(2); bl.add(3); assert.deepEqual(bl.all(), [2, 3]);
   let t = 0; const g = new R.ReloadGate(() => t); const waits = []; for (let i = 0; i < 6; i++) { waits.push(g.next()); t += 1000; }
   assert.deepEqual(waits, [300, 300, 300, 300, 5000, 5000], "a page that keeps dying is reloaded more slowly, never abandoned");
