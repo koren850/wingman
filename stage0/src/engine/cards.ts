@@ -17,7 +17,9 @@ export type Card = {
 };
 /** Writes a side card (fact, note, reminder, client proposal) that is not tied to a question. */
 export function emitSide(row: Record<string, unknown>) {
-  log.write("cards", { type: "card", turnId: "side", question: "", at: Date.now(), ...row });
+  // Quiet mode: "cards are kept but not shown". Fact, note and reminder cards are kept and flagged like every other card; only system cards (info: the client proposal) show.
+  const quiet = st.call.quiet && row.badge !== "info";
+  log.write("cards", { type: "card", turnId: "side", question: "", at: Date.now(), ...row, ...(quiet ? { hidden: true, hiddenReason: "quiet" } : {}) });
 }
 const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay (a card keeps its first decision when it is updated, so it never flips)
 const turnsWithCard = new Set<string>();
