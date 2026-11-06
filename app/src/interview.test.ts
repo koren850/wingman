@@ -44,9 +44,3 @@ test("a say-line about the transcript itself is dropped like a leaked tag", asyn
   assert.ok(leakedTag('The say-line is about evaluating a RAG system (the transcript garbled "RAG" into "rack").'));
   assert.ok(!leakedTag("Evaluate retrieval and answers separately, with a fixed test set."));
 });
-
-test("interview: no fact cards about the user's own clients and servers", async () => {
-  const { readFileSync } = await import("node:fs");
-  const src = readFileSync(new URL("./engine/boot.ts", import.meta.url), "utf8");
-  assert.match(src, /const snapshot = S\.facts\.enabled && !interview \?/);
-});

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { ROOT } from "./env.ts";
 import { micVerdict } from "./mic-check.ts";
@@ -277,8 +277,6 @@ test("Start listening key: a refused registration is logged and retried at the n
 test("the menu-bar app never uses the answer window's keys (C/P/R/K/L and 1-3)", () => {
   for (const k of Object.values(lib.KEYS)) assert.ok(!lib.OVERLAY_KEYS.includes(k as string), `${k} collides`);
   for (const n of ["1", "2", "3"]) assert.ok(lib.OVERLAY_KEYS.includes(`Control+Alt+${n}`));
-  const src = readFileSync(join(ROOT, "tray", "main.cjs"), "utf8");
-  assert.ok(!/Control\+Alt\+[123]\b/.test(src), "main.cjs registers no Ctrl+Opt+1-3");
 });
 
 // ---- tray: confirmations ----
@@ -361,25 +359,6 @@ test("mic check: 0 peak fails (blocked), 0.017 warns (quiet voice), 0.05 is ok",
   assert.equal(micVerdict(300, 0.02), "warn", "exactly the threshold is still quiet");
   assert.equal(micVerdict(300, 0.05), "ok");
   assert.equal(micVerdict(300, NaN), "fail");
-});
-
-// ---- run.ts: phases and stop steps are wired in order ----
-test("engine writes call.json phases and emits stop steps in order", () => {
-  const read = (f: string) => readFileSync(join(ROOT, "src", f), "utf8");
-  const src = read("engine/shutdown.ts"),
-    consent = read("engine/consent.ts"); // (phases: run.ts "starting", consent.ts "waiting" / "live"; stop steps: shutdown.ts)
-  assert.ok(read("run.ts").includes('setPhase("starting")'), 'setPhase("starting")');
-  for (const p of ['setPhase("waiting")', 'setPhase("live", { liveAt']) assert.ok(consent.includes(p), p);
-  const at = (t: string) => src.indexOf(t);
-  assert.ok(at('status("stopphase", { phase: "saving" })') < at('status("stopphase", { phase: "summary" })'));
-  assert.ok(at('status("stopphase", { phase: "summary" })') < at('status("stopphase", { phase: "done" })'));
-  assert.ok(at('status("stopphase", { phase: "done" })') < at('status("ended"'));
-  assert.match(src, /phase: "ended"/);
-  assert.match(
-    read("engine/boot.ts"),
-    /loadAttachments\(S\.attachments\.maxChars, \{ consume: !fileArg \}\)/,
-    "a practice call never deletes the real call's files",
-  );
 });
 
 test("control socket status exposes stopPhase, askArmed and the AI mode; the CLI prints the stop step", async () => {

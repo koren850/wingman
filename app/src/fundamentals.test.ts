@@ -148,12 +148,6 @@ test("B5 speechEndWall re-anchors per connection and falls back when implausible
   assert.equal(speechEndWall(10_000, 1.0, 40), 9_600); // word end beyond what was sent -> fallback
   assert.equal(speechEndWall(10_000, 100, 1), 9_600); // stale anchor -> fallback
 });
-test("B1 source: system prompt goes through `instructions`, not messages", async () => {
-  const { readFileSync } = await import("node:fs");
-  const src = readFileSync(new URL("./reflex.ts", import.meta.url), "utf8");
-  assert.ok(/instructions:\s*\{\s*role:\s*"system"/.test(src));
-  assert.ok(!/messages:\s*\[\s*\{\s*role:\s*"system"/.test(src));
-});
 test("B2 stt send never throws and counts drops when the socket is not open", async () => {
   const { DeepgramStream: SttStream } = await import("./providers/stt/deepgram.ts");
   const s = new SttStream({ apiKey: "x", channel: "them" });

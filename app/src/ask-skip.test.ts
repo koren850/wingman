@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
-import { readFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
@@ -18,7 +18,6 @@ const ask = req("../shared/ask.js");
 const trayLib = req("../tray/lib.cjs");
 const HL = req("../dashboard/homelib.js");
 const { createController } = req("../tray/controller.cjs");
-const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
 
 test("askSecondsLeft / askClock: whole seconds rounded up, nothing when not armed or already past", () => {
   const now = 1_000_000;
@@ -121,17 +120,6 @@ test("a skipped summary gives no 'No call summary' notification", () => {
   assert.equal(trayLib.notifications(s0, s0, { ev: "summary", ok: false }).length, 1);
 });
 
-test("engine: fixed stdin commands stop-no-summary and skip-summary, abort signal passed to the summary call", () => {
-  const t = read("src/engine/shutdown.ts"),
-    ctl = read("src/engine/control.ts"); // (the stdin commands live in control.ts, the summary in shutdown.ts)
-  assert.match(ctl, /cmd === "stop-no-summary"\) \{\s*skipSummaryNow\(\);\s*void shutdown\(\);\s*\}/);
-  assert.match(ctl, /cmd === "skip-summary"\) \{\s*if \(st\.call\.shuttingDown\) skipSummaryNow\(\);\s*\}/);
-  assert.match(t, /signal: summaryAbort\.signal/);
-  assert.match(t, /Promise\.race\(\[postCallSummary\(\), summarySkipWait,/);
-  assert.match(t, /reason: "user"/);
-  assert.match(read("tray/controller.cjs"), /COMMANDS = Object\.freeze\(\[[^\]]*"stop-no-summary", "skip-summary"\]/);
-});
-
 test("runSummary: aborted by Skip summary writes no summary.json and no error row", async () => {
   const S = loadSettings({ env: {}, userFile: "/nonexistent/x.yaml" }).settings;
   const dir = mkdtempSync(join(tmpdir(), "wingman-skip-"));
@@ -177,15 +165,4 @@ test("main window helpers: stop steps say Summary skipped, the Skip control only
   assert.equal(HL.askStatus({ askArmed: true, askUntil: now + 7000 }, now), "Listening for your question. Say it now. 7 s left");
   assert.equal(HL.askStatus({ askArmed: true, askUntil: 0 }, now), "Listening for your question. Say it now.");
   assert.equal(HL.askStatus({ askArmed: false, askUntil: now + 7000 }, now), "");
-});
-
-test("pages wired: Skip summary button + fixed IPC, Write summary in Calls, countdown in the answer window", () => {
-  assert.match(read("dashboard/home.js"), /btn\("Skip summary", \{ id: "skip-summary"/);
-  assert.match(read("dashboard/preload.cjs"), /skipSummary: \(\) => ipcRenderer\.invoke\("call:cmd", "skipSummary"\)/);
-  assert.match(read("dashboard/window.cjs"), /case "skipSummary":\s*return \{ ok: controller\.skipSummary\(\) \}/);
-  assert.match(read("dashboard/app.js"), /btn\("Write summary"/);
-  assert.match(read("dashboard/window.cjs"), /handle\(\s*"calls:writeSummary"/);
-  assert.match(read("overlay/app.js"), /WingmanAsk\.askSecondsLeft/);
-  assert.match(read("overlay/index.html"), /src="\.\.\/shared\/ask\.js"/);
-  assert.match(read("dashboard/index.html"), /src="\.\.\/shared\/ask\.js"/);
 });

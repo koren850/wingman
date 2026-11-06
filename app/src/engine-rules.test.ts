@@ -20,6 +20,7 @@ import {
   REPEAT_BANK_MS,
   agencyGate,
   questionSkip,
+  factsActive,
 } from "./engine/rules.ts";
 
 test("rules: addressesUser covers Hebrew and English forms of 'you'", () => {
@@ -157,4 +158,10 @@ test("question: skip rules run in order, and the costly checks only run when rea
   assert.equal(questionSkip(o({ focusOn: true, focusWorthy: () => false })), "focus.skip");
   assert.equal(questionSkip(o({ focusOn: true, interview: true, focusWorthy: () => false })), undefined, "focus never applies in an interview");
   assert.equal(questionSkip(o({ flowHolds: () => true })), "flow.hold");
+});
+
+test("boot: an interview never loads the client snapshot, so it produces no fact cards about the user's own clients and servers", () => {
+  assert.equal(factsActive({ factsEnabled: true, interview: false }), true);
+  assert.equal(factsActive({ factsEnabled: true, interview: true }), false);
+  assert.equal(factsActive({ factsEnabled: false, interview: false }), false);
 });

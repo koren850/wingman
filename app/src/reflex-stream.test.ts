@@ -4,7 +4,9 @@
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseReflex, parseTag, buildPrefix } from "./reflex.ts";
+import { parseReflex, parseTag, buildPrefix, runReflex, type ReflexHandlers } from "./reflex.ts";
+import type { ModelRegistry } from "./providers/llm.ts";
+import { loadSettings } from "./settings.ts";
 import { temperatureFor } from "./providers/llm.ts";
 
 const OUTPUTS: Record<string, string> = {
@@ -99,4 +101,39 @@ test("temperatureFor: 0 where the provider accepts it, omitted for Anthropic (cu
   assert.equal(temperatureFor("anthropic:claude-haiku-5-5"), undefined);
   assert.equal(temperatureFor("openai:gpt-x"), 0);
   assert.equal(temperatureFor("scripted:e2e"), 0);
+});
+
+test("runReflex: the system prompt goes through `instructions` (with the cache marker), never as a system message in `messages`", async () => {
+  let seen: any;
+  const stream = ((opts: any) => {
+    seen = opts;
+    return {
+      textStream: (async function* () {
+        yield "SKIP\n";
+      })(),
+      finishReason: Promise.resolve("stop"),
+      usage: Promise.resolve({}),
+      providerMetadata: Promise.resolve({}),
+    };
+  }) as any;
+  const noop: ReflexHandlers = { onTag() {}, onSay() {}, onFacts() {}, onSayComplete() {}, onDone() {} };
+  await runReflex({
+    registry: { resolve: async (ref: string) => ({ ref }) } as unknown as ModelRegistry,
+    models: ["anthropic:claude-haiku-5-5"],
+    cfg: loadSettings({ env: {}, userFile: "/nonexistent/x.yaml" }).settings.llm.reflex,
+    prefix: "THE PREFIX",
+    transcript: "t",
+    question: "q?",
+    signal: new AbortController().signal,
+    h: noop,
+    stream,
+  });
+  assert.equal(seen.instructions.role, "system");
+  assert.equal(seen.instructions.content, "THE PREFIX");
+  assert.ok(seen.instructions.providerOptions?.anthropic?.cacheControl, "the Anthropic cache marker rides on the system block");
+  assert.ok(
+    seen.messages.every((m: any) => m.role !== "system"),
+    "no system role inside messages (ai 7 throws on it)",
+  );
+  assert.equal("temperature" in seen && seen.temperature !== undefined, false, "no sampling parameter is sent to Anthropic");
 });

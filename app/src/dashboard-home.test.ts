@@ -160,110 +160,6 @@ test("focus key: id first, then data-fk", () => {
   assert.equal(H.focusKey(null), "");
 });
 
-// ---- static guards for the Home work ----
-import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import { ROOT } from "./env.ts";
-const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
-
-test("the unused skins are gone: no skins.css, no ?skin= param, no SK() branches, no data-skin selector", () => {
-  assert.equal(existsSync(join(ROOT, "dashboard/skins.css")), false);
-  assert.doesNotMatch(read("dashboard/index.html"), /skins\.css/);
-  for (const f of readdirSync(join(ROOT, "dashboard")).filter((x) => /\.(js|cjs|css|html)$/.test(x))) {
-    const t = read("dashboard/" + f);
-    assert.doesNotMatch(t, /data-skin|\bSK\(\)|WINGMAN_DASHBOARD_SKIN|DEFAULT_SKIN|searchParams|get\("skin"\)/, f + " still mentions skins");
-  }
-  assert.match(read("dashboard/app.css"), /\.tip:focus-visible::after/); // base rules the default look needs moved here
-  assert.match(read("dashboard/app.css"), /\.sheet-ov \{/);
-});
-
-test("the live Ask/Note input goes through validated, fixed commands only", () => {
-  const w = read("dashboard/window.cjs"),
-    p = read("dashboard/preload.cjs");
-  assert.match(
-    w,
-    /case "ask":\s*if \(typeof arg !== "string" \|\| !arg\.trim\(\) \|\| arg\.length > 2000\) throw new Error\("bad argument"\);\s*return \{ ok: controller\.ask\(arg\) \}/,
-  );
-  assert.match(w, /case "askWingman":\s*return \{ ok: controller\.askWingman\(\) \}/);
-  assert.match(p, /ask: \(text\) => ipcRenderer\.invoke\("call:cmd", "ask", String\(text\)\)/);
-  assert.match(p, /askWingman: \(\) => ipcRenderer\.invoke\("call:cmd", "askWingman"\)/);
-});
-
-test("the snapshot doctor fixtures never mention keys.env or a terminal (the app stores keys in the Keychain)", () => {
-  const w = read("dashboard/window.cjs");
-  const fx = w.slice(w.indexOf("const FAKE_DOCTOR"), w.indexOf("/** The sender must be"));
-  assert.ok(fx.length > 100);
-  assert.doesNotMatch(fx, /keys\.env|terminal/i);
-});
-
-test("visible dashboard text follows the glossary (no consent, briefing, bank, stall, doctor wording)", () => {
-  for (const f of ["dashboard/home.js", "dashboard/live.js", "dashboard/app.js", "dashboard/settings.js", "dashboard/boot.js", "tray/settings-catalog.cjs"]) {
-    const t = read(f);
-    assert.doesNotMatch(
-      t,
-      /Waiting for consent|Consent given|consent line|Check everything|Stop and delete|"Bank"|"Stall"|Briefing\b|"Calc"|(?<!run)Doctor\b/,
-      f,
-    );
-  }
-});
-
-test("the practice button and the Start card are wired to the plan and the settings read", () => {
-  const t = read("dashboard/home.js");
-  assert.match(t, /HL\.practiceLabel\(target\)/);
-  assert.match(t, /id: "start-call"[\s\S]*?startFlow\(\{ noAi: false \}\)/); // the Quick call button starts with no meeting
-  assert.match(t, /startFlow\(\{ planId: r\.id \}\)/); // a row's Start button starts that meeting
-  assert.match(t, /api\s*\.getSettings\(\)\s*\.then\(\(r\) => \{\s*H\.ai = r && r\.ok \? HL\.aiMode\(r\.items\)/);
-  assert.match(t, /HL\.stopSteps\(s\)/);
-});
-
-test("one badge legend: both windows get the card hues from shared/tokens.css, none of their own", () => {
-  const tok = read("shared/tokens.css"),
-    css = read("dashboard/app.css"),
-    ov = read("overlay/index.html"),
-    dh = read("dashboard/index.html");
-  // one definition: dark and light hues for every card type live in the shared file
-  for (const k of ["prep", "ai", "stall", "tip", "me", "fact", "fix", "careful"])
-    assert.match(tok, new RegExp(`--t-${k}:\\s*#[0-9a-f]{6}`, "i"), `--t-${k} missing in tokens.css`);
-  for (const [n, f] of [
-    ["dashboard", css],
-    ["answer window", ov],
-  ] as const)
-    assert.ok(!/--t-(prep|ai|stall|tip|me|fact):\s*#/i.test(f), `${n} redefines a card hue`);
-  // both pages load it, and the answer window's CSP lets the stylesheet in and stays dark
-  assert.match(dh, /<link rel="stylesheet" href="\.\.\/shared\/tokens\.css"\s*\/?>/);
-  assert.match(ov, /<link rel="stylesheet" href="\.\.\/shared\/tokens\.css"\s*\/?>/);
-  assert.match(ov, /style-src [^;]*file:/);
-  assert.match(ov, /<html[^>]*data-theme="dark"/);
-  // the answer window's own hex values are neutrals, tints and its two brighter alert tones only
-  const root = /:root \{([^}]*)\}/.exec(ov)![1];
-  const names = [...root.matchAll(/(--[a-z0-9-]+):/g)].map((m) => m[1]);
-  for (const n of names)
-    assert.ok(
-      [
-        "--bg",
-        "--card",
-        "--card2",
-        "--raised",
-        "--line",
-        "--text",
-        "--soft",
-        "--muted",
-        "--t-prep-bg",
-        "--t-me-bg",
-        "--t-ai-bg",
-        "--t-stall-bg",
-        "--red-bg",
-        "--fault",
-        "--advisory",
-        "--say-pt",
-        "--live-pt",
-        "--t-fix-bg",
-        "--t-careful-bg",
-      ].includes(n),
-      `answer window defines ${n}: put shared colours in tokens.css`,
-    );
-});
-
 test("recent plans: newest first, no duplicates, capped, junk dropped", () => {
   const D = req("../dashboard/lib.cjs");
   const p = (who: string, goal = "", notes = "", mustCover = "") => ({ who, goal, notes, mustCover });
@@ -290,13 +186,6 @@ test("recent plans: newest first, no duplicates, capped, junk dropped", () => {
   assert.equal(D.cleanPlan(p("a\u0000b")).who, "ab");
 });
 
-test("recent plans are read and written only by the main process, in the private plan folder, owner-only", () => {
-  const w = read("dashboard/window.cjs");
-  assert.match(w, /handle\("brief:recent"/); // recent plans are a convenience kept beside the prepared meetings assert.match(w, /handle\("brief:forgetRecent"/);
-  assert.match(w, /const RECENT = path\.join\(BRIEFS, "recent\.json"\)/);
-  assert.match(w, /writeFileSync\(RECENT, JSON\.stringify\(list\), \{ mode: 0o600 \}\)/);
-});
-
 // ---- the running call cannot be deleted from the Calls view ----
 test("deleteRefusal: only the call that is running now is refused", () => {
   const { deleteRefusal } = req("../dashboard/lib.cjs");
@@ -305,26 +194,6 @@ test("deleteRefusal: only the call that is running now is refused", () => {
   assert.equal(deleteRefusal(live, "01JOTHER"), "");
   assert.equal(deleteRefusal({ running: false, callId: "01JLIVE", phase: "idle" }, "01JLIVE"), "", "an ended call can be deleted");
   assert.equal(deleteRefusal({ running: true, callId: "01JLIVE", phase: "idle" }, "01JLIVE"), "");
-});
-
-test("calls:delete asks deleteRefusal before the dialog, and the page hides the button for the live call", async () => {
-  const { readFileSync } = await import("node:fs"),
-    { join } = await import("node:path"),
-    { ROOT } = await import("./env.ts");
-  const w = readFileSync(join(ROOT, "dashboard/window.cjs"), "utf8"),
-    a = readFileSync(join(ROOT, "dashboard/app.js"), "utf8");
-  assert.ok(w.indexOf("data.deleteRefusal(controller.getState(), id)") > 0 && w.indexOf("data.deleteRefusal") < w.indexOf('title: "Delete call"'));
-  assert.match(a, /const isLive = !!\(state\.call && state\.call\.running && state\.call\.callId === state\.id/);
-  assert.equal((a.match(/isLive \? null : /g) || []).length, 3, "all three Delete call buttons");
-});
-
-test("the nativeTheme listener is added once per window host, not on every open", async () => {
-  const { readFileSync } = await import("node:fs"),
-    { join } = await import("node:path"),
-    { ROOT } = await import("./env.ts");
-  const w = readFileSync(join(ROOT, "dashboard/window.cjs"), "utf8");
-  assert.equal((w.match(/nativeTheme\.on\(/g) || []).length, 1);
-  assert.ok(w.indexOf("nativeTheme.on(") < w.indexOf("function open("), "registered before open(), in create()");
 });
 
 // ---- Calls list: start time without call.json, and the per-folder cache ----

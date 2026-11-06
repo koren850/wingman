@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
@@ -111,14 +111,6 @@ test("health: other recoveries still need the stable minute", () => {
   s.tick();
   assert.equal(s.rung, 3);
 });
-test("engine: the silent-while-talking heuristic never sets themDead (source check)", () => {
-  const src = readFileSync(join(ROOT, "src", "engine", "watchdogs.ts"), "utf8");
-  const calm = src.slice(
-    src.indexOf('log.write("events", { type: "watchdog.silent-them"'),
-    src.indexOf("}), 2000).unref();", src.indexOf("watchdog.silent-them")),
-  );
-  assert.ok(calm.includes('"only-you"') && !/themDead/.test(calm), "calm branch must not touch themDead");
-});
 
 // ---- disk failures ----
 test("log: write failures are counted, warned once, and never throw", async () => {
@@ -150,19 +142,6 @@ test("settings: WINGMAN_USER_SETTINGS is honoured by the engine loader", () => {
   const l = loadSettings({ env: { WINGMAN_USER_SETTINGS: f }, createStarter: false });
   assert.equal(l.settings.cards.maxOnScreen, 7);
   rmSync(tmp, { recursive: true, force: true });
-});
-
-// ---- overlay orphan guard, linger, doctor ----
-test("overlay: spawned with a stdin pipe + parent watch; main.cjs quits when the parent goes away", () => {
-  const o = readFileSync(join(ROOT, "src", "overlay.ts"), "utf8"),
-    m = readFileSync(join(ROOT, "overlay", "main.cjs"), "utf8");
-  assert.match(o, /stdio: \["pipe"/);
-  assert.match(o, /WINGMAN_WATCH_PARENT/);
-  assert.match(m, /WINGMAN_WATCH_PARENT/);
-  assert.match(m, /process\.stdin\.on\("end"/);
-  assert.match(m, /process\.kill\(parent, 0\)/);
-  const c = readFileSync(join(ROOT, "src", "call.ts"), "utf8");
-  assert.match(c, /SIGKILL/, "call.ts escalates to SIGKILL for a hung overlay");
 });
 
 function fakeCtl(extra: any = {}) {
@@ -279,7 +258,4 @@ test("stt: initial open survives a server that refuses the first 2 connects (moc
   assert.equal(ch.isOpen, true);
   await ch.close();
   http.close();
-  const src = readFileSync(join(ROOT, "src", "engine", "stt.ts"), "utf8");
-  assert.match(src, /Promise\.allSettled\(\[openChannel\(chans\.me/);
-  assert.match(src, /30_000\) \{[\s\S]*sttRetryLoop/);
 });

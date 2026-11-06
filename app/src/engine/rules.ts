@@ -100,3 +100,7 @@ export function questionSkip(o: {
   if (o.flowHolds()) return "flow.hold";
   return undefined;
 }
+
+// ---- boot.ts: what the call loads ----
+/** The client snapshot (domains, servers) feeds fact cards about the user's own clients. An interview is not a client call: no snapshot, so no such facts. */
+export const factsActive = (o: { factsEnabled: boolean; interview: boolean }) => o.factsEnabled && !o.interview;

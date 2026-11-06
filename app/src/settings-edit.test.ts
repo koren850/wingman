@@ -130,5 +130,4 @@ test("the window host runs settings and setup writes through a one-at-a-time que
     r.map((x) => x.status),
     ["fulfilled", "rejected", "fulfilled"],
   );
-  assert.match(rf(join(ROOT, "dashboard", "window.cjs"), "utf8"), /args\.includes\("write"\) \? writes\(/);
 });

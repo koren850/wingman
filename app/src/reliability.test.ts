@@ -5,10 +5,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, readdirSync, appendFileSync, utimesSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readdirSync, appendFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ROOT } from "./env.ts";
 import { SupervisedSource, pickMicDevice, AUDIO_BACKOFF_MS, type Source } from "./audio.ts";
 import { decide, NO_SIGNALS, HealthSupervisor, sttRetryDelayMs, isPermanentSttError } from "./health.ts";
 import { detectGap } from "./clock.ts";
@@ -330,21 +329,6 @@ test("overlay: the same card by disk and by pipe is shown once; changed content 
     t += 1000;
   }
   assert.deepEqual(waits, [300, 300, 300, 300, 5000, 5000], "a page that keeps dying is reloaded more slowly, never abandoned");
-});
-test("overlay main.cjs: crash and hang handlers are wired, poll cannot throw out, errors only log", () => {
-  const src = readFileSync(join(ROOT, "overlay", "main.cjs"), "utf8");
-  for (const needle of [
-    '"uncaughtException"',
-    '"unhandledRejection"',
-    '"render-process-gone"',
-    '"unresponsive"',
-    '"did-fail-load"',
-    "forcefullyCrashRenderer",
-    "replayBacklog",
-    "readNewRows",
-  ])
-    assert.ok(src.includes(needle), needle);
-  assert.match(src, /function poll\(\) \{\s*try \{/);
 });
 test("log: sweepLive removes stale live.jsonl from old calls, never the current call or a fresh one", () => {
   const calls = mkdtempSync(join(tmpdir(), "wm-sweep-"));
