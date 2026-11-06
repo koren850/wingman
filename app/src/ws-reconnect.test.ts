@@ -45,7 +45,8 @@ test("ws-base: after the server dies, retries stop at the limit and one terminal
   const st = new TestStream(url);
   const errors: unknown[] = [];
   let disconnected = 0;
-  st.on("error", (e) => errors.push(e));
+  const flags: unknown[] = [];
+  st.on("error", (e, info) => (errors.push(e), flags.push(info)));
   st.on("disconnected", () => disconnected++);
   await st.open();
   for (const c of wss.clients) c.terminate();
@@ -53,6 +54,7 @@ test("ws-base: after the server dies, retries stop at the limit and one terminal
   await sleep(1200);
   assert.equal(errors.length, 1, `terminal errors: ${errors.length}`);
   assert.equal(disconnected, 1);
+  assert.deepEqual(flags, [{ terminal: true }], "the final error is flagged terminal so SttChannel starts recovery");
   assert.equal(socks.length, 1);
   await st.close();
 });

@@ -17,6 +17,7 @@ export type ChannelOpts = {
   baseUrls?: Record<string, string>; // tests: point an adapter at a mock server
   circuit: { failures: number; windowMs: number };
   ringMs?: number; // audio kept while the socket is down, flushed on reopen (0/undefined = drop, old behaviour)
+  deadAfterMs?: number; // a socket that stays disconnected this long is treated as dead (default 45 s)
   now?: () => number;
 };
 
@@ -36,6 +37,7 @@ export class SttChannel extends EventEmitter {
   private flushedBytes = 0; // total bytes ever replayed from the ring
   private flushEndSec = 0; // flushed audio occupies [0, flushEndSec] of the current connection's audio clock
   private everOpened = false;
+  private deadTimer?: NodeJS.Timeout;
   constructor(private o: ChannelOpts) {
     super();
   }
@@ -139,6 +141,7 @@ export class SttChannel extends EventEmitter {
     s.on("keyterms_off", (e) => this.emit("keyterms_off", e));
     s.on("reconnected", (d) => {
       if (s !== this.stream) return;
+      clearTimeout(this.deadTimer);
       this.failures = [];
       this.flushRing(s);
       this.emit("reconnected", d);
@@ -146,18 +149,31 @@ export class SttChannel extends EventEmitter {
     s.on("disconnected", (d) => {
       if (s !== this.stream) return;
       this.emit("disconnected", d);
-      this.onFailure(d.error ?? classifySttError(this.provider, d), s, "disconnected");
+      const err = d.error ?? classifySttError(this.provider, d);
+      this.onFailure(err, s, "disconnected");
+      this.armDeadTimer(s, err);
     });
-    s.on("error", (e) => {
+    // `info.terminal`: the stream gave up reconnecting on its own, so nothing will heal it without us.
+    s.on("error", (e, info?: { terminal?: boolean }) => {
       if (s !== this.stream && this.stream) return;
       const err = classifySttError(this.provider, e);
       this.emit("stt_error", err);
-      this.onFailure(err, s, "error");
+      this.onFailure(err, s, "error", !!info?.terminal);
     });
   }
 
+  /** A socket that never comes back (the adapter's own reconnect gave up silently) is treated as a terminal failure. */
+  private armDeadTimer(s: SttStreamLike, err: ProviderError) {
+    clearTimeout(this.deadTimer);
+    this.deadTimer = setTimeout(() => {
+      if (this.closed || s !== this.stream || s.isOpen) return;
+      void this.switchNext(err);
+    }, this.o.deadAfterMs ?? 45_000);
+    this.deadTimer.unref?.();
+  }
+
   /** Decide: wait for the SDK/adapter to reconnect, or switch provider now. */
-  private onFailure(err: ProviderError, stream: SttStreamLike | undefined, kind: "error" | "disconnected") {
+  private onFailure(err: ProviderError, stream: SttStreamLike | undefined, kind: "error" | "disconnected", terminal = false) {
     const t = this.now();
     // One socket failure can surface twice: an "error" event, then the "disconnected" for the same close (or the other way round).
     // An event of the other kind from the same stream within SAME_FAILURE_MS is the same failure: count it once toward the circuit.
@@ -166,7 +182,9 @@ export class SttChannel extends EventEmitter {
     this.lastFailure = { stream, kind, at: t };
     if (!sameFailure) this.failures = [...this.failures.filter((x) => t - x < this.o.circuit.windowMs), t];
     const nonRetryable = err.switchProvider && !err.retryable;
-    if (nonRetryable || (err.switchProvider && this.failures.length >= this.o.circuit.failures)) void this.switchNext(err);
+    // A terminal error is one the stream will not recover from: always move on (next provider, or "exhausted" and the retry loop).
+    if (terminal) void this.switchNext(err);
+    else if (nonRetryable || (err.switchProvider && this.failures.length >= this.o.circuit.failures)) void this.switchNext(err);
   }
 
   /** Move to the next provider in the chain. On success emits "switched"; if none opens, emits "exhausted" and keeps the old stream. Re-entrant calls are ignored. */
@@ -239,6 +257,7 @@ export class SttChannel extends EventEmitter {
   }
   async close() {
     this.closed = true;
+    clearTimeout(this.deadTimer);
     await this.stream?.close();
   }
 }

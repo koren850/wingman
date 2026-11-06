@@ -41,7 +41,7 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
           if (!this.isOpen) return;
           this.isOpen = false;
           for (const x of this.timers) clearTimeout(x);
-          this.emit("error", failError(inj.status));
+          this.emit("error", failError(inj.status), { terminal: true });
         },
         inj.at - (Date.now() - T0),
       );
