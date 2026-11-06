@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "allowJs": true, "checkJs": true, "noImplicitAny": false, "allowImportingTsExtensions": false },
+  "include": ["shared/*.cjs", "tray/lib.cjs"],
+  "exclude": ["shared/*.d.cts"]
+}

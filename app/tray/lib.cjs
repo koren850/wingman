@@ -558,7 +558,7 @@ function settingsReader(o) {
                 .trim()
                 .split("\n")
                 .filter(Boolean)
-                .pop(),
+                .pop() ?? "",
             ),
           );
         } catch {

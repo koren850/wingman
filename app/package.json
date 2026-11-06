@@ -40,7 +40,7 @@
     "test": "tsx --test --test-concurrency=1 src/*.test.ts src/e2e/*.test.ts",
     "eval": "tsx scripts/eval.ts",
     "demo": "tsx scripts/demo.ts",
-    "typecheck": "tsc --noEmit -p .",
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.cjs.json",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:unit && pnpm eval",
     "test:unit": "tsx --test --test-concurrency=1 src/*.test.ts",
     "test:e2e": "tsx --test --test-concurrency=1 src/e2e/*.test.ts",

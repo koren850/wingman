@@ -12,7 +12,9 @@ const MARKER = ".migrated-from-repo.json";
 const PENDING = ".migrating.json";
 const SKIP_PRIVATE = new Set(["denylist.txt", "node_modules", ".DS_Store"]);
 
-/** All regular files below `dir` as { rel, size, mtimeMs }. Symlinks are ignored (never followed). */
+/** All regular files below `dir` as { rel, size, mtimeMs }. Symlinks are ignored (never followed).
+ *  @param {string} dir
+ *  @param {(name: string) => boolean} [skipTop] names to skip at the top level */
 function walk(dir, skipTop = () => false, rel = "", out = []) {
   let names;
   try {
@@ -86,6 +88,7 @@ function isTruncatedCopy(src, dst, srcSize, dstSize) {
 function copyOne(src, dst, mtimeMs, size, resuming) {
   mkdir700(path.dirname(dst));
   let how = "copied";
+  /** @type {import("node:fs").Stats | null} */
   let st = null;
   try {
     st = fs.lstatSync(dst);
@@ -176,7 +179,7 @@ function migrateUserData(o) {
     });
     if (bad.length) throw new Error(`${bad.length} file(s) did not copy correctly (first: ${bad[0].rel})`);
   } catch (e) {
-    const message = `Wingman: copying your data to ${root} failed (${e.message}). Nothing was changed in the old folders; it will try again next start.`;
+    const message = `Wingman: copying your data to ${root} failed (${/** @type {Error} */ (e).message}). Nothing was changed in the old folders; it will try again next start.`;
     log(message);
     return { status: "failed", files: plan.length, bytes, copied, message };
   }
@@ -216,7 +219,7 @@ function ensureUserData(o = {}) {
     const old = candidates.find((c) => fs.existsSync(c.calls) || fs.existsSync(c.private)) || candidates[candidates.length - 1];
     return migrateUserData({ dataDir: paths.dataDir(env, o.home), oldCalls: old.calls, oldPrivate: old.private, log: o.log || ((m) => console.error(m)) });
   } catch (e) {
-    return { status: "failed", files: 0, bytes: 0, copied: 0, message: String((e && e.message) || e) };
+    return { status: "failed", files: 0, bytes: 0, copied: 0, message: String((e && /** @type {Error} */ (e).message) || e) };
   }
 }
 
