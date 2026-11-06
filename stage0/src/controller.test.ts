@@ -136,3 +136,22 @@ test("doctor: refused during a call, summarised otherwise", async () => {
   assert.equal(r.warnings.length, 1);
   assert.deepEqual(ctl.getState().doctor.failing, r.failing);
 });
+
+test("an engine killed by a signal is a crash: notification, error text, idle state", () => {
+  const { ctl, spawned, notes } = fake();
+  ctl.start({}); const c = spawned[0];
+  c.say("waiting", { id: "01ABC" }); c.say("consented");
+  c.emit("exit", null, "SIGKILL");
+  const s = ctl.getState();
+  assert.equal(s.running, false); assert.equal(s.phase, "idle");
+  assert.match(s.lastError, /SIGKILL/);
+  assert.deepEqual(notes, ["Wingman stopped unexpectedly"]);
+});
+
+test("a signal after a clean end (the lingering answer window) does not notify", () => {
+  const { ctl, spawned, notes } = fake();
+  ctl.start({}); const c = spawned[0];
+  c.say("waiting", { id: "01ABC" }); c.say("consented"); c.say("ended", { id: "01ABC", crashed: false });
+  c.emit("exit", null, "SIGTERM");
+  assert.deepEqual(notes, []);
+});

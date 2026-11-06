@@ -37,10 +37,12 @@ function createController(o) {
   /** The engine is done and call.ts only lingers to keep the answer window up: a new call replaces it (its overlay is closed now). */
   function dropLingering() { if (lingering) { const l = lingering; lingering = undefined; killGroup(l, "SIGTERM"); st(() => killGroup(l, "SIGKILL"), 3000); } }
   /** Handles the end of call child c once (the "ended" line and the process exit can both arrive). Moves it to `lingering` and notifies on an unexpected non-zero exit. */
-  function finish(c, code) {
+  function finish(c, code, signal) {
     if (finished.has(c)) return;
     finished.add(c);
     if (child === c) { child = undefined; lingering = c; }
+    // Killed by a signal (SIGKILL, SIGSEGV, the out-of-memory killer): Node reports code null. That is a crash, not a clean end.
+    if (code == null && signal) { code = 1; if (!state.endedCleanly) set({ ev: "stderr", text: `The call engine was killed (${signal}).` }); }
     set({ ev: "exit", code });
     if (code && code !== 0 && !state.endedCleanly && !state.offReason) notify("Wingman stopped unexpectedly", `${state.lastError ? state.lastError.slice(0, 120) : `Exit code ${code}`}. Start a new call when you are ready; Show log in the menu bar has the details.`);
     change();
@@ -76,9 +78,9 @@ function createController(o) {
       }
     });
     c.stderr.on("data", (d) => { logLine("ERR " + d.toString().trimEnd()); set({ ev: "stderr", text: d.toString() }); change(); });
-    c.on("exit", (code) => {
+    c.on("exit", (code, signal) => {
       if (lingering === c) lingering = undefined;
-      finish(c, code);
+      finish(c, code, signal);
     });
     change();
     return true;
