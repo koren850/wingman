@@ -178,3 +178,24 @@ test("circuit breaker: half-open lets one probe through, not every caller", () =
   assert.equal(b.allow(), true);
   assert.equal(b.allow(), true);
 });
+
+import { pcmAligner } from "./audio.ts";
+test("pcmAligner: odd-length chunks never shift the s16 alignment and no byte is lost", () => {
+  const src = Buffer.from(Array.from({ length: 20 }, (_, i) => i));
+  const align = pcmAligner();
+  const out: Buffer[] = [];
+  for (const cut of [
+    [0, 3],
+    [3, 4],
+    [4, 11],
+    [11, 12],
+    [12, 20],
+  ]) {
+    const w = align(src.subarray(cut[0], cut[1]));
+    if (w) {
+      assert.equal(w.length % 2, 0);
+      out.push(w);
+    }
+  }
+  assert.deepEqual(Buffer.concat(out), src);
+});

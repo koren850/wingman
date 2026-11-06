@@ -36,6 +36,25 @@ export function avDevice(d: string): string {
   return d.startsWith(":") ? d : `:${d}`;
 }
 
+/**
+ * s16le samples are 2 bytes. A pipe can split a sample across two reads; the level meters and the silence watchdog read samples in pairs,
+ * so an odd chunk would shift every later sample by one byte. The returned function holds back a trailing odd byte and prepends it to the next chunk.
+ * It returns null when there is nothing whole to emit yet.
+ */
+export function pcmAligner(): (b: Buffer) => Buffer | null {
+  let spare: Buffer | undefined;
+  return (b) => {
+    const all = spare ? Buffer.concat([spare, b]) : b;
+    spare = undefined;
+    if (all.length % 2) {
+      spare = Buffer.from(all.subarray(all.length - 1));
+      const whole = all.subarray(0, all.length - 1);
+      return whole.length ? whole : null;
+    }
+    return all.length ? all : null;
+  };
+}
+
 /** Microphone (or any avfoundation input) via an ffmpeg child. Emits "pcm", "log" (ffmpeg stderr) and "error" (spawn failure or unexpected exit). */
 export class MicSource extends EventEmitter implements Source {
   private p?: ChildProcess;
@@ -52,7 +71,11 @@ export class MicSource extends EventEmitter implements Source {
     this.p = spawn("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "avfoundation", "-i", this.device, "-ac", "1", "-ar", "16000", "-f", "s16le", "-"], {
       env: childEnv(),
     });
-    this.p.stdout!.on("data", (b: Buffer) => this.emit("pcm", b));
+    const align = pcmAligner();
+    this.p.stdout!.on("data", (b: Buffer) => {
+      const whole = align(b);
+      if (whole) this.emit("pcm", whole);
+    });
     this.p.stderr!.on("data", (b: Buffer) => this.emit("log", `mic: ${b.toString().trim()}`));
     this.p.on("error", (e) => this.emit("error", new Error(`ffmpeg mic: ${e.message}`)));
     // ffmpeg exits 255 on SIGINT; that is our own stop(), not an error.
