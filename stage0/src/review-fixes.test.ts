@@ -68,3 +68,64 @@ test("turn language: resolveBankId and stallSay use the turn's language, not the
   assert.equal(resolveBankId("dns-basics", [card], "en")?.say, "hello");
   assert.equal(stallSay(card, 0, "en"), "hello");
 });
+
+import { masculine } from "./tips.ts";
+import { setProfile } from "./profile.ts";
+test("masculine(): real words that look like feminine imperatives are left alone; true imperatives still change", () => {
+  setProfile({ address: "male" });
+  try {
+    assert.equal(masculine("ספרי הלימוד"), "ספרי הלימוד");
+    assert.equal(masculine("זה ודאי יעבוד"), "זה ודאי יעבוד");
+    assert.equal(masculine("שאלי על המחיר"), "שאל על המחיר");
+    assert.equal(masculine("בדקי את הלוגים"), "בדוק את הלוגים");
+  } finally { setProfile(undefined); }
+});
+
+import { applyEdits } from "./settings-edit.ts";
+import { loadSettings } from "./settings.ts";
+import { readFileSync } from "node:fs";
+test("settings: an empty section header does not break loading, and an edit under it works", () => {
+  const d = mkdtempSync(join(tmpdir(), "wingman-sec-")), f = join(d, "settings.yaml");
+  writeFileSync(f, "# my settings\nstt:\n  # provider: soniox\n");
+  assert.doesNotThrow(() => loadSettings({ env: {}, userFile: f, argv: [] }));
+  const r = applyEdits(f, { "stt.provider": "soniox" });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.match(readFileSync(f, "utf8"), /provider: soniox/);
+  assert.equal(loadSettings({ env: {}, userFile: f, argv: [] }).settings.stt.provider, "soniox");
+});
+
+import { LineSplitter } from "./relay.ts";
+test("relay: a multi-byte character split across chunks survives; the tail of a dropped oversize line is not a line", () => {
+  const row = Buffer.from('{"say":"שלום"}\n'), cut = row.indexOf(0xd7) + 1;   // inside the first Hebrew letter
+  const sp = new LineSplitter();
+  assert.deepEqual([...sp.push(row.subarray(0, cut)), ...sp.push(row.subarray(cut))], ['{"say":"שלום"}']);
+  const small = new LineSplitter(10);
+  assert.deepEqual([...small.push("0123456789ABCDEF"), ...small.push("GHIJ\nok\n")], ["ok"]);
+});
+
+import { worldClock } from "./reflex.ts";
+test("worldClock: half-hour home zones keep the real sign and size of the gap", () => {
+  const d = new Date("2026-11-06T12:00:00Z");   // Kolkata UTC+5:30, Los Angeles UTC-8 in November
+  assert.match(worldClock(d, "Asia/Kolkata"), /Los Angeles 04:00 \(13\.5 h behind home time\)/);
+  assert.match(worldClock(d, "Asia/Jerusalem"), /New York 07:00 \(7 h behind home time\)/);
+});
+
+import { EventEmitter } from "node:events";
+import { MicSource } from "./audio.ts";
+test("MicSource.stop: SIGINT first, SIGKILL when ffmpeg ignores it", async () => {
+  const signals: string[] = [];
+  const fake = Object.assign(new EventEmitter(), { exitCode: null, signalCode: null, kill: (s: string) => { signals.push(s); return true; } });
+  const m = new MicSource(":default") as unknown as { p: unknown; stop(): Promise<void> };
+  m.p = fake;
+  const t0 = Date.now();
+  await m.stop();
+  assert.deepEqual(signals, ["SIGINT"]);
+  await new Promise((r) => setTimeout(r, 2200));
+  assert.deepEqual(signals, ["SIGINT", "SIGKILL"]);
+  assert.ok(Date.now() - t0 >= 2000);
+  // a process that exits after SIGINT is not killed again
+  const quick = Object.assign(new EventEmitter(), { exitCode: null, signalCode: null, kill: (s: string) => { signals.push("q" + s); return true; } });
+  m.p = quick; await m.stop(); quick.emit("exit", 255, null);
+  await new Promise((r) => setTimeout(r, 2200));
+  assert.deepEqual(signals.filter((x) => x.startsWith("q")), ["qSIGINT"]);
+});

@@ -419,6 +419,7 @@ test("calls: list, show, summary, email, rate, purge (needs --yes), live snapsho
     const lv = await r.run("live", "--id", id, "--json");
     assert.equal(lv.code, 0, lv.out); assert.equal(lv.json.lines[0].cards[0].say.startsWith("Invented card"), true);
     assert.equal((await r.run("live", "--follow", "--id", id, "--json")).code, 4, "follow needs a running call");
+    for (const bad of ["abc", "0", "-3"]) assert.equal((await r.run("live", "--follow", "--timeout", bad, "--id", id, "--json")).code, 2, `--timeout ${bad} is a usage error`);
     assert.equal((await r.run("calls", "show", "../etc", "--json")).code, 2);
     assert.equal((await r.run("calls", "show", "01HXTESTCALL0000000000ZZZZ", "--json")).code, 5);
     assert.equal((await r.run("calls", "purge", id, "--json")).code, 6);

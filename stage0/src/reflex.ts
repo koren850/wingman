@@ -138,9 +138,10 @@ const ZONES: [string, string][] = [["New York", "America/New_York"], ["London", 
 /** The same moment in a few common cities, with the gap to home time: "New York 08:00 (7 h behind home time)". The model reads time-zone answers off this instead of doing the arithmetic. */
 export function worldClock(d = new Date(), home = userTimezone()): string {
   const hm = (tz: string) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
-  const mins = (tz: string) => { const [h, m] = hm(tz).split(":").map(Number); return h * 60 + m; };
+  // Real UTC offsets (not wrapped clock minutes): Kolkata to Los Angeles is 12.5 h behind, not 11.5 ahead.
+  const offMin = (tz: string) => { const m = new Intl.DateTimeFormat("en-GB", { timeZone: tz, timeZoneName: "shortOffset" }).format(d).match(/GMT([+-])(\d+)(?::(\d+))?/); return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0)) : 0; };
   return ZONES.map(([name, tz]) => {
-    let diff = Math.round(((mins(tz) - mins(home) + 1440 + 720) % 1440 - 720) / 60 * 2) / 2;   // hours, -12..+12
+    let diff = Math.round((offMin(tz) - offMin(home)) / 60 * 2) / 2;   // hours
     if (diff === 0) diff = 0;
     return `${name} ${hm(tz)} (${diff === 0 ? "same time as home time" : `${Math.abs(diff)} h ${diff < 0 ? "behind" : "ahead of"} home time`})`;
   }).join(", ");

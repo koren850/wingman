@@ -48,6 +48,7 @@ export async function live(ctx: Ctx, args: string[]): Promise<Result> {
   const { values } = parse(args, { follow: { type: "boolean" }, id: { type: "string" }, last: { type: "string" }, timeout: { type: "string" } });
   const last = values.last === undefined ? Infinity : Number(values.last);
   if (!(last > 0)) throw usage("--last must be a positive number");
+  if (values.timeout !== undefined && !(Number(values.timeout) > 0)) throw usage("--timeout must be a positive number of seconds");
   const { id, running } = await pickId(ctx, values.id);
   const dir = dataLib.callDir(ctx.calls, id);
   const feed = feedLib.create();

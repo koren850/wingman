@@ -120,13 +120,16 @@ export function unflatten(flat: Flat): Record<string, unknown> {
 }
 
 /** Reads a settings YAML into flat keys. An empty file is fine; invalid YAML or a non-mapping top level throws SettingsError. */
-function readYaml(file: string, label: string): Flat {
+function readYaml(file: string, label: string, defaults?: Flat): Flat {
   let doc: unknown;
   try { doc = YAML.parse(readFileSync(file, "utf8")); }
   catch (e) { throw new SettingsError([{ file, key: "(file)", layer: "user", message: `${label} is not valid YAML: ${(e as Error).message.split("\n")[0]}` }]); }
   if (doc == null) return {};
   if (typeof doc !== "object" || Array.isArray(doc)) throw new SettingsError([{ file, key: "(file)", layer: "user", message: "top level must be a mapping of keys" }]);
-  return flatten(doc);
+  const flat = flatten(doc);
+  // A section header with every child commented out ("stt:") parses to null: it means "no overrides", not "set stt to null".
+  if (defaults) for (const k of Object.keys(flat)) if (flat[k] === null && !(k in defaults) && Object.keys(defaults).some((d) => d.startsWith(`${k}.`))) delete flat[k];
+  return flat;
 }
 
 /** Parse a string from env or the CLI the way YAML would; comma lists become arrays where the default is an array. */
@@ -197,13 +200,13 @@ export function loadSettings(o: LoadOptions = {}): Loaded {
     try { mkdirSync(dirname(userFile), { recursive: true, mode: 0o700 }); writeFileSync(userFile, STARTER, { mode: 0o600 }); } catch { /* read-only home: ignore */ }
   }
   const layers: Layer[] = [{ name: "default", file: o.defaultsFile ?? DEFAULTS_FILE, flat: defaults }];
-  if (existsSync(userFile)) layers.push({ name: "user", file: userFile, flat: readYaml(userFile, "settings file") });
+  if (existsSync(userFile)) layers.push({ name: "user", file: userFile, flat: readYaml(userFile, "settings file", defaults) });
   const cli = parseCli(o.argv ?? [], defaults);
   const profile = cli.profile ?? env.WINGMAN_PROFILE;
   if (profile) {   // the name is checked before it becomes a path: no "../" out of profiles/
     const pf = join(o.profilesDir ?? PROFILES_DIR, `${profile}.yaml`);
     if (!/^[\w-]+$/.test(profile) || !existsSync(pf)) throw new SettingsError([{ file: pf, key: "--profile", layer: "profile", message: `profile "${profile}" not found`, allowed: "a file profiles/<name>.yaml" }]);
-    layers.push({ name: "profile", file: pf, flat: readYaml(pf, "profile") });
+    layers.push({ name: "profile", file: pf, flat: readYaml(pf, "profile", defaults) });
   }
   const envFlat: Flat = {}, envDetails: Record<string, string> = {};
   for (const m of ENV_MAP) {
