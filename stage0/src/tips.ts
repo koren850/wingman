@@ -99,8 +99,10 @@ export function talkRatio(lines: TimedLine[], now: number, windowMs = 5 * 60_000
   return total >= minWords ? { me, total, ratio: me / total } : undefined;
 }
 /** A "you talk too much" tip when the user's share of words is above `threshold`; undefined otherwise. */
-export function talkTip(r: ReturnType<typeof talkRatio>, threshold = 0.75): Tip | undefined {
+export function talkTip(r: ReturnType<typeof talkRatio>, threshold = 0.75, interview = false): Tip | undefined {
   if (!r || r.ratio <= threshold) return undefined;
+  // In an interview the candidate is meant to talk most; the useful advice is shorter answers, not "ask them a question".
+  if (interview) return { type: "ask", text: `אתה מדבר כ-${Math.round(r.ratio * 100)}% מהזמן. תשובות של 60-90 שניות, ואז תן לה/לו לשאול.` };
   return { type: "ask", text: `אתה מדבר כ-${Math.round(r.ratio * 100)}% מהזמן. שאל שאלה פתוחה ותן להם לדבר.` };
 }
 

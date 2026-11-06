@@ -129,6 +129,7 @@ tbody tr.sel td:first-child { box-shadow:inset 2px 0 0 var(--accent); }
 .rowlink { display:inline-flex; align-items:baseline; gap:8px; background:none; border:0; padding:0; color:var(--text); font-weight:500; font-size:13px; text-align:start; }
 .rowlink:focus-visible { outline-offset:2px; }
 .rowlink .tm { color:var(--faint); font-weight:400; }
+.cname { font-weight:600; color:var(--text); margin-inline-end:4px; }
 .wait { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .val { font-weight:600; }
 .collapsed { margin-top:16px; }

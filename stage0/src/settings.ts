@@ -41,7 +41,7 @@ export const schema = z.strictObject({
     }),
     circuit: z.strictObject({ failures: int(1, 10), cooldownMs: int(1000, 600000) }),
   }),
-  reflex: z.strictObject({ stallAfterMs: int(800, 5000), dropStaleMs: int(1500, 10000), allowAns: z.boolean() })
+  reflex: z.strictObject({ stallAfterMs: int(800, 5000), dropStaleMs: int(1500, 10000), allowAns: z.boolean(), stall: z.boolean().default(false) })
     .refine((r) => r.stallAfterMs < r.dropStaleMs, { path: ["stallAfterMs"], message: "must be smaller than reflex.dropStaleMs, otherwise the stall line is always judged too late to show" }),
   assist: z.strictObject({
     answerMe: z.enum(["always", "hotkey", "off"]), askWindowMs: int(3000, 30000), model: modelRef, classifyTimeoutMs: int(500, 10000),

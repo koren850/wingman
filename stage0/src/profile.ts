@@ -31,6 +31,8 @@ export const profileSchema = z.strictObject({
   about: text(1500).default(""),
   /** the user's own business (free text, optional): makes "client" and "support" calls meaningful */
   business: text(1500).default(""),
+  /** the user's own numbers, one per line ("4+ years", "30+ client sites"): in an interview Wingman warns when a spoken number grows past them */
+  claims: z.array(text(120)).max(30).default([]),
   /** IANA time zone used for "what time is it" answers; empty = this machine's time zone */
   timezone: text(60).refine(validTimezone, { message: "not a time zone this system knows (use a name like Asia/Jerusalem, or leave empty)" }).default(""),
 });

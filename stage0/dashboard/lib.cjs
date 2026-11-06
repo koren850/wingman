@@ -31,7 +31,7 @@ function ratableCards(rows) {
   for (const c of rows) {
     if (c.type === "capture" || !c.id) continue;
     if (c.withdraw) { byId.delete(c.id); continue; }
-    if (c.badge !== "info" && !c.health) byId.set(c.id, c);
+    if (c.badge !== "info" && c.badge !== "note" && !c.health) byId.set(c.id, c);   // notes: 59 of 69 useful on 5 Nov, rating them is busywork
   }
   return [...byId.values()];
 }
@@ -52,6 +52,16 @@ function costOf(usage) {
   return usage.reduce((a, u) => a + (typeof u.usd === "number" ? u.usd : 0), 0);
 }
 
+/** The call's name: call.json "title" (set by hand), else the plan used on a live call, else "". Control and bidi characters stripped, 80 chars max. */
+function callName(meta, events) {
+  const clean = (v) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "").trim().slice(0, 80) : "");
+  const own = clean(meta && meta.title);
+  if (own) return own;
+  if (!meta || meta.mode !== "live") return "";
+  const plan = (events || []).filter((e) => e && e.type === "plan.used").at(-1);
+  return clean(plan && plan.title);
+}
+
 /** One list row for a call (times, counts, ratings, cost) from its files. Throws on a bad id. Used by the list, and again after a rating changes. */
 function summarize(callsDir, id) {
   const dir = callDir(callsDir, id);
@@ -64,7 +74,7 @@ function summarize(callsDir, id) {
   const started = Date.parse(meta.startedAt) || (events[0] && events[0].t) || 0;
   const ended = Date.parse(meta.endedAt) || (events.length ? Math.max(...events.map((e) => e.t || 0)) : started);
   return {
-    id, startedAt: started, durationMs: Math.max(0, ended - started), mode: meta.mode || "?", profile: meta.profile || "", noAi: !!meta.noAi,
+    id, name: callName(meta, events), startedAt: started, durationMs: Math.max(0, ended - started), mode: meta.mode || "?", profile: meta.profile || "", noAi: !!meta.noAi,
     crashed: !!meta.crashed, hasSummary: !!readSummary(dir), questions: lat.length, cardsShown: cards.filter((c) => !c.hidden).length, cardsTotal: cards.length,
     rated: g.rated, useful: g.useful, hours: g.hours, perHour: g.perHour, bankShare: g.bankShare, costUsd: costOf(usage),
   };
@@ -196,4 +206,4 @@ function recentAdd(list, plan) {
 }
 function recentClean(raw) { return (Array.isArray(raw) ? raw : []).map(cleanPlan).filter(Boolean).slice(0, RECENT_MAX); }
 
-module.exports = { cleanPlan, recentAdd, recentClean, RECENT_MAX, readFrame, ID_RE, callDir, ratableCards, gateNumbers, listCalls, getCall, setTag, searchCalls, deleteCall };
+module.exports = { callName, cleanPlan, recentAdd, recentClean, RECENT_MAX, readFrame, ID_RE, callDir, ratableCards, gateNumbers, listCalls, getCall, setTag, searchCalls, deleteCall };

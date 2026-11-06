@@ -52,6 +52,7 @@ reflex:
   stallAfterMs: 1800       # no tag by then: show the Buy time line and keep streaming
   dropStaleMs: 4000        # do not show an answer to a question older than this
   allowAns: true           # false = Prepared + Buy time only (a model ANS answer becomes a stall line). Use false for a first client call
+  stall: false             # true = show the generic "I'll check and get back to you" line when no answer is ready (5 Nov review: 0 of 9 useful). Price / timeline / guarantee cards still show.
 
 # ---- Answering the user's own questions (the "me" channel) ----
 assist:

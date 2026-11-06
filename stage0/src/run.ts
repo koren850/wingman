@@ -36,7 +36,7 @@ import { KEY_ENV_VARS } from "./keychain.ts";
 import { requireKeys, childEnv, DATA, CALLS, ROOT, resolveUserPath } from "./env.ts";
 import { EntitySpotter, loadSnapshot, type Fact } from "./entities.ts";
 import { takeNotes } from "./notes.ts";
-import { loadBrief, briefNotes, covered, isInterview, briefCardsFile, type Brief } from "./brief.ts";
+import { loadBrief, briefNotes, covered, isInterview, briefCardsFile, briefTerms, type Brief } from "./brief.ts";
 import { readPack } from "./pack.ts";
 import { getProfile, checkProfile } from "./profile.ts";
 import { loadBank, matchBank, matchBankFor, priceOffTopic, stallCard, stallSay, modelMayOverrideBank, STALL_TIER, type BankCard } from "./bank.ts";
@@ -44,7 +44,8 @@ import { evalMath, looksArithmetic } from "./calc.ts";
 import { checkScript } from "./lang.ts";
 import { callAppRunning } from "./callapp.ts";
 import { audienceByCues, classify, decideAudience, MeGate, guardMe } from "./assist.ts";
-import { detect, isClearQuestion } from "./detector.ts";
+import { detect, isClearQuestion, addressesYou } from "./detector.ts";
+import { parseClaim, checkClaims, claimSay, type Claim } from "./claims.ts";
 import { SpeakerBook, lineLabel, attendeeNames, introName, type SpeakerInfo } from "./speakers.ts";
 import { FlowTracker, runTopic, type FlowEvent } from "./flow.ts";
 import { guard, guardInterview, sanitize } from "./guards.ts";
@@ -60,6 +61,7 @@ import { detectGap } from "./clock.ts";
 import { freeBytes, diskLevel, diskText } from "./diskspace.ts";
 import { performance } from "node:perf_hooks";
 import { CallLog, sweepLive } from "./log.ts";
+import { PhoneRouter, isPhoneCall } from "./phone.ts";
 import { loadSettingsOrExit, expandHome } from "./settings.ts";
 import { CostMeter } from "./cost.ts";
 import { EchoFilter, MicGate, resolveEchoMode, type EchoMode } from "./echo.ts";
@@ -108,13 +110,18 @@ const brief: Brief | undefined = noBrief ? undefined : loadBrief(briefArg);
 // Interview plan (kind "interview"): Wingman coaches the candidate. The plan's own prepared cards replace the agency bank, no "buy time"
 // lines, no focus cap, and the AI answers technical and personal questions from the prep files (reflex.ts INTERVIEW_BLOCK).
 const interview = isInterview(brief);
+// Phone mode: a phone call on speaker next to the Mac (plan note "Phone call on speaker" or WINGMAN_PHONE=1). Both voices come in on the
+// microphone; diarization + loudness (phone.ts) decide which voice is the user. No system audio, no echo gate/filter.
+const PHONE = isPhoneCall(brief?.notes);
+const phone = PHONE ? new PhoneRouter() : undefined;
 const cardsFile = interview ? briefCardsFile(brief) : undefined;
 let bank: BankCard[];
 try { bank = interview ? (cardsFile ? loadBank(cardsFile) : []) : loadBank(); }
 catch (e) { console.error(`Prepared cards ${cardsFile} not loaded: ${(e as Error).message}`); bank = []; }
 const stall = stallCard(bank);
 const houseStyle = readPack("house-style.md");
-const keyterms = loadKeyterms(S);
+// Names from the plan go first (the cap cuts the end of the list): "Dana Levi (Initech HR)" -> Dana, Levi, Initech.
+const keyterms = [...new Set([...briefTerms(brief), ...loadKeyterms(S)])].slice(0, Math.max(S.stt.keyterms.max, 1));
 // Background files from "Plan a call": read once (and deleted: one plan = one call). A replay / --no-brief never uses them.
 const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars, { consume: !fileArg });   // a practice call with the plan never uses up the real call's files
 const background = backgroundBlock(attachFiles);
@@ -270,7 +277,7 @@ async function notesRound() {
 }
 // Must-cover reminders from the brief.
 const callStart = Date.now();
-let lastReminderAt = 0, reminderSeq = 0;
+let lastReminderAt = 0, reminderSeq = 0, lastReminderKey = "";
 const allText = () => transcript.map((l) => l.text).join(" ");
 /** Must-cover items of the brief that no transcript line has touched yet. */
 function uncovered(): string[] { return (brief?.mustCover ?? []).filter((i) => !covered(i, allText())); }
@@ -281,8 +288,12 @@ function reminderTick() {
   if (min < S.reminders.firstAfterMin || Date.now() - lastReminderAt < S.reminders.everyMin * 60000) return;
   const left = uncovered();
   if (!left.length) return;
-  lastReminderAt = Date.now();
-  emitSide({ id: `reminder-${++reminderSeq}`, badge: "reminder", say: "עוד לא דיברתם על:", facts: left });
+  // 5 Nov review: the same list every 10 minutes was noise. Remind only when the list changed, at most 3 times a call, 3 items a card.
+  const key = left.join("|");
+  if (key === lastReminderKey || reminderSeq >= 3) return;
+  lastReminderAt = Date.now(); lastReminderKey = key;
+  const shown = left.slice(0, 3), more = left.length - shown.length;
+  emitSide({ id: `reminder-${++reminderSeq}`, badge: "reminder", say: "עוד לא דיברתם על:", facts: more > 0 ? [...shown, `ועוד ${more}`] : shown });
   console.log(`\n[⏰ reminder] not covered yet: ${left.join(", ")}`);
 }
 // ---- Call frame (what is this call about?) and live tips ----
@@ -359,7 +370,7 @@ function tipsTick() {
   if (wrap && tipGate.can(now, { quiet, ignoreGap: true })) { wrapNudged = true; emitTip(wrap, "wrapup"); return; }
   if (!tipGate.can(now, { quiet })) return;
   if (S.tips.talkRatio && now - lastTalkTipAt > 10 * 60_000) {
-    const t = talkTip(talkRatio(transcript, now));
+    const t = interview ? talkTip(talkRatio(transcript, now), 0.85, true) : talkTip(talkRatio(transcript, now));
     if (t) { lastTalkTipAt = now; emitTip(t, "talk"); return; }
   }
   void aiTip();
@@ -370,7 +381,8 @@ const ECHO = S.audio.echo;
 let echoMode: EchoMode = ECHO.mode === "auto" ? "filter" : ECHO.mode;
 let useGate = echoMode === "gate" || echoMode === "both";
 let useFilter = echoMode === "filter" || echoMode === "both";
-function setEchoMode(m: EchoMode) { echoMode = m; useGate = m === "gate" || m === "both"; useFilter = m === "filter" || m === "both"; }
+function setEchoMode(m: EchoMode) { if (PHONE) m = "off"; echoMode = m; useGate = m === "gate" || m === "both"; useFilter = m === "filter" || m === "both"; }
+if (PHONE) setEchoMode("off");
 const gate = new MicGate({ hangoverMs: ECHO.gateHangoverMs, peak: ECHO.gatePeak });
 const echo = new EchoFilter({ windowMs: ECHO.filterWindowMs, threshold: ECHO.filterThreshold });
 let gatedMs = 0, echoDropped = 0;
@@ -488,8 +500,14 @@ let lastAgencyTopicAt = 0;
  *  4. AI: a stall timer (reflex.stallAfterMs) shows "buy time" if nothing is up yet; meanwhile the model streams a tag
  *     (BANK / ANS / STALL / SKIP) that can confirm, replace or withdraw the card, then the answer text, which passes the guards.
  *  A newer question aborts this one (`current`). Answers older than reflex.dropStaleMs are never shown (`fresh`). `reason` is the detector's reason string. */
+const bankShownAt = new Map<string, number>();
 function onQuestion(r: SttResult, reason = "") { try { onQuestionCore(r, reason); } catch (e) { survived("onQuestion", e); } }
 function onQuestionCore(r: SttResult, reason = "") {
+  // "If ..." openers in a work meeting are mostly people thinking aloud (5 Nov: 2 of 8 useful). Only when aimed at the user.
+  if (!interview && reason.startsWith("if-open") && !addressesYou(r.text)) { log.write("events", { type: "ifopen.skip", text: r.text.slice(0, 120) }); return; }
+  // Interview: a line that only starts with a question word ("יש משימת בית", "צריך לקחת בחשבון") is the interviewer talking, not asking.
+  // 5 Nov Acme Corp: 29 of 44 such turns ended in SKIP. Ask the model only when it speaks to the user or matches a prepared card.
+  if (interview && reason.startsWith("head") && !addressesYou(r.text) && !matchBank(r.text, bank)) { log.write("events", { type: "head.skip", text: r.text.slice(0, 120) }); return; }
   if (S.cards.focus && !interview && !focusWorthy(r.text, reason)) { log.write("events", { type: "focus.skip", reason, text: r.text.slice(0, 120) }); return; }
   // Their own discussion: the question is for one of them, not the user. Price/date ("buy time") cards still show.
   if (flowOn && S.flow.holdCards && flow.internal && !matchBankFor(r.text, bank)?.card.id.startsWith("stall-")) { log.write("events", { type: "flow.hold", reason, text: r.text.slice(0, 120) }); return; }
@@ -506,8 +524,14 @@ function onQuestionCore(r: SttResult, reason = "") {
   const agencyTopic = isAgencyTopic(r.text), agencyRecent = Date.now() - lastAgencyTopicAt < 60_000;
   if (agencyTopic) lastAgencyTopicAt = Date.now();
   const noAgency = !interview && !!tracker.kind && !isAgencyKind(tracker.kind) && !agencyTopic && !agencyRecent;
-  const noStall = noAgency || interview;   // an interview never gets a "buy time" line
-  const hit = interview ? matchBank(r.text, bank) : noAgency ? undefined : matchBankFor(r.text, bank);   // stall-price is dropped for arithmetic and for prices that are not the user's services
+  const noStall = noAgency || interview || !S.reflex.stall;   // an interview never gets a "buy time" line; elsewhere only when reflex.stall is on
+  let hit = interview ? matchBank(r.text, bank) : noAgency ? undefined : matchBankFor(r.text, bank);   // stall-price is dropped for arithmetic and for prices that are not the user's services
+  // The same prepared card twice in one call is almost always a keyword echo (5 Nov: one card three times while HR talked about her team).
+  // A repeat shows only for a clear question at least 2 minutes after the last time.
+  if (hit && !STALL_TIER.has(hit.card.id)) {
+    const seen = bankShownAt.get(hit.card.id);
+    if (seen !== undefined && !(isClearQuestion(r.text, reason) && Date.now() - seen > 120_000)) { log.write("events", { type: "bank.repeat", turnId, bank: hit.card.id }); hit = undefined; }
+  }
   if (noAgency && matchBank(r.text, bank)) log.write("events", { type: "agency.gated", turnId, kind: tracker.kind });
   if (!hit && !noAgency && matchBank(r.text, bank)?.card.id === "stall-price") log.write("events", { type: "stall.suppressed", turnId, why: priceOffTopic(r.text) ?? "off-topic" });
   // Arithmetic from the other side ("כמה זה 36 ועוד 42?"): the local answer, instantly, no model.
@@ -544,7 +568,7 @@ function onQuestionCore(r: SttResult, reason = "") {
   let shown: Card | undefined, modelIgnored = false;
   if (hit) {
     shown = { id: `${turnId}-bank`, turnId, badge: "bank", question: r.text, say: hit.card.say, facts: hit.card.facts, dim: weak || undefined, priority: hit.card.id.startsWith("stall-") || undefined, at: Date.now() };
-    emitCard(shown); lat.bankAt = Date.now(); lat.bankId = hit.card.id;
+    emitCard(shown); lat.bankAt = Date.now(); lat.bankId = hit.card.id; bankShownAt.set(hit.card.id, Date.now());
   }
   if (!useAi) {
     // Degraded (not by --no-ai): no LLM, so a question without a bank card gets the stall line, as the ladder promises.
@@ -637,7 +661,7 @@ function onQuestionCore(r: SttResult, reason = "") {
           if (shown?.id === stallId) { emitCard({ ...shown, withdraw: true }); shown = undefined; }
           return;
         }
-        const g = (interview ? guardInterview : guard)(ai.say);
+        const g = interview ? guardInterview(ai.say, interviewAllowed()) : guard(ai.say);
         if (!g.ok) log.write("events", { type: "guard", turnId, rule: g.rule });
         if (!g.ok && noStall) { clearTimeout(stallTimer); return; }   // a blocked answer on a call that is not with a customer: nothing, never a stall line
         const card: Card = g.ok ? { ...ai, at: Date.now() } : { ...ai, id: stallId, badge: "stall", say: stallSay(stall, turnSeq), facts: [], at: Date.now() };
@@ -715,6 +739,36 @@ function askTyped(q: string) {
   void onMeQuestion({ channel: "me", text, isFinal: true, speechFinal: true, words: [], arrivedAt: now, speechEndWall: now } as SttResult, true).catch((e) => log.write("events", { type: "me.error", error: String((e as Error)?.message ?? e).slice(0, 200) }));
 }
 
+// ---- Interview self-check (local, no AI): numbers that grow past the profile's claims, and answers that run long ----
+const claims: Claim[] = getProfile().claims.map((c) => parseClaim(c)).filter((c): c is Claim => !!c);
+const claimShown = new Set<string>();
+let answerStart = 0, longNudgedFor = 0;
+/** What the user said in an interview: a quiet card when a number is bigger than the CV, and one nudge when an answer passes 90 seconds. */
+function interviewSelfCheck(text: string) {
+  const miss = checkClaims(text, claims);
+  if (miss && !claimShown.has(`${miss.unit}:${miss.said}`)) {
+    claimShown.add(`${miss.unit}:${miss.said}`); const n = ++selfSeq;
+    emitCard({ id: `sc-${n}`, turnId: `sc${n}`, badge: "careful", question: text.slice(0, 200), say: claimSay(miss, /[\u0590-\u05ff]/.test(text) ? "he" : "en"), facts: [], priority: true, at: Date.now() });
+    selfEvent("selfcheck.claim", { unit: miss.unit, said: miss.said, claim: miss.claim.text });
+  }
+  // One answer = the user talking since the other side last spoke.
+  const now = Date.now();
+  if (!answerStart || lastThemSpeech > answerStart) answerStart = Math.max(lastThemSpeech, now - 5000);
+  if (now - answerStart > 90_000 && longNudgedFor !== answerStart) {
+    longNudgedFor = answerStart;
+    emitSide({ id: `long-${++selfSeq}`, badge: "tip", say: "התשובה עברה 90 שניות: סכם במשפט אחד ושאל אם להרחיב.", facts: [] });
+    selfEvent("selfcheck.long", {});
+  }
+}
+/** Everything an interview answer may draw on: the profile, the prepared cards and the plan. Names a tool that is not here = not the user's. */
+let allowedCache = "";
+function interviewAllowed(): string {
+  if (allowedCache) return allowedCache;
+  const p = getProfile();
+  allowedCache = [p.about, p.business, ...p.claims, ...bank.flatMap((c) => [c.say, ...c.facts, ...(c.en ? [c.en.say, ...(c.en.facts ?? [])] : [])]), background, brief?.title, brief?.who, brief?.goal, ...(brief?.notes ?? [])].filter(Boolean).join(" ");
+  return allowedCache;
+}
+
 // ---- Self-check: cards about what the user himself said (selfcheck.ts) ----
 const selfGate = new SelfCheckGate({ minGapMs: S.selfCheck.minGapMs });
 let selfSeq = 0;
@@ -722,6 +776,7 @@ const selfEvent = (type: string, extra: Record<string, unknown> = {}) => log.wri
 /** A final "me" line that is not a question for Wingman: amber card on price / date / promise (no AI), red card on a contradiction of the briefing (cheap model). */
 function selfCheckLine(text: string) {
   const sc = S.selfCheck;
+  if (interview && consented && !shuttingDown) { interviewSelfCheck(text); return; }
   if (!sc.enabled || interview || !consented || shuttingDown) return;   // interview: a false red card mid-answer costs more than it saves (a misheard employer name became a red card in practice)
   if (text.split(/\s+/).filter(Boolean).length < MIN_WORDS) return;
   const now = Date.now();
@@ -924,7 +979,9 @@ function flushCore(ch: Channel) {
   const detectText = (t: string) => { const h = interview ? matchBank(t, bank) : matchBankFor(t, bank); return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) }; };
   let { hit, d } = detectText(joined.text);
   // Interview: a line that matches one of the user's prepared cards is a question even without a question mark ("עבדת פעם עם טלפוניה").
-  if (interview && !d.isQuestion && hit && wordCount(joined.text) >= 3) d = { ...d, isQuestion: true, reason: "interview-card" };
+  // Only when it is aimed at the user or matches a multi-word trigger: on 5 Nov, 6 of 7 such cards fired while HR described her own company
+  // ("מפתחים פלטפורמה שמיועדת לארגונים גדולים" matched the one-word trigger "פלטפורמה").
+  if (interview && !d.isQuestion && hit && wordCount(joined.text) >= 3 && (hit.score >= 2 || addressesYou(joined.text))) d = { ...d, isQuestion: true, reason: "interview-card" };
   // Glue the previous short fragment only when that turns a non-question into a question (a split question: "כמה זה" ... "עולה לחודש?").
   // Never glue two different voices: one person's fragment is not the start of another person's question.
   const otherVoice = p.spk !== undefined && lastThem?.spk !== undefined && p.spk !== lastThem.spk;
@@ -1359,7 +1416,7 @@ function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: stri
 function makeChannel(ch: Channel): SttChannel {
   return new SttChannel({
     channel: ch, chain: sttChain(S).map(getSttProvider), keyOf: (id) => (NO_KEY.has(id) ? "none" : (keys as Record<string, string | undefined>)[id]),
-    base: { diarize: ch === "them" && S.stt.speakers, language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
+    base: { diarize: (ch === "them" && S.stt.speakers) || (PHONE && ch === "me"), language: S.stt.language, keyterms, endpointingMs: S.stt.endpointMs, utteranceEndMs: S.stt.utteranceEndMs, keepAliveMs: S.stt.keepAliveMs, model: S.stt.model },
     circuit: S.stt.circuit, ringMs: S.stt.reconnect.ringMs,
   });
 }
@@ -1438,7 +1495,13 @@ async function main() {
   sup.tick();
   for (const s of [me, them]) {
     const ch = s === me ? "me" : "them";
-    s.on("result", safe(`stt result ${ch}`, (r: SttResult) => { if (ch === "them" && r.isFinal && r.speechFinal && r.speechEndWall) sup.recordSttLag(r.arrivedAt - r.speechEndWall); onResult(r); }));
+    s.on("result", safe(`stt result ${ch}`, (r: SttResult) => {
+      const rs = phone && ch === "me" ? phone.route(r) : [r];
+      // STT lag is measured on the whole result (a split run ends earlier than the result arrives, which is not STT lag).
+      if (rs.some((x) => x.channel === "them") && r.isFinal && r.speechFinal && r.speechEndWall) sup.recordSttLag(r.arrivedAt - r.speechEndWall);
+      for (const x of rs) onResult(x);
+      if (phone && ch === "me" && r.isFinal && r.speechFinal) log.write("events", { type: "phone.voices", ...phone.summary() });
+    }));
     s.on("stt_error", safe(`stt_error ${ch}`, (e: ProviderError) => { console.error("stt error", ch, errBrief(e)); log.write("events", { type: "stt.error", ch, kind: e.kind, error: e.message }); }));
     s.on("keyterms_off", safe("keyterms_off", () => { console.log("keyterms off for this provider (open was rejected with them)"); log.write("events", { type: "stt.keyterms_off", ch }); }));
     s.on("disconnected", safe(`disconnected ${ch}`, (d: { code?: number; reason?: string }) => health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} התנתק – מנסה להתחבר מחדש. בדוק את חיבור האינטרנט`, JSON.stringify({ code: d.code, reason: d.reason }))));
@@ -1497,7 +1560,17 @@ async function main() {
 
   if (fileArg) {
     const f = new FileSource(fileArg);
-    f.on("pcm-them", (b) => { gate.noteThemPeak(peakOf(b)); them.send(b); }); f.on("pcm-me", (b) => me.send(gateMic(b)));
+    if (PHONE) {
+      // Phone replay: the Mac mic hears both. Mix L (me) + R (them, quieter: a phone speaker further away) into one mono stream.
+      let themBuf: Buffer | undefined;
+      f.on("pcm-them", (b) => { themBuf = b; });
+      f.on("pcm-me", (b) => {
+        const t = themBuf; themBuf = undefined;
+        const out = Buffer.alloc(b.length);
+        for (let i = 0; i + 1 < b.length; i += 2) out.writeInt16LE(Math.max(-32768, Math.min(32767, b.readInt16LE(i) + (t && i + 1 < t.length ? Math.round(t.readInt16LE(i) * 0.45) : 0))), i);
+        phone!.recordMic(out); me.send(out);
+      });
+    } else { f.on("pcm-them", (b) => { gate.noteThemPeak(peakOf(b)); them.send(b); }); f.on("pcm-me", (b) => me.send(gateMic(b))); }
     f.on("end", () => setTimeout(() => void shutdown(), 4000));
     await f.start(); stops.push(() => f.stop());
   } else {
@@ -1508,7 +1581,7 @@ async function main() {
     const deadFrameMs = Math.max(W.silentThemMs, 8000);
     // Both sources are supervised: a source that cannot start, exits, or goes quiet (AirPods dropped, default input changed, ffmpeg/audiotee died)
     // is rebuilt with backoff 1, 2, 4 s, then every 10 s, with the device looked up again each time. The call degrades (no mic / no other side) instead of ending.
-    const sys = srcKind === "audiotee" || srcKind === "device"
+    const sys = !PHONE && (srcKind === "audiotee" || srcKind === "device")
       ? new SupervisedSource({ name: "sys", stallMs: deadFrameMs + 4000, make: () => (srcKind === "audiotee" ? new SystemSource() : new MicSource(S.audio.system.device)) })
       : undefined;
     const micDevice = S.audio.mic.device;
@@ -1523,7 +1596,7 @@ async function main() {
     });
     liveSources.push(mic); if (sys) liveSources.push(sys);
     const devsP = readAudioDevices();
-    if (ECHO.mode === "auto") void devsP.then((devs) => {
+    if (ECHO.mode === "auto" && !PHONE) void devsP.then((devs) => {
       const m = resolveEchoMode("auto", devs);
       setEchoMode(m);
       log.write("events", { type: "echo.mode", mode: m, output: devs.find((d) => d.defaultOutput)?.name ?? "" });
@@ -1540,6 +1613,7 @@ async function main() {
       if (!consented) return;
       const pk = peakOf(b); micPeakAfterStart = Math.max(micPeakAfterStart, pk); micPeakWin = Math.max(micPeakWin, pk);
       if (micSilentShown && pk >= S.audio.watchdog.micPeak) { micSilentShown = false; healthClear("mic"); }
+      phone?.recordMic(b);
       me.send(gateMic(b));
     }));
     // Supervisor events -> log + health bars. The bar appears at the first failure and goes when frames flow again.
@@ -1562,6 +1636,9 @@ async function main() {
     if (sys) {
       sys.on("pcm", safe("sys pcm", (b: Buffer) => { gate.noteThemPeak(peakOf(b)); if (consented) them.send(b); }));
       wireSource(sys, "sys", "sys", "לא שומעים את הצד השני. מנסה להתחבר מחדש לבד. אם זה נמשך: בדוק את הרשאת הקלטת המסך/שמע המערכת והרץ בדיקת מוכנות", () => sup.set({ themDead: true }), () => sup.set({ themDead: false }));
+    } else if (PHONE) {
+      console.log("Phone mode: one microphone hears both of you (phone on speaker). The louder voice is you.");
+      log.write("events", { type: "phone.mode", on: true });
     } else {
       console.log("audio.system.source is off: no audio from the other side, so only your own questions get answers (Ctrl+Opt+A).");
       sup.set({ themDead: true });
