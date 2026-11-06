@@ -54,6 +54,16 @@ const PRICE = [
   /\b(?:charge|charging|charged|bill|billing)\s+(?:you\s+)?(?:nothing|zero)\b/i,
 ];
 const MONTHS = "ינואר|פברואר|מרץ|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר";
+// A dotted "12.5" is a date unless a tool or version word comes right before it ("python 3.12", "node 20.5") ...
+const VERSIONED_THINGS =
+  "version|ver|v|python|node|ios|android|chrome|php|java|windows|macos|react|vue|angular|wordpress|wp|tls|ssl|http|https|ipv|tcp|udp|usb|ssh|oauth|openssl|nginx|apache|mysql|mariadb|postgres|postgresql|docker|laravel|django|rails|ruby|rust|go|typescript|es|css|html|bootstrap|jquery|wpa|bluetooth|wifi|wi-fi|redis|memcached|elasticsearch|mongo|mongodb|sqlite|kafka|kubernetes|k8s|helm|terraform|ansible|ubuntu|debian|centos|alpine|linux|git|npm|pnpm|yarn|webpack|vite|tailwind|svelte|next|nuxt|cuda";
+// ... or a unit or technical noun comes right after it ("4.5 years", "2.0 api", "3.5 שעות").
+const MEASURE_AFTER =
+  "years?|months?|hours?|weeks?|days?|x|%|k\\b|gb|mb|seconds?|handshakes?|protocol|spec|release|update|patch|build|api|sdk|runtime|compiler|kernel|שנ|חודש|שעות|ימים|אחוז";
+const DOTTED_DAY_MONTH = new RegExp(
+  `(?<!(?:${VERSIONED_THINGS})\\s?)(?<![\\d.,])(?:0?[1-9]|[12]\\d|3[01])\\.(?:0?[1-9]|1[0-2])(?![\\d.,])(?!\\s?(?:${MEASURE_AFTER}))`,
+  "i",
+);
 const DATE = [
   new RegExp(`(?<![א-ת])(עד\\s|ב-?|ל|מ)?(${MONTHS})(?![א-ת])`), // "בנובמבר", "עד דצמבר"
   /\d{1,2}\s?(ל|ב)חודש(?![א-ת])/, // "ב-15 לחודש"
@@ -61,7 +71,7 @@ const DATE = [
   // numeric dates: 5/11, 5/11/26, 12.5.2026, and a two-part dotted "12.5" unless it is a version or a measure ("version 2.0", "4.5 years")
   /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/,
   /\b\d{1,2}\.\d{1,2}\.\d{2,4}\b/,
-  /(?<!(?:version|ver|v|python|node|ios|android|chrome|php|java|windows|macos|react|vue|angular|wordpress|wp|tls|ssl|http|https|ipv|tcp|udp|usb|ssh|oauth|openssl|nginx|apache|mysql|mariadb|postgres|postgresql|docker|laravel|django|rails|ruby|rust|go|typescript|es|css|html|bootstrap|jquery|wpa|bluetooth|wifi|wi-fi|redis|memcached|elasticsearch|mongo|mongodb|sqlite|kafka|kubernetes|k8s|helm|terraform|ansible|ubuntu|debian|centos|alpine|linux|git|npm|pnpm|yarn|webpack|vite|tailwind|svelte|next|nuxt|cuda)\s?)(?<![\d.,])(?:0?[1-9]|[12]\d|3[01])\.(?:0?[1-9]|1[0-2])(?![\d.,])(?!\s?(?:years?|months?|hours?|weeks?|days?|x|%|k\b|gb|mb|seconds?|handshakes?|protocol|spec|release|update|patch|build|api|sdk|runtime|compiler|kernel|שנ|חודש|שעות|ימים|אחוז))/i,
+  DOTTED_DAY_MONTH,
   /(עד|ב|ביום|לפני|אחרי)\s?(יום\s)?(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?![\u05D0-\u05EA])/,
   /(מחר|מחרתיים|השבוע|בשבוע הבא|בחודש הבא|עד סוף (היום|השבוע|החודש)|תוך \d+\s?(שעות|ימים|דקות))/,
   /תוך\s(שעה|שעתיים|יום|יומיים|שבוע|שבועיים|חודש|חודשיים|(שני|שלושה|שלוש|ארבעה|ארבע|חמישה|חמש|שישה|שש|שבעה|שבע|שמונה|תשעה|תשע|עשרה|עשר)\s(שעות|ימים|דקות|שבועות|חודשים))(?![א-ת])/,
@@ -115,10 +125,7 @@ const PROMISE = [
   // Unhedged certainty about the future is a soft promise: "I am sure it will work", "we're certain this will be fine". A hedge ("pretty sure",
   // "not sure", "I think") is not in the list on purpose: only sure / certain / positive / confident, optionally with an intensifier.
   /\b(?:i(?:'m|’m| am)|we(?:'re|’re| are))\s+(?:absolutely |completely |totally |100% |entirely |dead )?(?:sure|certain|positive|confident)\s+(?:that\s+)?(?:it|this|that|we|everything|things|the \w+|your \w+)\s*(?:'ll|’ll|will|'d|would|is going to|are going to|won't|will not)\b/i,
-];
-
-// More promise forms (English + Hebrew). Hedges ("can't promise", "I can't guarantee", "לא מבטיח") stay allowed.
-PROMISE.push(
+  // More forms (English + Hebrew). Hedges ("can't promise", "I can't guarantee", "לא מבטיח") stay allowed.
   /(?<!n['’]t\s)(?<!\b(?:not|never|cannot|no|a|an|the|money-back)\s)\b(?:promise[sd]?|guarantee[sd]?)\b/i,
   /\bmy word\b|\bconsider it done\b|\bcount on (?:us|me|it)\b|\brest assured\b|\b(?:i|we)\s+swear\b/i,
   /\b(?:i|we)(?:'ll|'d| will| would| can)?\s+(?:definitely |certainly |absolutely |surely |personally )?make sure\b/i,
@@ -130,7 +137,7 @@ PROMISE.push(
   /(?<!לא\s)(?<!אי\s)(?<![א-ת])(?:מבטיח|מבטיחה|מבטיחים|מבטיחות|הבטחה|הבטחתי|הבטחנו)(?![א-ת])/,
   /(?<!לא\s)(?<![א-ת])(?:נדאג|אדאג|ידאגו|נעשה את זה|אעשה את זה|אני אעשה|אנחנו נעשה|נסגור את זה|נסיים את זה|אסיים את זה)(?![א-ת])/,
   /(?<![א-ת])(?:המילה שלי|מילה שלי|יש לך את המילה|תהיה בטוח|תהיי בטוחה|אתה יכול לסמוך|תסמוך עלינו|זה ייעשה|זה יהיה מוכן|זה יסתדר|בהחלט נעשה|בהחלט נדאג|בוודאי נעשה)(?![א-ת])/,
-);
+];
 
 export type GuardResult = { ok: boolean; rule?: string };
 
