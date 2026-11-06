@@ -2,6 +2,17 @@
 // Cheap first filter only: ambiguous lines go to the model, which can answer SKIP. Called by run.ts with the bank score as context.
 // Order matters: "?" and arithmetic first, then request/multi-word cues, then statement guards (negative, interjection),
 // then head words, then context rescues (stall bank hit, strong bank match). The `reason` string is for logs and tests.
+//
+// What the Hebrew word lists below cover (English glosses):
+//   HEAD_WORDS     question openers: כמה (how much), מתי (when), איך (how), למה (why), מה (what), מי (who), איפה (where), האם (whether), אפשר (is it possible)
+//   MULTI          multi-word cues: "אתה חושב" (do you think), "מה דעתך" (your opinion?), "מה ההבדל" (what is the difference), "תאר לי" (describe to me)
+//   REQUEST        polite requests that are questions in practice: "תסביר" (explain), "תבדוק" (check), "תשלח לי" (send me), "רציתי לשאול" (I wanted to ask)
+//   NEGATIVE       greetings and statements that look like questions: "מה נשמע" (how are you), "אני לא יודע" (I do not know), "כבר שאלתי" (I already asked)
+//   FILLERS        acknowledgements and hesitations, never answered: "אוקיי" (okay), "בסדר" (fine), "אהה" (uh), "נו" (well)
+//   SEND_*         "send me an email / link / reminder" requests, handled as tasks, not questions
+//   INTENT_WORDS   "we want / we are considering": the other side states a need, which is not a question
+//   INTERJECTIONS  "וואו" (wow), "אחלה" (great), "וואלה" (really); CONFIRM: "נכון" (right?), "בטוח" (sure?)
+//   EN_*           the English equivalents: wh-words, auxiliary verbs, sentence openers, tag questions
 import { tokens, tokenVariants, containsPhrase, normalize } from "./normalize.ts";
 import { nameRegex, nameWords } from "./profile.ts";
 import { evalMath } from "./calc.ts";

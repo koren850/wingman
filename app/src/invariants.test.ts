@@ -102,9 +102,45 @@ test("live conversation: guarded channel, call text only via textContent, never 
 
 // Why static: The overlay window must have a strict CSP and blocked navigation; Electron cannot run in a unit test.
 test("overlay: preload bridge functions return nothing; page script is external; CSP allows no inline script; window open and navigation are blocked", () => {
-  const pre = read("overlay/preload.cjs");
-  assert.doesNotMatch(pre, /=>\s*ipcRenderer\.on\(/, "a bridge function must not return the ipcRenderer proxy");
-  assert.equal((pre.match(/=>\s*\{\s*ipcRenderer\.on\(/g) || []).length, 18);
+  // Run the real preload against a fake electron and drive every exposed subscribe function.
+  const registered: Record<string, (...a: unknown[]) => void> = {};
+  let api: Record<string, (...a: unknown[]) => unknown> = {};
+  const fake = {
+    contextBridge: { exposeInMainWorld: (_n: string, a: typeof api) => (api = a) },
+    ipcRenderer: { on: (ch: string, h: () => void) => (registered[ch] = h), send: () => undefined },
+  };
+  const Mod = createRequire(import.meta.url)("node:module") as { _load: (...a: unknown[]) => unknown };
+  const orig = Mod._load;
+  Mod._load = (req: unknown, ...rest: unknown[]) => (req === "electron" ? fake : orig.call(Mod, req, ...rest));
+  try {
+    createRequire(import.meta.url)(join(ROOT, "overlay/preload.cjs"));
+  } finally {
+    Mod._load = orig;
+  }
+  const subs = Object.keys(api).filter((k) => k.startsWith("on"));
+  assert.equal(subs.length, 18);
+  assert.deepEqual(
+    Object.keys(api).filter((k) => !k.startsWith("on")),
+    ["copy"],
+  );
+  for (const name of subs) {
+    const got: unknown[] = [];
+    assert.equal(
+      api[name]!((...a: unknown[]) => got.push(a)),
+      undefined,
+      "a bridge function must not return the ipcRenderer proxy",
+    );
+  }
+  assert.equal(Object.keys(registered).length, 18);
+  const seen: unknown[][] = [];
+  const expectSeen = (want: unknown[][], why: string) => assert.deepEqual(seen as unknown[], want as unknown[], why);
+  api.onCard!((...a: unknown[]) => seen.push(a));
+  registered.card!({}, { id: "c1" });
+  expectSeen([[{ id: "c1" }]], "payload events pass the payload only");
+  seen.length = 0;
+  api.onPause!((...a: unknown[]) => seen.push(a));
+  registered.pause!({}, "ignored");
+  expectSeen([[]], "payload-less events call the handler with no argument");
   const html = read("overlay/index.html");
   const csp = /Content-Security-Policy"\s+content="([^"]*)"/.exec(html)![1];
   assert.match(csp, /script-src 'self'(;|$)/);
