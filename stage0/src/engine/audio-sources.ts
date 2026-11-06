@@ -60,7 +60,7 @@ export async function startFileSource(file: string) {
 
 /** Live capture: starts the supervised mic and system-audio sources and the watchdogs around them. */
 export async function startLiveSources() {
-  if (S.system.caffeinate) spawn("caffeinate", ["-dis", "-w", String(process.pid)], { stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
+  if (S.system.caffeinate && process.platform === "darwin") spawn("caffeinate", ["-dis", "-w", String(process.pid)], { stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
   // Client audio: audiotee (macOS tap) | device (avfoundation input such as BlackHole, via ffmpeg) | off.
   const srcKind = S.audio.system.source;
   const W = S.audio.watchdog;

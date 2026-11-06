@@ -161,11 +161,11 @@ test("every Electron main process installs the permission lockdown", async () =>
   for (const f of ["tray/main.cjs", "overlay/main.cjs"]) assert.match(readFileSync(join(ROOT, f), "utf8"), /require\("\.\.\/shared\/permissions\.cjs"\)\.install\(app\)/, f);
 });
 
-test("no spawn site outside src/run.ts builds .bin/tsx or .bin/electron by hand", async () => {
+test("no spawn site builds .bin/tsx or .bin/electron by hand", async () => {
   const { readFileSync, readdirSync } = await import("node:fs");
   const bad: string[] = [];
-  for (const d of ["src", "src/cli", "tray", "dashboard", "overlay"]) for (const f of readdirSync(join(ROOT, d))) {
-    if (!/\.(ts|cjs|js)$/.test(f) || /\.test\./.test(f) || (d === "src" && f === "run.ts")) continue;
+  for (const d of ["src", "src/cli", "src/engine", "tray", "dashboard", "overlay"]) for (const f of readdirSync(join(ROOT, d))) {
+    if (!/\.(ts|cjs|js)$/.test(f) || /\.test\./.test(f)) continue;
     if (/"\.bin"/.test(readFileSync(join(ROOT, d, f), "utf8"))) bad.push(`${d}/${f}`);
   }
   assert.deepEqual(bad, []);

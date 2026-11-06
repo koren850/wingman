@@ -1,6 +1,7 @@
 // The one exit path: stop, post-call summary, deletion question, and the crash / stray-error handling that leads into it.
 import { rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
+import bin from "../../shared/bin.cjs";
 import { join } from "node:path";
 import { childEnv, CALLS, ROOT } from "../env.ts";
 import type { Channel } from "../providers/stt/types.ts";
@@ -115,7 +116,8 @@ export async function shutdown() {
     if (!summaryDone && !summarySkipped && !st.call.crashed && !noAi && S.summary.enabled) {
       summaryAbort.abort();
       try {
-        spawn(join(ROOT, "node_modules", ".bin", "tsx"), backgroundSummaryArgs(ROOT, log.id, profile), { cwd: ROOT, detached: true, stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
+        const t = bin.binCommand("tsx", backgroundSummaryArgs(ROOT, log.id, profile), ROOT);
+        spawn(t.cmd, t.args, { cwd: ROOT, detached: true, stdio: "ignore", env: childEnv() }).on("error", () => {}).unref();
         log.write("events", { type: "summary.background" });
         status("summary", { ok: false, background: true, id: log.id });
       } catch { /* the user can still run: wingman calls summary <id> --generate */ }
