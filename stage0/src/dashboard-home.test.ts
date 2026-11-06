@@ -228,3 +228,39 @@ test("the nativeTheme listener is added once per window host, not on every open"
   assert.equal((w.match(/nativeTheme\.on\(/g) || []).length, 1);
   assert.ok(w.indexOf("nativeTheme.on(") < w.indexOf("function open("), "registered before open(), in create()");
 });
+
+// ---- Calls list: start time without call.json, and the per-folder cache ----
+import { mkdtempSync, mkdirSync, writeFileSync, appendFileSync, utimesSync } from "node:fs";
+import * as nodeFs from "node:fs";
+import { tmpdir } from "node:os";
+import { join as pjoin } from "node:path";
+const callsLib = req("../dashboard/lib.cjs");
+const newCalls = () => mkdtempSync(pjoin(tmpdir(), "wm-calls-"));
+
+test("a call folder without call.json shows the time from its id, or the folder time, never 1970", () => {
+  const dir = newCalls();
+  const ulid = "01JC1QZ8M0" + "0".repeat(16), id2 = "ZZZZZZZZZZ" + "0".repeat(16);   // a real 2024 time, and an id that is not a time
+  mkdirSync(pjoin(dir, ulid)); mkdirSync(pjoin(dir, id2));
+  const folder = new Date("2026-03-04T10:00:00Z"); utimesSync(pjoin(dir, id2), folder, folder);
+  const rows = callsLib.listCalls(dir);
+  const a = rows.find((r: any) => r.id === ulid), b = rows.find((r: any) => r.id === id2);
+  assert.ok(a.startedAt > Date.UTC(2020, 0, 1) && a.startedAt === callsLib.idTime(ulid));
+  assert.equal(b.startedAt, folder.getTime());
+});
+
+test("listCalls caches a call's row until one of its files changes", () => {
+  const dir = newCalls(), id = "01JC1QZ8M0" + "0".repeat(16);
+  mkdirSync(pjoin(dir, id));
+  writeFileSync(pjoin(dir, id, "call.json"), JSON.stringify({ startedAt: "2026-01-01T10:00:00Z", mode: "live" }));
+  writeFileSync(pjoin(dir, id, "events.jsonl"), JSON.stringify({ t: Date.parse("2026-01-01T10:00:00Z"), type: "x" }) + "\n");
+  assert.equal(callsLib.listCalls(dir)[0].mode, "live");
+  const real = nodeFs.readFileSync; let reads = 0;
+  (nodeFs as any).default.readFileSync = (...a: any[]) => { reads++; return (real as any)(...a); };
+  try {
+    callsLib.listCalls(dir); callsLib.listCalls(dir);
+    assert.equal(reads, 0, "unchanged files are not read again");
+    writeFileSync(pjoin(dir, id, "call.json"), JSON.stringify({ startedAt: "2026-01-01T10:00:00Z", mode: "practice", note: "changed" }));
+    assert.equal(callsLib.listCalls(dir)[0].mode, "practice");
+    assert.ok(reads > 0);
+  } finally { (nodeFs as any).default.readFileSync = real; }
+});
