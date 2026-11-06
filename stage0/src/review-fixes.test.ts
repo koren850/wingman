@@ -129,3 +129,19 @@ test("MicSource.stop: SIGINT first, SIGKILL when ffmpeg ignores it", async () =>
   await new Promise((r) => setTimeout(r, 2200));
   assert.deepEqual(signals.filter((x) => x.startsWith("q")), ["qSIGINT"]);
 });
+
+import { CircuitBreaker } from "./health.ts";
+test("circuit breaker: half-open lets one probe through, not every caller", () => {
+  let now = 0;
+  const b = new CircuitBreaker({ failures: 1, windowMs: 10_000, cooldownMs: 1000, closeAfter: 2 }, () => now);
+  b.failure();
+  assert.equal(b.allow(), false);
+  now = 1500;
+  assert.equal(b.allow(), true);    // the probe
+  assert.equal(b.allow(), false);   // everyone else waits
+  b.success();
+  assert.equal(b.allow(), true);    // next probe after a success
+  b.success();
+  assert.equal(b.state, "closed");
+  assert.equal(b.allow(), true); assert.equal(b.allow(), true);
+});

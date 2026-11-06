@@ -66,19 +66,27 @@ export class CircuitBreaker {
   private fails: number[] = [];
   private okCount = 0;
   private openedAt = 0;
+  private probeAt: number | undefined;   // a half-open probe is in flight (one at a time)
   state: "closed" | "open" | "half-open" = "closed";
   constructor(private cfg: { failures: number; windowMs: number; cooldownMs: number; closeAfter?: number }, private now: () => number = Date.now) {}
   /** May a request go through? (open breakers let one probe through after the cooldown). */
   allow(): boolean {
-    if (this.state === "open" && this.now() - this.openedAt >= this.cfg.cooldownMs) { this.state = "half-open"; this.okCount = 0; }
-    return this.state !== "open";
+    if (this.state === "open" && this.now() - this.openedAt >= this.cfg.cooldownMs) { this.state = "half-open"; this.okCount = 0; this.probeAt = undefined; }
+    if (this.state === "open") return false;
+    if (this.state === "half-open") {
+      // one probe at a time; a probe that never reports back is forgotten after a cooldown
+      if (this.probeAt !== undefined && this.now() - this.probeAt < this.cfg.cooldownMs) return false;
+      this.probeAt = this.now();
+    }
+    return true;
   }
   failure(forceOpen = false) {
-    const t = this.now();
+    const t = this.now(); this.probeAt = undefined;
     this.fails = [...this.fails.filter((x) => t - x < this.cfg.windowMs), t];
     if (forceOpen || this.state === "half-open" || this.fails.length >= this.cfg.failures) { this.state = "open"; this.openedAt = t; this.okCount = 0; }
   }
   success() {
+    this.probeAt = undefined;
     if (this.state === "half-open") { if (++this.okCount >= (this.cfg.closeAfter ?? 2)) { this.state = "closed"; this.fails = []; } }
     else if (this.state === "closed") this.fails = [];
   }
