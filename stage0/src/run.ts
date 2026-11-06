@@ -54,16 +54,30 @@ import { startConsent } from "./engine/consent.ts";
 import { startFileSource, startLiveSources } from "./engine/audio-sources.ts";
 
 // A card row that cannot be saved (disk full) still raises the health bar; the call goes on.
-log.onWriteFail = (e) => { try { health("disk", "amber", "לא ניתן לשמור את השיחה בדיסק (אין מקום?). השיחה ממשיכה, אבל ההקלטה והסיכום עלולים להיות חלקיים. פנה מקום בדיסק", String(e?.message ?? e)); } catch { /* best effort: the bar itself needs the log */ } };
+log.onWriteFail = (e) => {
+  try {
+    health(
+      "disk",
+      "amber",
+      "לא ניתן לשמור את השיחה בדיסק (אין מקום?). השיחה ממשיכה, אבל ההקלטה והסיכום עלולים להיות חלקיים. פנה מקום בדיסק",
+      String(e?.message ?? e),
+    );
+  } catch {
+    /* best effort: the bar itself needs the log */
+  }
+};
 setPhase("starting");
-status("mode", { noAi });   // effective AI mode for the app (the setting or --no-ai)
+status("mode", { noAi }); // effective AI mode for the app (the setting or --no-ai)
 installProcessHandlers();
 
 /** Timer jobs (all unref'd: they never keep the process alive on their own). */
 function startTimers() {
   startHealthTick();
   setInterval(safe("notes", notesRound), S.notes.everyMs).unref();
-  setInterval(safe("frame", () => frameRound()), 5000).unref();
+  setInterval(
+    safe("frame", () => frameRound()),
+    5000,
+  ).unref();
   setInterval(safe("tips", tipsTick), 5000).unref();
   setInterval(safe("reminders", reminderTick), 30_000).unref();
   setInterval(safe("flow", flowTick), 5000).unref();
@@ -71,13 +85,24 @@ function startTimers() {
 
 /** What the terminal shows once the call is set up. */
 function printStartup() {
-  if (brief?.planId) log.write("events", { type: "plan.used", planId: brief.planId, title: brief.title ?? "" });   // which prepared meeting this call used (ids and names only)
-  if (brief) console.log(`Brief loaded: ${[brief.who, brief.goal].filter(Boolean).join(" · ") || "(notes only)"}${brief.mustCover?.length ? ` · must cover: ${brief.mustCover.join(", ")}` : ""}`);
-  console.log(spotter ? `Fact cards: ${spotter.size.clients} clients, ${spotter.size.domains} domains (snapshot ${snapshot?.generatedAt?.slice(0, 10) ?? "?"})` : "Fact cards: off (no snapshot at facts.file)");
+  if (brief?.planId) log.write("events", { type: "plan.used", planId: brief.planId, title: brief.title ?? "" }); // which prepared meeting this call used (ids and names only)
+  if (brief)
+    console.log(
+      `Brief loaded: ${[brief.who, brief.goal].filter(Boolean).join(" · ") || "(notes only)"}${brief.mustCover?.length ? ` · must cover: ${brief.mustCover.join(", ")}` : ""}`,
+    );
+  console.log(
+    spotter
+      ? `Fact cards: ${spotter.size.clients} clients, ${spotter.size.domains} domains (snapshot ${snapshot?.generatedAt?.slice(0, 10) ?? "?"})`
+      : "Fact cards: off (no snapshot at facts.file)",
+  );
 }
 function printBanner() {
-  console.log(`Wingman Stage 0 · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} prepared cards${noAi ? " · prepared only" : ""}${discard ? " · --discard" : ""}`);
-  console.log(`Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = start listening (when waiting) · q = Quiet mode · a = ask Wingman · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`);
+  console.log(
+    `Wingman Stage 0 · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} prepared cards${noAi ? " · prepared only" : ""}${discard ? " · --discard" : ""}`,
+  );
+  console.log(
+    `Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = start listening (when waiting) · q = Quiet mode · a = ask Wingman · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`,
+  );
   console.log(`Speakers mode: ${ECHO.mode} (audio.echo.mode; "filter" is best with headphones) · capture box ${S.capture.enabled ? "on" : "off"}`);
 }
 
@@ -92,9 +117,10 @@ async function main() {
   sup.tick();
   wireChannels();
   printBanner();
-  if (st.call.shuttingDown) return;   // Stop came during startup: shutdown() is already closing the call, so start nothing new
+  if (st.call.shuttingDown) return; // Stop came during startup: shutdown() is already closing the call, so start nothing new
   startConsent();
-  if (fileArg) await startFileSource(fileArg); else await startLiveSources();
+  if (fileArg) await startFileSource(fileArg);
+  else await startLiveSources();
 }
 
 main().catch((e) => crash("main", e));

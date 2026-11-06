@@ -17,8 +17,13 @@ type Stat = { sum: number; n: number; firstAt: number };
 
 /** Root mean square of an s16le buffer, 0-1. */
 export function rmsOf(pcm: Buffer): number {
-  let s = 0, n = 0;
-  for (let i = 0; i + 1 < pcm.length; i += 2) { const v = pcm.readInt16LE(i) / 32768; s += v * v; n++; }
+  let s = 0,
+    n = 0;
+  for (let i = 0; i + 1 < pcm.length; i += 2) {
+    const v = pcm.readInt16LE(i) / 32768;
+    s += v * v;
+    n++;
+  }
   return n ? Math.sqrt(s / n) : 0;
 }
 
@@ -31,27 +36,37 @@ export class PhoneRouter {
 
   /** Mic audio as it is captured (wall-clock ms of the END of the chunk). Split into 20 ms loudness frames. */
   recordMic(pcm: Buffer, endWall = Date.now()) {
-    const fMs = this.o.frameMs ?? 20, bytes = fMs * 32;   // 16 kHz s16le = 32 bytes per ms
+    const fMs = this.o.frameMs ?? 20,
+      bytes = fMs * 32; // 16 kHz s16le = 32 bytes per ms
     const n = Math.floor(pcm.length / bytes);
     for (let i = 0; i < n; i++) this.frames.push({ t: endWall - (n - i) * fMs, rms: rmsOf(pcm.subarray(i * bytes, (i + 1) * bytes)) });
     const keep = endWall - (this.o.keepMs ?? 60_000);
-    let k = 0; while (k < this.frames.length && this.frames[k].t < keep) k++;
+    let k = 0;
+    while (k < this.frames.length && this.frames[k].t < keep) k++;
     if (k) this.frames.splice(0, k);
   }
 
   /** Mean loudness of the mic between two wall-clock times (undefined when no frames). */
   private loudness(a: number, b: number): number | undefined {
-    let s = 0, n = 0;
-    for (const f of this.frames) if (f.t >= a - 20 && f.t <= b) { s += f.rms; n++; }
+    let s = 0,
+      n = 0;
+    for (const f of this.frames)
+      if (f.t >= a - 20 && f.t <= b) {
+        s += f.rms;
+        n++;
+      }
     return n ? s / n : undefined;
   }
 
   /** The user flips the guess (wrong voice was taken as "me"). */
-  swap() { this.swapped = !this.swapped; }
+  swap() {
+    this.swapped = !this.swapped;
+  }
 
   /** Which raw speaker id is the user right now. */
   private me(): number | undefined {
-    const min = this.o.minWords ?? 3, margin = this.o.margin ?? 1.2;
+    const min = this.o.minWords ?? 3,
+      margin = this.o.margin ?? 1.2;
     const ready = [...this.stats.entries()].filter(([, s]) => s.n >= min).map(([id, s]) => ({ id, mean: s.sum / s.n, firstAt: s.firstAt }));
     if (ready.length >= 2) {
       ready.sort((x, y) => y.mean - x.mean);
@@ -70,7 +85,7 @@ export class PhoneRouter {
     if (id === undefined) return "me";
     const me = this.me();
     const isMe = me === undefined ? true : id === me;
-    return (isMe !== this.swapped) ? "me" : "them";
+    return isMe !== this.swapped ? "me" : "them";
   }
 
   /** Splits one result of the mixed mic stream into one result per speaker run and labels each run me / them. */
@@ -81,32 +96,41 @@ export class PhoneRouter {
     const endWall = r.speechEndWall ?? r.arrivedAt - 300;
     const wallOf = (t: number) => endWall - (lastEnd - t) * 1000;
     // Learn loudness only from finals (interims repeat the same words).
-    if (r.isFinal) for (const w of words) {
-      if (typeof w.speaker !== "number") continue;
-      const l = this.loudness(wallOf(w.start), wallOf(w.end));
-      if (l === undefined) continue;
-      const s = this.stats.get(w.speaker) ?? { sum: 0, n: 0, firstAt: wallOf(w.start) };
-      s.sum += l; s.n++; this.stats.set(w.speaker, s);
-    }
+    if (r.isFinal)
+      for (const w of words) {
+        if (typeof w.speaker !== "number") continue;
+        const l = this.loudness(wallOf(w.start), wallOf(w.end));
+        if (l === undefined) continue;
+        const s = this.stats.get(w.speaker) ?? { sum: 0, n: 0, firstAt: wallOf(w.start) };
+        s.sum += l;
+        s.n++;
+        this.stats.set(w.speaker, s);
+      }
     const runs: Word[][] = [];
     for (const w of words) {
       const prev = runs[runs.length - 1];
-      if (prev && prev[0].speaker === w.speaker) prev.push(w); else runs.push([w]);
+      if (prev && prev[0].speaker === w.speaker) prev.push(w);
+      else runs.push([w]);
     }
     // Merge one-word runs into the neighbour (diarization flicker on short words).
-    for (let i = 0; i < runs.length; i++) if (runs.length > 1 && runs[i].length === 1) {
-      const into = i > 0 ? i - 1 : i + 1;
-      runs[into] = i > 0 ? [...runs[into], ...runs[i]] : [...runs[i], ...runs[into]];
-      runs.splice(i, 1); i--;
-    }
+    for (let i = 0; i < runs.length; i++)
+      if (runs.length > 1 && runs[i].length === 1) {
+        const into = i > 0 ? i - 1 : i + 1;
+        runs[into] = i > 0 ? [...runs[into], ...runs[i]] : [...runs[i], ...runs[into]];
+        runs.splice(i, 1);
+        i--;
+      }
     const out: SttResult[] = [];
     runs.forEach((run, i) => {
       const id = run.find((w) => typeof w.speaker === "number")?.speaker;
       this.lastId = id;
       const last = i === runs.length - 1;
       out.push({
-        ...r, channel: this.roleOf(id), words: run, text: run.map((w) => w.word).join(" "),
-        speechFinal: last ? r.speechFinal : r.isFinal,   // a speaker change ends that speaker's utterance
+        ...r,
+        channel: this.roleOf(id),
+        words: run,
+        text: run.map((w) => w.word).join(" "),
+        speechFinal: last ? r.speechFinal : r.isFinal, // a speaker change ends that speaker's utterance
         speechEndWall: last ? r.speechEndWall : wallOf(run[run.length - 1].end),
       });
     });
@@ -116,6 +140,10 @@ export class PhoneRouter {
 
   /** For the log: per voice word counts, mean loudness and which one is the user. */
   summary() {
-    return { me: this.me(), swapped: this.swapped, voices: [...this.stats.entries()].map(([id, s]) => ({ id, words: s.n, loud: Number((s.sum / s.n).toFixed(4)) })) };
+    return {
+      me: this.me(),
+      swapped: this.swapped,
+      voices: [...this.stats.entries()].map(([id, s]) => ({ id, words: s.n, loud: Number((s.sum / s.n).toFixed(4)) })),
+    };
   }
 }

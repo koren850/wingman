@@ -12,7 +12,8 @@ export type ScriptCheck = { ok: boolean; letters: number; foreign: number; ratio
 
 /** ok = the text is Hebrew, Latin or digits (at most `maxForeign` of its letters in another script). */
 export function checkScript(text: string, maxForeign = 0.4): ScriptCheck {
-  let letters = 0, foreign = 0;
+  let letters = 0,
+    foreign = 0;
   for (const ch of String(text ?? "")) {
     if (!LETTER.test(ch)) continue;
     letters++;

@@ -1,115 +1,106 @@
 {
- "title": "Email and domain move (invented client: Amit, Hadar Lighting)",
- "focus": "moving email and domain, DNS records",
- "turns": [
-  {
-   "speaker": "me",
-   "text": "היי עמית, מדבר דן."
-  },
-  {
-   "speaker": "them",
-   "text": "היי דן. אנחנו רוצים להעביר את הדומיין לחברה אחרת.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "איך מעבירים דומיין לספק אחר?",
-   "expect": {
-    "question": true,
-    "card": "domain-transfer"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "צריך קוד העברה מהספק הנוכחי, והדומיין צריך להיות פתוח להעברה."
-  },
-  {
-   "speaker": "them",
-   "text": "ומה יקרה למייל שלנו בזמן ההעברה?",
-   "expect": {
-    "question": true,
-    "card": [
-     "email-hosting",
-     "domain-transfer",
-     "dns-basics",
-     "ai",
-     "stall"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "מוודאים שרשומות המייל נשארות זהות, ככה שהמייל לא נופל."
-  },
-  {
-   "speaker": "them",
-   "text": "יש לנו תיבות מייל בדומיין, אפשר להעביר אותן לגוגל וורקספייס?",
-   "expect": {
-    "question": true,
-    "card": "email-hosting"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אפשר, מגדירים רשומות MX חדשות ומעבירים את התיבות."
-  },
-  {
-   "speaker": "them",
-   "text": "הדומיין שלנו עומד לפוג בעוד כמה שבועות, אני צריך לחדש אותו?",
-   "expect": {
-    "question": true,
-    "card": [
-     "domain-renewal",
-     "domain-transfer"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "כדאי להפעיל חידוש אוטומטי כדי שלא יפוג בטעות."
-  },
-  {
-   "speaker": "them",
-   "text": "אוקיי, ואיך אני יודע לאן הדומיין מצביע היום?",
-   "expect": {
-    "question": true,
-    "card": "dns-basics"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "בודקים את הרשומות של ה DNS ואת שרתי השמות."
-  },
-  {
-   "speaker": "them",
-   "text": "נשמע טוב.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "המייל שלי הוא amit at hadar dash light dot co dot il",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "רשמתי. אעביר לך את כל השלבים."
-  },
-  {
-   "speaker": "them",
-   "text": "תודה עמית כאן, ביי.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "title": "Email and domain move (invented client: Amit, Hadar Lighting)",
+  "focus": "moving email and domain, DNS records",
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "היי עמית, מדבר דן."
+    },
+    {
+      "speaker": "them",
+      "text": "היי דן. אנחנו רוצים להעביר את הדומיין לחברה אחרת.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "איך מעבירים דומיין לספק אחר?",
+      "expect": {
+        "question": true,
+        "card": "domain-transfer"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "צריך קוד העברה מהספק הנוכחי, והדומיין צריך להיות פתוח להעברה."
+    },
+    {
+      "speaker": "them",
+      "text": "ומה יקרה למייל שלנו בזמן ההעברה?",
+      "expect": {
+        "question": true,
+        "card": ["email-hosting", "domain-transfer", "dns-basics", "ai", "stall"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "מוודאים שרשומות המייל נשארות זהות, ככה שהמייל לא נופל."
+    },
+    {
+      "speaker": "them",
+      "text": "יש לנו תיבות מייל בדומיין, אפשר להעביר אותן לגוגל וורקספייס?",
+      "expect": {
+        "question": true,
+        "card": "email-hosting"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אפשר, מגדירים רשומות MX חדשות ומעבירים את התיבות."
+    },
+    {
+      "speaker": "them",
+      "text": "הדומיין שלנו עומד לפוג בעוד כמה שבועות, אני צריך לחדש אותו?",
+      "expect": {
+        "question": true,
+        "card": ["domain-renewal", "domain-transfer"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "כדאי להפעיל חידוש אוטומטי כדי שלא יפוג בטעות."
+    },
+    {
+      "speaker": "them",
+      "text": "אוקיי, ואיך אני יודע לאן הדומיין מצביע היום?",
+      "expect": {
+        "question": true,
+        "card": "dns-basics"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "בודקים את הרשומות של ה DNS ואת שרתי השמות."
+    },
+    {
+      "speaker": "them",
+      "text": "נשמע טוב.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "המייל שלי הוא amit at hadar dash light dot co dot il",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "רשמתי. אעביר לך את כל השלבים."
+    },
+    {
+      "speaker": "them",
+      "text": "תודה עמית כאן, ביי.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

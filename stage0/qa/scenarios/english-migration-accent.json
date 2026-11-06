@@ -1,89 +1,74 @@
 {
- "title": "English migration call with French-accented client (INVENTED: Claire, Acme Foundation)",
- "focus": "English questions without a question mark, tag questions, indirect questions; English cards and English stall lines; invented data only",
- "voices": {
-  "me": "Daniel",
-  "them": "Samantha"
- },
- "turns": [
-  {
-   "speaker": "them",
-   "text": "Hello Dan, thank you for taking the time. We are moving the Acme Foundation website to a new platform.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
+  "title": "English migration call with French-accented client (INVENTED: Claire, Acme Foundation)",
+  "focus": "English questions without a question mark, tag questions, indirect questions; English cards and English stall lines; invented data only",
+  "voices": {
+    "me": "Daniel",
+    "them": "Samantha"
   },
-  {
-   "speaker": "them",
-   "text": "How long will the import take",
-   "expect": {
-    "question": true,
-    "card": [
-     "stall",
-     "ai"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "It depends on the content, I will check and come back to you."
-  },
-  {
-   "speaker": "them",
-   "text": "And can we keep editing the old site during the migration",
-   "expect": {
-    "question": true,
-    "card": [
-     "migration",
-     "staging",
-     "ai",
-     "stall"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "Yes, usually you can, we will agree on a content freeze."
-  },
-  {
-   "speaker": "them",
-   "text": "The old addresses will redirect to the new ones, right?",
-   "expect": {
-    "question": true,
-    "card": [
-     "redirects-404",
-     "ai",
-     "stall"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "That is the plan, yes."
-  },
-  {
-   "speaker": "them",
-   "text": "I was wondering whether we need to send you the database.",
-   "expect": {
-    "question": true,
-    "card": [
-     "ai",
-     "stall"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "Let me confirm that with the team."
-  },
-  {
-   "speaker": "them",
-   "text": "Okay, that makes sense. Thank you.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "turns": [
+    {
+      "speaker": "them",
+      "text": "Hello Dan, thank you for taking the time. We are moving the Acme Foundation website to a new platform.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "How long will the import take",
+      "expect": {
+        "question": true,
+        "card": ["stall", "ai"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "It depends on the content, I will check and come back to you."
+    },
+    {
+      "speaker": "them",
+      "text": "And can we keep editing the old site during the migration",
+      "expect": {
+        "question": true,
+        "card": ["migration", "staging", "ai", "stall"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "Yes, usually you can, we will agree on a content freeze."
+    },
+    {
+      "speaker": "them",
+      "text": "The old addresses will redirect to the new ones, right?",
+      "expect": {
+        "question": true,
+        "card": ["redirects-404", "ai", "stall"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "That is the plan, yes."
+    },
+    {
+      "speaker": "them",
+      "text": "I was wondering whether we need to send you the database.",
+      "expect": {
+        "question": true,
+        "card": ["ai", "stall"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "Let me confirm that with the team."
+    },
+    {
+      "speaker": "them",
+      "text": "Okay, that makes sense. Thank you.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

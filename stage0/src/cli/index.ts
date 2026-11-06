@@ -17,7 +17,25 @@ import { profile } from "./profile-cmd.ts";
 
 type Cmd = (ctx: Ctx, args: string[]) => Promise<Result>;
 const COMMANDS: Record<string, Cmd> = {
-  status, doctor, plan, prepare: plan, start, stop, consent, confirm: consent, client, quiet, note, speaker, ask, live, calls, settings, profile, keys, app,
+  status,
+  doctor,
+  plan,
+  prepare: plan,
+  start,
+  stop,
+  consent,
+  confirm: consent,
+  client,
+  quiet,
+  note,
+  speaker,
+  ask,
+  live,
+  calls,
+  settings,
+  profile,
+  keys,
+  app,
   help: async (_c, a) => ({ data: { help: HELP }, text: HELP.trimEnd() + (a.length ? "" : "") }),
 };
 
@@ -53,10 +71,24 @@ export async function main(argv: string[], over: Partial<Ctx> & { err?: (s: stri
 }
 
 // Run only when executed directly (the file is also imported by tests). realpath so a symlinked launcher still counts.
-const isMain = (() => { try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
+const isMain = (() => {
+  try {
+    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
 if (isMain) {
   const ac = new AbortController();
   process.on("SIGINT", () => ac.abort());
   process.on("SIGTERM", () => ac.abort());
-  main(process.argv.slice(2), { signal: ac.signal }).then((c) => { process.exitCode = c; }, (e) => { console.error(errText(e)); process.exitCode = 1; });
+  main(process.argv.slice(2), { signal: ac.signal }).then(
+    (c) => {
+      process.exitCode = c;
+    },
+    (e) => {
+      console.error(errText(e));
+      process.exitCode = 1;
+    },
+  );
 }

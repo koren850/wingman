@@ -32,9 +32,12 @@ test("the prompt tells the model: statements are SKIP, no side on the client's d
 
 test("important cards only: clear questions pass, statements that merely start with a question word do not", async () => {
   const { detect, isClearQuestion } = await import("./detector.ts");
-  const ok = (t: string) => { const d = detect(t); return d.isQuestion && isClearQuestion(t, d.reason); };
-  assert.ok(ok("יש לנו חנות והאתר נטען ממש לאט בזמן האחרון, למה זה קורה"));   // question word later, no "?"
-  assert.ok(ok("ויש לכם גיבוי של האתר אם משהו נופל"));                      // speaks to the user
+  const ok = (t: string) => {
+    const d = detect(t);
+    return d.isQuestion && isClearQuestion(t, d.reason);
+  };
+  assert.ok(ok("יש לנו חנות והאתר נטען ממש לאט בזמן האחרון, למה זה קורה")); // question word later, no "?"
+  assert.ok(ok("ויש לכם גיבוי של האתר אם משהו נופל")); // speaks to the user
   assert.ok(ok("כמה זמן לוקח להעביר את האתר?"));
   assert.ok(!isClearQuestion("מה שקיים באנגלית לא תמיד קיים בעברית", "head:מה"));
 });

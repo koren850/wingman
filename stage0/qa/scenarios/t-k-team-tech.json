@@ -1,70 +1,66 @@
 {
- "title": "Team call with technical questions (invented: Noa, Gil, Dana)",
- "focus": "general team call: a technical or factual question gets a short AI answer, ownership questions get nothing, no business cards",
- "frame": {
-  "kind": [
-   "team",
-   "internal",
-   "other"
-  ],
-  "minChecklist": 2
- },
- "turns": [
-  {
-   "speaker": "me",
-   "text": "בוקר טוב, נעבור על הבעיות הטכניות של השבוע."
+  "title": "Team call with technical questions (invented: Noa, Gil, Dana)",
+  "focus": "general team call: a technical or factual question gets a short AI answer, ownership questions get nothing, no business cards",
+  "frame": {
+    "kind": ["team", "internal", "other"],
+    "minChecklist": 2
   },
-  {
-   "speaker": "them",
-   "text": "בוקר טוב. ה build נכשל אצלי בלילה עם שגיאה של out of memory."
-  },
-  {
-   "speaker": "them",
-   "text": "למה build נופל עם out of memory, זה בדרך כלל בעיה בשרת או בקוד?",
-   "expect": {
-    "question": true,
-    "card": "ai"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "נבדוק את זה אחרי הישיבה."
-  },
-  {
-   "speaker": "them",
-   "text": "גיל, מה ההבדל בין Redis ל Memcached? אנחנו צריכים לבחור לפרויקט החדש.",
-   "expect": {
-    "question": true,
-    "card": "ai"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "בוא נשמע קודם מה צריך מהמטמון."
-  },
-  {
-   "speaker": "them",
-   "text": "מי לוקח את בדיקת הקוד של דנה?",
-   "expect": {
-    "question": true,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "אני אקח, אין בעיה."
-  },
-  {
-   "speaker": "them",
-   "text": "מה זה feature flag בעצם, ולמה כדאי להשתמש בזה?",
-   "expect": {
-    "question": true,
-    "card": "ai"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "נדבר על זה בסיכום. תודה לכולם."
-  }
- ]
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "בוקר טוב, נעבור על הבעיות הטכניות של השבוע."
+    },
+    {
+      "speaker": "them",
+      "text": "בוקר טוב. ה build נכשל אצלי בלילה עם שגיאה של out of memory."
+    },
+    {
+      "speaker": "them",
+      "text": "למה build נופל עם out of memory, זה בדרך כלל בעיה בשרת או בקוד?",
+      "expect": {
+        "question": true,
+        "card": "ai"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "נבדוק את זה אחרי הישיבה."
+    },
+    {
+      "speaker": "them",
+      "text": "גיל, מה ההבדל בין Redis ל Memcached? אנחנו צריכים לבחור לפרויקט החדש.",
+      "expect": {
+        "question": true,
+        "card": "ai"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "בוא נשמע קודם מה צריך מהמטמון."
+    },
+    {
+      "speaker": "them",
+      "text": "מי לוקח את בדיקת הקוד של דנה?",
+      "expect": {
+        "question": true,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "אני אקח, אין בעיה."
+    },
+    {
+      "speaker": "them",
+      "text": "מה זה feature flag בעצם, ולמה כדאי להשתמש בזה?",
+      "expect": {
+        "question": true,
+        "card": "ai"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "נדבר על זה בסיכום. תודה לכולם."
+    }
+  ]
 }

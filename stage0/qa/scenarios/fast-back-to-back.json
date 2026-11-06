@@ -1,102 +1,98 @@
 {
- "title": "Fast back-to-back questions (invented client: Hila, Zohar Photography)",
- "focus": "questions with ~200 ms gaps and no reply from Dan between them",
- "turns": [
-  {
-   "speaker": "me",
-   "text": "שלום הילה."
-  },
-  {
-   "speaker": "them",
-   "text": "היי דן, כמה שאלות מהירות.",
-   "pauseBeforeMs": 500,
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "יש לכם גיבוי?",
-   "pauseBeforeMs": 300,
-   "expect": {
-    "question": true,
-    "card": "backups"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "כמה זה עולה?",
-   "pauseBeforeMs": 200,
-   "expect": {
-    "question": true,
-    "card": "stall-price"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "האתר איטי, מה עושים?",
-   "pauseBeforeMs": 200,
-   "expect": {
-    "question": true,
-    "card": "site-slow"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "ומה עם תעודת אבטחה?",
-   "pauseBeforeMs": 200,
-   "expect": {
-    "question": true,
-    "card": "ssl-basics"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני אענה על הכל, רגע אחד."
-  },
-  {
-   "speaker": "them",
-   "text": "אפשר להעביר דומיין?",
-   "pauseBeforeMs": 400,
-   "expect": {
-    "question": true,
-    "card": "domain-transfer"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "מתי זה יהיה מוכן?",
-   "pauseBeforeMs": 200,
-   "expect": {
-    "question": true,
-    "card": "stall-timeline"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "ויש גם אחריות?",
-   "pauseBeforeMs": 200,
-   "expect": {
-    "question": true,
-    "card": [
-     "stall-guarantee",
-     "stall",
-     "ai"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "בסדר, אני רושם הכל ואחזור עם תשובות."
-  },
-  {
-   "speaker": "them",
-   "text": "תודה, מעולה.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "title": "Fast back-to-back questions (invented client: Hila, Zohar Photography)",
+  "focus": "questions with ~200 ms gaps and no reply from Dan between them",
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "שלום הילה."
+    },
+    {
+      "speaker": "them",
+      "text": "היי דן, כמה שאלות מהירות.",
+      "pauseBeforeMs": 500,
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "יש לכם גיבוי?",
+      "pauseBeforeMs": 300,
+      "expect": {
+        "question": true,
+        "card": "backups"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "כמה זה עולה?",
+      "pauseBeforeMs": 200,
+      "expect": {
+        "question": true,
+        "card": "stall-price"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "האתר איטי, מה עושים?",
+      "pauseBeforeMs": 200,
+      "expect": {
+        "question": true,
+        "card": "site-slow"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "ומה עם תעודת אבטחה?",
+      "pauseBeforeMs": 200,
+      "expect": {
+        "question": true,
+        "card": "ssl-basics"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני אענה על הכל, רגע אחד."
+    },
+    {
+      "speaker": "them",
+      "text": "אפשר להעביר דומיין?",
+      "pauseBeforeMs": 400,
+      "expect": {
+        "question": true,
+        "card": "domain-transfer"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "מתי זה יהיה מוכן?",
+      "pauseBeforeMs": 200,
+      "expect": {
+        "question": true,
+        "card": "stall-timeline"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "ויש גם אחריות?",
+      "pauseBeforeMs": 200,
+      "expect": {
+        "question": true,
+        "card": ["stall-guarantee", "stall", "ai"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "בסדר, אני רושם הכל ואחזור עם תשובות."
+    },
+    {
+      "speaker": "them",
+      "text": "תודה, מעולה.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

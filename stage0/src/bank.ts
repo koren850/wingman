@@ -2,19 +2,29 @@
 // Scoring is by trigger word count; "stall" cards (price / timeline / guarantee) always win so a commitment is never answered
 // by a topical card. Used by run.ts (card or hint for the model), doctor.ts and the detector's context. No embeddings in this stage.
 import { readFileSync, existsSync } from "node:fs";
-import {  } from "node:path";
+import {} from "node:path";
 import YAML from "yaml";
 import { containsPhrase, phraseWordIndex } from "./normalize.ts";
 import { packPath } from "./pack.ts";
 import { looksArithmetic } from "./calc.ts";
 
-export type BankCard = { id: string; title: string; triggers: string[]; say: string; facts: string[]; tags?: string[]; alts?: string[]; priority?: number; en?: { say: string; facts?: string[]; alts?: string[] } };
+export type BankCard = {
+  id: string;
+  title: string;
+  triggers: string[];
+  say: string;
+  facts: string[];
+  tags?: string[];
+  alts?: string[];
+  priority?: number;
+  en?: { say: string; facts?: string[]; alts?: string[] };
+};
 export type BankHit = { card: BankCard; score: number; matched: string[] };
 
 /** Reads and validates the YAML bank. Throws on a card without id/say/triggers or a duplicate id. */
 export function loadBank(file = packPath("bank.yaml") ?? ""): BankCard[] {
   if (!file) throw new Error("no bank.yaml in the pack (~/.config/wingman/pack or data/example-pack)");
-  const parsed = YAML.parse(readFileSync(file, "utf8")) as BankCard[] | null;   // an empty file parses to null: no cards
+  const parsed = YAML.parse(readFileSync(file, "utf8")) as BankCard[] | null; // an empty file parses to null: no cards
   const cards = parsed ?? [];
   if (!Array.isArray(cards)) throw new Error("bank.yaml must be a list of cards");
   // YAML turns bare 2024 / 404 / yes into numbers and booleans: ids and triggers are always strings.
@@ -72,7 +82,11 @@ export function matchBank(text: string, bank: BankCard[], minScore = 1): BankHit
 }
 /** The final sentence of a multi-sentence turn (sentence ends: . ? ! …), or undefined for a single sentence. */
 export function lastSentence(text: string): string | undefined {
-  const parts = text.trim().split(/(?<=[.?!…])\s+/).map((p) => p.trim()).filter((p) => p.split(/\s+/).filter(Boolean).length >= 2);
+  const parts = text
+    .trim()
+    .split(/(?<=[.?!…])\s+/)
+    .map((p) => p.trim())
+    .filter((p) => p.split(/\s+/).filter(Boolean).length >= 2);
   return parts.length >= 2 ? parts[parts.length - 1] : undefined;
 }
 /**
@@ -84,7 +98,12 @@ export function sttAliases(text: string): string {
   const extra: string[] = [];
   if (/(^|[\s,.?!])ss(?=$|[\s,.?!])/i.test(text)) extra.push("ssl");
   if (/(^|[\s,.?!])(קש|קאש'?ינג|קאשינג)(?=$|[\s,.?!])/.test(text)) extra.push("cache");
-  if (/(^|\s)[והבלשכמ]{0,2}(?:אתר|אתרים|דף|חנות|עמוד|נטען)\S*(?:\s+(?:גם|לפעמים|נהיה|נעשה|מאוד|ממש|כל|כך|עכשיו|הרבה|פתאום|שוב|די|קצת)){0,3}\s+(?:ה)?איתי(?=$|[\s,.?!])/.test(text)) extra.push("איטי");
+  if (
+    /(^|\s)[והבלשכמ]{0,2}(?:אתר|אתרים|דף|חנות|עמוד|נטען)\S*(?:\s+(?:גם|לפעמים|נהיה|נעשה|מאוד|ממש|כל|כך|עכשיו|הרבה|פתאום|שוב|די|קצת)){0,3}\s+(?:ה)?איתי(?=$|[\s,.?!])/.test(
+      text,
+    )
+  )
+    extra.push("איטי");
   return extra.length ? `${text} ${extra.join(" ")}` : text;
 }
 
@@ -103,13 +122,18 @@ function matchBankWhole(raw: string, bank: BankCard[], minScore = 1): BankHit | 
   }
   // A stall-tier match that is only part of a longer topical phrase does not count: "תעודת הבטחה" (STT for "תעודת אבטחה")
   // is an SSL question, not a guarantee.
-  const inner = (h: BankHit) => STALL_TIER.has(h.card.id) && h.matched.every((m) =>
-    hits.some((o) => !STALL_TIER.has(o.card.id) && o.matched.some((om) => om.length > m.length && om.includes(m))));
-  let best: BankHit | undefined, bestTier = false;
+  const inner = (h: BankHit) =>
+    STALL_TIER.has(h.card.id) &&
+    h.matched.every((m) => hits.some((o) => !STALL_TIER.has(o.card.id) && o.matched.some((om) => om.length > m.length && om.includes(m))));
+  let best: BankHit | undefined,
+    bestTier = false;
   for (const hit of hits) {
     if (inner(hit)) continue;
     const tier = STALL_TIER.has(hit.card.id);
-    if (!best || beats(hit, tier, best, bestTier)) { best = hit; bestTier = tier; }
+    if (!best || beats(hit, tier, best, bestTier)) {
+      best = hit;
+      bestTier = tier;
+    }
   }
   return best;
 }
@@ -140,7 +164,9 @@ export function questionLang(s: string): "he" | "en" | undefined {
  */
 let turnLang: "he" | "en" = "he";
 export const getTurnLang = () => turnLang;
-export const setTurnLang = (l: "he" | "en") => { turnLang = l; };
+export const setTurnLang = (l: "he" | "en") => {
+  turnLang = l;
+};
 /** The card as it should be shown for the current question: English text for an English question, undefined when the card has no English version. */
 export function localizeCard(card: BankCard, lang: "he" | "en" = turnLang): BankCard | undefined {
   if (lang !== "en") return card;
@@ -154,7 +180,10 @@ let englishIds: string[] = [];
 export function stallCard(bank: BankCard[]): BankCard {
   return (
     bank.find((c) => c.id === "stall") ?? {
-      id: "stall", title: "stall", triggers: [], facts: [],
+      id: "stall",
+      title: "stall",
+      triggers: [],
+      facts: [],
       say: "אני רוצה לבדוק את זה כמו שצריך ולחזור עם תשובה מדויקת.",
     }
   );
@@ -171,14 +200,16 @@ export function bankStarts(text: string, bank: BankCard[]): { id: string; at: nu
   return out;
 }
 
-
 // ---- price stall: only for a price of the owner's own services ----
 /** Words that mean the question is about what the owner sells. */
-const SERVICE_WORDS = /(אתר|אתרים|אחסון|דומיין|וורדפרס|תחזוקה|חנות|עיצוב|פיתוח|הצעה|שירות|שרת|חבילה|מייל|העברה|שדרוג|בנייה|בניית|קמפיין|wordpress|woocommerce|hosting|domain|website|\bsite\b|maintenance|package|\bplan\b|\bssl\b|cloudflare|migration|retainer|your (service|price|rate)|שלכם|אצלכם)/i;
+const SERVICE_WORDS =
+  /(אתר|אתרים|אחסון|דומיין|וורדפרס|תחזוקה|חנות|עיצוב|פיתוח|הצעה|שירות|שרת|חבילה|מייל|העברה|שדרוג|בנייה|בניית|קמפיין|wordpress|woocommerce|hosting|domain|website|\bsite\b|maintenance|package|\bplan\b|\bssl\b|cloudflare|migration|retainer|your (service|price|rate)|שלכם|אצלכם)/i;
 /** Things whose price has nothing to do with the owner's work. */
-const GENERAL_PRICE = /(דולר|יורו|אירו|ביטקוין|בנזין|דלק|זהב|קפה|טיסה|טיסות|מלון|אייפון|מניה|מניות|חשמל|\bdollar|\beuro|bitcoin|\bgas\b|petrol|coffee|flight|hotel|iphone|\bstock|share price|exchange rate|שער)/i;
+const GENERAL_PRICE =
+  /(דולר|יורו|אירו|ביטקוין|בנזין|דלק|זהב|קפה|טיסה|טיסות|מלון|אייפון|מניה|מניות|חשמל|\bdollar|\beuro|bitcoin|\bgas\b|petrol|coffee|flight|hotel|iphone|\bstock|share price|exchange rate|שער)/i;
 /** How much memory / time / space: "how much" without money. */
-const RESOURCE_HOW_MUCH = /how much (memory|storage|space|bandwidth|traffic|ram|disk|cpu|time|data|load|power|water|sleep)|כמה (זיכרון|מקום|זמן|נפח|רוחב פס)(?! זה (יעלה|עולה))/i;
+const RESOURCE_HOW_MUCH =
+  /how much (memory|storage|space|bandwidth|traffic|ram|disk|cpu|time|data|load|power|water|sleep)|כמה (זיכרון|מקום|זמן|נפח|רוחב פס)(?! זה (יעלה|עולה))/i;
 
 /** Why a price/stall-price match should be ignored: arithmetic ("כמה זה 36 ועוד 42") or a price that is not for the owner's services. undefined = it is a real price question. */
 export function priceOffTopic(text: string): "arithmetic" | "general" | undefined {
@@ -190,10 +221,15 @@ export function priceOffTopic(text: string): "arithmetic" | "general" | undefine
 
 /** matchBank, except that stall-price is dropped when the question is arithmetic or clearly not about a price for the owner's services. */
 export function matchBankFor(text: string, bank: BankCard[]): BankHit | undefined {
-  const l = questionLang(text); if (l && text.trim().split(/\s+/).length >= 3) turnLang = l;
+  const l = questionLang(text);
+  if (l && text.trim().split(/\s+/).length >= 3) turnLang = l;
   let hit = matchBank(text, bank);
-  if (hit?.card.id === "stall-price" && priceOffTopic(text)) hit = matchBank(text, bank.filter((c) => c.id !== "stall-price"));
+  if (hit?.card.id === "stall-price" && priceOffTopic(text))
+    hit = matchBank(
+      text,
+      bank.filter((c) => c.id !== "stall-price"),
+    );
   if (!hit || turnLang !== "en") return hit;
   const card = localizeCard(hit.card, "en");
-  return card ? { ...hit, card } : undefined;   // English question and no English card: the model answers (in English) instead of a Hebrew card
+  return card ? { ...hit, card } : undefined; // English question and no English card: the model answers (in English) instead of a Hebrew card
 }

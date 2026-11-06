@@ -51,8 +51,21 @@ import { parseReflex } from "./reflex.ts";
 import { tokenVariants } from "./normalize.ts";
 
 test("B6 guards: relative dates, number-word prices, free/discount, zero-downtime", () => {
-  for (const t of ["נטפל בזה תוך שעה", "זה יהיה מוכן תוך יומיים", "נחזור בעוד שבוע", "נטפל בזה היום", "נסיים עוד היום",
-    "זה עולה אלף שקל", "בערך מאתיים ש\"ח", "חמש מאות דולר", "אפשר בחינם", "נעשה לכם הנחה", "ללא עלות", "אפס השבתה", "בלי סיכון"]) {
+  for (const t of [
+    "נטפל בזה תוך שעה",
+    "זה יהיה מוכן תוך יומיים",
+    "נחזור בעוד שבוע",
+    "נטפל בזה היום",
+    "נסיים עוד היום",
+    "זה עולה אלף שקל",
+    'בערך מאתיים ש"ח',
+    "חמש מאות דולר",
+    "אפשר בחינם",
+    "נעשה לכם הנחה",
+    "ללא עלות",
+    "אפס השבתה",
+    "בלי סיכון",
+  ]) {
     assert.equal(guard(t).ok, false, t);
   }
   assert.equal(guard("DNS מתעדכן בדרך כלל תוך כמה שעות").ok, true);
@@ -121,16 +134,19 @@ test("B1 reflex output parser: empty lines, markdown tag, facts, say-less reply"
   assert.deepEqual(parseTag("BANK: dns-basics"), { kind: "BANK", bankId: "dns-basics" });
   assert.deepEqual(parseTag("`bank` ssl-basics"), { kind: "BANK", bankId: "ssl-basics" });
   const p = parseReflex("ANS\n\nשלום עולם\n\n- עובדה אחת\n- עובדה שתיים\n", true);
-  assert.equal(p.tagLine, "ANS"); assert.equal(p.say, "שלום עולם"); assert.deepEqual(p.facts, ["עובדה אחת", "עובדה שתיים"]);
+  assert.equal(p.tagLine, "ANS");
+  assert.equal(p.say, "שלום עולם");
+  assert.deepEqual(p.facts, ["עובדה אחת", "עובדה שתיים"]);
   assert.equal(parseReflex("STALL", true).say, undefined);
   assert.equal(parseReflex("ANS\n- fact only\n", true).say, undefined);
   const mid = parseReflex("ANS\nחצי משפ", false);
-  assert.equal(mid.say, "חצי משפ"); assert.equal(mid.sayComplete, false);
+  assert.equal(mid.say, "חצי משפ");
+  assert.equal(mid.sayComplete, false);
 });
 test("B5 speechEndWall re-anchors per connection and falls back when implausible", () => {
-  assert.equal(speechEndWall(10_000, 5.0, 4.5), 9_500);          // 0.5 s of audio not yet transcribed
-  assert.equal(speechEndWall(10_000, 1.0, 40), 9_600);            // word end beyond what was sent -> fallback
-  assert.equal(speechEndWall(10_000, 100, 1), 9_600);             // stale anchor -> fallback
+  assert.equal(speechEndWall(10_000, 5.0, 4.5), 9_500); // 0.5 s of audio not yet transcribed
+  assert.equal(speechEndWall(10_000, 1.0, 40), 9_600); // word end beyond what was sent -> fallback
+  assert.equal(speechEndWall(10_000, 100, 1), 9_600); // stale anchor -> fallback
 });
 test("B1 source: system prompt goes through `instructions`, not messages", async () => {
   const { readFileSync } = await import("node:fs");
@@ -147,13 +163,13 @@ test("B2 stt send never throws and counts drops when the socket is not open", as
 });
 
 test("reflex parse: thinking out loud before the verdict never picks a card", () => {
-  const ramble = 'BANK sales-tell-me-about-yourself is not in the list; the question is technical. Interview mode: technical question → ANS.';
+  const ramble = "BANK sales-tell-me-about-yourself is not in the list; the question is technical. Interview mode: technical question → ANS.";
   const p = parseReflex(`${ramble}\n\nANS\nאחבר דרך ה-API של ה-CRM עם webhook\n- הרשאות לפי משתמש\n`, true);
   assert.equal(p.tagLine, "ANS");
   assert.equal(p.say, "אחבר דרך ה-API של ה-CRM עם webhook");
   assert.deepEqual(p.facts, ["הרשאות לפי משתמש"]);
-  assert.equal(parseTag(parseReflex(ramble, true).tagLine!).kind, "SKIP");     // no real verdict: SKIP, never a guessed card
-  assert.equal(parseReflex(`${ramble}\n`, false).tagLine, undefined);           // streaming: wait for the real verdict
+  assert.equal(parseTag(parseReflex(ramble, true).tagLine!).kind, "SKIP"); // no real verdict: SKIP, never a guessed card
+  assert.equal(parseReflex(`${ramble}\n`, false).tagLine, undefined); // streaming: wait for the real verdict
   assert.deepEqual(parseTag(parseReflex("BANK about-you\n", true).tagLine!), { kind: "BANK", bankId: "about-you" });
   assert.deepEqual(parseTag(parseReflex("**BANK salary**\n", true).tagLine!), { kind: "BANK", bankId: "salary" });
   assert.equal(parseReflex("BANK dns-basics: say this\n", true).say, "say this");
@@ -170,5 +186,5 @@ test("a question cut off mid-phrase waits for the rest", () => {
   assert.equal(detect("do you have experience with").isQuestion, false);
   assert.equal(detect("tell me about the").isQuestion, false);
   assert.equal(detect("יש לך ניסיון עם פייתון").isQuestion, true);
-  assert.equal(detect("יש לך ניסיון עם?").isQuestion, true);   // a "?" still counts
+  assert.equal(detect("יש לך ניסיון עם?").isQuestion, true); // a "?" still counts
 });

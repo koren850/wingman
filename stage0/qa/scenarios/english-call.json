@@ -1,116 +1,103 @@
 {
- "title": "Mostly English call (invented client: Sarah, Birchwood Studio)",
- "focus": "an English-language call: detector and bank must work in English too",
- "voices": {
-  "me": "Daniel",
-  "them": "Samantha"
- },
- "turns": [
-  {
-   "speaker": "me",
-   "text": "Hi Sarah, this is Dan, how are you?"
+  "title": "Mostly English call (invented client: Sarah, Birchwood Studio)",
+  "focus": "an English-language call: detector and bank must work in English too",
+  "voices": {
+    "me": "Daniel",
+    "them": "Samantha"
   },
-  {
-   "speaker": "them",
-   "text": "Hi Dan, good thanks. We need some help with our WordPress site.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "The site is really slow lately. Why is that happening?",
-   "expect": {
-    "question": true,
-    "card": [
-     "site-slow",
-     "ai",
-     "stall"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "Usually heavy images, plugins or a weak server. I will check."
-  },
-  {
-   "speaker": "them",
-   "text": "Do you have a backup of the site?",
-   "expect": {
-    "question": true,
-    "card": "backups"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "Yes, automatic backups of the files and the database."
-  },
-  {
-   "speaker": "them",
-   "text": "How much does it cost per month?",
-   "expect": {
-    "question": true,
-    "card": "stall-price",
-    "note": "English price question must stall"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "It depends on what you need, I will send a proper offer."
-  },
-  {
-   "speaker": "them",
-   "text": "Can you move our domain to Cloudflare?",
-   "expect": {
-    "question": true,
-    "card": [
-     "cdn-cloudflare",
-     "dns-basics",
-     "domain-transfer",
-     "ai"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "Yes, we change the name servers and keep the DNS records."
-  },
-  {
-   "speaker": "them",
-   "text": "What about the SSL certificate, is it included?",
-   "expect": {
-    "question": true,
-    "card": [
-     "ssl-basics",
-     "ai",
-     "stall"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "It usually renews automatically."
-  },
-  {
-   "speaker": "them",
-   "text": "Great. How long will it take?",
-   "expect": {
-    "question": true,
-    "card": "stall-timeline"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "I need to check the scope before giving a time."
-  },
-  {
-   "speaker": "them",
-   "text": "Okay, sounds good. Thanks Dan.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "Hi Sarah, this is Dan, how are you?"
+    },
+    {
+      "speaker": "them",
+      "text": "Hi Dan, good thanks. We need some help with our WordPress site.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "The site is really slow lately. Why is that happening?",
+      "expect": {
+        "question": true,
+        "card": ["site-slow", "ai", "stall"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "Usually heavy images, plugins or a weak server. I will check."
+    },
+    {
+      "speaker": "them",
+      "text": "Do you have a backup of the site?",
+      "expect": {
+        "question": true,
+        "card": "backups"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "Yes, automatic backups of the files and the database."
+    },
+    {
+      "speaker": "them",
+      "text": "How much does it cost per month?",
+      "expect": {
+        "question": true,
+        "card": "stall-price",
+        "note": "English price question must stall"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "It depends on what you need, I will send a proper offer."
+    },
+    {
+      "speaker": "them",
+      "text": "Can you move our domain to Cloudflare?",
+      "expect": {
+        "question": true,
+        "card": ["cdn-cloudflare", "dns-basics", "domain-transfer", "ai"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "Yes, we change the name servers and keep the DNS records."
+    },
+    {
+      "speaker": "them",
+      "text": "What about the SSL certificate, is it included?",
+      "expect": {
+        "question": true,
+        "card": ["ssl-basics", "ai", "stall"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "It usually renews automatically."
+    },
+    {
+      "speaker": "them",
+      "text": "Great. How long will it take?",
+      "expect": {
+        "question": true,
+        "card": "stall-timeline"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "I need to check the scope before giving a time."
+    },
+    {
+      "speaker": "them",
+      "text": "Okay, sounds good. Thanks Dan.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

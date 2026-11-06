@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { ulid } from "ulid";
 import { CALLS } from "./env.ts";
 
-process.umask(0o077);   // side effect on import: every file this process creates is owner-only
+process.umask(0o077); // side effect on import: every file this process creates is owner-only
 
 /** One call's folder. The id is a ULID, so folders sort by start time. */
 export class CallLog {
@@ -25,20 +25,47 @@ export class CallLog {
     this.writeMeta();
     // calls/latest -> this call, for the answer window. A symlink to the bare id, so the whole calls/ folder can move.
     const latest = join(CALLS, "latest");
-    try { rmSync(latest, { force: true }); symlinkSync(this.id, latest); } catch { /* best effort */ }
+    try {
+      rmSync(latest, { force: true });
+      symlinkSync(this.id, latest);
+    } catch {
+      /* best effort */
+    }
   }
-  private writeMeta() { writeFileSync(join(this.dir, "call.json"), JSON.stringify(this.meta, null, 2), { mode: 0o600 }); }
+  private writeMeta() {
+    writeFileSync(join(this.dir, "call.json"), JSON.stringify(this.meta, null, 2), { mode: 0o600 });
+  }
   /** Merge fields into call.json (e.g. endedAt, and run.ts's phase/liveAt: the answer window polls this file). Whole-file rewrite, best effort. */
-  update(fields: Record<string, unknown>) { Object.assign(this.meta, fields); try { this.writeMeta(); } catch { /* best effort */ } }
+  update(fields: Record<string, unknown>) {
+    Object.assign(this.meta, fields);
+    try {
+      this.writeMeta();
+    } catch {
+      /* best effort */
+    }
+  }
   /** Appends one JSON line (with a `t` epoch-ms timestamp) to <stream>.jsonl. Never throws. */
   write(stream: "events" | "transcript" | "cards" | "latency" | "usage" | "live", row: Record<string, unknown>) {
     const full = { t: Date.now(), ...row };
-    if (stream === "cards" && this.onCardRow) { try { this.onCardRow(full); } catch { /* the pipe is best effort */ } }
-    try { appendFileSync(join(this.dir, `${stream}.jsonl`), JSON.stringify(full) + "\n", { mode: 0o600 }); }
-    catch (e) {
+    if (stream === "cards" && this.onCardRow) {
+      try {
+        this.onCardRow(full);
+      } catch {
+        /* the pipe is best effort */
+      }
+    }
+    try {
+      appendFileSync(join(this.dir, `${stream}.jsonl`), JSON.stringify(full) + "\n", { mode: 0o600 });
+    } catch (e) {
       // Best effort: a full disk or a vanished folder must not end the call.
       this.writeFailures++;
-      if (this.writeFailures === 1) { try { this.onWriteFail?.(e as Error, 1); } catch { /* never throw from the logger */ } }
+      if (this.writeFailures === 1) {
+        try {
+          this.onWriteFail?.(e as Error, 1);
+        } catch {
+          /* never throw from the logger */
+        }
+      }
     }
   }
 }
@@ -50,8 +77,17 @@ export function sweepLive(callsDir: string, exceptId: string, now = Date.now()):
     for (const d of readdirSync(callsDir)) {
       if (d === exceptId || d === "latest") continue;
       const f = join(callsDir, d, "live.jsonl");
-      try { if (existsSync(f) && now - statSync(f).mtimeMs > 120_000) { rmSync(f, { force: true }); n++; } } catch { /* next */ }
+      try {
+        if (existsSync(f) && now - statSync(f).mtimeMs > 120_000) {
+          rmSync(f, { force: true });
+          n++;
+        }
+      } catch {
+        /* next */
+      }
     }
-  } catch { /* no calls folder yet */ }
+  } catch {
+    /* no calls folder yet */
+  }
   return n;
 }

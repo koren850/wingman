@@ -9,22 +9,37 @@ import { resolveId } from "./calls.ts";
 
 // Reads new complete lines of a growing .jsonl file. A partial last line is carried over to the next read; a shrunk file restarts from 0.
 class Tail {
-  off = 0; carry = Buffer.alloc(0);
+  off = 0;
+  carry = Buffer.alloc(0);
   constructor(private file: string) {}
   read(): FeedRow[] {
     let fd: number | undefined;
     try {
-      const st = lstatSync(this.file); if (!st.isFile()) return [];
-      if (st.size < this.off) { this.off = 0; this.carry = Buffer.alloc(0); }
+      const st = lstatSync(this.file);
+      if (!st.isFile()) return [];
+      if (st.size < this.off) {
+        this.off = 0;
+        this.carry = Buffer.alloc(0);
+      }
       if (st.size === this.off) return [];
       fd = openSync(this.file, "r");
-      const n = Math.min(fstatSync(fd).size - this.off, 4_000_000), buf = Buffer.alloc(n);
-      const got = readSync(fd, buf, 0, n, this.off); this.off += got;
-      const data = Buffer.concat([this.carry, buf.subarray(0, got)]), nl = data.lastIndexOf(10);
-      if (nl < 0) { this.carry = data; return []; }
+      const n = Math.min(fstatSync(fd).size - this.off, 4_000_000),
+        buf = Buffer.alloc(n);
+      const got = readSync(fd, buf, 0, n, this.off);
+      this.off += got;
+      const data = Buffer.concat([this.carry, buf.subarray(0, got)]),
+        nl = data.lastIndexOf(10);
+      if (nl < 0) {
+        this.carry = data;
+        return [];
+      }
       this.carry = data.subarray(nl + 1);
       return feedLib.parseJsonl("", data.subarray(0, nl + 1).toString("utf8")).rows;
-    } catch { return []; } finally { if (fd !== undefined) closeSync(fd); }
+    } catch {
+      return [];
+    } finally {
+      if (fd !== undefined) closeSync(fd);
+    }
   }
 }
 
@@ -34,12 +49,30 @@ async function pickId(ctx: Ctx, given: string | undefined) {
   const a = await appStatus(ctx);
   if (a?.state?.callId && a.state.running) return { id: a.state.callId as string, running: true, phase: a.state.phase as string };
   const l = dataLib.listCalls(ctx.calls)[0];
-  if (!l) throw new CliError("not_found", a ? "No call is running and there are no saved calls." : "The app is not running and there are no saved calls.", a ? EXIT.NOT_FOUND : EXIT.NO_APP);
+  if (!l)
+    throw new CliError(
+      "not_found",
+      a ? "No call is running and there are no saved calls." : "The app is not running and there are no saved calls.",
+      a ? EXIT.NOT_FOUND : EXIT.NO_APP,
+    );
   return { id: l.id as string, running: false, phase: "" };
 }
 
 /** One row of the live feed (transcript line, card or frame). */
-interface FeedRow { t: number; ch?: string; text?: string; badge?: string; say?: string; dim?: boolean; id?: string; withdraw?: boolean; cards?: unknown; kind?: string; topic?: string; checklist?: unknown[] }
+interface FeedRow {
+  t: number;
+  ch?: string;
+  text?: string;
+  badge?: string;
+  say?: string;
+  dim?: boolean;
+  id?: string;
+  withdraw?: boolean;
+  cards?: unknown;
+  kind?: string;
+  topic?: string;
+  checklist?: unknown[];
+}
 const fmtLine = (l: FeedRow, t0: number) => `[${feedLib.stamp(l.t, t0)}] ${l.ch === "me" ? "me  " : "them"}: ${l.text}`;
 const fmtCard = (c: FeedRow) => `    -> [${c.badge}${c.dim ? ", dim" : ""}] ${c.say}`;
 
@@ -52,28 +85,69 @@ export async function live(ctx: Ctx, args: string[]): Promise<Result> {
   const { id, running } = await pickId(ctx, values.id);
   const dir = dataLib.callDir(ctx.calls, id);
   const feed = feedLib.create();
-  const tr = new Tail(join(dir, "transcript.jsonl")), cd = new Tail(join(dir, "cards.jsonl"));
-  const load = () => { const lr = tr.read(), cr = cd.read(); return { lines: feed.addLines(lr), cards: feed.addCards(cr), frame: feed.addFrameRows(cr) }; };
+  const tr = new Tail(join(dir, "transcript.jsonl")),
+    cd = new Tail(join(dir, "cards.jsonl"));
+  const load = () => {
+    const lr = tr.read(),
+      cr = cd.read();
+    return { lines: feed.addLines(lr), cards: feed.addCards(cr), frame: feed.addFrameRows(cr) };
+  };
   load();
   const t0 = () => feed.lines[0]?.t ?? 0;
 
   if (!values.follow) {
-    const v = feed.view(), snap = feed.snapshot();
+    const v = feed.view(),
+      snap = feed.snapshot();
     const items = v.items.slice(-last);
     const L = [`Call ${id}${running ? " (live)" : ""}`];
-    if (snap.frame) L.push(`Frame: ${snap.frame.kind}${snap.frame.topic ? ` · ${snap.frame.topic}` : ""} · ${feedLib.frameProgress(snap.frame).done}/${snap.frame.checklist.length}`);
-    for (const l of items) { L.push(fmtLine(l, t0())); for (const c of l.cards) L.push(fmtCard(c)); }
+    if (snap.frame)
+      L.push(
+        `Frame: ${snap.frame.kind}${snap.frame.topic ? ` · ${snap.frame.topic}` : ""} · ${feedLib.frameProgress(snap.frame).done}/${snap.frame.checklist.length}`,
+      );
+    for (const l of items) {
+      L.push(fmtLine(l, t0()));
+      for (const c of l.cards) L.push(fmtCard(c));
+    }
     for (const c of v.loose) L.push(`  (card) [${c.badge}] ${c.say}`);
     if (!items.length) L.push("(nothing heard yet)");
-    return { data: { callId: id, live: running, frame: snap.frame, lines: items.map((l: FeedRow) => ({ t: l.t, ch: l.ch, text: l.text, cards: l.cards })), looseCards: v.loose }, text: L.join("\n") };
+    return {
+      data: {
+        callId: id,
+        live: running,
+        frame: snap.frame,
+        lines: items.map((l: FeedRow) => ({ t: l.t, ch: l.ch, text: l.text, cards: l.cards })),
+        looseCards: v.loose,
+      },
+      text: L.join("\n"),
+    };
   }
 
   // Follow: stream until the call ends, --timeout seconds pass, or Ctrl+C.
-  if (!running) throw new CliError("not_live", "No call is running to follow.", EXIT.REFUSED, "Read a finished call with: wingman live --id <id>  or  wingman calls show <id>");
+  if (!running)
+    throw new CliError(
+      "not_live",
+      "No call is running to follow.",
+      EXIT.REFUSED,
+      "Read a finished call with: wingman live --id <id>  or  wingman calls show <id>",
+    );
   const end = values.timeout ? Date.now() + Number(values.timeout) * 1000 : Infinity;
-  const emit = (type: string, o: FeedRow) => ctx.out(ctx.json ? JSON.stringify({ type, ...o }) + "\n" : type === "line" ? fmtLine(o, t0()) + "\n" : type === "card" ? (o.withdraw ? `    (card ${o.id} withdrawn)\n` : fmtCard(o) + "\n") : type === "frame" ? `Frame: ${o.kind}${o.topic ? ` · ${o.topic}` : ""} · ${feedLib.frameProgress(o).done}/${(o.checklist ?? []).length}\n` : "");
-  for (const l of feed.lines.slice(-Math.min(last, 10))) emit("line", l);   // a little context to start with
-  let tick = 0, ended = false;
+  const emit = (type: string, o: FeedRow) =>
+    ctx.out(
+      ctx.json
+        ? JSON.stringify({ type, ...o }) + "\n"
+        : type === "line"
+          ? fmtLine(o, t0()) + "\n"
+          : type === "card"
+            ? o.withdraw
+              ? `    (card ${o.id} withdrawn)\n`
+              : fmtCard(o) + "\n"
+            : type === "frame"
+              ? `Frame: ${o.kind}${o.topic ? ` · ${o.topic}` : ""} · ${feedLib.frameProgress(o).done}/${(o.checklist ?? []).length}\n`
+              : "",
+    );
+  for (const l of feed.lines.slice(-Math.min(last, 10))) emit("line", l); // a little context to start with
+  let tick = 0,
+    ended = false;
   while (Date.now() < end && !ctx.signal?.aborted) {
     await ctx.sleep(600);
     const d = load();
@@ -82,9 +156,16 @@ export async function live(ctx: Ctx, args: string[]): Promise<Result> {
     if (d.frame) emit("frame", d.frame);
     if (++tick % 5 === 0) {
       const a = await appStatus(ctx).catch(() => null);
-      if (!a || !a.state.running || a.state.callId !== id) { const f = load(); for (const l of f.lines) emit("line", l); for (const c of f.cards) emit("card", c); ended = true; break; }
+      if (!a || !a.state.running || a.state.callId !== id) {
+        const f = load();
+        for (const l of f.lines) emit("line", l);
+        for (const c of f.cards) emit("card", c);
+        ended = true;
+        break;
+      }
     }
   }
-  if (ctx.json) ctx.out(JSON.stringify({ type: "end", callId: id, ended }) + "\n"); else ctx.out(ended ? "(call ended)\n" : "");
+  if (ctx.json) ctx.out(JSON.stringify({ type: "end", callId: id, ended }) + "\n");
+  else ctx.out(ended ? "(call ended)\n" : "");
   return { data: { callId: id, ended, streamed: true }, text: "" };
 }

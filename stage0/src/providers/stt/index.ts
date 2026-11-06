@@ -20,13 +20,19 @@ export function getSttProvider(id: string): SttProvider {
   return p;
 }
 /** Primary then fallbacks, without duplicates. */
-export function sttChain(s: Settings): string[] { return [...new Set([s.stt.provider, ...s.stt.fallback])]; }
+export function sttChain(s: Settings): string[] {
+  return [...new Set([s.stt.provider, ...s.stt.fallback])];
+}
 
 /** Keyterms per settings (stt.keyterms.enabled / file / max). One term per line; missing file = none. */
 export function loadKeyterms(s: Settings): string[] {
   if (s.stt.keyterms.enabled === "off") return [];
-  const f = s.stt.keyterms.file ? resolve(STAGE0, expandHome(s.stt.keyterms.file)) : packPath("keyterms.txt");   // empty setting = the pack's list; relative = from the app folder, absolute and ~/ as written
+  const f = s.stt.keyterms.file ? resolve(STAGE0, expandHome(s.stt.keyterms.file)) : packPath("keyterms.txt"); // empty setting = the pack's list; relative = from the app folder, absolute and ~/ as written
   if (!f || !existsSync(f)) return [];
-  return readFileSync(f, "utf8").split("\n").map((x) => x.trim()).filter(Boolean).slice(0, s.stt.keyterms.max);
+  return readFileSync(f, "utf8")
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, s.stt.keyterms.max);
 }
 export type { SttProvider, SttStreamLike, SttResult, SttOptions, Word, Channel } from "./types.ts";

@@ -20,7 +20,8 @@ test("qa: a hyphenated bank id alone on the tag line is not cut at the hyphen", 
   assert.deepEqual(parseTag(a.tagLine!), { kind: "BANK", bankId: "stall-price" });
   assert.equal(a.say, "המחיר תלוי");
   const b = parseReflex("ANS - תשובה קצרה\n", true);
-  assert.equal(b.tagLine, "ANS"); assert.equal(b.say, "תשובה קצרה");
+  assert.equal(b.tagLine, "ANS");
+  assert.equal(b.say, "תשובה קצרה");
 });
 
 test("qa: 'יש לנו / יש לי ...' is a statement, 'יש לכם ...' still a question", () => {
@@ -74,7 +75,8 @@ test("qa: a price/timeline/guarantee bank hit cannot be replaced by a model answ
 
 test("qa: English timeline questions get the timeline stall card", () => {
   const bank = loadBank();
-  for (const q of ["How long will it take?", "Great. How long will it take", "when will it be ready"]) assert.equal(matchBank(q, bank)?.card.id, "stall-timeline", q);
+  for (const q of ["How long will it take?", "Great. How long will it take", "when will it be ready"])
+    assert.equal(matchBank(q, bank)?.card.id, "stall-timeline", q);
 });
 
 test("qa: 'היי דן, כמה שאלות מהירות' is an opener, 'כמה שאלות יש' stays out too, 'כמה זה עולה' is a question", () => {
@@ -92,15 +94,31 @@ const cut = (s: string) => splitMergedQuestions(s, bank2);
 
 test("qa2: fast questions merged into one final are cut, one card each", () => {
   const parts = cut("יש לכם גיבוי כמה זה עולה האתר איתי מה עושים");
-  assert.deepEqual(parts, ["יש לכם גיבוי", "כמה זה עולה", "האתר איתי מה עושים"]);   // the slow-site question gets its own card, not the price stall
-  assert.deepEqual(parts.map((p) => matchBank2(p, bank2)?.card.id), ["backups", "stall-price", "site-slow"]);
+  assert.deepEqual(parts, ["יש לכם גיבוי", "כמה זה עולה", "האתר איתי מה עושים"]); // the slow-site question gets its own card, not the price stall
+  assert.deepEqual(
+    parts.map((p) => matchBank2(p, bank2)?.card.id),
+    ["backups", "stall-price", "site-slow"],
+  );
   assert.deepEqual(cut("יש לכם גיבוי? כמה זה עולה? האתר איטי, מה עושים?"), ["יש לכם גיבוי?", "כמה זה עולה?", "האתר איטי, מה עושים?"]);
 });
 test("qa2: a problem plus one question stays whole", () => {
   assert.deepEqual(cut("האתר איטי, כמה זה יעלה לתקן?"), ["האתר איטי, כמה זה יעלה לתקן?"]);
   assert.deepEqual(cut("אנחנו רוצים להעביר את הדומיין, איך עושים את זה?"), ["אנחנו רוצים להעביר את הדומיין, איך עושים את זה?"]);
-  for (const q of ["כמה עולה חנות כזאת?", "אני מבינה, אבל תגיד לי מספר בערך. כמה זה יעלה.", "בסדר. ומה אם התחזוקה חודשית כמה זה יוצא בחודש?", "ומתי החנות תהיה מוכנה", "אתם מתחייבים שזה יהיה מוכן בזמן?"]) assert.deepEqual(cut(q), [q]);
-  for (const q of ["The site is really slow lately. Why is that happening?", "Do you have a backup of the site?", "What about the SSL certificate? Is it included?", "Can you move our domain to Cloudflare?"]) assert.deepEqual(cut(q), [q]);
+  for (const q of [
+    "כמה עולה חנות כזאת?",
+    "אני מבינה, אבל תגיד לי מספר בערך. כמה זה יעלה.",
+    "בסדר. ומה אם התחזוקה חודשית כמה זה יוצא בחודש?",
+    "ומתי החנות תהיה מוכנה",
+    "אתם מתחייבים שזה יהיה מוכן בזמן?",
+  ])
+    assert.deepEqual(cut(q), [q]);
+  for (const q of [
+    "The site is really slow lately. Why is that happening?",
+    "Do you have a backup of the site?",
+    "What about the SSL certificate? Is it included?",
+    "Can you move our domain to Cloudflare?",
+  ])
+    assert.deepEqual(cut(q), [q]);
 });
 test("qa2: STT 'תעודת הבטחה' is an SSL question, not a guarantee stall", () => {
   assert.equal(matchBank2("ומה עם תעודת הבטחה", bank2)?.card.id, "ssl-basics");

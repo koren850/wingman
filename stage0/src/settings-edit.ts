@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import YAML from "yaml";
 import { flatten, loadSettings, SettingsError, STARTER, USER_SETTINGS_FILE, type Flat } from "./settings.ts";
 
-export type Edits = Record<string, unknown>;   // key -> new value, or null = back to the default
+export type Edits = Record<string, unknown>; // key -> new value, or null = back to the default
 export type EditResult = { ok: true; changed: string[] } | { ok: false; message: string };
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -21,7 +21,8 @@ function pruneEmpty(doc: YAML.Document, path: string[]) {
   for (let n = path.length - 1; n >= 1; n--) {
     const parent = path.slice(0, n);
     const node = doc.getIn(parent, true);
-    if (YAML.isMap(node) && node.items.length === 0) doc.deleteIn(parent); else break;
+    if (YAML.isMap(node) && node.items.length === 0) doc.deleteIn(parent);
+    else break;
   }
 }
 
@@ -31,20 +32,38 @@ function pruneEmpty(doc: YAML.Document, path: string[]) {
  * Waits up to 12 s; returns null if the lock could not be taken.
  */
 function withLock<T>(userFile: string, fn: () => T): T | null {
-  const dir = dirname(userFile), lock = join(dir, ".settings.yaml.lock");
-  try { mkdirSync(dir, { recursive: true, mode: 0o700 }); } catch { /* the write reports it */ }
+  const dir = dirname(userFile),
+    lock = join(dir, ".settings.yaml.lock");
+  try {
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+  } catch {
+    /* the write reports it */
+  }
   const sleep = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
   const until = Date.now() + 12_000;
   for (;;) {
-    try { mkdirSync(lock, { mode: 0o700 }); break; }
-    catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "EEXIST") break;   // cannot lock here (read-only folder...): go on, the write reports the real error
-      try { if (Date.now() - statSync(lock).mtimeMs > 10_000) { rmSync(lock, { recursive: true, force: true }); continue; } } catch { continue; }
+    try {
+      mkdirSync(lock, { mode: 0o700 });
+      break;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") break; // cannot lock here (read-only folder...): go on, the write reports the real error
+      try {
+        if (Date.now() - statSync(lock).mtimeMs > 10_000) {
+          rmSync(lock, { recursive: true, force: true });
+          continue;
+        }
+      } catch {
+        continue;
+      }
       if (Date.now() > until) return null;
       sleep(20);
     }
   }
-  try { return fn(); } finally { rmSync(lock, { recursive: true, force: true }); }
+  try {
+    return fn();
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+  }
 }
 
 /**
@@ -60,40 +79,73 @@ export function applyEdits(userFile: string, edits: Edits): EditResult {
 function applyEditsLocked(userFile: string, edits: Edits): EditResult {
   const keys = Object.keys(edits);
   let text: string;
-  try { text = existsSync(userFile) ? readFileSync(userFile, "utf8") : STARTER; } catch (e) { return { ok: false, message: `Cannot read ${userFile}: ${(e as Error).message}` }; }
+  try {
+    text = existsSync(userFile) ? readFileSync(userFile, "utf8") : STARTER;
+  } catch (e) {
+    return { ok: false, message: `Cannot read ${userFile}: ${(e as Error).message}` };
+  }
   const doc = YAML.parseDocument(text);
-  if (doc.errors.length) return { ok: false, message: `${userFile} is not valid YAML: ${doc.errors[0].message.split("\n")[0]}. Fix or delete that file first.` };
+  if (doc.errors.length)
+    return { ok: false, message: `${userFile} is not valid YAML: ${doc.errors[0].message.split("\n")[0]}. Fix or delete that file first.` };
   if (doc.contents != null && !YAML.isMap(doc.contents)) return { ok: false, message: `${userFile}: the top level must be a mapping of keys.` };
   let defaults: Flat;
-  try { defaults = defaultsFlat(); } catch (e) { return { ok: false, message: (e as Error).message }; }
+  try {
+    defaults = defaultsFlat();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
   const changed: string[] = [];
   for (const key of keys) {
     if (!(key in defaults) || !/^[A-Za-z0-9_.]+$/.test(key)) return { ok: false, message: `Unknown setting "${key}".` };
-    const path = key.split("."), v = edits[key];
-    if (v === null || same(v, defaults[key])) { if (doc.contents != null && doc.deleteIn(path)) pruneEmpty(doc, path); }
-    else {
+    const path = key.split("."),
+      v = edits[key];
+    if (v === null || same(v, defaults[key])) {
+      if (doc.contents != null && doc.deleteIn(path)) pruneEmpty(doc, path);
+    } else {
       // A bare section header ("stt:" with nothing under it) is a null scalar: replace it with a map before writing below it.
-      for (let n = 1; n < path.length; n++) { const node = doc.getIn(path.slice(0, n), true); if (node !== undefined && !YAML.isMap(node)) doc.setIn(path.slice(0, n), new YAML.YAMLMap()); }
+      for (let n = 1; n < path.length; n++) {
+        const node = doc.getIn(path.slice(0, n), true);
+        if (node !== undefined && !YAML.isMap(node)) doc.setIn(path.slice(0, n), new YAML.YAMLMap());
+      }
       doc.setIn(path, v);
     }
     changed.push(key);
   }
   const out = doc.toString();
-  const dir = dirname(userFile), tmp = join(dir, `.settings.yaml.${process.pid}.tmp`), cand = join(dir, `.settings.check.${process.pid}.tmp`);
+  const dir = dirname(userFile),
+    tmp = join(dir, `.settings.yaml.${process.pid}.tmp`),
+    cand = join(dir, `.settings.check.${process.pid}.tmp`);
   try {
     // Validate a copy first so a bad edit never touches the real file.
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     writeFileSync(cand, out, { mode: 0o600 });
-    try { loadSettings({ userFile: cand, env: {}, argv: [] }); }
-    catch (e) {
-      if (e instanceof SettingsError) { const i = e.issues[0]; return { ok: false, message: `${i.key}: ${i.message}${i.allowed ? ` (allowed: ${i.allowed})` : ""}` }; }
+    try {
+      loadSettings({ userFile: cand, env: {}, argv: [] });
+    } catch (e) {
+      if (e instanceof SettingsError) {
+        const i = e.issues[0];
+        return { ok: false, message: `${i.key}: ${i.message}${i.allowed ? ` (allowed: ${i.allowed})` : ""}` };
+      }
       return { ok: false, message: (e as Error).message };
-    } finally { rmSync(cand, { force: true }); }
+    } finally {
+      rmSync(cand, { force: true });
+    }
     writeFileSync(tmp, out, { mode: 0o600 });
-    try { chmodSync(tmp, 0o600); } catch { /* no POSIX modes (Windows) */ }
+    try {
+      chmodSync(tmp, 0o600);
+    } catch {
+      /* no POSIX modes (Windows) */
+    }
     renameSync(tmp, userFile);
-    try { chmodSync(userFile, 0o600); } catch { /* no POSIX modes (Windows) */ }
-  } catch (e) { rmSync(tmp, { force: true }); return { ok: false, message: `Could not save: ${(e as Error).message}` }; }
+    try {
+      chmodSync(userFile, 0o600);
+    } catch {
+      /* no POSIX modes (Windows) */
+    }
+  } catch (e) {
+    rmSync(tmp, { force: true });
+    return { ok: false, message: `Could not save: ${(e as Error).message}` };
+  }
   return { ok: true, changed };
 }
 
@@ -101,9 +153,13 @@ function applyEditsLocked(userFile: string, edits: Edits): EditResult {
 export function readState(userFile: string) {
   const defaults = defaultsFlat();
   const { settings, sources } = loadSettings({ userFile, env: {}, argv: [] });
-  const values = flatten(settings), changed: string[] = [];
+  const values = flatten(settings),
+    changed: string[] = [];
   for (const k of Object.keys(values)) if (sources[k]?.layer === "user" && !same(values[k], defaults[k])) changed.push(k);
-  const scalar = (o: Flat) => Object.fromEntries(Object.entries(o).filter(([k, v]) => !k.startsWith("budget.prices") && (v === null || ["string", "number", "boolean"].includes(typeof v))));
+  const scalar = (o: Flat) =>
+    Object.fromEntries(
+      Object.entries(o).filter(([k, v]) => !k.startsWith("budget.prices") && (v === null || ["string", "number", "boolean"].includes(typeof v))),
+    );
   return { values: scalar(values), defaults: scalar(defaults), changed, userFile, keysFile: settings.keys.file };
 }
 

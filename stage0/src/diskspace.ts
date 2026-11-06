@@ -7,8 +7,13 @@ export const DISK_RED_BYTES = 100 * 1024 * 1024;
 
 /** Free bytes for unprivileged users on the volume holding `dir`, or null when it cannot be read (never throws). */
 export function freeBytes(dir: string): number | null {
-  if (process.env.WINGMAN_FREE_BYTES) return Number(process.env.WINGMAN_FREE_BYTES);   // tests: pretend the disk is nearly full
-  try { const s = statfsSync(dir); return Number(s.bavail) * Number(s.bsize); } catch { return null; }
+  if (process.env.WINGMAN_FREE_BYTES) return Number(process.env.WINGMAN_FREE_BYTES); // tests: pretend the disk is nearly full
+  try {
+    const s = statfsSync(dir);
+    return Number(s.bavail) * Number(s.bsize);
+  } catch {
+    return null;
+  }
 }
 /** "ok" | "amber" | "red" for a free-space figure. Unknown (null) is "ok": no false alarm when statfs is unavailable. */
 export function diskLevel(bytes: number | null, amber = DISK_AMBER_BYTES, red = DISK_RED_BYTES): "ok" | "amber" | "red" {

@@ -2,7 +2,7 @@
 // Everything compares text AFTER normalize(): no niqqud, no bidi/zero-width marks, no punctuation, final letters folded
 // (ך->כ ...), lower case. Phrases are matched token by token, tolerating one glued Hebrew prefix (ב ל ה ו מ ש כ).
 const NIQQUD = /[֑-ׇ]/g;
-const FINALS: Record<string, string> = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
+const FINALS: Record<string, string> = { ך: "כ", ם: "מ", ן: "נ", ף: "פ", ץ: "צ" };
 // Hebrew prefixes that glue onto words: one letter (ה ו ב ל מ ש כ) or a valid pair. Pairs like "לה", "בה"
 // are NOT stripped ("להעלות" is a verb, not ל+ה+עלות). The remainder must be 3+ Hebrew letters or a Latin/digit token.
 const PREFIX_1 = new Set([..."והבלמשכ"]);
@@ -57,7 +57,9 @@ export function tokenSet(s: string): Set<string> {
 
 /** True if every token of `phrase` appears (prefix-aware) in `text`, in order. Possessive/filler words are ignored. */
 export function containsPhrase(text: string, phrase: string): boolean {
-  const tt = tokens(text).filter((w) => !STOP.has(w)).map(tokenVariants);
+  const tt = tokens(text)
+    .filter((w) => !STOP.has(w))
+    .map(tokenVariants);
   const pt = tokens(phrase).filter((w) => !STOP.has(w));
   if (!pt.length) return false;
   outer: for (let i = 0; i <= tt.length - pt.length; i++) {
@@ -77,7 +79,12 @@ export function containsPhrase(text: string, phrase: string): boolean {
  */
 export function phraseWordIndex(text: string, phrase: string): number {
   const tt: { v: string[]; raw: number }[] = [];
-  text.trim().split(/\s+/).forEach((w, raw) => { for (const t of tokens(w)) if (!STOP.has(t)) tt.push({ v: tokenVariants(t), raw }); });
+  text
+    .trim()
+    .split(/\s+/)
+    .forEach((w, raw) => {
+      for (const t of tokens(w)) if (!STOP.has(t)) tt.push({ v: tokenVariants(t), raw });
+    });
   const pt = tokens(phrase).filter((w) => !STOP.has(w));
   if (!pt.length) return -1;
   outer: for (let i = 0; i <= tt.length - pt.length; i++) {

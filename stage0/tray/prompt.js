@@ -6,7 +6,9 @@ form.hidden = false;
 const first = form.querySelector("input");
 first && first.focus();
 for (const b of document.querySelectorAll(".cancel")) b.addEventListener("click", () => window.close());
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") window.close(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") window.close();
+});
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const v = (id) => document.getElementById(id).value;

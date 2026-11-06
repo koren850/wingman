@@ -7,7 +7,13 @@ import { emitCard } from "./cards.ts";
 /** Hebrew label for a channel, used in health texts. */
 export const chHe = (c: string) => (c === "me" ? "(המיקרופון שלך)" : "(הצד השני)");
 /** Call phase for the answer window: written into call.json at each change (best effort, like every CallLog write). */
-export function setPhase(phase: "starting" | "waiting" | "live" | "ended", extra: Record<string, unknown> = {}) { try { log.update({ phase, ...extra }); } catch { /* best effort */ } }
+export function setPhase(phase: "starting" | "waiting" | "live" | "ended", extra: Record<string, unknown> = {}) {
+  try {
+    log.update({ phase, ...extra });
+  } catch {
+    /* best effort */
+  }
+}
 /** Status line for the menu-bar app: "@@wingman {json}" on its own line (the leading newline keeps it off any half-written log line). Only in control mode. */
 export function status(ev: string, data: Record<string, unknown> = {}) {
   if (CONTROL) process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`);
@@ -34,20 +40,34 @@ export function errBrief(e: unknown): string {
     const pe = e as ProviderError;
     if (pe?.kind) return `${describe(pe)}${pe.provider ? ` (${pe.provider})` : ""}`;
     return errText(e).slice(0, 200);
-  } catch { return "error"; }
+  } catch {
+    return "error";
+  }
 }
 /** A handler failed but the call must go on: log it (`error.survived`) and carry on. Floods are thinned (first 20 per place, then every 100th). Does not count towards the "too many strays" crash. */
 const survivedCount: Record<string, number> = {};
 export function survived(where: string, e: unknown) {
   const n = (survivedCount[where] = (survivedCount[where] ?? 0) + 1);
   if (n > 20 && n % 100) return;
-  try { log.write("events", { type: "error.survived", where, n, error: String((e as Error)?.stack ?? e).slice(0, 2000) }); } catch { /* best effort */ }
-  try { console.error(`\n⚠️ ${where} failed (call continues): ${errBrief(e)}`); } catch { /* stderr gone */ }
+  try {
+    log.write("events", { type: "error.survived", where, n, error: String((e as Error)?.stack ?? e).slice(0, 2000) });
+  } catch {
+    /* best effort */
+  }
+  try {
+    console.error(`\n⚠️ ${where} failed (call continues): ${errBrief(e)}`);
+  } catch {
+    /* stderr gone */
+  }
 }
 /** Wraps an event handler / timer callback: a throw (or a rejected promise) is logged and survived. */
 export function safe<A extends unknown[]>(where: string, fn: (...a: A) => unknown): (...a: A) => void {
   return (...a: A) => {
-    try { const r = fn(...a); if (r && typeof (r as Promise<unknown>).catch === "function") (r as Promise<unknown>).catch((e) => survived(where, e)); }
-    catch (e) { survived(where, e); }
+    try {
+      const r = fn(...a);
+      if (r && typeof (r as Promise<unknown>).catch === "function") (r as Promise<unknown>).catch((e) => survived(where, e));
+    } catch (e) {
+      survived(where, e);
+    }
   };
 }

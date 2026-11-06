@@ -16,11 +16,23 @@ function denyPermissions(ses, allow = []) {
 /** Locks down the session of every web contents the app ever creates (and the default session at once when the app is ready). */
 function install(app, allow = []) {
   app.on("web-contents-created", (_e, wc) => {
-    try { denyPermissions(wc.session, allow); } catch { /* a session that cannot be set stays as Electron has it */ }
+    try {
+      denyPermissions(wc.session, allow);
+    } catch {
+      /* a session that cannot be set stays as Electron has it */
+    }
     wc.on("will-attach-webview", (e) => e.preventDefault());
     wc.on("will-redirect", (e) => e.preventDefault());
   });
-  if (app.whenReady && app.getAppPath) app.whenReady().then(() => { try { const { session } = require("electron"); denyPermissions(session.defaultSession, allow); } catch { /* not in Electron */ } });
+  if (app.whenReady && app.getAppPath)
+    app.whenReady().then(() => {
+      try {
+        const { session } = require("electron");
+        denyPermissions(session.defaultSession, allow);
+      } catch {
+        /* not in Electron */
+      }
+    });
 }
 
 module.exports = { denyPermissions, install };

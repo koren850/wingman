@@ -16,7 +16,9 @@ test("every catalog key exists, its default is inside the allowed range, and the
   const d = defaultsFlat();
   assert.ok(cat.ITEMS.length >= 10 && cat.ITEMS.length <= 26, "about 10-24 settings");
   for (const i of cat.ITEMS) {
-    assert.ok(i.key in d, i.key); assert.ok(i.label && i.help && i.help.length > 30 && i.help.length < 260, i.key + " help"); assert.ok(cat.GROUPS.some((g: any) => g.id === i.group));
+    assert.ok(i.key in d, i.key);
+    assert.ok(i.label && i.help && i.help.length > 30 && i.help.length < 260, i.key + " help");
+    assert.ok(cat.GROUPS.some((g: any) => g.id === i.group));
     const shown = cat.toDisplay(i, d[i.key]);
     assert.doesNotThrow(() => cat.toStored(i, shown), i.key + " default round-trips");
     assert.deepEqual(cat.toStored(i, shown), d[i.key], i.key + " round trip equals default");
@@ -26,15 +28,18 @@ test("every catalog key exists, its default is inside the allowed range, and the
 test("min and max of every number are accepted by the real schema; one step outside is refused", () => {
   for (const i of cat.ITEMS.filter((x: any) => x.kind === "int" || x.kind === "number")) {
     for (const v of [i.min, i.max]) {
-      const f = tmp(); const r = applyEdits(f, { [i.key]: cat.toStored(i, v) });
+      const f = tmp();
+      const r = applyEdits(f, { [i.key]: cat.toStored(i, v) });
       assert.equal(r.ok, true, `${i.key}=${v}: ${JSON.stringify(r)}`);
     }
-    assert.throws(() => cat.toStored(i, i.max + 1)); assert.throws(() => cat.toStored(i, i.min - 1));
+    assert.throws(() => cat.toStored(i, i.max + 1));
+    assert.throws(() => cat.toStored(i, i.min - 1));
   }
 });
 
 test("select options and booleans are valid; inverted booleans store the opposite; seconds store milliseconds", () => {
-  for (const i of cat.ITEMS.filter((x: any) => x.kind === "select")) for (const [v] of i.options) assert.equal(applyEdits(tmp(), { [i.key]: v }).ok, true, i.key + v);
+  for (const i of cat.ITEMS.filter((x: any) => x.kind === "select"))
+    for (const [v] of i.options) assert.equal(applyEdits(tmp(), { [i.key]: v }).ok, true, i.key + v);
   assert.equal(cat.toStored(cat.BY_KEY.get("run.noAi"), true), false);
   assert.equal(cat.toStored(cat.BY_KEY.get("overlay.contentProtection"), false), true);
   assert.equal(cat.toStored(cat.BY_KEY.get("tips.minGapMs"), 60), 60000);
@@ -44,8 +49,13 @@ test("select options and booleans are valid; inverted booleans store the opposit
 });
 
 test("describe marks changed rows and shows screen values", () => {
-  const f = tmp(); applyEdits(f, { "run.noAi": true, "tips.minGapMs": 60000 });
-  const rows = cat.describe(readState(f)); const get = (k: string) => rows.find((r: any) => r.key === k);
-  assert.equal(get("run.noAi").value, false); assert.equal(get("run.noAi").def, true); assert.equal(get("run.noAi").changed, true);
-  assert.equal(get("tips.minGapMs").value, 60); assert.equal(get("cards.quiet").changed, false);
+  const f = tmp();
+  applyEdits(f, { "run.noAi": true, "tips.minGapMs": 60000 });
+  const rows = cat.describe(readState(f));
+  const get = (k: string) => rows.find((r: any) => r.key === k);
+  assert.equal(get("run.noAi").value, false);
+  assert.equal(get("run.noAi").def, true);
+  assert.equal(get("run.noAi").changed, true);
+  assert.equal(get("tips.minGapMs").value, 60);
+  assert.equal(get("cards.quiet").changed, false);
 });

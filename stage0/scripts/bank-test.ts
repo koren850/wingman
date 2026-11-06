@@ -47,15 +47,24 @@ const CASES: [string, string][] = [
 ];
 
 const bank = loadBank();
-let right = 0, wrong = 0, miss = 0;
+let right = 0,
+  wrong = 0,
+  miss = 0;
 const lines: string[] = [];
 for (const [text, want] of CASES) {
   const got = matchBank(text, bank)?.card.id ?? "-";
   if (got === want) right++;
-  else if (got === "-") { miss++; lines.push(`MISS   want ${want}   ${text}`); }
-  else { wrong++; lines.push(`WRONG  want ${want} got ${got}   ${text}`); }
+  else if (got === "-") {
+    miss++;
+    lines.push(`MISS   want ${want}   ${text}`);
+  } else {
+    wrong++;
+    lines.push(`WRONG  want ${want} got ${got}   ${text}`);
+  }
 }
 const n = CASES.length;
-console.log(`bank top-1: ${right}/${n} right (${((100 * right) / n).toFixed(0)}%), ${wrong} wrong-card (${((100 * wrong) / n).toFixed(0)}%), ${miss} no card (${((100 * miss) / n).toFixed(0)}%)`);
+console.log(
+  `bank top-1: ${right}/${n} right (${((100 * right) / n).toFixed(0)}%), ${wrong} wrong-card (${((100 * wrong) / n).toFixed(0)}%), ${miss} no card (${((100 * miss) / n).toFixed(0)}%)`,
+);
 if (lines.length) console.log("\n" + lines.join("\n"));
 process.exitCode = right / n >= 0.75 && wrong / n <= 0.05 ? 0 : 1;

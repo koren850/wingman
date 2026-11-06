@@ -4,42 +4,119 @@
    <html data-theme="dark"> and overrides only its denser neutrals (see overlay/index.html). Never copy a hue into a page. */
 :root {
   /* neutrals (warm night) */
-  --bg:#120E0B; --s1:#1A1410; --s2:#241C16; --s3:#2E241C;
-  --line:rgba(255,240,220,.08); --line2:rgba(255,240,220,.14); --input-line:#7a6a58;
-  --text:#F6EDE0; --muted:#BBAD98; --faint:#9a8e7c;
-  --accent:#F59E0B; --accent-ink:#2a1606; --accent-soft:rgba(245,158,11,.13); --focus:#F5B942;
+  --bg: #120e0b;
+  --s1: #1a1410;
+  --s2: #241c16;
+  --s3: #2e241c;
+  --line: rgba(255, 240, 220, 0.08);
+  --line2: rgba(255, 240, 220, 0.14);
+  --input-line: #7a6a58;
+  --text: #f6ede0;
+  --muted: #bbad98;
+  --faint: #9a8e7c;
+  --accent: #f59e0b;
+  --accent-ink: #2a1606;
+  --accent-soft: rgba(245, 158, 11, 0.13);
+  --focus: #f5b942;
   /* fault = something is broken right now (red); advisory = worth knowing (amber); good; info */
-  --fault:#ef7b6f; --advisory:#f5b942; --good:#6fcf9c; --info:#7fb2e6;
-  --good-soft:rgba(111,207,156,.13); --bad-soft:rgba(239,123,111,.13); --warn-soft:rgba(245,185,66,.13); --info-soft:rgba(127,178,230,.13);
+  --fault: #ef7b6f;
+  --advisory: #f5b942;
+  --good: #6fcf9c;
+  --info: #7fb2e6;
+  --good-soft: rgba(111, 207, 156, 0.13);
+  --bad-soft: rgba(239, 123, 111, 0.13);
+  --warn-soft: rgba(245, 185, 66, 0.13);
+  --info-soft: rgba(127, 178, 230, 0.13);
   /* speakers in the transcript */
-  --spk-me:#d9a679; --spk-me-soft:rgba(217,166,121,.14); --spk-them:var(--info);
+  --spk-me: #d9a679;
+  --spk-me-soft: rgba(217, 166, 121, 0.14);
+  --spk-them: var(--info);
   /* card types: Prepared, AI, Buy time, Tip, For you (math answers for you share it) */
-  --t-prep:#6fcf9f; --t-ai:#86a8ff; --t-stall:#9aa8bb; --t-tip:#d2a572; --t-me:#f28ccf; --t-math:var(--t-me); --t-fact:#a493e0; --t-fix:#ff6a60; --t-careful:#f0b440;
+  --t-prep: #6fcf9f;
+  --t-ai: #86a8ff;
+  --t-stall: #9aa8bb;
+  --t-tip: #d2a572;
+  --t-me: #f28ccf;
+  --t-math: var(--t-me);
+  --t-fact: #a493e0;
+  --t-fix: #ff6a60;
+  --t-careful: #f0b440;
   /* radii: chips and inputs, cards, panels, full pill */
-  --r-chip:6px; --r-md:8px; --r-card:10px; --r-lg:14px; --r-pill:999px;
+  --r-chip: 6px;
+  --r-md: 8px;
+  --r-card: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
   /* aliases the dashboard stylesheet uses */
-  --bad:var(--fault); --warn:var(--advisory); --me:var(--spk-me); --me-soft:var(--spk-me-soft);
+  --bad: var(--fault);
+  --warn: var(--advisory);
+  --me: var(--spk-me);
+  --me-soft: var(--spk-me-soft);
 }
 /* Light theme, set explicitly with data-theme="light". The @media block below repeats the same values for "follow the OS" (when no data-theme is set); keep the two in sync. */
 :root[data-theme="light"] {
-  --bg:#FEF7EC; --s1:#FFFDF8; --s2:#FBF1E1; --s3:#F3E6D0;
-  --line:#EADFCB; --line2:#D8C8AD; --input-line:#9a8670;
-  --text:#3b2414; --muted:#6a5645; --faint:#76624f;
-  --accent-soft:rgba(245,158,11,.16); --focus:#8a5300;
-  --fault:#b3261e; --advisory:#8f5a00; --good:#17714a; --info:#2a68b0;
-  --good-soft:rgba(23,113,74,.10); --bad-soft:rgba(179,38,30,.09); --warn-soft:rgba(143,90,0,.11); --info-soft:rgba(42,104,176,.09);
-  --spk-me:#7a4a2a; --spk-me-soft:rgba(122,74,42,.10);
-  --t-prep:#17714a; --t-ai:#3a55c4; --t-stall:#5a6879; --t-tip:#8a5a24; --t-me:#b0287a; --t-fact:#6a4fb0; --t-fix:#b3261e; --t-careful:#8f5a00;
+  --bg: #fef7ec;
+  --s1: #fffdf8;
+  --s2: #fbf1e1;
+  --s3: #f3e6d0;
+  --line: #eadfcb;
+  --line2: #d8c8ad;
+  --input-line: #9a8670;
+  --text: #3b2414;
+  --muted: #6a5645;
+  --faint: #76624f;
+  --accent-soft: rgba(245, 158, 11, 0.16);
+  --focus: #8a5300;
+  --fault: #b3261e;
+  --advisory: #8f5a00;
+  --good: #17714a;
+  --info: #2a68b0;
+  --good-soft: rgba(23, 113, 74, 0.1);
+  --bad-soft: rgba(179, 38, 30, 0.09);
+  --warn-soft: rgba(143, 90, 0, 0.11);
+  --info-soft: rgba(42, 104, 176, 0.09);
+  --spk-me: #7a4a2a;
+  --spk-me-soft: rgba(122, 74, 42, 0.1);
+  --t-prep: #17714a;
+  --t-ai: #3a55c4;
+  --t-stall: #5a6879;
+  --t-tip: #8a5a24;
+  --t-me: #b0287a;
+  --t-fact: #6a4fb0;
+  --t-fix: #b3261e;
+  --t-careful: #8f5a00;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg:#FEF7EC; --s1:#FFFDF8; --s2:#FBF1E1; --s3:#F3E6D0;
-    --line:#EADFCB; --line2:#D8C8AD; --input-line:#9a8670;
-    --text:#3b2414; --muted:#6a5645; --faint:#76624f;
-    --accent-soft:rgba(245,158,11,.16); --focus:#8a5300;
-    --fault:#b3261e; --advisory:#8f5a00; --good:#17714a; --info:#2a68b0;
-    --good-soft:rgba(23,113,74,.10); --bad-soft:rgba(179,38,30,.09); --warn-soft:rgba(143,90,0,.11); --info-soft:rgba(42,104,176,.09);
-    --spk-me:#7a4a2a; --spk-me-soft:rgba(122,74,42,.10);
-    --t-prep:#17714a; --t-ai:#3a55c4; --t-stall:#5a6879; --t-tip:#8a5a24; --t-me:#b0287a; --t-fact:#6a4fb0; --t-fix:#b3261e; --t-careful:#8f5a00;
+    --bg: #fef7ec;
+    --s1: #fffdf8;
+    --s2: #fbf1e1;
+    --s3: #f3e6d0;
+    --line: #eadfcb;
+    --line2: #d8c8ad;
+    --input-line: #9a8670;
+    --text: #3b2414;
+    --muted: #6a5645;
+    --faint: #76624f;
+    --accent-soft: rgba(245, 158, 11, 0.16);
+    --focus: #8a5300;
+    --fault: #b3261e;
+    --advisory: #8f5a00;
+    --good: #17714a;
+    --info: #2a68b0;
+    --good-soft: rgba(23, 113, 74, 0.1);
+    --bad-soft: rgba(179, 38, 30, 0.09);
+    --warn-soft: rgba(143, 90, 0, 0.11);
+    --info-soft: rgba(42, 104, 176, 0.09);
+    --spk-me: #7a4a2a;
+    --spk-me-soft: rgba(122, 74, 42, 0.1);
+    --t-prep: #17714a;
+    --t-ai: #3a55c4;
+    --t-stall: #5a6879;
+    --t-tip: #8a5a24;
+    --t-me: #b0287a;
+    --t-fact: #6a4fb0;
+    --t-fix: #b3261e;
+    --t-careful: #8f5a00;
   }
 }

@@ -4,13 +4,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { EMPTY_PROFILE, ProfileError, parseProfile, profileFile, profileSchema, saveProfile, type Profile } from "./profile.ts";
 
-const file = profileFile(), mode = process.argv[2];
+const file = profileFile(),
+  mode = process.argv[2];
 const out = (o: unknown) => process.stdout.write(JSON.stringify(o) + "\n");
 const read = (): Profile => (existsSync(file) ? parseProfile(readFileSync(file, "utf8"), file) : EMPTY_PROFILE);
 try {
   if (mode === "read") out({ ok: true, profile: read(), file, exists: existsSync(file) });
   else if (mode === "write") {
-    let raw = ""; for await (const c of process.stdin) raw += c;
+    let raw = "";
+    for await (const c of process.stdin) raw += c;
     const d = JSON.parse(raw);
     if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("bad profile");
     const keys = Object.keys(d);

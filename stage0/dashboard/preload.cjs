@@ -13,10 +13,16 @@ contextBridge.exposeInMainWorld("wingman", {
   settingsText: () => ipcRenderer.invoke("tools:settings"),
   callState: () => ipcRenderer.invoke("call:state"),
   // Push channels (main -> page). Only the callback gets the payload; the raw ipcRenderer event is not passed to the page.
-  onCallState: (cb) => { ipcRenderer.on("call:state", (_e, s) => cb(s)); },
-  onNav: (cb) => { ipcRenderer.on("nav", (_e, o) => cb(o)); },
+  onCallState: (cb) => {
+    ipcRenderer.on("call:state", (_e, s) => cb(s));
+  },
+  onNav: (cb) => {
+    ipcRenderer.on("nav", (_e, o) => cb(o));
+  },
   liveGet: (id) => ipcRenderer.invoke("live:get", String(id)),
-  onLive: (cb) => { ipcRenderer.on("live:update", (_e, p) => cb(p)); },
+  onLive: (cb) => {
+    ipcRenderer.on("live:update", (_e, p) => cb(p));
+  },
   // start / startNoAi: no argument = a quick call (no Plan); a meeting id = that prepared meeting. practice: { planId } | { quick: true } | nothing (the next meeting).
   start: (planId) => ipcRenderer.invoke("call:cmd", "start", planId ? String(planId) : ""),
   startNoAi: (planId) => ipcRenderer.invoke("call:cmd", "startNoAi", planId ? String(planId) : ""),
@@ -33,7 +39,16 @@ contextBridge.exposeInMainWorld("wingman", {
   writeSummary: (id) => ipcRenderer.invoke("calls:writeSummary", String(id)),
   stopDelete: () => ipcRenderer.invoke("call:cmd", "stopDelete"),
   plansList: () => ipcRenderer.invoke("plans:list"),
-  savePlan: (d) => ipcRenderer.invoke("plans:save", { id: String(d.id || ""), title: String(d.title || ""), who: String(d.who || ""), goal: String(d.goal || ""), notes: String(d.notes || ""), mustCover: String(d.mustCover || ""), at: String(d.at || "") }),
+  savePlan: (d) =>
+    ipcRenderer.invoke("plans:save", {
+      id: String(d.id || ""),
+      title: String(d.title || ""),
+      who: String(d.who || ""),
+      goal: String(d.goal || ""),
+      notes: String(d.notes || ""),
+      mustCover: String(d.mustCover || ""),
+      at: String(d.at || ""),
+    }),
   deletePlan: (id) => ipcRenderer.invoke("plans:delete", String(id)),
   discardDraft: () => ipcRenderer.invoke("plans:discardDraft"),
   recentPlans: () => ipcRenderer.invoke("brief:recent"),
@@ -52,7 +67,14 @@ contextBridge.exposeInMainWorld("wingman", {
   keysRemove: (provider) => ipcRenderer.invoke("keys:remove", String(provider)),
   keysMigrate: () => ipcRenderer.invoke("keys:migrate"),
   profileGet: () => ipcRenderer.invoke("profile:get"),
-  profileSet: (d) => ipcRenderer.invoke("profile:set", { name: String(d.name), spellings: Array.isArray(d.spellings) ? d.spellings.map(String) : [], address: String(d.address), about: String(d.about), business: String(d.business) }),
+  profileSet: (d) =>
+    ipcRenderer.invoke("profile:set", {
+      name: String(d.name),
+      spellings: Array.isArray(d.spellings) ? d.spellings.map(String) : [],
+      address: String(d.address),
+      about: String(d.about),
+      business: String(d.business),
+    }),
   setupStatus: () => ipcRenderer.invoke("setup:status"),
   setupAskMic: () => ipcRenderer.invoke("setup:askMic"),
   setupOpenPrivacy: (which) => ipcRenderer.invoke("setup:openPrivacy", String(which)),

@@ -5,8 +5,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const { splitBidi } = createRequire(import.meta.url)("../dashboard/bidi.js") as { splitBidi: (s: string) => { text: string; ltr: boolean }[] };
-const ltr = (s: string) => splitBidi(s).filter((x) => x.ltr).map((x) => x.text);
-const join = (s: string) => splitBidi(s).map((x) => x.text).join("");
+const ltr = (s: string) =>
+  splitBidi(s)
+    .filter((x) => x.ltr)
+    .map((x) => x.text);
+const join = (s: string) =>
+  splitBidi(s)
+    .map((x) => x.text)
+    .join("");
 
 test("prefix letter + hyphen stays outside the island", () => {
   const s = "יש ניסיון עם Monday, API ו-webhooks.";

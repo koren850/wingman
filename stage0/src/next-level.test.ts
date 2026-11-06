@@ -14,7 +14,7 @@ test("briefTerms: names from who and title, no filler words", () => {
 test("unclaimedTerm: a tool the profile does not name is caught, whole words only", () => {
   assert.equal(unclaimedTerm("אני משתמש ב-Claude ובמקביל ב-OpenAI API", "Claude Agent SDK, TypeScript"), "OpenAI");
   assert.equal(unclaimedTerm("I deploy on AWS", "basic AWS"), undefined);
-  assert.equal(unclaimedTerm("let us go over it", "TypeScript"), undefined);   // case-sensitive: the word "go" is not Go
+  assert.equal(unclaimedTerm("let us go over it", "TypeScript"), undefined); // case-sensitive: the word "go" is not Go
   assert.equal(unclaimedTerm("Angularity is not a tool", "TypeScript"), undefined);
 });
 

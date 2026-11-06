@@ -13,18 +13,36 @@ import bin from "../shared/bin.cjs";
 import { RowRelay, nextRestartCount, listenForRows } from "./relay.ts";
 
 const rest = process.argv.slice(2);
-const { settings: S } = loadSettingsOrExit(rest);   // exits with code 2 and a clear message when settings are invalid
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- "script"/"scripted" are not real key names; they are filtered out just below
-requireKeys([S.stt.provider, ...(S.run.noAi ? [] : [parseModelRef(S.llm.reflex.model).provider as any])].filter((k) => k !== "script" && k !== "scripted"), expandHome(S.keys.file));
-try { rmSync(join(CALLS, "latest"), { force: true }); } catch { /* removed so the new window waits for run.ts's own folder instead of replaying the previous call */ }
+const { settings: S } = loadSettingsOrExit(rest); // exits with code 2 and a clear message when settings are invalid
+requireKeys(
+  [
+    S.stt.provider,
+    ...(S.run.noAi
+      ? []
+      : [
+          parseModelRef(S.llm.reflex.model)
+            .provider as any /* eslint-disable-line @typescript-eslint/no-explicit-any -- "script"/"scripted" are not real key names; filtered out below */,
+        ]),
+  ].filter((k) => k !== "script" && k !== "scripted"),
+  expandHome(S.keys.file),
+);
+try {
+  rmSync(join(CALLS, "latest"), { force: true });
+} catch {
+  /* removed so the new window waits for run.ts's own folder instead of replaying the previous call */
+}
 
 // U1: the answer window is reopened if it crashes (overlay.restartMax). Exit code 3 = it refused a single shared screen.
-let overlay: ReturnType<typeof spawnOverlay>, restarts = 0, overlayStartedAt = 0;
+let overlay: ReturnType<typeof spawnOverlay>,
+  restarts = 0,
+  overlayStartedAt = 0;
 // Second path for the cards (when writing cards.jsonl fails): run.ts sends card rows to a private socket, forwarded to the window's stdin.
 const relay = new RowRelay();
 const rows = listenForRows(relay);
 /** Same "@@wingman" status line protocol as run.ts, only in control mode (the tray app reads it). */
-const status = (ev: string, data: Record<string, unknown> = {}) => { if (process.env.WINGMAN_CONTROL === "1") process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`); };
+const status = (ev: string, data: Record<string, unknown> = {}) => {
+  if (process.env.WINGMAN_CONTROL === "1") process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`);
+};
 /** Starts the answer window; on a crash it reopens it after 1 s (up to overlay.restartMax). Code 0 = closed by the user, code 3 = refused a single shared screen: no restart. */
 function openOverlay() {
   overlay = spawnOverlay(S, true);
@@ -33,11 +51,14 @@ function openOverlay() {
   overlay?.on("exit", (code, sig) => {
     relay.detach();
     if (stopping) return;
-    restarts = nextRestartCount(restarts, Date.now() - overlayStartedAt);   // a window that ran 10 minutes was stable: crashes far apart do not add up
+    restarts = nextRestartCount(restarts, Date.now() - overlayStartedAt); // a window that ran 10 minutes was stable: crashes far apart do not add up
     if (code !== 3 && code !== 0 && restarts < S.overlay.restartMax) {
-      restarts++; console.log(`(answer window crashed: code ${code ?? sig}; reopening, ${restarts}/${S.overlay.restartMax})`);
+      restarts++;
+      console.log(`(answer window crashed: code ${code ?? sig}; reopening, ${restarts}/${S.overlay.restartMax})`);
       status("overlay", { ok: false, restarting: true });
-      setTimeout(() => { if (!stopping) openOverlay(); }, 1000);
+      setTimeout(() => {
+        if (!stopping) openOverlay();
+      }, 1000);
     } else {
       console.log(`(answer window exited: code ${code ?? sig}; still listening, Ctrl+C to stop)`);
       status("overlay", { ok: false, reason: code === 3 ? "one-screen" : "closed" });
@@ -49,27 +70,44 @@ const runCmd = bin.binCommand("tsx", [join(ROOT, "src", "run.ts"), ...rest], ROO
 const run = spawn(runCmd.cmd, runCmd.args, { cwd: ROOT, stdio: "inherit", env: { ...process.env, ...(rows ? { WINGMAN_OVERLAY_SOCK: rows.path } : {}) } });
 
 // stopping = a stop was requested; runExited = run.ts is gone (only the window lingers); exiting = finalExit() already started.
-let stopping = false, runExited = false, exiting = false;
+let stopping = false,
+  runExited = false,
+  exiting = false;
 /** SIGTERM the answer window, SIGKILL it 2 s later if it hangs. */
 function closeOverlay() {
   const o = overlay;
   if (!o || o.exitCode !== null || o.signalCode) return;
-  try { o.kill("SIGTERM"); } catch {}
-  setTimeout(() => { try { if (o.exitCode === null && !o.signalCode) o.kill("SIGKILL"); } catch {} }, 2000).unref();
+  try {
+    o.kill("SIGTERM");
+  } catch {}
+  setTimeout(() => {
+    try {
+      if (o.exitCode === null && !o.signalCode) o.kill("SIGKILL");
+    } catch {}
+  }, 2000).unref();
 }
 /** Close the window (escalating) and leave; never waits longer than 2.5 s for it. */
 function finalExit(code: number) {
   if (exiting) return;
-  exiting = true; rows?.close();
+  exiting = true;
+  rows?.close();
   const o = overlay;
   closeOverlay();
   if (!o || o.exitCode !== null || o.signalCode) return process.exit(code);
   const t = setTimeout(() => process.exit(code), 2500);
-  o.once("exit", () => { clearTimeout(t); process.exit(code); });
+  o.once("exit", () => {
+    clearTimeout(t);
+    process.exit(code);
+  });
 }
 function stop() {
-  if (runExited) return finalExit(0);   // the call is over and only the window lingers: a stop (new call starting, quit) closes it now
-  if (stopping) { try { run.kill("SIGKILL"); } catch {} return; }   // second stop: the call is stuck, force it
+  if (runExited) return finalExit(0); // the call is over and only the window lingers: a stop (new call starting, quit) closes it now
+  if (stopping) {
+    try {
+      run.kill("SIGKILL");
+    } catch {}
+    return;
+  } // second stop: the call is stuck, force it
   stopping = true;
   run.kill("SIGINT"); // run.ts saves the call and prints the speed summary
   setTimeout(closeOverlay, 5000); // leave the last cards up briefly
@@ -79,7 +117,8 @@ process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 process.on("SIGHUP", stop);
 run.on("exit", (code) => {
-  stopping = true; runExited = true;   // stopping also stops the crash-restart of the window
+  stopping = true;
+  runExited = true; // stopping also stops the crash-restart of the window
   setTimeout(() => finalExit(code ?? 0), 5000);
   console.log("(answer window closes in 5 s)");
 });

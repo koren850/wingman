@@ -14,7 +14,11 @@ import { loadSettings } from "./settings.ts";
 import { CostMeter } from "./cost.ts";
 import { untag } from "./reflex.ts";
 
-const blocked = (t: string, rule?: string) => { const g = guard(t); assert.equal(g.ok, false, `should block: ${t}`); if (rule) assert.equal(g.rule, rule, t); };
+const blocked = (t: string, rule?: string) => {
+  const g = guard(t);
+  assert.equal(g.ok, false, `should block: ${t}`);
+  if (rule) assert.equal(g.rule, rule, t);
+};
 const allowed = (t: string) => assert.equal(guard(t).ok, true, `should allow: ${t}`);
 
 test("guards: prices said in number words, with or without a currency", () => {
@@ -54,7 +58,7 @@ test("capture: a stray number word or digit next to a phone does not swallow it"
   assert.deepEqual(extract("אחת 0541234567"), [{ kind: "phone", value: "054-1234567" }]);
   assert.deepEqual(extract("פעם אחת 054-1234567"), [{ kind: "phone", value: "054-1234567" }]);
   assert.deepEqual(extract("0541234567 3 אתרים"), [{ kind: "phone", value: "054-1234567" }]);
-  assert.equal(digitWords("אפס חמש ארבע 1234567"), "0541234567");   // still merges words with a short digit tail
+  assert.equal(digitWords("אפס חמש ארבע 1234567"), "0541234567"); // still merges words with a short digit tail
 });
 test("capture: zero-width characters inside a number or domain are ignored", () => {
   assert.deepEqual(extract("054​-1234567"), [{ kind: "phone", value: "054-1234567" }]);
@@ -62,17 +66,21 @@ test("capture: zero-width characters inside a number or domain are ignored", () 
 });
 test("capture: English spoken email 'dana at gmail dot com'", () => {
   assert.deepEqual(extract("my email is dana at gmail dot com"), [{ kind: "email", value: "dana@gmail.com" }]);
-  assert.deepEqual(extract("we arrive at gmail.com today").filter((c) => c.kind === "email"), []);
+  assert.deepEqual(
+    extract("we arrive at gmail.com today").filter((c) => c.kind === "email"),
+    [],
+  );
 });
 
 test("detector: a lone filler or bare '?' is not a question; a real one-word question still is", () => {
   for (const t of ["?", "כן?", "נכון?", "אוקיי?", "אה?", "??"]) assert.equal(detect(t).isQuestion, false, t);
-  for (const t of ["כן כן", "כן נכון", "נכון בסדר", "כן טוב"]) assert.equal(detect(t).isQuestion, false, t);   // FILLERS must be matched after final-letter folding
+  for (const t of ["כן כן", "כן נכון", "נכון בסדר", "כן טוב"]) assert.equal(detect(t).isQuestion, false, t); // FILLERS must be matched after final-letter folding
   assert.equal(detect("מחיר?").isQuestion, true);
   assert.equal(detect("כמה עולה?").isQuestion, true);
 });
 test("detector: spoken requests without a question mark", () => {
-  for (const t of ["אני רוצה לדעת כמה זה עולה", "אני רוצה לדעת מה כלול", "תשלח לי הצעת מחיר", "שלח לי הצעה", "I want to know the price", "send me a quote"]) assert.equal(detect(t).isQuestion, true, t);
+  for (const t of ["אני רוצה לדעת כמה זה עולה", "אני רוצה לדעת מה כלול", "תשלח לי הצעת מחיר", "שלח לי הצעה", "I want to know the price", "send me a quote"])
+    assert.equal(detect(t).isQuestion, true, t);
   assert.equal(detect("שלחתי לך מייל אתמול").isQuestion, false);
 });
 
@@ -100,18 +108,31 @@ test("notes: other bullet styles and an over-long promise note", () => {
 
 test("entities: a snapshot client without aliases does not throw; hyphenated domain names match when spoken", () => {
   const snap: any = {
-    clients: [{ id: 1, name: "Acme" }, { id: 2, name: "דנה", aliases: ["דנה כהן"] }],
+    clients: [
+      { id: 1, name: "Acme" },
+      { id: 2, name: "דנה", aliases: ["דנה כהן"] },
+    ],
     domains: [{ domain: "example-store.com", clientId: null }],
   };
   const sp = new EntitySpotter(snap, { sslWarnDays: 30, minAliasLen: 3 });
-  assert.deepEqual(sp.spot("שלום").map((f) => f.key), []);
-  assert.deepEqual(sp.spot("יש בעיה ב example-store").map((f) => f.key), ["d:example-store.com"]);
-  assert.deepEqual(sp.spot("יש בעיה ב example store").map((f) => f.key), ["d:example-store.com"]);
+  assert.deepEqual(
+    sp.spot("שלום").map((f) => f.key),
+    [],
+  );
+  assert.deepEqual(
+    sp.spot("יש בעיה ב example-store").map((f) => f.key),
+    ["d:example-store.com"],
+  );
+  assert.deepEqual(
+    sp.spot("יש בעיה ב example store").map((f) => f.key),
+    ["d:example-store.com"],
+  );
 });
 
 test("bank: English and spoken price questions get the price stall, not a topical card", () => {
   const bank = loadBank();
-  for (const q of ["how much does hosting cost", "what is the pricing for a shop", "כמה אני אשלם על אחסון", "לכמה זה יגיע", "כמה זה יוצא"]) assert.equal(matchBank(q, bank)?.card.id, "stall-price", q);
+  for (const q of ["how much does hosting cost", "what is the pricing for a shop", "כמה אני אשלם על אחסון", "לכמה זה יגיע", "כמה זה יוצא"])
+    assert.equal(matchBank(q, bank)?.card.id, "stall-price", q);
   assert.equal(matchBank("אתם יכולים להתחייב לתאריך", bank)?.card.id, "stall-guarantee");
   assert.equal(matchBank("האתר קרס", bank)?.card.id, "site-down");
 });
@@ -136,13 +157,14 @@ test("reflex: the call_transcript wrapper cannot be closed with odd spacing", ()
 });
 
 test("detector: service-capability and polite requests without a question mark; short problem statements with a strong bank hit", () => {
-  for (const t of ["אתם עושים גם אפליקציות", "אתם מטפלים בדומיינים", "אני אשמח לקבל הצעה", "I have a question about my website"]) assert.equal(detect(t).isQuestion, true, t);
+  for (const t of ["אתם עושים גם אפליקציות", "אתם מטפלים בדומיינים", "אני אשמח לקבל הצעה", "I have a question about my website"])
+    assert.equal(detect(t).isQuestion, true, t);
   const bank = loadBank();
   for (const t of ["האתר שלי נפל", "האתר שלי נפרץ", "האתר שלנו איטי"]) {
     const h = matchBank(t, bank);
     assert.equal(detect(t, { bankScore: h?.score ?? 0 }).isQuestion, true, t);
   }
-  assert.equal(detect("אתם עושים סבבה").isQuestion, true);   // known false positive: Haiku answers SKIP, cost is one cheap call
+  assert.equal(detect("אתם עושים סבבה").isQuestion, true); // known false positive: Haiku answers SKIP, cost is one cheap call
   assert.equal(detect("שלחתי את זה אתמול").isQuestion, false);
 });
 
@@ -156,11 +178,13 @@ test("reflex: tag and say on one line are split", async () => {
   assert.equal(parseTag(b.tagLine!).bankId, "dns-basics");
   assert.equal(b.say, "זה עניין של DNS");
   const streaming = parseReflex("ANS: כן, אנחנו מט", false);
-  assert.equal(streaming.say, "כן, אנחנו מט"); assert.equal(streaming.sayComplete, false);
+  assert.equal(streaming.say, "כן, אנחנו מט");
+  assert.equal(streaming.sayComplete, false);
   const normal = parseReflex("ANS\nכן\n", true);
   assert.equal(normal.say, "כן");
   const skip = parseReflex("SKIP\n", true);
-  assert.equal(parseTag(skip.tagLine!).kind, "SKIP"); assert.equal(skip.say, undefined);
+  assert.equal(parseTag(skip.tagLine!).kind, "SKIP");
+  assert.equal(skip.say, undefined);
 });
 
 test("practice-call misses: 'ויש לכם…' is a question; a short head fragment glues to its continuation", async () => {

@@ -11,17 +11,20 @@ test("parseClaim reads number, plus and unit", () => {
 });
 
 test("spoken numbers from real interview lines", () => {
-  assert.deepEqual(spokenNumbers("יש לנו מעל 70 80 לקוחות בפרודקשן"), [{ unit: "customers", n: 70 }, { unit: "customers", n: 80 }]);
+  assert.deepEqual(spokenNumbers("יש לנו מעל 70 80 לקוחות בפרודקשן"), [
+    { unit: "customers", n: 70 },
+    { unit: "customers", n: 80 },
+  ]);
   assert.deepEqual(spokenNumbers("לפי דעתי מעל 100 אתרים"), [{ unit: "sites", n: 100 }]);
   assert.deepEqual(spokenNumbers("כבר חמש שנים בתחום"), [{ unit: "years", n: 5 }]);
 });
 
 test("checkClaims flags inflated numbers only", () => {
   assert.equal(checkClaims("מעל 100 אתרים לפרודקשן", claims)?.claim.text, "30+ client sites");
-  assert.equal(checkClaims("70 80 לקוחות", claims), undefined);            // no customers claim: nothing to compare
-  assert.equal(checkClaims("בניתי 35 אתרים", claims), undefined);           // within 30+
+  assert.equal(checkClaims("70 80 לקוחות", claims), undefined); // no customers claim: nothing to compare
+  assert.equal(checkClaims("בניתי 35 אתרים", claims), undefined); // within 30+
   assert.equal(checkClaims("4 שנים בפרודקשן", claims), undefined);
-  assert.equal(checkClaims("חמש שנים", claims), undefined);                  // 4+ allows 5
+  assert.equal(checkClaims("חמש שנים", claims), undefined); // 4+ allows 5
   assert.equal(checkClaims("שש שנים", claims)?.unit, "years");
   assert.equal(checkClaims("I mentored 10 juniors", claims)?.unit, "juniors");
 });

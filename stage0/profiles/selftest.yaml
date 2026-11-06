@@ -2,4 +2,4 @@
 privacy:
   requireConsentAck: false
 cards:
-  focus: false            # tests count every card; "important only" is tested on its own
+  focus: false # tests count every card; "important only" is tested on its own

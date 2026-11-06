@@ -12,7 +12,8 @@ const OFF = ["RunAsNode", "EnableNodeOptionsEnvironmentVariable", "EnableNodeCli
 function locate(buf) {
   const i = buf.indexOf(SENTINEL);
   if (i < 0) throw new Error("fuse sentinel not found (a different Electron build?)");
-  const version = buf[i + SENTINEL.length], n = buf[i + SENTINEL.length + 1];
+  const version = buf[i + SENTINEL.length],
+    n = buf[i + SENTINEL.length + 1];
   if (version !== 1 || n < 4 || n > 32) throw new Error(`unknown fuse wire (version ${version}, ${n} fuses)`);
   return { at: i + SENTINEL.length + 2, n };
 }
@@ -21,21 +22,34 @@ function flip(buf) {
   for (const name of OFF) if (buf[at + FUSES[name]] !== 0x72 /* r */) buf[at + FUSES[name]] = 0x30;
   return buf;
 }
-function state(buf) { const { at, n } = locate(buf); return buf.subarray(at, at + n).toString("latin1"); }
+function state(buf) {
+  const { at, n } = locate(buf);
+  return buf.subarray(at, at + n).toString("latin1");
+}
 const frameworkOf = (app) => path.join(app, "Contents", "Frameworks", "Electron Framework.framework", "Versions", "A", "Electron Framework");
 
 module.exports = { flip, state, frameworkOf, OFF, FUSES };
 
 if (require.main === module) {
-  const app = process.argv[2], check = process.argv.includes("--check");
-  if (!app) { console.error("usage: set-fuses.cjs <Wingman.app> [--check]"); process.exit(2); }
+  const app = process.argv[2],
+    check = process.argv.includes("--check");
+  if (!app) {
+    console.error("usage: set-fuses.cjs <Wingman.app> [--check]");
+    process.exit(2);
+  }
   const f = frameworkOf(app);
   try {
     const buf = fs.readFileSync(f);
-    if (!check) { flip(buf); fs.writeFileSync(f, buf); }
+    if (!check) {
+      flip(buf);
+      fs.writeFileSync(f, buf);
+    }
     const s = state(fs.readFileSync(f));
     const ok = OFF.every((n) => s[FUSES[n]] === "0");
     console.log(`fuses ${s} (${ok ? "RunAsNode, NODE_OPTIONS and --inspect are off" : "NOT off"})`);
     process.exit(ok ? 0 : 1);
-  } catch (e) { console.error("set-fuses: " + e.message); process.exit(1); }
+  } catch (e) {
+    console.error("set-fuses: " + e.message);
+    process.exit(1);
+  }
 }

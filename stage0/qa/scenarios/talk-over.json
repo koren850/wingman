@@ -1,81 +1,78 @@
 {
- "title": "Dan talking over the client (invented client: Eli, Sela Gallery)",
- "focus": "me overlaps the client by 1-2 s: the client question must still be detected, Dan's words must not be treated as client",
- "turns": [
-  {
-   "speaker": "me",
-   "text": "היי אלי, מדבר דן."
-  },
-  {
-   "speaker": "them",
-   "text": "שלום דן, אני רוצה לשאול משהו על האתר של הגלריה, יש לכם גיבוי של האתר?",
-   "expect": {
-    "question": true,
-    "card": "backups"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "כן, כן, יש גיבוי אוטומטי, אני מסביר לך איך זה עובד אצלנו.",
-   "overlapMs": 1500,
-   "pauseBeforeMs": 0
-  },
-  {
-   "speaker": "them",
-   "text": "והאתר גם איטי לפעמים, מה אפשר לעשות כדי שהוא יהיה מהיר יותר?",
-   "pauseBeforeMs": 1200,
-   "expect": {
-    "question": true,
-    "card": [
-     "site-slow",
-     "caching"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "תמונות כבדות בדרך כלל, נדחס אותן ונוסיף cache.",
-   "overlapMs": 2000,
-   "pauseBeforeMs": 0
-  },
-  {
-   "speaker": "them",
-   "text": "אני גם צריך להבין איך מחדשים את התעודה של האתר, מי עושה את זה?",
-   "pauseBeforeMs": 1200,
-   "expect": {
-    "question": true,
-    "card": "ssl-basics"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "זה מתחדש אוטומטית, אני אוודא שזה פעיל.",
-   "overlapMs": 1500,
-   "pauseBeforeMs": 0
-  },
-  {
-   "speaker": "them",
-   "text": "כמה זה עולה לחודש כל החבילה?",
-   "pauseBeforeMs": 1200,
-   "expect": {
-    "question": true,
-    "card": "stall-price"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "נגדיר בהצעה מסודרת.",
-   "overlapMs": 1000,
-   "pauseBeforeMs": 0
-  },
-  {
-   "speaker": "them",
-   "text": "בסדר, תודה אלי כאן.",
-   "pauseBeforeMs": 1000,
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "title": "Dan talking over the client (invented client: Eli, Sela Gallery)",
+  "focus": "me overlaps the client by 1-2 s: the client question must still be detected, Dan's words must not be treated as client",
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "היי אלי, מדבר דן."
+    },
+    {
+      "speaker": "them",
+      "text": "שלום דן, אני רוצה לשאול משהו על האתר של הגלריה, יש לכם גיבוי של האתר?",
+      "expect": {
+        "question": true,
+        "card": "backups"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "כן, כן, יש גיבוי אוטומטי, אני מסביר לך איך זה עובד אצלנו.",
+      "overlapMs": 1500,
+      "pauseBeforeMs": 0
+    },
+    {
+      "speaker": "them",
+      "text": "והאתר גם איטי לפעמים, מה אפשר לעשות כדי שהוא יהיה מהיר יותר?",
+      "pauseBeforeMs": 1200,
+      "expect": {
+        "question": true,
+        "card": ["site-slow", "caching"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "תמונות כבדות בדרך כלל, נדחס אותן ונוסיף cache.",
+      "overlapMs": 2000,
+      "pauseBeforeMs": 0
+    },
+    {
+      "speaker": "them",
+      "text": "אני גם צריך להבין איך מחדשים את התעודה של האתר, מי עושה את זה?",
+      "pauseBeforeMs": 1200,
+      "expect": {
+        "question": true,
+        "card": "ssl-basics"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "זה מתחדש אוטומטית, אני אוודא שזה פעיל.",
+      "overlapMs": 1500,
+      "pauseBeforeMs": 0
+    },
+    {
+      "speaker": "them",
+      "text": "כמה זה עולה לחודש כל החבילה?",
+      "pauseBeforeMs": 1200,
+      "expect": {
+        "question": true,
+        "card": "stall-price"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "נגדיר בהצעה מסודרת.",
+      "overlapMs": 1000,
+      "pauseBeforeMs": 0
+    },
+    {
+      "speaker": "them",
+      "text": "בסדר, תודה אלי כאן.",
+      "pauseBeforeMs": 1000,
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

@@ -1,134 +1,114 @@
 {
- "title": "Client call: new website for a dental clinic (invented: Yael from Shaked Dental)",
- "focus": "price/timeline stalls, hosting, SSL, mixed Hebrew/English terms",
- "frame": {
-  "kind": [
-   "client",
-   "sales",
-   "support"
-  ],
-  "topicAny": [
-   "אתר",
-   "website",
-   "קליניקה",
-   "אחסון"
-  ],
-  "minChecklist": 3
- },
- "turns": [
-  {
-   "speaker": "me",
-   "text": "שלום יעל, תודה שהקדשת זמן."
+  "title": "Client call: new website for a dental clinic (invented: Yael from Shaked Dental)",
+  "focus": "price/timeline stalls, hosting, SSL, mixed Hebrew/English terms",
+  "frame": {
+    "kind": ["client", "sales", "support"],
+    "topicAny": ["אתר", "website", "קליניקה", "אחסון"],
+    "minChecklist": 3
   },
-  {
-   "speaker": "them",
-   "text": "היי דן. אנחנו קליניקת שיניים שקד ורוצים אתר חדש עם קביעת תורים אונליין.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "מעולה, ספרי לי מה יש לכם היום."
-  },
-  {
-   "speaker": "them",
-   "text": "יש לנו אתר ישן בוורדפרס, הוא איטי וה-plugin של הטפסים לא עובד.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "כמה יעלה אתר כזה?",
-   "expect": {
-    "question": true,
-    "card": "stall-price"
-   },
-   "pauseBeforeMs": 1500
-  },
-  {
-   "speaker": "me",
-   "text": "זה תלוי בהיקף, אני אבנה הצעה אחרי שנבין את הצרכים.",
-   "pauseBeforeMs": 1200
-  },
-  {
-   "speaker": "them",
-   "text": "ומתי אפשר לעלות לאוויר?",
-   "expect": {
-    "question": true,
-    "card": [
-     "stall-timeline",
-     "stall"
-    ]
-   },
-   "pauseBeforeMs": 1500
-  },
-  {
-   "speaker": "me",
-   "text": "נדבר על לוח זמנים אחרי אפיון.",
-   "pauseBeforeMs": 1200
-  },
-  {
-   "speaker": "them",
-   "text": "האם האתר יבוא עם תעודת SSL?",
-   "expect": {
-    "question": true,
-    "card": "ssl-basics"
-   },
-   "pauseBeforeMs": 2000
-  },
-  {
-   "speaker": "me",
-   "text": "כן, נדאג לזה.",
-   "pauseBeforeMs": 1000
-  },
-  {
-   "speaker": "them",
-   "text": "ואיפה האתר יהיה מאוחסן, ומה עם גיבויים?",
-   "expect": {
-    "question": true,
-    "card": [
-     "backups",
-     "server-resources",
-     "hosting-vs-domain",
-     "stall"
-    ]
-   },
-   "pauseBeforeMs": 2000
-  },
-  {
-   "speaker": "me",
-   "text": "נסביר בהמשך.",
-   "pauseBeforeMs": 1000
-  },
-  {
-   "speaker": "them",
-   "text": "מה זה CDN ולמה אנחנו צריכים אותו?",
-   "expect": {
-    "question": true,
-    "card": [
-     "cdn-cloudflare",
-     "ai"
-    ]
-   },
-   "pauseBeforeMs": 2500
-  },
-  {
-   "speaker": "me",
-   "text": "ננסה לפשט את זה.",
-   "pauseBeforeMs": 1000
-  },
-  {
-   "speaker": "them",
-   "text": "אוקיי, תשלח לי הצעה במייל.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   },
-   "pauseBeforeMs": 2000
-  }
- ]
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "שלום יעל, תודה שהקדשת זמן."
+    },
+    {
+      "speaker": "them",
+      "text": "היי דן. אנחנו קליניקת שיניים שקד ורוצים אתר חדש עם קביעת תורים אונליין.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "מעולה, ספרי לי מה יש לכם היום."
+    },
+    {
+      "speaker": "them",
+      "text": "יש לנו אתר ישן בוורדפרס, הוא איטי וה-plugin של הטפסים לא עובד.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "כמה יעלה אתר כזה?",
+      "expect": {
+        "question": true,
+        "card": "stall-price"
+      },
+      "pauseBeforeMs": 1500
+    },
+    {
+      "speaker": "me",
+      "text": "זה תלוי בהיקף, אני אבנה הצעה אחרי שנבין את הצרכים.",
+      "pauseBeforeMs": 1200
+    },
+    {
+      "speaker": "them",
+      "text": "ומתי אפשר לעלות לאוויר?",
+      "expect": {
+        "question": true,
+        "card": ["stall-timeline", "stall"]
+      },
+      "pauseBeforeMs": 1500
+    },
+    {
+      "speaker": "me",
+      "text": "נדבר על לוח זמנים אחרי אפיון.",
+      "pauseBeforeMs": 1200
+    },
+    {
+      "speaker": "them",
+      "text": "האם האתר יבוא עם תעודת SSL?",
+      "expect": {
+        "question": true,
+        "card": "ssl-basics"
+      },
+      "pauseBeforeMs": 2000
+    },
+    {
+      "speaker": "me",
+      "text": "כן, נדאג לזה.",
+      "pauseBeforeMs": 1000
+    },
+    {
+      "speaker": "them",
+      "text": "ואיפה האתר יהיה מאוחסן, ומה עם גיבויים?",
+      "expect": {
+        "question": true,
+        "card": ["backups", "server-resources", "hosting-vs-domain", "stall"]
+      },
+      "pauseBeforeMs": 2000
+    },
+    {
+      "speaker": "me",
+      "text": "נסביר בהמשך.",
+      "pauseBeforeMs": 1000
+    },
+    {
+      "speaker": "them",
+      "text": "מה זה CDN ולמה אנחנו צריכים אותו?",
+      "expect": {
+        "question": true,
+        "card": ["cdn-cloudflare", "ai"]
+      },
+      "pauseBeforeMs": 2500
+    },
+    {
+      "speaker": "me",
+      "text": "ננסה לפשט את זה.",
+      "pauseBeforeMs": 1000
+    },
+    {
+      "speaker": "them",
+      "text": "אוקיי, תשלח לי הצעה במייל.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      },
+      "pauseBeforeMs": 2000
+    }
+  ]
 }

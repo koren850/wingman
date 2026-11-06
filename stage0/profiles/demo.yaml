@@ -20,7 +20,7 @@ system:
 budget:
   idleStopMin: 0
 summary:
-  model: "scripted:summary"   # practice stays offline and free
+  model: "scripted:summary" # practice stays offline and free
   minWords: 20
 frame:
   model: "scripted:frame"

@@ -20,7 +20,14 @@ export const EXIT = { OK: 0, FAIL: 1, USAGE: 2, NO_APP: 3, REFUSED: 4, NOT_FOUND
 
 /** A failure with a stable `code` (for --json), an exit code and an optional next-step `hint`. */
 export class CliError extends Error {
-  constructor(public code: string, message: string, public exit: number, public hint = "") { super(message); }
+  constructor(
+    public code: string,
+    message: string,
+    public exit: number,
+    public hint = "",
+  ) {
+    super(message);
+  }
 }
 export const usage = (m: string) => new CliError("usage", m, EXIT.USAGE, "Run: wingman help");
 
@@ -31,19 +38,27 @@ export type Result = { data: Record<string, unknown>; text: string; exit?: numbe
 export interface Ctx {
   env: NodeJS.ProcessEnv;
   json: boolean;
-  out: (s: string) => void;     // raw stdout line(s), used by streaming commands
-  root: string; calls: string; briefs: string; socket: string; userSettings: string | undefined;
+  out: (s: string) => void; // raw stdout line(s), used by streaming commands
+  root: string;
+  calls: string;
+  briefs: string;
+  socket: string;
+  userSettings: string | undefined;
   sleep: (ms: number) => Promise<void>;
   stdin: () => Promise<string>;
   /** Tests inject these. */
-  keychain?: unknown; openApp?: () => Promise<void>; spawnTsx?: (args: string[], timeoutMs: number) => Promise<{ code: number; out: string }>;
+  keychain?: unknown;
+  openApp?: () => Promise<void>;
+  spawnTsx?: (args: string[], timeoutMs: number) => Promise<{ code: number; out: string }>;
   signal?: AbortSignal;
 }
 
 /** Real-process Ctx; `over` replaces any field. */
 export function makeCtx(env: NodeJS.ProcessEnv, over: Partial<Ctx> = {}): Ctx {
   return {
-    env, json: false, out: (s) => process.stdout.write(s),
+    env,
+    json: false,
+    out: (s) => process.stdout.write(s),
     root: ROOT,
     calls: env.WINGMAN_CALLS_DIR ? resolve(env.WINGMAN_CALLS_DIR) : CALLS,
     briefs: env.WINGMAN_BRIEFS_DIR ? resolve(env.WINGMAN_BRIEFS_DIR) : BRIEFS,
@@ -51,18 +66,32 @@ export function makeCtx(env: NodeJS.ProcessEnv, over: Partial<Ctx> = {}): Ctx {
     userSettings: env.WINGMAN_USER_SETTINGS || undefined,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     // Reads all of stdin, stopping after about 400 KB so a runaway pipe cannot fill memory.
-    stdin: async () => { let s = ""; process.stdin.setEncoding("utf8"); for await (const c of process.stdin) { s += c; if (s.length > 400_000) break; } return s; },
+    stdin: async () => {
+      let s = "";
+      process.stdin.setEncoding("utf8");
+      for await (const c of process.stdin) {
+        s += c;
+        if (s.length > 400_000) break;
+      }
+      return s;
+    },
     ...over,
   };
 }
 
 /** Strict option parsing; any problem is a usage error (exit 2). */
 export function parse<T extends ParseArgsConfig["options"]>(args: string[], options: T) {
-  try { return parseArgs({ args, options, allowPositionals: true, strict: true }); }
-  catch (e) { throw usage((e as Error).message.replace(/\. To specify.*$/, "")); }
+  try {
+    return parseArgs({ args, options, allowPositionals: true, strict: true });
+  } catch (e) {
+    throw usage((e as Error).message.replace(/\. To specify.*$/, ""));
+  }
 }
 
 /** m:ss from ms (shared with the tray). */
 export const mmss = (ms: number) => trayLib.mmss(ms) as string;
 export const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
-export const ago = (ms: number) => { const m = Math.round(ms / 60000); return m < 1 ? "just now" : m < 90 ? `${m} min` : `${Math.round(m / 60)} h`; };
+export const ago = (ms: number) => {
+  const m = Math.round(ms / 60000);
+  return m < 1 ? "just now" : m < 90 ? `${m} min` : `${Math.round(m / 60)} h`;
+};

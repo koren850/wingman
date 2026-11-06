@@ -37,7 +37,7 @@ export class EchoFilter {
   /** Remember a client final (call for every "them" final). */
   noteThem(text: string, at = Date.now()) {
     this.recent.push({ text, at });
-    this.recent = this.recent.filter((r) => at - r.at <= this.o.windowMs * 4);   // keep a few windows of history, but never grow without bound
+    this.recent = this.recent.filter((r) => at - r.at <= this.o.windowMs * 4); // keep a few windows of history, but never grow without bound
   }
   /**
    * True when the mic line is an echo of what the client said within the window. Lines under 3 words are never
@@ -57,6 +57,10 @@ export class EchoFilter {
 export class MicGate {
   private lastThemVoiced = -Infinity;
   constructor(private o: { hangoverMs: number; peak: number }) {}
-  noteThemPeak(peak: number, at = Date.now()) { if (peak > this.o.peak) this.lastThemVoiced = at; }
-  closed(at = Date.now()): boolean { return at - this.lastThemVoiced < this.o.hangoverMs; }
+  noteThemPeak(peak: number, at = Date.now()) {
+    if (peak > this.o.peak) this.lastThemVoiced = at;
+  }
+  closed(at = Date.now()): boolean {
+    return at - this.lastThemVoiced < this.o.hangoverMs;
+  }
 }

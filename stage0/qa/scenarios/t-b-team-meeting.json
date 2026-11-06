@@ -1,105 +1,93 @@
 {
- "title": "Internal team meeting, not sales (invented: Tal, Omer, Shira)",
- "focus": "general meeting, no business bank cards, no wrong stall",
- "frame": {
-  "kind": [
-   "internal",
-   "team",
-   "other",
-   "planning"
-  ],
-  "topicAny": [
-   "ספרינט",
-   "צוות",
-   "משימות",
-   "sprint",
-   "פגישה",
-   "תכנון"
-  ],
-  "minChecklist": 2
- },
- "turns": [
-  {
-   "speaker": "me",
-   "text": "בוקר טוב לכולם, נתחיל בסטטוס של הספרינט."
+  "title": "Internal team meeting, not sales (invented: Tal, Omer, Shira)",
+  "focus": "general meeting, no business bank cards, no wrong stall",
+  "frame": {
+    "kind": ["internal", "team", "other", "planning"],
+    "topicAny": ["ספרינט", "צוות", "משימות", "sprint", "פגישה", "תכנון"],
+    "minChecklist": 2
   },
-  {
-   "speaker": "them",
-   "text": "היי. אני סיימתי את מסך ההתחברות, נשאר רק לבדוק על מכשירי אייפון.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   },
-   "pauseBeforeMs": 1500
-  },
-  {
-   "speaker": "them",
-   "text": "אני תקוע על ה-API של התשלומים, מישהו יכול לעזור לי היום?",
-   "expect": {
-    "question": true,
-    "card": "none"
-   },
-   "pauseBeforeMs": 2500
-  },
-  {
-   "speaker": "me",
-   "text": "אומר, אני אעבור עליו איתך אחרי הפגישה.",
-   "pauseBeforeMs": 1000
-  },
-  {
-   "speaker": "them",
-   "text": "מי לוקח את הסקירה של הקוד של אומר?",
-   "expect": {
-    "question": true,
-    "card": "none"
-   },
-   "pauseBeforeMs": 2500
-  },
-  {
-   "speaker": "them",
-   "text": "אני אקח, אין בעיה.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   },
-   "pauseBeforeMs": 1500
-  },
-  {
-   "speaker": "them",
-   "text": "מתי אנחנו סוגרים את הגרסה?",
-   "expect": {
-    "question": true,
-    "card": "none"
-   },
-   "pauseBeforeMs": 3000
-  },
-  {
-   "speaker": "me",
-   "text": "נקבע ביום חמישי בשבוע הבא.",
-   "pauseBeforeMs": 1000
-  },
-  {
-   "speaker": "them",
-   "text": "מה עם החופשה של שירה, מי מכסה אותה?",
-   "expect": {
-    "question": true,
-    "card": "none"
-   },
-   "pauseBeforeMs": 2500
-  },
-  {
-   "speaker": "me",
-   "text": "נבדוק בסוף הישיבה.",
-   "pauseBeforeMs": 1000
-  },
-  {
-   "speaker": "them",
-   "text": "טוב, אני אעדכן את הלוח.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   },
-   "pauseBeforeMs": 2000
-  }
- ]
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "בוקר טוב לכולם, נתחיל בסטטוס של הספרינט."
+    },
+    {
+      "speaker": "them",
+      "text": "היי. אני סיימתי את מסך ההתחברות, נשאר רק לבדוק על מכשירי אייפון.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      },
+      "pauseBeforeMs": 1500
+    },
+    {
+      "speaker": "them",
+      "text": "אני תקוע על ה-API של התשלומים, מישהו יכול לעזור לי היום?",
+      "expect": {
+        "question": true,
+        "card": "none"
+      },
+      "pauseBeforeMs": 2500
+    },
+    {
+      "speaker": "me",
+      "text": "אומר, אני אעבור עליו איתך אחרי הפגישה.",
+      "pauseBeforeMs": 1000
+    },
+    {
+      "speaker": "them",
+      "text": "מי לוקח את הסקירה של הקוד של אומר?",
+      "expect": {
+        "question": true,
+        "card": "none"
+      },
+      "pauseBeforeMs": 2500
+    },
+    {
+      "speaker": "them",
+      "text": "אני אקח, אין בעיה.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      },
+      "pauseBeforeMs": 1500
+    },
+    {
+      "speaker": "them",
+      "text": "מתי אנחנו סוגרים את הגרסה?",
+      "expect": {
+        "question": true,
+        "card": "none"
+      },
+      "pauseBeforeMs": 3000
+    },
+    {
+      "speaker": "me",
+      "text": "נקבע ביום חמישי בשבוע הבא.",
+      "pauseBeforeMs": 1000
+    },
+    {
+      "speaker": "them",
+      "text": "מה עם החופשה של שירה, מי מכסה אותה?",
+      "expect": {
+        "question": true,
+        "card": "none"
+      },
+      "pauseBeforeMs": 2500
+    },
+    {
+      "speaker": "me",
+      "text": "נבדוק בסוף הישיבה.",
+      "pauseBeforeMs": 1000
+    },
+    {
+      "speaker": "them",
+      "text": "טוב, אני אעדכן את הלוח.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      },
+      "pauseBeforeMs": 2000
+    }
+  ]
 }

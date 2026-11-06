@@ -1,141 +1,141 @@
 {
- "title": "Split questions (invented client: Lior, Shachar Design)",
- "focus": "a question cut by an 800-1200 ms pause must be joined into one question",
- "turns": [
-  {
-   "speaker": "me",
-   "text": "היי ליאור, מדבר דן."
-  },
-  {
-   "speaker": "them",
-   "text": "שלום דן, יש לי כמה שאלות על האחסון.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "כמה זה",
-   "pauseBeforeMs": 800,
-   "expect": {
-    "part": "head"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "עולה לחודש?",
-   "pauseBeforeMs": 900,
-   "expect": {
-    "question": true,
-    "card": "stall-price",
-    "joinWith": "prev",
-    "note": "split by ~900 ms"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "זה תלוי במסלול, אחזור עם הצעה."
-  },
-  {
-   "speaker": "them",
-   "text": "יש לכם",
-   "pauseBeforeMs": 900,
-   "expect": {
-    "part": "head"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "גיבוי אוטומטי?",
-   "pauseBeforeMs": 1000,
-   "expect": {
-    "question": true,
-    "card": "backups",
-    "joinWith": "prev",
-    "note": "split by ~1000 ms"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "כן, יש גיבוי אוטומטי."
-  },
-  {
-   "speaker": "them",
-   "text": "מתי זה",
-   "pauseBeforeMs": 1000,
-   "expect": {
-    "part": "head"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "יהיה מוכן?",
-   "pauseBeforeMs": 1100,
-   "expect": {
-    "question": true,
-    "card": "stall-timeline",
-    "joinWith": "prev",
-    "note": "split by ~1100 ms"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "תלוי בהיקף, אבדוק."
-  },
-  {
-   "speaker": "them",
-   "text": "אפשר להעביר",
-   "pauseBeforeMs": 1000,
-   "expect": {
-    "part": "head"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "את הדומיין?",
-   "pauseBeforeMs": 1200,
-   "expect": {
-    "question": true,
-    "card": "domain-transfer",
-    "joinWith": "prev",
-    "note": "split by ~1200 ms"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "כן, נתאם את ההעברה."
-  },
-  {
-   "speaker": "them",
-   "text": "האתר שלי איטי",
-   "pauseBeforeMs": 900,
-   "expect": {
-    "part": "head"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "מה אפשר לעשות?",
-   "pauseBeforeMs": 800,
-   "expect": {
-    "question": true,
-    "card": "site-slow",
-    "joinWith": "prev",
-    "note": "split by 800 ms"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "נבדוק מה הגורם ונטפל."
-  },
-  {
-   "speaker": "them",
-   "text": "מעולה, תודה.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "title": "Split questions (invented client: Lior, Shachar Design)",
+  "focus": "a question cut by an 800-1200 ms pause must be joined into one question",
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "היי ליאור, מדבר דן."
+    },
+    {
+      "speaker": "them",
+      "text": "שלום דן, יש לי כמה שאלות על האחסון.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "כמה זה",
+      "pauseBeforeMs": 800,
+      "expect": {
+        "part": "head"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "עולה לחודש?",
+      "pauseBeforeMs": 900,
+      "expect": {
+        "question": true,
+        "card": "stall-price",
+        "joinWith": "prev",
+        "note": "split by ~900 ms"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "זה תלוי במסלול, אחזור עם הצעה."
+    },
+    {
+      "speaker": "them",
+      "text": "יש לכם",
+      "pauseBeforeMs": 900,
+      "expect": {
+        "part": "head"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "גיבוי אוטומטי?",
+      "pauseBeforeMs": 1000,
+      "expect": {
+        "question": true,
+        "card": "backups",
+        "joinWith": "prev",
+        "note": "split by ~1000 ms"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "כן, יש גיבוי אוטומטי."
+    },
+    {
+      "speaker": "them",
+      "text": "מתי זה",
+      "pauseBeforeMs": 1000,
+      "expect": {
+        "part": "head"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "יהיה מוכן?",
+      "pauseBeforeMs": 1100,
+      "expect": {
+        "question": true,
+        "card": "stall-timeline",
+        "joinWith": "prev",
+        "note": "split by ~1100 ms"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "תלוי בהיקף, אבדוק."
+    },
+    {
+      "speaker": "them",
+      "text": "אפשר להעביר",
+      "pauseBeforeMs": 1000,
+      "expect": {
+        "part": "head"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "את הדומיין?",
+      "pauseBeforeMs": 1200,
+      "expect": {
+        "question": true,
+        "card": "domain-transfer",
+        "joinWith": "prev",
+        "note": "split by ~1200 ms"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "כן, נתאם את ההעברה."
+    },
+    {
+      "speaker": "them",
+      "text": "האתר שלי איטי",
+      "pauseBeforeMs": 900,
+      "expect": {
+        "part": "head"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "מה אפשר לעשות?",
+      "pauseBeforeMs": 800,
+      "expect": {
+        "question": true,
+        "card": "site-slow",
+        "joinWith": "prev",
+        "note": "split by 800 ms"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "נבדוק מה הגורם ונטפל."
+    },
+    {
+      "speaker": "them",
+      "text": "מעולה, תודה.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

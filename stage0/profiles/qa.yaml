@@ -1,6 +1,6 @@
 # Synthetic QA (qa/run-qa.ts): real Deepgram + real Haiku over a rendered WAV. No overlay (run.ts has none), no facts snapshot (never reads data/private).
 notes:
-  enabled: false           # not graded, saves a few Haiku calls
+  enabled: false # not graded, saves a few Haiku calls
 facts:
   enabled: false
 summary:
@@ -11,13 +11,13 @@ system:
   caffeinate: false
 audio:
   echo:
-    mode: filter           # headphones-style: "me" talking over the client is still transcribed
+    mode: filter # headphones-style: "me" talking over the client is still transcribed
 budget:
   idleStopMin: 0
 frame:
-  everyMs: 30000           # QA calls are only 2-3 minutes long: look twice as often as in a real call
+  everyMs: 30000 # QA calls are only 2-3 minutes long: look twice as often as in a real call
   minNewWords: 30
 tips:
-  minGapMs: 60000          # ... and allow a tip every minute, so a short scripted call can show one or two
+  minGapMs: 60000 # ... and allow a tip every minute, so a short scripted call can show one or two
 cards:
-  focus: false            # tests count every card; "important only" is tested on its own
+  focus: false # tests count every card; "important only" is tested on its own

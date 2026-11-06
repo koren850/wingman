@@ -10,17 +10,33 @@ export type Channel = "me" | "them";
 export type Word = { word: string; start: number; end: number; speaker?: number; confidence?: number };
 /** One transcript event. Interim results have isFinal=false; speechFinal marks the end of an utterance. Word times are seconds on the connection's audio clock. */
 export type SttResult = {
-  channel: Channel; text: string; isFinal: boolean; speechFinal: boolean; words: Word[];
+  channel: Channel;
+  text: string;
+  isFinal: boolean;
+  speechFinal: boolean;
+  words: Word[];
   /** wall-clock ms of the last word's end, from the audio clock (valid when audio is sent in real time) */
-  speechEndWall?: number; arrivedAt: number; confidence?: number;
+  speechEndWall?: number;
+  arrivedAt: number;
+  confidence?: number;
 };
 
 /** Per-stream options. Audio is always 16 kHz signed 16-bit mono PCM (32 bytes per ms). */
 export type SttOptions = {
-  apiKey: string; channel: Channel; language?: string; keyterms?: string[]; endpointingMs?: number; utteranceEndMs?: number;
+  apiKey: string;
+  channel: Channel;
+  language?: string;
+  keyterms?: string[];
+  endpointingMs?: number;
+  utteranceEndMs?: number;
   /** Deepgram only: send mip_opt_out=true so the audio is not used for model improvement. */
   mipOptOut?: boolean;
-  keepAliveMs?: number; finalizeSilenceMs?: number; diarize?: boolean; model?: string; baseUrl?: string; debug?: boolean;
+  keepAliveMs?: number;
+  finalizeSilenceMs?: number;
+  diarize?: boolean;
+  model?: string;
+  baseUrl?: string;
+  debug?: boolean;
   /** retry once without keyterms if the provider rejects the open . Default true. */
   keytermRetry?: boolean;
 };
@@ -28,10 +44,10 @@ export type SttOptions = {
 /** One live socket for one channel. */
 export interface SttStreamLike extends EventEmitter {
   open(): Promise<void>;
-  send(pcm: Buffer): boolean;               // false = dropped; never throws
+  send(pcm: Buffer): boolean; // false = dropped; never throws
   close(): Promise<void>;
   readonly isOpen: boolean;
-  readonly audioSeconds: number;            // for cost
+  readonly audioSeconds: number; // for cost
   dropped: number;
 }
 

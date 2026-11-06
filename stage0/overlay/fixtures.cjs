@@ -9,24 +9,107 @@ const now = Date.now();
 const card = (o) => ({ type: "card", question: "", facts: [], at: now, ...o });
 const side = (o) => card({ turnId: "side", ...o });
 const health = (id, level, say) => card({ id: `health-${id}`, turnId: "health", badge: "warn", health: true, level, say });
-const consent = card({ id: "consent", turnId: "start", badge: "info", question: "תחילת שיחה", say: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך?", facts: ["אפשר להגיד את זה בתחילת השיחה", "לא רוצים להקליט: Ctrl+C", "להתחלת האזנה: Enter"] });
-const bank = card({ id: "q1-bank", turnId: "q1", badge: "bank", question: "כמה זמן לוקח להעביר את האתר לוורדפרס?", say: "בדרך כלל שלושה עד חמישה שבועות, תלוי בכמות התכנים.", facts: ["עיצוב: שבוע וחצי", "העברת תוכן ו-SEO redirects: שבוע", "בדיקות ועלייה לאוויר: 3 ימים"] });
-const aiLong = card({ id: "q2-ai", turnId: "q2", badge: "ai", question: "אתם יכולים לחבר את זה ל-Salesforce ולשמור את הלידים שמגיעים מ-Facebook Ads?", say: "כן, אפשר לחבר את הטפסים ישירות ל-Salesforce דרך ה-API או Zapier, וכל ליד מ-Facebook Ads יגיע עם ה-UTM שלו. החיבור לוקח בערך יומיים עבודה ועולה כ-2,400 ₪ חד פעמי.", facts: ["עדיף webhook ישיר מ-Zapier (פחות נקודות כשל)", "צריך הרשאת admin ב-Salesforce"] });
-const aiStream = card({ id: "q3-ai", turnId: "q3", badge: "ai", question: "ומה לגבי האחסון, מי אחראי על הגיבויים?", say: "אנחנו מארחים אצלנו בשרת ייעודי, גיבוי יומי ל-30 יום, ושחזור בתוך" });
-const dimmed = card({ id: "q0-bank", turnId: "q0", badge: "bank", dim: true, question: "יש לכם ניסיון עם WooCommerce?", say: "כן, בנינו מעל עשרים חנויות WooCommerce, כולל חיבור לסליקה ולמלאי.", facts: [] });
-const stall = card({ id: "q4-stall", turnId: "q4", badge: "stall", question: "כמה זה יעלה לי בסוף, כולל תחזוקה?", say: "שאלה טובה, תן לי שנייה לדייק לך את המספר.", facts: [] });
-const factSsl = side({ id: "fact-d1", badge: "fact", say: "shop.example-shop.co.il", warn: true, facts: ["תעודת SSL פגה בעוד 6 ימים (8 Nov)", "שרת: srv-demo1, PHP 8.1", "הלקוח: לוי אלקטרוניקה בע\"מ"] });
-const factClient = side({ id: "fact-c1", badge: "fact", say: "לוי אלקטרוניקה", facts: ["אתר WooCommerce, תחזוקה חודשית 1,200 ₪", "איש קשר: דנה לוי, dana@example-shop.co.il"] });
+const consent = card({
+  id: "consent",
+  turnId: "start",
+  badge: "info",
+  question: "תחילת שיחה",
+  say: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך?",
+  facts: ["אפשר להגיד את זה בתחילת השיחה", "לא רוצים להקליט: Ctrl+C", "להתחלת האזנה: Enter"],
+});
+const bank = card({
+  id: "q1-bank",
+  turnId: "q1",
+  badge: "bank",
+  question: "כמה זמן לוקח להעביר את האתר לוורדפרס?",
+  say: "בדרך כלל שלושה עד חמישה שבועות, תלוי בכמות התכנים.",
+  facts: ["עיצוב: שבוע וחצי", "העברת תוכן ו-SEO redirects: שבוע", "בדיקות ועלייה לאוויר: 3 ימים"],
+});
+const aiLong = card({
+  id: "q2-ai",
+  turnId: "q2",
+  badge: "ai",
+  question: "אתם יכולים לחבר את זה ל-Salesforce ולשמור את הלידים שמגיעים מ-Facebook Ads?",
+  say: "כן, אפשר לחבר את הטפסים ישירות ל-Salesforce דרך ה-API או Zapier, וכל ליד מ-Facebook Ads יגיע עם ה-UTM שלו. החיבור לוקח בערך יומיים עבודה ועולה כ-2,400 ₪ חד פעמי.",
+  facts: ["עדיף webhook ישיר מ-Zapier (פחות נקודות כשל)", "צריך הרשאת admin ב-Salesforce"],
+});
+const aiStream = card({
+  id: "q3-ai",
+  turnId: "q3",
+  badge: "ai",
+  question: "ומה לגבי האחסון, מי אחראי על הגיבויים?",
+  say: "אנחנו מארחים אצלנו בשרת ייעודי, גיבוי יומי ל-30 יום, ושחזור בתוך",
+});
+const dimmed = card({
+  id: "q0-bank",
+  turnId: "q0",
+  badge: "bank",
+  dim: true,
+  question: "יש לכם ניסיון עם WooCommerce?",
+  say: "כן, בנינו מעל עשרים חנויות WooCommerce, כולל חיבור לסליקה ולמלאי.",
+  facts: [],
+});
+const stall = card({
+  id: "q4-stall",
+  turnId: "q4",
+  badge: "stall",
+  question: "כמה זה יעלה לי בסוף, כולל תחזוקה?",
+  say: "שאלה טובה, תן לי שנייה לדייק לך את המספר.",
+  facts: [],
+});
+const factSsl = side({
+  id: "fact-d1",
+  badge: "fact",
+  say: "shop.example-shop.co.il",
+  warn: true,
+  facts: ["תעודת SSL פגה בעוד 6 ימים (8 Nov)", "שרת: srv-demo1, PHP 8.1", 'הלקוח: לוי אלקטרוניקה בע"מ'],
+});
+const factClient = side({
+  id: "fact-c1",
+  badge: "fact",
+  say: "לוי אלקטרוניקה",
+  facts: ["אתר WooCommerce, תחזוקה חודשית 1,200 ₪", "איש קשר: דנה לוי, dana@example-shop.co.il"],
+});
 const propose = side({ id: "propose-client", badge: "info", say: "נראה שזו שיחה עם לוי אלקטרוניקה", facts: ["y בטרמינל = לאשר ולתת ל-AI את הפרטים"] });
-const reminder = side({ id: "reminder-1", badge: "reminder", say: "עוד לא דיברתם על:", facts: ["לוח זמנים והשקה", "מי מאשר את העיצוב אצלם", "מחיר תחזוקה שנתי"] });
-const notes = ["הלקוח רוצה השקה לפני חג המולד בחו\"ל", "תקציב משוער: 40-50 אלף ₪ + מע\"מ", "מתחרה: אתר של BUG, הם אהבו את ה-checkout שלהם"].map((n, i) => side({ id: `note-${i}`, badge: "note", say: n }));
+const reminder = side({
+  id: "reminder-1",
+  badge: "reminder",
+  say: "עוד לא דיברתם על:",
+  facts: ["לוח זמנים והשקה", "מי מאשר את העיצוב אצלם", "מחיר תחזוקה שנתי"],
+});
+const notes = ['הלקוח רוצה השקה לפני חג המולד בחו"ל', 'תקציב משוער: 40-50 אלף ₪ + מע"מ', "מתחרה: אתר של BUG, הם אהבו את ה-checkout שלהם"].map((n, i) =>
+  side({ id: `note-${i}`, badge: "note", say: n }),
+);
 // Call frame + tips (invented): a vendor negotiation, 3 of 6 checklist items covered.
-const frameRow = { type: "frame", at: now, frame: { kind: "vendor", topic: "חידוש חוזה אחסון שנתי", goal: "לסגור תנאים טובים יותר ולוודא גיבויים וזמינות", people: [{ who: "רועי", role: "נציג מכירות" }], entities: ["HostCo"], checklist: [
-  { item: "תנאי החידוש ותקופת ההתחייבות", done: true, must: true }, { item: "זמינות (SLA) ופיצוי על השבתה", done: true, must: true }, { item: "מדיניות גיבויים ושחזור", done: true, must: false },
-  { item: "תנאי ביטול ומעבר לספק אחר", done: false, must: true }, { item: "תמיכה בשעות לא שגרתיות", done: false, must: false }, { item: "לוח זמנים להחלטה", done: false, must: true }] } };
+const frameRow = {
+  type: "frame",
+  at: now,
+  frame: {
+    kind: "vendor",
+    topic: "חידוש חוזה אחסון שנתי",
+    goal: "לסגור תנאים טובים יותר ולוודא גיבויים וזמינות",
+    people: [{ who: "רועי", role: "נציג מכירות" }],
+    entities: ["HostCo"],
+    checklist: [
+      { item: "תנאי החידוש ותקופת ההתחייבות", done: true, must: true },
+      { item: "זמינות (SLA) ופיצוי על השבתה", done: true, must: true },
+      { item: "מדיניות גיבויים ושחזור", done: true, must: false },
+      { item: "תנאי ביטול ומעבר לספק אחר", done: false, must: true },
+      { item: "תמיכה בשעות לא שגרתיות", done: false, must: false },
+      { item: "לוח זמנים להחלטה", done: false, must: true },
+    ],
+  },
+};
 const tip1 = card({ id: "tip-1", turnId: "tips", badge: "tip", tipType: "ask", say: "שאל מה תנאי הביטול אם עוברים לספק אחר באמצע התקופה." });
 const tip2 = card({ id: "tip-2", turnId: "tips", badge: "tip", tipType: "term", say: "SLA: מה הספק מתחייב לזמינות, ומה הפיצוי כשלא עומדים בזה." });
-const vendorHero = card({ id: "q7-ai", turnId: "q7", badge: "ai", question: "אנחנו יכולים להציע שרת ייעודי עם גיבוי יומי, מתאים לך?", say: "שרת ייעודי עם גיבוי יומי נשמע מתאים. כדאי לברר כמה זמן הגיבויים נשמרים ואיפה.", facts: ["לבקש לראות את מדיניות השחזור"] });
+const vendorHero = card({
+  id: "q7-ai",
+  turnId: "q7",
+  badge: "ai",
+  question: "אנחנו יכולים להציע שרת ייעודי עם גיבוי יומי, מתאים לך?",
+  say: "שרת ייעודי עם גיבוי יומי נשמע מתאים. כדאי לברר כמה זמן הגיבויים נשמרים ואיפה.",
+  facts: ["לבקש לראות את מדיניות השחזור"],
+});
 const cap = (kind, value) => ({ type: "capture", ch: "them", kind, value, at: now });
 const caps = [cap("phone", "050-1234567"), cap("email", "dana@example-shop.co.il"), cap("domain", "shop.example-shop.co.il")];
 const lines = [
@@ -37,38 +120,171 @@ const lines = [
 ];
 
 // Answers for the user himself ("For you") and the calm "only you" state (invented).
-const meCalc = card({ id: "m1-me", turnId: "m1", badge: "me", forMe: true, source: "calc", question: "כמה זה 36 ועוד 42?", say: "\u206636 + 42 = 78\u2069", at: now - 9000 });
-const meAi = card({ id: "m2-me", turnId: "m2", badge: "me", forMe: true, source: "ai", question: "מה ההבדל בין CDN ל-DNS?", say: "CDN מפיץ עותקים של האתר לשרתים קרובים לגולש, ו-DNS רק מתרגם שם דומיין לכתובת השרת.", facts: ["CDN משפר מהירות", "DNS קובע לאן הדומיין מצביע"], at: now - 2000 });
+const meCalc = card({
+  id: "m1-me",
+  turnId: "m1",
+  badge: "me",
+  forMe: true,
+  source: "calc",
+  question: "כמה זה 36 ועוד 42?",
+  say: "\u206636 + 42 = 78\u2069",
+  at: now - 9000,
+});
+const meAi = card({
+  id: "m2-me",
+  turnId: "m2",
+  badge: "me",
+  forMe: true,
+  source: "ai",
+  question: "מה ההבדל בין CDN ל-DNS?",
+  say: "CDN מפיץ עותקים של האתר לשרתים קרובים לגולש, ו-DNS רק מתרגם שם דומיין לכתובת השרת.",
+  facts: ["CDN משפר מהירות", "DNS קובע לאן הדומיין מצביע"],
+  at: now - 2000,
+});
 const onlyYou = health("only-you", "info", "I only hear you. To get answers for the other side, join the call or play its audio. Ask me anything: Ctrl+Opt+A.");
 const askOn = { type: "ask", on: true, until: now + 10 * 60_000, at: now };
 const S = {
-  foryou: { cards: [bank, meCalc, meAi, askOn], lines: [{ t: now - 24000, ch: "them", text: "והאחסון? מי אחראי על הגיבויים אם משהו נופל בשבת?" }, { t: now - 9500, ch: "me", text: "כמה זה 36 ועוד 42?" }, { t: now - 3000, ch: "me", text: "מה ההבדל בין CDN ל-DNS?" }] },
+  foryou: {
+    cards: [bank, meCalc, meAi, askOn],
+    lines: [
+      { t: now - 24000, ch: "them", text: "והאחסון? מי אחראי על הגיבויים אם משהו נופל בשבת?" },
+      { t: now - 9500, ch: "me", text: "כמה זה 36 ועוד 42?" },
+      { t: now - 3000, ch: "me", text: "מה ההבדל בין CDN ל-DNS?" },
+    ],
+  },
   onlyyou: { cards: [onlyYou, meCalc], lines: [{ t: now - 9500, ch: "me", text: "כמה זה 36 ועוד 42?" }] },
   empty: { cards: [], lines: [] },
   consent: { cards: [consent], lines: [] },
-  full: { cards: [bank, health("them-silent", "red", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות"), health("cost", "amber", "עלות AI $1.42 מתוך $2"), dimmed, aiLong, stall, factSsl, factClient, reminder, ...notes, ...caps, aiStream], lines },
-  overflow: { cards: [bank, dimmed, aiLong, stall, aiStream, card({ ...bank, id: "q5-bank", turnId: "q5" }), card({ ...aiLong, id: "q6-ai", turnId: "q6" }), factSsl, factClient, propose, reminder, ...notes, ...caps], lines },
+  full: {
+    cards: [
+      bank,
+      health("them-silent", "red", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות"),
+      health("cost", "amber", "עלות AI $1.42 מתוך $2"),
+      dimmed,
+      aiLong,
+      stall,
+      factSsl,
+      factClient,
+      reminder,
+      ...notes,
+      ...caps,
+      aiStream,
+    ],
+    lines,
+  },
+  overflow: {
+    cards: [
+      bank,
+      dimmed,
+      aiLong,
+      stall,
+      aiStream,
+      card({ ...bank, id: "q5-bank", turnId: "q5" }),
+      card({ ...aiLong, id: "q6-ai", turnId: "q6" }),
+      factSsl,
+      factClient,
+      propose,
+      reminder,
+      ...notes,
+      ...caps,
+    ],
+    lines,
+  },
   frame: { cards: [frameRow, vendorHero, tip1, tip2], lines: [{ t: now - 6000, ch: "them", text: "אנחנו יכולים להציע שרת ייעודי עם גיבוי יומי, מתאים לך?" }] },
   quiet: { cards: [health("quiet", "info", "מצב שקט: הכרטיסים נרשמים אבל לא מוצגים "), factClient, reminder, ...caps.slice(0, 2)], lines },
 };
 
 // fullEn: the same screen as "full" with English call content (an English-language call, English UI): used for the documentation screenshot (invented data).
 {
-  const eb = card({ id: "e1-bank", turnId: "e1", badge: "bank", question: "How long does a migration to WordPress take?", say: "Usually three to five weeks, depending on how much content there is.", facts: ["Design: a week and a half", "Content migration and SEO redirects: one week", "Testing and go-live: 3 days"] });
-  const eai = card({ id: "e2-ai", turnId: "e2", badge: "ai", question: "Can you connect it to Salesforce and keep the leads coming from Facebook Ads?", say: "Yes, the forms can be connected straight to Salesforce through the API or Zapier, and every Facebook Ads lead arrives with its UTM tags. The connection takes about two days of work and costs around $650 one time.", facts: ["A direct webhook beats Zapier (fewer points of failure)", "Needs admin permission in Salesforce"] });
-  const edim = card({ id: "e0-bank", turnId: "e0", badge: "bank", dim: true, question: "Do you have experience with WooCommerce?", say: "Yes, we built more than twenty WooCommerce stores, including payment and inventory integration.", facts: [] });
-  const estall = card({ id: "e4-stall", turnId: "e4", badge: "stall", question: "What will it cost me in the end, including maintenance?", say: "Good question, let me double-check the number for you.", facts: [] });
-  const estream = card({ id: "e3-ai", turnId: "e3", badge: "ai", question: "And hosting: who is responsible for backups?", say: "We host on a dedicated server with daily backups for 30 days, and a restore within" });
-  const efact = side({ id: "efact-d1", badge: "fact", say: "shop.example-shop.com", warn: true, facts: ["SSL certificate expires in 6 days (8 Nov)", "Server: srv-demo1, PHP 8.1", "Client: Levy Electronics Ltd."] });
-  const efact2 = side({ id: "efact-c1", badge: "fact", say: "Levy Electronics", facts: ["WooCommerce site, monthly maintenance $320", "Contact: Dana Levy, dana@example-shop.com"] });
-  const erem = side({ id: "ereminder-1", badge: "reminder", say: "You have not talked about:", facts: ["Schedule and launch", "Who approves the design on their side", "Yearly maintenance price"] });
-  const enotes = ["The client wants to launch before the holidays", "Estimated budget: $11-13k + VAT", "Competitor: BUG, they liked their checkout"].map((n, i) => side({ id: `enote-${i}`, badge: "note", say: n }));
+  const eb = card({
+    id: "e1-bank",
+    turnId: "e1",
+    badge: "bank",
+    question: "How long does a migration to WordPress take?",
+    say: "Usually three to five weeks, depending on how much content there is.",
+    facts: ["Design: a week and a half", "Content migration and SEO redirects: one week", "Testing and go-live: 3 days"],
+  });
+  const eai = card({
+    id: "e2-ai",
+    turnId: "e2",
+    badge: "ai",
+    question: "Can you connect it to Salesforce and keep the leads coming from Facebook Ads?",
+    say: "Yes, the forms can be connected straight to Salesforce through the API or Zapier, and every Facebook Ads lead arrives with its UTM tags. The connection takes about two days of work and costs around $650 one time.",
+    facts: ["A direct webhook beats Zapier (fewer points of failure)", "Needs admin permission in Salesforce"],
+  });
+  const edim = card({
+    id: "e0-bank",
+    turnId: "e0",
+    badge: "bank",
+    dim: true,
+    question: "Do you have experience with WooCommerce?",
+    say: "Yes, we built more than twenty WooCommerce stores, including payment and inventory integration.",
+    facts: [],
+  });
+  const estall = card({
+    id: "e4-stall",
+    turnId: "e4",
+    badge: "stall",
+    question: "What will it cost me in the end, including maintenance?",
+    say: "Good question, let me double-check the number for you.",
+    facts: [],
+  });
+  const estream = card({
+    id: "e3-ai",
+    turnId: "e3",
+    badge: "ai",
+    question: "And hosting: who is responsible for backups?",
+    say: "We host on a dedicated server with daily backups for 30 days, and a restore within",
+  });
+  const efact = side({
+    id: "efact-d1",
+    badge: "fact",
+    say: "shop.example-shop.com",
+    warn: true,
+    facts: ["SSL certificate expires in 6 days (8 Nov)", "Server: srv-demo1, PHP 8.1", "Client: Levy Electronics Ltd."],
+  });
+  const efact2 = side({
+    id: "efact-c1",
+    badge: "fact",
+    say: "Levy Electronics",
+    facts: ["WooCommerce site, monthly maintenance $320", "Contact: Dana Levy, dana@example-shop.com"],
+  });
+  const erem = side({
+    id: "ereminder-1",
+    badge: "reminder",
+    say: "You have not talked about:",
+    facts: ["Schedule and launch", "Who approves the design on their side", "Yearly maintenance price"],
+  });
+  const enotes = ["The client wants to launch before the holidays", "Estimated budget: $11-13k + VAT", "Competitor: BUG, they liked their checkout"].map(
+    (n, i) => side({ id: `enote-${i}`, badge: "note", say: n }),
+  );
   const elines = [
-    { t: now - 24000, ch: "them", text: "So basically we need the site to connect to Salesforce, and every lead from Facebook Ads should come in automatically." },
+    {
+      t: now - 24000,
+      ch: "them",
+      text: "So basically we need the site to connect to Salesforce, and every lead from Facebook Ads should come in automatically.",
+    },
     { t: now - 17000, ch: "me", text: "Yes, that is possible, we will go over it in the proposal." },
     { t: now - 11000, ch: "them", text: "And hosting? Who is responsible for backups if something goes down on a weekend?" },
-    { t: now - 4000, ch: "them", text: "Write down my number, 050-1234567, and send me a proposal by Thursday." }];
-  S.fullEn = { cards: [eb, health("them-silent", "red", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות"), health("cost", "amber", "עלות AI $1.42 מתוך $2"), edim, eai, estall, efact, efact2, erem, ...enotes, ...caps, estream], lines: elines };
+    { t: now - 4000, ch: "them", text: "Write down my number, 050-1234567, and send me a proposal by Thursday." },
+  ];
+  S.fullEn = {
+    cards: [
+      eb,
+      health("them-silent", "red", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות"),
+      health("cost", "amber", "עלות AI $1.42 מתוך $2"),
+      edim,
+      eai,
+      estall,
+      efact,
+      efact2,
+      erem,
+      ...enotes,
+      ...caps,
+      estream,
+    ],
+    lines: elines,
+  };
 }
 
 // Older answers (2 and 5 minutes old) and a call that has ended.
@@ -76,26 +292,69 @@ const old = (c, ago) => ({ ...c, at: now - ago });
 S.stale = { cards: [old(bank, 300000), old(aiLong, 130000), old(stall, 70000), old(dimmed, 50000), card({ ...aiStream, at: now - 50000 })], lines };
 S.ended = { cards: [bank, aiLong, ...caps], lines, ended: true };
 // Several people on the other side, told apart by voice (stt.speakers): the live strip and the rewind sheet name the speaker.
-S.speakers = { cards: [bank], lines: [{ t: now - 9000, ch: "them", spk: 1, text: "דנה, שלחת כבר את רשימת התורמים?" }, { t: now - 5000, ch: "them", spk: 2, text: "עוד לא, מחכה לייצוא מה-CRM." }, { t: now - 1500, ch: "them", spk: 3, name: "רות", text: "אני יכולה להריץ את הייצוא מחר בבוקר." }] };
-S.speakers.cards.push({ type: "speaker", spk: 2, name: "פייר", source: "user", t: now - 1000 });   // renamed after the fact: line 2 shows the name too
+S.speakers = {
+  cards: [bank],
+  lines: [
+    { t: now - 9000, ch: "them", spk: 1, text: "דנה, שלחת כבר את רשימת התורמים?" },
+    { t: now - 5000, ch: "them", spk: 2, text: "עוד לא, מחכה לייצוא מה-CRM." },
+    { t: now - 1500, ch: "them", spk: 3, name: "רות", text: "אני יכולה להריץ את הייצוא מחר בבוקר." },
+  ],
+};
+S.speakers.cards.push({ type: "speaker", spk: 2, name: "פייר", source: "user", t: now - 1000 }); // renamed after the fact: line 2 shows the name too
 // Self-check: a red correction and an amber "you committed" card about what the user said (invented project facts).
-const fix = card({ id: "s1-fix", turnId: "s1", badge: "fix", question: "יש לכם בערך 200 עמודים באתר", say: "לפי החומר שהכנו: 140 עמודים ו-320 חדשות, לא 200 עמודים.", facts: ["רקע הפגישה: ספירת מפות האתר"], at: now - 1500 });
-const careful = card({ id: "s2-careful", turnId: "s2", badge: "careful", question: "נסיים את כל ההעברה עד סוף החודש", say: "התחייבת לתאריך. אפשר לסייג: \"אחזור אליכם עם לוח זמנים מסודר\".", facts: [], at: now - 40000 });
-S.selfcheck = { cards: [old(bank, 90000), careful, fix], lines: [{ t: now - 8000, ch: "them", text: "כמה עמודים יש בערך באתר הנוכחי, ומה עם החדשות הישנות?" }, { t: now - 2500, ch: "me", text: "יש לכם בערך 200 עמודים באתר" }] };
+const fix = card({
+  id: "s1-fix",
+  turnId: "s1",
+  badge: "fix",
+  question: "יש לכם בערך 200 עמודים באתר",
+  say: "לפי החומר שהכנו: 140 עמודים ו-320 חדשות, לא 200 עמודים.",
+  facts: ["רקע הפגישה: ספירת מפות האתר"],
+  at: now - 1500,
+});
+const careful = card({
+  id: "s2-careful",
+  turnId: "s2",
+  badge: "careful",
+  question: "נסיים את כל ההעברה עד סוף החודש",
+  say: 'התחייבת לתאריך. אפשר לסייג: "אחזור אליכם עם לוח זמנים מסודר".',
+  facts: [],
+  at: now - 40000,
+});
+S.selfcheck = {
+  cards: [old(bank, 90000), careful, fix],
+  lines: [
+    { t: now - 8000, ch: "them", text: "כמה עמודים יש בערך באתר הנוכחי, ומה עם החדשות הישנות?" },
+    { t: now - 2500, ch: "me", text: "יש לכם בערך 200 עמודים באתר" },
+  ],
+};
 // Flow: two people on the other side talk among themselves (with a topic line); flowyou: then one of them turns to the user.
-const flowLines = [{ t: now - 12000, ch: "them", spk: 1, name: "דנה", text: "אז מה עושים עם החדשות הישנות?" }, { t: now - 7000, ch: "them", spk: 2, name: "רות", text: "לדעתי מייבאים הכל ומציגים רק מ-2023." }, { t: now - 2000, ch: "them", spk: 1, name: "דנה", text: "מסכימה, ככה לא מאבדים כלום." }];
-S.flow = { cards: [old(bank, 60000), { type: "flow", state: "internal", who: ["דנה", "רות"], topic: "אילו חדשות ישנות לייבא לאתר החדש", at: now - 1500 }], lines: flowLines };
-S.flowyou = { cards: [...S.flow.cards, { type: "addressed", who: "רות", text: "דן, זה אפשרי מבחינתכם?", at: now - 500 }], lines: [...flowLines, { t: now - 600, ch: "them", spk: 2, name: "רות", text: "דן, זה אפשרי מבחינתכם?" }] };
+const flowLines = [
+  { t: now - 12000, ch: "them", spk: 1, name: "דנה", text: "אז מה עושים עם החדשות הישנות?" },
+  { t: now - 7000, ch: "them", spk: 2, name: "רות", text: "לדעתי מייבאים הכל ומציגים רק מ-2023." },
+  { t: now - 2000, ch: "them", spk: 1, name: "דנה", text: "מסכימה, ככה לא מאבדים כלום." },
+];
+S.flow = {
+  cards: [old(bank, 60000), { type: "flow", state: "internal", who: ["דנה", "רות"], topic: "אילו חדשות ישנות לייבא לאתר החדש", at: now - 1500 }],
+  lines: flowLines,
+};
+S.flowyou = {
+  cards: [...S.flow.cards, { type: "addressed", who: "רות", text: "דן, זה אפשרי מבחינתכם?", at: now - 500 }],
+  lines: [...flowLines, { t: now - 600, ch: "them", spk: 2, name: "רות", text: "דן, זה אפשרי מבחינתכם?" }],
+};
 S.starting = { cards: [], lines: [], nolatest: true };
 // call.json phase (the contract overlay/lib.cjs callPhase reads): empty = starting, listening = live with no cards yet, waiting = start approval, nophase = timer fallback.
-S.empty.phase = "starting"; S.consent.phase = "waiting";
+S.empty.phase = "starting";
+S.consent.phase = "waiting";
 S.listening = { cards: [], lines: [], phase: "live", liveAt: now - 95000 };
 S.waiting = { cards: [], lines: [], phase: "waiting" };
 S.nophase = { cards: [], lines: [], phase: "" };
 
 const [, , name = "full", dir = "/tmp/wingman-fixture"] = process.argv;
 const sc = S[name];
-if (!sc) { console.error("unknown scenario " + name); process.exit(2); }
+if (!sc) {
+  console.error("unknown scenario " + name);
+  process.exit(2);
+}
 fs.rmSync(dir, { recursive: true, force: true });
 const call = path.join(dir, "fixture-call");
 fs.mkdirSync(call, { recursive: true });
@@ -103,6 +362,10 @@ fs.writeFileSync(path.join(call, "cards.jsonl"), sc.cards.map((c) => JSON.string
 fs.writeFileSync(path.join(call, "transcript.jsonl"), sc.lines.map((c) => JSON.stringify(c)).join("\n") + (sc.lines.length ? "\n" : ""));
 const meta = { id: "fixture-call" };
 if (sc.ended) meta.endedAt = new Date().toISOString();
-else { const ph = sc.phase === undefined ? "live" : sc.phase; if (ph) meta.phase = ph; if (ph === "live") meta.liveAt = sc.liveAt || now - 600000; }
+else {
+  const ph = sc.phase === undefined ? "live" : sc.phase;
+  if (ph) meta.phase = ph;
+  if (ph === "live") meta.liveAt = sc.liveAt || now - 600000;
+}
 fs.writeFileSync(path.join(call, "call.json"), JSON.stringify(meta));
 if (!sc.nolatest) fs.symlinkSync(call, path.join(dir, "latest"));

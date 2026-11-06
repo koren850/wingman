@@ -7,16 +7,21 @@ export type AudioDevice = { name: string; transport: string; defaultInput: boole
 /** Parses `system_profiler SPAudioDataType -json` output. Bad JSON gives []. */
 export function parseAudioDevices(json: string): AudioDevice[] {
   let d: { SPAudioDataType?: { _items?: Record<string, unknown>[] }[] } | undefined;
-  try { d = JSON.parse(json); } catch { return []; }
-  const out: AudioDevice[] = [];
-  for (const g of d?.SPAudioDataType ?? []) for (const it of g?._items ?? []) {
-    out.push({
-      name: String(it._name ?? ""),
-      transport: String(it.coreaudio_device_transport ?? ""),
-      defaultInput: it.coreaudio_default_audio_input_device === "spaudio_yes",
-      defaultOutput: it.coreaudio_default_audio_output_device === "spaudio_yes",
-    });
+  try {
+    d = JSON.parse(json);
+  } catch {
+    return [];
   }
+  const out: AudioDevice[] = [];
+  for (const g of d?.SPAudioDataType ?? [])
+    for (const it of g?._items ?? []) {
+      out.push({
+        name: String(it._name ?? ""),
+        transport: String(it.coreaudio_device_transport ?? ""),
+        defaultInput: it.coreaudio_default_audio_input_device === "spaudio_yes",
+        defaultOutput: it.coreaudio_default_audio_output_device === "spaudio_yes",
+      });
+    }
   return out;
 }
 
@@ -36,17 +41,26 @@ export function bluetoothInUse(devs: AudioDevice[]): { device: AudioDevice; role
 export function readAudioDevices(timeoutMs = 4000): Promise<AudioDevice[]> {
   return new Promise((res) => {
     if (process.platform !== "darwin") return res([]);
-    execFile("system_profiler", ["SPAudioDataType", "-json"], { timeout: timeoutMs, maxBuffer: 4 << 20 }, (err, stdout) => res(err ? [] : parseAudioDevices(stdout)));
+    execFile("system_profiler", ["SPAudioDataType", "-json"], { timeout: timeoutMs, maxBuffer: 4 << 20 }, (err, stdout) =>
+      res(err ? [] : parseAudioDevices(stdout)),
+    );
   });
 }
 
 export type InputDevice = { index: number; name: string };
 /** Parses the stderr of `ffmpeg -f avfoundation -list_devices true -i ""`: the "audio devices" section lines "[AVFoundation indev @ 0x..] [1] MacBook Pro Microphone". */
 export function parseAvfoundationInputs(text: string): InputDevice[] {
-  const out: InputDevice[] = []; let audio = false;
+  const out: InputDevice[] = [];
+  let audio = false;
   for (const line of String(text).split("\n")) {
-    if (/AVFoundation audio devices/i.test(line)) { audio = true; continue; }
-    if (/AVFoundation video devices/i.test(line)) { audio = false; continue; }
+    if (/AVFoundation audio devices/i.test(line)) {
+      audio = true;
+      continue;
+    }
+    if (/AVFoundation video devices/i.test(line)) {
+      audio = false;
+      continue;
+    }
     const m = audio && /\]\s+\[(\d{1,3})\]\s+(.+?)\s*$/.exec(line);
     if (m) out.push({ index: Number(m[1]), name: m[2].slice(0, 80) });
   }
@@ -56,6 +70,15 @@ export function parseAvfoundationInputs(text: string): InputDevice[] {
 export function listInputDevices(timeoutMs = 6000): Promise<InputDevice[]> {
   return new Promise((res) => {
     if (process.platform !== "darwin") return res([]);
-    execFile("ffmpeg", ["-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", ""], { timeout: timeoutMs, maxBuffer: 1 << 20, env: { PATH: `${process.env.PATH ?? "/usr/bin:/bin"}:/opt/homebrew/bin:/usr/local/bin`, HOME: process.env.HOME ?? "" } }, (_err, _out, stderr) => res(parseAvfoundationInputs(String(stderr || ""))));   // ffmpeg exits non-zero after listing
+    execFile(
+      "ffmpeg",
+      ["-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", ""],
+      {
+        timeout: timeoutMs,
+        maxBuffer: 1 << 20,
+        env: { PATH: `${process.env.PATH ?? "/usr/bin:/bin"}:/opt/homebrew/bin:/usr/local/bin`, HOME: process.env.HOME ?? "" },
+      },
+      (_err, _out, stderr) => res(parseAvfoundationInputs(String(stderr || ""))),
+    ); // ffmpeg exits non-zero after listing
   });
 }

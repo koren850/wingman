@@ -29,9 +29,14 @@ export { migration };
 
 /** provider id -> env var holding its key. */
 export const KEY_VARS = {
-  anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY", google: "GOOGLE_GENERATIVE_AI_API_KEY",
-  mistral: "MISTRAL_API_KEY", groq: "GROQ_API_KEY",
-  deepgram: "DEEPGRAM_API_KEY", soniox: "SONIOX_API_KEY", gladia: "GLADIA_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  google: "GOOGLE_GENERATIVE_AI_API_KEY",
+  mistral: "MISTRAL_API_KEY",
+  groq: "GROQ_API_KEY",
+  deepgram: "DEEPGRAM_API_KEY",
+  soniox: "SONIOX_API_KEY",
+  gladia: "GLADIA_API_KEY",
 } as const;
 export type KeyName = keyof typeof KEY_VARS;
 export type Keys = Partial<Record<KeyName, string>>;
@@ -41,7 +46,11 @@ export function parseKeysFile(text: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of text.split("\n")) {
     const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.*)\s*$/);
-    if (m && m[2]) out[m[1]] = m[2].trim().replace(/^["']|["']$/g, "").trim();
+    if (m && m[2])
+      out[m[1]] = m[2]
+        .trim()
+        .replace(/^["']|["']$/g, "")
+        .trim();
   }
   return out;
 }
@@ -50,7 +59,7 @@ export function parseKeysFile(text: string): Record<string, string> {
 let permsChecked = false;
 export function securePerms(file: string, platform: string = process.platform): "ok" | "fixed" | "missing" {
   if (!existsSync(file)) return "missing";
-  if (platform === "win32") return "ok";   // no POSIX mode bits on Windows: the file is protected by the user profile's access list
+  if (platform === "win32") return "ok"; // no POSIX mode bits on Windows: the file is protected by the user profile's access list
   const mode = statSync(file).mode & 0o777;
   if ((mode & 0o077) === 0) return "ok";
   chmodSync(file, 0o600);
@@ -64,16 +73,39 @@ export type KeySources = Partial<Record<KeyName, "env" | "keychain" | "file">>;
 
 /** Order: process env, then the macOS Keychain (Deepgram + Anthropic only), then keys.env (legacy fallback). Keys live in memory only.
  *  `keychain` is opt-in: null (default) means no Keychain lookup, so tests and tools that pass a file never reach the real one. */
-export function loadKeysWithSources(file = KEYS_FILE, env: NodeJS.ProcessEnv = process.env, keychain: Keychain | null = null): { keys: Keys; sources: KeySources } {
-  try { securePerms(file); } catch { /* read-only file system: loading still works */ }
+export function loadKeysWithSources(
+  file = KEYS_FILE,
+  env: NodeJS.ProcessEnv = process.env,
+  keychain: Keychain | null = null,
+): { keys: Keys; sources: KeySources } {
+  try {
+    securePerms(file);
+  } catch {
+    /* read-only file system: loading still works */
+  }
   const fromFile = existsSync(file) ? parseKeysFile(readFileSync(file, "utf8")) : {};
-  const keys: Keys = {}, sources: KeySources = {};
+  const keys: Keys = {},
+    sources: KeySources = {};
   for (const [name, v] of Object.entries(KEY_VARS)) {
     const n = name as KeyName;
-    let val = env[v]?.trim(), src: "env" | "keychain" | "file" = "env";
-    if (!val && keychain && n in ACCOUNTS) { try { val = keychain.get(n as "deepgram" | "anthropic") || undefined; } catch { val = undefined; } src = "keychain"; }
-    if (!val && fromFile[v]) { val = fromFile[v]; src = "file"; }
-    if (val) { keys[n] = val; sources[n] = src; }
+    let val = env[v]?.trim(),
+      src: "env" | "keychain" | "file" = "env";
+    if (!val && keychain && n in ACCOUNTS) {
+      try {
+        val = keychain.get(n as "deepgram" | "anthropic") || undefined;
+      } catch {
+        val = undefined;
+      }
+      src = "keychain";
+    }
+    if (!val && fromFile[v]) {
+      val = fromFile[v];
+      src = "file";
+    }
+    if (val) {
+      keys[n] = val;
+      sources[n] = src;
+    }
   }
   return { keys, sources };
 }
@@ -87,7 +119,9 @@ export function requireKeys<K extends KeyName>(which: K[], file = KEYS_FILE, key
   const k = loadKeys(file, process.env, keychain);
   const missing = which.filter((w) => !k[w]);
   if (missing.length) {
-    console.error(`Missing key(s): ${missing.map((m) => KEY_VARS[m]).join(", ")}. Save them in Wingman: Settings → Keys (or pnpm keys set <provider>). Legacy fallback: ${file}`);
+    console.error(
+      `Missing key(s): ${missing.map((m) => KEY_VARS[m]).join(", ")}. Save them in Wingman: Settings → Keys (or pnpm keys set <provider>). Legacy fallback: ${file}`,
+    );
     process.exit(2);
   }
   return k as Record<K, string> & Keys;

@@ -1,111 +1,111 @@
 {
- "title": "Prices and timelines (invented client: Noa, Galil Ceramics)",
- "focus": "price and timeline questions must stall, never an invented price or date",
- "turns": [
-  {
-   "speaker": "me",
-   "text": "שלום נועה, מדבר דן, מה שלומך?"
-  },
-  {
-   "speaker": "them",
-   "text": "היי דן, אני נועה מגליל קרמיקה, אנחנו רוצים חנות אינטרנט חדשה.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "מעולה, ספרי לי קצת על מה שאתם צריכים."
-  },
-  {
-   "speaker": "them",
-   "text": "יש לנו בערך מאה וחמישים מוצרים, ואנחנו רוצים לקבל תשלום באשראי.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "כמה עולה חנות כזאת?",
-   "expect": {
-    "question": true,
-    "card": "stall-price"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "זה תלוי במה שצריך בדיוק, אני אשמח להבין קודם את הצרכים."
-  },
-  {
-   "speaker": "them",
-   "text": "אני מבינה, אבל תגיד לי מספר בערך, כמה זה יעלה?",
-   "expect": {
-    "question": true,
-    "card": "stall-price",
-    "note": "pushing for a number: no price may appear"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני לא רוצה לנחש, אני אחזור אלייך עם הצעה מסודרת."
-  },
-  {
-   "speaker": "them",
-   "text": "בסדר. ומה עם התחזוקה החודשית, כמה זה יוצא בחודש?",
-   "expect": {
-    "question": true,
-    "card": "stall-price"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "גם את זה נגדיר בהצעה."
-  },
-  {
-   "speaker": "them",
-   "text": "ומתי החנות תהיה מוכנה? אנחנו רוצים לעלות לפני החגים.",
-   "expect": {
-    "question": true,
-    "card": "stall-timeline"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני צריך לבדוק את ההיקף לפני שאני נותן תאריך."
-  },
-  {
-   "speaker": "them",
-   "text": "אתם מתחייבים שזה יהיה מוכן בזמן?",
-   "expect": {
-    "question": true,
-    "card": "stall-guarantee"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני לא מבטיח כלום לפני שבדקתי, אבל נגדיר את זה בכתב."
-  },
-  {
-   "speaker": "them",
-   "text": "הבנתי. המייל שלי הוא noa at galil dash ceramics dot co dot il",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "בטח, אשלח השבוע. תודה נועה."
-  },
-  {
-   "speaker": "them",
-   "text": "תודה רבה דן, להתראות.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "title": "Prices and timelines (invented client: Noa, Galil Ceramics)",
+  "focus": "price and timeline questions must stall, never an invented price or date",
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "שלום נועה, מדבר דן, מה שלומך?"
+    },
+    {
+      "speaker": "them",
+      "text": "היי דן, אני נועה מגליל קרמיקה, אנחנו רוצים חנות אינטרנט חדשה.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "מעולה, ספרי לי קצת על מה שאתם צריכים."
+    },
+    {
+      "speaker": "them",
+      "text": "יש לנו בערך מאה וחמישים מוצרים, ואנחנו רוצים לקבל תשלום באשראי.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "כמה עולה חנות כזאת?",
+      "expect": {
+        "question": true,
+        "card": "stall-price"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "זה תלוי במה שצריך בדיוק, אני אשמח להבין קודם את הצרכים."
+    },
+    {
+      "speaker": "them",
+      "text": "אני מבינה, אבל תגיד לי מספר בערך, כמה זה יעלה?",
+      "expect": {
+        "question": true,
+        "card": "stall-price",
+        "note": "pushing for a number: no price may appear"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני לא רוצה לנחש, אני אחזור אלייך עם הצעה מסודרת."
+    },
+    {
+      "speaker": "them",
+      "text": "בסדר. ומה עם התחזוקה החודשית, כמה זה יוצא בחודש?",
+      "expect": {
+        "question": true,
+        "card": "stall-price"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "גם את זה נגדיר בהצעה."
+    },
+    {
+      "speaker": "them",
+      "text": "ומתי החנות תהיה מוכנה? אנחנו רוצים לעלות לפני החגים.",
+      "expect": {
+        "question": true,
+        "card": "stall-timeline"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני צריך לבדוק את ההיקף לפני שאני נותן תאריך."
+    },
+    {
+      "speaker": "them",
+      "text": "אתם מתחייבים שזה יהיה מוכן בזמן?",
+      "expect": {
+        "question": true,
+        "card": "stall-guarantee"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני לא מבטיח כלום לפני שבדקתי, אבל נגדיר את זה בכתב."
+    },
+    {
+      "speaker": "them",
+      "text": "הבנתי. המייל שלי הוא noa at galil dash ceramics dot co dot il",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "בטח, אשלח השבוע. תודה נועה."
+    },
+    {
+      "speaker": "them",
+      "text": "תודה רבה דן, להתראות.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

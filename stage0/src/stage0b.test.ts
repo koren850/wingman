@@ -23,8 +23,12 @@ test("echo filter drops a repeat of the client within the window, keeps Dan's ow
 test("mic gate closes while the client is voiced, plus the hangover", () => {
   const g = new MicGate({ hangoverMs: 400, peak: 0.02 });
   assert.ok(!g.closed(0));
-  g.noteThemPeak(0.01, 100); assert.ok(!g.closed(150), "below the peak");
-  g.noteThemPeak(0.3, 200); assert.ok(g.closed(300)); assert.ok(g.closed(599)); assert.ok(!g.closed(601));
+  g.noteThemPeak(0.01, 100);
+  assert.ok(!g.closed(150), "below the peak");
+  g.noteThemPeak(0.3, 200);
+  assert.ok(g.closed(300));
+  assert.ok(g.closed(599));
+  assert.ok(!g.closed(601));
 });
 
 test("capture: Hebrew digit words become digits", () => {
@@ -51,7 +55,11 @@ test("capture: no false hits on plain talk, prices or short numbers", () => {
   assert.deepEqual(extract("יש לי שתי שאלות על האתר"), []);
   assert.deepEqual(extract("גרסה 5.5 של וורדפרס"), []);
   assert.deepEqual(extract("שבע שנים אנחנו איתכם"), []);
-  assert.deepEqual(extract("meet at shop.co.il tomorrow").map((c) => c.kind), ["domain"], "English 'at' is not an email");
+  assert.deepEqual(
+    extract("meet at shop.co.il tomorrow").map((c) => c.kind),
+    ["domain"],
+    "English 'at' is not an email",
+  );
   assert.deepEqual(extract("אני משתמש ב ChatGPT. AI זה טוב"), [], "a full stop is not a domain dot");
   assert.deepEqual(extract("ok. me and you"), []);
   assert.deepEqual(extract("7770541234567"), [], "no phone inside a longer number");
@@ -66,7 +74,7 @@ import { covered, briefNotes } from "./brief.ts";
 const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
 const snap = {
   clients: [
-    { id: 1, name: "אקמה בע\"מ", aliases: ["אקמה", "acme"] },
+    { id: 1, name: 'אקמה בע"מ', aliases: ["אקמה", "acme"] },
     { id: 2, name: "ica", aliases: ["ica"] },
   ],
   domains: [
@@ -77,10 +85,13 @@ const snap = {
 test("facts: client by alias (Hebrew prefix), domain by name or base word, SSL warning", () => {
   const s = new EntitySpotter(snap as any, { sslWarnDays: 30, minAliasLen: 4 });
   const f = s.spot("אני מתקשר מאקמה לגבי האתר");
-  assert.equal(f.length, 1); assert.equal(f[0].kind, "client"); assert.ok(f[0].warn);
+  assert.equal(f.length, 1);
+  assert.equal(f[0].kind, "client");
+  assert.ok(f[0].warn);
   assert.match(f[0].lines[0], /acme\.co\.il · wordpress 6\.8 · PHP 8\.2 · ⚠ SSL פג בעוד \d+ ימים/);
   const d = s.spot("יש בעיה באתר example-b");
-  assert.equal(d[0].key, "d:example-b.co.il"); assert.ok(!d[0].warn);
+  assert.equal(d[0].key, "d:example-b.co.il");
+  assert.ok(!d[0].warn);
   assert.equal(s.spot("כן, acme.co.il").length, 1, "domain of a spotted client is folded into the client card");
   assert.deepEqual(s.spot("ica"), [], "aliases shorter than minAliasLen never match");
   assert.deepEqual(s.spot("שלום מה שלומך"), []);
@@ -93,7 +104,11 @@ test("notes: parse, NONE, dedupe", () => {
   assert.deepEqual(dedupeNotes(["תקציב בערך 20 אלף שקל", "האתר על וויקס"], ["תקציב בערך 20 אלף"]), ["האתר על וויקס"]);
 });
 test("brief: notes and must-cover coverage", () => {
-  assert.deepEqual(briefNotes({ who: "דנה מאקמה", goal: "הצעת מחיר לחנות", notes: ["לקוחה חדשה"] }), ["On this call: דנה מאקמה", "Goal of the call: הצעת מחיר לחנות", "לקוחה חדשה"]);
+  assert.deepEqual(briefNotes({ who: "דנה מאקמה", goal: "הצעת מחיר לחנות", notes: ["לקוחה חדשה"] }), [
+    "On this call: דנה מאקמה",
+    "Goal of the call: הצעת מחיר לחנות",
+    "לקוחה חדשה",
+  ]);
   assert.ok(covered("תקציב", "ומה התקציב שלכם לפרויקט"));
   assert.ok(covered("חידוש אחסון", "צריך לדבר על חידוש האחסון בדצמבר"));
   assert.ok(!covered("לוח זמנים", "דיברנו על התקציב"));

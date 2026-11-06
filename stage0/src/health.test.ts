@@ -23,7 +23,9 @@ test("ladder: signals map to rungs, worst wins", () => {
   assert.equal(decide(sig({ bankFailed: true })).rung, 4);
   assert.equal(decide(sig({ fatal: "STT down", themDead: true })).rung, 5);
   assert.deepEqual(capabilities(1), { detect: true, bank: true, llm: true, ans: false, listening: true, meAns: true });
-  assert.equal(capabilities(3).llm, false); assert.equal(capabilities(4).detect, false); assert.equal(capabilities(5).listening, false);
+  assert.equal(capabilities(3).llm, false);
+  assert.equal(capabilities(4).detect, false);
+  assert.equal(capabilities(5).listening, false);
 });
 
 function sup(now: { t: number }) {
@@ -34,103 +36,208 @@ function sup(now: { t: number }) {
 }
 
 test("ladder changes only between questions; recovery needs a stable minute", () => {
-  const now = { t: 0 }; const { s, log } = sup(now);
+  const now = { t: 0 };
+  const { s, log } = sup(now);
   s.beginQuestion();
-  s.set({ llmDown: true }); s.tick();
+  s.set({ llmDown: true });
+  s.tick();
   assert.equal(s.rung, 0, "no change mid-question");
   s.endQuestion();
-  assert.equal(s.rung, 3); assert.deepEqual(log, ["0>3"]);
-  s.set({ llmDown: false }); s.tick();
-  now.t += 30_000; s.tick(); assert.equal(s.rung, 3, "30 s of calm is not enough");
-  now.t += 29_000; s.tick(); assert.equal(s.rung, 3);
-  s.beginQuestion(); now.t += 5000; s.tick(); assert.equal(s.rung, 3, "not mid-question");
-  s.endQuestion(); assert.equal(s.rung, 0); assert.deepEqual(log, ["0>3", "3>0"]);
+  assert.equal(s.rung, 3);
+  assert.deepEqual(log, ["0>3"]);
+  s.set({ llmDown: false });
+  s.tick();
+  now.t += 30_000;
+  s.tick();
+  assert.equal(s.rung, 3, "30 s of calm is not enough");
+  now.t += 29_000;
+  s.tick();
+  assert.equal(s.rung, 3);
+  s.beginQuestion();
+  now.t += 5000;
+  s.tick();
+  assert.equal(s.rung, 3, "not mid-question");
+  s.endQuestion();
+  assert.equal(s.rung, 0);
+  assert.deepEqual(log, ["0>3", "3>0"]);
 });
 
 test("recovery timer restarts if trouble returns", () => {
-  const now = { t: 0 }; const { s } = sup(now);
-  s.set({ llmOnFallback: true }); s.tick(); assert.equal(s.rung, 2);
-  s.set({ llmOnFallback: false }); s.tick(); now.t += 50_000; s.tick();
-  s.set({ llmOnFallback: true }); s.tick(); now.t += 20_000; s.set({ llmOnFallback: false }); s.tick();
-  now.t += 40_000; s.tick(); assert.equal(s.rung, 2, "the timer was reset by the relapse");
-  now.t += 30_000; s.tick(); assert.equal(s.rung, 0);
+  const now = { t: 0 };
+  const { s } = sup(now);
+  s.set({ llmOnFallback: true });
+  s.tick();
+  assert.equal(s.rung, 2);
+  s.set({ llmOnFallback: false });
+  s.tick();
+  now.t += 50_000;
+  s.tick();
+  s.set({ llmOnFallback: true });
+  s.tick();
+  now.t += 20_000;
+  s.set({ llmOnFallback: false });
+  s.tick();
+  now.t += 40_000;
+  s.tick();
+  assert.equal(s.rung, 2, "the timer was reset by the relapse");
+  now.t += 30_000;
+  s.tick();
+  assert.equal(s.rung, 0);
 });
 
 test("slow AI: p50 of the last tags above slowMs drops to reduced AI; recovery clears the samples", () => {
-  const now = { t: 0 }; const { s } = sup(now);
-  s.recordTag(2000); s.recordTag(2100); s.tick(); assert.equal(s.rung, 0, "needs minSamples");
-  s.recordTag(1900); s.tick(); assert.equal(s.rung, 1); assert.equal(s.caps.ans, false);
-  now.t += 61_000; s.recordTag(2000); s.tick();   // still slow when the minute passes: the flag stays; samples are cleared only on recovery
-  s.set({ llmSlow: false }); s.tick(); now.t += 61_000; s.tick(); assert.equal(s.rung, 0);
-  s.recordTag(300); s.recordTag(400); s.recordTag(350); assert.equal(s.signals.llmSlow, false);
+  const now = { t: 0 };
+  const { s } = sup(now);
+  s.recordTag(2000);
+  s.recordTag(2100);
+  s.tick();
+  assert.equal(s.rung, 0, "needs minSamples");
+  s.recordTag(1900);
+  s.tick();
+  assert.equal(s.rung, 1);
+  assert.equal(s.caps.ans, false);
+  now.t += 61_000;
+  s.recordTag(2000);
+  s.tick(); // still slow when the minute passes: the flag stays; samples are cleared only on recovery
+  s.set({ llmSlow: false });
+  s.tick();
+  now.t += 61_000;
+  s.tick();
+  assert.equal(s.rung, 0);
+  s.recordTag(300);
+  s.recordTag(400);
+  s.recordTag(350);
+  assert.equal(s.signals.llmSlow, false);
 });
 
 test("trouble (429/529) holds reduced AI for a minute, then lets go", () => {
-  const now = { t: 0 }; const { s } = sup(now);
-  s.noteLlmTrouble(); s.tick(); assert.equal(s.rung, 1);
-  now.t += 61_000; s.tick();    // trouble expired, then recover needs another stable period
-  now.t += 61_000; s.tick(); assert.equal(s.rung, 0);
+  const now = { t: 0 };
+  const { s } = sup(now);
+  s.noteLlmTrouble();
+  s.tick();
+  assert.equal(s.rung, 1);
+  now.t += 61_000;
+  s.tick(); // trouble expired, then recover needs another stable period
+  now.t += 61_000;
+  s.tick();
+  assert.equal(s.rung, 0);
 });
 
 test("fatal goes to off immediately, even mid-question, and stays off", () => {
-  const now = { t: 0 }; const { s, log } = sup(now);
-  s.beginQuestion(); s.set({ fatal: "STT down on every provider" }); assert.equal(s.rung, 5);
-  s.set({ fatal: null }); now.t += 999_999; s.tick(); assert.equal(s.rung, 5, "manual restart only"); assert.deepEqual(log, ["0>5"]);
+  const now = { t: 0 };
+  const { s, log } = sup(now);
+  s.beginQuestion();
+  s.set({ fatal: "STT down on every provider" });
+  assert.equal(s.rung, 5);
+  s.set({ fatal: null });
+  now.t += 999_999;
+  s.tick();
+  assert.equal(s.rung, 5, "manual restart only");
+  assert.deepEqual(log, ["0>5"]);
 });
 
 test("--no-ai alone is the user's choice (info bar), not a warning", () => {
-  const now = { t: 0 }; const { s } = sup(now);
-  s.set({ noAi: true }); s.tick(); assert.equal(s.rung, 3); assert.equal(s.userChoiceOnly, true);
+  const now = { t: 0 };
+  const { s } = sup(now);
+  s.set({ noAi: true });
+  s.tick();
+  assert.equal(s.rung, 3);
+  assert.equal(s.userChoiceOnly, true);
   assert.equal(describeRung(3, s.reasons, true)?.level, "info");
-  assert.equal(describeRung(3, ["x"], false)?.level, "red"); assert.equal(describeRung(0, []), null);
+  assert.equal(describeRung(3, ["x"], false)?.level, "red");
+  assert.equal(describeRung(0, []), null);
   for (const r of [1, 2, 4, 5] as Rung[]) assert.ok(describeRung(r, ["why"]));
 });
 
 test("circuit breaker: open after N failures in the window, half-open probe after cooldown, close after 2 successes", () => {
   const now = { t: 0 };
   const b = new CircuitBreaker({ failures: 3, windowMs: 10_000, cooldownMs: 15_000 }, () => now.t);
-  b.failure(); now.t += 1000; b.failure(); assert.equal(b.state, "closed"); now.t += 1000; b.failure();
-  assert.equal(b.state, "open"); assert.equal(b.allow(), false);
-  now.t += 14_000; assert.equal(b.allow(), false); now.t += 2000; assert.equal(b.allow(), true); assert.equal(b.state, "half-open");
-  b.failure(); assert.equal(b.state, "open", "failed probe re-opens");
-  now.t += 16_000; assert.ok(b.allow()); b.success(); assert.equal(b.state, "half-open"); b.success(); assert.equal(b.state, "closed");
+  b.failure();
+  now.t += 1000;
+  b.failure();
+  assert.equal(b.state, "closed");
+  now.t += 1000;
+  b.failure();
+  assert.equal(b.state, "open");
+  assert.equal(b.allow(), false);
+  now.t += 14_000;
+  assert.equal(b.allow(), false);
+  now.t += 2000;
+  assert.equal(b.allow(), true);
+  assert.equal(b.state, "half-open");
+  b.failure();
+  assert.equal(b.state, "open", "failed probe re-opens");
+  now.t += 16_000;
+  assert.ok(b.allow());
+  b.success();
+  assert.equal(b.state, "half-open");
+  b.success();
+  assert.equal(b.state, "closed");
   const old = new CircuitBreaker({ failures: 3, windowMs: 10_000, cooldownMs: 1 }, () => now.t);
-  old.failure(); now.t += 11_000; old.failure(); now.t += 11_000; old.failure(); assert.equal(old.state, "closed", "failures outside the window do not add up");
-  old.failure(true); assert.equal(old.state, "open", "forceOpen for auth/spend cap");
+  old.failure();
+  now.t += 11_000;
+  old.failure();
+  now.t += 11_000;
+  old.failure();
+  assert.equal(old.state, "closed", "failures outside the window do not add up");
+  old.failure(true);
+  assert.equal(old.state, "open", "forceOpen for auth/spend cap");
 });
 
 test("CostMeter math from the price table and actual usage", () => {
-  const m = new CostMeter(S.budget.prices, S.budget);   // haiku: in 0.1, out 0.5, cache read 0.01, cache write 0.2 USD per M
-  const a = m.addLlm("reflex", "anthropic:claude-haiku-5-5", { inputTokens: 10_000, outputTokens: 100, inputTokenDetails: { cacheReadTokens: 8000, cacheWriteTokens: 0, noCacheTokens: 2000 } });
+  const m = new CostMeter(S.budget.prices, S.budget); // haiku: in 0.1, out 0.5, cache read 0.01, cache write 0.2 USD per M
+  const a = m.addLlm("reflex", "anthropic:claude-haiku-5-5", {
+    inputTokens: 10_000,
+    outputTokens: 100,
+    inputTokenDetails: { cacheReadTokens: 8000, cacheWriteTokens: 0, noCacheTokens: 2000 },
+  });
   assert.ok(Math.abs(a.usd - (2000 * 0.1 + 8000 * 0.01 + 100 * 0.5) / 1e6) < 1e-12);
-  const b = m.addLlm("reflex", "anthropic:claude-haiku-5-5", { inputTokens: 5000, outputTokens: 50, inputTokenDetails: { cacheWriteTokens: 4000 } });   // noCache inferred = 1000
+  const b = m.addLlm("reflex", "anthropic:claude-haiku-5-5", { inputTokens: 5000, outputTokens: 50, inputTokenDetails: { cacheWriteTokens: 4000 } }); // noCache inferred = 1000
   assert.ok(Math.abs(b.usd - (1000 * 0.1 + 4000 * 0.2 + 50 * 0.5) / 1e6) < 1e-12);
-  assert.equal(m.roles.reflex.calls, 2); assert.equal(m.roles.reflex.cacheReadTokens, 8000);
+  assert.equal(m.roles.reflex.calls, 2);
+  assert.equal(m.roles.reflex.cacheReadTokens, 8000);
   m.addLlm("summarizer", "mystery:model", { inputTokens: 100, outputTokens: 100 });
-  assert.equal(m.roles.summarizer.usd, 0); assert.ok(m.unpriced.has("mystery:model"));
+  assert.equal(m.roles.summarizer.usd, 0);
+  assert.ok(m.unpriced.has("mystery:model"));
   assert.ok(Math.abs(m.llmUsd - (a.usd + b.usd)) < 1e-12);
-  m.setSttSeconds({ deepgram: 3600, soniox: 1800 });    // 1 h deepgram 0.55 + 0.5 h soniox 0.12
-  assert.ok(Math.abs(m.sttUsd - (0.55 + 0.06)) < 1e-9); assert.ok(Math.abs(m.totalUsd - (m.llmUsd + m.sttUsd)) < 1e-12);
+  m.setSttSeconds({ deepgram: 3600, soniox: 1800 }); // 1 h deepgram 0.55 + 0.5 h soniox 0.12
+  assert.ok(Math.abs(m.sttUsd - (0.55 + 0.06)) < 1e-9);
+  assert.ok(Math.abs(m.totalUsd - (m.llmUsd + m.sttUsd)) < 1e-12);
 });
 
 test("CostMeter budget states: warn at warnAt, capped at the cap, cap 0 blocks all LLM spend", () => {
-  const prices = { llm: { "p:m": { inUsdPerM: 1_000_000, outUsdPerM: 0 } }, stt: {} };   // $1 per input token
+  const prices = { llm: { "p:m": { inUsdPerM: 1_000_000, outUsdPerM: 0 } }, stt: {} }; // $1 per input token
   const m = new CostMeter(prices, { maxUsdPerCall: 10, warnAt: 0.8, maxMinutesPerCall: 90 });
-  assert.equal(m.llmState(), "ok"); m.addLlm("reflex", "p:m", { inputTokens: 7 }); assert.equal(m.llmState(), "ok");
-  m.addLlm("reflex", "p:m", { inputTokens: 1 }); assert.equal(m.llmState(), "warn");
-  m.addLlm("reflex", "p:m", { inputTokens: 2 }); assert.equal(m.llmState(), "capped");
+  assert.equal(m.llmState(), "ok");
+  m.addLlm("reflex", "p:m", { inputTokens: 7 });
+  assert.equal(m.llmState(), "ok");
+  m.addLlm("reflex", "p:m", { inputTokens: 1 });
+  assert.equal(m.llmState(), "warn");
+  m.addLlm("reflex", "p:m", { inputTokens: 2 });
+  assert.equal(m.llmState(), "capped");
   const z = new CostMeter(prices, { maxUsdPerCall: 0, warnAt: 0.8, maxMinutesPerCall: 90 });
-  assert.equal(z.llmState(), "ok"); z.addLlm("reflex", "p:m", { inputTokens: 1 }); assert.equal(z.llmState(), "capped");
+  assert.equal(z.llmState(), "ok");
+  z.addLlm("reflex", "p:m", { inputTokens: 1 });
+  assert.equal(z.llmState(), "capped");
   const t = new CostMeter(prices, { maxUsdPerCall: 1, warnAt: 0.8, maxMinutesPerCall: 10 });
-  t.setSttSeconds({ deepgram: 400 }); assert.equal(t.minutesState(), "ok"); t.setSttSeconds({ deepgram: 500 }); assert.equal(t.minutesState(), "warn"); t.setSttSeconds({ deepgram: 600 }); assert.equal(t.minutesState(), "capped");
+  t.setSttSeconds({ deepgram: 400 });
+  assert.equal(t.minutesState(), "ok");
+  t.setSttSeconds({ deepgram: 500 });
+  assert.equal(t.minutesState(), "warn");
+  t.setSttSeconds({ deepgram: 600 });
+  assert.equal(t.minutesState(), "capped");
 });
 
 test("budget cap drives the ladder to bank-only", () => {
-  const now = { t: 0 }; const { s } = sup(now);
+  const now = { t: 0 };
+  const { s } = sup(now);
   const m = new CostMeter({ llm: { "p:m": { inUsdPerM: 1_000_000, outUsdPerM: 0 } }, stt: {} }, { maxUsdPerCall: 2, warnAt: 0.8, maxMinutesPerCall: 90 });
   m.addLlm("reflex", "p:m", { inputTokens: 2 });
-  s.set({ costCapped: m.llmState() === "capped" }); s.tick();
-  assert.equal(s.rung, 3); assert.equal(s.caps.llm, false); assert.deepEqual(s.reasons, ["LLM budget cap reached"]);
+  s.set({ costCapped: m.llmState() === "capped" });
+  s.tick();
+  assert.equal(s.rung, 3);
+  assert.equal(s.caps.llm, false);
+  assert.deepEqual(s.reasons, ["LLM budget cap reached"]);
 });
 
 test("circuit breaker: peek never uses up the half-open probe; allow takes it", () => {
@@ -139,8 +246,8 @@ test("circuit breaker: peek never uses up the half-open probe; allow takes it", 
   b.failure(true);
   assert.equal(b.peek(), false);
   now = 1500;
-  for (let i = 0; i < 5; i++) assert.equal(b.peek(), true);   // status checks every tick
-  assert.equal(b.allow(), true);    // the real request gets the probe
-  assert.equal(b.allow(), false);   // one at a time
+  for (let i = 0; i < 5; i++) assert.equal(b.peek(), true); // status checks every tick
+  assert.equal(b.allow(), true); // the real request gets the probe
+  assert.equal(b.allow(), false); // one at a time
   assert.equal(b.peek(), false);
 });

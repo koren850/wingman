@@ -9,13 +9,25 @@ import { nextAnswerStart } from "./rules.ts";
 import { recentTranscript } from "./coach.ts";
 
 const claimShown = new Set<string>();
-let answerStart = 0, longNudgedFor = 0, lastMeLineAt = 0;
+let answerStart = 0,
+  longNudgedFor = 0,
+  lastMeLineAt = 0;
 /** What the user said in an interview: a quiet card when a number is bigger than the CV, and one nudge when an answer passes 90 seconds. */
 function interviewSelfCheck(text: string) {
   const miss = checkClaims(text, claims);
   if (miss && !claimShown.has(`${miss.unit}:${miss.said}`)) {
-    claimShown.add(`${miss.unit}:${miss.said}`); const n = ++selfSeq;
-    emitCard({ id: `sc-${n}`, turnId: `sc${n}`, badge: "careful", question: text.slice(0, 200), say: claimSay(miss, /[\u0590-\u05ff]/.test(text) ? "he" : "en"), facts: [], priority: true, at: Date.now() });
+    claimShown.add(`${miss.unit}:${miss.said}`);
+    const n = ++selfSeq;
+    emitCard({
+      id: `sc-${n}`,
+      turnId: `sc${n}`,
+      badge: "careful",
+      question: text.slice(0, 200),
+      say: claimSay(miss, /[\u0590-\u05ff]/.test(text) ? "he" : "en"),
+      facts: [],
+      priority: true,
+      at: Date.now(),
+    });
     selfEvent("selfcheck.claim", { unit: miss.unit, said: miss.said, claim: miss.claim.text });
   }
   // One answer = the user talking since the other side last spoke.
@@ -33,7 +45,19 @@ let allowedCache = "";
 export function interviewAllowed(): string {
   if (allowedCache) return allowedCache;
   const p = getProfile();
-  allowedCache = [p.about, p.business, ...p.claims, ...bank.flatMap((c) => [c.say, ...c.facts, ...(c.en ? [c.en.say, ...(c.en.facts ?? [])] : [])]), background, brief?.title, brief?.who, brief?.goal, ...(brief?.notes ?? [])].filter(Boolean).join(" ");
+  allowedCache = [
+    p.about,
+    p.business,
+    ...p.claims,
+    ...bank.flatMap((c) => [c.say, ...c.facts, ...(c.en ? [c.en.say, ...(c.en.facts ?? [])] : [])]),
+    background,
+    brief?.title,
+    brief?.who,
+    brief?.goal,
+    ...(brief?.notes ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ");
   return allowedCache;
 }
 let selfSeq = 0;
@@ -41,42 +65,74 @@ const selfEvent = (type: string, extra: Record<string, unknown> = {}) => log.wri
 /** A final "me" line that is not a question for Wingman: amber card on price / date / promise (no AI), red card on a contradiction of the briefing (cheap model). */
 export function selfCheckLine(text: string) {
   const sc = S.selfCheck;
-  if (interview && st.call.consented && !st.call.shuttingDown) { interviewSelfCheck(text); return; }
-  if (!sc.enabled || interview || !st.call.consented || st.call.shuttingDown) return;   // interview: a false red card mid-answer costs more than it saves (a misheard employer name became a red card in practice)
+  if (interview && st.call.consented && !st.call.shuttingDown) {
+    interviewSelfCheck(text);
+    return;
+  }
+  if (!sc.enabled || interview || !st.call.consented || st.call.shuttingDown) return; // interview: a false red card mid-answer costs more than it saves (a misheard employer name became a red card in practice)
   if (text.split(/\s+/).filter(Boolean).length < MIN_WORDS) return;
   const now = Date.now();
   if (sc.careful) {
     const c = detectCareful(text);
     if (c) {
       if (selfGate.canCareful(now)) {
-        selfGate.noteCareful(now); const n = ++selfSeq;
+        selfGate.noteCareful(now);
+        const n = ++selfSeq;
         emitCard({ id: `sc-${n}`, turnId: `sc${n}`, badge: "careful", question: c.question, say: c.say, facts: [], priority: true, at: now });
         selfEvent("selfcheck.careful", { kind: c.kind });
       } else selfEvent("selfcheck.skip", { why: "careful-gap" });
     }
   }
   if (!sc.fix) return;
-  if (!background.trim()) return;   // no prepared meeting: nothing to check against
+  if (!background.trim()) return; // no prepared meeting: nothing to check against
   if (!looksFactual(text)) return;
-  if (noAi || !sup.caps.llm || cost.llmState() === "capped") { selfEvent("selfcheck.skip", { why: noAi ? "no-ai" : "ai-unavailable" }); return; }
-  if (!selfGate.canModel(now)) { selfEvent("selfcheck.skip", { why: "busy-or-gap" }); return; }
+  if (noAi || !sup.caps.llm || cost.llmState() === "capped") {
+    selfEvent("selfcheck.skip", { why: noAi ? "no-ai" : "ai-unavailable" });
+    return;
+  }
+  if (!selfGate.canModel(now)) {
+    selfEvent("selfcheck.skip", { why: "busy-or-gap" });
+    return;
+  }
   selfGate.startModel(now);
   void (async () => {
     try {
-      const r = await runSelfCheck({ registry, model: S.tips.model, cache: S.llm.reflex.cache, background, transcript: recentTranscript(S.frame.windowMin), line: text, signal: notesAbort.signal, timeoutMs: sc.timeoutMs });
+      const r = await runSelfCheck({
+        registry,
+        model: S.tips.model,
+        cache: S.llm.reflex.cache,
+        background,
+        transcript: recentTranscript(S.frame.windowMin),
+        line: text,
+        signal: notesAbort.signal,
+        timeoutMs: sc.timeoutMs,
+      });
       const cu = cost.addLlm("selfcheck", S.tips.model, r.usage, r.providerMetadata);
       log.write("usage", { role: "selfcheck", model: S.tips.model, usage: r.usage, usd: cu.usd });
       if (st.call.shuttingDown) return;
       const v = r.verdict;
-      if (v.verdict === "ok") { selfEvent("selfcheck.ok"); return; }
+      if (v.verdict === "ok") {
+        selfEvent("selfcheck.ok");
+        return;
+      }
       const g = checkFix(v);
-      if (!g.ok) { selfEvent("selfcheck.skip", { why: "guard", rule: g.rule }); return; }
+      if (!g.ok) {
+        selfEvent("selfcheck.skip", { why: "guard", rule: g.rule });
+        return;
+      }
       const t = Date.now();
-      if (!selfGate.canFix(t, v.correct)) { selfEvent("selfcheck.skip", { why: "fix-gap-or-repeat" }); return; }
-      selfGate.noteFix(t, v.correct); const n = ++selfSeq;
+      if (!selfGate.canFix(t, v.correct)) {
+        selfEvent("selfcheck.skip", { why: "fix-gap-or-repeat" });
+        return;
+      }
+      selfGate.noteFix(t, v.correct);
+      const n = ++selfSeq;
       emitCard({ id: `sc-${n}`, turnId: `sc${n}`, badge: "fix", question: v.said, say: v.correct, facts: v.source ? [v.source] : [], priority: true, at: t });
       selfEvent("selfcheck.fix", {});
-    } catch (e) { selfEvent("selfcheck.error", { error: String((e as Error)?.message ?? e).slice(0, 200) }); }
-    finally { selfGate.endModel(); }
+    } catch (e) {
+      selfEvent("selfcheck.error", { error: String((e as Error)?.message ?? e).slice(0, 200) });
+    } finally {
+      selfGate.endModel();
+    }
   })();
 }

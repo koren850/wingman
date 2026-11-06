@@ -23,13 +23,15 @@ const preview = { ok: false, error: "preview" };
 
 /** Strict check of the About-you form. Same limits as src/profile.ts (which validates again). Throws Error("bad profile: ...") on anything else. */
 function cleanProfile(d) {
-  const bad = (m) => { throw new Error("bad profile: " + m); };
+  const bad = (m) => {
+    throw new Error("bad profile: " + m);
+  };
   if (!d || typeof d !== "object" || Array.isArray(d)) bad("not an object");
   const keys = Object.keys(d);
   if (keys.length !== 5 || keys.some((k) => !["name", "spellings", "address", "about", "business"].includes(k))) bad("fields");
   const str = (v, max, what) => {
     if (typeof v !== "string") bad(what);
-    const s = v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim();   // keep tab and newline (about/business are free text)
+    const s = v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "").trim(); // keep tab and newline (about/business are free text)
     if (s.length > max) bad(what + " too long");
     return s;
   };
@@ -55,19 +57,33 @@ function packDirs(root, env = process.env, home = os.homedir()) {
 /** Which pack answers: "user" when the user's folder has at least one pack file, else "example". */
 function packInfo(root, env, home) {
   const d = packDirs(root, env, home);
-  const mine = PACK_FILES.filter((f) => { try { return fs.statSync(path.join(d.user, f)).isFile(); } catch { return false; } });
+  const mine = PACK_FILES.filter((f) => {
+    try {
+      return fs.statSync(path.join(d.user, f)).isFile();
+    } catch {
+      return false;
+    }
+  });
   return { using: mine.length ? "user" : "example", userDir: d.user, userFiles: mine, canCopy: !mine.length };
 }
 /** Copies the example pack files into the user pack folder (folder 700, files 600). Refuses when the user already has pack files. */
 function copyExamplePack(root, env, home) {
-  const d = packDirs(root, env, home), info = packInfo(root, env, home);
+  const d = packDirs(root, env, home),
+    info = packInfo(root, env, home);
   if (!info.canCopy) return { ok: false, error: "Your pack folder already has files, so nothing was copied." };
   fs.mkdirSync(d.user, { recursive: true, mode: 0o700 });
   const copied = [];
   for (const f of PACK_FILES) {
-    const src = path.join(d.example, f), dst = path.join(d.user, f);
+    const src = path.join(d.example, f),
+      dst = path.join(d.user, f);
     if (!fs.existsSync(src)) continue;
-    try { fs.copyFileSync(src, dst, fs.constants.COPYFILE_EXCL); fs.chmodSync(dst, 0o600); copied.push(f); } catch (e) { if (e.code !== "EEXIST") return { ok: false, error: "Could not copy the pack: " + String(e.message).slice(0, 120) }; }
+    try {
+      fs.copyFileSync(src, dst, fs.constants.COPYFILE_EXCL);
+      fs.chmodSync(dst, 0o600);
+      copied.push(f);
+    } catch (e) {
+      if (e.code !== "EEXIST") return { ok: false, error: "Could not copy the pack: " + String(e.message).slice(0, 120) };
+    }
   }
   return { ok: true, copied, dir: d.user };
 }
@@ -76,13 +92,18 @@ function copyExamplePack(root, env, home) {
  * o: { handle, child(args, input) -> Promise<json>, root, systemPreferences, shell, screen, preview (bool), env?, home? }
  */
 function register(o) {
-  const env = o.env || process.env, home = o.home || os.homedir();
+  const env = o.env || process.env,
+    home = o.home || os.homedir();
   const lastAsk = { at: 0 };
   const done = (r) => (r && r.ok ? r : { ok: false, message: String((r && r.message) || "Failed.").slice(0, 300) });
 
-  o.handle("profile:get", async () => (o.preview ? { ok: true, profile: { name: "", spellings: [], address: "neutral", about: "", business: "", timezone: "" }, preview: true } : done(await o.child(["src/profile-edit-cli.ts", "read"]))));
+  o.handle("profile:get", async () =>
+    o.preview
+      ? { ok: true, profile: { name: "", spellings: [], address: "neutral", about: "", business: "", timezone: "" }, preview: true }
+      : done(await o.child(["src/profile-edit-cli.ts", "read"])),
+  );
   o.handle("profile:set", async (d) => {
-    const clean = cleanProfile(d);                 // throws on a bad shape: the page gets a plain error
+    const clean = cleanProfile(d); // throws on a bad shape: the page gets a plain error
     if (o.preview) return preview;
     const r = await o.child(["src/profile-edit-cli.ts", "write"], JSON.stringify(clean));
     return done(r);
@@ -90,13 +111,26 @@ function register(o) {
 
   o.handle("setup:status", async () => {
     const pack = packInfo(o.root, env, home);
-    let mic = "unknown", displays = 1;
-    try { mic = o.systemPreferences.getMediaAccessStatus("microphone"); } catch { /* not macOS */ }
-    try { displays = o.screen.getAllDisplays().length; } catch { /* keep 1 */ }
-    let micDevice = ":default", allowPrimary = false;
+    let mic = "unknown",
+      displays = 1;
+    try {
+      mic = o.systemPreferences.getMediaAccessStatus("microphone");
+    } catch {
+      /* not macOS */
+    }
+    try {
+      displays = o.screen.getAllDisplays().length;
+    } catch {
+      /* keep 1 */
+    }
+    let micDevice = ":default",
+      allowPrimary = false;
     if (!o.preview) {
       const s = await o.child(["src/settings-edit-cli.ts", "read"]);
-      if (s && s.ok && s.values) { micDevice = String(s.values["audio.mic.device"] || ":default"); allowPrimary = s.values["overlay.allowPrimary"] === true; }
+      if (s && s.ok && s.values) {
+        micDevice = String(s.values["audio.mic.device"] || ":default");
+        allowPrimary = s.values["overlay.allowPrimary"] === true;
+      }
     }
     return { ok: true, mic, systemAudio: "unknown", displays, micDevice, allowPrimary, pack };
   });
@@ -105,21 +139,52 @@ function register(o) {
     if (Date.now() - lastAsk.at < 1500) return { ok: false, error: "wait" };
     lastAsk.at = Date.now();
     let granted = false;
-    try { granted = await o.systemPreferences.askForMediaAccess("microphone"); } catch { granted = false; }
-    let mic = "unknown"; try { mic = o.systemPreferences.getMediaAccessStatus("microphone"); } catch { /* ignore */ }
+    try {
+      granted = await o.systemPreferences.askForMediaAccess("microphone");
+    } catch {
+      granted = false;
+    }
+    let mic = "unknown";
+    try {
+      mic = o.systemPreferences.getMediaAccessStatus("microphone");
+    } catch {
+      /* ignore */
+    }
     return { ok: true, granted: !!granted, mic };
   });
   o.handle("setup:openPrivacy", async (which) => {
     if (typeof which !== "string" || !Object.prototype.hasOwnProperty.call(PANES, which)) throw new Error("bad pane");
     if (o.preview) return preview;
-    try { await o.shell.openExternal(PANES[which]); return { ok: true }; } catch { return { ok: false, error: "Could not open System Settings." }; }
+    try {
+      await o.shell.openExternal(PANES[which]);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Could not open System Settings." };
+    }
   });
   o.handle("setup:openLink", async (which) => {
     if (typeof which !== "string" || !Object.prototype.hasOwnProperty.call(LINKS, which)) throw new Error("bad link");
     if (o.preview) return preview;
-    try { await o.shell.openExternal(LINKS[which]); return { ok: true }; } catch { return { ok: false, error: "Could not open the browser." }; }
+    try {
+      await o.shell.openExternal(LINKS[which]);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Could not open the browser." };
+    }
   });
-  o.handle("setup:mics", async () => (o.preview ? { ok: true, devices: [{ index: 0, name: "MacBook Pro Microphone" }, { index: 1, name: "External USB Microphone" }], defaultInput: "MacBook Pro Microphone", preview: true } : done(await o.child(["src/mics-cli.ts"]))));
+  o.handle("setup:mics", async () =>
+    o.preview
+      ? {
+          ok: true,
+          devices: [
+            { index: 0, name: "MacBook Pro Microphone" },
+            { index: 1, name: "External USB Microphone" },
+          ],
+          defaultInput: "MacBook Pro Microphone",
+          preview: true,
+        }
+      : done(await o.child(["src/mics-cli.ts"])),
+  );
   o.handle("setup:setMic", async (v) => {
     const dev = cleanMic(v);
     if (o.preview) return preview;

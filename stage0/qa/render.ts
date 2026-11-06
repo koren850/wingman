@@ -9,27 +9,29 @@ import { fileURLToPath } from "node:url";
 import { writeWav } from "../src/audio.ts";
 
 const QA = dirname(fileURLToPath(import.meta.url));
-export const SCEN_DIR = join(QA, "scenarios"), OUT_DIR = join(QA, "out"), CACHE_DIR = join(QA, "cache");
+export const SCEN_DIR = join(QA, "scenarios"),
+  OUT_DIR = join(QA, "out"),
+  CACHE_DIR = join(QA, "cache");
 const SR = 16000;
 const BASE_WPM = 170;
 
 export type Expect = {
-  question?: boolean;             // is this client turn a question that should be detected?
-  card?: string | string[];       // bank id | "stall" (stall line or any stall-* card) | "ai" | "none"; an array = any of these
-  joinWith?: "prev";              // this turn completes a question started by the previous client turn (split question)
-  part?: "head";                  // first fragment of a split question: not graded on its own
-  forMe?: "answer" | "none";      // a "me" turn: the user asks Wingman (a "For you" card is expected) or asks the other person / thinks aloud (no card)
+  question?: boolean; // is this client turn a question that should be detected?
+  card?: string | string[]; // bank id | "stall" (stall line or any stall-* card) | "ai" | "none"; an array = any of these
+  joinWith?: "prev"; // this turn completes a question started by the previous client turn (split question)
+  part?: "head"; // first fragment of a split question: not graded on its own
+  forMe?: "answer" | "none"; // a "me" turn: the user asks Wingman (a "For you" card is expected) or asks the other person / thinks aloud (no card)
   note?: string;
 };
 export type Turn = { speaker: "me" | "them"; text: string; pauseBeforeMs?: number; rate?: number; overlapMs?: number; voice?: string; expect?: Expect };
 /** What the call frame and the tips should look like for this scenario (graded by qa/grade.ts). Only scenarios with a `frame` block are graded on it. */
 export type FrameExpect = {
-  kind: string | string[];        // accepted final frame kinds
-  topicAny?: string[];            // at least one of these words in the final topic / goal / entities / checklist
-  minChecklist?: number;          // checklist items the frame should have at the end
-  minTips?: number;               // tip cards shown during the call
-  tipAny?: string[];              // at least one tip mentions one of these words (a cheap relevance check; the tips are printed for a human to read)
-  allowBank?: string[];           // bank card ids that are fine on this call
+  kind: string | string[]; // accepted final frame kinds
+  topicAny?: string[]; // at least one of these words in the final topic / goal / entities / checklist
+  minChecklist?: number; // checklist items the frame should have at the end
+  minTips?: number; // tip cards shown during the call
+  tipAny?: string[]; // at least one tip mentions one of these words (a cheap relevance check; the tips are printed for a human to read)
+  allowBank?: string[]; // bank card ids that are fine on this call
 };
 export type Scenario = { name?: string; title: string; focus?: string; voices?: { me?: string; them?: string }; frame?: FrameExpect; turns: Turn[] };
 export type TimelineTurn = { i: number; speaker: "me" | "them"; text: string; startMs: number; endMs: number };
@@ -41,7 +43,10 @@ export function loadScenario(name: string): Scenario & { name: string } {
 }
 /** Sorted names of every scenario file. */
 export function allScenarioNames(): string[] {
-  return readdirSync(SCEN_DIR).filter((f) => f.endsWith(".json")).map((f) => basename(f, ".json")).sort();
+  return readdirSync(SCEN_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => basename(f, ".json"))
+    .sort();
 }
 
 /** Mono 16 kHz s16le PCM for one phrase (cached). */
@@ -58,7 +63,8 @@ function speak(text: string, voice: string, rate: number): Buffer {
   // find the "data" chunk (say may write extra chunks)
   let off = 12;
   while (off + 8 <= b.length) {
-    const id = b.toString("ascii", off, off + 4), size = b.readUInt32LE(off + 4);
+    const id = b.toString("ascii", off, off + 4),
+      size = b.readUInt32LE(off + 4);
     if (id === "data") return b.subarray(off + 8, Math.min(b.length, off + 8 + size));
     off += 8 + size + (size % 2);
   }
@@ -67,8 +73,16 @@ function speak(text: string, voice: string, rate: number): Buffer {
 
 /** Deterministic light noise (xorshift32 from a fixed seed, so renders are repeatable) so the line is not digital silence; silence can make the STT behave differently. */
 function noise(n: number, amp: number, seed: number): Int16Array {
-  const out = new Int16Array(n); let x = seed >>> 0 || 1;
-  for (let i = 0; i < n; i++) { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; out[i] = Math.round(((x / 0xffffffff) * 2 - 1) * amp); }
+  const out = new Int16Array(n);
+  let x = seed >>> 0 || 1;
+  for (let i = 0; i < n; i++) {
+    x ^= x << 13;
+    x >>>= 0;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    x >>>= 0;
+    out[i] = Math.round(((x / 0xffffffff) * 2 - 1) * amp);
+  }
   return out;
 }
 
@@ -81,7 +95,7 @@ export async function renderScenario(sc: Scenario & { name: string }): Promise<{
   const voices = { me: sc.voices?.me ?? "Carmit", them: sc.voices?.them ?? "Carmit" };
   const tl: TimelineTurn[] = [];
   const clips: { speaker: "me" | "them"; start: number; pcm: Buffer }[] = [];
-  let cursor = Math.round(0.8 * SR);   // lead-in
+  let cursor = Math.round(0.8 * SR); // lead-in
   let lastEnd = cursor;
   sc.turns.forEach((t, i) => {
     const pcm = speak(t.text, t.voice ?? voices[t.speaker], t.rate ?? 1);
@@ -94,19 +108,28 @@ export async function renderScenario(sc: Scenario & { name: string }): Promise<{
     tl.push({ i, speaker: t.speaker, text: t.text, startMs: Math.round((start / SR) * 1000), endMs: Math.round(((start + samples) / SR) * 1000) });
     cursor = start + samples;
   });
-  const total = lastEnd + Math.round(4 * SR);   // tail: lets the last final and card arrive
-  const L = new Int16Array(total), R = new Int16Array(total);
-  const nL = noise(total, 6, 11), nR = noise(total, 6, 29);
-  for (let i = 0; i < total; i++) { L[i] = nL[i]; R[i] = nR[i]; }
+  const total = lastEnd + Math.round(4 * SR); // tail: lets the last final and card arrive
+  const L = new Int16Array(total),
+    R = new Int16Array(total);
+  const nL = noise(total, 6, 11),
+    nR = noise(total, 6, 29);
+  for (let i = 0; i < total; i++) {
+    L[i] = nL[i];
+    R[i] = nR[i];
+  }
   for (const c of clips) {
     const dst = c.speaker === "me" ? L : R;
     for (let i = 0; i < c.pcm.length / 2; i++) {
-      const k = c.start + i; if (k >= total) break;
+      const k = c.start + i;
+      if (k >= total) break;
       dst[k] = Math.max(-32768, Math.min(32767, dst[k] + c.pcm.readInt16LE(i * 2)));
     }
   }
   const inter = Buffer.alloc(total * 4);
-  for (let i = 0; i < total; i++) { inter.writeInt16LE(L[i], i * 4); inter.writeInt16LE(R[i], i * 4 + 2); }
+  for (let i = 0; i < total; i++) {
+    inter.writeInt16LE(L[i], i * 4);
+    inter.writeInt16LE(R[i], i * 4 + 2);
+  }
   mkdirSync(OUT_DIR, { recursive: true });
   const wav = join(OUT_DIR, `${sc.name}.wav`);
   await writeWav(wav, inter, 2, SR);

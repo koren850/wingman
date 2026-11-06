@@ -10,25 +10,40 @@ export const RUNG_NAMES = ["full", "reduced-ai", "provider-switch", "bank-only",
 
 /** What run.ts currently knows to be wrong. Each flag is independent; decide() picks the worst rung. */
 export type Signals = {
-  noAi: boolean;            // user chose bank-only (--no-ai)
-  llmDown: boolean;         // every configured LLM model is unusable (breakers open, auth/spend cap)
-  llmOnFallback: boolean;   // reflex runs on a fallback model
-  llmTrouble: boolean;      // recent 429/529/timeout
-  llmSlow: boolean;         // first-tag p50 above llm.reflex.slowMs
-  costCapped: boolean;      // budget.maxUsdPerCall reached
-  sttOnFallback: boolean;   // an STT channel runs on its fallback provider
-  sttSlow: boolean;         // final lag p50 above health.slowSttMs
-  themDead: boolean;        // no client audio: cannot detect questions
-  themSttDown: boolean;     // the client channel's transcription is unusable (key/credit refused, or down on every provider): transcript-only, retried slowly. NOT rung 5: the user's own channel still works
-  bankFailed: boolean;      // bank or detector unusable
-  fatal: string | null;     // consent withdrawn or a user stop (never an STT outage: that is themSttDown, rung 4)
+  noAi: boolean; // user chose bank-only (--no-ai)
+  llmDown: boolean; // every configured LLM model is unusable (breakers open, auth/spend cap)
+  llmOnFallback: boolean; // reflex runs on a fallback model
+  llmTrouble: boolean; // recent 429/529/timeout
+  llmSlow: boolean; // first-tag p50 above llm.reflex.slowMs
+  costCapped: boolean; // budget.maxUsdPerCall reached
+  sttOnFallback: boolean; // an STT channel runs on its fallback provider
+  sttSlow: boolean; // final lag p50 above health.slowSttMs
+  themDead: boolean; // no client audio: cannot detect questions
+  themSttDown: boolean; // the client channel's transcription is unusable (key/credit refused, or down on every provider): transcript-only, retried slowly. NOT rung 5: the user's own channel still works
+  bankFailed: boolean; // bank or detector unusable
+  fatal: string | null; // consent withdrawn or a user stop (never an STT outage: that is themSttDown, rung 4)
 };
-export const NO_SIGNALS: Signals = { noAi: false, llmDown: false, llmOnFallback: false, llmTrouble: false, llmSlow: false, costCapped: false, sttOnFallback: false, sttSlow: false, themDead: false, themSttDown: false, bankFailed: false, fatal: null };
+export const NO_SIGNALS: Signals = {
+  noAi: false,
+  llmDown: false,
+  llmOnFallback: false,
+  llmTrouble: false,
+  llmSlow: false,
+  costCapped: false,
+  sttOnFallback: false,
+  sttSlow: false,
+  themDead: false,
+  themSttDown: false,
+  bankFailed: false,
+  fatal: null,
+};
 
 /** Which rung the signals ask for, and why (worst wins). */
 export function decide(s: Signals): { rung: Rung; reasons: string[] } {
   if (s.fatal) return { rung: 5, reasons: [s.fatal] };
-  const r4 = [s.themDead && "other side not heard", s.themSttDown && "other side's transcription is down", s.bankFailed && "bank or detector failed"].filter(Boolean) as string[];
+  const r4 = [s.themDead && "other side not heard", s.themSttDown && "other side's transcription is down", s.bankFailed && "bank or detector failed"].filter(
+    Boolean,
+  ) as string[];
   if (r4.length) return { rung: 4, reasons: r4 };
   const r3 = [s.noAi && "AI off (--no-ai)", s.llmDown && "no LLM provider usable", s.costCapped && "LLM budget cap reached"].filter(Boolean) as string[];
   if (r3.length) return { rung: 3, reasons: r3 };
@@ -49,12 +64,20 @@ export function capabilities(r: Rung) {
 export function describeRung(r: Rung, reasons: string[], userChoiceOnly = false): { level: "red" | "amber" | "info"; text: string } | null {
   const why = reasons.length ? ` (${reasons.join(", ")})` : "";
   switch (r) {
-    case 0: return null;
-    case 1: return { level: "amber", text: `AI מופחת: רק כרטיסים מוכנים מראש ותשובת "לקנות זמן"${why}. הכרטיסים ממשיכים; אם זה נמשך, בדוק חיבור לאינטרנט` };
-    case 2: return { level: "amber", text: `עברנו לספק גיבוי${why}. אין צורך לעשות כלום; אחרי השיחה בדוק את המפתח ב-Settings` };
-    case 3: return userChoiceOnly ? { level: "info", text: "רק כרטיסים מוכנים מראש (בלי AI). להפעלת AI התחל שיחה חדשה בלי הבחירה הזו" } : { level: "red", text: `רק כרטיסים מוכנים מראש: ה-AI לא זמין${why}. בדוק חיבור לאינטרנט ומפתח ב-Settings` };
-    case 4: return { level: "red", text: `אין כרטיסים לצד השני${why}. תשובות אליך (Ctrl+Opt+A) עדיין פועלות; בדוק חיבור לאינטרנט` };
-    case 5: return { level: "red", text: `Wingman כבוי${why}. פתח את חלון Wingman ופתח שיחה חדשה` };
+    case 0:
+      return null;
+    case 1:
+      return { level: "amber", text: `AI מופחת: רק כרטיסים מוכנים מראש ותשובת "לקנות זמן"${why}. הכרטיסים ממשיכים; אם זה נמשך, בדוק חיבור לאינטרנט` };
+    case 2:
+      return { level: "amber", text: `עברנו לספק גיבוי${why}. אין צורך לעשות כלום; אחרי השיחה בדוק את המפתח ב-Settings` };
+    case 3:
+      return userChoiceOnly
+        ? { level: "info", text: "רק כרטיסים מוכנים מראש (בלי AI). להפעלת AI התחל שיחה חדשה בלי הבחירה הזו" }
+        : { level: "red", text: `רק כרטיסים מוכנים מראש: ה-AI לא זמין${why}. בדוק חיבור לאינטרנט ומפתח ב-Settings` };
+    case 4:
+      return { level: "red", text: `אין כרטיסים לצד השני${why}. תשובות אליך (Ctrl+Opt+A) עדיין פועלות; בדוק חיבור לאינטרנט` };
+    case 5:
+      return { level: "red", text: `Wingman כבוי${why}. פתח את חלון Wingman ופתח שיחה חדשה` };
   }
 }
 
@@ -66,9 +89,12 @@ export class CircuitBreaker {
   private fails: number[] = [];
   private okCount = 0;
   private openedAt = 0;
-  private probeAt: number | undefined;   // a half-open probe is in flight (one at a time)
+  private probeAt: number | undefined; // a half-open probe is in flight (one at a time)
   state: "closed" | "open" | "half-open" = "closed";
-  constructor(private cfg: { failures: number; windowMs: number; cooldownMs: number; closeAfter?: number }, private now: () => number = Date.now) {}
+  constructor(
+    private cfg: { failures: number; windowMs: number; cooldownMs: number; closeAfter?: number },
+    private now: () => number = Date.now,
+  ) {}
   /** Would a request go through right now? Read-only: status checks use this, so they never use up the half-open probe. */
   peek(): boolean {
     if (this.state === "open") return this.now() - this.openedAt >= this.cfg.cooldownMs;
@@ -77,7 +103,11 @@ export class CircuitBreaker {
   }
   /** May a request go through? Call only right before a real request: in half-open it reserves the one probe. */
   allow(): boolean {
-    if (this.state === "open" && this.now() - this.openedAt >= this.cfg.cooldownMs) { this.state = "half-open"; this.okCount = 0; this.probeAt = undefined; }
+    if (this.state === "open" && this.now() - this.openedAt >= this.cfg.cooldownMs) {
+      this.state = "half-open";
+      this.okCount = 0;
+      this.probeAt = undefined;
+    }
     if (this.state === "open") return false;
     if (this.state === "half-open") {
       // one probe at a time; a probe that never reports back is forgotten after a cooldown
@@ -87,19 +117,36 @@ export class CircuitBreaker {
     return true;
   }
   failure(forceOpen = false) {
-    const t = this.now(); this.probeAt = undefined;
+    const t = this.now();
+    this.probeAt = undefined;
     this.fails = [...this.fails.filter((x) => t - x < this.cfg.windowMs), t];
-    if (forceOpen || this.state === "half-open" || this.fails.length >= this.cfg.failures) { this.state = "open"; this.openedAt = t; this.okCount = 0; }
+    if (forceOpen || this.state === "half-open" || this.fails.length >= this.cfg.failures) {
+      this.state = "open";
+      this.openedAt = t;
+      this.okCount = 0;
+    }
   }
   success() {
     this.probeAt = undefined;
-    if (this.state === "half-open") { if (++this.okCount >= (this.cfg.closeAfter ?? 2)) { this.state = "closed"; this.fails = []; } }
-    else if (this.state === "closed") this.fails = [];
+    if (this.state === "half-open") {
+      if (++this.okCount >= (this.cfg.closeAfter ?? 2)) {
+        this.state = "closed";
+        this.fails = [];
+      }
+    } else if (this.state === "closed") this.fails = [];
   }
 }
 
 /** Timing knobs. `troubleHoldMs`: how long one 429/overload keeps the AI-trouble flag. `fastRecoverMs`: shortened calm period after the other side is heard again. */
-export type HealthConfig = { tickMs: number; recoverStableMs: number; slowMs: number; slowSttMs: number; minSamples: number; troubleHoldMs?: number; fastRecoverMs?: number };
+export type HealthConfig = {
+  tickMs: number;
+  recoverStableMs: number;
+  slowMs: number;
+  slowSttMs: number;
+  minSamples: number;
+  troubleHoldMs?: number;
+  fastRecoverMs?: number;
+};
 
 /**
  * Turns signals into one applied rung and emits "rung" events { from, to, reasons }. Why it is not instant:
@@ -116,26 +163,55 @@ export class HealthSupervisor extends EventEmitter {
   private tags: number[] = [];
   private lags: number[] = [];
   private troubleUntil = 0;
-  private fastRecover = false;   // the other side was heard again: leave "other side not heard" after fastRecoverMs, not recoverStableMs
+  private fastRecover = false; // the other side was heard again: leave "other side not heard" after fastRecoverMs, not recoverStableMs
   private timer?: NodeJS.Timeout;
-  constructor(private cfg: HealthConfig, private now: () => number = Date.now) { super(); }
+  constructor(
+    private cfg: HealthConfig,
+    private now: () => number = Date.now,
+  ) {
+    super();
+  }
 
-  start() { this.timer = setInterval(() => this.tick(), this.cfg.tickMs); this.timer.unref(); }
-  stop() { clearInterval(this.timer); }
+  start() {
+    this.timer = setInterval(() => this.tick(), this.cfg.tickMs);
+    this.timer.unref();
+  }
+  stop() {
+    clearInterval(this.timer);
+  }
   set(patch: Partial<Signals>) {
     if ((patch.themDead === false && this.sig.themDead) || (patch.themSttDown === false && this.sig.themSttDown)) this.fastRecover = true;
     Object.assign(this.sig, patch);
     if (patch.fatal || (this.fastRecover && (patch.themDead === false || patch.themSttDown === false))) this.tick();
   }
-  beginQuestion() { this.busy++; }
-  endQuestion() { this.busy = Math.max(0, this.busy - 1); if (!this.busy) this.tick(); }
-  get idle() { return this.busy === 0; }
+  beginQuestion() {
+    this.busy++;
+  }
+  endQuestion() {
+    this.busy = Math.max(0, this.busy - 1);
+    if (!this.busy) this.tick();
+  }
+  get idle() {
+    return this.busy === 0;
+  }
 
   // Slow detection uses the median of the last 5 samples and needs minSamples, so one slow reply does not degrade the call.
-  recordTag(ms: number) { this.tags = [...this.tags.slice(-4), ms]; this.set({ llmSlow: this.p50(this.tags) > this.cfg.slowMs && this.tags.length >= this.cfg.minSamples }); }
-  recordSttLag(ms: number) { this.lags = [...this.lags.slice(-4), ms]; this.set({ sttSlow: this.p50(this.lags) > this.cfg.slowSttMs && this.lags.length >= this.cfg.minSamples }); }
-  noteLlmTrouble() { this.troubleUntil = this.now() + (this.cfg.troubleHoldMs ?? 60_000); this.set({ llmTrouble: true }); }
-  private p50(a: number[]) { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; }
+  recordTag(ms: number) {
+    this.tags = [...this.tags.slice(-4), ms];
+    this.set({ llmSlow: this.p50(this.tags) > this.cfg.slowMs && this.tags.length >= this.cfg.minSamples });
+  }
+  recordSttLag(ms: number) {
+    this.lags = [...this.lags.slice(-4), ms];
+    this.set({ sttSlow: this.p50(this.lags) > this.cfg.slowSttMs && this.lags.length >= this.cfg.minSamples });
+  }
+  noteLlmTrouble() {
+    this.troubleUntil = this.now() + (this.cfg.troubleHoldMs ?? 60_000);
+    this.set({ llmTrouble: true });
+  }
+  private p50(a: number[]) {
+    const s = [...a].sort((x, y) => x - y);
+    return s.length ? s[Math.floor(s.length / 2)] : 0;
+  }
 
   /** Evaluate. Degrading applies at the next idle moment; recovering also needs `recoverStableMs` of calm. */
   tick(): void {
@@ -145,25 +221,50 @@ export class HealthSupervisor extends EventEmitter {
     if (want.rung === 5 && this.rung !== 5) return this.apply(5, want.reasons);
     if (this.rung === 5) return;
     if (!this.idle) return;
-    if (want.rung > this.rung) { this.betterSince = null; return this.apply(want.rung, want.reasons); }
+    if (want.rung > this.rung) {
+      this.betterSince = null;
+      return this.apply(want.rung, want.reasons);
+    }
     if (want.rung < this.rung) {
       this.betterSince ??= t;
-      const need = this.fastRecover && this.reasons.length > 0 && this.reasons.every((r) => r === "other side not heard" || r === "other side's transcription is down") ? (this.cfg.fastRecoverMs ?? 2000) : this.cfg.recoverStableMs;
-      if (t - this.betterSince >= need) { this.tags = []; this.lags = []; this.sig.llmSlow = false; this.sig.sttSlow = false; return this.apply(want.rung, want.reasons); }
+      const need =
+        this.fastRecover && this.reasons.length > 0 && this.reasons.every((r) => r === "other side not heard" || r === "other side's transcription is down")
+          ? (this.cfg.fastRecoverMs ?? 2000)
+          : this.cfg.recoverStableMs;
+      if (t - this.betterSince >= need) {
+        this.tags = [];
+        this.lags = [];
+        this.sig.llmSlow = false;
+        this.sig.sttSlow = false;
+        return this.apply(want.rung, want.reasons);
+      }
       return;
     }
     this.betterSince = null;
-    if (want.reasons.join() !== this.reasons.join()) { this.reasons = want.reasons; this.emit("rung", { from: this.rung, to: this.rung, reasons: want.reasons }); }
+    if (want.reasons.join() !== this.reasons.join()) {
+      this.reasons = want.reasons;
+      this.emit("rung", { from: this.rung, to: this.rung, reasons: want.reasons });
+    }
   }
 
   private apply(to: Rung, reasons: string[]) {
-    const from = this.rung; this.rung = to; this.reasons = reasons; this.betterSince = null; this.fastRecover = false;
+    const from = this.rung;
+    this.rung = to;
+    this.reasons = reasons;
+    this.betterSince = null;
+    this.fastRecover = false;
     this.emit("rung", { from, to, reasons });
   }
   /** True when the only reason for bank-only is the user's own --no-ai. */
-  get userChoiceOnly() { return this.rung === 3 && this.sig.noAi && !this.sig.llmDown && !this.sig.costCapped; }
-  get caps() { return capabilities(this.rung); }
-  get signals(): Readonly<Signals> { return this.sig; }
+  get userChoiceOnly() {
+    return this.rung === 3 && this.sig.noAi && !this.sig.llmDown && !this.sig.costCapped;
+  }
+  get caps() {
+    return capabilities(this.rung);
+  }
+  get signals(): Readonly<Signals> {
+    return this.sig;
+  }
 }
 
 /** Wait before STT reopen attempt n (0 first): 1, 2, 4, 8, then every 10 s; once the failure is permanent (key/credit refused) every `slowMs` (30 s). */

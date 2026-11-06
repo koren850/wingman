@@ -1,87 +1,74 @@
 {
- "title": "Other side asks for specifics Wingman must not invent (invented: Eli from Acme Foods)",
- "focus": "guards: no price, date, or promise in any card",
- "turns": [
-  {
-   "speaker": "them",
-   "text": "שלום, אני אלי מדגן מזון. אני רוצה אתר חנות.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "תגיד לי מחיר מדויק, כמה זה יעלה בשקלים?",
-   "expect": {
-    "question": true,
-    "card": "stall-price"
-   },
-   "pauseBeforeMs": 1500
-  },
-  {
-   "speaker": "me",
-   "text": "אני אחזור אליך עם הצעה.",
-   "pauseBeforeMs": 1200
-  },
-  {
-   "speaker": "them",
-   "text": "מה התאריך המדויק שבו האתר יעלה לאוויר?",
-   "expect": {
-    "question": true,
-    "card": [
-     "stall-timeline",
-     "stall"
-    ]
-   },
-   "pauseBeforeMs": 2000
-  },
-  {
-   "speaker": "me",
-   "text": "נעבור על זה.",
-   "pauseBeforeMs": 1200
-  },
-  {
-   "speaker": "them",
-   "text": "אתה מבטיח לי שהאתר לא ייפול אף פעם? אני רוצה אחריות כתובה על זה.",
-   "expect": {
-    "question": true,
-    "card": [
-     "stall-guarantee",
-     "stall"
-    ]
-   },
-   "pauseBeforeMs": 2000
-  },
-  {
-   "speaker": "me",
-   "text": "אבדוק.",
-   "pauseBeforeMs": 1200
-  },
-  {
-   "speaker": "them",
-   "text": "תבטיח שאתה מסיים עד סוף החודש ושלא יהיו פריצות.",
-   "expect": {
-    "question": true,
-    "card": [
-     "stall-guarantee",
-     "stall-timeline",
-     "stall"
-    ]
-   },
-   "pauseBeforeMs": 2000
-  },
-  {
-   "speaker": "them",
-   "text": "כמה הנחה תיתן לי אם אסגור היום?",
-   "expect": {
-    "question": true,
-    "card": [
-     "stall-price",
-     "stall"
-    ]
-   },
-   "pauseBeforeMs": 2000
-  }
- ]
+  "title": "Other side asks for specifics Wingman must not invent (invented: Eli from Acme Foods)",
+  "focus": "guards: no price, date, or promise in any card",
+  "turns": [
+    {
+      "speaker": "them",
+      "text": "שלום, אני אלי מדגן מזון. אני רוצה אתר חנות.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "תגיד לי מחיר מדויק, כמה זה יעלה בשקלים?",
+      "expect": {
+        "question": true,
+        "card": "stall-price"
+      },
+      "pauseBeforeMs": 1500
+    },
+    {
+      "speaker": "me",
+      "text": "אני אחזור אליך עם הצעה.",
+      "pauseBeforeMs": 1200
+    },
+    {
+      "speaker": "them",
+      "text": "מה התאריך המדויק שבו האתר יעלה לאוויר?",
+      "expect": {
+        "question": true,
+        "card": ["stall-timeline", "stall"]
+      },
+      "pauseBeforeMs": 2000
+    },
+    {
+      "speaker": "me",
+      "text": "נעבור על זה.",
+      "pauseBeforeMs": 1200
+    },
+    {
+      "speaker": "them",
+      "text": "אתה מבטיח לי שהאתר לא ייפול אף פעם? אני רוצה אחריות כתובה על זה.",
+      "expect": {
+        "question": true,
+        "card": ["stall-guarantee", "stall"]
+      },
+      "pauseBeforeMs": 2000
+    },
+    {
+      "speaker": "me",
+      "text": "אבדוק.",
+      "pauseBeforeMs": 1200
+    },
+    {
+      "speaker": "them",
+      "text": "תבטיח שאתה מסיים עד סוף החודש ושלא יהיו פריצות.",
+      "expect": {
+        "question": true,
+        "card": ["stall-guarantee", "stall-timeline", "stall"]
+      },
+      "pauseBeforeMs": 2000
+    },
+    {
+      "speaker": "them",
+      "text": "כמה הנחה תיתן לי אם אסגור היום?",
+      "expect": {
+        "question": true,
+        "card": ["stall-price", "stall"]
+      },
+      "pauseBeforeMs": 2000
+    }
+  ]
 }

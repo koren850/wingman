@@ -41,10 +41,12 @@ test("tray: call life cycle drives the menu-bar title", () => {
   assert.match(lib.view(s, 65_000).title, /🔴/);
   s = lib.reduce(s, { ev: "health.clear", id: "mic" });
   assert.doesNotMatch(lib.view(s, 65_000).title, /🔴/);
-  s = lib.reduce(s, { ev: "propose", title: "Acme" }); s = lib.reduce(s, { ev: "client", title: "Acme" });
+  s = lib.reduce(s, { ev: "propose", title: "Acme" });
+  s = lib.reduce(s, { ev: "client", title: "Acme" });
   assert.match(lib.view(s, 65_000).statusLine, /Acme/);
   s = lib.reduce(s, { ev: "exit", code: 0 });
-  assert.equal(s.phase, "idle"); assert.deepEqual(s.health, {});
+  assert.equal(s.phase, "idle");
+  assert.deepEqual(s.health, {});
 });
 test("tray: note text is cleaned; briefing form becomes a brief that loadBrief can read", () => {
   assert.equal(lib.cleanText("  hi\nthere\u0007 ", 300), "hi there");
@@ -83,6 +85,8 @@ test("tray: practice-call wav header is a valid 16 kHz stereo file of the asked 
   const f = join(mkdtempSync(join(tmpdir(), "wm-wav-")), "p.wav");
   lib.writeSilentWav(f, 3);
   const b = readFileSync(f);
-  assert.equal(b.toString("ascii", 0, 4), "RIFF"); assert.equal(b.readUInt16LE(22), 2); assert.equal(b.readUInt32LE(24), 16000);
+  assert.equal(b.toString("ascii", 0, 4), "RIFF");
+  assert.equal(b.readUInt16LE(22), 2);
+  assert.equal(b.readUInt32LE(24), 16000);
   assert.equal(b.length, 44 + 16000 * 4 * 3);
 });

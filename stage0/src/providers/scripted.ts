@@ -25,13 +25,28 @@ const failError = (status: number) => Object.assign(new Error(`HTTP ${status} (i
 
 /** Fake STT stream: replays the transcript file as final results on timers (the audio sent to it is only counted). */
 class ScriptStream extends EventEmitter implements SttStreamLike {
-  isOpen = false; audioSeconds = 0; dropped = 0;
+  isOpen = false;
+  audioSeconds = 0;
+  dropped = 0;
   private timers: NodeJS.Timeout[] = [];
-  constructor(private o: SttOptions) { super(); }
+  constructor(private o: SttOptions) {
+    super();
+  }
   async open() {
     const inj = injectedFailure(this.o.channel);
     if (inj && Date.now() - T0 >= inj.at) throw failError(inj.status);
-    if (inj) { const t = setTimeout(() => { if (!this.isOpen) return; this.isOpen = false; for (const x of this.timers) clearTimeout(x); this.emit("error", failError(inj.status)); }, inj.at - (Date.now() - T0)); this.timers.push(t); }
+    if (inj) {
+      const t = setTimeout(
+        () => {
+          if (!this.isOpen) return;
+          this.isOpen = false;
+          for (const x of this.timers) clearTimeout(x);
+          this.emit("error", failError(inj.status));
+        },
+        inj.at - (Date.now() - T0),
+      );
+      this.timers.push(t);
+    }
     this.isOpen = true;
     const file = process.env.WINGMAN_STT_SCRIPT;
     if (!file) throw new Error("stt.provider script needs WINGMAN_STT_SCRIPT=<transcript.json>");
@@ -40,29 +55,61 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
     // QA replay lines (qa/run-qa.ts --replay) also carry atMs (absolute time since start), words and speechFinal,
     // so a saved Deepgram run plays back exactly as it was heard.
     type Line = { speaker: string; text: string; afterMs?: number; atMs?: number; words?: SttResult["words"]; speechFinal?: boolean; endLagMs?: number };
-    const lines = (JSON.parse(readFileSync(file, "utf8")) as Line[]);
+    const lines = JSON.parse(readFileSync(file, "utf8")) as Line[];
     // A channel that is reopened (after an outage) continues the script where the clock is, instead of replaying it from the start.
-    const firstOpen = (FIRST_OPEN[this.o.channel] ??= Date.now()), late = Date.now() - firstOpen;
+    const firstOpen = (FIRST_OPEN[this.o.channel] ??= Date.now()),
+      late = Date.now() - firstOpen;
     let at = 300;
     lines.forEach((l, i) => {
       if (Number.isFinite(l.atMs)) at = Number(l.atMs);
       else if (i > 0) at += Number.isFinite(l.afterMs) ? Number(l.afterMs) : gap;
       const when = at - late;
       if (l.speaker !== this.o.channel || when < 0) return;
-      this.timers.push(setTimeout(() => {
-        const now = Date.now();
-        const r: SttResult = { channel: this.o.channel, text: l.text, isFinal: true, speechFinal: l.speechFinal ?? true, words: l.words ?? [], speechEndWall: now - (l.endLagMs ?? 300), arrivedAt: now };
-        this.emit("result", r);
-      }, when));
+      this.timers.push(
+        setTimeout(() => {
+          const now = Date.now();
+          const r: SttResult = {
+            channel: this.o.channel,
+            text: l.text,
+            isFinal: true,
+            speechFinal: l.speechFinal ?? true,
+            words: l.words ?? [],
+            speechEndWall: now - (l.endLagMs ?? 300),
+            arrivedAt: now,
+          };
+          this.emit("result", r);
+        }, when),
+      );
     });
   }
-  send(pcm: Buffer) { this.audioSeconds += pcm.length / 32000; return true; }
+  send(pcm: Buffer) {
+    this.audioSeconds += pcm.length / 32000;
+    return true;
+  }
   /** Like a real socket, it delivers its last finals while closing. Test hook: WINGMAN_SCRIPT_CLOSE_FINALS=[{speaker, text}] are emitted ~50 ms after close() starts. */
   async close() {
-    this.isOpen = false; for (const t of this.timers) clearTimeout(t);
-    const late = (() => { try { return JSON.parse(process.env.WINGMAN_SCRIPT_CLOSE_FINALS ?? "[]") as { speaker: string; text: string }[]; } catch { return []; } })().filter((l) => l.speaker === this.o.channel);
+    this.isOpen = false;
+    for (const t of this.timers) clearTimeout(t);
+    const late = (() => {
+      try {
+        return JSON.parse(process.env.WINGMAN_SCRIPT_CLOSE_FINALS ?? "[]") as { speaker: string; text: string }[];
+      } catch {
+        return [];
+      }
+    })().filter((l) => l.speaker === this.o.channel);
     if (late.length) await new Promise((r) => setTimeout(r, 50));
-    for (const l of late) { const now = Date.now(); this.emit("result", { channel: this.o.channel, text: l.text, isFinal: true, speechFinal: true, words: [], speechEndWall: now - 300, arrivedAt: now } as SttResult); }
+    for (const l of late) {
+      const now = Date.now();
+      this.emit("result", {
+        channel: this.o.channel,
+        text: l.text,
+        isFinal: true,
+        speechFinal: true,
+        words: [],
+        speechEndWall: now - 300,
+        arrivedAt: now,
+      } as SttResult);
+    }
     this.emit("close");
   }
 }
@@ -70,7 +117,8 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
 /** The "script" STT provider. `id` is cast because SttProvider.id does not list it. */
 export const script: SttProvider = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the offline test double is not a real provider id
-  id: "script" as any, experimental: false,
+  id: "script" as any,
+  experimental: false,
   capabilities: { keyterms: false, diarize: false, interim: false, maxKeyterms: 0 },
   create: (o) => new ScriptStream(o),
   probe: async () => ({ ok: true }),
@@ -112,25 +160,39 @@ const bank = loadBank();
 export const SCRIPTED_SUMMARY = {
   summary: ["הלקוחה פנתה בגלל אתר שנטען לאט", "שאלה על גיבויים לאתר", "השאירה טלפון ומייל לחזרה"],
   decisions: ["בודקים את מהירות האתר"],
-  nextSteps: [{ who: "אני", what: "לבדוק את סיבת האיטיות" }, { who: "לקוח", what: "לשלוח גישה לאתר", when: "השבוע" }],
+  nextSteps: [
+    { who: "אני", what: "לבדוק את סיבת האיטיות" },
+    { who: "לקוח", what: "לשלוח גישה לאתר", when: "השבוע" },
+  ],
   openQuestions: ["כמה תעלה החבילה המלאה"],
-  followUpEmail: "שלום דנה,\nתודה על השיחה. דיברנו על מהירות האתר והגיבויים.\nהחבילה עולה 500 ש\"ח לחודש.\nנחזור אליך עד יום שני.\nבברכה",
+  followUpEmail: 'שלום דנה,\nתודה על השיחה. דיברנו על מהירות האתר והגיבויים.\nהחבילה עולה 500 ש"ח לחודש.\nנחזור אליך עד יום שני.\nבברכה',
 };
 /** Call-frame double (model "scripted:frame"): an invented client call; checklist items tick off when their keyword is in the transcript. */
 const FRAME_ITEMS: [string, RegExp, boolean][] = [
-  ["להבין למה האתר איטי", /איטי|לאט/, true], ["לשאול על גיבויים", /גיבוי/, true], ["לקבל טלפון ומייל לחזרה", /טלפון|מייל|dana@/i, true],
-  ["לבדוק אם יש חנות WooCommerce", /ווקומרס|woocommerce/i, false], ["להסכים על הצעד הבא", /הצעה|נחזור|נדבר/, false],
+  ["להבין למה האתר איטי", /איטי|לאט/, true],
+  ["לשאול על גיבויים", /גיבוי/, true],
+  ["לקבל טלפון ומייל לחזרה", /טלפון|מייל|dana@/i, true],
+  ["לבדוק אם יש חנות WooCommerce", /ווקומרס|woocommerce/i, false],
+  ["להסכים על הצעד הבא", /הצעה|נחזור|נדבר/, false],
 ];
 // The "must" flag marks must-cover checklist items.
 export function scriptedFrame(prompt: string): string {
   const said = prompt.slice(prompt.indexOf("<call_transcript>"));
-  return JSON.stringify({ kind: "client", topic: "אתר איטי וגיבויים", goal: "להבין את הבעיה ולהציע בדיקה", people: [{ who: "דנה", role: "לקוחה" }], entities: ["WooCommerce"],
-    checklist: FRAME_ITEMS.map(([item, re, must]) => ({ item, done: re.test(said), must })) });
+  return JSON.stringify({
+    kind: "client",
+    topic: "אתר איטי וגיבויים",
+    goal: "להבין את הבעיה ולהציע בדיקה",
+    people: [{ who: "דנה", role: "לקוחה" }],
+    entities: ["WooCommerce"],
+    checklist: FRAME_ITEMS.map(([item, re, must]) => ({ item, done: re.test(said), must })),
+  });
 }
 /** Live-tip double (model "scripted:tips"): one tip once backups come up, NONE otherwise. */
 export function scriptedTip(prompt: string): string {
   const said = prompt.slice(prompt.indexOf("<call_transcript>"));
-  return /גיבוי/.test(said) && !/Tips already given[^]*גיבויים נשמרים/.test(prompt) ? JSON.stringify({ type: "ask", text: "כדאי לשאול איפה הגיבויים נשמרים היום ומי אחראי עליהם." }) : "NONE";
+  return /גיבוי/.test(said) && !/Tips already given[^]*גיבויים נשמרים/.test(prompt)
+    ? JSON.stringify({ type: "ask", text: "כדאי לשאול איפה הגיבויים נשמרים היום ומי אחראי עליהם." })
+    : "NONE";
 }
 /** Picks the fake model reply by which system-prompt phrase the prompt contains; the first match wins. */
 export function scriptedAnswer(prompt: string): string {
@@ -153,16 +215,33 @@ const finish = { unified: "stop" as const, raw: "end_turn" };
 let llmFailsLeft = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[0]) || 0;
 const llmFailStatus = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[1]) || 401;
 export function createScripted() {
-  return (modelId: string) => new MockLanguageModelV4({
-    provider: "scripted", modelId,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the mock model's result types are stricter than the scripted reply needs
-    doGenerate: async (o) => ({ content: [{ type: "text", text: scriptedAnswer(promptText(o)) }], finishReason: finish, usage, warnings: [] }) as any,
-    doStream: async (o) => {
-      const text = scriptedAnswer(promptText(o));
-      if (llmFailsLeft > 0 && questionOf(promptText(o))) { llmFailsLeft--; throw Object.assign(new Error(`HTTP ${llmFailStatus} (injected)`), { statusCode: llmFailStatus }); }
-      const parts = [{ type: "stream-start", warnings: [] }, { type: "text-start", id: "t" }, { type: "text-delta", id: "t", delta: text }, { type: "text-end", id: "t" }, { type: "finish", usage, finishReason: finish }];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- as above: the scripted stream parts are plain objects
-      return { stream: new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } }) } as any;
-    },
-  });
+  return (modelId: string) =>
+    new MockLanguageModelV4({
+      provider: "scripted",
+      modelId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the mock model's result types are stricter than the scripted reply needs
+      doGenerate: async (o) => ({ content: [{ type: "text", text: scriptedAnswer(promptText(o)) }], finishReason: finish, usage, warnings: [] }) as any,
+      doStream: async (o) => {
+        const text = scriptedAnswer(promptText(o));
+        if (llmFailsLeft > 0 && questionOf(promptText(o))) {
+          llmFailsLeft--;
+          throw Object.assign(new Error(`HTTP ${llmFailStatus} (injected)`), { statusCode: llmFailStatus });
+        }
+        const parts = [
+          { type: "stream-start", warnings: [] },
+          { type: "text-start", id: "t" },
+          { type: "text-delta", id: "t", delta: text },
+          { type: "text-end", id: "t" },
+          { type: "finish", usage, finishReason: finish },
+        ];
+        return {
+          stream: new ReadableStream({
+            start(c) {
+              for (const p of parts) c.enqueue(p);
+              c.close();
+            },
+          }),
+        } as any; // eslint-disable-line @typescript-eslint/no-explicit-any -- as above: the scripted stream parts are plain objects
+      },
+    });
 }

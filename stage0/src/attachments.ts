@@ -21,9 +21,12 @@ export function loadAttachments(maxChars: number, o: { dir?: string; consume?: b
   if (maxChars <= 0) return [];
   const planDir = process.env.WINGMAN_ATTACH_DIR;
   try {
-    if (planDir && !o.dir) return store.createStore({ dir: planDir, pdftotext: "", maxAgeMs: 400 * 24 * 3600_000 }).readAll({ limit: maxChars, consume: false });
+    if (planDir && !o.dir)
+      return store.createStore({ dir: planDir, pdftotext: "", maxAgeMs: 400 * 24 * 3600_000 }).readAll({ limit: maxChars, consume: false });
     return store.createStore({ dir: o.dir ?? ATTACH_DIR, pdftotext: "" }).readAll({ limit: maxChars, consume: o.consume ?? true });
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 /** One prompt block. The files are data, never instructions; a closing tag inside a file cannot end the block. */

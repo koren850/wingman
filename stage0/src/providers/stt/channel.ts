@@ -8,12 +8,12 @@ import type { Channel, SttOptions, SttProvider, SttResult, SttStreamLike } from 
 /** chain = providers in fallback order; circuit = switch after `failures` errors within `windowMs`. */
 export type ChannelOpts = {
   channel: Channel;
-  chain: SttProvider[];                                   // primary first
+  chain: SttProvider[]; // primary first
   keyOf: (providerId: string) => string | undefined;
   base: Omit<SttOptions, "apiKey" | "channel">;
-  baseUrls?: Record<string, string>;                      // tests: point an adapter at a mock server
+  baseUrls?: Record<string, string>; // tests: point an adapter at a mock server
   circuit: { failures: number; windowMs: number };
-  ringMs?: number;                                        // audio kept while the socket is down, flushed on reopen (0/undefined = drop, old behaviour)
+  ringMs?: number; // audio kept while the socket is down, flushed on reopen (0/undefined = drop, old behaviour)
   now?: () => number;
 };
 
@@ -25,33 +25,52 @@ export class SttChannel extends EventEmitter {
   private switching = false;
   private seconds: Record<string, number> = {};
   private droppedOld = 0;
-  private ring: Buffer[] = [];          // ring: most recent ringMs of audio while the socket is not open
+  private ring: Buffer[] = []; // ring: most recent ringMs of audio while the socket is not open
   private ringBytes = 0;
-  private ringDropped = 0;              // chunks that fell off the ring (counted in `dropped`)
-  private flushedBytes = 0;           // total bytes ever replayed from the ring
-  private flushEndSec = 0;              // flushed audio occupies [0, flushEndSec] of the current connection's audio clock
+  private ringDropped = 0; // chunks that fell off the ring (counted in `dropped`)
+  private flushedBytes = 0; // total bytes ever replayed from the ring
+  private flushEndSec = 0; // flushed audio occupies [0, flushEndSec] of the current connection's audio clock
   private everOpened = false;
-  constructor(private o: ChannelOpts) { super(); }
+  constructor(private o: ChannelOpts) {
+    super();
+  }
 
-  get provider() { return this.o.chain[this.idx].id; }
-  get isOpen() { return !!this.stream?.isOpen; }
-  get dropped() { return this.droppedOld + this.ringDropped + (this.stream?.dropped ?? 0); }
+  get provider() {
+    return this.o.chain[this.idx].id;
+  }
+  get isOpen() {
+    return !!this.stream?.isOpen;
+  }
+  get dropped() {
+    return this.droppedOld + this.ringDropped + (this.stream?.dropped ?? 0);
+  }
   /** ms of audio replayed from the ring after a reconnect / provider switch */
-  get flushedMs() { return this.flushedBytes / 32; }
-  get audioSeconds() { return Object.values(this.audioSecondsByProvider()).reduce((a, b) => a + b, 0); }
-  audioSecondsByProvider() { return { ...this.seconds, [this.provider]: (this.seconds[this.provider] ?? 0) + (this.stream?.audioSeconds ?? 0) }; }
-  private now() { return (this.o.now ?? Date.now)(); }
+  get flushedMs() {
+    return this.flushedBytes / 32;
+  }
+  get audioSeconds() {
+    return Object.values(this.audioSecondsByProvider()).reduce((a, b) => a + b, 0);
+  }
+  audioSecondsByProvider() {
+    return { ...this.seconds, [this.provider]: (this.seconds[this.provider] ?? 0) + (this.stream?.audioSeconds ?? 0) };
+  }
+  private now() {
+    return (this.o.now ?? Date.now)();
+  }
 
   /** Open the first provider in the chain that works; a switchProvider failure moves on, others throw. */
   async open(): Promise<void> {
     let last: ProviderError | undefined;
     for (; this.idx < this.o.chain.length; this.idx++) {
-      try { await this.openCurrent(); return; }
-      catch (e) {
+      try {
+        await this.openCurrent();
+        return;
+      } catch (e) {
         last = classifySttError(this.provider, e);
         this.emit("stt_error", last);
         if (!last.switchProvider) throw last;
-        if (this.idx + 1 < this.o.chain.length) this.emit("switched", { from: this.provider, to: this.o.chain[this.idx + 1].id, kind: last.kind, reason: last.message, atOpen: true });
+        if (this.idx + 1 < this.o.chain.length)
+          this.emit("switched", { from: this.provider, to: this.o.chain[this.idx + 1].id, kind: last.kind, reason: last.message, atOpen: true });
       }
     }
     this.idx = this.o.chain.length - 1;
@@ -59,7 +78,8 @@ export class SttChannel extends EventEmitter {
   }
 
   private async openCurrent() {
-    const p = this.o.chain[this.idx], key = this.o.keyOf(p.id);
+    const p = this.o.chain[this.idx],
+      key = this.o.keyOf(p.id);
     if (!key) throw classifySttError(p.id, Object.assign(new Error("API key missing"), { statusCode: 401 }));
     const s = p.create({ ...this.o.base, apiKey: key, channel: this.o.channel, baseUrl: this.o.baseUrls?.[p.id] ?? this.o.base.baseUrl });
     this.wire(s);
@@ -74,19 +94,30 @@ export class SttChannel extends EventEmitter {
   private flushRing(s: SttStreamLike) {
     this.flushEndSec = 0;
     if (!this.ring.length) return;
-    const chunks = this.ring; this.ring = []; this.ringBytes = 0;
+    const chunks = this.ring;
+    this.ring = [];
+    this.ringBytes = 0;
     let sent = 0;
     for (let i = 0; i < chunks.length; i++) {
-      if (s.send(chunks[i])) { sent += chunks[i].length; this.flushedBytes += chunks[i].length; }
-      else { this.ringDropped += chunks.length - i; break; }   // socket went down again mid-flush: the rest is lost
+      if (s.send(chunks[i])) {
+        sent += chunks[i].length;
+        this.flushedBytes += chunks[i].length;
+      } else {
+        this.ringDropped += chunks.length - i;
+        break;
+      } // socket went down again mid-flush: the rest is lost
     }
     this.flushEndSec = sent / 32000;
   }
 
   private buffer(pcm: Buffer) {
-    const cap = (this.o.ringMs ?? 0) * 32;   // 16 kHz s16le mono = 32 bytes/ms
-    this.ring.push(pcm); this.ringBytes += pcm.length;
-    while (this.ring.length && this.ringBytes > cap) { this.ringBytes -= this.ring.shift()!.length; this.ringDropped++; }
+    const cap = (this.o.ringMs ?? 0) * 32; // 16 kHz s16le mono = 32 bytes/ms
+    this.ring.push(pcm);
+    this.ringBytes += pcm.length;
+    while (this.ring.length && this.ringBytes > cap) {
+      this.ringBytes -= this.ring.shift()!.length;
+      this.ringDropped++;
+    }
   }
 
   private wire(s: SttStreamLike) {
@@ -96,13 +127,28 @@ export class SttChannel extends EventEmitter {
       if (s !== this.stream && this.stream) return;
       // A result that ends inside flushed audio would get a lag inflated by the burst: drop its wall-clock anchor
       const end = r.words?.at(-1)?.end;
-      if (this.flushEndSec > 0 && r.speechEndWall !== undefined && (end === undefined || end <= this.flushEndSec + 0.05)) r = { ...r, speechEndWall: undefined };
+      if (this.flushEndSec > 0 && r.speechEndWall !== undefined && (end === undefined || end <= this.flushEndSec + 0.05))
+        r = { ...r, speechEndWall: undefined };
       this.emit("result", r);
     });
     s.on("keyterms_off", (e) => this.emit("keyterms_off", e));
-    s.on("reconnected", (d) => { if (s !== this.stream) return; this.failures = []; this.flushRing(s); this.emit("reconnected", d); });
-    s.on("disconnected", (d) => { if (s !== this.stream) return; this.emit("disconnected", d); this.onFailure(d.error ?? classifySttError(this.provider, d)); });
-    s.on("error", (e) => { if (s !== this.stream && this.stream) return; const err = classifySttError(this.provider, e); this.emit("stt_error", err); this.onFailure(err); });
+    s.on("reconnected", (d) => {
+      if (s !== this.stream) return;
+      this.failures = [];
+      this.flushRing(s);
+      this.emit("reconnected", d);
+    });
+    s.on("disconnected", (d) => {
+      if (s !== this.stream) return;
+      this.emit("disconnected", d);
+      this.onFailure(d.error ?? classifySttError(this.provider, d));
+    });
+    s.on("error", (e) => {
+      if (s !== this.stream && this.stream) return;
+      const err = classifySttError(this.provider, e);
+      this.emit("stt_error", err);
+      this.onFailure(err);
+    });
   }
 
   /** Decide: wait for the SDK/adapter to reconnect, or switch provider now. */
@@ -118,30 +164,44 @@ export class SttChannel extends EventEmitter {
     if (this.switching) return;
     this.switching = true;
     try {
-      const old = this.stream, from = this.provider;
+      const old = this.stream,
+        from = this.provider;
       for (let i = this.idx + 1; i < this.o.chain.length; i++) {
-        const prevIdx = this.idx; this.idx = i;
+        const prevIdx = this.idx;
+        this.idx = i;
         try {
-          this.stream = undefined; await this.openCurrent();
-          this.seconds[from] = (this.seconds[from] ?? 0) + (old?.audioSeconds ?? 0); this.droppedOld += old?.dropped ?? 0;
+          this.stream = undefined;
+          await this.openCurrent();
+          this.seconds[from] = (this.seconds[from] ?? 0) + (old?.audioSeconds ?? 0);
+          this.droppedOld += old?.dropped ?? 0;
           this.failures = [];
           this.emit("switched", { from, to: this.provider, kind: err.kind, reason: err.message });
           void old?.close().catch(() => {});
           return;
-        } catch (e) { this.emit("stt_error", classifySttError(this.o.chain[i].id, e)); this.idx = prevIdx; this.stream = old; }
+        } catch (e) {
+          this.emit("stt_error", classifySttError(this.o.chain[i].id, e));
+          this.idx = prevIdx;
+          this.stream = old;
+        }
       }
       this.emit("exhausted", err);
-    } finally { this.switching = false; }
+    } finally {
+      this.switching = false;
+    }
   }
 
   /** After "exhausted" with no fallback left: open a fresh socket on the CURRENT provider. Throws (classified) on failure. The old stream stays
    *  as this.stream until the new one is open, so a failing new socket cannot trigger another switch. */
   async reopen(): Promise<void> {
-    const old = this.stream, prov = this.provider;
-    await this.openCurrent().catch((e) => { throw classifySttError(prov, e); });
+    const old = this.stream,
+      prov = this.provider;
+    await this.openCurrent().catch((e) => {
+      throw classifySttError(prov, e);
+    });
     this.failures = [];
     if (old && old !== this.stream) {
-      this.seconds[prov] = (this.seconds[prov] ?? 0) + old.audioSeconds; this.droppedOld += old.dropped;
+      this.seconds[prov] = (this.seconds[prov] ?? 0) + old.audioSeconds;
+      this.droppedOld += old.dropped;
       void old.close().catch(() => {});
     }
     this.emit("reconnected", { channel: this.o.channel, reopened: true });
@@ -150,10 +210,18 @@ export class SttChannel extends EventEmitter {
   /** Returns false when the chunk was not sent live (buffered in the ring or dropped). Never throws. */
   send(pcm: Buffer): boolean {
     const ringing = (this.o.ringMs ?? 0) > 0 && this.everOpened;
-    if (ringing && !this.stream?.isOpen) { this.buffer(pcm); return false; }
-    if (!this.stream) { this.droppedOld++; return false; }
-    if (this.ring.length) this.flushRing(this.stream);   // reopened without a 'reconnected' event: keep order
+    if (ringing && !this.stream?.isOpen) {
+      this.buffer(pcm);
+      return false;
+    }
+    if (!this.stream) {
+      this.droppedOld++;
+      return false;
+    }
+    if (this.ring.length) this.flushRing(this.stream); // reopened without a 'reconnected' event: keep order
     return this.stream.send(pcm);
   }
-  async close() { await this.stream?.close(); }
+  async close() {
+    await this.stream?.close();
+  }
 }

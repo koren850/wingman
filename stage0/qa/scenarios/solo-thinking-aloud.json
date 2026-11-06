@@ -1,61 +1,61 @@
 {
- "title": "Solo: Dan thinks aloud while planning a migration (nobody else on the line)",
- "focus": "answers for Dan's own questions with no other side: math, definitions, a statement that must get no card",
- "turns": [
-  {
-   "speaker": "me",
-   "text": "אוקיי, אני לבד כאן ורוצה לתכנן את המעבר של החנות לשרת החדש.",
-   "expect": {
-    "forMe": "none"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "כמה זה 36 ועוד 42?",
-   "pauseBeforeMs": 4500,
-   "expect": {
-    "forMe": "answer"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "מה ההבדל בין CDN ל-DNS?",
-   "pauseBeforeMs": 5000,
-   "expect": {
-    "forMe": "answer"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני צריך לזכור לשלוח את ההצעה לדנה בסוף היום.",
-   "pauseBeforeMs": 4500,
-   "expect": {
-    "forMe": "none"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "מה זה TTL ברשומת DNS?",
-   "pauseBeforeMs": 5000,
-   "expect": {
-    "forMe": "answer"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "כמה זה 15 אחוז מ-2000?",
-   "pauseBeforeMs": 5000,
-   "expect": {
-    "forMe": "answer"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "טוב, מספיק לבינתיים. אני ממשיך לעבוד על הרשימה.",
-   "pauseBeforeMs": 4500,
-   "expect": {
-    "forMe": "none"
-   }
-  }
- ]
+  "title": "Solo: Dan thinks aloud while planning a migration (nobody else on the line)",
+  "focus": "answers for Dan's own questions with no other side: math, definitions, a statement that must get no card",
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "אוקיי, אני לבד כאן ורוצה לתכנן את המעבר של החנות לשרת החדש.",
+      "expect": {
+        "forMe": "none"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "כמה זה 36 ועוד 42?",
+      "pauseBeforeMs": 4500,
+      "expect": {
+        "forMe": "answer"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "מה ההבדל בין CDN ל-DNS?",
+      "pauseBeforeMs": 5000,
+      "expect": {
+        "forMe": "answer"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני צריך לזכור לשלוח את ההצעה לדנה בסוף היום.",
+      "pauseBeforeMs": 4500,
+      "expect": {
+        "forMe": "none"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "מה זה TTL ברשומת DNS?",
+      "pauseBeforeMs": 5000,
+      "expect": {
+        "forMe": "answer"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "כמה זה 15 אחוז מ-2000?",
+      "pauseBeforeMs": 5000,
+      "expect": {
+        "forMe": "answer"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "טוב, מספיק לבינתיים. אני ממשיך לעבוד על הרשימה.",
+      "pauseBeforeMs": 4500,
+      "expect": {
+        "forMe": "none"
+      }
+    }
+  ]
 }

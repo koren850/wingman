@@ -8,7 +8,11 @@ const CAPTURE_MOD = "Control+Alt+";
 /** call.json text -> { phase, liveAt } | { phase: null } (file fine, no phase yet: use the timer fallback) | null (unreadable). */
 function callPhase(raw) {
   let j;
-  try { j = JSON.parse(raw); } catch { return null; }
+  try {
+    j = JSON.parse(raw);
+  } catch {
+    return null;
+  }
   if (!j || typeof j !== "object") return null;
   const liveAt = Number(j.liveAt) > 0 ? Number(j.liveAt) : 0;
   if (j.endedAt) return { phase: "ended", liveAt };
@@ -32,12 +36,24 @@ function registerCaptureKeys(gs, getList, onCopy, taken = []) {
     const acc = captureAccel(n);
     if (taken.includes(acc)) continue;
     let ok = false;
-    try { ok = gs.register(acc, () => { const v = getList()[n - 1]; if (v) onCopy(v); }); } catch {}
+    try {
+      ok = gs.register(acc, () => {
+        const v = getList()[n - 1];
+        if (v) onCopy(v);
+      });
+    } catch {}
     if (ok) held.push(acc);
   }
   return held;
 }
 /** Releases the accelerators returned by registerCaptureKeys and empties `held`. */
-function unregisterCaptureKeys(gs, held) { for (const a of held) { try { gs.unregister(a); } catch {} } held.length = 0; }
+function unregisterCaptureKeys(gs, held) {
+  for (const a of held) {
+    try {
+      gs.unregister(a);
+    } catch {}
+  }
+  held.length = 0;
+}
 
 module.exports = { PHASES, CAPTURE_MAX, callPhase, pushCapture, captureAccel, registerCaptureKeys, unregisterCaptureKeys };

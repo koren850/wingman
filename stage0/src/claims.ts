@@ -15,7 +15,30 @@ const UNITS: [string, RegExp][] = [
   ["tasks", /^(משימות|tasks?)$/i],
   ["people", /^(אנשים|עובדים|people|employees)$/i],
 ];
-const HEB_NUM: Record<string, number> = { שתיים: 2, שניים: 2, שלוש: 3, שלושה: 3, ארבע: 4, ארבעה: 4, חמש: 5, חמישה: 5, שש: 6, שישה: 6, שבע: 7, שבעה: 7, שמונה: 8, תשע: 9, תשעה: 9, עשר: 10, עשרה: 10, עשרים: 20, שלושים: 30, ארבעים: 40, חמישים: 50, מאה: 100 };
+const HEB_NUM: Record<string, number> = {
+  שתיים: 2,
+  שניים: 2,
+  שלוש: 3,
+  שלושה: 3,
+  ארבע: 4,
+  ארבעה: 4,
+  חמש: 5,
+  חמישה: 5,
+  שש: 6,
+  שישה: 6,
+  שבע: 7,
+  שבעה: 7,
+  שמונה: 8,
+  תשע: 9,
+  תשעה: 9,
+  עשר: 10,
+  עשרה: 10,
+  עשרים: 20,
+  שלושים: 30,
+  ארבעים: 40,
+  חמישים: 50,
+  מאה: 100,
+};
 
 const strip = (w: string) => w.replace(/^[והבלשכמ]{1,2}(?=[א-ת]{2})/, "").replace(/[.,?!:;"()]/g, "");
 function unitOf(word: string): string | undefined {
@@ -38,7 +61,11 @@ export function parseClaim(text: string): Claim | undefined {
     if (!m) continue;
     // The noun is the last unit word right after the number ("30+ client sites" is sites, not clients).
     let unit: string | undefined;
-    for (let j = i + 1; j < Math.min(words.length, i + 4); j++) { const u = unitOf(words[j]); if (u) unit = u; else if (unit) break; }
+    for (let j = i + 1; j < Math.min(words.length, i + 4); j++) {
+      const u = unitOf(words[j]);
+      if (u) unit = u;
+      else if (unit) break;
+    }
     if (unit) return { text: text.trim(), value: Number(m[1]), plus: m[2] === "+", unit };
   }
   return undefined;
@@ -47,7 +74,8 @@ export function parseClaim(text: string): Claim | undefined {
 /** Numbers the user said, each with the unit that follows. Only the number(s) right before the unit count: a number that belongs to a neighbouring
  *  unit ("12 clients for 4 years") is skipped, a range ("70-80 customers") gives both ends, "4.5 years" gives 4.5. */
 export function spokenNumbers(line: string): { unit: string; n: number }[] {
-  const words = line.split(/\s+/).filter(Boolean), out: { unit: string; n: number }[] = [];
+  const words = line.split(/\s+/).filter(Boolean),
+    out: { unit: string; n: number }[] = [];
   const numsIn = (w: string): number[] => {
     const range = /^(\d{1,5})[-–](\d{1,5})$/.exec(w.replace(/,/g, ""));
     if (range) return [Number(range[1]), Number(range[2])];
@@ -57,10 +85,15 @@ export function spokenNumbers(line: string): { unit: string; n: number }[] {
   for (let i = 0; i < words.length; i++) {
     const u = unitOf(words[i]);
     if (!u) continue;
-    let found = false; const got: number[] = [];
+    let found = false;
+    const got: number[] = [];
     for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
       const ns = numsIn(words[j]);
-      if (ns.length) { got.unshift(...ns); found = true; continue; }   // keep collecting adjacent numbers ("70 80")
+      if (ns.length) {
+        got.unshift(...ns);
+        found = true;
+        continue;
+      } // keep collecting adjacent numbers ("70 80")
       if (found || unitOf(words[j]) || /^(and|or|ו|עם|with)$/i.test(words[j]) || /,$/.test(words[j])) break;
     }
     for (const n of got) out.push({ unit: u, n });

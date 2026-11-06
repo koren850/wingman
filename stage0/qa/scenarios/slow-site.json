@@ -1,123 +1,113 @@
 {
- "title": "Slow site (invented client: Ron, Pinuk Pets)",
- "focus": "slow site questions get the site-slow card",
- "turns": [
-  {
-   "speaker": "me",
-   "text": "היי רון, מה קורה?"
-  },
-  {
-   "speaker": "them",
-   "text": "היי דן, האתר שלי נטען ממש לאט בזמן האחרון.",
-   "expect": {
-    "note": "short complaint: by design may get a dimmed bank card, not graded"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "מתי התחלת לשים לב לזה?"
-  },
-  {
-   "speaker": "them",
-   "text": "בערך מאז שהוספנו הרבה תמונות של מוצרים לחנות.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "למה האתר איטי כל כך?",
-   "expect": {
-    "question": true,
-    "card": "site-slow"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "זה יכול להיות תמונות כבדות, תוספים או השרת. צריך לבדוק."
-  },
-  {
-   "speaker": "them",
-   "text": "איך אפשר לדעת מה הבעיה בדיוק?",
-   "expect": {
-    "question": true,
-    "card": [
-     "site-slow",
-     "site-speed-score",
-     "ai",
-     "stall"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני מריץ בדיקת מהירות ובודק מה הכי כבד בדף."
-  },
-  {
-   "speaker": "them",
-   "text": "בגוגל פייג ספיד יצא לי ציון נמוך מאוד, זה קשור?",
-   "expect": {
-    "question": true,
-    "card": "site-speed-score"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "חלקית, הציון הוא כלי אבחון. נסתכל על מה שבאמת משפיע."
-  },
-  {
-   "speaker": "them",
-   "text": "אולי כדאי לעבור לשרת חזק יותר?",
-   "expect": {
-    "question": true,
-    "card": [
-     "server-resources",
-     "site-slow",
-     "ai",
-     "stall"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "קודם נבדוק אם זה השרת בכלל."
-  },
-  {
-   "speaker": "them",
-   "text": "אוקיי, זה הגיוני.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "אפשר שתסתכל על האתר שלי עכשיו?",
-   "expect": {
-    "question": true,
-    "card": "stall-check-site"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "תשלח לי את הכתובת ואני אסתכל עליו אחרי השיחה."
-  },
-  {
-   "speaker": "them",
-   "text": "האתר הוא pinuk pets dot co dot il",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "תודה דן, אני מחכה.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "title": "Slow site (invented client: Ron, Pinuk Pets)",
+  "focus": "slow site questions get the site-slow card",
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "היי רון, מה קורה?"
+    },
+    {
+      "speaker": "them",
+      "text": "היי דן, האתר שלי נטען ממש לאט בזמן האחרון.",
+      "expect": {
+        "note": "short complaint: by design may get a dimmed bank card, not graded"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "מתי התחלת לשים לב לזה?"
+    },
+    {
+      "speaker": "them",
+      "text": "בערך מאז שהוספנו הרבה תמונות של מוצרים לחנות.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "למה האתר איטי כל כך?",
+      "expect": {
+        "question": true,
+        "card": "site-slow"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "זה יכול להיות תמונות כבדות, תוספים או השרת. צריך לבדוק."
+    },
+    {
+      "speaker": "them",
+      "text": "איך אפשר לדעת מה הבעיה בדיוק?",
+      "expect": {
+        "question": true,
+        "card": ["site-slow", "site-speed-score", "ai", "stall"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני מריץ בדיקת מהירות ובודק מה הכי כבד בדף."
+    },
+    {
+      "speaker": "them",
+      "text": "בגוגל פייג ספיד יצא לי ציון נמוך מאוד, זה קשור?",
+      "expect": {
+        "question": true,
+        "card": "site-speed-score"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "חלקית, הציון הוא כלי אבחון. נסתכל על מה שבאמת משפיע."
+    },
+    {
+      "speaker": "them",
+      "text": "אולי כדאי לעבור לשרת חזק יותר?",
+      "expect": {
+        "question": true,
+        "card": ["server-resources", "site-slow", "ai", "stall"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "קודם נבדוק אם זה השרת בכלל."
+    },
+    {
+      "speaker": "them",
+      "text": "אוקיי, זה הגיוני.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "אפשר שתסתכל על האתר שלי עכשיו?",
+      "expect": {
+        "question": true,
+        "card": "stall-check-site"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "תשלח לי את הכתובת ואני אסתכל עליו אחרי השיחה."
+    },
+    {
+      "speaker": "them",
+      "text": "האתר הוא pinuk pets dot co dot il",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "תודה דן, אני מחכה.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

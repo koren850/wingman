@@ -13,7 +13,11 @@ const tsxCli = (root, path = nodePath) => path.join(root, "node_modules", "tsx",
 function electronExe(root, { path = nodePath, fs = nodeFs, env = process.env } = {}) {
   const dir = path.join(root, "node_modules", "electron");
   let rel = "electron.exe";
-  try { rel = fs.readFileSync(path.join(dir, "path.txt"), "utf8").trim() || rel; } catch { /* not downloaded yet: the default name */ }
+  try {
+    rel = fs.readFileSync(path.join(dir, "path.txt"), "utf8").trim() || rel;
+  } catch {
+    /* not downloaded yet: the default name */
+  }
   return env.ELECTRON_OVERRIDE_DIST_PATH ? path.join(env.ELECTRON_OVERRIDE_DIST_PATH, rel) : path.join(dir, "dist", rel);
 }
 

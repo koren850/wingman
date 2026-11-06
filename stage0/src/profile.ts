@@ -16,9 +16,18 @@ export type Address = (typeof ADDRESS)[number];
 /** Empty (= this machine's zone) or an IANA name that Intl accepts. */
 export function validTimezone(tz: string): boolean {
   if (!tz) return true;
-  try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return true; } catch { return false; }
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
 }
-const text = (max: number) => z.string().max(max).transform((s) => s.trim());
+const text = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .transform((s) => s.trim());
 /** Strict like settings.ts: an unknown key in the file is an error, so a typo does not silently do nothing. */
 export const profileSchema = z.strictObject({
   /** display name; may be empty */
@@ -40,13 +49,23 @@ export type Profile = z.infer<typeof profileSchema>;
 export const EMPTY_PROFILE: Profile = profileSchema.parse({});
 
 export class ProfileError extends Error {
-  constructor(public file: string, message: string) { super(`${file}: ${message}`); this.name = "ProfileError"; }
+  constructor(
+    public file: string,
+    message: string,
+  ) {
+    super(`${file}: ${message}`);
+    this.name = "ProfileError";
+  }
 }
 
 /** Parses profile YAML text. Throws ProfileError naming the file. */
 export function parseProfile(raw: string, file = "profile"): Profile {
   let doc: unknown;
-  try { doc = YAML.parse(raw); } catch (e) { throw new ProfileError(file, `not valid YAML: ${(e as Error).message.split("\n")[0]}`); }
+  try {
+    doc = YAML.parse(raw);
+  } catch (e) {
+    throw new ProfileError(file, `not valid YAML: ${(e as Error).message.split("\n")[0]}`);
+  }
   if (doc == null) return EMPTY_PROFILE;
   const res = profileSchema.safeParse(doc);
   if (!res.success) throw new ProfileError(file, res.error.issues.map((i) => `${i.path.join(".") || "(file)"}: ${i.message}`).join("; "));
@@ -56,7 +75,9 @@ export function parseProfile(raw: string, file = "profile"): Profile {
 let override: Profile | undefined;
 let cache: { file: string; mtime: number; profile: Profile } | undefined;
 /** Test hook: use this profile instead of the file (undefined = back to the file). */
-export function setProfile(p: Partial<Profile> | undefined) { override = p ? profileSchema.parse(p) : undefined; }
+export function setProfile(p: Partial<Profile> | undefined) {
+  override = p ? profileSchema.parse(p) : undefined;
+}
 
 /**
  * The current profile: the file, re-read when its modification time changes (so `wingman profile set` takes effect after the next
@@ -69,17 +90,25 @@ export function getProfile(env: NodeJS.ProcessEnv = process.env): Profile {
   if (override) return override;
   const file = profileFile(env);
   let mtime: number;
-  try { mtime = statSync(file).mtimeMs; } catch { return EMPTY_PROFILE; }
+  try {
+    mtime = statSync(file).mtimeMs;
+  } catch {
+    return EMPTY_PROFILE;
+  }
   if (cache && cache.file === file && cache.mtime === mtime) return cache.profile;
   let raw: string;
-  try { raw = readFileSync(file, "utf8"); } catch { return cache && cache.file === file ? cache.profile : EMPTY_PROFILE; }
+  try {
+    raw = readFileSync(file, "utf8");
+  } catch {
+    return cache && cache.file === file ? cache.profile : EMPTY_PROFILE;
+  }
   try {
     const profile = parseProfile(raw, file);
     cache = { file, mtime, profile };
     return profile;
   } catch {
     const keep = cache && cache.file === file ? cache.profile : EMPTY_PROFILE;
-    cache = { file, mtime, profile: keep };   // do not re-parse the same broken bytes on every prompt
+    cache = { file, mtime, profile: keep }; // do not re-parse the same broken bytes on every prompt
     return keep;
   }
 }
@@ -89,9 +118,23 @@ export function checkProfile(env: NodeJS.ProcessEnv = process.env): Profile {
   if (override) return override;
   const file = profileFile(env);
   let raw: string;
-  try { raw = readFileSync(file, "utf8"); } catch { return EMPTY_PROFILE; }
+  try {
+    raw = readFileSync(file, "utf8");
+  } catch {
+    return EMPTY_PROFILE;
+  }
   const profile = parseProfile(raw, file);
-  cache = { file, mtime: (() => { try { return statSync(file).mtimeMs; } catch { return 0; } })(), profile };
+  cache = {
+    file,
+    mtime: (() => {
+      try {
+        return statSync(file).mtimeMs;
+      } catch {
+        return 0;
+      }
+    })(),
+    profile,
+  };
   return profile;
 }
 
@@ -105,7 +148,14 @@ export function saveProfile(p: Profile, file = profileFile()): void {
   try {
     writeFileSync(tmp, `# Wingman user profile: who Wingman is helping. Edit with: wingman profile set ...\n${YAML.stringify(doc)}`, { mode: 0o600 });
     renameSync(tmp, file);
-  } catch (e) { try { rmSync(tmp, { force: true }); } catch { /* gone */ } throw e; }
+  } catch (e) {
+    try {
+      rmSync(tmp, { force: true });
+    } catch {
+      /* gone */
+    }
+    throw e;
+  }
   cache = undefined;
 }
 

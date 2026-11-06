@@ -38,16 +38,26 @@ test("introductions: attendees match in any script; 'I am' + an ordinary word is
   assert.equal(introName("Thanks Dan. I'm Dana, I manage the content.", who), "Dana");
   assert.equal(introName("אני מבינה את זה", who), undefined);
   assert.equal(introName("I'm sure it works", who), undefined);
-  assert.equal(introName("קוראים לי נועה ואני מהשיווק", who), "נועה");      // strong cue, not on the list
+  assert.equal(introName("קוראים לי נועה ואני מהשיווק", who), "נועה"); // strong cue, not on the list
   assert.equal(introName("I'm Pierre, I handle the newsletter."), "Pierre"); // no list: a capitalised English name
-  assert.equal(introName("אני מרים את זה עכשיו"), undefined);                // "מרים" is also a verb: needs the attendee list
+  assert.equal(introName("אני מרים את זה עכשיו"), undefined); // "מרים" is also a verb: needs the attendee list
   assert.equal(introName("אני מרים מהשיווק", ["מרים"]), "מרים");
-  assert.equal(introName("I'm Donna. I manage the website content.", who), "Dana");   // misheard attendee: the list spelling wins
+  assert.equal(introName("I'm Donna. I manage the website content.", who), "Dana"); // misheard attendee: the list spelling wins
 });
 
 test("introductions: 'this is Zoom', \"it's Friday\", \"I'm Israeli\" do not name a voice; a long sentence or a stop-list word is not an intro", async () => {
   const { introName } = await import("./speakers.ts");
-  for (const t of ["This is Zoom, can you hear me?", "It's Friday so I will keep it short", "I'm Israeli and proud of it", "Well this is Google Meet then", "It's Monday", "I'm Microsoft certified", "So I think that this is Pierre's idea about the website", "We looked at it yesterday and I'm Dana to the team"]) assert.equal(introName(t), undefined, t);
+  for (const t of [
+    "This is Zoom, can you hear me?",
+    "It's Friday so I will keep it short",
+    "I'm Israeli and proud of it",
+    "Well this is Google Meet then",
+    "It's Monday",
+    "I'm Microsoft certified",
+    "So I think that this is Pierre's idea about the website",
+    "We looked at it yesterday and I'm Dana to the team",
+  ])
+    assert.equal(introName(t), undefined, t);
   assert.equal(introName("It's Friday", ["Friday"]), undefined, "even an odd attendee name is a day word here");
   assert.equal(introName("It's Dana's turn now", ["Dana"]), undefined);
   assert.equal(introName("Hi everyone, I'm Pierre."), "Pierre");
@@ -67,7 +77,8 @@ test("SpeakerBook.current gives a stored line the voice's name now; peek never a
   b.setName(1, "Dana", true);
   assert.deepEqual(b.current(first), { spk: 1, name: "Dana" }, "an earlier line follows the rename");
   b.setName(1, "");
-  assert.deepEqual(b.current(first), { spk: 1 }); assert.equal(b.current(undefined), undefined);
+  assert.deepEqual(b.current(first), { spk: 1 });
+  assert.equal(b.current(undefined), undefined);
   // a transient interim id: peek answers without taking number 2
   assert.equal(b.peek(w(99)), undefined);
   assert.equal(b.count, 1);

@@ -2,43 +2,48 @@
 <!-- Main window shell (loaded by window.cjs). Views are drawn into #main by the scripts at the bottom, in order; boot.js runs last.
      The CSP allows only same-origin files: no inline script or style, no network. Call text is only ever inserted with textContent. -->
 <html lang="en" dir="ltr">
-<head>
-<meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wingman</title>
-<link rel="stylesheet" href="../shared/tokens.css">
-<link rel="stylesheet" href="app.css">
-</head>
-<body>
-<a class="skip" href="#main">Skip to content</a>
-<header id="top">
-  <div class="topin">
-    <button id="brand" class="brand" type="button" aria-label="Wingman home" title="Home"><span class="mark" aria-hidden="true"></span><span class="wm">Wingman</span></button>
-    <nav aria-label="Main">
-      <button id="nav-home" class="navbtn" type="button"></button>
-      <button id="nav-list" class="navbtn" type="button"></button>
-      <button id="nav-settings" class="navbtn" type="button"></button>
-    </nav>
-    <span class="grow"></span>
-    <span id="call-slot"></span>
-    <span id="pending-slot"></span>
-  </div>
-</header>
-<main id="main" tabindex="-1"></main>
-<div id="pop-slot"></div>
-<div id="live" class="sr" role="status" aria-live="polite"></div>
-<div id="alert" class="sr" role="alert"></div>
-<script src="../shared/ask.js"></script>
-<script src="bidi.js"></script>
-<script src="livefeed.js"></script>
-<script src="../shared/plans.js"></script>
-<script src="homelib.js"></script>
-<script src="app.js"></script>
-<script src="home.js"></script>
-<script src="live.js"></script>
-<script src="settings.js"></script>
-<script src="setup.js"></script>
-<script src="boot.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wingman</title>
+    <link rel="stylesheet" href="../shared/tokens.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header id="top">
+      <div class="topin">
+        <button id="brand" class="brand" type="button" aria-label="Wingman home" title="Home">
+          <span class="mark" aria-hidden="true"></span><span class="wm">Wingman</span>
+        </button>
+        <nav aria-label="Main">
+          <button id="nav-home" class="navbtn" type="button"></button>
+          <button id="nav-list" class="navbtn" type="button"></button>
+          <button id="nav-settings" class="navbtn" type="button"></button>
+        </nav>
+        <span class="grow"></span>
+        <span id="call-slot"></span>
+        <span id="pending-slot"></span>
+      </div>
+    </header>
+    <main id="main" tabindex="-1"></main>
+    <div id="pop-slot"></div>
+    <div id="live" class="sr" role="status" aria-live="polite"></div>
+    <div id="alert" class="sr" role="alert"></div>
+    <script src="../shared/ask.js"></script>
+    <script src="bidi.js"></script>
+    <script src="livefeed.js"></script>
+    <script src="../shared/plans.js"></script>
+    <script src="homelib.js"></script>
+    <script src="app.js"></script>
+    <script src="home.js"></script>
+    <script src="live.js"></script>
+    <script src="settings.js"></script>
+    <script src="setup.js"></script>
+    <script src="boot.js"></script>
+  </body>
 </html>

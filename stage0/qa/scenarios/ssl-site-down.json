@@ -1,114 +1,105 @@
 {
- "title": "SSL and site down (invented client: Tamar, Dror Accounting)",
- "focus": "certificate warnings and a site that is down",
- "turns": [
-  {
-   "speaker": "me",
-   "text": "שלום תמר, מה שלומך?"
-  },
-  {
-   "speaker": "them",
-   "text": "לא משהו, האתר של המשרד נפל הבוקר.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "למה האתר לא עולה?",
-   "expect": {
-    "question": true,
-    "card": "site-down"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני צריך לבדוק את השרת, את הכתובת ואת תעודת האבטחה."
-  },
-  {
-   "speaker": "them",
-   "text": "יש לנו הודעה אדומה בדפדפן שהאתר לא מאובטח.",
-   "expect": {
-    "note": "problem statement: by design may get a dimmed bank card, not graded"
-   }
-  },
-  {
-   "speaker": "them",
-   "text": "מי מטפל בתעודת האבטחה הזאת?",
-   "expect": {
-    "question": true,
-    "card": "ssl-basics"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "בדרך כלל התעודה מתחדשת אוטומטית, אבל צריך לבדוק אם היא פגה."
-  },
-  {
-   "speaker": "them",
-   "text": "מה זה אומר שהתעודה פגה?",
-   "expect": {
-    "question": true,
-    "card": "ssl-basics"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "זה אומר שהדפדפן מזהיר את הגולשים לפני שהם נכנסים לאתר."
-  },
-  {
-   "speaker": "them",
-   "text": "ואפשר לתקן את זה מהר?",
-   "expect": {
-    "question": true,
-    "card": [
-     "ssl-basics",
-     "site-down",
-     "stall",
-     "ai"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני מטפל בזה ברגע שיש לי גישה."
-  },
-  {
-   "speaker": "them",
-   "text": "יש גם מסך לבן בעמוד הראשי, זה קשור?",
-   "expect": {
-    "question": true,
-    "card": [
-     "site-down",
-     "ssl-basics",
-     "ai"
-    ]
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "יכול להיות תוסף שנתקע או שגיאת קוד."
-  },
-  {
-   "speaker": "them",
-   "text": "אני מבינה. תבדוק עכשיו בבקשה?",
-   "expect": {
-    "question": true,
-    "card": "stall-check-site"
-   }
-  },
-  {
-   "speaker": "me",
-   "text": "אני נכנס לבדוק מיד אחרי השיחה."
-  },
-  {
-   "speaker": "them",
-   "text": "תודה רבה, אני מחכה לתשובה שלך.",
-   "expect": {
-    "question": false,
-    "card": "none"
-   }
-  }
- ]
+  "title": "SSL and site down (invented client: Tamar, Dror Accounting)",
+  "focus": "certificate warnings and a site that is down",
+  "turns": [
+    {
+      "speaker": "me",
+      "text": "שלום תמר, מה שלומך?"
+    },
+    {
+      "speaker": "them",
+      "text": "לא משהו, האתר של המשרד נפל הבוקר.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "למה האתר לא עולה?",
+      "expect": {
+        "question": true,
+        "card": "site-down"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני צריך לבדוק את השרת, את הכתובת ואת תעודת האבטחה."
+    },
+    {
+      "speaker": "them",
+      "text": "יש לנו הודעה אדומה בדפדפן שהאתר לא מאובטח.",
+      "expect": {
+        "note": "problem statement: by design may get a dimmed bank card, not graded"
+      }
+    },
+    {
+      "speaker": "them",
+      "text": "מי מטפל בתעודת האבטחה הזאת?",
+      "expect": {
+        "question": true,
+        "card": "ssl-basics"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "בדרך כלל התעודה מתחדשת אוטומטית, אבל צריך לבדוק אם היא פגה."
+    },
+    {
+      "speaker": "them",
+      "text": "מה זה אומר שהתעודה פגה?",
+      "expect": {
+        "question": true,
+        "card": "ssl-basics"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "זה אומר שהדפדפן מזהיר את הגולשים לפני שהם נכנסים לאתר."
+    },
+    {
+      "speaker": "them",
+      "text": "ואפשר לתקן את זה מהר?",
+      "expect": {
+        "question": true,
+        "card": ["ssl-basics", "site-down", "stall", "ai"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני מטפל בזה ברגע שיש לי גישה."
+    },
+    {
+      "speaker": "them",
+      "text": "יש גם מסך לבן בעמוד הראשי, זה קשור?",
+      "expect": {
+        "question": true,
+        "card": ["site-down", "ssl-basics", "ai"]
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "יכול להיות תוסף שנתקע או שגיאת קוד."
+    },
+    {
+      "speaker": "them",
+      "text": "אני מבינה. תבדוק עכשיו בבקשה?",
+      "expect": {
+        "question": true,
+        "card": "stall-check-site"
+      }
+    },
+    {
+      "speaker": "me",
+      "text": "אני נכנס לבדוק מיד אחרי השיחה."
+    },
+    {
+      "speaker": "them",
+      "text": "תודה רבה, אני מחכה לתשובה שלך.",
+      "expect": {
+        "question": false,
+        "card": "none"
+      }
+    }
+  ]
 }

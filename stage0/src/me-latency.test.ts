@@ -15,21 +15,36 @@ import { tsx } from "./test-platform.ts";
 
 test("solo call: second-person question answered, sum computed locally, and the card is up within 100 ms of the final", { timeout: 60_000 }, async () => {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-me-lat-"));
-  const wav = join(tmp, "silence.wav"), CALLS = join(tmp, "calls");
+  const wav = join(tmp, "silence.wav"),
+    CALLS = join(tmp, "calls");
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 12), 2);
   const child = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e-me", "--file", wav, "--no-brief"]), {
-    cwd: ROOT, stdio: ["ignore", "pipe", "pipe"],
+    cwd: ROOT,
+    stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-me-solo.json"), WINGMAN_CALL_APP: "none", WINGMAN_CALLS_DIR: CALLS },
   });
-  let out = "", err = "";
-  child.stdout.on("data", (d) => (out += d)); child.stderr.on("data", (d) => (err += d));
+  let out = "",
+    err = "";
+  child.stdout.on("data", (d) => (out += d));
+  child.stderr.on("data", (d) => (err += d));
   const code: number | null = await new Promise((res) => child.on("exit", res));
   assert.equal(code, 0, `${out}\n${err}`);
   try {
     const dir = join(CALLS, readlinkSync(join(CALLS, "latest")));
-    const rows = (f: string) => existsSync(join(dir, f)) ? readFileSync(join(dir, f), "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
-    const cards = rows("cards.jsonl").filter((c) => c.badge === "me"), events = rows("events.jsonl");
-    assert.ok(cards.some((c) => /פורטוגל/.test(c.say)), "the 'what do you think' question got an answer on a solo call");
+    const rows = (f: string) =>
+      existsSync(join(dir, f))
+        ? readFileSync(join(dir, f), "utf8")
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .map((l) => JSON.parse(l))
+        : [];
+    const cards = rows("cards.jsonl").filter((c) => c.badge === "me"),
+      events = rows("events.jsonl");
+    assert.ok(
+      cards.some((c) => /פורטוגל/.test(c.say)),
+      "the 'what do you think' question got an answer on a solo call",
+    );
     const calc = cards.find((c) => c.source === "calc");
     assert.ok(calc && /7 × 350 = 2,450/.test(calc.say), "וכמה איזה 7 כפול 350 is computed locally");
     const lat = events.filter((e) => e.type === "me.latency");
@@ -38,7 +53,12 @@ test("solo call: second-person question answered, sum computed locally, and the 
     assert.ok(m.stt >= 800, `stt stage reflects the 0.9 s lag: ${m.stt}`);
     assert.ok(m.detect + m.decide + m.firstCard < 100, `final -> card under 100 ms: ${JSON.stringify(m)}`);
     assert.ok(m.detect < 100, "no join-window wait");
-    console.log("me.latency (ms)", JSON.stringify(lat.map(({ source, stt, detect, decide, firstCard, total }) => ({ source, stt, detect, decide, firstCard, total }))));
+    console.log(
+      "me.latency (ms)",
+      JSON.stringify(lat.map(({ source, stt, detect, decide, firstCard, total }) => ({ source, stt, detect, decide, firstCard, total }))),
+    );
     assert.match(out, /For you 2 answers \(speech end to card p50/);
-  } finally { rmSync(tmp, { recursive: true, force: true }); }
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });

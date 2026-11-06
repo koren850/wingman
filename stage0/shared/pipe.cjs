@@ -11,8 +11,17 @@ const usesPipes = (platform = process.platform) => platform === "win32";
 function pipeName(name, user, platform = process.platform) {
   void platform;
   let u = user;
-  if (u === undefined) { try { u = nodeOs.userInfo().username; } catch { u = process.env.USERNAME || process.env.USER || "user"; } }
-  const clean = (s) => String(s || "").replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 48) || "x";
+  if (u === undefined) {
+    try {
+      u = nodeOs.userInfo().username;
+    } catch {
+      u = process.env.USERNAME || process.env.USER || "user";
+    }
+  }
+  const clean = (s) =>
+    String(s || "")
+      .replace(/[^A-Za-z0-9_-]/g, "_")
+      .slice(0, 48) || "x";
   return `\\\\.\\pipe\\wingman-${clean(u)}-${clean(name)}`;
 }
 

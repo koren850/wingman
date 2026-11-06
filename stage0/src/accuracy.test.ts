@@ -15,8 +15,18 @@ const bank = loadBank();
 const r = (q: string) => evalMath(q)?.result;
 
 test("price verb or noun: never arithmetic, the stall-price card stays", () => {
-  for (const q of ["כמה יעלה אתר חנות ועוד אחסון ל-3 שנים", "כמה עולה אתר ועוד תחזוקה ל-12 חודשים", "כמה עולה אתר כפול 2", "כמה עולה 3 כפול 500", "כמה זה יעלה 2 כפול 1500?",
-    "מה המחיר של 3 אתרים ועוד דומיין", "כמה זה עולה לבנות אתר פלוס אחסון ל-2 אתרים", "כמה לשלם על 3 כפול 500", "how much is the price of 3 times 500", "what does 3 plus 4 cost"]) {
+  for (const q of [
+    "כמה יעלה אתר חנות ועוד אחסון ל-3 שנים",
+    "כמה עולה אתר ועוד תחזוקה ל-12 חודשים",
+    "כמה עולה אתר כפול 2",
+    "כמה עולה 3 כפול 500",
+    "כמה זה יעלה 2 כפול 1500?",
+    "מה המחיר של 3 אתרים ועוד דומיין",
+    "כמה זה עולה לבנות אתר פלוס אחסון ל-2 אתרים",
+    "כמה לשלם על 3 כפול 500",
+    "how much is the price of 3 times 500",
+    "what does 3 plus 4 cost",
+  ]) {
     assert.equal(hasPriceVerb(q), true, q);
     assert.equal(evalMath(q), undefined, q + " (no calc card)");
     assert.equal(looksArithmetic(q), false, q);
@@ -81,7 +91,22 @@ test("calc: bare math without 'כמה' / 'מה זה' (not a date, phone or figur
   assert.equal(r("36 ועוד 42"), "78");
   assert.equal(r("שלוש פלוס ארבע"), "7");
   assert.equal(r("12 בריבוע"), "144");
-  for (const q of ["12-3", "050-1234567", "12/3", "יש לי 3 ועוד 2", "3 ועוד 2 אנשים", "אני צריך עוד 3", "בעוד 3 ימים", "ב-14:30", "אמרתי 7 כפול 350", "5 עוד 3", "חצי שעה", "15 אחוז", "אחוז וחצי"]) assert.equal(evalMath(q), undefined, q);
+  for (const q of [
+    "12-3",
+    "050-1234567",
+    "12/3",
+    "יש לי 3 ועוד 2",
+    "3 ועוד 2 אנשים",
+    "אני צריך עוד 3",
+    "בעוד 3 ימים",
+    "ב-14:30",
+    "אמרתי 7 כפול 350",
+    "5 עוד 3",
+    "חצי שעה",
+    "15 אחוז",
+    "אחוז וחצי",
+  ])
+    assert.equal(evalMath(q), undefined, q);
 });
 
 test("calc: display uses plain digits with thousands separators inside one left-to-right isolate", () => {
@@ -95,17 +120,28 @@ test("calc: display uses plain digits with thousands separators inside one left-
 });
 
 test("detector: requests and commitment demands are questions", () => {
-  for (const q of ["אתה מבטיח לי שהאתר לא ייפול אף פעם", "תבטיח שאתה מסיים עד סוף החודש", "אתה יכול להבטיח זמינות", "אחריות כתובה", "אני רוצה אחריות כתובה על זה", "אתם מתחייבים לזה", "Send me a quote", "תשלח לי הצעת מחיר"]) assert.equal(detect(q).isQuestion, true, q);
+  for (const q of [
+    "אתה מבטיח לי שהאתר לא ייפול אף פעם",
+    "תבטיח שאתה מסיים עד סוף החודש",
+    "אתה יכול להבטיח זמינות",
+    "אחריות כתובה",
+    "אני רוצה אחריות כתובה על זה",
+    "אתם מתחייבים לזה",
+    "Send me a quote",
+    "תשלח לי הצעת מחיר",
+  ])
+    assert.equal(detect(q).isQuestion, true, q);
 });
 test("detector: fillers and thinking sounds are not questions", () => {
   for (const q of ["אממ רגע כאילו תן לי רגע", "כאילו", "אממ", "אממממ כאילו", "אילו אילו", "כאילו נו", "אה אוקיי טוב", "כאילו?", "אממ?"]) {
     const d = detect(q);
-    if (q === "אילו אילו") continue;   // a real question word twice: not a filler
+    if (q === "אילו אילו") continue; // a real question word twice: not a filler
     assert.equal(d.isQuestion, false, `${q} -> ${d.reason}`);
   }
   assert.equal(detect("כאילו האתר איטי לפעמים, מה אפשר לעשות?").isQuestion, true);
   assert.equal(detect("אילו תוספים יש לכם").isQuestion, true);
-  for (const q of ["היי דן, כמה שאלות מהירות.", "אבל יש עוד בעיה. הבדיקות האוטומטיות נכשלות באופן אקראי ולא ברור למה."]) assert.equal(detect(q).isQuestion, false, q);
+  for (const q of ["היי דן, כמה שאלות מהירות.", "אבל יש עוד בעיה. הבדיקות האוטומטיות נכשלות באופן אקראי ולא ברור למה."])
+    assert.equal(detect(q).isQuestion, false, q);
   for (const q of ["שלום דן, תודה שבאת. ספר לי קצת על עצמך.", "תספר לי על התהליך"]) assert.equal(detect(q).isQuestion, true, q);
 });
 test("detector: 'send me an email' is an action, a quote or details is a request", () => {
@@ -120,18 +156,25 @@ test("detector: bare arithmetic triggers without '?' or 'כמה'", () => {
   assert.equal(detect("אני רוצה 3 אתרים").isQuestion, false);
 });
 test("detector: a statement of wishes with a bank hit is not a question (t-e)", () => {
-  const ctx = (q: string) => { const h = matchBankFor(q, bank); return { bankScore: h?.score, stall: !!h?.card.id.startsWith("stall") }; };
-  for (const q of ["ורוצים לחדש את האתר", "טוב, תודה. אנחנו חברת לוגיסטיקה ורוצים לחדש את האתר.", "אנחנו מתכננים לעבור לאחסון חדש"]) assert.equal(detect(q, ctx(q)).isQuestion, false, q);
+  const ctx = (q: string) => {
+    const h = matchBankFor(q, bank);
+    return { bankScore: h?.score, stall: !!h?.card.id.startsWith("stall") };
+  };
+  for (const q of ["ורוצים לחדש את האתר", "טוב, תודה. אנחנו חברת לוגיסטיקה ורוצים לחדש את האתר.", "אנחנו מתכננים לעבור לאחסון חדש"])
+    assert.equal(detect(q, ctx(q)).isQuestion, false, q);
   // a real problem statement still rescues
-  for (const q of ["האתר שלי קורס כל פעם", "האתר שלנו איתי", "היי דן, יש לנו אתר WordPress והוא נהיה איתי"]) assert.equal(detect(q, ctx(q)).isQuestion, true, q);
+  for (const q of ["האתר שלי קורס כל פעם", "האתר שלנו איתי", "היי דן, יש לנו אתר WordPress והוא נהיה איתי"])
+    assert.equal(detect(q, ctx(q)).isQuestion, true, q);
 });
 
 test("bank: guarantee requests hit stall-guarantee", () => {
-  for (const q of ["אתה מבטיח לי שהאתר לא ייפול", "תבטיח שלא יהיו פריצות", "אתה יכול להבטיח זמינות", "אני רוצה אחריות כתובה", "תתחייב על זמן"]) assert.equal(matchBankFor(q, bank)?.card.id, "stall-guarantee", q);
+  for (const q of ["אתה מבטיח לי שהאתר לא ייפול", "תבטיח שלא יהיו פריצות", "אתה יכול להבטיח זמינות", "אני רוצה אחריות כתובה", "תתחייב על זמן"])
+    assert.equal(matchBankFor(q, bank)?.card.id, "stall-guarantee", q);
   assert.equal(matchBankFor("כמה הנחה תיתן לי אם אסגור", bank)?.card.id, "stall-price");
 });
 test("bank: 'האתר שלנו איתי' (STT for איטי) is site-slow, never a stall", () => {
-  for (const q of ["האתר שלנו איתי", "האתר שלנו איתי. מה אפשר לעשות?", "יש לנו אתר WordPress עם WooCommerce והוא נהיה איתי"]) assert.equal(matchBankFor(q, bank)?.card.id, "site-slow", q);
+  for (const q of ["האתר שלנו איתי", "האתר שלנו איתי. מה אפשר לעשות?", "יש לנו אתר WordPress עם WooCommerce והוא נהיה איתי"])
+    assert.equal(matchBankFor(q, bank)?.card.id, "site-slow", q);
 });
 test("bank: the last sentence of a merged turn decides a topical pick; a stall tier still wins (t-j)", () => {
   const t = "שלום, אני אלימא דגן מזון. אני רוצה אתר חנות. תגיד לי מחיר מדויק. כמה זה יעלה בשקלים?";
@@ -152,16 +195,83 @@ test("bank: stall wording is a calm professional, not a salesperson", () => {
 });
 
 test("guards: relative dates and clock times are blocked", () => {
-  for (const x of ["נחזור אליך בעוד שלושה ימים", "נחזור בעוד 3 ימים", "נעשה את זה בעוד כמה שעות", "אשלח הצעה ב-14:30", "נפגש ב 9:00", "בשעה 10 בבוקר", "שלוש בצהריים", "שבועיים מהיום", "in 3 days", "it will be ready in 3 days", "in a few hours", "next Monday", "I'll send it next Monday", "we can do it on Friday", "see you on Mondays", "at 5pm", "by 14:30", "EOD", "tonight", "עד חג הפסח", "ב־15.11", "בחמישה עשר בחודש", "בעוד חודש"]) assert.equal(guard(x).ok, false, x);
+  for (const x of [
+    "נחזור אליך בעוד שלושה ימים",
+    "נחזור בעוד 3 ימים",
+    "נעשה את זה בעוד כמה שעות",
+    "אשלח הצעה ב-14:30",
+    "נפגש ב 9:00",
+    "בשעה 10 בבוקר",
+    "שלוש בצהריים",
+    "שבועיים מהיום",
+    "in 3 days",
+    "it will be ready in 3 days",
+    "in a few hours",
+    "next Monday",
+    "I'll send it next Monday",
+    "we can do it on Friday",
+    "see you on Mondays",
+    "at 5pm",
+    "by 14:30",
+    "EOD",
+    "tonight",
+    "עד חג הפסח",
+    "ב־15.11",
+    "בחמישה עשר בחודש",
+    "בעוד חודש",
+  ])
+    assert.equal(guard(x).ok, false, x);
 });
 test("guards: promises and prices are blocked", () => {
-  for (const x of ["הכל יעבוד, אין שום סיכון", "בלי שום סיכון", "אפס סיכון", "אל תדאג", "אני מבטיח שזה יעבוד", "אנחנו מתחייבים לזמן", "אפשר להבטיח זמינות", "נבטיח לכם", "I guarantee it", "we promise", "fully guaranteed", "risk-free", "five hundred shekels", "two thousand dollars", "it's free", "that will be free", "complimentary", "no cost", "$500/month", "500 NIS", "עולה 500", "הנחה"]) assert.equal(guard(x).ok, false, x);
+  for (const x of [
+    "הכל יעבוד, אין שום סיכון",
+    "בלי שום סיכון",
+    "אפס סיכון",
+    "אל תדאג",
+    "אני מבטיח שזה יעבוד",
+    "אנחנו מתחייבים לזמן",
+    "אפשר להבטיח זמינות",
+    "נבטיח לכם",
+    "I guarantee it",
+    "we promise",
+    "fully guaranteed",
+    "risk-free",
+    "five hundred shekels",
+    "two thousand dollars",
+    "it's free",
+    "that will be free",
+    "complimentary",
+    "no cost",
+    "$500/month",
+    "500 NIS",
+    "עולה 500",
+    "הנחה",
+  ])
+    assert.equal(guard(x).ok, false, x);
 });
 test("guards: no over-blocking of definitions, hedges and plain facts", () => {
-  for (const x of ["SLA הוא הסכם רמת שירות שבו הספק מתחייב לזמינות מסוימת", "אני לא מבטיח, אבדוק", "אי אפשר להבטיח זמינות מלאה", "לא ניתן להבטיח", "DNS זה ספר טלפונים של האינטרנט", "Let's Encrypt is free and renews automatically", "An SLA is a guarantee defined in a contract", "אחזור עם תשובה מסודרת", "the page loads in about three seconds", "בדרך כלל זה לוקח קצת זמן"]) assert.equal(guard(x).ok, true, x);
+  for (const x of [
+    "SLA הוא הסכם רמת שירות שבו הספק מתחייב לזמינות מסוימת",
+    "אני לא מבטיח, אבדוק",
+    "אי אפשר להבטיח זמינות מלאה",
+    "לא ניתן להבטיח",
+    "DNS זה ספר טלפונים של האינטרנט",
+    "Let's Encrypt is free and renews automatically",
+    "An SLA is a guarantee defined in a contract",
+    "אחזור עם תשובה מסודרת",
+    "the page loads in about three seconds",
+    "בדרך כלל זה לוקח קצת זמן",
+  ])
+    assert.equal(guard(x).ok, true, x);
 });
 test("guardMe: Dan's own pricing question never shows an invented price; definitions and sums pass", () => {
-  for (const [a, q] of [["תגבה בין 5,000 ל-15,000 שקל על חנות", "כמה לגבות על חנות וורדפרס?"], ["300 שקל לשעה", "מה כדאי להציע ללקוח?"], ["Charge 300 NIS an hour", "how much should I charge for an hour?"], ["500 שקל", "מה התעריף הנכון?"], ["600 שקל", "איזה quote לתת על אתר תדמית?"]] as const)
+  for (const [a, q] of [
+    ["תגבה בין 5,000 ל-15,000 שקל על חנות", "כמה לגבות על חנות וורדפרס?"],
+    ["300 שקל לשעה", "מה כדאי להציע ללקוח?"],
+    ["Charge 300 NIS an hour", "how much should I charge for an hour?"],
+    ["500 שקל", "מה התעריף הנכון?"],
+    ["600 שקל", "איזה quote לתת על אתר תדמית?"],
+  ] as const)
     assert.equal(guardMe(a, q).ok, false, q);
   assert.equal(guardMe("SLA הוא הסכם רמת שירות שבו הספק מתחייב לזמינות מסוימת.", "מה זה SLA?").ok, true);
   assert.equal(guardMe("הנחה של עשרה אחוז על 350 היא 315.", "כמה זה עשרה אחוז הנחה על 350?").ok, true);
@@ -171,12 +281,21 @@ test("guardMe: Dan's own pricing question never shows an invented price; definit
 });
 
 test("keyterms: the new meeting and tech terms are there, no duplicates, within the 100-term limit", () => {
-  const terms = readFileSync(join(DATA, "example-pack", "keyterms.txt"), "utf8").split("\n").map((x) => x.trim()).filter(Boolean);
+  const terms = readFileSync(join(DATA, "example-pack", "keyterms.txt"), "utf8")
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
   for (const t of ["STAR method", "stakeholder", "Cloudflare", "Fastly", "HSTS", "WooCommerce", "SLA"]) assert.ok(terms.includes(t), t);
   assert.ok(terms.length <= 100, String(terms.length));
   assert.equal(new Set(terms.map((x) => x.toLowerCase())).size, terms.length);
 });
 
 test("detector: if-clauses, 'maybe we should', past-tense 'already' checks without a question mark", () => {
-  for (const q of ["ואם מה שהוא נשבר אפשר לשחזר", "אולי כדאי לעבור לשרת חזק יותר", "מעולה. דרך אגב, יום ההולדת של אמא שלך מתקרב. הבעת לה כבר מתנה.", "ויש גם אחריות"]) assert.equal(detect(q).isQuestion, true, q);
+  for (const q of [
+    "ואם מה שהוא נשבר אפשר לשחזר",
+    "אולי כדאי לעבור לשרת חזק יותר",
+    "מעולה. דרך אגב, יום ההולדת של אמא שלך מתקרב. הבעת לה כבר מתנה.",
+    "ויש גם אחריות",
+  ])
+    assert.equal(detect(q).isQuestion, true, q);
 });

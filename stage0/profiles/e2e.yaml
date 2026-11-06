@@ -12,7 +12,7 @@ notes:
   minNewWords: 5
 summary:
   model: "scripted:summary"
-  minWords: 20             # the scripted call is short; the default 150 would skip it
+  minWords: 20 # the scripted call is short; the default 150 would skip it
 facts:
   file: data/test/entities-fixture.json
 privacy:
@@ -28,4 +28,4 @@ tips:
   minGapMs: 10000
   afterAnswerMs: 2000
 cards:
-  focus: false            # tests count every card; "important only" is tested on its own
+  focus: false # tests count every card; "important only" is tested on its own

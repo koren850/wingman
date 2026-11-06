@@ -38,7 +38,10 @@ export default tseslint.config(
     },
   },
   // Plain browser scripts (the UMD modules in shared/ test for `window`, tray/prompt.js is a page script).
-  { files: ["shared/**/*.js", "tray/prompt.js"], languageOptions: { sourceType: "script", globals: { ...globals.browser, module: "readonly", require: "readonly" } } },
+  {
+    files: ["shared/**/*.js", "tray/prompt.js"],
+    languageOptions: { sourceType: "script", globals: { ...globals.browser, module: "readonly", require: "readonly" } },
+  },
   // Hand-written type declarations for untyped CommonJS helpers: their values are opaque on purpose.
   { files: ["**/*.d.cts"], rules: { "@typescript-eslint/no-explicit-any": "off" } },
   // The QA grader reads loosely shaped JSON rows (model output, stored calls), typed as `any` on purpose.

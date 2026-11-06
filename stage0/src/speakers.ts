@@ -8,8 +8,13 @@ import type { Word } from "./providers/stt/types.ts";
 export function dominantSpeaker(words: Word[]): number | undefined {
   const n = new Map<number, number>();
   for (const w of words) if (typeof w.speaker === "number") n.set(w.speaker, (n.get(w.speaker) ?? 0) + 1);
-  let best: number | undefined, most = 0;
-  for (const [id, c] of n) if (c > most) { best = id; most = c; }
+  let best: number | undefined,
+    most = 0;
+  for (const [id, c] of n)
+    if (c > most) {
+      best = id;
+      most = c;
+    }
   return best;
 }
 
@@ -19,11 +24,14 @@ export type SpeakerInfo = { spk: number; name?: string };
 export class SpeakerBook {
   private nums = new Map<number, number>();
   private names = new Map<number, string>();
-  private manual = new Set<number>();   // named by the user: an introduction never overrides it
+  private manual = new Set<number>(); // named by the user: an introduction never overrides it
   /** The call-local number for a raw provider id (a new id gets the next number). */
   number(raw: number): number {
     let n = this.nums.get(raw);
-    if (n === undefined) { n = this.nums.size + 1; this.nums.set(raw, n); }
+    if (n === undefined) {
+      n = this.nums.size + 1;
+      this.nums.set(raw, n);
+    }
     return n;
   }
   /** Speaker info for a final's words, or undefined when the words carry no speaker. */
@@ -45,18 +53,25 @@ export class SpeakerBook {
   /** Name call-local speaker `spk` (empty name clears it). */
   setName(spk: number, name: string, byUser = false) {
     const n = name.trim().slice(0, 40);
-    if (n) this.names.set(spk, n); else this.names.delete(spk);
+    if (n) this.names.set(spk, n);
+    else this.names.delete(spk);
     if (byUser) this.manual.add(spk);
   }
-  name(spk: number): string | undefined { return this.names.get(spk); }
+  name(spk: number): string | undefined {
+    return this.names.get(spk);
+  }
   /** A line's speaker info with the CURRENT name: a voice renamed (or introduced) later also relabels its earlier lines for the models and the summary. */
   current(w: SpeakerInfo | undefined): SpeakerInfo | undefined {
     if (!w) return undefined;
     const name = this.names.get(w.spk);
     return name ? { spk: w.spk, name } : { spk: w.spk };
   }
-  isManual(spk: number): boolean { return this.manual.has(spk); }
-  get count(): number { return this.nums.size; }
+  isManual(spk: number): boolean {
+    return this.manual.has(spk);
+  }
+  get count(): number {
+    return this.nums.size;
+  }
 }
 
 /** How a line is labelled for the models: "me", "them" or "them (Speaker 2)" / "them (Dana)". */
@@ -64,7 +79,6 @@ export function lineLabel(ch: "me" | "them", who?: SpeakerInfo): string {
   if (ch === "me" || !who) return ch;
   return `them (${who.name ?? `Speaker ${who.spk}`})`;
 }
-
 
 /**
  * First names of the people on the call, from a prepared meeting's "who" line ("Dana Levi, Pierre (IT), רות כהן / Levi Studio").
@@ -74,7 +88,10 @@ export function attendeeNames(who: string | undefined): string[] {
   if (!who) return [];
   const out = new Set<string>();
   for (const part of who.replace(/\([^)]*\)/g, " ").split(/[,;/&\n]|\s+and\s+|\s+ו(?=[א-ת])/i)) {
-    const first = part.trim().split(/\s+/)[0]?.replace(/[^\p{L}'-]/gu, "");
+    const first = part
+      .trim()
+      .split(/\s+/)[0]
+      ?.replace(/[^\p{L}'-]/gu, "");
     if (first && first.length >= 2 && /^\p{L}/u.test(first)) out.add(first);
   }
   return [...out];
@@ -84,32 +101,166 @@ export function attendeeNames(who: string | undefined): string[] {
 // "אני מבינה", "אני מרים את זה" or "I'm sure" are not names.
 const STRONG_INTRO = [/(?:^|[\s,.])(?:קוראים לי|שמי)\s+([א-ת][א-ת'"]+)/, /\bmy name is\s+([A-Z][a-z'-]+)/i];
 const WEAK_INTRO = [/(?:^|[\s,.])(?:אני|זאת|זו|זה|מדברת|מדבר|כאן)\s+([א-ת][א-ת'"]+)/, /\b(?:[Ii]'m|[Ii] am|[Tt]his is|[Ii]t's)\s+([A-Z][a-z'-]+)/];
-const NOT_NAMES = new Set(["sorry", "here", "fine", "good", "not", "just", "the", "sure", "okay", "ok", "glad", "happy", "back", "going", "trying", "still", "also", "really", "so"]);
+const NOT_NAMES = new Set([
+  "sorry",
+  "here",
+  "fine",
+  "good",
+  "not",
+  "just",
+  "the",
+  "sure",
+  "okay",
+  "ok",
+  "glad",
+  "happy",
+  "back",
+  "going",
+  "trying",
+  "still",
+  "also",
+  "really",
+  "so",
+]);
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}]/gu, "");
 
 /** Edit distance (small strings only). */
 function dist(a: string, b: string): number {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
   for (let j = 1; j <= b.length; j++) d[0][j] = j;
-  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
   return d[a.length][b.length];
 }
 /** The attendee a misheard name stands for ("Donna" for Dana): same first letter, at most 2 edits, and only one attendee that close. */
 function nearAttendee(cand: string, attendees: string[]): string | undefined {
   const c = norm(cand);
   if (c.length < 3) return undefined;
-  const close = attendees.filter((a) => { const n = norm(a); return n[0] === c[0] && dist(n, c) <= (Math.min(n.length, c.length) >= 4 ? 2 : 1); });
+  const close = attendees.filter((a) => {
+    const n = norm(a);
+    return n[0] === c[0] && dist(n, c) <= (Math.min(n.length, c.length) >= 4 ? 2 : 1);
+  });
   return close.length === 1 ? close[0] : undefined;
 }
 
 // Words that follow "this is" / "it's" / "I'm" but are not names: days, months, products and companies, nationalities and languages.
 const STOP_NAMES = new Set([
-  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-  "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
-  "zoom", "teams", "meet", "skype", "slack", "whatsapp", "google", "microsoft", "apple", "amazon", "facebook", "meta", "linkedin", "outlook", "gmail", "excel", "word", "windows", "mac", "macbook", "iphone", "android", "chrome", "safari", "wordpress", "shopify", "github", "wingman", "claude", "chatgpt", "openai", "anthropic",
-  "israel", "israeli", "american", "english", "hebrew", "arabic", "russian", "french", "german", "jewish", "christian", "muslim", "european", "canadian", "british",
-  "yes", "yeah", "no", "hello", "hi", "hey", "thanks", "thank", "please", "great", "nice", "right", "true", "late", "early", "today", "tomorrow", "yesterday", "morning", "evening", "noon", "night", "time", "again", "ready", "done", "free", "busy",
-  "ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "זום", "גוגל", "ישראלי", "ישראל", "אמריקאי", "עברית", "אנגלית", "בסדר", "נכון", "מצוין", "טוב", "היום", "מחר", "אתמול", "עכשיו",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+  "zoom",
+  "teams",
+  "meet",
+  "skype",
+  "slack",
+  "whatsapp",
+  "google",
+  "microsoft",
+  "apple",
+  "amazon",
+  "facebook",
+  "meta",
+  "linkedin",
+  "outlook",
+  "gmail",
+  "excel",
+  "word",
+  "windows",
+  "mac",
+  "macbook",
+  "iphone",
+  "android",
+  "chrome",
+  "safari",
+  "wordpress",
+  "shopify",
+  "github",
+  "wingman",
+  "claude",
+  "chatgpt",
+  "openai",
+  "anthropic",
+  "israel",
+  "israeli",
+  "american",
+  "english",
+  "hebrew",
+  "arabic",
+  "russian",
+  "french",
+  "german",
+  "jewish",
+  "christian",
+  "muslim",
+  "european",
+  "canadian",
+  "british",
+  "yes",
+  "yeah",
+  "no",
+  "hello",
+  "hi",
+  "hey",
+  "thanks",
+  "thank",
+  "please",
+  "great",
+  "nice",
+  "right",
+  "true",
+  "late",
+  "early",
+  "today",
+  "tomorrow",
+  "yesterday",
+  "morning",
+  "evening",
+  "noon",
+  "night",
+  "time",
+  "again",
+  "ready",
+  "done",
+  "free",
+  "busy",
+  "ראשון",
+  "שני",
+  "שלישי",
+  "רביעי",
+  "חמישי",
+  "שישי",
+  "שבת",
+  "זום",
+  "גוגל",
+  "ישראלי",
+  "ישראל",
+  "אמריקאי",
+  "עברית",
+  "אנגלית",
+  "בסדר",
+  "נכון",
+  "מצוין",
+  "טוב",
+  "היום",
+  "מחר",
+  "אתמול",
+  "עכשיו",
 ]);
 /** Hebrew: a word after the candidate that shows it was a verb ("אני מרים את זה"), not a name. */
 const HE_VERB_NEXT = new Set(["את", "אותו", "אותה", "אותם", "אותך", "כבר", "גם", "מאוד", "עכשיו", "פה", "שם", "מיד"]);
@@ -135,19 +286,25 @@ export function introName(text: string, attendees: string[] = []): string | unde
   for (const re of [...STRONG_INTRO, ...WEAK_INTRO]) {
     const m = re.exec(text);
     if (!m) continue;
-    if (/'s$/i.test(m[1])) continue;   // "it's Dana's turn" is not an introduction
+    if (/'s$/i.test(m[1])) continue; // "it's Dana's turn" is not an introduction
     const cand = m[1].replace(/['"]+$/, "");
     const strong = STRONG_INTRO.includes(re);
     const stop = NOT_NAMES.has(norm(cand)) || STOP_NAMES.has(norm(cand));
     if (!strong && stop) continue;
-    if (re === WEAK_INTRO[0]) {   // Hebrew weak cue: only an attendee, and not when the next word shows a verb
-      const next = text.slice(m.index + m[0].length).trim().split(/\s+/)[0]?.replace(/[^\p{L}]/gu, "") ?? "";
+    if (re === WEAK_INTRO[0]) {
+      // Hebrew weak cue: only an attendee, and not when the next word shows a verb
+      const next =
+        text
+          .slice(m.index + m[0].length)
+          .trim()
+          .split(/\s+/)[0]
+          ?.replace(/[^\p{L}]/gu, "") ?? "";
       if (HE_VERB_NEXT.has(next)) continue;
     }
     const hit = known.get(norm(cand)) ?? nearAttendee(cand, attendees);
     if (hit) return hit;
     if (strong && !stop) return cand;
-    if (re === WEAK_INTRO[1] && startsShort(text, m)) return cand;   // English "I'm Dana": STT capitalises names, not "sure" or "fine"
+    if (re === WEAK_INTRO[1] && startsShort(text, m)) return cand; // English "I'm Dana": STT capitalises names, not "sure" or "fine"
   }
   return undefined;
 }

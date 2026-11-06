@@ -13,10 +13,12 @@
       if (p === "") return;
       const ltr = i % 2 === 1 && p.length >= 3;
       const last = out[out.length - 1];
-      if (last && last.ltr === ltr) last.text += p; else out.push({ text: p, ltr });
+      if (last && last.ltr === ltr) last.text += p;
+      else out.push({ text: p, ltr });
     });
     return out;
   }
   const api = { splitBidi };
-  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.WingmanBidi = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.WingmanBidi = api;
 })(typeof window !== "undefined" ? window : globalThis);

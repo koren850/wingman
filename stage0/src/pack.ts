@@ -13,7 +13,9 @@ export const PACK_FILES = ["bank.yaml", "bank.en.yaml", "house-style.md", "keyte
 export const packDirs = (env: NodeJS.ProcessEnv = process.env): string[] => [env.WINGMAN_PACK_DIR || USER_PACK, EXAMPLE_PACK];
 /** Path of a pack file: the first folder that has it. Undefined if none does. */
 export function packPath(name: string, env: NodeJS.ProcessEnv = process.env): string | undefined {
-  return packDirs(env).map((d) => join(d, name)).find((f) => existsSync(f));
+  return packDirs(env)
+    .map((d) => join(d, name))
+    .find((f) => existsSync(f));
 }
 /**
  * Files a user pack lacks while it does have its own bank.yaml: they are filled in from the example pack (invented content) per file.
@@ -34,7 +36,9 @@ export type Topics = { loose: RegExp | undefined; strict: RegExp | undefined };
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const compile = (terms: string[]): RegExp | undefined => {
   // "=term" is a whole-word match. \b is ASCII-only in JS (it never sees a Hebrew word edge), so the edges are Unicode letters/digits.
-  const parts = terms.map((t) => (t.startsWith("=") ? t.slice(1).trim() && `(?<![\\p{L}\\p{N}_])${escapeRe(t.slice(1).trim())}(?![\\p{L}\\p{N}_])` : escapeRe(t))).filter(Boolean);
+  const parts = terms
+    .map((t) => (t.startsWith("=") ? t.slice(1).trim() && `(?<![\\p{L}\\p{N}_])${escapeRe(t.slice(1).trim())}(?![\\p{L}\\p{N}_])` : escapeRe(t)))
+    .filter(Boolean);
   return parts.length ? new RegExp(`(${parts.join("|")})`, "iu") : undefined;
 };
 /**
@@ -43,12 +47,20 @@ const compile = (terms: string[]): RegExp | undefined => {
  * the loose list is everything above `[strict]` plus the strict terms. No file = no topic words (nothing counts as the user's services).
  */
 export function parseTopics(raw: string): Topics {
-  const loose: string[] = [], strict: string[] = []; let into = loose;
+  const loose: string[] = [],
+    strict: string[] = [];
+  let into = loose;
   for (const line of raw.split("\n")) {
     const l = line.trim();
     if (!l || l.startsWith("#")) continue;
-    if (/^\[strict\]$/i.test(l)) { into = strict; continue; }
-    if (/^\[loose\]$/i.test(l)) { into = loose; continue; }
+    if (/^\[strict\]$/i.test(l)) {
+      into = strict;
+      continue;
+    }
+    if (/^\[loose\]$/i.test(l)) {
+      into = loose;
+      continue;
+    }
     into.push(l);
   }
   return { loose: compile([...loose, ...strict]), strict: compile(strict) };
@@ -58,5 +70,7 @@ export function loadTopics(env: NodeJS.ProcessEnv = process.env): Topics {
   const f = packPath("topics.txt", env) ?? "";
   const raw = f ? readFileSync(f, "utf8") : "";
   if (topicsCache?.key === f + raw) return topicsCache.t;
-  const t = parseTopics(raw); topicsCache = { key: f + raw, t }; return t;
+  const t = parseTopics(raw);
+  topicsCache = { key: f + raw, t };
+  return t;
 }

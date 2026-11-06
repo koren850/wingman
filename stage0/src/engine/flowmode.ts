@@ -4,7 +4,9 @@ import { runTopic, type FlowEvent } from "../flow.ts";
 import { log, flow, S, cost, notesAbort, registry, lineOf, transcript, sup, noAi, flowOn } from "./boot.ts";
 import { st } from "./state.ts";
 
-let flowTopic = "", flowTopicAt = 0, flowBusy = false;
+let flowTopic = "",
+  flowTopicAt = 0,
+  flowBusy = false;
 export const voiceName = (w: SpeakerInfo) => w.name ?? `דובר ${w.spk}`;
 /** Writes the flow rows the answer window and dashboard follow: {type:"flow", state, who, topic} and {type:"addressed", who, text}. */
 export function flowEvents(evs: FlowEvent[]) {
@@ -14,7 +16,8 @@ export function flowEvents(evs: FlowEvent[]) {
       log.write("events", { type: "flow.internal", who: e.who });
       console.log(`\n[👥 talking among themselves] ${e.who.join(", ")}`);
     } else if (e.type === "open") {
-      flowTopic = ""; flowTopicAt = 0;
+      flowTopic = "";
+      flowTopicAt = 0;
       log.write("cards", { type: "flow", state: "open", at: Date.now() });
       log.write("events", { type: "flow.open" });
     } else {
@@ -30,7 +33,8 @@ export async function flowTick() {
   flowEvents(flow.tick(Date.now()));
   if (!S.flow.topic || noAi || !flow.internal || flowBusy || !st.call.consented || !sup.caps.llm || cost.llmState() === "capped") return;
   if (Date.now() - flowTopicAt < S.flow.topicEveryMs) return;
-  flowBusy = true; flowTopicAt = Date.now();
+  flowBusy = true;
+  flowTopicAt = Date.now();
   try {
     const lines = transcript.slice(-14).map(lineOf);
     const r = await runTopic({ registry, model: S.flow.model, lines, signal: notesAbort.signal, timeoutMs: S.flow.timeoutMs });
@@ -41,6 +45,9 @@ export async function flowTick() {
       log.write("cards", { type: "flow", state: "internal", who: flow.people, topic: r.topic, at: Date.now() });
       console.log(`\n[👥 topic] ${r.topic}`);
     }
-  } catch (e) { log.write("events", { type: "flow.error", error: String((e as Error)?.message ?? e).slice(0, 200) }); }
-  finally { flowBusy = false; }
+  } catch (e) {
+    log.write("events", { type: "flow.error", error: String((e as Error)?.message ?? e).slice(0, 200) });
+  } finally {
+    flowBusy = false;
+  }
 }

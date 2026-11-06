@@ -9,20 +9,48 @@ import { buildPrefix, reflexUserMessage, resolveBankId } from "./reflex.ts";
 import { guard } from "./guards.ts";
 
 const QUESTIONS = [
-  "How long will the import take", "Can we keep editing the old site", "What happens to the old URLs", "Who needs to send you the database",
-  "Will the news articles be migrated automatically", "Are you going to redirect the old pages", "Would it be possible to have a staging site",
-  "I was wondering whether the donors pages will be kept", "I would like to understand how the languages are managed",
-  "We keep the same URLs, right", "So you will migrate everything, correct", "Has the old site been backed up already", "Did you receive the access",
-  "Could we maybe do it in two phases", "Any idea when it will be ready", "Walk me through the process", "What's the plan for the menus",
-  "Okay, so, how many pages do you need to move", "Let me ask you something about the menu", "Will it work with WPML",
+  "How long will the import take",
+  "Can we keep editing the old site",
+  "What happens to the old URLs",
+  "Who needs to send you the database",
+  "Will the news articles be migrated automatically",
+  "Are you going to redirect the old pages",
+  "Would it be possible to have a staging site",
+  "I was wondering whether the donors pages will be kept",
+  "I would like to understand how the languages are managed",
+  "We keep the same URLs, right",
+  "So you will migrate everything, correct",
+  "Has the old site been backed up already",
+  "Did you receive the access",
+  "Could we maybe do it in two phases",
+  "Any idea when it will be ready",
+  "Walk me through the process",
+  "What's the plan for the menus",
+  "Okay, so, how many pages do you need to move",
+  "Let me ask you something about the menu",
+  "Will it work with WPML",
   // French-accented STT
-  "Wat happen to ze old URL", "Are zey going to be on ze new site", "Ze old pages, can you redirect zem",
+  "Wat happen to ze old URL",
+  "Are zey going to be on ze new site",
+  "Ze old pages, can you redirect zem",
 ];
 const STATEMENTS = [
-  "Hi Dan, good to meet you.", "We have around five hundred news articles.", "The old site is on WordPress.", "Okay, that makes sense.",
-  "Thank you very much.", "I don't know why it is slow.", "So that's what we have.", "I think we should start next week.",
-  "I will send you the database tomorrow.", "That is a good idea.", "We are using WPML for the translation.", "I already asked about the URLs.",
-  "What I mean is that the site is old.", "Do not worry about it.", "Have a nice day.", "Zis is ze old site.",
+  "Hi Dan, good to meet you.",
+  "We have around five hundred news articles.",
+  "The old site is on WordPress.",
+  "Okay, that makes sense.",
+  "Thank you very much.",
+  "I don't know why it is slow.",
+  "So that's what we have.",
+  "I think we should start next week.",
+  "I will send you the database tomorrow.",
+  "That is a good idea.",
+  "We are using WPML for the translation.",
+  "I already asked about the URLs.",
+  "What I mean is that the site is old.",
+  "Do not worry about it.",
+  "Have a nice day.",
+  "Zis is ze old site.",
 ];
 
 test("English questions without a question mark are detected", () => {
@@ -36,7 +64,16 @@ test("Hebrew detection is unchanged by the English rules", () => {
   assert.equal(detect("יש לנו אתר וורדפרס ישן").isQuestion, false);
   assert.equal(detect("כמה זמן ייקח לייבא את ה news").isQuestion, true);
   assert.equal(detect("אנחנו עובדים עם WPML לתרגום").isQuestion, false);
-  for (const q of ["האם הוא נגיש לאנשים עם מוגבלות", "מה קורה עם הטפסים והניוזלטר", "מה עם הטפסים", "יש אפשרות להעביר את הניוזלטר", "אפשר להמשיך לערוך את האתר הישן", "רציתי להבין בקשר לטפסים והניוזלטר החדש האם הם יועברו", "ואז האם הם יועברו"]) assert.equal(detect(q).isQuestion, true, q);
+  for (const q of [
+    "האם הוא נגיש לאנשים עם מוגבלות",
+    "מה קורה עם הטפסים והניוזלטר",
+    "מה עם הטפסים",
+    "יש אפשרות להעביר את הניוזלטר",
+    "אפשר להמשיך לערוך את האתר הישן",
+    "רציתי להבין בקשר לטפסים והניוזלטר החדש האם הם יועברו",
+    "ואז האם הם יועברו",
+  ])
+    assert.equal(detect(q).isQuestion, true, q);
   for (const q of ["מה קורה?", "מה קורה", "אני לא יודע האם זה נכון", "אמרתי להם האם לבוא"]) assert.equal(detect(q).isQuestion, q.includes("?"), q);
 });
 
@@ -73,7 +110,7 @@ test("a card without an English version is not shown in an English turn", () => 
 });
 
 test("reflex user message: English turn instruction only for English questions", () => {
-  matchBankFor("How much will the migration cost", loadBank());   // loads and sets the English ids
+  matchBankFor("How much will the migration cost", loadBank()); // loads and sets the English ids
   const en = reflexUserMessage({ transcript: "them: hi", question: "Which content types will you move?" });
   assert.match(en, /speaking ENGLISH/);
   assert.match(en, /staging/);
@@ -86,7 +123,8 @@ test("reflex prefix: background rule only when background files exist; prompt un
   const bank = loadBank();
   const without = buildPrefix("style", bank);
   assert.doesNotMatch(without, /Using the background files/);
-  const bg = "Background files Dan attached:\n<background_files>\n### brief.md\nAcme Foundation (invented): old WordPress site, 500 news items, 100 projects, WPML multisite, donors pages dropped.\n</background_files>";
+  const bg =
+    "Background files Dan attached:\n<background_files>\n### brief.md\nAcme Foundation (invented): old WordPress site, 500 news items, 100 projects, WPML multisite, donors pages dropped.\n</background_files>";
   const withBg = buildPrefix("style", bank, "", bg);
   assert.match(withBg, /Using the background files/);
   assert.match(withBg, /background does not say, never guess: reply SKIP/);
@@ -105,5 +143,7 @@ test("detector: a user named Will or May still hears 'Will you send it' as a que
     setProfile({ name: "Dana" });
     assert.equal(detect("Hello Dana can you send the invoice today").isQuestion, true);
     assert.equal(detect("Hi Dana how long will the import take").isQuestion, true);
-  } finally { setProfile(undefined); }
+  } finally {
+    setProfile(undefined);
+  }
 });

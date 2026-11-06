@@ -5,7 +5,8 @@ import { applyEdits, readState, userFileFromEnv } from "./settings-edit.ts";
 import { SettingsError, formatSettingsError } from "./settings.ts";
 import { KEY_VARS } from "./env.ts";
 
-const file = userFileFromEnv(), mode = process.argv[2];
+const file = userFileFromEnv(),
+  mode = process.argv[2];
 const out = (o: unknown) => process.stdout.write(JSON.stringify(o) + "\n");
 try {
   if (mode === "read") {
@@ -13,7 +14,8 @@ try {
     // Key state is not read here any more: the app asks the main process (keys:status), so this child never parses keys.env.
     out({ ok: true, ...s, keys: {}, keyVars: { deepgram: KEY_VARS.deepgram, anthropic: KEY_VARS.anthropic } });
   } else if (mode === "write") {
-    let raw = ""; for await (const c of process.stdin) raw += c;
+    let raw = "";
+    for await (const c of process.stdin) raw += c;
     const edits = JSON.parse(raw);
     if (!edits || typeof edits !== "object" || Array.isArray(edits)) throw new Error("bad edits");
     out(applyEdits(file, edits));

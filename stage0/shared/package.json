@@ -1,1 +1,4 @@
-{ "type": "commonjs", "private": true }
+{
+  "type": "commonjs",
+  "private": true
+}

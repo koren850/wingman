@@ -8,7 +8,10 @@ import { expandHome } from "./settings.ts";
 
 const { settings, sources, profile, userFile } = loadSettingsOrExit();
 const flat = flatten(settings);
-const tag = (k: string) => { const s = sources[k]; return s ? (s.layer === "default" ? "default" : `${s.layer}${s.detail ? ` (${s.detail})` : ""}`) : "default"; };
+const tag = (k: string) => {
+  const s = sources[k];
+  return s ? (s.layer === "default" ? "default" : `${s.layer}${s.detail ? ` (${s.detail})` : ""}`) : "default";
+};
 const width = Math.max(...Object.keys(flat).map((k) => k.length));
 console.log(`Effective Wingman settings (layers: defaults < ${userFile} < profile${profile ? ` "${profile}"` : ""} < env < CLI)\n`);
 for (const k of Object.keys(flat)) {

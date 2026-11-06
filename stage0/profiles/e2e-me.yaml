@@ -8,7 +8,7 @@ llm:
     fallbacks: []
 assist:
   model: "scripted:bank"
-  minGapMs: 0              # the rate limit is unit-tested (MeGate); here every answer should show
+  minGapMs: 0 # the rate limit is unit-tested (MeGate); here every answer should show
   maxPerMin: 20
 notes:
   enabled: false
@@ -29,4 +29,4 @@ audio:
   echo:
     mode: filter
 cards:
-  focus: false            # tests count every card; "important only" is tested on its own
+  focus: false # tests count every card; "important only" is tested on its own
