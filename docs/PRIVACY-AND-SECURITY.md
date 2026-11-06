@@ -19,6 +19,8 @@ Wingman listens to calls. Read this before you use it on one.
 
 Nothing else is sent. There is no telemetry, no analytics, no automatic update check and no cloud account. (`wingman update` runs only when you start it, and talks to your git remote.) The window and the answer window load no web content (strict Content-Security-Policy, navigation blocked). If you configure a fallback provider (Soniox, Gladia, or another model vendor), the same data goes to that vendor when it is used.
 
+**Deepgram model improvement.** By default Deepgram may use audio sent to it for its Model Improvement Program, under its own terms. Setting `stt.deepgram.mipOptOut: true` makes Wingman send `mip_opt_out=true` with every connection, which is Deepgram's documented opt-out ([docs](https://developers.deepgram.com/docs/the-deepgram-model-improvement-partnership-program)). The default here is **off**: Deepgram's documentation states no price for opting out, and community reports say that opting out can raise the rate, so Wingman does not change your bill without you choosing it. If call audio is sensitive, turn it on (and check the price with Deepgram).
+
 Read your providers' own data-retention and training policies. Wingman does not control what they do with data they receive.
 
 ## What is stored on your Mac
@@ -49,7 +51,8 @@ Important: the transcript and the summary of a real call can contain personal da
 
 ## API keys
 
-- Stored in the macOS Keychain (service `wingman`). A legacy `~/.config/wingman/keys.env` is still read if present; **Settings -> Keys -> Move to Keychain** (or `pnpm keys migrate`) moves it, after making a mode-600 backup. Delete that backup when calls work.
+- Stored in the macOS Keychain (service `wingman`). A legacy `~/.config/wingman/keys.env` is still read if present; **Settings -> Keys -> Move to Keychain** (or `pnpm keys migrate`) moves it: each key is written to the Keychain and read back, and only then is its line removed from `keys.env`. No backup copy is made (it would be one more plaintext copy of the key); if the Keychain write fails, `keys.env` is left untouched.
+- **What the Keychain does and does not protect.** Items are created through `/usr/bin/security`, so `security` itself is the trusted program in the item's access list. Any other program you run as the same macOS user can run `security find-generic-password -s wingman ...` and read a key **without a prompt** while your login keychain is unlocked. The threat model: this protects against copies of files, backups, synced folders, screenshots and keys leaking into the repo. It does **not** protect against malware or a malicious script that runs as you. Run only code you trust, and set spend limits in the Deepgram and Anthropic consoles.
 - All Keychain access goes through one module that runs `/usr/bin/security` without a shell. Keys are written through stdin, so they never show in the process list or the environment, and each write is read back.
 - Keys are held in memory only. They are never written to call folders, logs, settings, events or snapshots. The engine removes key variables from its own environment after loading and starts the answer window, ffmpeg and caffeinate without them.
 - The window only ever receives the last 4 characters of a key. The key box is write-only. The main window is the only one allowed to use the key IPC, with a provider allow-list, format checks and a rate limit (5 Save or Test per minute).
@@ -94,6 +97,8 @@ The answer window has content protection on, which asks macOS to hide it from sc
 
 ## Known gaps
 
+- **Prebuilt audio binary.** System audio comes from the npm package `audiotee` (version pinned in `pnpm-lock.yaml` with a sha512 hash). It contains only a prebuilt universal Mach-O binary, ad-hoc signed, with no source in the package. Upstream source: [github.com/makeusabrew/audiotee](https://github.com/makeusabrew/audiotee). It receives system-audio access, so a compromised release would hear the other side of your calls. A lockfile install gets exactly the pinned file; review the diff before you update it.
+- Keys in the Keychain can be read by other programs you run as your user (see API keys above).
 - Call files are not encrypted at rest.
 - Content protection is untested with real screen-sharing tools.
 - Soniox, Gladia and non-Anthropic AI providers are tested with mocks only.

@@ -7,7 +7,7 @@
 - Keys: **Settings → Keys**, then Test both (shows ok). Status should read "Saved in Keychain · …xxxx" for both. (Old `keys.env` file? Use Move to Keychain once.)
 - Deepgram and Anthropic spend limits set. Consider `--no-ai` for call one.
 - Open Wingman (Spotlight, Launchpad, or `pnpm dashboard` in `stage0/`). On **Home**: **Ready for a call?** → **Re-check** until READY. Optional: **Prepare a meeting…** (who, goal, notes, must cover, background files; Save). Then press **Quick call** (no Plan), or **Start** on the prepared meeting. For call one use **Quick call without AI**. `pnpm call` in Terminal still works.
-- Interview practice: make the meeting with `--kind interview` (see the [stage0 README](README.md#interview-mode)). Real interviews and exams that forbid outside help are out of scope.
+- Interview practice: make the meeting with `--kind interview` (see the [stage0 README](README.md#practice-and-prep-mode-kind-interview)). Real interviews and exams that forbid outside help are out of scope.
 - Listening starts with the call (personal use: no consent step). To get a consent click first, turn on Settings → "Ask me before listening starts".
 
 ## During

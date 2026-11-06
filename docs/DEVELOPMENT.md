@@ -17,10 +17,14 @@ For code work only (no Electron download, no app):
 cd stage0
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
-pnpm test                               # unit tests (515, about 2 minutes)
+pnpm test                               # unit tests (over 500, about 2 minutes)
 ```
 
 Needs macOS 14.2 or newer, Node 24 or newer, pnpm 11 (through `corepack enable`; the version is pinned in `package.json`) and `ffmpeg`. Poppler (`pdftotext`) is optional, for PDF attachments. Keys are not needed for unit tests: they use mocks and fake keys, and the real Keychain runner refuses to run under the test runner. For live work, add keys with `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never commit keys.
+
+## Get your API keys
+
+Live work needs two paid keys. Deepgram (speech to text): sign up at [console.deepgram.com/signup](https://console.deepgram.com/signup) and create a key in the console. Anthropic (the AI): create an account at [platform.claude.com](https://platform.claude.com), add credit under Billing and create a key under [Settings, API keys](https://platform.claude.com/settings/keys). Paste them in the app's first-run setup or **Settings, Keys**, or run `pnpm keys set deepgram` and `pnpm keys set anthropic`. Cost: about $1.10 an hour for speech plus roughly 5 to 20 cents an hour for AI. Unit tests need no keys.
 
 ## Install, update, uninstall
 
@@ -35,7 +39,7 @@ Needs macOS 14.2 or newer, Node 24 or newer, pnpm 11 (through `corepack enable`;
 | `./install.sh --offline` | Passes `--offline` to pnpm (local package cache only). |
 | `./install.sh --update` (or `wingman update`) | `git pull --ff-only`, `pnpm install`, rebuild the app. |
 | `./install.sh --uninstall` (or `wingman uninstall`) | Removes the app copies and the `wingman` link. Your data stays. |
-| `./install.sh --uninstall --purge` | Also deletes `~/Library/Application Support/Wingman`, `~/.config/wingman` and the Keychain keys, after you type `DELETE`. |
+| `./install.sh --uninstall --purge` | Also deletes `~/Library/Application Support/Wingman`, `~/.config/wingman` and the Keychain keys, after you type `DELETE`. It refuses a `WINGMAN_DATA_DIR` outside `~/Library/Application Support` or without "Wingman" in its path, unless you add `--force`. |
 | `cd stage0 && pnpm run install-app` | Builds the app and copies it to `/Applications` (`make-app.sh --install`). |
 
 Environment: `WINGMAN_APPS_DIR` (default `/Applications`), `WINGMAN_BIN_DIR` (default `~/.local/bin`), `WINGMAN_SKIP_APP=1` (skip the Electron download and the app build: CI and tests).
@@ -75,7 +79,7 @@ What `pnpm install` does in `stage0/`:
 
 ## Tests
 
-- Unit tests are `src/*.test.ts` (515 at the time of writing), run with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards.test.ts` (use the file you need).
+- Unit tests are `src/*.test.ts` (over 500), run with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards.test.ts` (use the file you need).
 - Do not start a second `pnpm test` while one is running; they share ports and files.
 - Test names say what they protect. Bug fixes should come with a regression test.
 - The "repo guard" test fails if a tracked source, data or config file contains a word from your private word list. Set it with `WINGMAN_DENYLIST="word1,word2" pnpm test`, or one word per line in the git-ignored `stage0/data/private/denylist.txt`. With no list it skips. How and why: [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).

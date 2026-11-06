@@ -1,10 +1,10 @@
 # Wingman
 
-A live meeting assistant for macOS. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time, and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. It also answers questions you ask it out loud, does simple math locally, keeps a checklist of what the call should cover, and writes a summary and follow-up email draft when the call ends. Hebrew (with English tech words mixed in) is the first-class language. The answer bank and house style are your own "pack"; an example web and hosting pack is included. Your name, how to address you and your business go in your profile.
+A live call copilot for client, sales and support calls, for macOS. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time, and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. It also answers questions you ask it out loud, does simple math locally, keeps a checklist of what the call should cover, and writes a summary and follow-up email draft when the call ends. Hebrew (with English tech words mixed in) is the first-class language. The answer bank and house style are your own "pack"; an example web and hosting pack is included. Your name, how to address you and your business go in your profile.
 
 ![The Wingman answer window during a call, with English cards: a "For you" answer, a Prepared card and a math result, all invented examples](docs/ux/answer-window-en.png)
 
-*The answer window on the second screen, with English cards (invented examples). The buttons and labels are Hebrew today. English cards read left to right.*
+*The answer window on the second screen, with English cards (invented examples). The main app window is English; only the labels of this answer window are Hebrew today. English cards read left to right.*
 
 ![The answer window with Hebrew cards: the window is right-to-left](docs/ux/for-you-card.png)
 
@@ -26,7 +26,7 @@ A live meeting assistant for macOS. It listens to your call (the other side on s
 | **Quick call and prepared meetings** | Start a **quick call** right now with no context, or save several **prepared meetings** (a Plan each: who, goal, notes, must-cover checklist, background files, optional time) and pick one at Start. A prepared meeting is used up by the call you start with it. |
 | **Fact cards** | If you build a local snapshot of your clients and domains, a mention of a known client or domain shows what you already know. No network lookups during the call. |
 | **Several speakers and flow** | Several people on the other side are told apart ("Speaker 1", 2... or their names, from introductions or the meeting's attendees; rename with `wingman speaker <n> "<name>"`). When they talk among themselves, a muted "talking among themselves" line shows who and about what, and answer cards wait. When someone turns to you, an orange "turned to you" alert shows who. See [Flow mode](#flow-mode). |
-| **Interview mode** | A prepared meeting of kind `interview` makes Wingman coach you as the candidate, from your prep notes and an optional file of your own prepared cards. See [Interview mode](#interview-mode). |
+| **Practice and prep mode** | A prepared meeting of kind `interview` is for rehearsal: practice runs with your own notes and prepared answers, then a review after the call. See [Practice and prep mode](#practice-and-prep-mode). |
 | **Important cards only** | On by default (`cards.focus`). A card only for a clear question to you: a question mark, a direct request or your name. At most 2 cards every 2 minutes. Price and date cards and cards about what you said always show. Turn it off in Settings for more cards. |
 | **Profile and pack** | Your name, spellings, how to address you and your business live in a profile on your machine, not in the repo. The answer bank, house style and keyterms are a swappable pack. |
 | **Capture chips** | Phone numbers, emails and domains spoken in the call appear as copyable chips. |
@@ -60,7 +60,7 @@ Two audio channels go to the speech service, one for each side, so Wingman alway
 - **pnpm 11**, which comes through corepack (the installer turns it on).
 - **`ffmpeg`** (used for the microphone and for replaying audio files). The installer offers `brew install ffmpeg`.
 - Optional: **poppler** (`brew install poppler`) to attach PDF files to a meeting.
-- A **Deepgram** API key (speech to text) and an **Anthropic** API key (the AI). Both are paid services. See [costs](docs/ARCHITECTURE.md#latency-budget-and-cost-model): roughly a dollar an hour of call for speech, plus a few cents of AI.
+- A **Deepgram** API key (speech to text) and an **Anthropic** API key (the AI). Both are paid services; see [Get your API keys](#get-your-api-keys) and the [cost model](docs/ARCHITECTURE.md#latency-budget-and-cost-model). Roughly $1.15 to $1.30 per hour of call in total.
 - A second screen is strongly recommended. With one screen the answer window refuses to open (so it cannot end up in a screen share).
 - Microphone and System Audio Recording permission for Wingman (or for the terminal that runs it). The guided setup shows you how.
 
@@ -69,8 +69,8 @@ Honest limits: Hebrew-first (English works, other languages are untested); needs
 ## Install
 
 ```bash
-git clone <this repo>
-cd <folder>
+git clone https://github.com/koren850/wingman.git
+cd wingman
 ./install.sh --check     # optional: shows what is present and what is missing; changes nothing
 ./install.sh             # checks the Mac, installs, builds Wingman.app
 ```
@@ -86,6 +86,17 @@ export PATH="$HOME/.local/bin:$PATH"     # add this line to ~/.zshrc
 ```
 
 Something went wrong? See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
+## Get your API keys
+
+Wingman needs two keys (both are paid services, billed to you by the provider):
+
+1. **Deepgram** (speech to text): sign up at [console.deepgram.com/signup](https://console.deepgram.com/signup). New accounts have usually received free starting credit; check their pricing page. Create an API key in the console.
+2. **Anthropic** (the AI): create an account at [platform.claude.com](https://platform.claude.com) (the old console.anthropic.com address redirects there), add a few dollars of credit under Billing, and create a key under [Settings, API keys](https://platform.claude.com/settings/keys).
+
+Paste both keys into the first-run setup (step 1, "Keys") or later in **Settings, Keys**. They are stored in the macOS Keychain. From a terminal you can use `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never put keys in the repo.
+
+Cost: about $1.10 an hour of call for speech plus roughly 5 to 20 cents an hour for AI, so roughly $1.15 to $1.30 an hour. Set spend limits in both consoles.
 
 ## First run
 
@@ -138,9 +149,9 @@ If you used an older version that kept calls in the repo folder (`stage0/calls`,
 
 Do not confuse these with a **settings preset** (`stage0/profiles/<name>.yaml`, used with `--profile <name>`). A preset is a set of setting overrides, such as `first-client-call`. It has nothing to do with `profile.yaml`.
 
-## Interview mode
+## Practice and prep mode
 
-For practising and preparing, and for coaching yourself with your own notes. Create a prepared meeting with kind `interview` (`wingman plan new --kind interview ...`; the kind is set from the command line). Attach your prep notes as background files.
+For rehearsal: practice runs, prepared answers and a review after the call, using your own notes. It is not meant for live help during a real interview. Create a prepared meeting with kind `interview` (`wingman plan new --kind interview ...`; the kind is set from the command line). Attach your prep notes as background files.
 
 In this mode:
 
@@ -151,7 +162,7 @@ In this mode:
 - There are no fact cards and no self-check cards.
 - To use your own prepared answers, add the meeting note `Prepared cards: /full/path/cards.yaml`. The file has the same format as the answer bank ([docs/PACK-FORMAT.md](docs/PACK-FORMAT.md#cards-for-an-interview)). For that call it replaces the normal bank. Each meeting can point to its own file.
 
-Many real interviews and exams forbid outside help. Wingman is out of scope for those ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams)). You are responsible for following the rules that apply to you.
+Real interviews and exams that forbid outside help are out of scope ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams)). You are responsible for following the rules that apply to you.
 
 ## Flow mode
 
@@ -181,13 +192,19 @@ The `wingman` command talks to the running menu-bar app over an owner-only local
 - Audio is **never saved**. Transcripts and cards are saved locally in `~/Library/Application Support/Wingman/calls/<id>/` with owner-only permissions, until you delete them.
 - API keys live in the macOS Keychain, not in files.
 - **You are responsible for telling the other people on the call** that a transcription and AI tool is running, and for following the recording and privacy laws that apply to you. Wingman is not a consent tool and gives no legal advice.
-- Some interviews, exams and meetings forbid outside help. Check the rules before using Wingman there.
+- **Audio capture uses a prebuilt binary.** System audio is captured by [AudioTee](https://github.com/makeusabrew/audiotee), a small helper whose npm package `audiotee` ships only a prebuilt, ad-hoc-signed universal binary (no source in the package; upstream project: [github.com/makeusabrew/audiotee](https://github.com/makeusabrew/audiotee)). It is pinned (with a hash) by `pnpm-lock.yaml`, so an install from the lockfile gets exactly that file; a dependency update would pull a new one, so review it first.
+- **Keychain note.** Keys are stored through `/usr/bin/security`, so other programs you run as the same macOS user can read them without a prompt. It protects against file copies and backups, not against malware running as you. See [PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md).
+- **Deepgram model improvement.** By default Deepgram may use audio for its model improvement program. Turn on `stt.deepgram.mipOptOut` to opt out (it may cost more). See the privacy guide.
 
 Full details: [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) and [SECURITY.md](SECURITY.md).
 
+## Responsible use
+
+Wingman listens to call audio and sends it to Deepgram and Anthropic. Tell the other people on the call that you use it, and follow the recording and privacy laws that apply to you (some places require everyone's consent). It is not a recording or consent tool and gives no legal advice. It does not store audio. Do not use it where outside help is forbidden, such as exams or job interviews that prohibit assistance. Keep practice and prep mode (kind `interview`) for rehearsal with your own notes.
+
 ## Project status
 
-It is at "Stage 0": the live call loop, the app, the CLI, the summary and the QA harness are built and tested (515 unit tests, plus a synthetic QA harness with 32 invented scenarios that play through real Deepgram and Haiku). It has been verified with synthetic and test calls; the real-call hand tests still open are listed in [docs/ROADMAP.md](docs/ROADMAP.md). A guided first-run setup and an installer script exist. Signed installers, Windows and plugins are not built and will wait until a second real user needs them.
+It is an early release ("Stage 0"): the live call loop, the app, the CLI, the summary and the QA harness are built and tested (a unit test suite of over 500 tests, plus a synthetic QA harness with 32 invented scenarios that play through real Deepgram and Haiku). It has been verified with synthetic and test calls; the real-call hand tests still open are listed in [docs/ROADMAP.md](docs/ROADMAP.md). A guided first-run setup and an installer script exist. Signed installers, Windows and plugins are not built and will wait until a second real user needs them.
 
 ## Repo map
 

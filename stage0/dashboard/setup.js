@@ -82,7 +82,7 @@ const STEPS = [
   { id: "keys", title: "Add your keys", why: () => (keysMissing().length ? `Missing: ${keysMissing().join(" and ")}. Deepgram hears the call, Anthropic writes the AI answers.` : "Both keys are saved in the Keychain."),
     done: () => !!H.keys && !keysMissing().length,
     panel: () => h("div", { class: "su-body" },
-      h("p", { class: "help" }, "You need two keys, both from paid services. Paste each one and press Save, then Test. Typical cost: about one dollar per hour of call for Deepgram (speech to text) plus a few cents for Anthropic (the AI). New Deepgram accounts get free credit."),
+      h("p", { class: "help" }, "You need two keys, both from paid services. Paste each one and press Save, then Test. Typical cost: about one dollar per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit."),
       h("div", { class: "actions" }, linkBtn("deepgram", "Get a Deepgram key"), linkBtn("anthropic", "Get an Anthropic key")),
       h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic"))) },
   { id: "about", title: "About you", why: () => (SU.profile && SU.profile.name ? `Hello ${SU.profile.name}.` : "Your name and how to address you. Used in the AI's instructions, so cards fit you."),

@@ -1,22 +1,22 @@
 # Roadmap, known limits and ideas
 
-State as of 4 November 2026. Wingman is at "Stage 0". This list is honest, not a promise.
+Wingman is an early release ("Stage 0"). This list is honest, not a promise.
 
 ## What is done
 
 - Live call loop: two-channel speech to text, question detector, Prepared bank, AI reflex with guards, answer window.
 - Menu-bar app with Home, Calls and Settings; prepared meetings; practice call; Readiness check; keys in the Keychain.
 - An installer (`install.sh`, with update and uninstall), a guided first-run setup, and user data in `~/Library/Application Support/Wingman` with a one-time copy migration.
-- Interview mode and flow mode (several people on the other side).
+- Practice and prep mode (kind `interview`) and flow mode (several people on the other side).
 - Reliability: audio sources restart by themselves, the call survives sleep, a stray error and a full disk, and a dead speech channel steps down to transcript-only instead of ending the call.
 - Security: confirmation in the app before a CLI start or delete, safe file attach, strict Content-Security-Policy, Electron fuses turned off, short error text, profile validation.
 - Answers for you, local math, call frame and checklist, tips, fact cards (with your own snapshot), capture chips, summary and follow-up draft.
 - Health ladder, reconnect buffer, cost caps, idle stop, sleep recovery, disk-space warning.
 - The `wingman` CLI over an owner-only socket.
-- 515 unit tests; a CI workflow (type check and tests on macOS); a synthetic QA harness with 32 invented scenarios; a UX audit with 52 of 54 findings fixed.
-- A deep test round (real Deepgram and Haiku, a 60-minute soak, failure injection, a 166-utterance answer-quality judge). Reported numbers: question recall 98 percent, right card about 86 percent on replay, Prepared first card p50 0.57 s and p95 1.9 s, math 0.43 s, AI answer for you 1.65 s, AI answer for them 1.4 s, 0 guard leaks, AI cost about 20 cents an hour.
+- A unit test suite of over 500 tests; a CI workflow (type check and tests on macOS); a synthetic QA harness with 32 invented scenarios; a UX audit with 52 of 54 findings fixed.
+- A deep test round (real Deepgram and Haiku, a 60-minute soak, failure injection, a 166-utterance answer-quality judge). Reported numbers: question recall 98 percent, right card about 86 percent on replay, Prepared first card p50 0.57 s and p95 1.9 s, math 0.43 s, AI answer for you 1.65 s, AI answer for them 1.4 s, 0 guard leaks, AI cost about 20 cents an hour in the longest test (roughly 5 to 20 cents an hour in normal use).
 
-## Hand tests still to do (need a real person or real audio)
+## Verification status: hand tests still open (need a real person or real audio)
 
 - The Readiness check with a real voice, online.
 - Hotkeys Ctrl+Opt+1, 2, 3 (copy capture chips) and Ctrl+Opt+A (ask) on a real call.
@@ -34,7 +34,7 @@ State as of 4 November 2026. Wingman is at "Stage 0". This list is honest, not a
 
 - **macOS only** (system audio capture needs macOS 14.2 or newer). No Windows or Linux.
 - **Hebrew first.** English works; other languages are untested.
-- Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.10 an hour for speech plus a few cents for AI. Prices in the config are estimates.
+- Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.10 an hour for speech plus roughly 5 to 20 cents for AI. Prices in the config are estimates.
 - Not a recording or consent tool; the user is responsible for telling participants (see [PRIVACY-AND-SECURITY.md](PRIVACY-AND-SECURITY.md)).
 - Call files are not encrypted at rest.
 - No signed or notarised build (only ad hoc signed); the app runs the repo's code and needs Node 24 at launch. Permissions attach to the app or terminal that runs it.
