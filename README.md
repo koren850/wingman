@@ -105,6 +105,25 @@ cd wingman && ./install.sh                 # checks the Mac, installs, builds Wi
 
 Then open **Wingman**. A guided setup walks you through keys, your name, permissions, microphone, screens, the answer pack, a readiness check and a **practice call** (a pretend client; free, offline, no keys needed). Full steps: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#first-run). Problems: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
+### Fresh Mac
+
+On a Mac with no developer tools, install them first (each step is skipped if you already have it):
+
+```bash
+xcode-select --install                                  # Xcode Command Line Tools (git); finish the dialog that opens
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"   # Homebrew, from brew.sh
+brew install node@24 && brew link --overwrite node@24   # Node 24 (or: nvm install 24)
+corepack enable                                         # gives you pnpm; ./install.sh also does this
+brew install ffmpeg                                     # microphone capture and file replay
+brew install poppler                                    # optional: attach PDF files to a meeting
+```
+
+Then run the `git clone` and `./install.sh` lines above.
+
+**First launch.** The app you build is ad-hoc signed, not notarised, so macOS may refuse to open it the first time. Right-click `Wingman.app` and choose **Open**, then confirm. Or try to open it once, then go to **System Settings, Privacy & Security**, scroll to the message about Wingman and click **Open Anyway**.
+
+**Permissions.** Wingman asks for **Microphone** (your voice) and **System Audio Recording** (the other side of the call). macOS may also ask to allow notifications, which is optional. It does not need Screen Recording, Accessibility or Camera. After you allow System Audio Recording, quit and reopen Wingman. The guided setup walks through both.
+
 Requirements in full:
 
 - **macOS 14.2 or newer** for the full app. System audio is captured with AudioTee (a Core Audio tap). See [Platform support](#platform-support) for Windows and Linux.
