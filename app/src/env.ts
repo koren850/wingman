@@ -115,15 +115,3 @@ export function requireKeys<K extends KeyName>(which: K[], file = KEYS_FILE, key
   }
   return k as Record<K, string> & Keys;
 }
-
-/** Template text for a new keys.env (values are never printed by Wingman). Not referenced anywhere in the repo at the moment. */
-export const KEYS_TEMPLATE = `# Wingman keys. Paste each key after the =  (file mode must be 600)
-DEEPGRAM_API_KEY=
-ANTHROPIC_API_KEY=
-# Optional providers (only the ones named in settings stt.provider / stt.fallback / llm.reflex.*):
-# SONIOX_API_KEY=            (stt.provider: soniox, experimental)
-# GLADIA_API_KEY=            (stt.provider: gladia, experimental)
-# OPENAI_API_KEY=            (llm model "openai:...", needs: pnpm add @ai-sdk/openai)
-# GOOGLE_GENERATIVE_AI_API_KEY=   (llm model "google:...", needs: pnpm add @ai-sdk/google)
-# MISTRAL_API_KEY=  GROQ_API_KEY=
-`;

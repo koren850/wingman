@@ -6,7 +6,6 @@ import { EventEmitter } from "node:events";
 
 /** Degrade level, 0 = everything works, 5 = Wingman stopped. Higher is worse. */
 export type Rung = 0 | 1 | 2 | 3 | 4 | 5;
-export const RUNG_NAMES = ["full", "reduced-ai", "provider-switch", "bank-only", "transcript-only", "off"] as const;
 
 /** What run.ts currently knows to be wrong. Each flag is independent; decide() picks the worst rung. */
 export type Signals = {

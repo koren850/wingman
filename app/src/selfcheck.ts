@@ -8,6 +8,7 @@ import { untag } from "./reflex.ts";
 import { getProfile, userName, hebrewAddressRule } from "./profile.ts";
 import { guard, sanitize } from "./guards.ts";
 import { masculine } from "./tips.ts";
+import { wordCount } from "./text-util.ts";
 
 export const MIN_WORDS = 5;
 export const MAX_QUOTE = 90;
@@ -16,7 +17,6 @@ export const MAX_SOURCE = 80;
 const FIX_GAP_MS = 60_000,
   CAREFUL_GAP_MS = 45_000;
 
-const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 /** Short quote of what was said: whitespace squeezed, cut at a word boundary to at most `max` chars. */
 export function quoteOf(text: string, max = MAX_QUOTE): string {
   const t = sanitize(text.replace(/\s+/g, " "));
@@ -36,7 +36,7 @@ const NUDGE = {
 } as const;
 /** Rule-based: does this line of the user's commit to a price, a date or a promise? undefined = no (also for lines under 5 words). */
 export function detectCareful(text: string): Careful | undefined {
-  if (words(text) < MIN_WORDS) return undefined;
+  if (wordCount(text) < MIN_WORDS) return undefined;
   const g = guard(text);
   if (g.ok) return undefined;
   const kind = g.rule as Careful["kind"];
@@ -46,7 +46,7 @@ export function detectCareful(text: string): Careful | undefined {
 
 /** Cheap pre-filter for the model check: a line with a number, a Latin name / technology, or a yes/no scope statement. */
 export function looksFactual(text: string): boolean {
-  if (words(text) < MIN_WORDS) return false;
+  if (wordCount(text) < MIN_WORDS) return false;
   if (/\d/.test(text)) return true;
   if (/[A-Za-z]{3,}/.test(text)) return true;
   if (/(?<![א-ת])(אחד|אחת|שניים|שתיים|שלושה|שלוש|ארבעה|ארבע|חמישה|חמש|שישה|שש|שבעה|שבע|שמונה|תשעה|תשע|עשרה|עשר|עשרים|שלושים|מאה|מאות|אלף)(?![א-ת])/.test(text))

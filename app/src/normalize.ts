@@ -48,13 +48,6 @@ export function tokenVariants(t: string): string[] {
   return v;
 }
 
-/** All tokens of `s` with their prefix-stripped variants, as one set (for membership tests). */
-export function tokenSet(s: string): Set<string> {
-  const set = new Set<string>();
-  for (const t of tokens(s)) for (const v of tokenVariants(t)) set.add(v);
-  return set;
-}
-
 /** True if every token of `phrase` appears (prefix-aware) in `text`, in order. Possessive/filler words are ignored. */
 export function containsPhrase(text: string, phrase: string): boolean {
   const tt = tokens(text)

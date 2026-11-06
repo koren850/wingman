@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DATA } from "./env.ts";
+import { escapeRe } from "./text-util.ts";
 
 export const EXAMPLE_PACK = join(DATA, "example-pack");
 export const USER_PACK = join(homedir(), ".config", "wingman", "pack");
@@ -33,7 +34,6 @@ export function readPack(name: string, env: NodeJS.ProcessEnv = process.env): st
 }
 
 export type Topics = { loose: RegExp | undefined; strict: RegExp | undefined };
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const compile = (terms: string[]): RegExp | undefined => {
   // "=term" is a whole-word match. \b is ASCII-only in JS (it never sees a Hebrew word edge), so the edges are Unicode letters/digits.
   const parts = terms

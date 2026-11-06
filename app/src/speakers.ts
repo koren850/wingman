@@ -3,6 +3,7 @@
 // those ids into stable call-local numbers ("Speaker 1" is the first voice heard) and, when known, names.
 // Nothing is kept across calls: no voice prints, only the numbers and names of this call.
 import type { Word } from "./providers/stt/types.ts";
+import { wordCount } from "./text-util.ts";
 
 /** The raw speaker id most of a final's words belong to, or undefined when the provider gave none. */
 export function dominantSpeaker(words: Word[]): number | undefined {
@@ -264,7 +265,6 @@ const STOP_NAMES = new Set([
 ]);
 /** Hebrew: a word after the candidate that shows it was a verb ("אני מרים את זה"), not a name. */
 const HE_VERB_NEXT = new Set(["את", "אותו", "אותה", "אותם", "אותך", "כבר", "גם", "מאוד", "עכשיו", "פה", "שם", "מיד"]);
-const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
 
 /**
  * An English weak cue ("I'm Dana", "this is Dana") may name a voice that is NOT on the attendee list only when the sentence it sits in is short (6 words

@@ -12,7 +12,8 @@ import { S, log, flow, flowOn, transcript, lineOf, notesOn, speakers, attendees,
 import { voiceName, flowEvents } from "./flowmode.ts";
 import { st, mono } from "./state.ts";
 import { queueNoteLine, nameSpeaker, spotFacts, capture } from "./side.ts";
-import { wordCount, addWords } from "./coach.ts";
+import { addWords } from "./coach.ts";
+import { wordCount } from "../text-util.ts";
 import { survived } from "./out.ts";
 import { onQuestion } from "./question.ts";
 import { handleMe } from "./me.ts";
