@@ -36,6 +36,7 @@ A checklist for using Wingman on a real call. For first-time setup see the [user
 ## First-run order (from a terminal)
 
 1. `pnpm run doctor`
+   (`pnpm synth` builds the synthetic audio used in steps 2 and 3.)
 2. `pnpm start --file data/synthetic/call1.wav --no-ai`
 3. `pnpm gate data/gold/synthetic.wav`, then your own recordings
 4. `pnpm call` with a Hebrew video playing
