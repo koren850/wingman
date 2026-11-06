@@ -77,7 +77,8 @@ function answerOrAsk(t: Turn, caps: typeof sup.caps, usable: string[], end: () =
     if (!t.shown && !t.noStall && fresh(t)) { t.shown = stallCardFor(t); emitCard(t.shown); t.lat.stallAt = Date.now(); }
   }, S.reflex.stallAfterMs);
 
-  askModel(t, usable).finally(end);
+  const reserved = usableModels(true);   // takes a half-open probe slot only now, right before the request
+  askModel(t, reserved.length ? reserved : usable).finally(end);
 }
 
 /** Lines that are not questions for the user (or not worth a card): logged and dropped before a turn starts. */

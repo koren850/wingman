@@ -69,7 +69,13 @@ export class CircuitBreaker {
   private probeAt: number | undefined;   // a half-open probe is in flight (one at a time)
   state: "closed" | "open" | "half-open" = "closed";
   constructor(private cfg: { failures: number; windowMs: number; cooldownMs: number; closeAfter?: number }, private now: () => number = Date.now) {}
-  /** May a request go through? (open breakers let one probe through after the cooldown). */
+  /** Would a request go through right now? Read-only: status checks use this, so they never use up the half-open probe. */
+  peek(): boolean {
+    if (this.state === "open") return this.now() - this.openedAt >= this.cfg.cooldownMs;
+    if (this.state === "half-open") return this.probeAt === undefined || this.now() - this.probeAt >= this.cfg.cooldownMs;
+    return true;
+  }
+  /** May a request go through? Call only right before a real request: in half-open it reserves the one probe. */
   allow(): boolean {
     if (this.state === "open" && this.now() - this.openedAt >= this.cfg.cooldownMs) { this.state = "half-open"; this.okCount = 0; this.probeAt = undefined; }
     if (this.state === "open") return false;

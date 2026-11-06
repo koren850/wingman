@@ -132,7 +132,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
   if (math) { show(math.say, [], "calc"); return; }
   // 2b. everything else needs the model
   if (!canMeAi()) { meLog(turnId, text, "skip", noAi ? "no-ai" : "ai-unavailable"); return; }
-  const usable = usableModels();
+  const reserved = usableModels(true), usable = reserved.length ? reserved : usableModels();   // a half-open probe slot is taken only right before the request
   let tag: Tag | undefined, said = "", facts: string[] = [], shownOnce = false;
   await runReflex({
     registry, models: usable, cfg: S.llm.reflex, prefix, transcript: transcript.slice(-12).map(lineOf).join("\n"), question: text, context: contextNotes, signal: ac.signal,

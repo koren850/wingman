@@ -12,10 +12,11 @@ import { sttSwitchedCh, sttRetryLoop } from "./stt.ts";
 import { st, mono, chans } from "./state.ts";
 import { liveSources } from "./audio-sources.ts";
 
-/** Models whose breaker lets a request through, in configured order. */
-export function usableModels(): string[] {
+/** Models whose breaker lets a request through, in configured order. `reserve` (only right before a real request) takes the
+ *  half-open probe slot; status checks leave it free, or the health tick would use it up and the model could never recover. */
+export function usableModels(reserve = false): string[] {
   const now = Date.now();
-  return REFLEX_MODELS.filter((m) => (downUntil.get(m) ?? 0) <= now && breakers.get(m)!.allow());
+  return REFLEX_MODELS.filter((m) => (downUntil.get(m) ?? 0) <= now && (reserve ? breakers.get(m)!.allow() : breakers.get(m)!.peek()));
 }
 /** Reflex failure hook: opens the model's circuit breaker (hard = auth/quota/spend cap/unsupported opens it for longer), parks a spend-capped model for 6 h, tells the supervisor, shows a bar for hard errors. */
 export function llmFailed(model: string, err: ProviderError) {

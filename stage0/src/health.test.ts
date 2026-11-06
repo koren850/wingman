@@ -132,3 +132,15 @@ test("budget cap drives the ladder to bank-only", () => {
   s.set({ costCapped: m.llmState() === "capped" }); s.tick();
   assert.equal(s.rung, 3); assert.equal(s.caps.llm, false); assert.deepEqual(s.reasons, ["LLM budget cap reached"]);
 });
+
+test("circuit breaker: peek never uses up the half-open probe; allow takes it", () => {
+  let now = 0;
+  const b = new CircuitBreaker({ failures: 1, windowMs: 10_000, cooldownMs: 1000 }, () => now);
+  b.failure(true);
+  assert.equal(b.peek(), false);
+  now = 1500;
+  for (let i = 0; i < 5; i++) assert.equal(b.peek(), true);   // status checks every tick
+  assert.equal(b.allow(), true);    // the real request gets the probe
+  assert.equal(b.allow(), false);   // one at a time
+  assert.equal(b.peek(), false);
+});
