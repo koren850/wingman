@@ -392,11 +392,13 @@ function renderCall(tab) {
   main.textContent = "";
   const empty = !d.transcript.length && !d.events.length && !d.cards.length;
   const back = btn("Calls", { icon: "back", cls: "ghost sm", onclick: backToList, title: "Back to Calls (Esc)" });
-  const delBtn = btn("Delete call", { icon: "trash", cls: "danger sm", onclick: deleteCurrent });
+  // The call that is running right now is deleted with "Delete this call" in the call panel, never from here (the handler refuses it too).
+  const isLive = !!(state.call && state.call.running && state.call.callId === state.id && state.call.phase !== "idle");
+  const delBtn = isLive ? null : btn("Delete call", { icon: "trash", cls: "danger sm", onclick: deleteCurrent });
   const title = s.name ? `${s.name} · ${fullDay(s.startedAt)}, ${tm(s.startedAt)}` : `${fullDay(s.startedAt)}, ${tm(s.startedAt)}`;
   if (s.crashed) {
     main.append(h("div", { class: "crumb", id: "callview" }, back),
-      h("div", { class: "callcrash" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h1", { class: "sr" }, title), h("h2", {}, "This call crashed"), h("span", {}, "Nothing was saved."), h("span", { class: "faint" }, title), btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent })));
+      h("div", { class: "callcrash" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h1", { class: "sr" }, title), h("h2", {}, "This call crashed"), h("span", {}, "Nothing was saved."), h("span", { class: "faint" }, title), (isLive ? null : btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent }))));
     ready(); focusTop(); return;
   }
   const chips = h("span", { class: "chips" }, chip(s.mode === "live" ? "Live" : "Practice", s.mode === "live" ? "good" : "", { dot: true }), s.profile ? chip(s.profile, "", { mono: true }) : null, s.noAi ? chip("No AI") : null);
@@ -406,7 +408,7 @@ function renderCall(tab) {
     h("p", { class: "statsline", id: "stats" })));
   renderStats();
   if (empty) {
-    $("callview").append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "Nothing to show"), h("span", {}, "This call has no transcript, cards or events."), btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent })));
+    $("callview").append(h("div", { class: "empty-big" }, h("div", { class: "capy", "aria-hidden": "true" }), h("h2", {}, "Nothing to show"), h("span", {}, "This call has no transcript, cards or events."), (isLive ? null : btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent }))));
     ready(); focusTop(); return;
   }
   const tabs = h("div", { class: "tabs", role: "tablist", "aria-label": "Call sections", id: "tabs" }, TABS.map(([k, t, ic], i) => h("button", { type: "button", role: "tab", id: "tab-" + k, "data-tab": k, "aria-controls": "pane", "aria-selected": "false", tabindex: "-1", "aria-keyshortcuts": String(i + 1), onclick: () => setTab(k, {}, true) }, ico(ic), h("span", {}, t), h("span", { class: "n", "aria-hidden": "true" }))));

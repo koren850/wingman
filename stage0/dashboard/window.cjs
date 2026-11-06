@@ -65,6 +65,8 @@ function create(ctx) {
   if (fakeDoc) fakeDoc = { ...fakeDoc, at: Date.now() - 4 * 60000 };
   const bgNow = () => (nativeTheme.shouldUseDarkColors ? BG.dark : BG.light);
   const mine = (e) => isDashboardSender(e, win);
+  // One listener for the life of the host (open() runs every time the window is opened; adding it there leaked one per open).
+  nativeTheme.on("updated", () => { if (win && !win.isDestroyed()) win.setBackgroundColor(bgNow()); });
   // All handlers go through here: reject any caller that is not our own page, and pass only the args (not the event) on.
   const handle = (name, fn) => ipcMain.handle(name, (e, ...a) => { if (!mine(e)) throw new Error("denied"); return fn(...a); });
   // State sent to the page: controller state + the readiness result + a clock. `now` is the main-process clock at send time.
@@ -110,7 +112,6 @@ function create(ctx) {
       webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
     protectedNow = undefined; protect();   // hidden from capture only during a call (see protect())
-    nativeTheme.on("updated", () => { if (win && !win.isDestroyed()) win.setBackgroundColor(bgNow()); });
     // The window only ever shows the local page: no popups, no navigation away (a stray link cannot load remote content).
     win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     win.webContents.on("will-navigate", (e) => e.preventDefault());
@@ -161,6 +162,8 @@ function create(ctx) {
   handle("calls:setTag", (id, cardId, useful) => data.setTag(CALLS, id, cardId, useful));
   handle("calls:delete", (id) => {
     data.callDir(CALLS, id); // validates before the dialog
+    const refusal = data.deleteRefusal(controller.getState(), id);   // the running call has its own path: Stop and delete
+    if (refusal) throw new Error(refusal);
     const r = dialog.showMessageBoxSync(win, { type: "warning", buttons: ["Cancel", "Delete"], defaultId: 0, cancelId: 0, title: "Delete call", message: `Delete call ${id}?`, detail: "The transcript, cards and ratings of this call are removed permanently." });
     if (r !== 1) return false;
     data.deleteCall(CALLS, id);

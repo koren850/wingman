@@ -80,6 +80,11 @@ function summarize(callsDir, id) {
   };
 }
 
+/** Why a call may not be deleted right now, or "": it is the call that is running (its engine still writes to the folder). `st` is the controller state. */
+function deleteRefusal(st, id) {
+  return st && st.running && st.callId === id && st.phase !== "idle" ? "This call is still running. Stop it first, or use Delete this call in the call panel." : "";
+}
+
 /** Summaries of every call folder, newest first. Folders that fail to read are left out. */
 function listCalls(callsDir) {
   let names = [];
@@ -206,4 +211,4 @@ function recentAdd(list, plan) {
 }
 function recentClean(raw) { return (Array.isArray(raw) ? raw : []).map(cleanPlan).filter(Boolean).slice(0, RECENT_MAX); }
 
-module.exports = { callName, cleanPlan, recentAdd, recentClean, RECENT_MAX, readFrame, ID_RE, callDir, ratableCards, gateNumbers, listCalls, getCall, setTag, searchCalls, deleteCall };
+module.exports = { callName, cleanPlan, recentAdd, recentClean, RECENT_MAX, readFrame, ID_RE, callDir, ratableCards, gateNumbers, listCalls, getCall, setTag, searchCalls, deleteCall, deleteRefusal };

@@ -82,7 +82,7 @@ test("two settings writes started together (separate processes) both land", asyn
   }
 });
 
-test("a stale lock left by a dead process is broken, a fresh one is waited for", () => {
+test("a stale lock left by a dead process is broken and the lock is released", () => {
   const f = tmp(), lock = join(f, "..", ".settings.yaml.lock");
   mkdirSync(lock);
   const old = new Date(Date.now() - 60_000); utimesSync(lock, old, old);

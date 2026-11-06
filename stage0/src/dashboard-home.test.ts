@@ -203,3 +203,28 @@ test("recent plans are read and written only by the main process, in the private
   assert.match(w, /const RECENT = path\.join\(BRIEFS, "recent\.json"\)/);
   assert.match(w, /writeFileSync\(RECENT, JSON\.stringify\(list\), \{ mode: 0o600 \}\)/);
 });
+
+// ---- the running call cannot be deleted from the Calls view ----
+test("deleteRefusal: only the call that is running now is refused", () => {
+  const { deleteRefusal } = req("../dashboard/lib.cjs");
+  const live = { running: true, callId: "01JLIVE", phase: "live" };
+  assert.match(deleteRefusal(live, "01JLIVE"), /still running/);
+  assert.equal(deleteRefusal(live, "01JOTHER"), "");
+  assert.equal(deleteRefusal({ running: false, callId: "01JLIVE", phase: "idle" }, "01JLIVE"), "", "an ended call can be deleted");
+  assert.equal(deleteRefusal({ running: true, callId: "01JLIVE", phase: "idle" }, "01JLIVE"), "");
+});
+
+test("calls:delete asks deleteRefusal before the dialog, and the page hides the button for the live call", async () => {
+  const { readFileSync } = await import("node:fs"), { join } = await import("node:path"), { ROOT } = await import("./env.ts");
+  const w = readFileSync(join(ROOT, "dashboard/window.cjs"), "utf8"), a = readFileSync(join(ROOT, "dashboard/app.js"), "utf8");
+  assert.ok(w.indexOf("data.deleteRefusal(controller.getState(), id)") > 0 && w.indexOf("data.deleteRefusal") < w.indexOf("Delete call\", message"));
+  assert.match(a, /const isLive = !!\(state\.call && state\.call\.running && state\.call\.callId === state\.id/);
+  assert.equal((a.match(/isLive \? null : /g) || []).length, 3, "all three Delete call buttons");
+});
+
+test("the nativeTheme listener is added once per window host, not on every open", async () => {
+  const { readFileSync } = await import("node:fs"), { join } = await import("node:path"), { ROOT } = await import("./env.ts");
+  const w = readFileSync(join(ROOT, "dashboard/window.cjs"), "utf8");
+  assert.equal((w.match(/nativeTheme\.on\(/g) || []).length, 1);
+  assert.ok(w.indexOf("nativeTheme.on(") < w.indexOf("function open("), "registered before open(), in create()");
+});
