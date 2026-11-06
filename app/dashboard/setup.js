@@ -54,7 +54,7 @@ async function suAct(id, fn, okText) {
         : okText
       : r && r.error === "preview"
         ? "This is a preview, nothing was changed."
-        : (r && (r.message || r.error)) || "Did not work.";
+        : (r && (r.message || r.error)) || "That did not work. Check the details and try again.";
   SU.msg[id] = { ok: !!(r && r.ok !== false), text };
   (SU.msg[id].ok ? announce : fail)(text);
   suRedraw();

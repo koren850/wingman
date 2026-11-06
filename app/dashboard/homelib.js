@@ -95,11 +95,11 @@
   /** The "Skip summary" control shows while the summary is the step in progress (not before, not after, not twice). */
   const canSkipSummary = (call) => !!call && call.phase === "stopping" && call.stopPhase === "summary" && !call.summarySkipped && !call.summaryOk;
 
-  /** Doctor lines are written for the command line. Say where things are now: keys in the Keychain (Settings → Keys), permissions for Wingman. */
+  /** Doctor lines are written for the command line. Say where things are now: keys in the Keychain (Settings, Keys), permissions for Wingman. */
   function niceFix(t) {
     return String(t || "")
-      .replace(/add it to ~?\/?[\w./-]*keys\.env/gi, "add it in Settings → Keys")
-      .replace(/~?\/?[\w./-]*keys\.env/gi, "Settings → Keys")
+      .replace(/add it to ~?\/?[\w./-]*keys\.env/gi, "add it in Settings, Keys")
+      .replace(/~?\/?[\w./-]*keys\.env/gi, "Settings, Keys")
       .replace(/\b(your )?terminal( app)?\b/gi, "Wingman")
       .replace(/\bdoctor\b/gi, "readiness check");
   }

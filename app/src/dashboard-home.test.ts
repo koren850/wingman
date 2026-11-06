@@ -147,7 +147,7 @@ test("Ask/Note input: two clear modes, unknown mode means note, the armed state 
 });
 
 test("doctor text speaks to the app user: Keychain, Wingman, readiness check", () => {
-  assert.equal(H.niceFix("add it to ~/.config/wingman/keys.env"), "add it in Settings → Keys");
+  assert.equal(H.niceFix("add it to ~/.config/wingman/keys.env"), "add it in Settings, Keys");
   assert.equal(H.niceFix("grant Microphone to your terminal app, restart it"), "grant Microphone to Wingman, restart it");
   assert.equal(H.niceFix("run doctor again"), "run readiness check again");
   assert.equal(H.keyRelated({ text: "DEEPGRAM_API_KEY missing", fix: "" }), true);

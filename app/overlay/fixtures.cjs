@@ -209,7 +209,7 @@ const S = {
     turnId: "e2",
     badge: "ai",
     question: "Can you connect it to Salesforce and keep the leads coming from Facebook Ads?",
-    say: "Yes, the forms can be connected straight to Salesforce through the API or Zapier, and every Facebook Ads lead arrives with its UTM tags. The connection takes about two days of work and costs around $650 one time.",
+    say: "Yes, the forms connect to Salesforce through the API or Zapier.",
     facts: ["A direct webhook beats Zapier (fewer points of failure)", "Needs admin permission in Salesforce"],
   });
   const edim = card({
@@ -234,7 +234,7 @@ const S = {
     turnId: "e3",
     badge: "ai",
     question: "And hosting: who is responsible for backups?",
-    say: "We host on a dedicated server with daily backups for 30 days, and a restore within",
+    say: "We host on a dedicated server with daily backups for 30 days, and a restore within one working day.",
   });
   const efact = side({
     id: "efact-d1",
@@ -255,9 +255,11 @@ const S = {
     say: "You have not talked about:",
     facts: ["Schedule and launch", "Who approves the design on their side", "Yearly maintenance price"],
   });
-  const enotes = ["The client wants to launch before the holidays", "Estimated budget: $11-13k + VAT", "Competitor: BUG, they liked their checkout"].map(
+  const enotes = ["The client wants to launch before the holidays", "Estimated budget: $11-13k + VAT", "A competing shop has a checkout they liked"].map(
     (n, i) => side({ id: `enote-${i}`, badge: "note", say: n }),
   );
+  const ecap = (kind, value) => ({ type: "capture", ch: "them", kind, value, at: now });
+  const ecaps = [ecap("domain", "shop.example-shop.com"), ecap("email", "dana@example-shop.com"), ecap("phone", "555-0142")];
   const elines = [
     {
       t: now - 24000,
@@ -266,23 +268,10 @@ const S = {
     },
     { t: now - 17000, ch: "me", text: "Yes, that is possible, we will go over it in the proposal." },
     { t: now - 11000, ch: "them", text: "And hosting? Who is responsible for backups if something goes down on a weekend?" },
-    { t: now - 4000, ch: "them", text: "Write down my number, 050-1234567, and send me a proposal by Thursday." },
+    { t: now - 4000, ch: "them", text: "Write down my number, 555-0142, and send me a proposal by Thursday." },
   ];
   S.fullEn = {
-    cards: [
-      eb,
-      health("them-silent", "red", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות"),
-      health("cost", "amber", "עלות AI $1.42 מתוך $2"),
-      edim,
-      eai,
-      estall,
-      efact,
-      efact2,
-      erem,
-      ...enotes,
-      ...caps,
-      estream,
-    ],
+    cards: [eb, edim, eai, estall, efact, efact2, erem, ...enotes, ...ecaps, estream],
     lines: elines,
   };
 }

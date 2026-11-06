@@ -321,14 +321,14 @@ async function keyAct(provider, fn, okMsg) {
   if (state.view === "home" && typeof suRedraw === "function") suRedraw();
 }
 function testText(r) {
-  if (!r || !r.ok) return (r && r.message) || "Could not test.";
+  if (!r || !r.ok) return (r && r.message) || "Could not test the key. Check your connection and try again.";
   return (
     {
       ok: "The key works.",
       invalid: "The provider rejected this key.",
       network: "Could not reach the provider. Check your connection.",
       missing: "No key to test.",
-    }[r.result] || "Could not test."
+    }[r.result] || "Could not test the key. Check your connection and try again."
   );
 }
 /** Row for one provider: status chip, write-only password field, Test and Remove. */

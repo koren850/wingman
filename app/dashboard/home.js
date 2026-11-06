@@ -544,7 +544,7 @@ async function startFlow(t, anyway) {
       return;
     }
     const m = t.planId ? H.plans.find((x) => x.id === t.planId) : null;
-    const what = t.planId ? "Start " + (m ? m.title || m.who || "prepared meeting" : "prepared meeting") : t.noAi ? "Quick call without AI" : "Quick call";
+    const what = t.planId ? "Start " + (m ? m.title || m.who || "plan" : "plan") : t.noAi ? "Quick call without AI" : "Quick call";
     await act(() => (t.noAi ? api.startNoAi(t.planId) : api.start(t.planId)), what);
   } finally {
     setStartBusy(false);
@@ -1014,7 +1014,7 @@ function editorCard() {
     h(
       "div",
       { class: "rhead" },
-      h("h2", { id: "plan-h" }, cur ? "Plan: edit prepared meeting" : "Plan: new prepared meeting"),
+      h("h2", { id: "plan-h" }, cur ? "Edit plan" : "New plan"),
       tip(
         "Who the call is with and what you want from it. The AI uses it for answers, tips and the summary. It is used by the call you start with it, and kept until about 6 hours after the meeting time (or 14 days if it has no time).",
       ),
@@ -1211,7 +1211,7 @@ function issueList(list) {
           {},
           h("div", {}, niceFix(x.text)),
           x.fix ? h("div", { class: "fix" }, "Fix: " + niceFix(x.fix)) : null,
-          keyRelated(x) ? h("button", { type: "button", class: "linkbtn fixlink", onclick: () => viewSettings("keys") }, "Open Settings → Keys") : null,
+          keyRelated(x) ? h("button", { type: "button", class: "linkbtn fixlink", onclick: () => viewSettings("keys") }, "Open Settings, Keys") : null,
         ),
       ),
     ),
@@ -1420,7 +1420,7 @@ function attachField() {
   };
   const report = (r, what) => {
     if (!r.ok) {
-      msg.textContent = r.error === "preview" ? "Not available in a preview." : r.error || "Could not add that.";
+      msg.textContent = r.error === "preview" ? "Not available in a preview." : r.error || "Could not add that file. Check that it exists and try again.";
       return;
     }
     msg.textContent = r.truncated ? `${what} was cut to fit the limit.` : "";
