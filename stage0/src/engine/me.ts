@@ -7,7 +7,7 @@ import type { SttResult } from "../providers/stt/types.ts";
 import { type ProviderError } from "../providers/errors.ts";
 import { frameText } from "../frame.ts";
 import { log, cost, breakers, S, tracker, contextNotes, lineOf, transcript, prefix, registry, noAi, meGate, sup } from "./boot.ts";
-import { refreshSignals, llmFailed, usableModels } from "./degrade.ts";
+import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.ts";
 import { emitCard } from "./cards.ts";
 import { st } from "./state.ts";
 import { selfCheckLine } from "./selfcheck.ts";
@@ -151,7 +151,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
       },
       onDone({ usage, providerMetadata, text: raw, model }) {
         if (dead()) return;
-        breakers.get(model)?.success(); refreshSignals();
+        clearAiBar(model); breakers.get(model)?.success(); refreshSignals();
         const c = cost.addLlm("me", model, usage, providerMetadata);
         log.write("usage", { role: "me", model, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.me.usd });
         log.write("events", { type: "reflex.raw", turnId, text: raw });

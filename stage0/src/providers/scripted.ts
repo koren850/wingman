@@ -142,6 +142,9 @@ const usage = { inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrit
 const finish = { unified: "stop" as const, raw: "end_turn" };
 
 /** Factory used by ModelRegistry (spec.factory): returns modelId -> a mock model. Streaming sends the whole answer as one delta. */
+// Fault injection for tests: WINGMAN_LLM_FAIL=<n>:<http status> makes the first n reflex calls (questions from the other side) fail like a real provider.
+let llmFailsLeft = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[0]) || 0;
+const llmFailStatus = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[1]) || 401;
 export function createScripted() {
   return (modelId: string) => new MockLanguageModelV4({
     provider: "scripted", modelId,
@@ -149,6 +152,7 @@ export function createScripted() {
     doGenerate: async (o) => ({ content: [{ type: "text", text: scriptedAnswer(promptText(o)) }], finishReason: finish, usage, warnings: [] }) as any,
     doStream: async (o) => {
       const text = scriptedAnswer(promptText(o));
+      if (llmFailsLeft > 0 && questionOf(promptText(o))) { llmFailsLeft--; throw Object.assign(new Error(`HTTP ${llmFailStatus} (injected)`), { statusCode: llmFailStatus }); }
       const parts = [{ type: "stream-start", warnings: [] }, { type: "text-start", id: "t" }, { type: "text-delta", id: "t", delta: text }, { type: "text-end", id: "t" }, { type: "finish", usage, finishReason: finish }];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- as above: the scripted stream parts are plain objects
       return { stream: new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } }) } as any;

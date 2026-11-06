@@ -2,6 +2,7 @@
 import { matchBank, matchBankFor, priceOffTopic, stallSay, modelMayOverrideBank, STALL_TIER, type BankHit } from "../bank.ts";
 import { evalMath } from "../calc.ts";
 import { isClearQuestion, addressesYou } from "../detector.ts";
+import { addressesUser } from "./rules.ts";
 import { guard, guardInterview } from "../guards.ts";
 import { runReflex, resolveBankId, leakedTag, type Tag, type ReflexHandlers } from "../reflex.ts";
 import type { SttResult } from "../providers/stt/types.ts";
@@ -10,7 +11,7 @@ import { frameText, isAgencyKind, isAgencyTopic } from "../frame.ts";
 import { health, errBrief, healthClear, survived } from "./out.ts";
 import { emitCard, recordLatency, type Card, focusWorthy } from "./cards.ts";
 import { stall, log, interview, cost, breakers, bank, sup, tracker, contextNotes, prefix, S, registry, lineOf, transcript, noAi, background, flow, flowOn } from "./boot.ts";
-import { refreshSignals, llmFailed, usableModels } from "./degrade.ts";
+import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.ts";
 import { interviewAllowed } from "./selfcheck.ts";
 import { st } from "./state.ts";
 
@@ -55,6 +56,10 @@ function onQuestionCore(r: SttResult, reason = "") {
   sup.beginQuestion();
   let ended = false;
   const end = () => { if (!ended) { ended = true; sup.endQuestion(); } };
+  try { answerOrAsk(t, caps, usable, end); } catch (e) { clearTimeout(t.stallTimer); end(); throw e; }   // a throw below must not leave the question "in flight": the ladder would never move again
+}
+/** The part of a question that runs between beginQuestion and endQuestion: bank card, degraded stall line, or the model call (which calls `end` when it finishes). */
+function answerOrAsk(t: Turn, caps: typeof sup.caps, usable: string[], end: () => void) {
   const useAi = !noAi && !t.bankOnly && caps.llm && usable.length > 0;
   // Interview: a slow AI (reduced rung) still answers; a late answer is worth more than none there. Spend cap / no AI still stop it (caps.llm).
   t.allowAns = S.reflex.allowAns && (caps.ans || (interview && caps.llm));
@@ -83,8 +88,9 @@ function skipQuestion(r: SttResult, reason: string): boolean {
   // In real use, most such turns ended in SKIP. Ask the model only when it speaks to the user or matches a prepared card.
   if (interview && reason.startsWith("head") && !addressesYou(r.text) && !matchBank(r.text, bank)) { log.write("events", { type: "head.skip", text: r.text.slice(0, 120) }); return true; }
   if (S.cards.focus && !interview && !focusWorthy(r.text, reason)) { log.write("events", { type: "focus.skip", reason, text: r.text.slice(0, 120) }); return true; }
-  // Their own discussion: the question is for one of them, not the user. Price/date ("buy time") cards still show.
-  if (flowOn && S.flow.holdCards && flow.internal && !matchBankFor(r.text, bank)?.card.id.startsWith("stall-")) { log.write("events", { type: "flow.hold", reason, text: r.text.slice(0, 120) }); return true; }
+  // Their own discussion: the question is for one of them, not the user. Price/date ("buy time") cards still show, and so does a question aimed at the user
+  // (their name, "you", "מה דעתך"): flow mode holds only what the others ask each other.
+  if (flowOn && S.flow.holdCards && flow.internal && !addressesUser(r.text) && !matchBankFor(r.text, bank)?.card.id.startsWith("stall-")) { log.write("events", { type: "flow.hold", reason, text: r.text.slice(0, 120) }); return true; }
   return false;
 }
 
@@ -269,7 +275,7 @@ function onDone(t: Turn, { usage, providerMetadata, text, model }: Parameters<Re
   const { id: turnId, ai } = t;
   if (t.ac.signal.aborted) return;
   clearTimeout(t.stallTimer);
-  reflexErrors = 0; healthClear("ai"); breakers.get(model)?.success(); refreshSignals();
+  reflexErrors = 0; healthClear("ai"); clearAiBar(model); breakers.get(model)?.success(); refreshSignals();
   const c = cost.addLlm("reflex", model, usage, providerMetadata);
   log.write("usage", { role: "reflex", model, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.reflex.usd });
   log.write("events", { type: "reflex.raw", turnId, text });
