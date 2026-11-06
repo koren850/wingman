@@ -1,3 +1,5 @@
+// Answer window renderer: reads the call's cards.jsonl rows, health bars and alerts through the preload bridge
+// and draws them as cards (right-to-left for Hebrew). Presentation only; the engine decides what is shown.
   const cardsBox = document.getElementById("cards");
   const healthBox = document.getElementById("health");
   const emptyBox = document.getElementById("empty");

@@ -135,6 +135,14 @@ test("every setup channel in the preload is registered in setup-ipc.cjs and goes
   assert.match(read("dashboard/index.html"), /<script src="setup\.js"><\/script>/);
 });
 
+test("first setup step shows the responsible-use notice with an acknowledgement that never gates a step", () => {
+  const src = read("dashboard/setup.js");
+  assert.match(src, /Tell the other people on the call that you use a live assistant, and follow your local recording-consent laws\./);
+  assert.match(src, /SU\.acks\.consent = true; suSave\(\)/);
+  assert.match(src, /consentNotice\(\)\) \},/);   // inside the keys step panel
+  assert.doesNotMatch(src, /done: \(\) => [^\n]*acks\.consent/);   // listening and step completion do not depend on it
+});
+
 test("profile child: read, write (keeps timezone), and it refuses unknown fields", () => {
   const dir = tmp(), file = join(dir, "profile.yaml");
   const run = (mode: string, input = "") => JSON.parse(execFileSync("./node_modules/.bin/tsx", ["src/profile-edit-cli.ts", mode], { cwd: ROOT, input, env: { ...process.env, WINGMAN_PROFILE_FILE: file }, encoding: "utf8" }).trim().split("\n").pop()!);

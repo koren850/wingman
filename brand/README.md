@@ -1,10 +1,9 @@
 # Wingman brand
 
-The final logo: a calm capybara with a yuzu on its head.
-(Y1 drawing, one tilted ear, closed "zen" eyes and a soft smile, no headset; Y7 night colours for dark mode; Y10 answer card in the banner.)
+The Wingman logo is a calm capybara with a yuzu on its head: one tilted ear, closed eyes and a soft smile. A night colour variant is used on dark backgrounds, and the banner includes an answer card.
 
-Rebuild everything: `./build.sh` (needs `stage0/node_modules`, run `pnpm install` there first).
-`build.py` is the single source; edit it, never the generated files.
+To regenerate every asset, run `./build.sh` (it needs `stage0/node_modules`, so run `pnpm install` in `stage0/` first).
+`build.py` is the single source. Edit it, not the generated files.
 
 | File | Use |
 |---|---|
@@ -20,4 +19,4 @@ Rebuild everything: `./build.sh` (needs `stage0/node_modules`, run `pnpm install
 | `svg/banner.svg`, `png/banner.png` | 1200x630 README / social banner |
 
 Colours: capy brown `#9A6B3F`, yuzu `#F59E0B`, mint `#CDE8D8`, night navy `#12263A`, cocoa `#3B2414`.
-Wordmark font: Unbounded Bold; tagline/labels: Baloo 2 (both Google Fonts, OFL). Text in the lockup/banner SVGs needs the font; the PNGs do not.
+Fonts: Unbounded Bold for the wordmark and Baloo 2 for the tagline and labels (both Google Fonts, SIL OFL). The lockup and banner SVGs need these fonts installed to render text; the PNGs do not.

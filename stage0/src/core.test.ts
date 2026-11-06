@@ -46,7 +46,7 @@ test("tag parser", () => {
 });
 
 // ---- Regression tests for earlier verification fixes (ids B6, D1... name the original findings) ----
-import { speechEndWall } from "./stt.ts";
+import { speechEndWall } from "./providers/stt/types.ts";
 import { parseReflex } from "./reflex.ts";
 import { tokenVariants } from "./normalize.ts";
 
@@ -139,7 +139,7 @@ test("B1 source: system prompt goes through `instructions`, not messages", async
   assert.ok(!/messages:\s*\[\s*\{\s*role:\s*"system"/.test(src));
 });
 test("B2 stt send never throws and counts drops when the socket is not open", async () => {
-  const { SttStream } = await import("./stt.ts");
+  const { DeepgramStream: SttStream } = await import("./providers/stt/deepgram.ts");
   const s = new SttStream({ apiKey: "x", channel: "them" });
   assert.equal(s.send(Buffer.alloc(3200)), false);
   assert.equal(s.dropped, 1);

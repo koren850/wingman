@@ -12,7 +12,8 @@ import { requireKeys, DATA } from "./env.ts";
 import { decode } from "./audio.ts";
 import { errText } from "./errtext.ts";
 import { readPack } from "./pack.ts";
-import { SttStream, type SttResult } from "./stt.ts";
+import { DeepgramStream as SttStream } from "./providers/stt/deepgram.ts";
+import type { SttResult } from "./providers/stt/types.ts";
 import { containsPhrase } from "./normalize.ts";
 
 const keys = requireKeys(["deepgram"]);

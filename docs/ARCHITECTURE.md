@@ -2,7 +2,7 @@
 
 This document describes how Wingman is built today (the app in `stage0/`). Where this document and the code differ, the code is right.
 
-Contents: [Big picture](#big-picture) · [Components](#components) · [Processes and data flow](#processes-and-data-flow) · [Call lifecycle](#call-lifecycle-and-phases) · [Files on disk](#files-on-disk) · [Latency budget and cost model](#latency-budget-and-cost-model) · [Testing](#testing)
+Contents: [Big picture](#big-picture) · [Process diagram](#process-diagram) · [Components](#components) · [Processes and data flow](#processes-and-data-flow) · [Call lifecycle](#call-lifecycle-and-phases) · [Files on disk](#files-on-disk) · [Latency budget and cost model](#latency-budget-and-cost-model) · [Testing](#testing)
 
 ## Big picture
 
@@ -10,10 +10,40 @@ Wingman is one TypeScript engine (a Node process per call) plus an Electron host
 
 - The **engine** (`stage0/src/run.ts`) does everything during a call: audio in, speech to text, detection, answers, logging.
 - The **menu-bar app** (`stage0/tray/`) is an Electron process. It owns one call controller, starts the engine as a child process, hosts the Home / Calls / Settings window and the control socket.
-- The **answer window** (`stage0/overlay/`) is a second Electron process, started by the engine, shown on the second screen.
+- The **answer window** (`stage0/overlay/`) is a second Electron process, started by `call.ts`, shown on the second screen.
 - The **CLI** (`wingman`) is a thin client of the control socket.
 
 Everything is plain files. There is no database and no server.
+
+## Process diagram
+
+```mermaid
+flowchart LR
+  subgraph APP["Tray app (Electron main process)"]
+    CTL["Call controller<br/>tray/controller.cjs"]
+    WIN["Dashboard window<br/>Home / Calls / Settings"]
+    SOCK["Control socket<br/>~/.config/wingman/run/control.sock"]
+  end
+  CLI["wingman CLI"] -->|"one JSON request"| SOCK --> CTL
+  CTL <-->|"spawn, stdin commands,<br/>@@wingman status lines"| CALL
+  CTL --> WIN
+  subgraph PER["Per-call processes (tsx)"]
+    CALL["call.ts<br/>launcher"]
+    ENG["Engine<br/>run.ts"]
+  end
+  CALL -->|spawn| ENG
+  CALL -->|spawn| OVL["Answer window<br/>(Electron, second screen)"]
+  ENG -->|"card rows, 2nd path<br/>(relay socket)"| CALL
+  CALL -->|"rows on stdin"| OVL
+  ENG -->|"writes"| FILES[("calls/&lt;id&gt;/<br/>cards.jsonl, events.jsonl,<br/>call.json, ...")]
+  FILES -->|"tailed"| OVL
+  FILES -->|"tailed (live view)"| WIN
+  MIC["Microphone (ffmpeg)<br/>+ system audio (AudioTee)"] --> ENG
+  ENG <-->|"audio, transcripts"| DG["Deepgram"]
+  ENG <-->|"call text, answers, summary"| AN["Anthropic"]
+```
+
+The tray app starts one call at a time through the controller, which runs `call.ts`. `call.ts` starts the engine (`run.ts`) and the answer window. The window reads the call folder itself; the relay socket is only a backup path for card rows if writing `cards.jsonl` fails. Keys come from the macOS Keychain at start and live only in memory.
 
 ## Components
 
@@ -23,7 +53,7 @@ Everything is plain files. There is no database and no server.
 |---|---|---|
 | Call loop | `run.ts` | Wires all the parts below. Reads audio, handles each utterance, shows cards, writes logs, shuts down. Can replay a stereo WAV (`--file`) instead of live audio. Remote-controlled by the app through stdin commands and `@@wingman` status lines on stdout (`WINGMAN_CONTROL=1`). |
 | Audio | `audio.ts`, `devices.ts`, `echo.ts` | System audio through AudioTee (Core Audio tap) is the "them" channel. The microphone through ffmpeg is the "me" channel. Optional "device" source (for example BlackHole). Speakers mode: a mic gate plus an echo text filter, so no headphones are needed. Each source runs under a supervisor (`SupervisedSource`): if it exits, hangs or its device vanishes it restarts with a backoff (1, 2, 4 s, then every 10 s). `pickMicDevice` falls back to the default mic when the chosen one is gone. A source that cannot start is not fatal: the call goes on with the other one. |
-| Speech to text | `stt.ts`, `providers/stt/` | One streaming connection per channel. Deepgram Nova-3 is the default. Soniox and Gladia adapters exist but are experimental (tested against a mock server only). Keyterms, reconnect buffer (last 2 s replayed), fallback provider, circuit breaker, foreign-script filter. |
+| Speech to text | `providers/stt/` | One streaming connection per channel. Deepgram Nova-3 is the default. Soniox and Gladia adapters exist but are experimental (tested against a mock server only). Keyterms, reconnect buffer (last 2 s replayed), fallback provider, circuit breaker, foreign-script filter. |
 | Utterance handling | `split.ts`, `multiq.ts`, `normalize.ts` | Joins a question that was cut by a pause ("כמה זה" ... "עולה לחודש"), cuts several back-to-back questions into separate ones, and normalises Hebrew (niqqud, final letters, prefixes) for matching. |
 | Question detector | `detector.ts` | Hebrew-aware rules that decide whether a "them" line is a question. Local, free, instant. Tested on a labelled corpus (`data/questions.tsv`). |
 | Answer bank | `bank.ts`, pack `bank.yaml` | Keyword cards written by the user (title, triggers, a short "say" line, facts). Matching is local. Returns the best card or nothing. |
@@ -64,7 +94,7 @@ A local-only HTML/JS UI (no framework, no network, strict Content-Security-Polic
 
 ### Answer window (`stage0/overlay/`)
 
-A frameless, always-on-top, non-focusable Electron window on the second screen (content protection is on, but untested with Zoom, so the second screen is the real protection). It shows the newest answer large, older answers small, health bars, the checklist, capture chips and the "what did they say" rewind sheet. It is started by the engine. It reads the call's `cards.jsonl` and also receives rows over the relay socket (see above). Its script is an external file (`app.js`) under a strict Content-Security-Policy; the preload bridge is a fixed list, navigation and `window.open` are blocked, and if the window process crashes it reloads.
+A frameless, always-on-top, non-focusable Electron window on the second screen (content protection is on, but untested with Zoom, so the second screen is the real protection). It shows the newest answer large, older answers small, health bars, the checklist, capture chips and the "what did they say" rewind sheet. It is started by `call.ts` (the per-call launcher). It reads the call's `cards.jsonl` and also receives rows over the relay socket (see above). Its script is an external file (`app.js`) under a strict Content-Security-Policy; the preload bridge is a fixed list, navigation and `window.open` are blocked, and if the window process crashes it reloads.
 
 ### Control socket and CLI
 
@@ -80,28 +110,7 @@ The capybara logo with a yuzu on its head, icons and the build script. `scripts/
 
 ## Processes and data flow
 
-```mermaid
-flowchart LR
-  subgraph Mac
-    MIC[Microphone] --> ENG
-    SYS[System audio\nAudioTee] --> ENG
-    subgraph APP[Menu-bar app, Electron]
-      CTL[Call controller]
-      WIN[Window\nHome / Calls / Settings]
-      SOCK[Control socket]
-    end
-    CLI[wingman CLI] --> SOCK --> CTL
-    CTL -->|spawn, stdin commands| ENG[Engine process\nsrc/run.ts]
-    ENG -->|status lines| CTL --> WIN
-    ENG -->|events| OVL[Answer window\nElectron, 2nd screen]
-    ENG --> FILES[(calls/id/*.jsonl)]
-    KC[(macOS Keychain)] -.keys at start.-> ENG
-  end
-  ENG -->|audio, 2 channels| DG[Deepgram]
-  DG -->|transcripts| ENG
-  ENG -->|text| AN[Anthropic]
-  AN -->|answers, summary| ENG
-```
+The process diagram is at the top of this document ([Process diagram](#process-diagram)).
 
 One utterance from the other side, step by step:
 
