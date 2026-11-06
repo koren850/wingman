@@ -11,6 +11,7 @@ import { sup, log, cost, fileArg, S, ORPHAN_IDLE_MIN, REFLEX_MODELS, noAi, downU
 import { sttSwitchedCh, sttRetryLoop } from "./stt.ts";
 import { st, mono, chans } from "./state.ts";
 import { liveSources } from "./audio-sources.ts";
+import { llmFailurePolicy } from "./rules.ts";
 
 /** Models whose breaker lets a request through, in configured order. `reserve` (only right before a real request) takes the
  *  half-open probe slot; status checks leave it free, or the health tick would use it up and the model could never recover. */
@@ -20,10 +21,10 @@ export function usableModels(reserve = false): string[] {
 }
 /** Reflex failure hook: opens the model's circuit breaker (hard = auth/quota/spend cap/unsupported opens it for longer), parks a spend-capped model for 6 h, tells the supervisor, shows a bar for hard errors. */
 export function llmFailed(model: string, err: ProviderError) {
-  const hard = err.kind === "auth" || err.kind === "spend_cap" || err.kind === "quota" || err.kind === "unsupported";
+  const { hard, parkMs, noteTrouble } = llmFailurePolicy(err.kind);
   breakers.get(model)?.failure(hard);
-  if (err.kind === "spend_cap") downUntil.set(model, Date.now() + 6 * 3600_000);
-  if (err.kind === "rate" || err.kind === "overload" || err.kind === "timeout" || err.kind === "network") sup.noteLlmTrouble();
+  if (parkMs) downUntil.set(model, Date.now() + parkMs);
+  if (noteTrouble) sup.noteLlmTrouble();
   log.write("events", { type: "llm.error", model, kind: err.kind, retryable: err.retryable, switchProvider: err.switchProvider, status: err.status });
   if (hard) {
     aiBars.add(model);
