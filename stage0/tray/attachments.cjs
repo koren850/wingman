@@ -31,7 +31,9 @@ function cleanText(t) {
 // Any process of this user can run the CLI, so a path is never trusted: a symlink called notes.txt that points at an SSH key must not become an
 // attachment (attachments are sent to the AI). Rules: no symlink as the last path part (opened with O_NOFOLLOW, so there is no swap between check and read);
 // nothing in the folders that hold secrets; no key / .env style file names; nothing outside the home folder unless force is set.
-const SECRET_DIRS = [".ssh", ".aws", ".gnupg", ".config/wingman", "Library/Keychains"];
+// On top of those refusals, only the extensions the store can read are accepted (an allow-list, not a deny-list).
+const SECRET_DIRS = [".ssh", ".aws", ".gnupg", ".azure", ".kube", ".docker", ".config/wingman", "Library/Keychains", "AppData/Roaming/Microsoft/Credentials", "AppData/Local/Microsoft/Credentials", "AppData/Roaming/Wingman"];
+const ALLOWED_EXT = Object.freeze(["txt", "md", "pdf"]);
 const SECRET_NAME = /^(\.env(\..*)?|.*\.env|\.netrc|\.npmrc|\.pgpass|\.git-credentials|\.pypirc|id_(rsa|dsa|ecdsa|ed25519)(\..*)?|.*\.(pem|key|p12|pfx|keychain|keychain-db|kdbx)|keys?|credentials|secrets?)$/i;
 const inside = (child, parent) => child === parent || child.startsWith(parent.endsWith(path.sep) ? parent : parent + path.sep);
 
@@ -47,6 +49,7 @@ function readSourceFile(file, o = {}) {
   const name = path.basename(real);
   for (const h of new Set([home, realHome])) for (const d of SECRET_DIRS) if (inside(real, path.join(h, d)) || inside(abs, path.join(h, d))) throw fail("secret", "That file is in a folder that holds keys or settings. It will not be attached.");
   if (SECRET_NAME.test(name) || SECRET_NAME.test(path.basename(abs))) throw fail("secret", "That file name looks like a key or secrets file. It will not be attached.");
+  if (!ALLOWED_EXT.includes(extOf(name))) throw fail("type", "Only .txt, .md and .pdf files can be attached.");
   if (!o.force && !inside(real, realHome)) throw fail("outside", "That file is outside your home folder. Add --force if you really mean it.");
   let fd;
   try {

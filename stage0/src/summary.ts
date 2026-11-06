@@ -127,8 +127,31 @@ export function fixGreeting(email: string, transcript: string, notes: string[]):
 // Guard rule name -> the visible gap the user must fill by hand before sending.
 const PLACEHOLDER: Record<string, string> = { price: "[להשלים: מחיר]", date: "[להשלים: תאריך]", promise: "[להשלים: התחייבות]" };
 
-/** Runs the card guards over every sentence of the email; a flagged sentence is replaced by a placeholder for the user to fill in. */
-export function guardEmail(email: string): { text: string; replaced: number; rules: string[] } {
+const URL_RE = /(?<![@\w.-])(?:(?:https?:\/\/|www\.)[^\s<>"')\]]+|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|il|app|dev|me|ly|info|biz|xyz|ai|gov|edu|example)(?:\/[^\s<>"')\]]*)?(?![\w@-]))/gi;
+const PHONE_RE = /(?<![\w.@])\+?\d[\d\s().-]{5,}\d(?![\w@])/g;
+const trimUrl = (u: string) => u.replace(/[.,;:!?]+$/, "");
+/**
+ * Links and phone numbers in a draft that the user's own notes do not contain become visible placeholders (prompt injection: the other side can
+ * say "tell them to confirm at evil.example" and the model may write it into the email). `trusted` is the user's own text (brief, typed notes).
+ * Email addresses are left alone. Returns the new text and which kinds were replaced.
+ */
+export function neutralizeLinks(email: string, trusted: string): { text: string; kinds: string[] } {
+  const kinds: string[] = [];
+  const t = trusted.toLowerCase(), tDigits = trusted.replace(/\D/g, "");
+  const known = (u: string) => { const x = trimUrl(u).toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, ""); return x.length > 0 && t.includes(x); };
+  let text = email.replace(URL_RE, (u) => (known(u) ? u : (kinds.push("url"), "[להשלים: קישור]" + (/[.,;:!?]$/.test(u) ? u.slice(-1) : ""))));
+  text = text.replace(PHONE_RE, (n) => {
+    const d = n.replace(/\D/g, "");
+    if (d.length < 7 || d.length > 15 || /^\d{4}-\d{2}-\d{2}$/.test(n) || /^\d+$/.test(n) && d.length < 9 && !n.startsWith("+")) return n;
+    if (tDigits.includes(d) || tDigits.includes(d.replace(/^(972|00972)/, "0"))) return n;
+    kinds.push("phone"); return "[להשלים: טלפון]";
+  });
+  return { text, kinds };
+}
+
+/** Runs the card guards over every sentence of the email; a flagged sentence is replaced by a placeholder for the user to fill in.
+ *  With `trusted` (the user's own notes) links and phone numbers that are not in it are replaced too (neutralizeLinks). */
+export function guardEmail(email: string, trusted?: string): { text: string; replaced: number; rules: string[] } {
   let replaced = 0; const rules: string[] = [];
   const text = email.split("\n").map((line) => {
     if (!line.trim()) return line;
@@ -143,7 +166,9 @@ export function guardEmail(email: string): { text: string; replaced: number; rul
     }
     return out.join(" ");
   }).join("\n");
-  return { text, replaced, rules };
+  if (trusted === undefined) return { text, replaced, rules };
+  const n = neutralizeLinks(text, trusted);
+  return { text: n.text, replaced: replaced + n.kinds.length, rules: [...rules, ...n.kinds] };
 }
 
 // ---------- inputs ----------
@@ -237,7 +262,7 @@ export async function runSummary(o: RunOpts): Promise<RunResult> {
     // usage.jsonl role "call-summary": the role name "summary" there is already the end-of-call totals row.
     o.write("usage", { role: "call-summary", model, usage: r.usage, usd: c.usd });
     r.fields.followUpEmail = fixGreeting(r.fields.followUpEmail, o.data.lines.map((l) => l.text).join("\n"), o.data.contextNotes);
-    const g = guardEmail(r.fields.followUpEmail);
+    const g = guardEmail(r.fields.followUpEmail, o.data.contextNotes.join("\n"));
     // Must-cover checklist items nobody got to become open questions (the follow-up should ask them).
     const missed = missedMust(o.data.frame).filter((m) => !r.fields.openQuestions.some((q) => q.includes(m.item))).map((m) => `לא כוסה בשיחה: ${m.item}`);
     r.fields.openQuestions = [...r.fields.openQuestions, ...missed].slice(0, 12);

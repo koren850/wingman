@@ -11,6 +11,7 @@ import { SCRIPTED_SUMMARY } from "./providers/scripted.ts";
 import { ModelRegistry } from "./providers/llm.ts";
 import { CostMeter } from "./cost.ts";
 import { loadSettings } from "./settings.ts";
+import { assertMode } from "./test-platform.ts";
 
 const S0 = loadSettings({ env: {}, userFile: "/nonexistent/x.yaml" }).settings;
 const mk = (over: Partial<typeof S0["summary"]> = {}, model = "scripted:summary") => ({ ...S0, summary: { ...S0.summary, model, ...over } });
@@ -75,7 +76,7 @@ test("runSummary with the scripted model writes summary.json (mode 600), logs co
     const r = await runSummary({ dir, callId: "C1", S: mk(), registry: registry(), cost, data: data(), write: (stream, row) => rows.push({ stream, ...row }) });
     assert.ok(r.ok, r.error);
     const f = join(dir, "summary.json");
-    assert.equal(statSync(f).mode & 0o777, 0o600);
+    assertMode(f, 0o600);
     const j = JSON.parse(readFileSync(f, "utf8"));
     assert.equal(j.callId, "C1"); assert.equal(j.v, 1); assert.equal(j.model, "scripted:summary");
     assert.equal(j.summary.length, 3); assert.equal(j.nextSteps[0].who, "אני");

@@ -2,6 +2,7 @@
 // Started by src/overlay.ts (from call.ts or `pnpm overlay`). No network, no listener; content is local text only.
 // Opens on the second display only: on one screen it refuses, because the window would show in a screen share.
 const { app, BrowserWindow, screen, globalShortcut, clipboard, ipcMain } = require("electron");
+require("../shared/permissions.cjs").install(app);   // no browser permission is ever granted to a window
 const fs = require("node:fs");
 const path = require("node:path");
 const { callPhase, pushCapture, registerCaptureKeys, unregisterCaptureKeys } = require("./lib.cjs");
