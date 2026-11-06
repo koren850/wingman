@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Answer window page (RTL Hebrew). Loaded by overlay/main.cjs, which tails the call files and sends rows over IPC (preload.cjs -> window.wingman).
+<!-- Answer window page (Hebrew or English chrome, setting ui.language). Loaded by overlay/main.cjs, which tails the call files and sends rows over IPC (preload.cjs -> window.wingman).
      Shows the newest card as the hero, older ones as small rows, plus tips, call checklist, captured phone/email/domain chips, a rewind sheet and the key legend.
      No network: CSP allows only local files. Text is always set with textContent / text nodes (never innerHTML), because card text comes from the call. -->
 <html lang="he" dir="rtl" data-theme="dark">
@@ -89,7 +89,7 @@
   .card.fix .q, .card.careful .q { color:var(--soft); }
   .age { margin-inline-start:auto; font-size:14px; color:var(--muted); white-space:nowrap; }
   .q { margin-top:6px; color:var(--muted); font-size:17px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; unicode-bidi:plaintext; }
-  .q .ql { font-weight:700; color:var(--soft); margin-inline-end:6px; }
+  .q .ql { unicode-bidi:isolate; font-weight:700; color:var(--soft); margin-inline-end:6px; }
   /* Size is fixed per card type (never changes while text streams). */
   .say { margin-top:6px; font-size:max(26px, calc(var(--say-pt) * var(--k))); line-height:1.28; font-weight:650; color:var(--text); }
   .say .rest { font-weight:500; color:var(--soft); }
@@ -204,21 +204,21 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="top"><img src="../../brand/png/mark-night-512.png" alt=""><span class="name">Wingman</span><span id="dot"></span><span id="state">מתחיל…</span><div id="ask">מקשיב לשאלה שלך…</div></div>
+  <div id="top"><img src="../../brand/png/mark-night-512.png" alt=""><span class="name">Wingman</span><span id="dot"></span><span id="state">Starting…</span><div id="ask"></div></div>
   <div id="health"></div>
-  <div id="frame" dir="rtl"><span class="fl">שיחה:</span><span class="ft"></span><span id="chip"></span><div id="cl"></div></div>
-  <div id="flow" dir="rtl"><span class="fk">מדברים ביניהם</span><span class="fw"></span><span class="fx"></span></div>
-  <div id="you" dir="rtl" role="alert"><span>👉 פונים אליך</span><span class="yt"></span></div>
-  <div id="last" dir="rtl"><span class="who">הצד השני</span><span class="txt"></span></div>
+  <div id="frame" dir="rtl"><span class="fl" data-i18n="frame.label">Call:</span><span class="ft"></span><span id="chip"></span><div id="cl"></div></div>
+  <div id="flow" dir="rtl"><span class="fk" data-i18n="flow.among">Talking among themselves</span><span class="fw"></span><span class="fx" dir="rtl"></span></div>
+  <div id="you" dir="rtl" role="alert"><span data-i18n="flow.you">👉 Addressing you</span><span class="yt" dir="rtl"></span></div>
+  <div id="last" dir="rtl"><span class="who">Other side</span><span class="txt" dir="rtl"></span></div>
   <div id="stage">
     <div id="main">
       <div id="cards"></div>
       <div id="tips"></div>
       <div id="capture"></div>
       <div id="rail"></div>
-      <div id="notes"><div class="h">הערות AI</div><ul id="notelist"></ul></div>
+      <div id="notes"><div class="h" data-i18n="notes.title">AI notes</div><ul id="notelist"></ul></div>
     </div>
-    <div id="empty"><img src="../../brand/png/mark-night-512.png" alt=""><div id="emptyT">מתחיל…</div><small id="emptyS"></small></div>
+    <div id="empty"><img src="../../brand/png/mark-night-512.png" alt=""><div id="emptyT">Starting the call…</div><small id="emptyS"></small></div>
     <div id="rewind"><div id="rnew"></div><div id="rcontent"></div></div>
   </div>
   <div id="keys"></div>
@@ -226,6 +226,7 @@
 </div>
 <script src="../shared/ask.js"></script>
 <script src="../dashboard/bidi.js"></script>
+<script src="strings.js"></script>
 <script src="text.js"></script>
 <script src="app.js"></script>
 </body>

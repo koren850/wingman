@@ -52,6 +52,25 @@ const S = {
   quiet: { cards: [health("quiet", "info", "מצב שקט: הכרטיסים נרשמים אבל לא מוצגים "), factClient, reminder, ...caps.slice(0, 2)], lines },
 };
 
+// fullEn: the same screen as "full" with English call content (an English-language call, English UI): used for the documentation screenshot (invented data).
+{
+  const eb = card({ id: "e1-bank", turnId: "e1", badge: "bank", question: "How long does a migration to WordPress take?", say: "Usually three to five weeks, depending on how much content there is.", facts: ["Design: a week and a half", "Content migration and SEO redirects: one week", "Testing and go-live: 3 days"] });
+  const eai = card({ id: "e2-ai", turnId: "e2", badge: "ai", question: "Can you connect it to Salesforce and keep the leads coming from Facebook Ads?", say: "Yes, the forms can be connected straight to Salesforce through the API or Zapier, and every Facebook Ads lead arrives with its UTM tags. The connection takes about two days of work and costs around $650 one time.", facts: ["A direct webhook beats Zapier (fewer points of failure)", "Needs admin permission in Salesforce"] });
+  const edim = card({ id: "e0-bank", turnId: "e0", badge: "bank", dim: true, question: "Do you have experience with WooCommerce?", say: "Yes, we built more than twenty WooCommerce stores, including payment and inventory integration.", facts: [] });
+  const estall = card({ id: "e4-stall", turnId: "e4", badge: "stall", question: "What will it cost me in the end, including maintenance?", say: "Good question, let me double-check the number for you.", facts: [] });
+  const estream = card({ id: "e3-ai", turnId: "e3", badge: "ai", question: "And hosting: who is responsible for backups?", say: "We host on a dedicated server with daily backups for 30 days, and a restore within" });
+  const efact = side({ id: "efact-d1", badge: "fact", say: "shop.example-shop.com", warn: true, facts: ["SSL certificate expires in 6 days (8 Nov)", "Server: srv-demo1, PHP 8.1", "Client: Levy Electronics Ltd."] });
+  const efact2 = side({ id: "efact-c1", badge: "fact", say: "Levy Electronics", facts: ["WooCommerce site, monthly maintenance $320", "Contact: Dana Levy, dana@example-shop.com"] });
+  const erem = side({ id: "ereminder-1", badge: "reminder", say: "You have not talked about:", facts: ["Schedule and launch", "Who approves the design on their side", "Yearly maintenance price"] });
+  const enotes = ["The client wants to launch before the holidays", "Estimated budget: $11-13k + VAT", "Competitor: BUG, they liked their checkout"].map((n, i) => side({ id: `enote-${i}`, badge: "note", say: n }));
+  const elines = [
+    { t: now - 24000, ch: "them", text: "So basically we need the site to connect to Salesforce, and every lead from Facebook Ads should come in automatically." },
+    { t: now - 17000, ch: "me", text: "Yes, that is possible, we will go over it in the proposal." },
+    { t: now - 11000, ch: "them", text: "And hosting? Who is responsible for backups if something goes down on a weekend?" },
+    { t: now - 4000, ch: "them", text: "Write down my number, 050-1234567, and send me a proposal by Thursday." }];
+  S.fullEn = { cards: [eb, health("them-silent", "red", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות"), health("cost", "amber", "עלות AI $1.42 מתוך $2"), edim, eai, estall, efact, efact2, erem, ...enotes, ...caps, estream], lines: elines };
+}
+
 // Older answers (2 and 5 minutes old) and a call that has ended.
 const old = (c, ago) => ({ ...c, at: now - ago });
 S.stale = { cards: [old(bank, 300000), old(aiLong, 130000), old(stall, 70000), old(dimmed, 50000), card({ ...aiStream, at: now - 50000 })], lines };

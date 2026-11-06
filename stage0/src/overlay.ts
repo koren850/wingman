@@ -3,14 +3,14 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { join } from "node:path";
 import { ROOT, childEnv } from "./env.ts";
-import { loadSettingsOrExit, type Settings } from "./settings.ts";
+import { loadSettingsOrExit, resolveUiLanguage, type Settings } from "./settings.ts";
 import { fileURLToPath } from "node:url";
 import bin from "../shared/bin.cjs";
 
 /** Child environment for the window: childEnv() (no API keys) plus WINGMAN_OVERLAY with the overlay settings as JSON. */
 export function overlayEnv(s: Settings): NodeJS.ProcessEnv {
   const o = s.overlay;
-  return { ...childEnv(process.env), WINGMAN_OVERLAY: JSON.stringify({ enabled: o.enabled, display: o.display, allowPrimary: o.allowPrimary, contentProtection: o.contentProtection, fontPt: o.fontPt, showLastLine: o.showLastLine, liveTextPt: o.liveTextPt, rewindSeconds: o.rewindSeconds, maxCards: s.cards.maxOnScreen, hotkeys: o.hotkeys }) };
+  return { ...childEnv(process.env), WINGMAN_OVERLAY: JSON.stringify({ enabled: o.enabled, display: o.display, allowPrimary: o.allowPrimary, contentProtection: o.contentProtection, fontPt: o.fontPt, language: resolveUiLanguage(s), showLastLine: o.showLastLine, liveTextPt: o.liveTextPt, rewindSeconds: o.rewindSeconds, maxCards: s.cards.maxOnScreen, hotkeys: o.hotkeys }) };
 }
 /** Spawns the window. Returns undefined when overlay.enabled is false. `detached` lets it outlive Ctrl+C for a short grace period (call.ts). */
 export function spawnOverlay(s: Settings, detached = false): ChildProcess | undefined {

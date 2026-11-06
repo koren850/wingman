@@ -72,6 +72,7 @@ export const schema = z.strictObject({
     prices: z.strictObject({ llm: z.record(z.string(), price), stt: z.record(z.string(), z.number().min(0)) }),
   }),
   privacy: z.strictObject({ requireConsentAck: z.boolean(), askBeforeCliStart: z.boolean(), consentText: z.string().min(10), storeAudio: z.literal(false), retentionDays: int(1, 365) }),
+  ui: z.strictObject({ language: z.enum(["auto", "he", "en"]) }),
   overlay: z.strictObject({
     enabled: z.boolean(), display: z.enum(["secondary", "primary"]), allowPrimary: z.boolean(), contentProtection: z.boolean(), fontPt: int(18, 60), showLastLine: z.boolean(), liveTextPt: int(14, 40),
     hotkeys: z.strictObject({ clear: z.string().min(1), pause: z.string().min(1), rewind: z.string().min(1), copy: z.string().min(1), checklist: z.string().min(1) }),
@@ -82,6 +83,12 @@ export const schema = z.strictObject({
   run: z.strictObject({ file: z.string().nullable(), noAi: z.boolean(), discard: z.boolean() }),
 });
 export type Settings = z.infer<typeof schema>;
+
+/** Language of the answer window labels: ui.language, with "auto" = Hebrew unless the call language (stt.language, which a profile can set) is English only. */
+export function resolveUiLanguage(s: Pick<Settings, "ui" | "stt">): "he" | "en" {
+  if (s.ui.language !== "auto") return s.ui.language;
+  return s.stt.language === "en" ? "en" : "he";
+}
 
 export type LayerName = "default" | "user" | "profile" | "env" | "cli";
 export type Source = { layer: LayerName; file?: string; detail?: string };

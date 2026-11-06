@@ -4,6 +4,8 @@ import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { readFileSync as readOverlayFile } from "node:fs";
+import { resolveUiLanguage, schema } from "./settings.ts";
 const require = createRequire(import.meta.url);
 const lib = require("../overlay/lib.cjs");
 const text = require("../overlay/text.js");
@@ -73,4 +75,70 @@ test("an English-only line is shown left to right as a whole; Hebrew with Englis
   assert.equal(text.isLatin("מה ההבדל בין RAG ל-fine-tuning?"), false);
   assert.equal(text.isLatin("30 יום"), false);
   assert.equal(text.isLatin("90"), false);
+});
+
+// ---- UI language (overlay/strings.js, setting ui.language) ----
+const strings = require("../overlay/strings.js");
+
+test("strings: every key exists in both languages, placeholders match, and English has no Hebrew", () => {
+  const he = Object.keys(strings.STRINGS.he).sort(), en = Object.keys(strings.STRINGS.en).sort();
+  assert.deepEqual(en, he, "he and en key sets differ");
+  for (const k of he) {
+    const ph = (s: string) => (s.match(/\{\w+\}/g) || []).sort().join();
+    assert.equal(ph(strings.STRINGS.en[k]), ph(strings.STRINGS.he[k]), k + " placeholders");
+    assert.ok(strings.STRINGS.he[k].length && strings.STRINGS.en[k].length, k);
+    assert.doesNotMatch(strings.STRINGS.en[k], /[֐-׿]/, k + " English label contains Hebrew");
+  }
+});
+
+test("every tr('...') key used by app.js and text.js exists in the table, and Hebrew UI literals live only in strings.js", () => {
+  // Hebrew allowed outside strings.js: the one regex alternation in text.js that recognises the engine's Hebrew health texts.
+  const ALLOWED_LINES = [/healthText|englishHealth|HEB = |\/[^/\n]*[֐-׿][^/\n]*\//];
+  for (const f of ["app.js", "text.js", "index.html"]) {
+    const src = readOverlayFile(new URL("../overlay/" + f, import.meta.url), "utf8");
+    src.split("\n").forEach((line: string, i: number) => {
+      if (!/[֐-׿]/.test(line)) return;
+      const code = line.replace(/\/\/.*$/, "");   // comments may contain Hebrew examples
+      if (!/[֐-׿]/.test(code)) return;
+      assert.ok(f === "text.js" && ALLOWED_LINES.some((r) => r.test(code)), `${f}:${i + 1} has a Hebrew literal outside strings.js: ${line.trim().slice(0, 80)}`);
+    });
+  }
+  const used = new Set<string>();
+  for (const f of ["app.js", "text.js"]) for (const m of readOverlayFile(new URL("../overlay/" + f, import.meta.url), "utf8").matchAll(/\btr\("([\w.-]+)"[,)]/g)) used.add(m[1]);
+  // keys built at run time in app.js ("badge." + type, "kind." + kind, ...)
+  const dyn: Record<string, string[]> = { badge: ["bank", "ai", "stall", "me", "fix", "careful", "calc", "info", "consent"], kind: ["client", "support", "vendor", "team", "consult", "personal", "other"], tip: ["ask", "clarify", "term", "remind", "note"], cap: ["phone", "email", "domain"], keys: ["ask", "rewind", "checklist", "pause", "clear", "copy"], "health.who": ["stt-me", "stt-them"] };
+  for (const [p, names] of Object.entries(dyn)) for (const n of names) assert.ok(`${p}.${n}` in strings.STRINGS.en, `${p}.${n}`);
+  for (const st of ["ended", "paused", "quiet", "starting", "waiting", "listening"]) for (const part of ["", ".title", ".sub"]) assert.ok(`state.${st}${part}` in strings.STRINGS.en, `state.${st}${part}`);
+  for (const k of used) assert.ok(k in strings.STRINGS.en, "unknown key " + k);
+  const html = readOverlayFile(new URL("../overlay/index.html", import.meta.url), "utf8");
+  for (const m of html.matchAll(/data-i18n="([\w.]+)"/g)) assert.ok(m[1] in strings.STRINGS.en, "unknown key " + m[1]);
+});
+
+test("t(): placeholders, unknown language falls back to Hebrew, direction follows the language", () => {
+  assert.equal(strings.t("en", "rewind.close", { key: "Ctrl+Opt+R" }), "Ctrl+Opt+R to close");
+  assert.equal(strings.t("he", "rewind.close", { key: "Ctrl+Opt+R" }), "Ctrl+Opt+R לסגירה");
+  assert.equal(strings.t("fr", "state.listening"), "מקשיב");
+  assert.equal(strings.t("en", "no.such.key"), "no.such.key");
+  assert.equal(strings.dirOf("en"), "ltr"); assert.equal(strings.dirOf("he"), "rtl"); assert.equal(strings.dirOf(undefined), "rtl");
+});
+
+test("healthText: English when the UI language is en, Hebrew by default", () => {
+  assert.match(text.healthText("health-only-you", "x", "Ctrl+Opt+A", "en"), /^Hearing only you\..* Ask me: Ctrl\+Opt\+A$/);
+  assert.match(text.healthText("health-only-you", "x", "", "he"), /^שומע רק אותך/);
+  assert.equal(text.healthText("health-mic", "המיקרופון לא קולט. בדוק הרשאה"), "המיקרופון לא קולט. בדוק הרשאה");   // default language: unchanged
+  assert.match(text.healthText("health-stt-them", "תמלול הצד השני התנתק – מנסה להתחבר מחדש. בדוק את חיבור האינטרנט", "", "en"), /^The other side: transcription disconnected, reconnecting\. Check your internet connection$/);
+  assert.match(text.healthText("health-sleep", "המחשב נרדם ל-45 שניות. חלק מהשיחה לא נשמע", "", "en"), /^The computer slept for 45 seconds/);
+  assert.match(text.healthText("health-them-silent", "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום)", "", "en"), /^No audio from the other side/);
+  assert.equal(text.healthText("health-stt-me", "STT (me) – Error 401", "", "en"), "Your microphone: Error 401. Check your internet connection");
+  for (const id of ["disk", "ai", "ai-anthropic:x", "control", "sleep", "idle", "minutes", "mic", "stt-switch-me", "them-silent", "stt-me"]) {
+    assert.doesNotMatch(text.healthText("health-" + id, "אירוע 3 – מנסה שוב, בדוק הרשאת מ-a ל-b", "", "en"), /[֐-׿]/, id);
+  }
+});
+
+test("ui.language: auto resolves to Hebrew unless the call language is English; explicit values win; schema rejects others", () => {
+  const mk = (ui: string, stt: string) => ({ ui: { language: ui }, stt: { language: stt } }) as any;
+  assert.equal(resolveUiLanguage(mk("auto", "multi")), "he"); assert.equal(resolveUiLanguage(mk("auto", "he")), "he");
+  assert.equal(resolveUiLanguage(mk("auto", "auto")), "he"); assert.equal(resolveUiLanguage(mk("auto", "en")), "en");
+  assert.equal(resolveUiLanguage(mk("en", "he")), "en"); assert.equal(resolveUiLanguage(mk("he", "en")), "he");
+  assert.equal(schema.shape.ui.safeParse({ language: "fr" }).success, false);
 });
