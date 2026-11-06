@@ -165,7 +165,7 @@ test("migration never overwrites a file the user changed after the first copy, a
   assert.equal(r.status, "migrated");
   assert.equal(readFileSync(join(root, "calls", "01AAA", "transcript.jsonl"), "utf8"), "my own edit");
   assert.equal(readFileSync(join(root, "entities.json"), "utf8"), "{ \"changed\": true, \"more\": 1 }");
-  assert.match(r.message, /left as they are/);
+  assert.match(r.message ?? "", /left as they are/);
   assert.deepEqual(JSON.parse(readFileSync(join(root, migrate.MARKER), "utf8")).userOwned.sort(), [join("01AAA", "transcript.jsonl"), "entities.json"].sort());
   assert.equal(run(o, root).status, "done-before");   // no failure, no repeat
 });

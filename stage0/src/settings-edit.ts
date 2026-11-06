@@ -36,7 +36,7 @@ function withLock<T>(userFile: string, fn: () => T): T | null {
   const sleep = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
   const until = Date.now() + 12_000;
   for (;;) {
-    try { mkdirSync(lock); break; }
+    try { mkdirSync(lock, { mode: 0o700 }); break; }
     catch (e) {
       if ((e as NodeJS.ErrnoException).code !== "EEXIST") break;   // cannot lock here (read-only folder...): go on, the write reports the real error
       try { if (Date.now() - statSync(lock).mtimeMs > 10_000) { rmSync(lock, { recursive: true, force: true }); continue; } } catch { continue; }
