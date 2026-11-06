@@ -1,0 +1,6 @@
+node_modules
+.app
+data
+qa/out
+pnpm-lock.yaml
+*.md

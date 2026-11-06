@@ -33,7 +33,10 @@
     "make-app": "scripts/make-app.sh",
     "postinstall": "node scripts/postinstall.cjs",
     "preinstall": "node scripts/check-env.cjs",
-    "install-app": "scripts/make-app.sh --install"
+    "install-app": "scripts/make-app.sh --install",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.94",
@@ -41,15 +44,21 @@
     "ai": "^7.0.159",
     "audiotee": "^0.0.7",
     "ulid": "^3.0.2",
+    "ws": "8.22.1",
     "yaml": "^2.9.1",
-    "zod": "^4.6.7",
-    "ws": "8.22.1"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^24.19.2",
     "@types/ws": "^8.18.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "electron": "^45.2.1",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.72.1"
   }
 }
