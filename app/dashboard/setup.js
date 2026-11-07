@@ -1,6 +1,6 @@
 "use strict";
 // Guided setup (Home) and "About you" (Settings). Loaded after settings.js; shares its globals ($, h, btn, chip, ico, api, state, H, KEYS, keyRow...).
-// Eight short steps, each skippable and re-openable (Settings → Setup guide). Everything the page does goes through the fixed commands in preload.cjs;
+// Short steps, each skippable and re-openable (Settings → Setup guide). Everything the page does goes through the fixed commands in preload.cjs;
 // a typed key is handled by keyRow (settings.js, write-only). Which steps were skipped or confirmed is a per-viewer convenience kept in localStorage (it may be unavailable).
 
 const SU = { status: null, profile: null, mics: null, draft: null, open: "auto", force: false, busy: new Set(), msg: {}, skipped: {}, acks: {} };
@@ -228,6 +228,30 @@ function micChip() {
 }
 const linkBtn = (which, label) => btn(label, { cls: "sm ghost", icon: "jump", onclick: () => api.setupOpenLink(which).catch(() => {}) });
 
+/** "Try a practice call first": a pretend caller, offline and free. It needs no key, so it sits at the top of the first step. */
+function practiceFirst() {
+  return h(
+    "div",
+    { class: "su-row", id: "su-practice-first" },
+    h(
+      "div",
+      { class: "grow" },
+      h("div", { class: "st-t" }, "Try a practice call first (free, no keys)"),
+      h(
+        "div",
+        { class: "faint st-w" },
+        "A pretend caller talks to Wingman. It runs on your Mac only: nothing is sent anywhere and nothing is charged. Real calls need the keys below.",
+      ),
+    ),
+    btn("Start practice call", {
+      id: "su-practice-now",
+      icon: "play",
+      cls: "sm primary",
+      onclick: () => act(() => api.practice({ quick: true }), "Practice call"),
+    }),
+  );
+}
+
 /** Responsible-use notice (first step). Informational: acknowledging it is remembered like the other setup flags and never blocks listening. */
 function consentNotice() {
   return h(
@@ -254,6 +278,82 @@ function consentNotice() {
   );
 }
 
+/** The privacy choice: two switches, saved at once to your settings. The defaults stay until the user changes them. */
+function privacyPanel() {
+  const st = SU.status;
+  if (!st) return h("div", { class: "loading" }, "Loading…");
+  const sw = (id, key, on, label, text, note) => {
+    const busy = SU.busy.has(id);
+    return h(
+      "div",
+      { class: "su-row", id: "su-row-" + id },
+      h(
+        "div",
+        { class: "grow" },
+        h("div", { class: "st-t" }, label),
+        h("div", { class: "faint st-w" }, text),
+        note ? h("div", { class: "faint st-w" }, note) : null,
+      ),
+      h(
+        "button",
+        {
+          type: "button",
+          id: "su-" + id,
+          class: "switch",
+          role: "switch",
+          "aria-checked": on ? "true" : "false",
+          "aria-label": label,
+          disabled: busy,
+          onclick: () => suAct(id, () => api.setSetting(key, !on), "Saved. Applies to the next call.").then(() => loadSetup().then(suRedraw)),
+        },
+        h("span", { class: "knob", "aria-hidden": "true" }),
+        h("span", { class: "sl" }, on ? "On" : "Off"),
+      ),
+    );
+  };
+  return h(
+    "div",
+    { class: "su-body" },
+    h(
+      "p",
+      { class: "help" },
+      "Wingman sends the call audio to Deepgram to turn it into text. It sends the text to Anthropic for the AI answers. Audio is never saved on your Mac. You decide two things:",
+    ),
+    sw(
+      "consent",
+      "privacy.requireConsentAck",
+      st.requireConsent,
+      "Ask me before listening starts",
+      "On: every call waits until you press Start listening, so no audio leaves your Mac before that. Off: listening starts together with the call.",
+    ),
+    suMsg("consent"),
+    sw(
+      "mip",
+      "stt.deepgram.mipOptOut",
+      st.mipOptOut,
+      "Keep my audio out of Deepgram's model training",
+      "On: Deepgram is asked not to use your audio to improve its models. Off: it may.",
+      "Cost note: Deepgram does not publish a price for opting out, and some users report a higher rate. Check your Deepgram bill after the first calls.",
+    ),
+    suMsg("mip"),
+    h(
+      "div",
+      { class: "actions" },
+      btn("Done, keep these choices", {
+        id: "su-privacy-ok",
+        cls: "sm primary",
+        icon: "check",
+        onclick: () => {
+          SU.acks.privacy = true;
+          suSave();
+          suRedraw();
+        },
+      }),
+      h("span", { class: "sub" }, "You can change both later in Settings."),
+    ),
+  );
+}
+
 const STEPS = [
   {
     id: "keys",
@@ -267,15 +367,23 @@ const STEPS = [
       h(
         "div",
         { class: "su-body" },
+        practiceFirst(),
         h(
           "p",
           { class: "help" },
-          "You need two keys, both from paid services. Paste each one and press Save, then Test. Typical cost: about one dollar per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit.",
+          "For real calls you need two keys, both from paid services. Paste each one and press Save, then Test. Typical cost: about one dollar per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit.",
         ),
         h("div", { class: "actions" }, linkBtn("deepgram", "Get a Deepgram key"), linkBtn("anthropic", "Get an Anthropic key")),
         h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic")),
         consentNotice(),
       ),
+  },
+  {
+    id: "privacy",
+    title: "Your privacy",
+    why: () => (SU.acks.privacy ? "Your choice is saved." : "Two choices about listening and your audio."),
+    done: () => !!SU.acks.privacy,
+    panel: () => privacyPanel(),
   },
   {
     id: "about",
@@ -392,26 +500,29 @@ const STEPS = [
   },
 ];
 
+/** The microphone list (SU.mics), fetched once. Returns it, or null while it loads (then the page redraws). */
+function ensureMics() {
+  if (SU.mics) return SU.mics;
+  if (!SU.busy.has("mics")) {
+    SU.busy.add("mics");
+    api
+      .setupMics()
+      .then((r) => {
+        SU.mics = r && r.ok ? r : { devices: [], defaultInput: "" };
+      })
+      .catch(() => {
+        SU.mics = { devices: [], defaultInput: "" };
+      })
+      .finally(() => {
+        SU.busy.delete("mics");
+        suRedraw();
+      });
+  }
+  return null;
+}
 function micPanel() {
   const s = SU.status;
-  if (!SU.mics) {
-    if (!SU.busy.has("mics")) {
-      SU.busy.add("mics");
-      api
-        .setupMics()
-        .then((r) => {
-          SU.mics = r && r.ok ? r : { devices: [], defaultInput: "" };
-        })
-        .catch(() => {
-          SU.mics = { devices: [], defaultInput: "" };
-        })
-        .finally(() => {
-          SU.busy.delete("mics");
-          suRedraw();
-        });
-    }
-    return h("div", { class: "loading" }, "Looking for microphones…");
-  }
+  if (!ensureMics()) return h("div", { class: "loading" }, "Looking for microphones…");
   const cur = s ? s.micDevice : ":default";
   const sel = h(
     "select",

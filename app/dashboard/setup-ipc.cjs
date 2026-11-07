@@ -2,7 +2,7 @@
 // IPC for the guided setup and the "About you" settings. Runs in the Electron MAIN process; every handler is registered through the host's
 // sender-checked handle() (window.cjs). The page can only ask for fixed actions: no path, URL or command ever comes from it.
 //   profile:get / profile:set    your name, spellings, how to address you, about, business (the same code as `wingman profile set`)
-//   setup:status                 microphone permission, number of screens, mic and screen settings, which pack is in use
+//   setup:status                 microphone permission, number of screens, mic, screen and privacy settings, which pack is in use
 //   setup:askMic / setup:openPrivacy / setup:openLink   the Microphone prompt, the Privacy panes and the two key pages (fixed addresses)
 //   setup:mics / setup:setMic    list microphones, save audio.mic.device
 //   setup:setOneScreen           save overlay.allowPrimary
@@ -124,15 +124,19 @@ function register(o) {
       /* keep 1 */
     }
     let micDevice = ":default",
-      allowPrimary = false;
+      allowPrimary = false,
+      requireConsent = false,
+      mipOptOut = false;
     if (!o.preview) {
       const s = await o.child(["src/settings-edit-cli.ts", "read"]);
       if (s && s.ok && s.values) {
         micDevice = String(s.values["audio.mic.device"] || ":default");
         allowPrimary = s.values["overlay.allowPrimary"] === true;
+        requireConsent = s.values["privacy.requireConsentAck"] === true;
+        mipOptOut = s.values["stt.deepgram.mipOptOut"] === true;
       }
     }
-    return { ok: true, mic, systemAudio: "unknown", displays, micDevice, allowPrimary, pack };
+    return { ok: true, mic, systemAudio: "unknown", displays, micDevice, allowPrimary, requireConsent, mipOptOut, pack };
   });
   o.handle("setup:askMic", async () => {
     if (o.preview) return preview;

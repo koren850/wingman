@@ -133,6 +133,8 @@ test("setup:status reports permission, screens, settings and pack; setup:askMic 
   assert.equal(s.displays, 1);
   assert.equal(s.micDevice, ":1");
   assert.equal(s.allowPrimary, true);
+  assert.equal(s.requireConsent, false); // privacy choices default to off when the settings do not set them
+  assert.equal(s.mipOptOut, false);
   assert.equal(s.systemAudio, "unknown");
   assert.equal(s.pack.using, "example");
   const a = await r.call("setup:askMic");
@@ -285,4 +287,13 @@ test("make-app.sh --stale: missing app, a moved folder or another Electron are s
   const moved = join(base, "moved-app");
   renameSync(stage, moved);
   assert.equal(stale(moved), 0, "the folder moved: the baked path is wrong, rebuild");
+});
+
+test("setup:status reports the two privacy choices from the settings", async () => {
+  const r = rig({
+    child: async () => ({ ok: true, values: { "privacy.requireConsentAck": true, "stt.deepgram.mipOptOut": true } }),
+  });
+  const s = await r.call("setup:status");
+  assert.equal(s.requireConsent, true);
+  assert.equal(s.mipOptOut, true);
 });
