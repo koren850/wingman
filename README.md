@@ -18,6 +18,18 @@ Wingman is a live call copilot for client, support and team calls. It listens to
 
 **See it run in about two minutes, with no keys:** the [offline demo](#try-it-without-keys) replays a scripted call through the real engine.
 
+<p align="center"><sub>
+<a href="#the-hard-parts">Hard parts</a> ·
+<a href="#examples">Examples</a> ·
+<a href="#how-it-works">How it works</a> ·
+<a href="#evaluation">Evaluation</a> ·
+<a href="#quick-start">Quick start</a> ·
+<a href="#try-it-without-keys">Offline demo</a> ·
+<a href="#privacy-and-security">Privacy</a> ·
+<a href="#guides">Guides</a> ·
+<a href="#how-it-was-built">How it was built</a>
+</sub></p>
+
 ## The hard parts
 
 Latency figures come from the project's own synthetic-voice test rounds, so real calls with room noise will be slower. Everything else can be checked in this repository.
@@ -28,7 +40,6 @@ Latency figures come from the project's own synthetic-voice test rounds, so real
 
 Also:
 
-- **Hebrew-first.** A Hebrew-aware question detector, Unicode whole-word matching, English technical terms mixed in, and a right-to-left aware answer window.
 - **Tested without a live call.** 650+ tests in 67 files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 89% (84% branch) over the `src/`, `shared/` and `tray/` files the tests load (`pnpm test:coverage`); the Electron window code is exercised by snapshot tools, not unit tests.
 - **Private by design, decided in writing.** No telemetry, no cloud account, audio never stored on your Mac (it does go to Deepgram to be transcribed, see [Privacy and security](#privacy-and-security)). [docs/DECISIONS.md](docs/DECISIONS.md) holds 37 design records with context, alternatives and consequences, including what was left out on purpose ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [ADR 36](docs/DECISIONS.md#adr-36-web-lookup-is-not-built)).
 
@@ -36,15 +47,56 @@ Also:
 
 | Answer window | Main window |
 |---|---|
-| ![The answer window with an AI card, a buy-time line and a prepared card](docs/ux/answer-window-hero.png) | ![The Home view of the main window during a live call](docs/ux/home-window.png) |
+| <img src="docs/ux/answer-window-hero.png" alt="The answer window with an AI card, a buy-time line and a prepared card" width="480"> | <img src="docs/ux/home-window.png" alt="The Home view of the main window during a live call" width="480"> |
 
-All screenshots use invented data. The answer window with English labels, and with Hebrew cards (it turns right-to-left by itself):
+| English labels | Hebrew card (right-to-left by itself) |
+|---|---|
+| <img src="docs/ux/answer-window-en-ui.png" alt="The answer window with English labels: an AI card, a buy-time line, captured details and notes" width="400"> | <img src="docs/ux/for-you-card.png" alt="The answer window with a Hebrew card, right-to-left" width="400"> |
 
-![The answer window with English labels: an AI card, a buy-time line, captured details and notes](docs/ux/answer-window-en-ui.png)
+All screenshots use invented data. The Hebrew card answers "What is the difference between a CDN and DNS?": a CDN spreads copies of the site to servers near the visitor, and DNS only translates a domain name into the server's address.
 
-![The answer window with a Hebrew card, right-to-left](docs/ux/for-you-card.png)
+## Examples
 
-The Hebrew card above answers the question "What is the difference between a CDN and DNS?": a CDN spreads copies of the site to servers near the visitor, and DNS only translates a domain name into the server's address.
+Everything here is invented. The terminal output is real: it comes from the [offline demo](#try-it-without-keys) (`pnpm demo`), which prints cards the way the answer window shows them. The demo call is Hebrew, so the English lines under each block are translations.
+
+**1. A prepared card.** The client says: "our WooCommerce site has been loading really slowly, why does that happen?" A trigger in the answer bank matches, so a card shows at once and no AI is called.
+
+```text
+[📗 prepared] אתר איטי בדרך כלל נובע מתמונות כבדות, חוסר ב-cache, תוספים כבדים או שרת חלש. נבדוק מה הגורם ואז נטפל.
+   • הגורמים הנפוצים: תמונות, תוספים, שרת
+   • בודקים מהירות לפני ואחרי שינוי
+```
+
+> A slow site is usually heavy images, missing cache, heavy plugins or a weak server. We check the cause first and then fix it.
+
+**2. A price question gets a buy-time line.** The client asks: "how much does the whole package cost per month?" The pack's `stall-price` card always wins for price questions, so the card is a safe line, not a number.
+
+```text
+[📗 prepared] המחיר תלוי בהיקף ובדרישות. אצטרך לבדוק את הפרטים ואחזור עם מחיר מסודר.
+```
+
+> The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
+
+**3. The guards check AI text.** If the AI writes a price, a date or a promise, a code rule blocks it and a stall line is shown instead. Real results from `guard()` in `app/src/guards.ts`:
+
+| AI text | Result |
+|---|---|
+| "The plan costs 500 USD a month." | blocked, rule `price` |
+| "We can deliver by Nov 12." | blocked, rule `date` |
+| "We guarantee zero downtime." | blocked, rule `promise` |
+| "Your site runs TLS 1.3 behind nginx 1.5." | allowed (version numbers are not prices) |
+
+**An answer card is one entry in `bank.yaml`** (the English pack is `bank.en.yaml`; the full format is in [docs/PACK-FORMAT.md](docs/PACK-FORMAT.md)):
+
+```yaml
+- id: backups
+  title: Backups
+  triggers: [backup, backups, restore, "do you have a backup"]
+  say: Yes, we can set up automatic backups of the files and the database, and restore from them if something goes wrong.
+  facts: [Files and database, Keep a copy off the server, How often depends on the plan]
+```
+
+More worked examples: [docs/EXAMPLES.md](docs/EXAMPLES.md).
 
 ## Features
 
@@ -61,7 +113,7 @@ The Hebrew card above answers the question "What is the difference between a CDN
 | **Health and fallbacks** | A visible bar when something degrades, and a ladder that keeps the call going. See [How it works](#how-it-works). |
 | **Menu-bar app and CLI** | Home, Calls and Settings in an Electron app, a guided first-run setup, a readiness check and a `wingman` command line. |
 
-More in the [user guide](docs/USER-GUIDE.md) and the [operator guide](app/README.md).
+More in the [user guide](docs/USER-GUIDE.md).
 
 ## How it works
 
@@ -96,7 +148,7 @@ Everything below runs offline, with no API keys and no private data.
 
 Reproduce: `cd app && pnpm eval` prints these numbers and fails if one drops below `qa/eval-baseline.json`. CI runs it on every push. The older commands still work: `pnpm detector` (detector corpus), `pnpm banktest` (bank matcher) and `pnpm test` (the full suite).
 
-Caveats: the sets are small and were used while tuning, so treat them as regression gates, not as generalisation estimates. They are Hebrew-first: English coverage is thinner. Reply latency (p50 about 0.6 s for prepared cards) comes from the project's own synthetic-voice runs; the live model is only called by `pnpm qa`, which needs paid keys.
+Caveats: the sets are small and were used while tuning, so treat them as regression gates, not as generalisation estimates. They are Hebrew-first: English coverage is thinner. The live model is only called by `pnpm qa`, which needs paid keys.
 
 ## Tech stack
 
@@ -106,8 +158,7 @@ Caveats: the sets are small and were used while tuning, so treat them as regress
 | Speech to text | Deepgram Nova-3 (Soniox and Gladia adapters, experimental) | Streaming, per-channel, handles Hebrew with English terms |
 | AI | Claude Haiku through the Vercel AI SDK | Low time to first token; prompt prefix cached |
 | System audio | AudioTee (Core Audio tap), ffmpeg for the microphone | No virtual audio driver needed |
-| App | Electron (menu-bar app, window, answer window) | Content protection and second-screen placement |
-| Tests and CI | Node test runner, GitHub Actions on macOS | Offline end-to-end replay, synthetic QA |
+| App, tests | Electron; Node test runner, GitHub Actions (macOS, Linux) | Content protection and second-screen placement; offline end-to-end replay |
 
 ## Quick start
 
@@ -138,7 +189,7 @@ WINGMAN_STT_SCRIPT=data/demo/demo-call.json WINGMAN_SCRIPT_GAP_MS=3000 \
   pnpm start --profile demo --file /tmp/wingman-silence.wav --no-brief
 ```
 
-Cards print in the terminal as they would appear in the answer window (add `pnpm overlay` in a second terminal for the window). The status line ends with the spend: the demo uses no AI, so it reads `AI $0.000`, and the number after "of" is your per-call cap (default $2, see [Cost](#cost)). The same call runs from the app as the **Practice call** button.
+Cards print in the terminal as they would appear in the answer window (add `pnpm overlay` in a second terminal for the window). The status line ends with the spend: the demo uses no AI, so it reads `AI $0.000`, and the number after "of" is the per-call cap (see [Cost](#cost)). The same call runs from the app as the **Practice call** button.
 
 <details>
 <summary><b>API keys, cost and a fresh Mac</b></summary>
@@ -181,17 +232,14 @@ Then run the `git clone` and `./install.sh` lines above.
 ## Privacy and security
 
 - Audio goes to **Deepgram** to be transcribed, together with hints taken from your meeting plan (names) and word list. Text of the call goes to **Anthropic** for AI answers and the summary. Nothing else leaves your Mac: no telemetry, no analytics, no update check, no cloud account. Audio is **never saved**; transcripts and cards stay in `~/Library/Application Support/Wingman/calls/<id>/` with owner-only permissions until you delete them.
-- **Sandboxed windows, narrow IPC.** Context-isolated windows with a strict Content-Security-Policy, permission requests denied, navigation, popups and redirects blocked, no `innerHTML` or `eval`. Every IPC call checks the sender and validates its arguments; the API-key box is write-only (only the last 4 characters ever come back).
-- **Keys in the macOS Keychain**, written through stdin (never argv or environment), read back to verify, and removed from the engine's environment before child processes start. Keychain note: keys are stored through `/usr/bin/security`, so other programs you run as the same macOS user can read them without a prompt. It protects against file copies and backups, not against malware running as you.
-- **Owner-only control socket** (directory 700, socket 600, owner-checked, with size, time, count and rate limits), a fixed command list, and native confirmation dialogs for starting or deleting a call from the command line, which a script cannot click.
-- **No shell anywhere:** every child process takes an argument array. Attachments are read symlink-safe (O_NOFOLLOW, extension allow-list, secret-folder refusals). Electron fuses for RunAsNode, NODE_OPTIONS and inspect are switched off at build time, and the build fails if they cannot be set.
-- **LLM safety by design.** The model has no tools, so it cannot act. Untrusted text is wrapped and tag-stripped until stable; model output is sanitised and guarded (prices, dates and promises become placeholders; unknown links and phone numbers in the email draft are neutralised).
-- **Private by default:** umask 077, mode 700/600 on every write, audio never stored.
-- **Supply chain:** sha512 lockfile with no tarball URLs, two allowed build scripts, checksum-verified Electron download, GitHub Actions pinned to commit SHAs with a read-only token, Dependabot. The one closed binary, [AudioTee](https://github.com/makeusabrew/audiotee) (a prebuilt, ad-hoc-signed helper whose npm package ships no source), is pinned by hash in `pnpm-lock.yaml` and disclosed; review it before a dependency update.
+- **Sandboxed windows, narrow IPC.** Context-isolated windows with a strict Content-Security-Policy, permission requests denied, navigation and popups blocked, no `innerHTML` or `eval`. Every IPC call checks the sender and validates its arguments; the API-key box is write-only.
+- **Keys in the macOS Keychain**, written through stdin (never argv or environment). Keychain note: keys are stored through `/usr/bin/security`, so other programs you run as the same macOS user can read them without a prompt. It protects against file copies and backups, not against malware running as you.
+- **Owner-only control socket** (directory 700, socket 600, rate limits), a fixed command list, and native confirmation dialogs for starting or deleting a call from the command line. **No shell anywhere:** every child process takes an argument array. Electron fuses for RunAsNode, NODE_OPTIONS and inspect are off at build time.
+- **LLM safety by design.** The model has no tools, so it cannot act. Untrusted text is wrapped and tag-stripped; model output is sanitised and guarded (unknown links and phone numbers in the email draft are neutralised).
+- **Supply chain:** sha512 lockfile, two allowed build scripts, checksum-verified Electron download, GitHub Actions pinned to commit SHAs with a read-only token, Dependabot. The one closed binary, [AudioTee](https://github.com/makeusabrew/audiotee) (a prebuilt, ad-hoc-signed helper whose npm package ships no source), is pinned by hash in `pnpm-lock.yaml` and disclosed; review it before a dependency update.
 - **Deepgram model improvement.** By default Deepgram may use audio for its model improvement program. Turn on `stt.deepgram.mipOptOut` to opt out (it may cost more).
-- **Honest docs:** a "What leaves your Mac" table, a "Known gaps" list and a private vulnerability-reporting policy, backed by dedicated security test suites.
 
-Full details: [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) and [SECURITY.md](SECURITY.md).
+The docs also have a "What leaves your Mac" table and a "Known gaps" list: [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md), [SECURITY.md](SECURITY.md).
 
 ## Responsible use
 
@@ -203,37 +251,34 @@ Tell the other people on the call that you use Wingman, and follow the recording
 
 ## Platform support
 
-| Platform | Status |
-|---|---|
-| macOS 14.2 or newer | Supported: the full app, live calls and the installer. |
-| Linux | The engine, file replay (`--file`), the command line and the offline demo run and are tested in CI (type check, unit tests, end-to-end tests, `pnpm eval`). Live system-audio capture, the menu-bar app and the installer are macOS only. |
-| Windows | Not supported yet. The engine and file replay (`--file`) are being ported; CI runs the unit tests there as an experimental job that may fail, and the Windows logic (data folder, named pipes, tool launch) has its own tests. It has not been tried on a real machine. Live system-audio capture, the menu-bar app and the installer are macOS only. **Help wanted**, see [CONTRIBUTING.md](CONTRIBUTING.md). |
+- **macOS 14.2 or newer:** supported (the full app, live calls and the installer).
+- **Linux:** the engine, file replay (`--file`), the command line and the offline demo run and are tested in CI. Live system-audio capture, the menu-bar app and the installer are macOS only.
+- **Windows:** not supported yet. The engine is being ported; CI runs the unit tests there as an experimental job that may fail, and it has not been tried on a real machine. **Help wanted**, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Limits: Wingman needs the internet and both keys for live calls, and its answers are hints, not facts. More in the [roadmap](docs/ROADMAP.md).
 
-## Documentation
+## Guides
 
-| Doc | Read it for |
+| I want to... | Read |
 |---|---|
-| [docs/USER-GUIDE.md](docs/USER-GUIDE.md) | First run, updating, where files live, profile and pack, practice mode, flow mode, command line |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, call lifecycle, files, latency and cost, tests |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | 37 architecture decision records: what was chosen and why |
-| [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md) | What data goes where, what is stored, how keys are handled |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, scripts, tests, QA harness, snapshot tools, building the app |
-| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | No sound, permissions, install problems, slow AI, disk, sleep |
-| [docs/PACK-FORMAT.md](docs/PACK-FORMAT.md) | How to write your answer cards and word lists |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Verification status, known limits, ideas |
-| [app/README.md](app/README.md) | The detailed app and operator guide: settings, hotkeys, commands |
-| [brand/README.md](brand/README.md) | The capybara logo and how the icons are built |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests, commit style, no private data |
-| [SECURITY.md](SECURITY.md) | How to report a vulnerability |
-| [CHANGELOG.md](CHANGELOG.md) | Release notes |
+| Run it for the first time, step by step | [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) |
+| See worked examples of calls and cards | [docs/EXAMPLES.md](docs/EXAMPLES.md) |
+| Use the app day to day (profile, practice mode, flow mode, command line) | [docs/USER-GUIDE.md](docs/USER-GUIDE.md) |
+| Write my own answer cards and word lists | [docs/PACK-FORMAT.md](docs/PACK-FORMAT.md) |
+| Fix no sound, permissions, install or slow-AI problems | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
+| Set up the code, run tests, the QA harness and snapshot tools | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Understand the components, data flow, latency and cost | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| See why it is built this way (37 decision records) | [docs/DECISIONS.md](docs/DECISIONS.md) |
+| Check what data goes where, and how to report a vulnerability | [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md), [SECURITY.md](SECURITY.md) |
+| Know what is verified, what is not, and what comes next | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Look up settings, hotkeys and commands | [app/README.md](app/README.md) |
+| Read release notes or about the logo | [CHANGELOG.md](CHANGELOG.md), [brand/README.md](brand/README.md) |
 
-The repository has `install.sh` (installer), `app/` (engine `src/`, menu-bar app `tray/`, window `dashboard/`, answer window in `overlay/`, QA `qa/`, settings `config/`, shipped data `data/`), `docs/`, `brand/` and `.github/`.
+Layout: `install.sh` (installer), `app/` (engine in `src/`, menu-bar app in `tray/`, main window in `dashboard/`, answer window in `overlay/`, QA in `qa/`, settings in `config/`, shipped data in `data/`), `docs/`, `brand/`, `.github/`.
 
 ## Contributing
 
-Issues and pull requests are welcome; small focused changes are the easiest to review. Read [CONTRIBUTING.md](CONTRIBUTING.md) first (setup, checks, commit style, and the rule that no real people, companies or call data go in the repo). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md) and report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+Issues and pull requests are welcome; small focused changes are the easiest to review. Read [CONTRIBUTING.md](CONTRIBUTING.md) first (it includes the rule that no real people, companies or call data go in the repo), follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report vulnerabilities privately ([SECURITY.md](SECURITY.md)).
 
 ## How it was built
 
