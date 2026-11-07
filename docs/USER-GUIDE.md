@@ -36,7 +36,7 @@ This is the window you read during a call. Put it on the second screen.
 
 <img src="ux/answer-window-en-ui.png" alt="The answer window with a transcript line, an AI card, a buy-time line, captured details, a checklist, a client card and AI notes" width="520">
 
-1. **Listening** (top): Wingman hears the call. It says **Paused** when you pause it.
+1. **Listening** (top): Wingman hears the call. It says **Paused** when you pause it. Next to it are two small dots: the first shows the call state, the last one is the health dot. Green means everything works, amber means something is degraded (for example a weak microphone), red means something is not working. Hover over it to read the reason.
 2. **Other side**: the last thing the other person said.
 3. **AI · unverified** (dashed border): an answer written by the AI. Check it before you say it. A line starting "Answering:" shows which question it answers.
 4. **Prepared** (green, not shown here): an answer from your own answer pack. You wrote it, so you can trust it more.
@@ -49,7 +49,7 @@ This is the window you read during a call. Put it on the second screen.
 
 <img src="ux/home-window.png" alt="The Home view of the main window during a call, with the timer, a client suggestion, quiet mode and a note box" width="640">
 
-1. **Timer and state**: how long the call has run, and whether Wingman is listening.
+1. **Timer and state**: how long the call has run, and whether Wingman is listening. The dot next to the timer is green while it listens, and amber or red if something needs attention.
 2. **Looks like ... Confirm client**: Wingman guesses who the call is with. Press **Confirm client** if it is right. The AI then gets that client's details.
 3. **Quiet mode**: hides the cards in the answer window. They are still saved for the review.
 4. **Note for the AI** and **Ask Wingman**: type a short note, or ask a question. **Listen for my question** lets you ask by voice.
@@ -76,11 +76,11 @@ This is the window you read during a call. Put it on the second screen.
 
 ### Setup guide
 
-<img src="ux/setup-step.png" alt="The setup guide on the Home page with the Answer pack step open" width="520">
+<img src="ux/setup-step.png" alt="The setup guide on the Home page with the first step open: a free practice call, then the two key fields" width="520">
 
-1. **Set up Wingman** shows how many of the 9 steps are done. The first step offers a free practice call (no keys); the second asks for your keys and the next, "Your privacy", for two privacy choices.
+1. **Set up Wingman** shows how many of the 9 steps are done. The first step, **Add your keys**, starts with **Try a practice call first (free, no keys)**. A pretend caller talks to Wingman on your Mac, so you can see the windows before you pay for anything.
 2. **Open** shows the details of a step. **Close** hides them again.
-3. Each step explains what it is for. Here, the **Answer pack** step lets you copy the example pack to your own folder, or keep the example for now.
+3. Below the practice call are the two key fields (Deepgram and Anthropic). Paste a key, press **Save**, then test it. The next steps cover "Your privacy" (two choices about listening and your audio), permissions, microphone, screens, your answer pack, a readiness check and a practice call.
 4. **Skip this step** is always allowed. You can come back from **Settings, Setup guide**.
 
 ## Update and uninstall

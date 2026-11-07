@@ -49,7 +49,7 @@ Also:
 
 | Answer window | Main window |
 |---|---|
-| <img src="docs/ux/answer-window-hero.png" alt="The answer window with an AI card, a buy-time line and a prepared card" width="480"> | <img src="docs/ux/home-window.png" alt="The Home view of the main window during a live call" width="480"> |
+| <img src="docs/ux/answer-window-hero.png" alt="The answer window with an AI card, a buy-time line and a prepared card, and the green status dot in the header" width="480"> | <img src="docs/ux/home-window.png" alt="The Home view of the main window during a live call" width="480"> |
 
 | English labels | Hebrew card (right-to-left by itself) |
 |---|---|
