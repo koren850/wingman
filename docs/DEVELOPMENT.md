@@ -94,6 +94,7 @@ What `pnpm install` does in `app/`:
 - Some `WINGMAN_*` variables are test hooks and are not part of the product (for example `WINGMAN_DASHBOARD_EVAL`, which runs a script inside the dashboard page, `WINGMAN_KEYS_FILE` and `WINGMAN_PACK_DIR`). They only matter to someone who controls the environment a program is started from, which already means they run code as you.
 - CI (`.github/workflows/ci.yml`) runs on Node 24 on macOS and Linux (both must pass) and on Windows (experimental, may fail): `WINGMAN_SKIP_APP=1 pnpm install --frozen-lockfile`, the type check, unit tests, end-to-end tests and `pnpm eval`. Lint, the format check and coverage run on macOS only. There is no private word list in CI, so the repo guard skips there. A separate macOS job runs `install.sh --check` and `--dry-run`.
 - There is an offline end-to-end test (`src/e2e/scripted-call.test.ts`) that runs a whole call with scripted speech and a scripted AI (`src/providers/scripted.ts`).
+- `src/e2e/chaos.test.ts` is a repeatable chaos test (about 45 s, offline): one scripted live call with AI timeouts, a mic drop, a 20 s speech-to-text outage and a sleep/wake, then it checks the health and ladder events and that the call recovers. Run it alone with `pnpm exec tsx --import ./src/test-setup.ts --test src/e2e/chaos.test.ts` from `app/`.
 
 ## QA harness
 
