@@ -1,5 +1,7 @@
 # English practice call: a pretend client plays from data/demo/demo-call.en.json (see demo.yaml for the Hebrew one).
 # Offline and free: scripted speech-to-text, scripted AI, invented client data. Nothing leaves the Mac.
+ui:
+  language: en # English labels, matching the English call
 stt:
   provider: script
   fallback: []
@@ -8,7 +10,6 @@ llm:
     model: "scripted:bank"
     fallbacks: []
 notes:
-  enabled: false # the scripted AI for this part only has Hebrew text so far
   model: "scripted:notes"
   everyMs: 15000
   minNewWords: 5
@@ -21,16 +22,13 @@ system:
 budget:
   idleStopMin: 0
 summary:
-  enabled: false # the scripted AI for this part only has Hebrew text so far
   model: "scripted:summary" # practice stays offline and free
   minWords: 20
 frame:
-  enabled: false # the scripted AI for this part only has Hebrew text so far
   model: "scripted:frame"
   everyMs: 10000
   minNewWords: 8
 tips:
-  enabled: false # the scripted AI for this part only has Hebrew text so far
   model: "scripted:tips"
   minGapMs: 10000
   afterAnswerMs: 2000

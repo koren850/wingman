@@ -27,6 +27,17 @@ const DIGITS: Record<string, string> = {
   שמונה: "8",
   תשע: "9",
   תשעה: "9",
+  // English spoken digits ("zero five four one two three ...")
+  zero: "0",
+  one: "1",
+  two: "2",
+  three: "3",
+  four: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  nine: "9",
 };
 const TLDS = "com|net|org|io|co|il|info|biz|app|dev|me|shop|store|online|site|tech|ai|uk|de|eu|us|ru|fr";
 
@@ -49,7 +60,7 @@ export function spokenToSymbols(s: string): string {
   );
 }
 
-/** Runs of Hebrew digit words (and digit groups) -> one digit string. "אפס חמש ארבע 123" -> "054123". */
+/** Runs of Hebrew or English digit words (and digit groups) -> one digit string. "אפס חמש ארבע 123" -> "054123". */
 export function digitWords(s: string): string {
   const words = s.split(/\s+/);
   const out: string[] = [];
@@ -62,7 +73,8 @@ export function digitWords(s: string): string {
   };
   for (const w of words) {
     const bare = w.replace(/^ו/, "").replace(/[,.-]$/, "");
-    if (DIGITS[bare] !== undefined) run += DIGITS[bare];
+    const lw = bare.toLowerCase();
+    if (Object.hasOwn(DIGITS, lw)) run += DIGITS[lw];
     else if (/^\d[\d-]*$/.test(bare)) {
       // A token that is already a whole number (9+ digits: "0541234567", "054-1234567") stands alone, so a stray
       // "אחת" before it or a "3" after it cannot glue onto it and break the phone. Short groups still join words.

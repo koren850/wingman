@@ -156,6 +156,13 @@ function promptText(o: { prompt?: unknown }): string {
   return prompt.map((m) => (typeof m.content === "string" ? m.content : (m.content ?? []).map((p) => p.text ?? "").join(""))).join("\n");
 }
 const bank = loadBank();
+/** True when the transcript in the prompt is English: it has Latin letters and no Hebrew letters (speaker labels like "אני:" do not count). */
+export function isEnglishPrompt(prompt: string): boolean {
+  const at = prompt.lastIndexOf("<call_transcript>"); // the system text also names the tag, so take the LAST block: the real transcript
+  if (at < 0) return false;
+  const t = (prompt.slice(at + 17).split("</call_transcript>")[0] ?? "").replace(/^(?:אני|לקוח|הצד השני)(?: \([^)]*\))?:/gm, "");
+  return /[a-z]/i.test(t) && !/[\u0590-\u05FF]/.test(t);
+}
 /** Post-call summary double: valid JSON; the email deliberately has a price sentence and a date sentence so tests can see the guards replace them. */
 export const SCRIPTED_SUMMARY = {
   summary: ["הלקוחה פנתה בגלל אתר שנטען לאט", "שאלה על גיבויים לאתר", "השאירה טלפון ומייל לחזרה"],
@@ -167,6 +174,18 @@ export const SCRIPTED_SUMMARY = {
   openQuestions: ["כמה תעלה החבילה המלאה"],
   followUpEmail: 'שלום דנה,\nתודה על השיחה. דיברנו על מהירות האתר והגיבויים.\nהחבילה עולה 500 ש"ח לחודש.\nנחזור אליך עד יום שני.\nבברכה',
 };
+/** The same summary for an English transcript (demo-call.en.json). */
+export const SCRIPTED_SUMMARY_EN = {
+  summary: ["The client called because her site loads slowly", "She asked about backups for the site", "She left a phone number and an email for the reply"],
+  decisions: ["Check the speed of the site"],
+  nextSteps: [
+    { who: "אני", what: "Find out why the site is slow" },
+    { who: "לקוח", what: "Send access to the site", when: "this week" },
+  ],
+  openQuestions: ["How much the full package costs"],
+  followUpEmail:
+    "Hi Dana,\nThanks for the call. We talked about the speed of the site and backups.\nThe package costs $500 per month.\nWe will get back to you by Monday.\nBest regards",
+};
 /** Call-frame double (model "scripted:frame"): an invented client call; checklist items tick off when their keyword is in the transcript. */
 const FRAME_ITEMS: [string, RegExp, boolean][] = [
   ["להבין למה האתר איטי", /איטי|לאט/, true],
@@ -175,9 +194,25 @@ const FRAME_ITEMS: [string, RegExp, boolean][] = [
   ["לבדוק אם יש חנות WooCommerce", /ווקומרס|woocommerce/i, false],
   ["להסכים על הצעד הבא", /הצעה|נחזור|נדבר/, false],
 ];
+const FRAME_ITEMS_EN: [string, RegExp, boolean][] = [
+  ["Find out why the site is slow", /slow/i, true],
+  ["Ask about backups", /backup/i, true],
+  ["Get a phone number and email for the reply", /number is|zero five|dana at|@/i, true],
+  ["Check if there is a WooCommerce shop", /woocommerce/i, false],
+  ["Agree on the next step", /quote|get back|talk soon/i, false],
+];
 // The "must" flag marks must-cover checklist items.
 export function scriptedFrame(prompt: string): string {
   const said = prompt.slice(prompt.indexOf("<call_transcript>"));
+  if (isEnglishPrompt(prompt))
+    return JSON.stringify({
+      kind: "client",
+      topic: "Slow site and backups",
+      goal: "Understand the problem and offer a check",
+      people: [{ who: "Dana", role: "client" }],
+      entities: ["WooCommerce"],
+      checklist: FRAME_ITEMS_EN.map(([item, re, must]) => ({ item, done: re.test(said), must })),
+    });
   return JSON.stringify({
     kind: "client",
     topic: "אתר איטי וגיבויים",
@@ -190,6 +225,10 @@ export function scriptedFrame(prompt: string): string {
 /** Live-tip double (model "scripted:tips"): one tip once backups come up, NONE otherwise. */
 export function scriptedTip(prompt: string): string {
   const said = prompt.slice(prompt.indexOf("<call_transcript>"));
+  if (isEnglishPrompt(prompt))
+    return /backup/i.test(said) && !/Tips already given[^]*backups are stored/.test(prompt)
+      ? JSON.stringify({ type: "ask", text: "Ask where the backups are stored today and who is responsible for them." })
+      : "NONE";
   return /גיבוי/.test(said) && !/Tips already given[^]*גיבויים נשמרים/.test(prompt)
     ? JSON.stringify({ type: "ask", text: "כדאי לשאול איפה הגיבויים נשמרים היום ומי אחראי עליהם." })
     : "NONE";
@@ -198,8 +237,8 @@ export function scriptedTip(prompt: string): string {
 export function scriptedAnswer(prompt: string): string {
   if (prompt.includes("You build the call frame")) return scriptedFrame(prompt);
   if (prompt.includes("You write at most one live tip")) return scriptedTip(prompt);
-  if (prompt.includes("write the post-call summary")) return JSON.stringify(SCRIPTED_SUMMARY);
-  if (prompt.includes("You keep short live notes")) return "- הלקוחה רוצה אתר מהיר יותר";
+  if (prompt.includes("write the post-call summary")) return JSON.stringify(isEnglishPrompt(prompt) ? SCRIPTED_SUMMARY_EN : SCRIPTED_SUMMARY);
+  if (prompt.includes("You keep short live notes")) return isEnglishPrompt(prompt) ? "- The client wants a faster site" : "- הלקוחה רוצה אתר מהיר יותר";
   if (/You decide who .{1,60} is talking to/.test(prompt)) return scriptedClassify(prompt);
   const q = questionOf(prompt);
   if (prompt.includes("is asking you (the assistant) directly")) return meAnswer(q);
