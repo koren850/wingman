@@ -217,6 +217,7 @@ overlay:
   display: secondary # secondary | primary
   allowPrimary: false # true = allow the primary screen when there is only one display. Env: WINGMAN_ALLOW_PRIMARY=1
   contentProtection: true # hide from screen capture (untested with Zoom). Env: WINGMAN_SHOW_IN_CAPTURE=1 turns it off
+  layout: focus # focus = the other side's line, one big answer, and a "More" strip; full = every card and panel at once
   fontPt: 30 # say-line font size
   showLastLine: true # strip above the answers with the latest sentence (both sides, labelled), so you see what the card answers
   liveTextPt: 22 # size of that live strip (14-40)
@@ -225,7 +226,7 @@ overlay:
     pause: "Control+Alt+P" # pause/resume showing cards (they keep being saved)
     rewind: "Control+Alt+R" # "what did they say?": show/hide the last rewindSeconds of the call as text
     copy: "Control+Alt+K" # copy the newest captured phone/email/domain to the clipboard
-    checklist: "Control+Alt+L" # show/hide the call checklist (also opens when you hover the 3/6 chip)
+    checklist: "Control+Alt+L" # show/hide "More" (checklist, client card, notes, captured details; in the full layout: the checklist)
   rewindSeconds: 30 # how far back the rewind key (above) shows, in seconds
   restartMax: 2 # reopen the answer window this many times if it crashes
 

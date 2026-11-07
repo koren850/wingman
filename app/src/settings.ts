@@ -163,6 +163,7 @@ export const schema = z.strictObject({
     display: z.enum(["secondary", "primary"]),
     allowPrimary: z.boolean(),
     contentProtection: z.boolean(),
+    layout: z.enum(["focus", "full"]),
     fontPt: int(18, 60),
     showLastLine: z.boolean(),
     liveTextPt: int(14, 40),

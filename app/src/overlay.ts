@@ -17,6 +17,7 @@ export function overlayEnv(s: Settings): NodeJS.ProcessEnv {
       display: o.display,
       allowPrimary: o.allowPrimary,
       contentProtection: o.contentProtection,
+      layout: o.layout,
       fontPt: o.fontPt,
       language: resolveUiLanguage(s),
       showLastLine: o.showLastLine,

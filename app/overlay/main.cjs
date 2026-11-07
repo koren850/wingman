@@ -40,6 +40,7 @@ const CFG = Object.assign(
     display: "secondary",
     allowPrimary: false,
     contentProtection: true,
+    layout: "focus",
     fontPt: 30,
     language: "he",
     showLastLine: true,
@@ -58,6 +59,8 @@ const CFG = Object.assign(
 );
 // UI language of the window: "he" (default, existing behaviour) or "en". src/overlay.ts resolves ui.language=auto before it spawns the window; WINGMAN_OVERLAY_LANG overrides it (snapshots).
 const LANGUAGE = (process.env.WINGMAN_OVERLAY_LANG || CFG.language) === "en" ? "en" : "he";
+// Layout: "focus" (default) or "full". WINGMAN_OVERLAY_LAYOUT overrides it (snapshots).
+const LAYOUT = (process.env.WINGMAN_OVERLAY_LAYOUT || CFG.layout) === "full" ? "full" : "focus";
 let win,
   timer,
   lastCapture,
@@ -154,12 +157,13 @@ function create() {
   // Content protection is ON but UNTESTED with Zoom; the second screen is the real protection.
   // overlay.contentProtection: false (WINGMAN_SHOW_IN_CAPTURE=1) turns it off for the Zoom share test.
   if (CFG.contentProtection) win.setContentProtection(true);
-  win.loadFile(path.join(__dirname, "index.html"), { query: { lang: LANGUAGE } }); // ?lang= lets the page draw its first frame in the right language (no inline script: CSP)
+  win.loadFile(path.join(__dirname, "index.html"), { query: { lang: LANGUAGE, layout: LAYOUT } }); // ?lang= and ?layout= let the page draw its first frame right (no inline script: CSP)
   // Poll only after the page has its listeners; a reload replays the call files from the start.
   win.webContents.on("did-finish-load", () => {
     win.webContents.send("config", {
       language: LANGUAGE,
       maxCards: CFG.maxCards,
+      layout: LAYOUT,
       fontPt: CFG.fontPt,
       showLastLine: CFG.showLastLine !== false,
       liveTextPt: CFG.liveTextPt,

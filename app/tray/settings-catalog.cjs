@@ -249,6 +249,18 @@ const ITEMS = [
     ],
   },
   {
+    key: "overlay.layout",
+    main: true,
+    group: "audio",
+    label: "Answer window layout",
+    kind: "select",
+    help: "Focus (recommended) shows what they said and one big answer. Notes, checklist and captured details wait behind a small More strip. Full shows everything at once.",
+    options: [
+      ["focus", "Focus"],
+      ["full", "Full"],
+    ],
+  },
+  {
     key: "overlay.showLastLine",
     group: "audio",
     label: "Show what the other side just said",
