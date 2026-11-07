@@ -1030,6 +1030,144 @@ kbd {
     display: none !important;
   }
 }
+/* ---- Focus layout (overlay.layout: focus, the default) ----
+   The other side's line, one big answer, one small line for the one before it. Checklist, client and fact cards, AI notes,
+   tips and captured details sit in #morebox behind the "More" strip. Full layout (overlay.layout: full) ignores all of this. */
+body.focus #health .adv {
+  display: none;
+}
+body.focus #cards {
+  gap: 8px;
+}
+body.focus .card:not(.compact) .say {
+  font-size: max(30px, calc(var(--say-pt) * 1.15));
+  line-height: 1.25;
+}
+body.focus .card:not(.compact) .q {
+  font-size: 15px;
+  -webkit-line-clamp: 1;
+  color: var(--muted);
+}
+body.focus .card.compact .say {
+  -webkit-line-clamp: 1;
+  font-size: 17px;
+}
+body.focus .card:not(.compact) ul {
+  font-size: 18px;
+}
+/* An answer that is still arriving is marked, so a half sentence is not read out as the answer. */
+.card.writing {
+  opacity: 0.8;
+}
+.card.writing .pill::after {
+  content: " · " attr(data-writing);
+  font-weight: 500;
+}
+body.focus #stage {
+  min-height: 0;
+}
+body.focus #tips {
+  gap: 6px;
+}
+/* The More strip: one small button under the answers; the panel opens below it. */
+#morebtn {
+  display: none;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--soft);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 3px 12px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+body.focus #morebtn:not([style*="none"]) {
+  display: inline-flex;
+}
+#morebtn[aria-expanded="true"] {
+  border-color: var(--t-tip);
+  color: var(--text);
+}
+#morebtn kbd {
+  font-size: 12px;
+  padding: 2px 5px;
+}
+#morebox {
+  display: none;
+}
+body.focus.more-open #morebox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 1 auto;
+  max-height: 46vh;
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--card2);
+  border: 1px solid var(--t-tip);
+  border-radius: var(--r-lg);
+  -webkit-app-region: no-drag;
+}
+body.focus.more-open #stage {
+  flex: 1 1 0;
+}
+body.focus #morebox #frame {
+  margin: 0;
+}
+body.focus #morebox #cl {
+  display: block;
+  position: static;
+  margin-top: 6px;
+  box-shadow: none;
+  border-color: var(--line);
+}
+body.focus #morebox #capture,
+body.focus #morebox #rail,
+body.focus #morebox #notes,
+body.focus #morebox #tips {
+  max-height: none;
+  overflow: visible;
+}
+body.focus #morebox #rail .side ul {
+  display: block;
+}
+/* The key bar: three main keys and a "?" that lists them all. Kept on short windows too. */
+body.focus #keys {
+  display: flex;
+  max-height: 80px;
+}
+#keys .qm {
+  font:
+    700 13px/1 -apple-system,
+    sans-serif;
+  color: var(--soft);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+#keys .qm.on {
+  color: var(--text);
+  border-color: var(--t-tip);
+}
+@media (max-height: 660px) {
+  body.focus #morebox #rail:not(:empty) {
+    display: grid !important;
+  }
+  body.focus #morebox #capture[style*="flex"] {
+    display: flex !important;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

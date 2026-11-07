@@ -187,3 +187,18 @@ test("healthText: English engine texts are not changed or doubled", () => {
   const t = "Transcription (the other side) has no connection: network. Retrying until it returns. Check your internet connection";
   assert.equal(text.healthText("health-stt-them", t, "", "en"), t);
 });
+
+test("overlay.layout: focus is the default, full is allowed, others are rejected; the catalog lists it", () => {
+  const cat = require("../tray/settings-catalog.cjs");
+  const lay = schema.shape.overlay.shape.layout;
+  assert.equal(lay.safeParse("focus").success, true);
+  assert.equal(lay.safeParse("full").success, true);
+  assert.equal(lay.safeParse("wide").success, false);
+  assert.ok(cat.BY_KEY.get("overlay.layout"));
+});
+
+test("strings: the answer window labels for More, all keys and Writing exist and avoid internal words", () => {
+  for (const L of ["he", "en"]) for (const k of ["keys.more", "keys.all", "more.title", "badge.writing"]) assert.ok(strings.STRINGS[L][k], L + k);
+  assert.equal(strings.t("en", "more.title", { n: 3 }), "More: 3");
+  for (const v of Object.values(strings.STRINGS.en) as string[]) assert.doesNotMatch(v, /\b(bank|frame|flow|turn)\b/i, v);
+});

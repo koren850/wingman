@@ -1,7 +1,7 @@
 #!/bin/sh
 # Hidden overlay snapshots (never shows a window): ./snapshot.sh <outDir> [scenario:keys ...]
 # Each spec is scenario or scenario:keys (keys = comma list of events fired in the page, e.g. rewind, pause, late). Scenarios are defined in fixtures.cjs.
-# Default set: full, empty, listening, waiting, consent, overflow, quiet(pause), full+rewind. Run from anywhere.
+# Layout: WINGMAN_OVERLAY_LAYOUT=full (default is focus). Default set: full, empty, listening, waiting, consent, overflow, quiet(pause), full+rewind. Run from anywhere.
 HERE="$(cd "$(dirname "$0")" && pwd)"; OUT="${1:-/tmp/wingman-overlay-snaps}"; shift
 mkdir -p "$OUT"
 [ $# -eq 0 ] && set -- full empty listening waiting consent overflow quiet:pause full:rewind

@@ -10,7 +10,8 @@ const emptyBox = document.getElementById("empty");
 const cards = new Map(); // id -> element
 const bars = new Map(); // health id -> {level, text}
 let MAX = 4;
-const SHOW_OLDER = 2; // older answers shown next to the hero
+let LAYOUT = new URLSearchParams(location.search).get("layout") === "full" ? "full" : "focus"; // overlay.layout; ?layout= lets the first frame be right
+let SHOW_OLDER = LAYOUT === "focus" ? 1 : 2; // older answers shown next to the hero: Focus keeps one, Full two
 let paused = false,
   quiet = false,
   phase = "starting",
@@ -186,6 +187,7 @@ function renderSide(c) {
     noteList.append(li);
     while (noteList.children.length > 3) noteList.firstElementChild.remove();
     notesBox.style.display = "block";
+    updateMore();
     return;
   }
   let el = sides.get(c.id);
@@ -217,7 +219,53 @@ function renderSide(c) {
     v.remove();
     sides.delete(k);
   }
+  updateMore();
 }
+
+// ---- layout: Focus keeps the call in view (their line, one answer); everything else waits behind the "More" strip ----
+const moreBtn = document.getElementById("morebtn"),
+  moreBox = document.getElementById("morebox"),
+  mainBox = document.getElementById("main");
+let moreTimer;
+const moreOpen = () => document.body.classList.contains("more-open");
+/** Panels that live in the More strip in Focus, in their Full order. */
+function moreParts() {
+  return ["frame", "tips", "capture", "rail", "notes"].map((id) => document.getElementById(id));
+}
+function setLayout(l) {
+  LAYOUT = l === "full" ? "full" : "focus";
+  SHOW_OLDER = LAYOUT === "focus" ? 1 : 2;
+  document.body.classList.toggle("focus", LAYOUT === "focus");
+  document.body.classList.toggle("full", LAYOUT === "full");
+  const parts = moreParts();
+  if (LAYOUT === "focus") moreBox.append(...parts);
+  else {
+    document.getElementById("wrap").insertBefore(parts[0], document.getElementById("flow"));
+    mainBox.append(...parts.slice(1)); // after the (hidden) More strip
+    toggleMore(false);
+  }
+  updateMore();
+  layoutRoles();
+  drawKeys();
+}
+/** Number of things behind the More strip: checklist, tips, client/fact cards, AI notes, captured details. */
+function updateMore() {
+  const n = (frameBox.style.display === "flex" ? 1 : 0) + tipEls.size + sides.size + noteList.children.length + caps.size;
+  moreBtn.replaceChildren(span("mt", tr("more.title", { n })));
+  if (HK.checklist) moreBtn.append(Object.assign(document.createElement("kbd"), { textContent: fmtKey(HK.checklist).split("+").pop() }));
+  moreBtn.style.display = LAYOUT === "focus" && n > 0 ? "" : "none";
+  moreBtn.setAttribute("aria-expanded", String(moreOpen()));
+  if (!n && moreOpen()) toggleMore(false);
+}
+function toggleMore(on) {
+  const open = on === undefined ? !moreOpen() : on && LAYOUT === "focus";
+  document.body.classList.toggle("more-open", open);
+  moreBtn.setAttribute("aria-expanded", String(open));
+  clearTimeout(moreTimer);
+  if (open) moreTimer = setTimeout(() => toggleMore(false), 20000);
+  fadeCheck();
+}
+moreBtn.addEventListener("click", () => toggleMore());
 
 // Card types (glossary): Prepared / AI / Buy time / For you / Math / Tip. Each has a glyph + label + tint.
 const TYPE = {
@@ -316,6 +364,7 @@ function renderFrame(f) {
   }
   clBox.append(ul);
   frameBox.style.display = "flex";
+  updateMore();
 }
 window.wingman.onFrame(renderFrame);
 // ---- flow: their own discussion, and the moment they turn to you ----
@@ -344,6 +393,10 @@ window.wingman.onAddressed((a) => {
   youTimer = setTimeout(() => youBox.classList.remove("on"), 10000);
 });
 window.wingman.onChecklist(() => {
+  if (LAYOUT === "focus") {
+    toggleMore();
+    return;
+  }
   frameBox.classList.toggle("open");
   clearTimeout(frameBox._t);
   if (frameBox.classList.contains("open")) frameBox._t = setTimeout(() => frameBox.classList.remove("open"), 15000);
@@ -377,6 +430,7 @@ function renderTip(c) {
     setTimeout(() => {
       el.remove();
       tipEls.delete(c.id);
+      updateMore();
     }, 90000);
   }
   el.replaceChildren(tipIcon());
@@ -388,6 +442,7 @@ function renderTip(c) {
   t.className = "tx";
   mixed(t, c.say);
   el.append(t);
+  updateMore();
 }
 
 // ---- answer cards: built once, then only the text is updated while it streams ----
@@ -441,6 +496,7 @@ function buildCard(el, c, consent) {
   const kind = { gl: (TYPE[tk] || { gl: "" }).gl, label: TYPE[tk] ? typeLabel(tk) : c.badge };
   const top = div("top");
   const pill = span("pill");
+  pill.dataset.writing = tr("badge.writing"); // CSS shows it next to the label while the text is still arriving
   pill.append(span("gl", kind.gl), document.createTextNode(kind.label + (calc && c.badge === "me" ? tr("badge.calcSuffix") : "")));
   top.append(pill, span("age"));
   el.append(top);
@@ -468,6 +524,19 @@ function buildCard(el, c, consent) {
     el.append(n);
   }
   el._label = kind.label;
+}
+/** An AI answer is "writing" while its text is still changing, or (when it first shows) it stops mid-sentence. Marked, not hidden, so the first words appear at once. */
+function applyWriting(el) {
+  const age = Date.now() - (el._chg || 0),
+    txt = (el._txt || "").trim();
+  const on =
+    el.classList.contains("ai") &&
+    !el.classList.contains("calc") &&
+    !el.classList.contains("consent") &&
+    ((el._upd && age < 800) || (age < 2500 && !/[.!?…:;)"\u201d\u05f4]$/.test(txt)));
+  el.classList.toggle("writing", !!on);
+  clearTimeout(el._wt);
+  if (on) el._wt = setTimeout(() => applyWriting(el), 300);
 }
 
 /** Handles one row from calls/latest/cards.jsonl. The same id arrives again as the answer streams or is rewritten, so cards are updated in place. */
@@ -514,7 +583,14 @@ function render(c) {
     buildCard(el, c, consent);
     el._sig = sig;
   }
-  setSay(el, String(c.say || ""));
+  const say = String(c.say || "");
+  if (el._txt !== say) {
+    if (el._txt !== undefined) el._upd = true;
+    el._txt = say;
+    el._chg = Date.now();
+  }
+  setSay(el, say);
+  applyWriting(el);
   layoutRoles();
   emptyCheck();
   if (!paused && !consent && c.badge !== "info") announce(el._label, String(c.say || ""));
@@ -674,6 +750,7 @@ window.wingman.onCapture((c) => {
     caps.delete(key);
   }
   numberChips();
+  updateMore();
 });
 window.wingman.onCopied((t) => {
   const el = caps.get(t);
@@ -682,20 +759,18 @@ window.wingman.onCopied((t) => {
     setTimeout(() => el.classList.remove("copied"), 1200);
   }
 });
-window.wingman.onConfig((c) => {
-  if (c.language) setLanguage(c.language);
-  SHOW_LAST = c.showLastLine !== false;
-  if (!SHOW_LAST) lastBox.style.display = "none";
-  REWIND_S = c.rewindSeconds || 30;
-  MAX = c.maxCards;
-  HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
-  document.documentElement.style.setProperty("--say-pt", c.fontPt + "px");
-  if (c.liveTextPt) document.documentElement.style.setProperty("--live-pt", c.liveTextPt + "px");
-  // Key legend: shared modifiers once, then one key chip per action.
-  const items = ["ask", "rewind", "checklist", "pause", "clear"].filter((k) => HK[k]).map((k) => [fmtKey(HK[k]).split("+"), tr("keys." + k)]);
-  items.splice(Math.min(3, items.length), 0, [["Ctrl", "Opt", "1-3"], tr("keys.copy")]); // chip keys (fixed in main.cjs); Ctrl+Opt+K = chip 1, so it has no row of its own
-  let common = items.length ? items[0][0].slice(0, -1) : [];
-  for (const [p] of items) {
+// Key legend: shared modifiers once, then one key chip per action. Focus shows 3 main keys and a "?" that lists them all.
+let keysOpen = false,
+  keysTimer;
+function drawKeys() {
+  const focus = LAYOUT === "focus";
+  const names = ["ask", "rewind", "checklist", "pause", "clear"].filter((k) => HK[k]);
+  const label = (k) => tr(focus && k === "checklist" ? "keys.more" : "keys." + k);
+  let items = names.map((k) => [k, fmtKey(HK[k]).split("+"), label(k)]);
+  if (focus && !keysOpen) items = items.filter(([k]) => ["ask", "checklist", "pause"].includes(k));
+  else items.splice(Math.min(3, items.length), 0, ["copy", ["Ctrl", "Opt", "1-3"], tr("keys.copy")]); // chip keys (fixed in main.cjs); Ctrl+Opt+K = chip 1, so it has no row of its own
+  let common = items.length ? items[0][1].slice(0, -1) : [];
+  for (const [, p] of items) {
     let n = 0;
     while (n < common.length && p[n] === common[n] && n < p.length - 1) n++;
     common = common.slice(0, n);
@@ -712,14 +787,41 @@ window.wingman.onConfig((c) => {
     it.append(" +");
     keys.append(it);
   }
-  for (const [p, label] of items) {
+  for (const [, p, text] of items) {
     const it = span("it");
     it.dir = UIDIR;
     const kb = document.createElement("kbd");
     kb.textContent = p.slice(common.length).join("+");
-    it.append(kb, span("", label));
+    it.append(kb, span("", text));
     keys.append(it);
   }
+  if (focus) {
+    const q = document.createElement("button");
+    q.type = "button";
+    q.className = "qm" + (keysOpen ? " on" : "");
+    q.textContent = "?";
+    q.title = q.ariaLabel = tr("keys.all");
+    q.addEventListener("click", () => {
+      keysOpen = !keysOpen;
+      clearTimeout(keysTimer);
+      if (keysOpen) keysTimer = setTimeout(() => ((keysOpen = false), drawKeys()), 20000);
+      drawKeys();
+    });
+    keys.append(q);
+  }
+  keys.classList.toggle("all", keysOpen);
+}
+window.wingman.onConfig((c) => {
+  if (c.language) setLanguage(c.language);
+  SHOW_LAST = c.showLastLine !== false;
+  if (!SHOW_LAST) lastBox.style.display = "none";
+  REWIND_S = c.rewindSeconds || 30;
+  MAX = c.maxCards;
+  HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
+  document.documentElement.style.setProperty("--say-pt", c.fontPt + "px");
+  if (c.liveTextPt) document.documentElement.style.setProperty("--live-pt", c.liveTextPt + "px");
+  setLayout(c.layout || LAYOUT);
+  drawKeys();
   refreshState();
 });
 // "Listening for your question…" indicator: shown from the ask key until the user has spoken or `until` passes.
@@ -762,6 +864,7 @@ function setLanguage(lang) {
   }
 }
 setLanguage(LANG);
+setLayout(LAYOUT);
 drawHealthDot();
 // Clears everything about the call (client data too), so nothing stays on screen after the call or when a new call starts.
 function wipe() {
@@ -778,10 +881,12 @@ function wipe() {
   sides.clear();
   noteList.replaceChildren();
   notesBox.style.display = "none";
+  toggleMore(false);
   lines.length = 0;
   for (const n of caps.values()) n.remove();
   caps.clear();
   capBox.style.display = "none";
+  updateMore();
   rewindBox.style.display = "none";
   rNew.style.display = "none";
   bars.clear();
