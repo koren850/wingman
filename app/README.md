@@ -40,6 +40,7 @@ Most people start calls from the app (Home, **Quick call**). `pnpm start` runs t
 | `pnpm synth` | Rebuild the synthetic test audio (Carmit voice) |
 | `pnpm settings` | Prints the effective settings, each value tagged with the layer it came from (never prints keys) |
 | `pnpm run doctor` / `--offline` | Tests the configured providers and their fallbacks, settings and the checklist. Ends with READY / NOT READY. `--offline` makes no audio, network or paid calls |
+| `pnpm diagnose [call id]` | Writes one file for a bug report: versions, changed settings, health and error events, device names, model and prompt ids, counts. No transcript or card text. Read it before you share it |
 | `pnpm test` | Unit tests |
 
 ## Your profile and pack

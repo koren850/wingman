@@ -53,3 +53,7 @@ body:
       label: Output of the readiness check or logs
       description: "`pnpm run doctor` output is useful. Remove anything personal first."
       render: shell
+  - type: markdown
+    attributes:
+      value: |
+        For a problem in a call, run `pnpm diagnose` and attach the file it writes. It has no transcript or card text. Read it before you share it.

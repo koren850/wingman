@@ -163,9 +163,9 @@ Per call, in `<data folder>/calls/<ulid>/` (owner-only, umask 077; audio is neve
 | `call.json` | Metadata: id, start and end time, phase, kind, mode, settings summary. |
 | `events.jsonl` | Everything that happened: detections, card decisions, guard hits, provider switches, health ladder changes, frame updates, tips, errors, speed summary. One JSON object per line, flushed per line, so a crash leaves a valid log. |
 | `transcript.jsonl` | Final transcript lines with speaker (`me` or `them`) and time. |
-| `cards.jsonl` | Every card shown (kind, text, source: bank, AI, stall, for you, fact, tip, note). |
+| `cards.jsonl` | Every card shown (kind, text, source: bank, AI, stall, for you, fact, tip, note). AI cards also carry the model id and a short prompt id (`prompt`). |
 | `latency.jsonl` | Speech end to bank card / tag / first words, per question. |
-| `usage.jsonl` | Tokens and speech seconds, with USD from the price table. |
+| `usage.jsonl` | Tokens and speech seconds, with USD from the price table. The summary row adds the cache hit % and the model and prompt ids. |
 | `summary.json` | Written after the call (summary, decisions, next steps, open questions, follow-up email draft, guard counts, cost). |
 | `tags.jsonl` | Your useful / not useful ratings of cards. |
 

@@ -144,10 +144,18 @@ pnpm demo
 
 It should print a few cards (and, with `pnpm demo --he`, a summary), then `Demo done`. If it does, the engine is fine. Then check audio permission, keys (`pnpm keys status`) and the Readiness check (`pnpm run doctor --offline` for the free part). If `pnpm demo` fails, open an issue with the last lines of its output.
 
+## Reporting a bug
+
+Run `pnpm diagnose` (or `wingman diagnose`) after the call that went wrong. Use `wingman diagnose <call id>` for an older call. It writes one JSON file and prints where it is.
+
+The file has: the Wingman, Node, Electron and macOS versions, the settings that differ from the defaults, the health, ladder, latency and error events of the call, audio device names, model and prompt ids, and counts. It has no transcript text and no card text (only their lengths). Emails, phone numbers, key-like strings and your home folder name are removed.
+
+Read the file before you share it. Attach it to the issue. Do not paste transcripts, keys or client data.
+
 ## Still stuck
 
 - Look at the menu-bar app log: menu bar icon, **Show log**.
 - Look at `events.jsonl` in the call folder. Errors are one line each.
-- Open an issue. Describe what you did and what you saw. **Do not paste transcripts, keys or client data.** See [SECURITY.md](../SECURITY.md) for anything security-related.
+- Open an issue with the file from `pnpm diagnose`. Describe what you did and what you saw. **Do not paste transcripts, keys or client data.** See [SECURITY.md](../SECURITY.md) for anything security-related.
 
 Next: [User guide](USER-GUIDE.md) · [Development](DEVELOPMENT.md) · [Privacy and security](PRIVACY-AND-SECURITY.md)

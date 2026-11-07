@@ -65,6 +65,8 @@ COMMANDS
   calls list [--limit N] | show <id|latest> [--lines N] [--no-transcript] | summary <id> [--generate] | email <id>
         | rate <id> <card id> y|n|clear | purge <id> --yes
                                --generate writes a missing summary (one small paid model call).
+  diagnose [call id|latest] [--out <file>]     One file for a bug report: versions, changed settings, health/ladder/latency/error events, device names, model and prompt ids, counts.
+                               No transcript or card text, no emails, phone numbers or keys (cut out, not hidden). Prints the file path; read the file before you share it.
   profile show | set [--name N] [--spelling S ...] [--address male|female|neutral] [--about T] [--business T] [--timezone Z]
                                Who Wingman is helping: name (and the spellings speech-to-text gives it), the Hebrew form used to address the user, a line about them
                                and their business. Stored in ~/.config/wingman/profile.yaml, never in the repo. An empty value clears a field. Applies to the next call.

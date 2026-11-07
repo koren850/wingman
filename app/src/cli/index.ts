@@ -14,11 +14,13 @@ import { calls } from "./calls.ts";
 import { settings } from "./settings-cmd.ts";
 import { live } from "./live.ts";
 import { profile } from "./profile-cmd.ts";
+import { diagnose } from "./diagnose.ts";
 
 type Cmd = (ctx: Ctx, args: string[]) => Promise<Result>;
 const COMMANDS: Record<string, Cmd> = {
   status,
   doctor,
+  diagnose,
   plan,
   prepare: plan,
   start,

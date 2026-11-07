@@ -51,6 +51,8 @@ export interface Ctx {
   /** Home folder for the attachment refusals; production leaves it unset (the passwd entry is used, never $HOME). */
   home?: string;
   openApp?: () => Promise<void>;
+  /** Audio devices for `wingman diagnose`; tests inject a fixed list. */
+  devices?: () => Promise<{ name: string; transport: string; defaultInput: boolean; defaultOutput: boolean }[]>;
   spawnTsx?: (args: string[], timeoutMs: number) => Promise<{ code: number; out: string }>;
   signal?: AbortSignal;
 }
