@@ -56,7 +56,8 @@ test("start spawns call.ts in control mode and statuses drive the state", () => 
   assert.equal(ctl.start({}), true);
   assert.equal(ctl.start({}), false, "a second start while running is refused");
   const c = spawned[0];
-  assert.ok(c.args[0].endsWith("call.ts"));
+  // On Windows the command is node + the tsx CLI, so call.ts is the second argument.
+  assert.ok(c.args[process.platform === "win32" ? 1 : 0].endsWith("call.ts"));
   assert.equal(c.opts.env.WINGMAN_CONTROL, "1");
   assert.equal(c.opts.detached, true);
   assert.equal(ctl.getState().phase, "starting");

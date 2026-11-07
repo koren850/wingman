@@ -389,8 +389,8 @@ test("static: key values can only reach memory; no logging or persistence path t
     "src/cli/status.ts",
   ]; // cli/status.ts: `wingman keys status`, present/missing only (asserted in cli.test.ts)
   const walk = (d: string): string[] =>
-    readdirSync(join(ROOT, d), { withFileTypes: true }).flatMap((e) =>
-      e.isDirectory() ? (e.name === "node_modules" ? [] : walk(join(d, e.name))) : [join(d, e.name)],
+    readdirSync(join(ROOT, d), { withFileTypes: true }).flatMap(
+      (e) => (e.isDirectory() ? (e.name === "node_modules" ? [] : walk(join(d, e.name))) : [join(d, e.name).replace(/\\/g, "/")]), // forward slashes: the lists below use them
     );
   const files = ["src", "tray", "dashboard", "overlay", "qa"].flatMap(walk).filter((f) => /\.(ts|cjs|js)$/.test(f));
   for (const f of files) {
