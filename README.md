@@ -87,7 +87,25 @@ The same question in Hebrew gives the Hebrew card (`pnpm demo --he`):
    • Come back after checking
 ```
 
-**3. The guards check AI text.** If the AI writes a price, a date or a promise, a code rule blocks it and a stall line is shown instead. Real results from `guard()` in `app/src/guards.ts`:
+**3. Frame, tip, capture and summary.** The same call also gives a call frame with a checklist, one tip, the phone number and email the client said, and at the end a summary and a follow-up email draft (the email goes through the same guards, so a price or date in it becomes a placeholder to fill):
+
+```text
+[🧭 call] Client · Slow site and backups · 0/5
+[💡 tip] Ask where the backups are stored today and who is responsible for them.
+[📝 note] The client wants a faster site
+[📋 phone] 054-1234567
+[📋 email] dana@acmestores.com
+
+📋 Call summary
+  • The client called because her site loads slowly
+  • She asked about backups for the site
+  • She left a phone number and an email for the reply
+  Next steps:
+    - Me: Find out why the site is slow
+    - Client: Send access to the site (this week)
+```
+
+**4. The guards check AI text.** If the AI writes a price, a date or a promise, a code rule blocks it and a stall line is shown instead. Real results from `guard()` in `app/src/guards.ts`:
 
 | AI text | Result |
 |---|---|
@@ -195,7 +213,7 @@ Then open **Wingman**. A guided setup starts with a free **practice call** (a pr
 
 Wingman works in **English and Hebrew**, and in calls that mix both. Hebrew is a real strength, not a limit: right-to-left cards, Hebrew word forms and spoken numbers, and English terms inside Hebrew speech. Other languages are **not supported yet**: if the call is in one, Wingman shows a one-time "not supported yet" notice and gives no cards for those lines.
 
-The example answer pack has Hebrew cards (`bank.yaml`) and English versions of them (`bank.en.yaml`); a question in English gets the English card. `pnpm demo` plays an English call, `pnpm demo --he` a Hebrew one. The in-app **Practice call** is still Hebrew. Window labels follow `ui.language` (`auto` shows Hebrew labels, so set `ui.language: en` for English).
+The example answer pack has Hebrew cards (`bank.yaml`) and English versions of them (`bank.en.yaml`); a question in English gets the English card. `pnpm demo` plays an English call, `pnpm demo --he` a Hebrew one. The in-app **Practice call** follows the interface language: English when `ui.language` is `en`, Hebrew otherwise. Window labels follow `ui.language` (`auto` shows Hebrew labels, so set `ui.language: en` for English).
 
 ### Try it without keys
 
@@ -207,7 +225,7 @@ WINGMAN_SKIP_APP=1 pnpm install    # code only, skips the Electron download (not
 pnpm demo
 ```
 
-Cards print in the terminal as they would appear in the answer window (run `pnpm overlay` in a second terminal for the window). The last lines show the spend: the demo uses no AI, so it reads `AI $0.000 of $2`, where $2 is the default per-call cap (see [Cost](#cost)). The Hebrew call also runs from the app as the **Practice call** button. A step-by-step version with the full output is in [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
+Cards print in the terminal as they would appear in the answer window (run `pnpm overlay` in a second terminal for the window). The last lines show the spend: the demo uses no AI, so it reads `AI $0.000 of $2`, where $2 is the default per-call cap (see [Cost](#cost)). The same call runs from the app as the **Practice call** button (English or Hebrew, by the interface language). A step-by-step version with the full output is in [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
 <details>
 <summary><b>API keys, cost and a fresh Mac</b></summary>

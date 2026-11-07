@@ -28,7 +28,7 @@ First public release.
 - **Installer** (`install.sh`) with check, dry run, update and uninstall modes; it never uses sudo.
 - **Swappable pack and profile.** Answer bank, house style and keyterms live in a pack; your name and business live in a profile. An invented example pack is included.
 - **Test and QA tooling.** 680+ tests (660+ unit and 21 end-to-end call tests) in 70+ files, `pnpm eval` with a quality baseline (detector, answer bank, guards) that CI enforces, a synthetic QA harness with 32 invented scenarios, snapshot tools for the windows, and a CI workflow.
-- **English and Hebrew.** An English offline demo (`pnpm demo`; `pnpm demo --he` for Hebrew). A call in another language shows a one-time "not supported yet" notice. Status texts follow the interface language, with a status dot in the answer window and on Home.
+- **English and Hebrew.** An English offline demo (`pnpm demo`; `pnpm demo --he` for Hebrew). A call in another language shows a one-time "not supported yet" notice. The English demo and the in-app Practice call also show the call frame, a tip, notes and the summary in English. Status texts, fact cards and the short summary follow the interface language, with a status dot in the answer window and on Home.
 - **Documentation.** Architecture, 37 architecture decision records, privacy and security guide, development guide, troubleshooting, pack format and roadmap.
 
 ### Security and privacy

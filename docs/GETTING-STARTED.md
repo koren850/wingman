@@ -66,6 +66,8 @@ Wingman · call 01M6VSSNZZQHB9VDE16GRS1FX9 · file .../silence.wav · 41 prepare
 [🗂 fact] Acme Stores Ltd
    • acmestores.com · wordpress 6.9 · PHP 8.3
 
+[🧭 call] Client · Slow site and backups · 0/5
+
 [📗 prepared] A slow site is usually heavy images, missing cache, heavy plugins or a weak server. We check the cause first and then fix it.
    • Common causes: images, plugins, server
    • Measure before and after
@@ -76,18 +78,29 @@ Wingman · call 01M6VSSNZZQHB9VDE16GRS1FX9 · file .../silence.wav · 41 prepare
    • Keep a copy off the server
    • Frequency depends on the plan
 
+[💡 tip] Ask where the backups are stored today and who is responsible for them.
+
 [📗 prepared] The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
    • Depends on scope and requirements
    • No number without details
    • Come back after checking
 
+[📋 phone] 054-1234567
 [📋 email] dana@acmestores.com
 
 Speed: 4 questions · first card p50 0.3s / p95 0.3s · Prepared cards 3 (p50 0.3s)
 Cost: AI $0.000 of $2 · STT $0.00 · total $0.00 (estimate from settings budget.prices)
+
+📋 Call summary
+  • The client called because her site loads slowly
+  • She asked about backups for the site
+  • She left a phone number and an email for the reply
+  Next steps:
+    - Me: Find out why the site is slow
+    - Client: Send access to the site (this week)
 ```
 
-The Hebrew call (`pnpm demo --he`) prints Hebrew cards and, at the end, a Hebrew call summary. The English demo does not print the call frame, notes or summary yet, because their scripted AI text is Hebrew only. Trimmed:
+The Hebrew call (`pnpm demo --he`) prints the same kinds of lines in Hebrew. Trimmed:
 
 ```text
 Wingman · call 01M6V9ST8H6K7V8ETV1W7RJESV · file .../silence.wav · 41 prepared cards
@@ -210,7 +223,7 @@ The Readiness check tests the mic, the system audio, the keys, the speech servic
 
 ### 5. Do a practice call
 
-Press **Practice call** in the setup guide (or on Home). A pretend client plays through the real call loop and the real answer window. It is free and nothing leaves your Mac. It is the Hebrew invented call from `pnpm demo --he`, now in the real window (an English practice call is not in the app yet).
+Press **Practice call** in the setup guide (or on Home). A pretend client plays through the real call loop and the real answer window. It is free and nothing leaves your Mac. It is the invented call from `pnpm demo`, now in the real window: in English when the interface language is English (`ui.language: en`), in Hebrew otherwise (the call from `pnpm demo --he`).
 
 What you see:
 
