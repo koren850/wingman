@@ -1,6 +1,6 @@
 # User guide
 
-Everyday use of Wingman after it is installed: first run, updating, where your files live, profile and pack, practice and prep mode, flow mode and the command line. For install and requirements see the [README](../README.md); for every setting and hotkey see [app/README.md](../app/README.md).
+For people who have installed Wingman and use it on calls. It covers everyday use of Wingman after it is installed: first run, updating, where your files live, profile and pack, practice and prep mode, flow mode and the command line. For install and requirements see the [README](../README.md); for a first walk-through see [Getting started](GETTING-STARTED.md); for every setting and hotkey see [app/README.md](../app/README.md).
 
 Contents: [First run](#first-run) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Flow mode](#flow-mode) · [Command line](#command-line)
 
@@ -50,7 +50,12 @@ If you used an older version that kept calls in the repo folder (`calls/` and `d
 
 ## Profile and pack
 
-- A **profile** file (`~/.config/wingman/profile.yaml`): your name and spellings, how to address you in Hebrew, a short "about", your business and your time zone (for example `Asia/Jerusalem`). Set it in **Settings, About you**, or with `wingman profile set ...` (see `wingman help`).
+- A **profile** file (`~/.config/wingman/profile.yaml`): your name and spellings, how to address you in Hebrew, a short "about", your business and your time zone (for example `Asia/Jerusalem`). Set it in **Settings, About you**, or from the terminal (see `wingman help`):
+
+  ```bash
+  wingman profile set --name Dana --spelling Dana --address female --timezone Asia/Jerusalem
+  wingman profile show
+  ```
 - A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answer bank, house style, keyterms and topic words. Without one, the invented example web/hosting pack in `app/data/example-pack/` is used. File formats: [docs/PACK-FORMAT.md](PACK-FORMAT.md).
 
 Do not confuse these with a **settings preset** (`app/profiles/<name>.yaml`, used with `--profile <name>`). A preset is a set of setting overrides, such as `first-client-call`. It has nothing to do with `profile.yaml`.
@@ -90,4 +95,18 @@ pnpm -s wingman start --quick           # no Plan; or: wingman plan list, then w
 
 After `./install.sh` you can type `wingman ...` from any folder.
 
+A prepared meeting for a client call, then a start (these talk to the running app, so open Wingman first):
+
+```bash
+wingman plan new --title "Hosting move" --at "2026-11-03 14:30" --who "Dana, Levi Studio" --kind client \
+  --topic "hosting move" --goal "agree migration date" --must "price" --must "downtime window"
+wingman plan list                  # shows the id of each meeting
+wingman start --plan <id>          # or: wingman start --quick
+wingman live --follow              # transcript and cards in the terminal
+wingman stop                       # saves the call and writes the summary
+wingman calls summary latest       # read the summary
+```
+
 The `wingman` command talks to the running menu-bar app over an owner-only local socket. It cannot read API keys. By default the app asks you in a window before it starts a real call that came from the command line (setting `privacy.askBeforeCliStart`), and before it deletes a call.
+
+Next: [Examples](EXAMPLES.md) · [Pack format](PACK-FORMAT.md) · [Troubleshooting](TROUBLESHOOTING.md) · [Privacy and security](PRIVACY-AND-SECURITY.md)

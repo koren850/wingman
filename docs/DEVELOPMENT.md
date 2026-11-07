@@ -1,6 +1,6 @@
 # Development
 
-Everything is in `app/`. Run commands from there.
+For people who want to build, test or change Wingman. Everything is in `app/`. Run commands from there. If you only want to try it, see [Getting started](GETTING-STARTED.md).
 
 ## Setup
 
@@ -18,7 +18,11 @@ cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
 pnpm test                               # all tests (650+, about 5 minutes)
+pnpm demo                               # the offline demo call, no keys (about 90 seconds)
+pnpm eval                               # detector, bank and guard quality numbers, no keys
 ```
+
+Before you open a pull request, `pnpm check` runs the type check, lint, format check, unit tests and `pnpm eval` in one go.
 
 Needs macOS 14.2 or newer, Node 24 or newer, pnpm 11 (through `corepack enable`; the version is pinned in `package.json`) and `ffmpeg`. Poppler (`pdftotext`) is optional, for PDF attachments. Keys are not needed for unit tests: they use mocks and fake keys, and the real Keychain runner refuses to run under the test runner. For live work, add keys with `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never commit keys.
 
@@ -55,6 +59,9 @@ What `pnpm install` does in `app/`:
 
 | Script | What it does |
 |---|---|
+| `pnpm demo` | The offline demo: a scripted, invented Hebrew call through the real engine. No keys, no network. |
+| `pnpm eval` | Offline quality numbers for the detector, the bank matcher and the guards. Fails if one drops below `qa/eval-baseline.json`. |
+| `pnpm check` | Type check, lint, format check, unit tests and `pnpm eval`. |
 | `pnpm start` | The call engine (`src/run.ts`) in the terminal. Flags: `--file x.wav` (replay a stereo WAV, left = me, right = them), `--no-ai`, `--discard`, `--profile`, `--set key=value`. |
 | `pnpm call` | Starts a call and opens the answer window. Ctrl+C stops and saves. |
 | `pnpm dashboard` | The menu-bar app with its window open (`scripts/wingman.sh --open-window`). |
@@ -70,7 +77,7 @@ What `pnpm install` does in `app/`:
 | `pnpm purge <id>|--older-than N|--all` | Deletes saved calls. |
 | `pnpm detector` | Question-detector precision and recall on `data/questions.tsv`. |
 | `pnpm banktest` | Bank accuracy on held-out utterances. |
-| `pnpm gate` | Hebrew STT gate on recordings in `data/gold/recordings/` (`--count`, `--ids`, `--no-keyterms`, `--language`). |
+| `pnpm gate` | Hebrew STT gate on recordings in `data/gold/recordings/` (`--count`, `--ids`, `--no-keyterms`, `--language he|multi|en`). |
 | `pnpm synth` | Rebuilds the synthetic test audio with the macOS Hebrew voice. |
 | `pnpm factscheck` | Counts false fact-card hits on ordinary lines. |
 | `pnpm qa` | Synthetic QA harness (below). |
@@ -85,7 +92,7 @@ What `pnpm install` does in `app/`:
 - The "repo guard" test fails if a tracked source, data or config file contains a word from your private word list. Set it with `WINGMAN_DENYLIST="word1,word2" pnpm test`, or one word per line in the git-ignored `app/data/private/denylist.txt`. With no list it skips. How and why: [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
 - Tests redirect user data with `WINGMAN_DATA_DIR`, `WINGMAN_CALLS_DIR` and friends, so they never touch your real calls.
 - Some `WINGMAN_*` variables are test hooks and are not part of the product (for example `WINGMAN_DASHBOARD_EVAL`, which runs a script inside the dashboard page, `WINGMAN_KEYS_FILE` and `WINGMAN_PACK_DIR`). They only matter to someone who controls the environment a program is started from, which already means they run code as you.
-- CI (`.github/workflows/ci.yml`) runs on macOS with Node 24: `WINGMAN_SKIP_APP=1 pnpm install --frozen-lockfile`, the type check, then the tests. There is no private word list in CI, so the repo guard skips there.
+- CI (`.github/workflows/ci.yml`) runs on Node 24 on macOS and Linux (both must pass) and on Windows (experimental, may fail): `WINGMAN_SKIP_APP=1 pnpm install --frozen-lockfile`, the type check, unit tests, end-to-end tests and `pnpm eval`. Lint, the format check and coverage run on macOS only. There is no private word list in CI, so the repo guard skips there. A separate macOS job runs `install.sh --check` and `--dry-run`.
 - There is an offline end-to-end test (`src/e2e/scripted-call.test.ts`) that runs a whole call with scripted speech and a scripted AI (`src/providers/scripted.ts`).
 
 ## QA harness
@@ -151,3 +158,5 @@ Used for UX checks and for the images in `docs/ux/`. They need the Electron runt
 | `../.github/workflows/` | CI |
 | `../brand/` | Logo and icons |
 | `../docs/` | Documentation |
+
+Next: [Architecture](ARCHITECTURE.md) · [Pack format](PACK-FORMAT.md) · [Troubleshooting](TROUBLESHOOTING.md) · [Contributing](../CONTRIBUTING.md)

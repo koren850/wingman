@@ -1,6 +1,6 @@
 # Roadmap, known limits and ideas
 
-Wingman is an early release (v0.0.1). This page lists what is done, what is not verified yet, the known limits and ideas. It is a status page, not a promise.
+For anyone who wants to know how finished Wingman is, what has and has not been checked, and where it could go. Wingman is an early release (v0.0.1). This page lists what is done, what is not verified yet, the known limits and ideas. It is a status page, not a promise.
 
 ## What is done
 
@@ -13,7 +13,7 @@ Wingman is an early release (v0.0.1). This page lists what is done, what is not 
 - Answers for you, local math, call frame and checklist, tips, fact cards (with your own snapshot), capture chips, summary and follow-up draft.
 - Health ladder, reconnect buffer, cost caps, idle stop, sleep recovery, disk-space warning.
 - The `wingman` CLI over an owner-only socket.
-- A test suite of 650+ tests in 67 files; a CI workflow (type check and tests on macOS); a synthetic QA harness with 32 invented scenarios; a UX review of the window and answer window with the findings fixed.
+- A test suite of 650+ tests in 68 files; a CI workflow (type check, tests and `pnpm eval` on macOS and Linux, Windows experimental); a synthetic QA harness with 32 invented scenarios; a UX review of the window and answer window with the findings fixed.
 - A deep test round (real Deepgram and Haiku, a 60-minute soak, failure injection, a 166-utterance answer-quality judge) on synthetic voices. Measured numbers: question recall 98 percent, right card about 86 percent on replay, Prepared first card p50 0.57 s and p95 1.9 s, math 0.43 s, AI answer for you 1.65 s, AI answer for them 1.4 s, 0 guard leaks, AI cost about 20 cents an hour in the longest test (roughly 5 to 20 cents an hour in normal use). Synthetic voices are cleaner than real speech, so treat these as optimistic.
 
 ## Verification status: not yet checked on real audio
@@ -63,3 +63,5 @@ Everything above ran on synthetic voices and hidden-window snapshots. Not yet ch
 - A signed, notarised installer.
 - Windows and Linux support for the live app (engine and replay first). Help wanted.
 - Optional ring-buffer polish after STT reconnects and connection keep-warm.
+
+Next: [Architecture](ARCHITECTURE.md) · [Development](DEVELOPMENT.md) · [Decisions](DECISIONS.md)

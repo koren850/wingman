@@ -1,10 +1,12 @@
 # Troubleshooting
 
-Find your problem, then follow the steps. Run `./install.sh --check` any time to see what is present and what is missing. It changes nothing.
+For anyone whose Wingman does not install, does not hear, or does not show answers. Find your problem, then follow the steps. Run `./install.sh --check` any time to see what is present and what is missing. It changes nothing. For a quick offline check of the engine itself, run `pnpm demo` in `app/` (no keys needed): if it prints cards, the engine works and the problem is audio, permissions, keys or the app.
+
+The bars in the answer window are written in Hebrew unless you set `ui.language: en`. The descriptions below say what each bar means.
 
 ## No sound from the other side
 
-Signs: a red bar "NOT HEARING THE OTHER SIDE" (when Zoom, Teams or a similar app is open), or a calm line "I only hear you" (when no call app is open).
+Signs: a red bar that says the other side is not heard (when Zoom, Teams or a similar app is open), or a calm line "Hearing only you" (when no call app is open).
 
 1. Is the other side's audio playing on this Mac? Wingman captures what the Mac plays. If the call plays on another device, there is nothing to hear.
 2. Check System Audio Recording permission (next section).
@@ -40,7 +42,7 @@ Then open Wingman and allow the question.
 
 ## The microphone is quiet or silent
 
-Signs: a bar "MIC SILENT" ten seconds after listening starts, or the wrong mic is picked.
+Signs: a red bar that says the microphone is not picking up, ten seconds after listening starts (`audio.watchdog.micSilentMs`), or the wrong mic is picked.
 
 1. Open **Settings, Setup guide, Microphone** and choose the right one.
 2. List the devices: `ffmpeg -f avfoundation -list_devices true -i ""`. Then set `audio.mic.device` (for example `":1"`), or run with `WINGMAN_MIC=":1"`.
@@ -92,7 +94,7 @@ No link yet? Run `./install.sh` and say yes to the `wingman` command question. W
 
 ## The AI is slow
 
-Signs: an amber bar "AI slow", cards arrive late, more "Buy time" lines.
+Signs: an amber bar "AI slow", cards arrive late, more "Buy time" lines (the bar may be in Hebrew).
 
 Wingman steps down by itself: first it uses only Prepared cards and "Buy time" lines (reduced AI), then Prepared cards only. It steps back up after a minute of calm. The call never stops because of this.
 
@@ -131,8 +133,21 @@ With one screen, the answer window refuses to open, so it cannot end up in a scr
 
 By default the app first asks you in a window (`privacy.askBeforeCliStart`). Without your click, `wingman start` is refused (exit code 4). Click the window, or turn the setting off in Settings. Practice calls never ask.
 
+## Check that the engine works
+
+If you are not sure whether the problem is your setup or the code, run the offline demo. It needs no keys, no microphone and no network:
+
+```bash
+cd app
+pnpm demo
+```
+
+It should print about a dozen cards, then a summary, then `Demo done`. If it does, the engine is fine. Then check audio permission, keys (`pnpm keys status`) and the Readiness check (`pnpm run doctor --offline` for the free part). If `pnpm demo` fails, open an issue with the last lines of its output.
+
 ## Still stuck
 
 - Look at the menu-bar app log: menu bar icon, **Show log**.
 - Look at `events.jsonl` in the call folder. Errors are one line each.
 - Open an issue. Describe what you did and what you saw. **Do not paste transcripts, keys or client data.** See [SECURITY.md](../SECURITY.md) for anything security-related.
+
+Next: [User guide](USER-GUIDE.md) · [Development](DEVELOPMENT.md) · [Privacy and security](PRIVACY-AND-SECURITY.md)

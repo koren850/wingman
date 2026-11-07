@@ -1,6 +1,6 @@
 # Pack format
 
-A **pack** is the business content Wingman answers from: your answer cards, your tone rules, and word lists. It is plain files. Nothing in a pack goes into the repo.
+For anyone who wants Wingman to answer in their own words about their own business. A **pack** is the business content Wingman answers from: your answer cards, your tone rules, and word lists. It is plain files. Nothing in a pack goes into the repo. A complete small pack, explained line by line, is in [EXAMPLES.md](EXAMPLES.md#a-a-full-pack) (the files are in [`docs/examples/studio-pack/`](examples/studio-pack/)).
 
 ## Where Wingman looks
 
@@ -42,7 +42,7 @@ A list of cards. Each card:
 | `triggers` | Required (can be empty for a card only the AI picks). Words or phrases. The card is chosen when the other side says one. |
 | `say` | Required. What you can say out loud. One or two short sentences. |
 | `facts` | A few short bullets shown under the answer. |
-| `alts` | Optional. Other ways to say it. Only used by stall cards, to avoid sounding canned. |
+| `alts` | Optional. Other ways to say it. Used by stall cards, in turn, to avoid sounding canned. |
 | `tags` | Optional labels. |
 | `priority` | Optional number. Breaks a tie between two cards that match equally. |
 
@@ -56,7 +56,7 @@ How matching works:
 
 Special cards:
 
-- `stall` is the generic "I will check and come back" line. It has no triggers.
+- `stall` is the generic "I will check and come back" line. It is also what replaces an AI answer that a guard blocks. It needs few triggers, or none. It can have `alts`, other ways to say it, used in turn so repeated stalls do not sound canned. If your bank has no `stall` card, Wingman uses a built-in Hebrew line.
 - `stall-price`, `stall-timeline` and `stall-guarantee` always win when they match. A question about price, time or a promise gets a safe stalling line, never a topical answer. The AI cannot replace them.
 - Do not put prices, dates or promises in any card. The guards block them in AI text, but your own cards are shown as written.
 
@@ -83,7 +83,7 @@ Keep it short. Long files cost money on every call.
 
 One term per line. Every non-empty line counts, so do not add comment lines. These are sent to the speech service as hints. Put in the English product names and tech words that appear inside your calls (for example `WordPress`, `Cloudflare`).
 
-At most `stt.keyterms.max` terms are sent (100 by default). To use a file somewhere else, set `stt.keyterms.file` to a path (absolute, or starting with `~/`).
+At most `stt.keyterms.max` terms are sent (100 by default). To use a file somewhere else, set `stt.keyterms.file` to a path (absolute, or starting with `~/`; a relative path is read from the `app/` folder).
 
 ## topics.txt
 
@@ -116,4 +116,20 @@ Use the full path. For that call these cards **replace** the normal bank. Card t
 
 ## Check your pack
 
-Run the Readiness check (**Home, Run readiness check**, or `pnpm run doctor` in `app/`). It shows how many cards loaded, whether the ids are unique, how many keyterms were found, and which files fell back to the example pack.
+To test cards without the app, point `WINGMAN_PACK_DIR` at a folder and ask which card a sentence picks (run from `app/`):
+
+```bash
+WINGMAN_PACK_DIR=/path/to/my-pack ./node_modules/.bin/tsx -e '
+import { loadBank, matchBankFor } from "./src/bank.ts";
+const bank = loadBank();
+console.log(bank.length + " cards loaded");
+const hit = matchBankFor(process.argv[1], bank);
+console.log(hit ? hit.card.id + ": " + hit.card.say : "no card");
+' "do you have a backup"
+```
+
+A bad card stops with an error such as `bad bank card: {"id":"x"}` or `duplicate bank id backups`.
+
+Run the Readiness check (**Home, Run readiness check**, or `pnpm run doctor` in `app/`; add `--offline` for the free part). It shows how many cards loaded, whether the ids are unique, how many keyterms were found, and which files fell back to the example pack.
+
+Next: [Examples](EXAMPLES.md) · [User guide](USER-GUIDE.md) · [Getting started, Part 3](GETTING-STARTED.md#part-3-make-your-own-pack)

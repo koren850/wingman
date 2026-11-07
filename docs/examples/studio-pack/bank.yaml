@@ -1,0 +1,41 @@
+# Example pack for an invented studio ("Maple Studio", websites and care plans).
+# Each card: id, title, triggers (what the other side may say), say (what you can say), facts (short bullets).
+- id: ssl-warning
+  title: אזהרת אבטחה בדפדפן
+  triggers: [האתר לא מאובטח, אזהרת אבטחה, תעודה פגה, תעודת אבטחה, מנעול אדום, ssl, "not secure", certificate]
+  say: אזהרה כזו בדרך כלל אומרת שתעודת האבטחה פגה או לא הותקנה נכון. נבדוק מה המצב ונחדש אותה.
+  facts: [בדרך כלל תעודה מתחדשת אוטומטית, תעודה פגה גורמת להתראה בדפדפן, בודקים גם את הכתובת של האתר]
+  tags: [ssl, security]
+- id: backups
+  title: גיבויים
+  triggers: [גיבוי, גיבויים, בקאפ, לשחזר, שחזור, backup, backups, restore, "do you have a backup"]
+  say: כן, אפשר להגדיר גיבוי אוטומטי של האתר ושל מסד הנתונים, ואפשר לשחזר ממנו אם משהו משתבש.
+  facts: [קבצים ומסד נתונים, עותק גם מחוץ לשרת, התדירות תלויה במסלול]
+  tags: [backup]
+- id: site-slow
+  title: האתר איטי
+  triggers: [האתר איטי, נטען לאט, מהירות האתר, האתר כבד, "site is slow", "loads slowly", "page speed"]
+  say: אתר איטי בדרך כלל נובע מתמונות כבדות, תוספים כבדים או שרת חלש. נבדוק מה הגורם ואז נטפל.
+  facts: ['הגורמים הנפוצים: תמונות, תוספים, שרת', בודקים מהירות לפני ואחרי, לא תמיד הבעיה בשרת]
+  tags: [speed]
+- id: stall
+  title: כללי - לבדוק ולחזור
+  triggers: [לא יודע, תבדוק לי, שאלה כללית]
+  say: אני רוצה לבדוק את זה כמו שצריך ולחזור עם תשובה מדויקת.
+  alts: [אני לא רוצה לנחש. אבדוק ואחזור עם תשובה ברורה.]
+  facts: [לא מנחשים, בודקים ומחזירים תשובה]
+- id: stall-price
+  title: שאלה על מחיר
+  triggers: [כמה זה עולה, מה המחיר, הצעת מחיר, כמה יעלה, תעריף, "how much", price, pricing, quote, cost]
+  say: המחיר תלוי בהיקף ובדרישות. אצטרך לבדוק את הפרטים ואחזור עם מחיר מסודר.
+  facts: [תלוי בהיקף ובדרישות, לא נותנים מספר בלי פרטים]
+- id: stall-timeline
+  title: שאלה על לוח זמנים
+  triggers: [מתי זה יהיה מוכן, כמה זמן זה ייקח, תוך כמה זמן, לוח זמנים, "how long will it take", "when will it be ready", timeline]
+  say: תלוי, אבדוק ואחזור עם הערכה.
+  facts: [תלוי בהיקף, הערכה אחרי בדיקה, לא נותנים תאריך בשיחה]
+- id: stall-guarantee
+  title: בקשה להתחייבות
+  triggers: [אתם מתחייבים, מבטיחים, אחריות בכתב, יש אחריות, להתחייב, guarantee]
+  say: אני לא רוצה לתת התחייבות בלי לבדוק. אחזור עם מה שאפשר להתחייב עליו, בכתב.
+  facts: [לא מתחייבים בשיחה, בודקים ומגדירים בכתב]

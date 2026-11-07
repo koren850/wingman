@@ -1,0 +1,23 @@
+# English versions, keyed by card id. A card with no entry here is not shown on an English question.
+ssl-warning:
+  say: A warning like that usually means the security certificate has expired or was not installed correctly. We will check what is wrong and renew it.
+  facts: [A certificate normally renews by itself, An expired one shows a browser warning, We also check the site address]
+backups:
+  say: Yes, we can set up automatic backups of the site and the database, and restore from them if something goes wrong.
+  facts: [Files and database, Keep a copy off the server, How often depends on the plan]
+site-slow:
+  say: A slow site is usually heavy images, heavy plugins or a weak server. We check the cause first and then fix it.
+  facts: ["Common causes: images, plugins, server", Measure before and after, Not always the server]
+stall:
+  say: I want to check that properly and come back to you with an accurate answer.
+  alts: ["I don't want to guess. Let me check and come back with a clear answer."]
+  facts: [We do not guess, We check and come back]
+stall-price:
+  say: The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
+  facts: [Depends on scope and requirements, No number without details]
+stall-timeline:
+  say: It depends. Let me check and I will come back with an estimate.
+  facts: [Depends on scope, Estimate after checking, No date on the call]
+stall-guarantee:
+  say: I don't want to commit before checking. I will come back with what we can commit to, in writing.
+  facts: [No commitment on the call, We define it in writing]
