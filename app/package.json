@@ -67,9 +67,9 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.94",
-    "@deepgram/sdk": "^5.17.0",
-    "ai": "^7.0.159",
+    "@ai-sdk/anthropic": "^4.0.96",
+    "@deepgram/sdk": "^5.18.0",
+    "ai": "^7.0.162",
     "audiotee": "^0.0.7",
     "ulid": "^3.0.2",
     "ws": "8.22.1",
@@ -81,8 +81,8 @@
     "@types/node": "^24.19.2",
     "@types/ws": "^8.18.2",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "electron": "^45.2.1",
-    "eslint": "^9.39.5",
+    "electron": "^45.2.2",
+    "eslint": "^10.14.0",
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
     "tsx": "^4.23.15",
