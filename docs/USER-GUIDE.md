@@ -32,19 +32,28 @@ All pictures use invented data. The client, the numbers and the answers are made
 
 ### The answer window
 
-This is the window you read during a call. Put it on the second screen. By default it uses the **Focus** layout: what they said, one big answer, and a small **More: 3** button (or Ctrl+Opt+L) that opens the checklist, client card, AI notes and captured details. In **Settings, Answer window layout** you can switch to **Full**, which shows everything at once, as in the picture below.
+This is the window you read during a call. Put it on the second screen. By default it uses the **Focus** layout: what they said, one big answer, one small line for the answer before it, and a **More** button. In **Settings, Answer window layout** you can switch to **Full**, which shows everything at once.
 
-<img src="ux/answer-window-en-ui.png" alt="The answer window with a transcript line, an AI card, a buy-time line, captured details, a checklist, a client card and AI notes" width="520">
+<img src="ux/answer-window-en-ui.png" alt="The answer window in the Focus layout: the other side's last line, one big AI answer, a buy-time line, a More button and the key bar" width="520">
 
 1. **Listening** (top): Wingman hears the call. It says **Paused** when you pause it. Next to it are two small dots: the first shows the call state, the last one is the health dot. Green means everything works, amber means something is degraded (for example a weak microphone), red means something is not working. Hover over it to read the reason.
 2. **Other side**: the last thing the other person said.
-3. **AI · unverified** (dashed border): an answer written by the AI. Check it before you say it. A line starting "Answering:" shows which question it answers.
+3. **AI · unverified** (dashed border): the one big answer, written by the AI. Check it before you say it. A line starting "Answering:" shows which question it answers.
 4. **Prepared** (green, not shown here): an answer from your own answer pack. You wrote it, so you can trust it more.
-5. **Buy time**: a safe line to say while you check a number. Wingman uses it instead of inventing a price or a date.
-6. **Numbered chips** (Phone, Email, Domain): details heard in the call. Press Ctrl+Opt and the number to copy one.
-7. **You have not talked about:** your checklist of topics still open. **Levy Electronics** is the client card. **AI notes** are points the AI noticed.
-8. **Bottom bar**: the hotkeys. In Focus it shows three: Ctrl+Opt+A asks the AI, L opens More, P pauses. Press **?** to see all of them (R shows what they said, C clears, 1-3 copy a detail). Full shows them all.
-9. **Writing...**: while an AI answer is still arriving, its label says so. Wait until it stops before you read it out.
+5. **Buy time**: the small line under the big card. It is the answer before this one. Here it is a safe line to say while you check a number. Wingman uses it instead of inventing a price or a date.
+6. **More: 8** (Ctrl+Opt+L): opens the extra panel, shown next. It closes by itself after a while.
+7. **Key bar** (bottom): Ctrl+Opt+A asks the AI, L opens More, P pauses. Press **?** to see all of them (R shows what they said, C clears, 1-3 copy a detail).
+8. **Writing...**: while an AI answer is still arriving, its label says so. Wait until it stops before you read it out.
+
+#### The More panel
+
+<img src="ux/answer-window-more.png" alt="The answer window with the More panel open: numbered chips for a phone number, an email and a domain, a checklist, a client card and AI notes" width="520">
+
+1. **Numbered chips** (Phone, Email, Domain): details heard in the call. Press Ctrl+Opt and the number to copy one.
+2. **You have not talked about:** your checklist of topics still open.
+3. **Levy Electronics** is the client card. **AI notes** are points the AI noticed.
+
+In the Full layout all of this is on screen all the time.
 
 ### Home, during a call
 
@@ -68,7 +77,7 @@ This is the window you read during a call. Put it on the second screen. By defau
 
 ### One call: Follow-up
 
-<img src="ux/call-detail-followup.png" alt="A finished call with the Follow-up tab: summary, next steps, decisions, open questions and a follow-up email" width="640">
+<img src="ux/call-detail-followup.png" alt="A finished call opening on the Follow-up tab: big Copy follow-up email and Copy summary buttons, the summary, next steps, decisions and the email draft" width="640">
 
 1. **Live** or **Practice** shows what kind of call it was. **Delete call** removes it.
 2. **Tabs**: **Follow-up**, **Rate** (mark each card useful or not), **Transcript**, **Missed questions** (questions with no card) and **Details**.
@@ -83,6 +92,13 @@ This is the window you read during a call. Put it on the second screen. By defau
 2. **Open** shows the details of a step. **Close** hides them again.
 3. Below the practice call are the two key fields (Deepgram and Anthropic). Paste a key, press **Save**, then test it. The next steps cover "Your privacy" (two choices about listening and your audio), permissions, microphone, screens, your answer pack, a readiness check and a practice call.
 4. **Skip this step** is always allowed. You can come back from **Settings, Setup guide**.
+
+The **Answer pack** step offers starter packs, so you do not begin with an empty folder:
+
+<img src="ux/setup-starter-packs.png" alt="The Answer pack step open, with a Start from list: Sales, Customer support, Job interview practice, Empty pack and Web hosting example, and a Copy to my folder button" width="520">
+
+1. **Start from**: pick the starter closest to your work. **Web hosting (example)** is the invented example Wingman uses until you choose.
+2. **Copy to my folder** copies the starter to your own pack folder. You edit the copy there. **Keep the example for now** changes nothing.
 
 ## Update and uninstall
 

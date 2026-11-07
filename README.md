@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/ux/hero.gif" alt="The Wingman answer window during a call: a client asks about a CDN, a migration and a price, and answer cards appear within about a second (invented example)" width="560">
+  <img src="docs/ux/hero.gif" alt="The Wingman answer window during a call: a client asks about a CDN, a migration and a price, and one big answer card appears within about a second (invented example)" width="560">
 </p>
 
 Wingman is a live call copilot for client, support and team calls. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. After the call it writes a summary and a follow-up email draft.
@@ -49,11 +49,11 @@ Also:
 
 | Answer window | Main window |
 |---|---|
-| <img src="docs/ux/answer-window-hero.png" alt="The answer window with an AI card, a buy-time line and a prepared card, and the green status dot in the header" width="480"> | <img src="docs/ux/home-window.png" alt="The Home view of the main window during a live call" width="480"> |
+| <img src="docs/ux/answer-window-hero.png" alt="The answer window in the default Focus layout: the other side's question, one big AI answer, a buy-time line and the key bar" width="480"> | <img src="docs/ux/home-window.png" alt="The Home view of the main window during a live call" width="480"> |
 
 | English labels | Hebrew card (right-to-left by itself) |
 |---|---|
-| <img src="docs/ux/answer-window-en-ui.png" alt="The answer window with English labels: an AI card, a buy-time line, captured details and notes" width="400"> | <img src="docs/ux/for-you-card.png" alt="The answer window with a Hebrew card, right-to-left" width="400"> |
+| <img src="docs/ux/answer-window-more.png" alt="The answer window with the More panel open: captured details, a checklist, a client card and AI notes" width="400"> | <img src="docs/ux/for-you-card.png" alt="The answer window with a Hebrew card, right-to-left" width="400"> |
 
 A guided tour of every part of the windows: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#tour-of-the-windows). All screenshots use invented data. The Hebrew card answers "What is the difference between a CDN and DNS?": a CDN spreads copies of the site to servers near the visitor, and DNS only translates a domain name into the server's address.
 
