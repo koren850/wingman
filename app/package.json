@@ -63,6 +63,7 @@
     "postinstall": "node scripts/postinstall.cjs",
     "preinstall": "node scripts/check-env.cjs",
     "install-app": "scripts/make-app.sh --install",
+    "dist": "node scripts/package-app.cjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -83,6 +84,8 @@
     "@types/ws": "^8.18.2",
     "@typescript/native": "npm:typescript@^7.0.2",
     "electron": "^45.2.2",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
     "prettier": "^3.9.10",

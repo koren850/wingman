@@ -39,3 +39,7 @@ app/data/briefs/
 NEXT-SESSION.md
 app/qa/report.json
 app/qa/report.md
+
+# Packaged app (pnpm dist): staged files and build output
+app/.stage/
+app/dist/

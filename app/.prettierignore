@@ -4,3 +4,6 @@ data
 qa/out
 pnpm-lock.yaml
 *.md
+.stage
+dist
+build/*.plist

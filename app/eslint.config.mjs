@@ -4,7 +4,7 @@ import tseslint from "typescript-eslint";
 import globals from "globals";
 
 export default tseslint.config(
-  { ignores: ["node_modules/**", ".app/**", "data/**", "qa/out/**", "**/*.min.js"] },
+  { ignores: ["node_modules/**", ".app/**", ".stage/**", "dist/**", "data/**", "qa/out/**", "**/*.min.js"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
