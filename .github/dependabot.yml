@@ -3,20 +3,30 @@ updates:
   - package-ecosystem: "npm"
     directory: "/app"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 3
     commit-message:
       prefix: "deps"
     groups:
-      # Minor and patch bumps arrive as one pull request; majors stay separate because they need real testing.
-      minor-and-patch:
-        update-types: ["minor", "patch"]
+      # One pull request a month for all npm updates. CI decides if it is safe.
+      npm:
+        patterns: ["*"]
+    ignore:
+      # Types must match the Node version in engines (24).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # @eslint/js 10 turns on new rules; move to it in its own change.
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    open-pull-requests-limit: 2
     commit-message:
       prefix: "ci"
     groups:
       actions:
-        update-types: ["minor", "patch"]
+        patterns: ["*"]
