@@ -31,6 +31,7 @@ import {
   speakers,
   transcript,
   registry,
+  PROMPT_V,
 } from "./boot.ts";
 import { st, chans } from "./state.ts";
 import { askKey } from "./control.ts";
@@ -40,6 +41,25 @@ import { uncovered, liveNotes } from "./side.ts";
 import { sttSeconds } from "./degrade.ts";
 import { pending, meTimers, acceptLate } from "./ingest.ts";
 import { meTimers2 } from "./me.ts";
+
+/** The per-call usage summary row: money, tokens, cache hit %, and the model and prompt ids behind it. */
+const summaryRow = () => ({
+  role: "summary",
+  llmUsd: cost.llmUsd,
+  sttUsd: cost.sttUsd,
+  totalUsd: cost.totalUsd,
+  roles: cost.roles,
+  unpriced: [...cost.unpriced],
+  cacheHitPct: cost.cacheHitPct(),
+  cacheHitPctByRole: cost.cacheHitByRole,
+  models: { reflex: S.llm.reflex.model, fallbacks: S.llm.reflex.fallbacks, assist: S.assist.model, notes: S.notes.model, summary: S.summary.model },
+  prompt: PROMPT_V,
+});
+
+const cacheLine = () => {
+  const p = cost.cacheHitPct();
+  return p === undefined ? "" : `\nPrompt cache: ${p}% of AI input tokens were cache hits`;
+};
 
 /** Audio source stoppers, run first in shutdown(). */
 export const stops: (() => Promise<void>)[] = [];
@@ -178,7 +198,7 @@ export async function shutdown() {
     log.write("events", { type: "foreign.summary", dropped: st.stt.foreignDropped });
     log.write("events", { type: "me.summary", mode: S.assist.answerMe, answers: st.me.shown, questions: st.me.seq });
     if (st.stt.foreignDropped) console.log(`\nDropped ${st.stt.foreignDropped} speech-to-text lines in a foreign script (not Hebrew/English).`);
-    log.write("usage", { role: "summary", llmUsd: cost.llmUsd, sttUsd: cost.sttUsd, totalUsd: cost.totalUsd, roles: cost.roles, unpriced: [...cost.unpriced] });
+    log.write("usage", summaryRow());
     const summary = speedSummary();
     log.write("events", { type: "speed.summary", summary });
     log.update({ endedAt: new Date().toISOString(), crashed: st.call.crashed, phase: "ended" });
@@ -186,7 +206,7 @@ export async function shutdown() {
       `\nSpeakers mode (${st.echo.mode}): mic muted ${Math.round(st.echo.gatedMs / 1000)} s while the client talked · ${st.echo.dropped} echo lines dropped`,
     );
     console.log(
-      `\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)\nSTT chunks dropped (socket not open): me ${chans.me?.dropped ?? 0}, them ${chans.them?.dropped ?? 0}`,
+      `\n${summary}\nCost: ${cost.line()} (estimate from settings budget.prices)${cacheLine()}\nSTT chunks dropped (socket not open): me ${chans.me?.dropped ?? 0}, them ${chans.them?.dropped ?? 0}`,
     );
   } catch (e) {
     console.error("call summary failed:", errBrief(e));
@@ -208,7 +228,7 @@ export async function shutdown() {
   await Promise.race([postCallSummary(), summarySkipWait, new Promise((res) => setTimeout(res, Math.max(1500, left())))]);
   if (summarySkipped) status("summary", { ok: false, skipped: true });
   try {
-    log.write("usage", { role: "summary", llmUsd: cost.llmUsd, sttUsd: cost.sttUsd, totalUsd: cost.totalUsd, roles: cost.roles, unpriced: [...cost.unpriced] });
+    log.write("usage", summaryRow());
   } catch {
     /* best effort: the call files were already written above */
   }

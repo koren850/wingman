@@ -6,9 +6,9 @@ import { runReflex, type Tag } from "../reflex.ts";
 import type { SttResult } from "../providers/stt/types.ts";
 import { type ProviderError } from "../providers/errors.ts";
 import { frameText } from "../frame.ts";
-import { log, cost, breakers, S, tracker, contextNotes, lineOf, transcript, prefix, registry, noAi, meGate, sup } from "./boot.ts";
+import { log, cost, breakers, S, tracker, contextNotes, lineOf, transcript, prefix, registry, noAi, meGate, sup, PROMPT_V } from "./boot.ts";
 import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.ts";
-import { emitCard } from "./cards.ts";
+import { emitCard, noteModel } from "./cards.ts";
 import { st } from "./state.ts";
 import { selfCheckLine } from "./selfcheck.ts";
 import { survived, status } from "./out.ts";
@@ -224,6 +224,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
     usable = reserved.length ? reserved : usableModels(); // a half-open probe slot is taken only right before the request
   let tag: Tag | undefined,
     shownOnce = false;
+  noteModel(turnId, usable[0]);
   await runReflex({
     registry,
     models: usable,
@@ -239,6 +240,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
     maxTokens: Math.min(S.llm.reflex.maxTokens, 100),
     onFail: (model, err) => llmFailed(model, err),
     onSwitch: (from, to, err) => {
+      noteModel(turnId, to);
       log.write("events", { type: "llm.switch", turnId, from, to, kind: err.kind });
     },
     h: {
@@ -264,7 +266,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
         sup.noteLlmOk();
         refreshSignals();
         const c = cost.addLlm("me", model, usage, providerMetadata);
-        log.write("usage", { role: "me", model, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.me.usd });
+        log.write("usage", { role: "me", model, prompt: PROMPT_V, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.me.usd });
         log.write("events", { type: "reflex.raw", turnId, text: raw });
         if (!shownOnce && tag?.kind !== "ANS") meLog(turnId, text, "skip", `model:${tag?.kind ?? "none"}`);
         // The user pressed the ask key (or typed `ask`) and nothing came back: say so, never leave an empty screen.

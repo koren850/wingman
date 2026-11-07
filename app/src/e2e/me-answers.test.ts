@@ -79,6 +79,8 @@ test("e2e: answers for Dan's own questions, the ask key, math is not a price, fo
     // a general-knowledge question: AI card
     const cdn = me.find((c) => /CDN/.test(c.say));
     assert.ok(cdn && cdn.source === "ai", "an AI For-you card for the CDN question");
+    assert.ok(cdn.model === "scripted:bank" && /^[0-9a-f]{8}$/.test(cdn.prompt), `model id and prompt id on the card: ${cdn.model} ${cdn.prompt}`);
+    assert.ok(calc.model === undefined, "a local calculation names no model");
     // the ask key
     assert.ok(
       events.some((e) => e.type === "ask.armed"),

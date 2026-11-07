@@ -3,7 +3,7 @@ import { matchBankFor } from "../bank.ts";
 import { isClearQuestion } from "../detector.ts";
 import { sanitize } from "../guards.ts";
 import { st } from "./state.ts";
-import { log, tipGate, S, bank, interview } from "./boot.ts";
+import { log, tipGate, S, bank, interview, PROMPT_V } from "./boot.ts";
 
 /** Card kinds. "info"/"warn"/"tip" are system cards; "me" is an answer for the user's own question. */
 type Badge = "bank" | "ai" | "stall" | "info" | "warn" | "tip" | "me" | "careful" | "fix";
@@ -32,6 +32,9 @@ export function emitSide(row: Record<string, unknown>) {
   const quiet = st.call.quiet && row.badge !== "info";
   log.write("cards", { type: "card", turnId: "side", question: "", at: Date.now(), ...row, ...(quiet ? { hidden: true, hiddenReason: "quiet" } : {}) });
 }
+/** Model that answers a turn (set when the request goes out, updated when the fallback takes over). Model cards log it with the prompt id. */
+const turnModel = new Map<string, string>();
+export const noteModel = (turnId: string, model: string) => void turnModel.set(turnId, model);
 const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay (a card keeps its first decision when it is updated, so it never flips)
 const turnsWithCard = new Set<string>();
 let lastCardAt = 0,
@@ -79,7 +82,8 @@ export function emitCard(c: Card) {
       }
     }
   }
-  log.write("cards", { type: "card", ...c, ...(hidden ? { hidden: true, hiddenReason: reason } : {}) });
+  const model = !special && c.source !== "calc" ? turnModel.get(c.turnId) : undefined;
+  log.write("cards", { type: "card", ...c, ...(model ? { model, prompt: PROMPT_V } : {}), ...(hidden ? { hidden: true, hiddenReason: reason } : {}) });
   if (c.clear) return;
   if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall" || forMe)) tipGate.noteAnswer(Date.now()); // no tip right after an answer card
   if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall")) st.cards.lastThemCardAt = Date.now(); // a fresh answer for the other side: answers for the user must not push it off the screen

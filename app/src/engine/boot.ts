@@ -4,6 +4,7 @@
 // engine module imports the result instead of passing a context around. Tests do not import this module: they exercise the pure modules
 // (reflex, guards, degrade ladder) with injected inputs, and the whole engine as a child process on the scripted providers.
 // A createEngine(settings) context would be the refactor if the engine ever had to run twice in one process.
+import { createHash } from "node:crypto";
 import { KEY_ENV_VARS } from "../keychain.ts";
 import { requireKeys, CALLS, resolveUserPath, type KeyName } from "../env.ts";
 import { EntitySpotter, loadSnapshot } from "../entities.ts";
@@ -94,6 +95,8 @@ export const keyterms = [...new Set([...briefTerms(brief), ...loadKeyterms(S)])]
 export const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars, { consume: !fileArg }); // a practice call with the plan never uses up the real call's files
 export const background = backgroundBlock(attachFiles);
 export const prefix = buildPrefix(houseStyle, bank, "", background, interview);
+/** Short id of the system prompt text sent to the model (first 8 hex of its sha256). Logged on model cards and usage rows so a bad card can be reproduced. */
+export const PROMPT_V = createHash("sha256").update(prefix).digest("hex").slice(0, 8);
 export let log: CallLog;
 try {
   log = new CallLog({
@@ -101,6 +104,7 @@ try {
     file: fileArg,
     model: S.llm.reflex.model,
     fallbacks: S.llm.reflex.fallbacks,
+    prompt: PROMPT_V,
     stt: `${S.stt.provider} ${S.stt.model} ${S.stt.language}`,
     sttFallback: S.stt.fallback,
     profile,

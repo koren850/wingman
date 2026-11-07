@@ -77,6 +77,21 @@ export class CostMeter {
   get sttUsd() {
     return this.sttBaseUsd + this.sttAddonUsd;
   }
+  /** Share of input tokens served from the prompt cache, 0-100, for one role or all roles. undefined when there were no input tokens. */
+  cacheHitPct(role?: string): number | undefined {
+    const rs = role ? [this.roles[role]].filter(Boolean) : Object.values(this.roles);
+    const input = rs.reduce((a, r) => a + r.inputTokens, 0);
+    return input > 0 ? Math.round((rs.reduce((a, r) => a + r.cacheReadTokens, 0) / input) * 1000) / 10 : undefined;
+  }
+  /** Cache hit % per role, for the usage summary row. */
+  get cacheHitByRole(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const k of Object.keys(this.roles)) {
+      const p = this.cacheHitPct(k);
+      if (p !== undefined) out[k] = p;
+    }
+    return out;
+  }
   get totalUsd() {
     return this.llmUsd + this.sttUsd;
   }

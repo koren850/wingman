@@ -10,7 +10,7 @@ import { describe, type ProviderError } from "../providers/errors.ts";
 import { frameText, isAgencyKind, isAgencyTopic } from "../frame.ts";
 import { health, errBrief, healthClear, survived } from "./out.ts";
 import { ht } from "../htext.ts";
-import { emitCard, recordLatency, type Card, focusWorthy } from "./cards.ts";
+import { emitCard, recordLatency, noteModel, type Card, focusWorthy } from "./cards.ts";
 import {
   stall,
   log,
@@ -31,6 +31,7 @@ import {
   flow,
   flowOn,
   UI_LANG,
+  PROMPT_V,
 } from "./boot.ts";
 import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.ts";
 import { interviewAllowed } from "./selfcheck.ts";
@@ -298,6 +299,7 @@ function askModel(t: Turn, usable: string[]): Promise<void> {
   const { r } = t;
   const recent = transcript.slice(-12).map(lineOf).join("\n");
   t.lat.reqAt = Date.now();
+  noteModel(t.id, usable[0]);
   return runReflex({
     registry,
     models: usable,
@@ -319,6 +321,7 @@ function askModel(t: Turn, usable: string[]): Promise<void> {
       countReflexFailure(err);
     },
     onSwitch: (from, to, err) => {
+      noteModel(t.id, to);
       log.write("events", { type: "llm.switch", turnId: t.id, from, to, kind: err.kind });
       console.log(`\n↪ AI ${from} -> ${to} (${describe(err)})`);
     },
@@ -488,7 +491,17 @@ function onSayComplete(t: Turn, say: string) {
 /** Usage the SDK still reported for a reply that was aborted by the next question: it was billed, so it counts toward the cost and the budget. */
 function onAbortedUsage(t: Turn, { usage, providerMetadata, model }: { usage: unknown; providerMetadata: unknown; model: string }) {
   const c = cost.addLlm("reflex", model, usage, providerMetadata);
-  log.write("usage", { role: "reflex", model, turnId: t.id, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.reflex.usd, aborted: true });
+  log.write("usage", {
+    role: "reflex",
+    model,
+    prompt: PROMPT_V,
+    turnId: t.id,
+    usage,
+    providerMetadata,
+    usd: c.usd,
+    roleTotalUsd: cost.roles.reflex.usd,
+    aborted: true,
+  });
 }
 
 /** Stream finished: book the cost, mark the model healthy, and upsert the card with its (guarded) facts. */
@@ -505,7 +518,7 @@ function onDone(t: Turn, { usage, providerMetadata, text, model }: Parameters<Re
   sup.noteLlmOk();
   refreshSignals();
   const c = cost.addLlm("reflex", model, usage, providerMetadata);
-  log.write("usage", { role: "reflex", model, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.reflex.usd });
+  log.write("usage", { role: "reflex", model, prompt: PROMPT_V, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.reflex.usd });
   log.write("events", { type: "reflex.raw", turnId, text });
   if (t.shown && t.shown.badge === "ai" && ai.facts.length) {
     const g = (interview ? guardInterview : guard)(ai.facts.join(" "));
