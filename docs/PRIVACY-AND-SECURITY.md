@@ -1,6 +1,8 @@
 # Privacy and security
 
-Wingman listens to calls. Read this before you use it on one.
+For anyone who will use Wingman on a real call, and for anyone judging whether it is safe to run. Wingman listens to calls. Read this before you use it on one.
+
+In short: audio goes to Deepgram and text goes to Anthropic, only while a call is on. Nothing is saved as audio. Your files stay on your Mac, outside the repo. Keys are in the Keychain. You can see what is stored with `ls ~/Library/Application\ Support/Wingman/calls/` and delete it any time.
 
 ## Your responsibility
 
@@ -72,7 +74,7 @@ The menu-bar app listens on `~/.config/wingman/run/control.sock`.
 - Any process running as your macOS user can reach the socket, so treat your user account as the trust boundary. Three things are asked of **you**, in a window in the app, because a script cannot click:
   - **Starting a real call from the command line** (`privacy.askBeforeCliStart`, on by default). Without your click the start is refused. Practice calls never ask.
   - **Stopping and deleting a call** (`wingman stop --delete`). It always asks.
-  - **"Start listening"** when `privacy.requireConsentAck` is on (`wingman consent`). It always asks.
+  - **"Start listening"** when `privacy.requireConsentAck` is on (`wingman confirm --yes`). It always asks.
 - `wingman plan attach --file` refuses symbolic links, key and `.env` style files, and the folders `~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.config/wingman` and `~/Library/Keychains`. A file outside your home folder needs `--force`.
 - Call content is private: the CLI help tells agents not to paste transcripts anywhere but your own terminal.
 
@@ -95,7 +97,7 @@ The answer window has content protection on, which asks macOS to hide it from sc
 ## Safety of the answers
 
 - AI text passes through code guards that replace prices, dates, timelines and promises with a stall line. Guards are patterns and can miss a paraphrase. Treat every card as a hint.
-- AI cards are labelled "AI · not verified". Prepared cards are the ones you wrote.
+- AI cards are labelled "AI · unverified". Prepared cards are the ones you wrote.
 - The summary and the follow-up email draft are drafts, marked "Written by AI, so check it before you send". Prices, dates and promises become `[להשלים: ...]` placeholders for you to fill in. So does every link, web address (also an IP address, or one hidden with zero-width or fullwidth characters), email address and phone number that is not in your own notes, because the other side of a call can try to make the model write one into your email.
 
 ## Known gaps
@@ -110,3 +112,5 @@ The answer window has content protection on, which asks macOS to hide it from sc
 ## Reporting a problem
 
 See [../SECURITY.md](../SECURITY.md).
+
+Next: [User guide](USER-GUIDE.md) · [Troubleshooting](TROUBLESHOOTING.md) · [Architecture](ARCHITECTURE.md)
