@@ -19,6 +19,7 @@ import type { CostMeter } from "./cost.ts";
 import type { Settings } from "./settings.ts";
 import { parseFrame, missedMust, frameText, isAgencyKind, type Frame, type Kind } from "./frame.ts";
 import { errText } from "./errtext.ts";
+import { ht, type UiLang } from "./htext.ts";
 
 // System prompt for the summary call. Product behaviour: the no-prices/no-dates/no-promises rules are enforced again in code by guardEmail().
 export const summarySystem = (): string => {
@@ -437,13 +438,18 @@ export async function runSummary(o: RunOpts): Promise<RunResult> {
   }
 }
 
+const WHO_EN: Record<string, string> = { [ME_LABEL]: "Me", לקוח: "Client" };
 /** Short terminal version (the full text is in summary.json). */
-export function formatShort(s: CallSummary): string {
-  const out = ["", "📋 סיכום השיחה", ...s.summary.map((l) => `  • ${l}`)];
-  if (s.nextSteps.length) out.push("  צעדים הבאים:", ...s.nextSteps.map((n) => `    - ${n.who}: ${n.what}${n.when ? ` (${n.when})` : ""}`));
-  if (s.openQuestions.length) out.push(`  שאלות פתוחות: ${s.openQuestions.length}`);
+export function formatShort(s: CallSummary, lang?: UiLang): string {
+  const out = ["", `${ht(lang, "sum.title")}`, ...s.summary.map((l) => `  • ${l}`)];
+  if (s.nextSteps.length)
+    out.push(
+      `  ${ht(lang, "sum.next")}`,
+      ...s.nextSteps.map((n) => `    - ${lang === "en" ? (WHO_EN[n.who] ?? n.who) : n.who}: ${n.what}${n.when ? ` (${n.when})` : ""}`),
+    );
+  if (s.openQuestions.length) out.push(`  ${ht(lang, "sum.open", { n: s.openQuestions.length })}`);
   out.push(
-    `  טיוטת מייל: ${s.followUpEmail ? "מוכנה" : "אין"}${s.guard.replaced ? ` (${s.guard.replaced} משפטים הוחלפו ב-[להשלים])` : ""} · calls/${s.callId}/summary.json · $${s.costUsd.toFixed(4)}`,
+    `  ${ht(lang, "sum.email")}: ${ht(lang, s.followUpEmail ? "sum.ready" : "sum.none")}${s.guard.replaced ? ht(lang, "sum.replaced", { n: s.guard.replaced }) : ""} · calls/${s.callId}/summary.json · $${s.costUsd.toFixed(4)}`,
   );
   return out.join("\n");
 }
@@ -510,7 +516,7 @@ export function backgroundSummaryArgs(root: string, callId: string, profile?: st
 
 // ---------- CLI: pnpm summary <callId|latest> ----------
 async function main() {
-  const [{ CALLS, requireKeys }, { loadSettingsOrExit, expandHome }, { CostMeter: Meter }] = await Promise.all([
+  const [{ CALLS, requireKeys }, { loadSettingsOrExit, expandHome, resolveUiLanguage }, { CostMeter: Meter }] = await Promise.all([
     import("./env.ts"),
     import("./settings.ts"),
     import("./cost.ts"),
@@ -581,7 +587,7 @@ async function main() {
       { mode: 0o600 },
     );
   }
-  console.log(formatShort(r.summary!));
+  console.log(formatShort(r.summary!, resolveUiLanguage(S)));
   console.log(`\nEmail draft:\n${r.summary!.followUpEmail}`);
 }
 if (process.argv[1] === fileURLToPath(import.meta.url))

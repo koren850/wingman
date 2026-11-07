@@ -4,6 +4,7 @@
 // Client names and aliases live only in that private file, never in code.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { ht, type UiLang } from "./htext.ts";
 import { normalize, tokens, tokenVariants } from "./normalize.ts";
 
 /** Everyday words that some client aliases are made of: alone they only match as part of a longer alias.
@@ -123,7 +124,7 @@ export class EntitySpotter {
   private generic: Set<string>;
   constructor(
     private snap: Snapshot,
-    private o: { sslWarnDays: number; minAliasLen: number },
+    private o: { sslWarnDays: number; minAliasLen: number; lang?: UiLang },
   ) {
     this.generic = new Set([...GENERIC, ...(snap.genericAliases ?? []).map(normalize)]);
     for (const c of snap.clients) this.byClient.set(c.id, c);
@@ -174,7 +175,7 @@ export class EntitySpotter {
       .filter((d) => d.clientId === c.id || c.domains?.includes(d.domain))
       .sort((a, b) => domainRank(a.domain) - domainRank(b.domain));
     const lines = doms.slice(0, 4).map((d) => this.domainLine(d));
-    if (doms.length > 4) lines.push(`ועוד ${doms.length - 4} אתרים`);
+    if (doms.length > 4) lines.push(ht(this.o.lang, "fact.more", { n: doms.length - 4 }));
     if (c.note) lines.push(c.note);
     return { key: `c:${c.id}`, kind: "client", title: c.name, lines, clientId: c.id, warn: doms.some((d) => this.sslWarn(d)) };
   }
@@ -182,7 +183,7 @@ export class EntitySpotter {
   domainFact(d: Domain): Fact {
     const client = d.clientId != null ? this.byClient.get(d.clientId) : undefined;
     const lines = [this.domainLine(d, false)];
-    if (d.server) lines.push(`שרת: ${d.server}`);
+    if (d.server) lines.push(ht(this.o.lang, "fact.server", { v: d.server }));
     if (client?.note) lines.push(client.note);
     return {
       key: `d:${d.domain}`,
@@ -207,9 +208,16 @@ export class EntitySpotter {
     // A date long past is stale dashboard data (old certificate record), not news: show it only if recent.
     if (d.sslExpires && daysUntil(d.sslExpires) >= -30) {
       const n = daysUntil(d.sslExpires);
-      parts.push(n < 0 ? `⚠ SSL פג לפני ${-n} ימים` : n <= this.o.sslWarnDays ? `⚠ SSL פג בעוד ${n} ימים` : `SSL עד ${d.sslExpires.slice(0, 10)}`);
+      const L = this.o.lang;
+      parts.push(
+        n < 0
+          ? ht(L, "fact.sslExpired", { n: -n })
+          : n <= this.o.sslWarnDays
+            ? ht(L, "fact.sslSoon", { n })
+            : ht(L, "fact.sslUntil", { date: d.sslExpires.slice(0, 10) }),
+      );
     }
-    if (d.suspended) parts.push("⚠ מושעה");
+    if (d.suspended) parts.push(ht(this.o.lang, "fact.suspended"));
     return parts.join(" · ");
   }
 }

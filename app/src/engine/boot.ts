@@ -143,7 +143,9 @@ export const contextNotes: string[] = [];
 if (brief) contextNotes.push(...briefNotes(brief));
 export const attendees = attendeeNames(brief?.who); // first names from the prepared meeting, for naming voices from their introductions
 export const snapshot = factsActive({ factsEnabled: S.facts.enabled, interview }) ? loadSnapshot(resolveUserPath(S.facts.file)) : undefined;
-export const spotter = snapshot ? new EntitySpotter(snapshot, { sslWarnDays: S.facts.sslWarnDays, minAliasLen: S.facts.minAliasLen }) : undefined;
+export const spotter = snapshot
+  ? new EntitySpotter(snapshot, { sslWarnDays: S.facts.sslWarnDays, minAliasLen: S.facts.minAliasLen, lang: UI_LANG })
+  : undefined;
 export const notesOn = S.notes.enabled && !noAi;
 export const notesAbort = new AbortController(); // also used by tips; aborted in shutdown(): no notes call outlives the call
 export const callStart = Date.now();

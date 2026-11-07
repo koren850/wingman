@@ -1,5 +1,5 @@
 // Call frame (what is this call about?) and live coaching tips: timer jobs plus the one place that emits a tip card.
-import { runFrame, progress, KIND_HE, type Frame } from "../frame.ts";
+import { runFrame, progress, kindLabel, type Frame } from "../frame.ts";
 import { runTip, checkTip, talkRatio, talkTip, wrapUpTip, type Tip } from "../tips.ts";
 import {
   transcript,
@@ -19,6 +19,7 @@ import {
   sup,
   frameOn,
   lineOf,
+  UI_LANG,
 } from "./boot.ts";
 import { st } from "./state.ts";
 import { liveNotes } from "./side.ts";
@@ -72,7 +73,7 @@ export function frameRound(final = false): Promise<void> {
       if (!changed) return;
       log.write("events", { type: "frame", frame });
       log.write("cards", { type: "frame", frame, at: Date.now() });
-      console.log(`\n[🧭 call] ${KIND_HE[frame.kind]} · ${frame.topic || "?"} · ${framePct(frame)}`);
+      console.log(`\n[🧭 call] ${kindLabel(frame.kind, UI_LANG)} · ${frame.topic || "?"} · ${framePct(frame)}`);
     } catch (e) {
       log.write("events", { type: "frame.error", error: String((e as Error)?.message ?? e).slice(0, 200) });
     } finally {

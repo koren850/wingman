@@ -5,7 +5,24 @@ import { decide, NO_SIGNALS } from "./health.ts";
 import { diskText } from "./diskspace.ts";
 
 const HEB = /[֐-׿]/;
-const P = { why: " (x)", err: "e", ch: "c", sec: 3, name: "n", from: "a", to: "b", mb: 5, min: 4, line: "l", limit: 3, dev: "d", bankOnly: "1" };
+const P = {
+  why: " (x)",
+  err: "e",
+  ch: "c",
+  sec: 3,
+  name: "n",
+  from: "a",
+  to: "b",
+  mb: 5,
+  min: 4,
+  line: "l",
+  limit: 3,
+  dev: "d",
+  bankOnly: "1",
+  n: 2,
+  v: "s1",
+  date: "2026-01-01",
+};
 
 test("every status text exists in both languages, fills its placeholders and is in the right script", () => {
   const keys = HKEYS;

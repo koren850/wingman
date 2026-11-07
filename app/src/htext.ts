@@ -150,6 +150,41 @@ const M = {
     (p) => `${p.dev} ברמקולים: אם המיקרופון שלהן ייפתח, האיכות תרד`,
     (p) => `${p.dev} is the speaker: if its microphone opens, quality will drop`,
   ),
+  // fact cards and the short call summary printed at the end of a call
+  "fact.server": m(
+    (p) => `שרת: ${p.v}`,
+    (p) => `Server: ${p.v}`,
+  ),
+  "fact.more": m(
+    (p) => `ועוד ${p.n} אתרים`,
+    (p) => `and ${p.n} more sites`,
+  ),
+  "fact.sslExpired": m(
+    (p) => `⚠ SSL פג לפני ${p.n} ימים`,
+    (p) => `⚠ SSL expired ${p.n} days ago`,
+  ),
+  "fact.sslSoon": m(
+    (p) => `⚠ SSL פג בעוד ${p.n} ימים`,
+    (p) => `⚠ SSL expires in ${p.n} days`,
+  ),
+  "fact.sslUntil": m(
+    (p) => `SSL עד ${p.date}`,
+    (p) => `SSL until ${p.date}`,
+  ),
+  "fact.suspended": m("⚠ מושעה", "⚠ suspended"),
+  "sum.title": m("📋 סיכום השיחה", "📋 Call summary"),
+  "sum.next": m("צעדים הבאים:", "Next steps:"),
+  "sum.open": m(
+    (p) => `שאלות פתוחות: ${p.n}`,
+    (p) => `Open questions: ${p.n}`,
+  ),
+  "sum.email": m("טיוטת מייל", "Email draft"),
+  "sum.ready": m("מוכנה", "ready"),
+  "sum.none": m("אין", "none"),
+  "sum.replaced": m(
+    (p) => ` (${p.n} משפטים הוחלפו ב-[להשלים])`,
+    (p) => ` (${p.n} sentences replaced with [to fill])`,
+  ),
   // language not supported
   "lang.unsupported": m("השפה הזו עדיין לא נתמכת. Wingman מבין אנגלית ועברית.", "This language is not supported yet. Wingman understands English and Hebrew."),
 } satisfies Record<string, Msg>;

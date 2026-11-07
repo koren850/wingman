@@ -95,7 +95,7 @@ async function postCallSummary() {
     }
     summaryDone = true;
     if (r.skipped) return;
-    if (r.ok) console.log(formatShort(r.summary!));
+    if (r.ok) console.log(formatShort(r.summary!, UI_LANG));
     else console.log(`\nSummary failed: ${r.error}`);
     status("summary", { ok: r.ok, id: log.id });
   } catch (e) {

@@ -27,6 +27,17 @@ export const KIND_HE: Record<Kind, string> = {
   personal: "אישית",
   other: "אחר",
 };
+export const KIND_EN: Record<Kind, string> = {
+  client: "Client",
+  support: "Support",
+  vendor: "Vendor",
+  team: "Team",
+  consult: "Consulting",
+  personal: "Personal",
+  other: "Other",
+};
+/** Name of a call kind in the UI language (unknown language = Hebrew). */
+export const kindLabel = (k: Kind, lang?: "he" | "en"): string => (lang === "en" ? KIND_EN : KIND_HE)[k];
 /** Cap on checklist items kept in a frame. */
 export const MAX_ITEMS = 10;
 
