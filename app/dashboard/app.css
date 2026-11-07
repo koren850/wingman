@@ -4122,3 +4122,14 @@ button.chip.spk-btn:focus-visible,
 .su-settings-form {
   padding: 4px 0;
 }
+
+/* after a call: copy buttons first, rating is optional */
+.postcall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.rate-opt .btn {
+  margin-top: 8px;
+}

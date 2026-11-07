@@ -614,7 +614,7 @@ function afterCard(s, kind) {
       h("b", {}, s.summaryOk ? "Summary ready." : s.endedCleanly ? "Call saved." : "The call ended with a problem."),
       " ",
       s.summaryOk
-        ? "Next steps and a draft follow-up email are waiting."
+        ? "The follow-up email is ready to copy."
         : s.summarySkipped
           ? "You skipped the summary. Open the call and choose Write summary whenever you want it."
           : s.endedCleanly
@@ -624,7 +624,7 @@ function afterCard(s, kind) {
               : "Check the call for what was saved.",
     ),
     s.summaryOk
-      ? btn("Open follow-up", { cls: "positive", icon: "follow", onclick: go("followup") })
+      ? btn("Open follow-up email", { cls: "positive", icon: "follow", onclick: go("followup") })
       : btn(known || s.endedCleanly ? "Open the call" : "Open calls", { cls: "positive", onclick: go(undefined) }),
     dismiss,
   );

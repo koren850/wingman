@@ -654,7 +654,7 @@ function nextUpCard() {
       ),
     );
   const p = pendingOf(c);
-  const tab = c.mode === "live" && p ? "rate" : c.hasSummary ? "followup" : "rate";
+  const tab = c.hasSummary ? "followup" : "rate";
   const go = () => openCall(c.id, { tab, filter: tab === "rate" ? "unrated" : undefined });
   return h(
     "section",
@@ -850,11 +850,11 @@ function normTab(t, x) {
   if (!TABS.some((x2) => x2[0] === o.tab)) o.tab = null;
   return o;
 }
-// Rate if a live call still has unrated cards, else the summary if there is one, else the transcript.
+// The result first: the follow-up if there is a summary. Else Rate if a live call has unrated cards, else the transcript.
 function defaultTab(d) {
   const s = d.summary;
-  if (s.mode === "live" && pendingOf(s) > 0) return "rate";
   if (d.callSummary) return "followup";
+  if (s.mode === "live" && pendingOf(s) > 0) return "rate";
   return "transcript";
 }
 /** Load one call and show it. o: { tab, filter, sub, line, hl }. A newer navigation while loading wins (state.gen). */
@@ -1267,10 +1267,21 @@ function tFollowup(pane, d) {
     const stepsText = () => s.nextSteps.map((n) => `- [ ] ${whoLabel(n.who)}: ${n.what}${n.when ? " (" + n.when + ")" : ""}`).join("\n");
     const email = s.followUpEmail || "";
     const phN = (email.match(/\[(?:להשלים|fill in)[^\]\n]*\]/g) || []).length || s.guardReplaced || 0;
+    const summaryText = () =>
+      [
+        s.summary.join("\n"),
+        s.nextSteps.length ? "\n" + stepsText() : "",
+        s.decisions.length ? "\nDecisions:\n" + s.decisions.map((x) => "- " + x).join("\n") : "",
+      ]
+        .join("\n")
+        .trim();
+    const todo = allCards(d)
+      .filter((c) => rateable(c) && !d.tags[c.id])
+      .slice(0, 3);
     const aside = h(
       "aside",
       { class: "emailbox", "aria-label": "Follow-up email" },
-      h("div", { class: "eh" }, h("h2", {}, "Follow-up email"), email ? copyBtn("Copy email", () => email, { cls: "primary", what: "Email" }) : null),
+      h("div", { class: "eh" }, h("h2", {}, "Follow-up email")),
       phN ? h("div", { class: "warnrow" }, chip(`${plural(phN, "placeholder")} to fill`, "warn", { icon: "warning" })) : null,
       email ? h("div", { class: "email" }, emailLines(email)) : h("div", { class: "email muted" }, "No draft"),
       h(
@@ -1282,6 +1293,12 @@ function tFollowup(pane, d) {
       ),
     );
     box.append(
+      h(
+        "div",
+        { class: "postcall" },
+        email ? copyBtn("Copy follow-up email", () => email, { cls: "primary lg", what: "Email" }) : null,
+        copyBtn("Copy summary", summaryText, { cls: "lg", what: "Summary" }),
+      ),
       h(
         "div",
         { class: "fu" },
@@ -1305,6 +1322,19 @@ function tFollowup(pane, d) {
           sec("Decisions", s.decisions.length ? list(s.decisions) : none("No decisions"), s.decisions.length || null),
           sec("Open questions", s.openQuestions.length ? list(s.openQuestions) : none("No open questions"), s.openQuestions.length || null),
           capturesSection(d),
+          todo.length
+            ? h(
+                "section",
+                { class: "rate-opt" },
+                h("h2", {}, "Rate cards", h("span", { class: "n" }, "optional")),
+                h(
+                  "ul",
+                  { class: "bul" },
+                  todo.map((c) => h("li", { dir: dirOf(c.say || ""), lang: langOf(c.say || "") }, String(c.say || c.question || "").slice(0, 90))),
+                ),
+                btn(`Rate ${plural(todo.length, "card")}`, { cls: "sm", icon: "rate", onclick: () => setTab("rate", { filter: "unrated" }, true) }),
+              )
+            : null,
         ),
         aside,
       ),
