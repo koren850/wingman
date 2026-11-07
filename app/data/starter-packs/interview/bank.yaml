@@ -1,33 +1,56 @@
 - id: stall
-  title: Check and come back
+  title: לבדוק ולחזור
   triggers: []
-  say: I want to check that properly and come back to you with an accurate answer.
+  say: אני רוצה לבדוק את זה כמו שצריך ולחזור אליכם עם תשובה מדויקת.
   facts:
-    - We do not guess
-    - We check and come back
-    - The question is noted
+    - לא מנחשים
+    - בודקים וחוזרים
+    - השאלה נרשמה
   alts:
-    - I don't want to guess. Let me check and come back with a clear answer.
-    - Let me verify that first, and I will get back to you.
+    - אני לא רוצה לנחש. אבדוק ואחזור עם תשובה ברורה.
+    - אבדוק את זה קודם ואחזור אליכם.
 - id: tell-me-about-yourself
-  title: Tell me about yourself
+  title: ספר לי על עצמך
   triggers:
+    - ספר לי על עצמך
+    - ספרי לי על עצמך
+    - תספר לי על עצמך
+    - תספרי לי על עצמך
+    - תציג את עצמך
+    - תציגי את עצמך
+    - תעבור איתי על הרקע
+    - מי אתה
+    - מי את
+    - הרקע שלך
+    - קצת עליך
     - tell me about yourself
     - walk me through your background
     - introduce yourself
     - who are you
     - your background
     - about you
-  say: "Practice outline: where I am now, two things I am proud of, and why this role is the next step. Keep it to about a minute."
+  say: "מתווה לתרגול: איפה נמצאים עכשיו, שני דברים שאני גאה בהם, ולמה התפקיד הזה הוא הצעד הבא. כדאי להישאר בערך בדקה."
   facts:
-    - "Now: current role"
-    - "Proof: two short examples"
-    - "Next: why this role"
+    - עכשיו
+    - התפקיד הנוכחי
+    - הוכחה
+    - שתי דוגמאות קצרות
+    - הלאה
+    - למה התפקיד הזה
   tags:
     - practice
 - id: why-this-role
-  title: Why this role
+  title: למה התפקיד הזה
   triggers:
+    - למה התפקיד הזה
+    - למה המשרה הזו
+    - למה החברה הזו
+    - למה אתה רוצה לעבוד אצלנו
+    - למה את רוצה לעבוד אצלנו
+    - למה אצלנו
+    - מה מושך אותך
+    - מה מעניין אותך כאן
+    - למה התעניינת
     - why this role
     - why this job
     - why this company
@@ -35,47 +58,78 @@
     - why us
     - what attracts you
     - why are you interested
-  say: "Practice outline: one fact about the company that you checked, how it matches your work, and what you want to learn."
+  say: "מתווה לתרגול: עובדה אחת על החברה שבדקתם, איך היא מתחברת לעבודה שלכם, ומה אתם רוצים ללמוד."
   facts:
-    - Use a real fact you researched
-    - Link it to your work
-    - Say what you want to learn
+    - עובדה אמיתית שחקרתם
+    - לחבר לעבודה שלכם
+    - לומר מה רוצים ללמוד
   tags:
     - practice
 - id: strengths
-  title: Strengths
+  title: חוזקות
   triggers:
+    - חוזקות
+    - החוזק שלך
+    - מה החוזקות שלך
+    - נקודות חוזק
+    - במה אתה טוב
+    - במה את טובה
+    - מה אתה עושה הכי טוב
+    - מה את עושה הכי טוב
+    - היכולת החזקה שלך
     - strengths
     - greatest strength
     - what are you good at
     - what do you do best
     - your strongest skill
-  say: "Practice outline: pick one strength that fits the role, and back it with one short example and its result."
+  say: "מתווה לתרגול: בוחרים חוזקה אחת שמתאימה לתפקיד, ותומכים בה בדוגמה קצרה אחת ובתוצאה שלה."
   facts:
-    - One strength, not five
-    - One concrete example
-    - Say the result
+    - חוזקה אחת ולא חמש
+    - דוגמה אחת קונקרטית
+    - לומר מה יצא מזה
   tags:
     - practice
 - id: weakness
-  title: Weakness
+  title: חולשות
   triggers:
+    - חולשות
+    - חולשה
+    - מה החולשה שלך
+    - נקודות חולשה
+    - נקודות לשיפור
+    - מה קשה לך
+    - במה אתה מתקשה
+    - במה את מתקשה
+    - מה היית משפר
+    - מה היית משפרת
     - weakness
     - weaknesses
     - greatest weakness
     - what do you struggle with
     - area to improve
     - what would you improve
-  say: "Practice outline: name a real, small weakness, say what you do about it now, and show how it has improved."
+  say: "מתווה לתרגול: מזכירים חולשה אמיתית וקטנה, אומרים מה עושים עם זה היום, ומראים איך זה השתפר."
   facts:
-    - Real but small
-    - What you do about it
-    - Show progress
+    - אמיתית אבל קטנה
+    - מה עושים בנידון
+    - להראות התקדמות
   tags:
     - practice
 - id: star-method
-  title: STAR structure
+  title: מבנה STAR
   triggers:
+    - ספר לי על מקרה
+    - ספרי לי על מקרה
+    - תן לי דוגמה
+    - תני לי דוגמה
+    - תאר מצב
+    - תארי מצב
+    - תספר על פעם
+    - תספרי על פעם
+    - שאלה התנהגותית
+    - סיטואציה
+    - ספר על מצב
+    - מקרה שבו
     - tell me about a time
     - give me an example
     - describe a situation
@@ -84,17 +138,30 @@
     - behavioral
     - behavioural
     - situation
-  say: "Practice outline, STAR: the situation in one line, your task, what you did, and the result. Spend most of the time on what you did."
+  say: "מתווה לתרגול: STAR, המצב בשורה אחת, המשימה, מה עשיתם, והתוצאה. רוב הזמן מוקדש למה שעשיתם."
   facts:
-    - Situation
-    - Task
-    - "Action: most of the time"
-    - Result
+    - מצב
+    - משימה
+    - פעולה
+    - רוב הזמן
+    - תוצאה
   tags:
     - practice
 - id: conflict
-  title: Conflict at work
+  title: קונפליקט בעבודה
   triggers:
+    - קונפליקט
+    - מחלוקת
+    - לא הסכמת
+    - לא הסכמתם
+    - עמית קשה
+    - עמיתה קשה
+    - מנהל קשה
+    - מתח בצוות
+    - חיכוך
+    - התנגשות
+    - ויכוח בעבודה
+    - חילוקי דעות
     - conflict
     - disagreement
     - disagreed with
@@ -103,16 +170,27 @@
     - difficult manager
     - tension
     - clash
-  say: "Practice outline: describe the disagreement fairly, how you listened first, what you agreed, and what you learned."
+  say: "מתווה לתרגול: מתארים את המחלוקת בהגינות, איך הקשבתם קודם, על מה הסכמתם, ומה למדתם."
   facts:
-    - Be fair to the other person
-    - Listening first
-    - What you learned
+    - להיות הוגנים כלפי האדם השני
+    - קודם להקשיב
+    - מה למדתם
   tags:
     - practice
 - id: failure
-  title: Failure or mistake
+  title: כישלון או טעות
   triggers:
+    - כישלון
+    - טעות
+    - משהו השתבש
+    - נכשלת
+    - נכשלתם
+    - הטעות הכי גדולה
+    - פרויקט שנכשל
+    - פספסת דדליין
+    - פספסתם דדליין
+    - מה השתבש
+    - פעם שטעית
     - failure
     - mistake
     - something went wrong
@@ -121,16 +199,25 @@
     - a project failed
     - missed a deadline
     - what went wrong
-  say: "Practice outline: own the mistake in the first sentence, say what you changed afterwards, and give one proof that it worked."
+  say: "מתווה לתרגול: לוקחים אחריות על הטעות כבר במשפט הראשון, אומרים מה שיניתם אחר כך, ומביאים הוכחה אחת שזה עבד."
   facts:
-    - Own it first
-    - What you changed
-    - Proof it worked
+    - קודם לקחת אחריות
+    - מה שיניתם
+    - הוכחה שזה עבד
   tags:
     - practice
 - id: leadership
-  title: Leadership and ownership
+  title: מנהיגות ואחריות
   triggers:
+    - מנהיגות
+    - הובלת צוות
+    - הובלת פרויקט
+    - לקחת אחריות
+    - יוזמה
+    - חניכה
+    - השפעה
+    - בלי סמכות
+    - הובלתי
     - leadership
     - led a team
     - lead a project
@@ -140,16 +227,27 @@
     - mentoring
     - influenced
     - without authority
-  say: "Practice outline: a case where you took the lead without being asked, what you did, and how the team or the result changed."
+  say: "מתווה לתרגול: מקרה שבו הובלתם בלי שביקשו, מה עשיתם, ואיך זה שינה את הצוות או את התוצאה."
   facts:
-    - Not asked, but you stepped up
-    - Specific actions
-    - Result for the team
+    - לא ביקשו אבל קמתם
+    - פעולות מוחשיות
+    - תוצאה לצוות
   tags:
     - practice
 - id: pressure
-  title: Pressure and priorities
+  title: לחץ ותעדוף
   triggers:
+    - לחץ
+    - עומס
+    - דדליין צפוף
+    - תעדוף
+    - לתעדף
+    - הרבה משימות
+    - סדרי עדיפויות
+    - מתח בעבודה
+    - מוצף
+    - מוצפת
+    - לנהל כמה דברים
     - pressure
     - stress
     - tight deadline
@@ -159,16 +257,25 @@
     - competing priorities
     - overwhelmed
     - juggle
-  say: "Practice outline: how you list the tasks, ask what matters most, say no or move something, and keep people informed."
+  say: "מתווה לתרגול: איך מפרטים את המשימות, שואלים מה הכי חשוב, דוחים או מזיזים משהו, ומעדכנים את האנשים."
   facts:
-    - List and rank
-    - Ask what matters most
-    - Communicate early
+    - לרשום ולדרג
+    - לשאול מה הכי חשוב
+    - לעדכן מוקדם
   tags:
     - practice
 - id: system-design
-  title: System design question
+  title: שאלת תכנון מערכת
   triggers:
+    - תכנון מערכת
+    - סיסטם דיזיין
+    - איך היית מתכנן
+    - איך היית מתכננת
+    - ארכיטקטורה
+    - סקיילינג
+    - מערכת שמתרחבת
+    - תכנון ברמה גבוהה
+    - תכנון api
     - system design
     - design a system
     - how would you design
@@ -177,17 +284,27 @@
     - scalable
     - high level design
     - design an api
-  say: "Practice outline: clarify the needs, list the main parts, pick a simple design, then talk about limits and trade-offs."
+  say: "מתווה לתרגול: מבררים את הצרכים, מפרטים את החלקים העיקריים, בוחרים תכנון פשוט, ואז מדברים על מגבלות ופשרות."
   facts:
-    - Ask clarifying questions
-    - Main components
-    - Start simple
-    - Trade-offs and limits
+    - לשאול שאלות הבהרה
+    - רכיבים עיקריים
+    - להתחיל פשוט
+    - פשרות ומגבלות
   tags:
     - practice
 - id: coding-approach
-  title: Coding question approach
+  title: גישה לשאלת קוד
   triggers:
+    - שאלת קוד
+    - אלגוריתם
+    - מבנה נתונים
+    - סיבוכיות
+    - ביג או
+    - לכתוב פונקציה
+    - לוח לבן
+    - ליטקוד
+    - לשפר את זה
+    - לייעל את זה
     - coding question
     - algorithm
     - data structure
@@ -198,17 +315,28 @@
     - leetcode
     - optimize this
     - optimise this
-  say: "Practice outline: repeat the problem, give an example, say the plain approach first, then improve it and state the complexity."
+  say: "מתווה לתרגול: חוזרים על הבעיה, נותנים דוגמה, אומרים קודם את הגישה הפשוטה, ואז משפרים ומציינים את הסיבוכיות."
   facts:
-    - Restate and give an example
-    - Plain approach first
-    - Improve it
-    - State the complexity
+    - לחזור על הבעיה ולתת דוגמה
+    - קודם גישה פשוטה
+    - לשפר
+    - לציין סיבוכיות
   tags:
     - practice
 - id: debugging
-  title: Debugging story
+  title: סיפור דיבאג
   triggers:
+    - דיבאג
+    - לדבג
+    - באג קשה
+    - תקלה בייצור
+    - תקלה בפרודקשן
+    - אירוע בפרודקשן
+    - איתור תקלות
+    - למצוא את הסיבה
+    - סיבת שורש
+    - פוסטמורטם
+    - תחקיר
     - debugging
     - debug
     - a hard bug
@@ -218,17 +346,26 @@
     - troubleshoot
     - root cause
     - postmortem
-  say: "Practice outline: what was visible, how you narrowed it down, the root cause, the fix and what you changed so it does not return."
+  say: "מתווה לתרגול: מה נראה לעין, איך צמצמתם את החיפוש, סיבת השורש, התיקון, ומה שיניתם כדי שזה לא יחזור."
   facts:
-    - Symptom
-    - How you narrowed it
-    - Root cause
-    - What you changed after
+    - התסמין
+    - איך צמצמתם
+    - סיבת שורש
+    - מה שיניתם אחר כך
   tags:
     - practice
 - id: teamwork
-  title: Teamwork
+  title: עבודת צוות
   triggers:
+    - עבודת צוות
+    - עבודה בצוות
+    - שיתוף פעולה
+    - עבודה בין צוותים
+    - בעלי עניין
+    - עבודה מרחוק
+    - תקשורת בצוות
+    - איך אתה עובד עם אחרים
+    - איך את עובדת עם אחרים
     - teamwork
     - work in a team
     - collaborate
@@ -238,32 +375,48 @@
     - stakeholder
     - remote work
     - communication
-  say: "Practice outline: how you share progress, ask for help early, and give credit. Add one short example with a team result."
+  say: "מתווה לתרגול: איך משתפים בהתקדמות, מבקשים עזרה מוקדם, ונותנים קרדיט. כדאי להוסיף דוגמה קצרה עם תוצאה לצוות."
   facts:
-    - Share progress
-    - Ask early
-    - Give credit
-    - One example
+    - לשתף בהתקדמות
+    - לבקש מוקדם
+    - לתת קרדיט
+    - דוגמה אחת
   tags:
     - practice
 - id: questions-for-them
-  title: Your questions for them
+  title: השאלות שלכם אליהם
   triggers:
+    - יש לך שאלות
+    - יש לך שאלות אלינו
+    - יש לך שאלות אליי
+    - יש לכם שאלות
+    - מה היית רוצה לדעת
+    - משהו שתרצה לשאול
+    - משהו שתרצי לשאול
+    - שאלות מצידך
     - do you have any questions
     - any questions for us
     - questions for me
     - what would you like to know
     - anything you want to ask
-  say: "Practice outline: ask about how success is measured, what the team is working on now, and what the first months look like."
+  say: "מתווה לתרגול: שואלים איך מודדים הצלחה, על מה הצוות עובד עכשיו, ואיך נראים החודשים הראשונים."
   facts:
-    - How success is measured
-    - Current team work
-    - The first months
+    - איך מודדים הצלחה
+    - מה הצוות עושה עכשיו
+    - החודשים הראשונים
   tags:
     - practice
 - id: career-goals
-  title: Where you see yourself
+  title: איפה אתם רואים את עצמכם
   triggers:
+    - איפה אתה רואה את עצמך
+    - איפה את רואה את עצמך
+    - בעוד חמש שנים
+    - מטרות קריירה
+    - מטרות לטווח ארוך
+    - מה המטרות שלך
+    - מה הצעד הבא שלך
+    - שאיפות
     - where do you see yourself
     - five years
     - career goals
@@ -271,16 +424,27 @@
     - what are your goals
     - what do you want to do next
     - ambition
-  say: "Practice outline: say what you want to get better at, link it to the role, and stay honest and modest about the path."
+  say: "מתווה לתרגול: אומרים במה רוצים להשתפר, מחברים את זה לתפקיד, ונשארים כנים וצנועים לגבי הדרך."
   facts:
-    - Skills you want to grow
-    - Link to the role
-    - Honest, no big claims
+    - מיומנויות שרוצים לפתח
+    - חיבור לתפקיד
+    - כנות בלי טענות גדולות
   tags:
     - practice
 - id: salary-practice
-  title: Pay question (practice)
+  title: שאלת שכר (תרגול)
   triggers:
+    - שכר
+    - ציפיות שכר
+    - ציפיות לשכר
+    - מה הציפיות שלך
+    - שכר רצוי
+    - טווח שכר
+    - משכורת
+    - משכורת נוכחית
+    - כמה אתה רוצה
+    - כמה את רוצה
+    - תנאים כלכליים
     - salary
     - salary expectations
     - expected salary
@@ -289,11 +453,11 @@
     - what do you expect
     - current salary
     - how much do you want
-  say: "Practice outline: say you want a fair offer for the role, that you would like to hear their range first, and that you are flexible."
+  say: "מתווה לתרגול: אומרים שרוצים הצעה הוגנת לתפקיד, שמעדיפים לשמוע קודם את הטווח שלהם, ושיש גמישות."
   facts:
-    - Hear their range first
-    - Stay flexible
-    - Do not name a figure in practice
+    - קודם לשמוע את הטווח שלהם
+    - להישאר גמישים
+    - לא נוקבים בסכום בתרגול
   tags:
     - practice
   priority: 5

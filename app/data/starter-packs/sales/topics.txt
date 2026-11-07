@@ -1,4 +1,13 @@
-# Words that mean "this call is about my own work". One per line; "=word" matches a whole word; lines under [strict] are the unmistakable terms.
+# Words that mean "this call is about my own work". One per line; "=word" matches a whole word; lines under תוכנה
+פלטפורמה
+סי אר אם
+דמו
+פיילוט
+הטמעה
+אינטגרציה
+מנוי
+חוזה
+[strict] are the unmistakable terms.
 software
 platform
 crm
@@ -15,3 +24,6 @@ contract
 our product
 our platform
 customer success
+המוצר שלנו
+הפלטפורמה שלנו
+הצלחת לקוחות

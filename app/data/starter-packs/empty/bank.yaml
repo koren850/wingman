@@ -1,17 +1,33 @@
 - id: stall
-  title: Check and come back
+  title: לבדוק ולחזור
   triggers: []
-  say: I want to check that properly and come back to you with an accurate answer.
+  say: אני רוצה לבדוק את זה כמו שצריך ולחזור אליכם עם תשובה מדויקת.
   facts:
-    - We do not guess
-    - We check and come back
-    - The question is noted
+    - לא מנחשים
+    - בודקים וחוזרים
+    - השאלה נרשמה
   alts:
-    - I don't want to guess. Let me check and come back with a clear answer.
-    - Let me verify that first, and I will get back to you.
+    - אני לא רוצה לנחש. אבדוק ואחזור עם תשובה ברורה.
+    - אבדוק את זה קודם ואחזור אליכם.
 - id: stall-price
-  title: Price question
+  title: שאלה על מחיר
   triggers:
+    - מחיר
+    - מחירים
+    - כמה זה עולה
+    - כמה עולה
+    - כמה יעלה
+    - כמה זה יעלה
+    - כמה זה יוצא
+    - כמה לשלם
+    - כמה נשלם
+    - מה העלות
+    - עלות
+    - תמחור
+    - תעריפים
+    - הצעת מחיר
+    - תקציב
+    - יש הנחה
     - price
     - pricing
     - how much
@@ -21,15 +37,25 @@
     - what does it cost
     - discount
     - rates
-  say: The price depends on the scope and the requirements. I need the details first, and then I will send a clear quote.
+  say: המחיר תלוי בהיקף ובדרישות. אצטרך להכיר את הפרטים קודם, ואז אשלח הצעה מסודרת.
   facts:
-    - No number without details
-    - Come back after checking
+    - לא נותנים מספר בלי פרטים
+    - חוזרים אחרי בדיקה
   alts:
-    - It depends on the details. Let me check and come back to you with a proper figure.
+    - זה תלוי בפרטים. אבדוק ואחזור אליכם עם הצעה מסודרת.
 - id: stall-timeline
-  title: Time question
+  title: שאלה על זמנים
   triggers:
+    - כמה זמן זה לוקח
+    - כמה זמן ייקח
+    - כמה זמן זה ייקח
+    - תוך כמה זמן
+    - מתי זה יהיה מוכן
+    - מתי נסיים
+    - מתי אפשר להתחיל
+    - כמה מהר
+    - לוח זמנים
+    - דדליין
     - how long
     - how soon
     - when can
@@ -38,16 +64,26 @@
     - turnaround
     - by when
     - how fast
-  say: It depends on the details. Let me check and I will come back with a realistic estimate.
+  say: זה תלוי בפרטים. אבדוק ואחזור עם הערכה ריאלית.
   facts:
-    - Depends on scope
-    - Estimate after checking
-    - No date on the call
+    - תלוי בהיקף
+    - הערכה אחרי בדיקה
+    - לא נותנים תאריך בשיחה
   alts:
-    - I would rather check than guess. I will come back with an estimate.
+    - עדיף לבדוק ולא לנחש. אחזור עם הערכה.
 - id: stall-guarantee
-  title: Promise question
+  title: שאלה על התחייבות
   triggers:
+    - התחייבות
+    - מתחייבים
+    - אתם מתחייבים
+    - מבטיחים
+    - תבטיחו
+    - אחריות
+    - אתם בטוחים
+    - בכתב
+    - אפשר בכתב
+    - אס אל איי
     - guarantee
     - promise
     - sla
@@ -56,7 +92,7 @@
     - can you commit
     - in writing
     - are you sure
-  say: I don't want to commit before checking. I will come back with what we can commit to, in writing.
+  say: אני לא רוצה להתחייב לפני שבדקתי. אחזור עם מה שאפשר להתחייב עליו, בכתב.
   facts:
-    - No commitment on the call
-    - We define it in writing
+    - אין התחייבות בשיחה
+    - מגדירים בכתב

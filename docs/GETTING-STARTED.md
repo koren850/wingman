@@ -252,7 +252,7 @@ A **pack** is plain files: your answer cards, your tone rules and two word lists
 
 ### 1. Copy a starter pack
 
-In the app: **Settings, Setup guide, Starter answers**. Pick a starter (sales, customer support, job interview practice, an empty pack, or the web hosting example) and press **Copy to my folder**. The starters are in English. Or by hand (swap `example-pack` for `starter-packs/sales`, `support`, `interview` or `empty`):
+In the app: **Settings, Setup guide, Answer pack**. Pick a starter (sales, customer support, job interview practice, an empty pack, or the web hosting example) and press **Copy to my folder**. The starters are in Hebrew, with English text for English calls. Or by hand (swap `example-pack` for `starter-packs/sales`, `support`, `interview` or `empty`):
 
 ```bash
 mkdir -p ~/.config/wingman/pack

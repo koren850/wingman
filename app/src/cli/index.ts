@@ -15,6 +15,7 @@ import { settings } from "./settings-cmd.ts";
 import { live } from "./live.ts";
 import { profile } from "./profile-cmd.ts";
 import { diagnose } from "./diagnose.ts";
+import { pack } from "./pack-cmd.ts";
 
 type Cmd = (ctx: Ctx, args: string[]) => Promise<Result>;
 const COMMANDS: Record<string, Cmd> = {
@@ -36,6 +37,7 @@ const COMMANDS: Record<string, Cmd> = {
   calls,
   settings,
   profile,
+  pack,
   keys,
   app,
   help: async (_c, a) => ({ data: { help: HELP }, text: HELP.trimEnd() + (a.length ? "" : "") }),

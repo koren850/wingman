@@ -71,6 +71,10 @@ COMMANDS
                                Who Wingman is helping: name (and the spellings speech-to-text gives it), the Hebrew form used to address the user, a line about them
                                and their business. Stored in ~/.config/wingman/profile.yaml, never in the repo. An empty value clears a field. Applies to the next call.
   settings list [--all] | get <key> | set <key> <value|default> [--advanced]     Same options and limits as the app's Settings. Applies to the next call.
+  pack from-notes <file.txt|.md|.pdf> [--lang en|he] [--out <folder>] [--force] [--model provider:model]
+                               Drafts answer cards from the user's own FAQ or notes with one model call (a few cents). Writes bank.yaml and bank.en.yaml into <folder>
+                               (default ./pack-draft) as a DRAFT, never into the live pack, and never over existing files without --force (exit 4). Cards with a price, date
+                               or promise become stalls and are listed in the output. The user must read every card. PDF needs pdftotext. --model default: summary.model.
   keys status                  Present or missing for each API key. Nothing else: keys are never printed, set or moved from here
                                (use \`pnpm keys\` in a terminal or the app's Settings > Keys).
   app status | app open        Is the app running / open /Applications/Wingman.app (only when you run it explicitly).

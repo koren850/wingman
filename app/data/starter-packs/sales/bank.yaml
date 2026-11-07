@@ -1,17 +1,35 @@
 - id: stall
-  title: Check and come back
+  title: לבדוק ולחזור
   triggers: []
-  say: I want to check that properly and come back to you with an accurate answer.
+  say: אני רוצה לבדוק את זה כמו שצריך ולחזור אליכם עם תשובה מדויקת.
   facts:
-    - We do not guess
-    - We check and come back
-    - The question is noted
+    - לא מנחשים
+    - בודקים וחוזרים
+    - השאלה נרשמה
   alts:
-    - I don't want to guess. Let me check and come back with a clear answer.
-    - Let me verify that first, and I will get back to you.
+    - אני לא רוצה לנחש. אבדוק ואחזור עם תשובה ברורה.
+    - אבדוק את זה קודם ואחזור אליכם.
 - id: stall-price
-  title: Price question
+  title: שאלה על מחיר
   triggers:
+    - מחיר
+    - מחירים
+    - כמה זה עולה
+    - כמה עולה
+    - כמה יעלה
+    - כמה זה יעלה
+    - כמה זה יוצא
+    - כמה נשלם
+    - כמה לשלם
+    - מה העלות
+    - עלות
+    - תמחור
+    - מחירון
+    - תעריפים
+    - הצעת מחיר
+    - תקציב
+    - יש הנחה
+    - לקבל הנחה
     - price
     - pricing
     - how much
@@ -21,15 +39,27 @@
     - what does it cost
     - discount
     - rates
-  say: The price depends on the details. I need the details first, and then I will send a clear quote.
+  say: המחיר תלוי בפרטים. אצטרך להכיר אותם קודם, ואז אשלח הצעה מסודרת.
   facts:
-    - No number without details
-    - Come back after checking
+    - לא נותנים מספר בלי פרטים
+    - חוזרים אחרי בדיקה
   alts:
-    - It depends on the details. Let me check and come back to you with a proper figure.
+    - זה תלוי בפרטים. אבדוק ואחזור אליכם עם הצעה מסודרת.
 - id: stall-timeline
-  title: Time question
+  title: שאלה על זמנים
   triggers:
+    - כמה זמן זה לוקח
+    - כמה זמן ייקח
+    - כמה זמן זה ייקח
+    - תוך כמה זמן
+    - מתי זה יהיה מוכן
+    - מתי אפשר להתחיל
+    - כמה מהר
+    - לוח זמנים
+    - לוחות זמנים
+    - דדליין
+    - זמן אספקה
+    - מתי תסיימו
     - how long
     - how soon
     - when can
@@ -38,16 +68,28 @@
     - turnaround
     - by when
     - how fast
-  say: It depends on the details. Let me check and I will come back with a realistic estimate.
+  say: זה תלוי בפרטים. אבדוק ואחזור עם הערכה ריאלית.
   facts:
-    - Depends on scope
-    - Estimate after checking
-    - No date on the call
+    - תלוי בהיקף
+    - הערכה אחרי בדיקה
+    - לא נותנים תאריך בשיחה
   alts:
-    - I would rather check than guess. I will come back with an estimate.
+    - עדיף לבדוק ולא לנחש. אחזור עם הערכה.
 - id: stall-guarantee
-  title: Promise question
+  title: שאלה על התחייבות
   triggers:
+    - התחייבות
+    - מתחייבים
+    - אתם מתחייבים
+    - אפשר להתחייב
+    - מבטיחים
+    - תבטיחו
+    - אחריות
+    - אתם בטוחים
+    - בכתב
+    - אפשר בכתב
+    - אס אל איי
+    - זמינות מובטחת
     - guarantee
     - promise
     - sla
@@ -56,41 +98,68 @@
     - can you commit
     - in writing
     - are you sure
-  say: I don't want to commit before checking. I will come back with what we can commit to, in writing.
+  say: אני לא רוצה להתחייב לפני שבדקתי. אחזור עם מה שאפשר להתחייב עליו, בכתב.
   facts:
-    - No commitment on the call
-    - We define it in writing
+    - אין התחייבות בשיחה
+    - מגדירים בכתב
 - id: what-we-do
-  title: What we do
+  title: מה אנחנו עושים
   triggers:
+    - מה אתם עושים
+    - מה המוצר
+    - ספרו לי על המוצר
+    - תספרו על המוצר
+    - מה זה בעצם
+    - מה הפלטפורמה
+    - על מה מדובר
+    - מה זה עושה
+    - במה אתם מתעסקים
     - what do you do
     - what does your product do
     - tell me about your product
     - what is your platform
     - what is this
     - what does it do
-  say: In short, we help teams keep all their customer work in one place, so nothing falls between people.
+  say: בקצרה, אנחנו עוזרים לצוותים לשמור את כל העבודה מול הלקוחות במקום אחד, כך שדבר לא נופל בין האנשים.
   facts:
-    - One shared workspace
-    - Built for small and mid-size teams
-    - Works in the browser
+    - סביבת עבודה משותפת אחת
+    - לצוותים קטנים ובינוניים
+    - עובד בדפדפן
 - id: who-for
-  title: Who it is for
+  title: למי זה מתאים
   triggers:
+    - למי זה מתאים
+    - מי משתמש
+    - אילו חברות
+    - איזה גודל חברה
+    - אילו צוותים
+    - זה מתאים לנו
+    - זה בשבילנו
+    - לאיזה סוג עסקים
     - who is it for
     - who uses it
     - what kind of companies
     - what size of company
     - which teams
     - is it for us
-  say: Mostly teams of ten to a few hundred people who share customer work. Sales, support and account managers use it most.
+  say: בעיקר לצוותים בינוניים שעובדים יחד מול לקוחות. מכירות, תמיכה ומנהלי לקוחות משתמשים הכי הרבה.
   facts:
-    - Sales and success teams
-    - Teams that share an inbox or a sheet today
-    - Not built for single users
+    - צוותי מכירות והצלחת לקוחות
+    - צוותים שעובדים היום עם תיבת מייל או גיליון משותף
+    - לא בנוי למשתמש בודד
 - id: how-different
-  title: How we are different
+  title: במה אנחנו שונים
   triggers:
+    - במה אתם שונים
+    - למה אתם
+    - למה לא הכלי האחר
+    - מתחרים
+    - מתחרה
+    - לעומת
+    - בהשוואה ל
+    - חלופה
+    - מה מייחד אתכם
+    - מה ההבדל בינכם לבין
     - how are you different
     - why you
     - why not the other tool
@@ -99,14 +168,28 @@
     - versus
     - alternative
     - what makes you different
-  say: I will not judge other tools. Customers tell us it is simple to set up, and the whole team uses it.
+  say: אני לא אשפוט כלים אחרים. לקוחות מספרים לנו שקל להתחיל לעבוד איתנו ושכל הצוות באמת משתמש.
   facts:
-    - Fast to set up
-    - Simple enough for the whole team
-    - Ask what matters most to you
+    - התקנה מהירה
+    - פשוט לכל הצוות
+    - לשאול מה הכי חשוב להם
 - id: integrations
-  title: Integrations
+  title: אינטגרציות
   triggers:
+    - אינטגרציה
+    - אינטגרציות
+    - להתחבר ל
+    - מתחבר ל
+    - מתממשק
+    - עובדים עם
+    - סי אר אם
+    - לסי אר אם
+    - סלאק
+    - מייל
+    - יומן
+    - זאפייר
+    - מחברים
+    - קונקטורים
     - integrations
     - integrate
     - connect with
@@ -117,14 +200,25 @@
     - calendar
     - zapier
     - connectors
-  say: Yes, it connects to the common email, calendar and chat tools. I will check your exact list and confirm.
+  say: כן, זה מתחבר לכלי המייל, היומן והצ'אט הנפוצים. אבדוק מה בדיוק ברשימה שלכם ואאשר.
   facts:
-    - Email and calendar
-    - Chat tools
-    - Open API for the rest
+    - מייל ויומן
+    - כלי צ'אט
+    - API פתוח לשאר
 - id: api
-  title: API and webhooks
+  title: API וווב-הוקס
   triggers:
+    - אפי
+    - איי פי איי
+    - ווב הוק
+    - וובהוק
+    - ווב הוקס
+    - מפתחים
+    - חיבור מותאם
+    - ייצוא נתונים
+    - לייצא נתונים
+    - לבנות מעל
+    - תיעוד טכני
     - api
     - webhook
     - webhooks
@@ -133,14 +227,25 @@
     - build on top
     - export data
     - data export
-  say: There is an API and webhooks, so your developers can connect it to your own systems. You can also export your data.
+  say: יש API ו-webhooks, כך שהמפתחים אצלכם יכולים לחבר את זה למערכות שלכם. אפשר גם לייצא את הנתונים.
   facts:
-    - API and webhooks
-    - Data export
-    - Your developers get documentation
+    - API ו-webhooks
+    - ייצוא נתונים
+    - תיעוד למפתחים
 - id: security
-  title: Security
+  title: אבטחה
   triggers:
+    - אבטחה
+    - אבטחת מידע
+    - מאובטח
+    - הצפנה
+    - מוצפן
+    - סוק 2
+    - איי אס או
+    - בדיקת חדירות
+    - סקירת אבטחה
+    - המידע שלנו בטוח
+    - הנתונים בטוחים
     - security
     - secure
     - encryption
@@ -150,14 +255,24 @@
     - penetration test
     - security review
     - is my data safe
-  say: Data is encrypted in transit and at rest, and access is by role. I can send our security overview for your team to review.
+  say: הנתונים מוצפנים בדרך ובאחסון, והגישה לפי הרשאות. אשלח סקירת אבטחה שהצוות שלכם יוכל לעבור עליה.
   facts:
-    - Encryption in transit and at rest
-    - Role-based access
-    - Security overview available
+    - הצפנה בדרך ובאחסון
+    - גישה לפי תפקיד
+    - סקירת אבטחה זמינה
 - id: sso
-  title: Single sign-on
+  title: התחברות אחידה
   triggers:
+    - אס אס או
+    - התחברות אחידה
+    - סאמל
+    - אוקטה
+    - אז׳ור
+    - התחברות עם גוגל
+    - אימות דו שלבי
+    - אימות דו-שלבי
+    - שני שלבים
+    - אם אף איי
     - sso
     - single sign on
     - single sign-on
@@ -168,14 +283,24 @@
     - two factor
     - 2fa
     - mfa
-  say: Single sign-on and two-step login are supported for company accounts. I will confirm which providers on the plan you would use.
+  say: התחברות אחידה ואימות דו-שלבי נתמכים בחשבונות ארגוניים. אאשר אילו ספקים נכללים בחבילה שתבחרו.
   facts:
-    - SSO for company accounts
-    - Two-step login
-    - Confirm the provider
+    - SSO לחשבונות ארגוניים
+    - אימות דו-שלבי
+    - לאשר את הספק
 - id: privacy-gdpr
-  title: Privacy and GDPR
+  title: פרטיות ו-GDPR
   triggers:
+    - פרטיות
+    - הגנת הפרטיות
+    - ג'י די פי אר
+    - גידיפיאר
+    - הגנת מידע
+    - הסכם עיבוד מידע
+    - איפה המידע
+    - איפה הנתונים
+    - מיקום הנתונים
+    - חוק הגנת הפרטיות
     - gdpr
     - privacy
     - data protection
@@ -184,14 +309,24 @@
     - where is the data
     - data residency
     - data location
-  say: We handle personal data under a data processing agreement, and we can discuss where your data is stored. I will send the details.
+  say: אנחנו מטפלים במידע אישי לפי הסכם עיבוד נתונים, ואפשר לדבר על המקום שבו הנתונים נשמרים. אשלח את הפרטים.
   facts:
-    - Data processing agreement
-    - Storage location is a choice to discuss
-    - Details sent after the call
+    - הסכם עיבוד נתונים
+    - מקום האחסון הוא נושא לדיון
+    - פרטים אחרי השיחה
 - id: onboarding
-  title: Onboarding
+  title: הטמעה
   triggers:
+    - הטמעה
+    - אונבורדינג
+    - איך מתחילים
+    - להתחיל לעבוד
+    - התקנה
+    - הקמה
+    - מיגרציה
+    - להעביר את הנתונים
+    - לייבא נתונים
+    - ייבוא נתונים
     - onboarding
     - get started
     - getting started
@@ -201,14 +336,23 @@
     - how do we start
     - migration
     - import our data
-  say: "We help you set it up: we import your data, connect your tools and train your team. You are not left alone with it."
+  say: "אנחנו מלווים בהקמה: מייבאים את הנתונים, מחברים את הכלים ומדריכים את הצוות. לא משאירים אתכם לבד."
   facts:
-    - Data import
-    - Tools connected
-    - Team training
+    - ייבוא נתונים
+    - חיבור כלים
+    - הדרכת צוות
 - id: training
-  title: Training and support
+  title: הדרכה ותמיכה
   triggers:
+    - הדרכה
+    - להדריך
+    - תמיכה
+    - שירות לקוחות
+    - למי מתקשרים
+    - מדריכים
+    - מרכז עזרה
+    - הצלחת לקוחות
+    - מי עוזר לנו
     - training
     - support
     - help desk
@@ -217,14 +361,24 @@
     - documentation
     - help center
     - customer success
-  say: Your team gets training at the start and a named contact after that. There is also a help center with guides.
+  say: הצוות שלכם מקבל הדרכה בהתחלה ואיש קשר קבוע אחר כך. יש גם מרכז עזרה עם מדריכים.
   facts:
-    - Training at the start
-    - A named contact
-    - Help center
+    - הדרכה בהתחלה
+    - איש קשר קבוע
+    - מרכז עזרה
 - id: pilot
-  title: Pilot or trial
+  title: פיילוט או ניסיון
   triggers:
+    - פיילוט
+    - פיילוט קטן
+    - תקופת ניסיון
+    - לנסות
+    - פרוף אוף קונספט
+    - פי או סי
+    - דמו
+    - הדגמה
+    - סביבת בדיקה
+    - לבדוק קודם
     - trial
     - pilot
     - try it
@@ -233,14 +387,26 @@
     - test it first
     - demo
     - sandbox
-  say: Yes, a short pilot with a small team is a good way to start. We agree on what success looks like first.
+  say: כן, פיילוט קצר עם צוות קטן הוא דרך טובה להתחיל. קודם מסכמים מה נחשב הצלחה.
   facts:
-    - Start with a small team
-    - Agree on the goal first
-    - Decide after the pilot
+    - מתחילים עם צוות קטן
+    - מסכמים את המטרה קודם
+    - מחליטים אחרי הפיילוט
 - id: roi
-  title: Value and results
+  title: ערך ותוצאות
   triggers:
+    - החזר השקעה
+    - רו אי
+    - רואי
+    - תועלת
+    - כדאיות
+    - למה לקנות
+    - מה נקבל
+    - מה היתרון
+    - תוצאות
+    - סיפור הצלחה
+    - מקרה בוחן
+    - קייס סטאדי
     - roi
     - return on investment
     - benefit
@@ -250,14 +416,23 @@
     - value
     - results
     - case study
-  say: Customers usually tell us they save time on admin and miss fewer follow-ups. I can share a case study from a similar team.
+  say: לקוחות מספרים לנו שהם חוסכים זמן על ניהול וממש פחות מעקבים. אפשר לשלוח סיפור הצלחה מצוות דומה.
   facts:
-    - Less admin time
-    - Fewer missed follow-ups
-    - Case study on request
+    - פחות זמן על ניהול
+    - פחות מעקבים שנשכחים
+    - סיפור הצלחה לפי בקשה
 - id: reporting
-  title: Reporting
+  title: דוחות
   triggers:
+    - דוחות
+    - דוח
+    - דשבורד
+    - לוח בקרה
+    - אנליטיקס
+    - מדדים
+    - קיי פי איי
+    - תחזית
+    - תצוגה למנהלים
     - reporting
     - reports
     - dashboard
@@ -266,14 +441,24 @@
     - kpi
     - forecast
     - visibility
-  say: There are ready-made dashboards for the team and for managers, and you can build your own reports.
+  say: יש לוחות בקרה מוכנים לצוות ולמנהלים, ואפשר לבנות דוחות משלכם.
   facts:
-    - Team and manager dashboards
-    - Custom reports
-    - Export to a sheet
+    - לוחות בקרה לצוות ולמנהלים
+    - דוחות מותאמים
+    - ייצוא לגיליון
 - id: contract
-  title: Contract and terms
+  title: חוזה ותנאים
   triggers:
+    - חוזה
+    - תנאים
+    - תנאי שימוש
+    - חידוש
+    - לבטל
+    - ביטול
+    - התחייבות מינימלית
+    - תקופת התחייבות
+    - רכש
+    - משפטי
     - contract
     - terms
     - renewal
@@ -284,14 +469,23 @@
     - minimum term
     - procurement
     - legal
-  say: Terms depend on the plan. I will send the standard terms, and your legal team can ask me about anything unclear.
+  say: התנאים תלויים בחבילה. אשלח את התנאים הסטנדרטיים, והצוות המשפטי שלכם מוזמן לשאול על כל דבר לא ברור.
   facts:
-    - Standard terms sent after the call
-    - Legal can ask questions
-    - No surprises
+    - תנאים סטנדרטיים נשלחים אחרי השיחה
+    - אפשר לשאול שאלות משפטיות
+    - בלי הפתעות
 - id: decision
-  title: Decision process
+  title: תהליך קבלת החלטה
   triggers:
+    - השלב הבא
+    - צעדים הבאים
+    - מי מחליט
+    - מקבל החלטות
+    - בעלי עניין
+    - איך ממשיכים
+    - מה קורה עכשיו
+    - צריך אישור
+    - מי צריך לאשר
     - next step
     - next steps
     - who decides
@@ -300,8 +494,8 @@
     - how do we proceed
     - what happens next
     - approval
-  say: A good next step is a short session with the people who will use it. Who else should be involved in the decision?
+  say: צעד טוב הוא מפגש קצר עם האנשים שישתמשו בזה. מי עוד צריך להיות מעורב בהחלטה?
   facts:
-    - Session with the users
-    - Ask who else decides
-    - Agree the next step before we end
+    - מפגש עם המשתמשים
+    - לשאול מי עוד מחליט
+    - לסכם צעד הבא לפני הסיום

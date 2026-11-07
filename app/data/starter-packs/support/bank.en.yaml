@@ -1,4 +1,5 @@
-# English text of the cards (the cards are already English; this file lets them show on English turns).
+# English text of the cards, shown when the other side speaks English (the cards in bank.yaml are Hebrew).
+# A card without an entry here is not shown in English: the AI answers in English instead.
 stall:
   say: I want to check that properly and come back to you with an accurate answer.
   facts:

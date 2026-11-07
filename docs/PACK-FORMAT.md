@@ -11,7 +11,7 @@ For each file, in this order:
 
 The lookup is **per file**. If your pack has `bank.yaml` but no `topics.txt`, the example `topics.txt` is used. That would mix invented example words into your setup, so the Readiness check lists every file that falls back. Copy all the files you need into your pack.
 
-The easy way: open the app, **Setup guide, Starter answers**, pick a starter and press **Copy to my folder**. Starters (in `app/data/starter-packs/`, all invented): sales (B2B software), customer support, job interview practice (practice mode only), and an empty pack with only the safe "check and come back" cards. The web hosting example is the fifth choice. Then edit the copies. Changes apply to the next call.
+The easy way: open the app, **Setup guide, Starter answers**, pick a starter and press **Copy to my folder**. Starters (in `app/data/starter-packs/`, all invented, in Hebrew with English versions in `bank.en.yaml`): sales (B2B software), customer support, job interview practice (practice mode only), and an empty pack with only the safe "check and come back" cards. The web hosting example is the fifth choice. Then edit the copies. Changes apply to the next call.
 
 ## The files
 
@@ -113,6 +113,27 @@ wingman plan set --id <id> --add-note "Prepared cards: /full/path/to/my-intervie
 ```
 
 Use the full path. For that call these cards **replace** the normal bank. Card text is yours, so a salary answer can live here: the AI is never allowed to write a salary figure. See [Practice and prep mode](../app/README.md#practice-and-prep-mode-kind-interview).
+
+## Build answers from your notes
+
+If you already have an FAQ or notes (a `.txt`, `.md` or `.pdf` file), Wingman can draft the cards for you. From `app/`:
+
+```bash
+pnpm run pack:from-notes ~/notes/faq.md --lang he --out ~/Desktop/pack-draft
+```
+
+(`wingman pack from-notes ...` does the same.) It reads the file, makes one call to the model from your settings (`summary.model`, or `--model provider:model`), and writes `bank.yaml` and `bank.en.yaml` into the folder. This costs a few cents. A PDF needs the `pdftotext` tool; if you do not have it, save the notes as `.txt`.
+
+What to know:
+
+- It is a **draft**. The default folder is `./pack-draft`, never your live pack. Read every card, fix the words and the triggers, then copy the files into your pack folder. It will not replace existing files unless you add `--force`.
+- `--lang he` or `--lang en` sets the language of the cards. Without it, Wingman picks from the text. A Hebrew draft also gets English text for each card.
+- It follows your `house-style.md` and uses only what is in your notes.
+- The guards check every card. If the answer in your notes is a price, a date or a promise, the card is not kept as an answer. Its triggers move to `stall-price`, `stall-timeline` or `stall-guarantee`, so that question gets a safe "I will check and come back". The command lists every card it changed this way. A fact or alternative line with a price is left out. A card with no answer or no triggers is dropped, and the command says so.
+- The four safe stall cards are always added.
+- Your notes go to the model company you chose. Do not use notes you cannot share.
+
+Notes that are already in question and answer form work best.
 
 ## Check your pack
 

@@ -3,6 +3,7 @@
 // Answers are deterministic and keyed on phrases in the real prompts, so a prompt wording change can break these doubles.
 //   stt.provider: script      -> plays a transcript JSON ([{speaker: me|them, text}]) as STT finals, ignores audio.
 //                                File: env WINGMAN_STT_SCRIPT; spacing: env WINGMAN_SCRIPT_GAP_MS (default 1200).
+//   llm model "scripted:packgen" -> drafts bank cards from "Q: ... A: ..." blocks in the notes (wingman pack from-notes, see scriptedPackgen).
 //   llm model "scripted:bank" -> a fake model: the reflex answers "BANK <id>" for the first bank card id named in
 //                                the prompt's question line, STALL for prices, else SKIP; notes get one note.
 import { EventEmitter } from "node:events";
@@ -233,8 +234,44 @@ export function scriptedTip(prompt: string): string {
     ? JSON.stringify({ type: "ask", text: "כדאי לשאול איפה הגיבויים נשמרים היום ומי אחראי עליהם." })
     : "NONE";
 }
+/**
+ * Card-drafting double (model "scripted:packgen", `wingman pack from-notes`): the notes are blocks separated by a blank line, each
+ *   Q: <question>  A: <answer>  [EN: <English answer>]  [FLAG: price|date|promise]     (Hebrew labels ש: / ת: work too).
+ * Each block becomes one card whose triggers are the question's words, so the draft step can be tested without a model.
+ */
+export function scriptedPackgen(prompt: string): string {
+  const at = prompt.lastIndexOf("<notes>");
+  const notes = prompt.slice(at + 7).split("</notes>")[0] ?? "";
+  const cards = notes
+    .split(/\n\s*\n/)
+    .map((block) => {
+      const f = (re: RegExp) => block.match(re)?.[1]?.trim();
+      const q = f(/^(?:Q|ש):\s*(.+)$/m),
+        a = f(/^(?:A|ת):\s*(.+)$/m);
+      if (!q || !a) return undefined;
+      const en = f(/^EN:\s*(.+)$/m);
+      const flag = f(/^FLAG:\s*(\w+)$/m);
+      const id = q
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 24);
+      return {
+        id,
+        title: q.slice(0, 40),
+        triggers: [q.replace(/[?؟]$/, ""), ...q.split(/\s+/).filter((w) => w.length > 3)].slice(0, 6),
+        say: a,
+        facts: [q.slice(0, 30)],
+        ...(flag ? { sensitive: flag } : {}),
+        ...(en ? { en: { say: en } } : {}),
+      };
+    })
+    .filter(Boolean);
+  return JSON.stringify({ cards });
+}
 /** Picks the fake model reply by which system-prompt phrase the prompt contains; the first match wins. */
 export function scriptedAnswer(prompt: string): string {
+  if (prompt.includes("You draft answer cards")) return scriptedPackgen(prompt);
   if (prompt.includes("You build the call frame")) return scriptedFrame(prompt);
   if (prompt.includes("You write at most one live tip")) return scriptedTip(prompt);
   if (prompt.includes("write the post-call summary")) return JSON.stringify(isEnglishPrompt(prompt) ? SCRIPTED_SUMMARY_EN : SCRIPTED_SUMMARY);

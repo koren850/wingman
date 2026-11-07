@@ -57,6 +57,7 @@
     "banktest": "tsx scripts/bank-test.ts",
     "settings": "tsx src/settings-cli.ts",
     "keys": "tsx src/keys-cli.ts",
+    "pack:from-notes": "tsx src/cli/index.ts pack from-notes",
     "wingman": "tsx src/cli/index.ts",
     "qa": "tsx qa/run-qa.ts",
     "make-app": "scripts/make-app.sh",

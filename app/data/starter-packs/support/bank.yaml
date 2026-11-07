@@ -1,17 +1,30 @@
 - id: stall
-  title: Check and come back
+  title: לבדוק ולחזור
   triggers: []
-  say: I want to check that properly and come back to you with an accurate answer.
+  say: אני רוצה לבדוק את זה כמו שצריך ולחזור אליכם עם תשובה מדויקת.
   facts:
-    - We do not guess
-    - We check and come back
-    - The question is noted
+    - לא מנחשים
+    - בודקים וחוזרים
+    - הפנייה נרשמה
   alts:
-    - I don't want to guess. Let me check and come back with a clear answer.
-    - Let me verify that first, and I will get back to you.
+    - אני לא רוצה לנחש. אבדוק ואחזור עם תשובה ברורה.
+    - אבדוק את זה קודם ואחזור אליכם.
 - id: stall-price
-  title: Price question
+  title: שאלה על מחיר
   triggers:
+    - מחיר
+    - מחירים
+    - כמה זה עולה
+    - כמה עולה
+    - כמה יעלה
+    - כמה זה יעלה
+    - כמה זה יוצא
+    - כמה לשלם
+    - מה העלות
+    - עלות
+    - תמחור
+    - תעריפים
+    - הצעת מחיר
     - price
     - pricing
     - how much
@@ -21,15 +34,26 @@
     - what does it cost
     - discount
     - rates
-  say: The price depends on the plan and the details. I need the details first, and then I will send a clear quote.
+  say: המחיר תלוי בחבילה ובפרטים. אצטרך להכיר אותם קודם, ואז אשלח הצעה מסודרת.
   facts:
-    - No number without details
-    - Come back after checking
+    - לא נותנים מספר בלי פרטים
+    - חוזרים אחרי בדיקה
   alts:
-    - It depends on the details. Let me check and come back to you with a proper figure.
+    - זה תלוי בפרטים. אבדוק ואחזור אליכם עם הצעה מסודרת.
 - id: stall-timeline
-  title: Time question
+  title: שאלה על זמנים
   triggers:
+    - כמה זמן זה לוקח
+    - כמה זמן ייקח
+    - כמה זמן זה ייקח
+    - תוך כמה זמן
+    - מתי זה יסתדר
+    - מתי זה יתוקן
+    - מתי יהיה פתרון
+    - מתי זה יחזור לעבוד
+    - לוח זמנים
+    - דדליין
+    - כמה מהר
     - how long
     - how soon
     - when can
@@ -38,16 +62,28 @@
     - turnaround
     - by when
     - how fast
-  say: It depends on the details. Let me check and I will come back with a realistic estimate.
+  say: זה תלוי במה שנמצא. אבדוק ואחזור עם הערכה ריאלית.
   facts:
-    - Depends on scope
-    - Estimate after checking
-    - No date on the call
+    - תלוי בסיבה
+    - הערכה אחרי בדיקה
+    - לא נותנים תאריך בשיחה
   alts:
-    - I would rather check than guess. I will come back with an estimate.
+    - עדיף לבדוק ולא לנחש. אחזור עם הערכה.
 - id: stall-guarantee
-  title: Promise question
+  title: שאלה על התחייבות
   triggers:
+    - התחייבות
+    - מתחייבים
+    - אתם מתחייבים
+    - מבטיחים
+    - תבטיחו
+    - תבטיח לי
+    - אחריות
+    - אתם בטוחים
+    - בכתב
+    - אפשר בכתב
+    - אס אל איי
+    - זמינות מובטחת
     - guarantee
     - promise
     - sla
@@ -56,13 +92,29 @@
     - can you commit
     - in writing
     - are you sure
-  say: I don't want to commit before checking. I will come back with what we can commit to, in writing.
+  say: אני לא רוצה להתחייב לפני שבדקתי. אחזור עם מה שאפשר להתחייב עליו, בכתב.
   facts:
-    - No commitment on the call
-    - We define it in writing
+    - אין התחייבות בשיחה
+    - מגדירים בכתב
 - id: empathy
-  title: Acknowledge the problem
+  title: להכיר בבעיה
   triggers:
+    - לא עובד
+    - לא עובדת
+    - זה מקולקל
+    - מקולקל
+    - מתסכל
+    - זה בעיה
+    - שוב ושוב
+    - זה חוזר
+    - זה ממשיך לקרות
+    - אני תקוע
+    - אני תקועה
+    - אי אפשר להשתמש
+    - לא מצליח להשתמש
+    - לא מצליחה להשתמש
+    - נמאס לי
+    - אין לי מושג מה לעשות
     - not working
     - broken
     - frustrated
@@ -73,14 +125,27 @@
     - i'm stuck
     - cannot use
     - can't use
-  say: I understand, that is frustrating. Let me make sure I have the whole picture, and then we will work on it together.
+  say: מבינים שזה מתסכל. אני רוצה לוודא שיש לי את התמונה המלאה, ואז נטפל בזה יחד.
   facts:
-    - Acknowledge first
-    - Then ask questions
-    - Stay calm
+    - קודם מכירים בבעיה
+    - אחר כך שואלים
+    - נשארים רגועים
 - id: gather-info
-  title: What I need to know
+  title: מה צריך לדעת
   triggers:
+    - מה קרה
+    - מה עשית
+    - מה עשיתם
+    - איך לשחזר
+    - שלבים לשחזור
+    - הודעת שגיאה
+    - מה אתה רואה
+    - מה את רואה
+    - מה מופיע
+    - צילום מסך
+    - מתי זה התחיל
+    - מה השתנה
+    - איך זה התחיל
     - what happened
     - steps to reproduce
     - how do i reproduce
@@ -89,14 +154,28 @@
     - screenshot
     - when did it start
     - what changed
-  say: Could you tell me what you did just before it happened, and what you see on the screen? A screenshot would help.
+  say: אפשר לספר מה עשיתם רגע לפני שזה קרה, ומה מופיע על המסך? צילום מסך יעזור מאוד.
   facts:
-    - What they clicked
-    - The exact error text
-    - When it started
+    - על מה לחצו
+    - הטקסט המדויק של השגיאה
+    - מתי זה התחיל
 - id: login
-  title: Cannot log in
+  title: אי אפשר להתחבר
   triggers:
+    - לא מצליח להתחבר
+    - לא מצליחה להתחבר
+    - לא יכול להתחבר
+    - לא יכולה להתחבר
+    - התחברות
+    - להתחבר
+    - סיסמה
+    - שכחתי סיסמה
+    - איפוס סיסמה
+    - לאפס סיסמה
+    - החשבון נעול
+    - נעול מחוץ
+    - כניסה למערכת
+    - לא נכנס
     - cannot log in
     - can't log in
     - login
@@ -107,14 +186,26 @@
     - forgot password
     - reset password
     - account locked
-  say: Let us start with a password reset from the sign-in page. If the email does not arrive, check the spam folder and tell me.
+  say: נתחיל באיפוס סיסמה מדף ההתחברות. אם המייל לא מגיע, כדאי לבדוק בתיקיית הספאם ולעדכן אותי.
   facts:
-    - Reset from the sign-in page
-    - Check spam
-    - Confirm the account email
+    - איפוס מדף ההתחברות
+    - לבדוק ספאם
+    - לאשר את המייל של החשבון
 - id: two-factor
-  title: Two-step login
+  title: אימות דו-שלבי
   triggers:
+    - אימות דו שלבי
+    - אימות דו-שלבי
+    - אימות בשני שלבים
+    - קוד אימות
+    - אפליקציית אימות
+    - אותנטיקטור
+    - איבדתי את הטלפון
+    - טלפון חדש
+    - הקוד לא מגיע
+    - קוד בסמס
+    - טו פקטור
+    - אם אף איי
     - two factor
     - 2fa
     - mfa
@@ -123,14 +214,28 @@
     - lost my phone
     - new phone
     - code does not arrive
-  say: If you lost access to your second step, I can start an identity check so the account owner can reset it safely.
+  say: אם אין גישה לשלב השני, אפשר להתחיל בדיקת זהות כדי שבעל החשבון יוכל לאפס אותו בצורה בטוחה.
   facts:
-    - Identity check first
-    - Account owner resets it
-    - Never skip the check
+    - קודם בדיקת זהות
+    - בעל החשבון מאפס
+    - לא מדלגים על הבדיקה
 - id: slow
-  title: Slow or freezing
+  title: איטי או תקוע
   triggers:
+    - איטי
+    - איטית
+    - נטען לאט
+    - נטענת לאט
+    - תקוע
+    - קופא
+    - נתקע
+    - נתקעת
+    - מתעכב
+    - לוקח המון זמן
+    - סיבוב טעינה
+    - לא נטען
+    - ביצועים
+    - לאגים
     - slow
     - laggy
     - freezing
@@ -141,14 +246,28 @@
     - spinning
     - not loading
     - performance
-  say: "Let us check a few simple things: the browser and its version, the connection, and whether it is slow for everyone or only for you."
+  say: "נבדוק כמה דברים פשוטים: הדפדפן והגרסה שלו, החיבור לאינטרנט, והאם זה איטי לכולם או רק אצל אדם אחד."
   facts:
-    - Browser and version
-    - Connection
-    - One person or everyone
+    - דפדפן וגרסה
+    - חיבור
+    - אדם אחד או כולם
 - id: clear-cache
-  title: Refresh and try again
+  title: לרענן ולנסות שוב
   triggers:
+    - לנקות מטמון
+    - ניקוי מטמון
+    - קאש
+    - קש
+    - לרענן
+    - רענון
+    - לנסות שוב
+    - עוגיות
+    - קוקיז
+    - חלון גלישה פרטית
+    - חלון פרטי
+    - אינקוגניטו
+    - דפדפן אחר
+    - להפעיל מחדש
     - clear cache
     - refresh
     - try again
@@ -157,14 +276,24 @@
     - private window
     - different browser
     - restart
-  say: Please try a private window, or another browser. If it works there, the cause is probably saved data in your usual browser.
+  say: כדאי לנסות בחלון גלישה פרטית, או בדפדפן אחר. אם זה עובד שם, הסיבה כנראה מידע שמור בדפדפן הרגיל.
   facts:
-    - Private window
-    - Another browser
-    - Clear saved data after
+    - חלון פרטי
+    - דפדפן אחר
+    - אחר כך לנקות מידע שמור
 - id: known-issue
-  title: Known issue
+  title: תקלה ידועה
   triggers:
+    - תקלה כללית
+    - יש תקלה
+    - האם יש תקלה
+    - זה למטה
+    - השירות למטה
+    - דף סטטוס
+    - כולם מדווחים
+    - תקלה ידועה
+    - לקוחות אחרים
+    - השבתה
     - outage
     - is it down
     - status page
@@ -173,14 +302,24 @@
     - other customers
     - service down
     - incident
-  say: I will check our status page and our open issues right now. If it is a known issue, I will tell you where we are with it.
+  say: אבדוק עכשיו את דף הסטטוס ואת התקלות הפתוחות. אם זו תקלה ידועה, אעדכן אתכם איפה אנחנו עומדים.
   facts:
-    - Status page
-    - Open issues
-    - Tell them what is known
+    - דף סטטוס
+    - תקלות פתוחות
+    - לספר מה ידוע
 - id: bug-report
-  title: Report a bug
+  title: דיווח על באג
   triggers:
+    - באג
+    - לדווח על באג
+    - תקלה בתוכנה
+    - בקשת פיצ'ר
+    - בקשה לפיצ'ר
+    - אפשר להוסיף
+    - חסר פיצ'ר
+    - חסרה אפשרות
+    - הצעה לשיפור
+    - משוב
     - bug
     - report a bug
     - defect
@@ -189,14 +328,24 @@
     - missing feature
     - suggestion
     - feedback
-  say: Thank you for telling us. I will write it up with your steps and screenshots, so the product team can see it clearly.
+  say: תודה ששיתפתם. אכתוב את זה עם השלבים וצילומי המסך, כדי שצוות המוצר יראה את זה בבירור.
   facts:
-    - Write it up with steps
-    - Add screenshots
-    - Share the reference with the customer
+    - לכתוב עם שלבים
+    - לצרף צילומי מסך
+    - לשתף את מספר הפנייה
 - id: data-loss
-  title: Missing data
+  title: נתונים חסרים
   triggers:
+    - איבדתי נתונים
+    - הנתונים נעלמו
+    - נמחק בטעות
+    - מחקתי בטעות
+    - רשומות חסרות
+    - חסרים נתונים
+    - לשחזר
+    - שחזור
+    - גיבוי
+    - הכול נעלם
     - lost my data
     - data is gone
     - deleted by mistake
@@ -206,14 +355,27 @@
     - recover
     - undo
     - backup
-  say: First, please do not make more changes. Let me check whether we can restore it, and I will tell you what is possible.
+  say: קודם כל, כדאי לא לבצע עוד שינויים. אבדוק אם אפשר לשחזר, ואספר מה אפשרי.
   facts:
-    - Stop making changes
-    - Check restore options
-    - Tell what is possible, not more
+    - להפסיק לשנות
+    - לבדוק אפשרויות שחזור
+    - לספר מה אפשרי ולא יותר
 - id: billing
-  title: Billing question
+  title: שאלה על חיוב
   triggers:
+    - חשבונית
+    - חיוב
+    - חויבתי
+    - חויבתי פעמיים
+    - החזר כספי
+    - זיכוי
+    - התשלום נכשל
+    - מנוי
+    - קבלה
+    - כרטיס אשראי
+    - שדרוג חבילה
+    - להוריד חבילה
+    - לשדרג
     - invoice
     - billing
     - charged
@@ -225,14 +387,26 @@
     - credit card
     - upgrade
     - downgrade
-  say: I can see how to help with that, but billing questions go through our billing team so they are exact. I will pass it on with your details.
+  say: שאלות חיוב עוברות אצלנו לצוות החיובים, כדי שהתשובה תהיה מדויקת. אעביר אליהם את הפרטים שלכם.
   facts:
-    - Billing team handles it
-    - Pass details on
-    - No promises about refunds
+    - צוות החיובים מטפל
+    - מעבירים את הפרטים
+    - בלי הבטחות על החזר
 - id: permissions
-  title: Permissions and access
+  title: הרשאות וגישה
   triggers:
+    - הרשאה
+    - הרשאות
+    - אין גישה
+    - גישה נדחתה
+    - לא רואה
+    - אין לי גישה
+    - להזמין משתמש
+    - להוסיף משתמש
+    - מנהל מערכת
+    - אדמין
+    - תפקיד
+    - לשתף עם
     - permission
     - permissions
     - access denied
@@ -244,14 +418,26 @@
     - admin
     - role
     - share with
-  say: That is usually a permission setting. An admin of your account can change the role. Do you know who the admin is?
+  say: זו בדרך כלל הגדרת הרשאה. מנהל החשבון אצלכם יכול לשנות את התפקיד. אתם יודעים מי המנהל?
   facts:
-    - Ask who the admin is
-    - Check the role
-    - Invite from the admin page
+    - לשאול מי המנהל
+    - לבדוק את התפקיד
+    - להזמין מדף הניהול
 - id: integration-issue
-  title: Integration not syncing
+  title: אינטגרציה לא מסתנכרנת
   triggers:
+    - אינטגרציה
+    - סנכרון
+    - לא מסתנכרן
+    - לא מסתנכרנת
+    - החיבור נותק
+    - התנתק
+    - מפתח אפי
+    - ייבוא נכשל
+    - ייצוא נכשל
+    - וובהוק
+    - חיבור לא עובד
+    - קונקטור
     - integration
     - sync
     - not syncing
@@ -262,14 +448,26 @@
     - import failed
     - export failed
     - connector
-  say: Let us reconnect the integration first. If it still fails, I need the error message and the time it last worked.
+  say: נחבר מחדש את האינטגרציה קודם. אם זה עדיין נכשל, אצטרך את הודעת השגיאה ואת הזמן האחרון שזה עבד.
   facts:
-    - Reconnect first
-    - Collect the error
-    - When it last worked
+    - חיבור מחדש קודם
+    - לאסוף את השגיאה
+    - מתי עבד לאחרונה
 - id: how-to
-  title: How do I do this
+  title: איך עושים את זה
   triggers:
+    - איך עושים
+    - איך אפשר
+    - איך אני
+    - איפה אני מוצא
+    - איפה ההגדרה
+    - איפה מוצאים
+    - איך משנים
+    - אפשר לשנות
+    - תדריך אותי
+    - תראו לי
+    - תנחו אותי
+    - איך מגדירים
     - how do i
     - how can i
     - where do i find
@@ -279,14 +477,25 @@
     - is it possible
     - walk me through
     - show me
-  say: Sure. Where are you in the app right now? I will walk you through it one step at a time.
+  say: בטח. איפה אתם נמצאים עכשיו באפליקציה? אדריך אתכם צעד אחר צעד.
   facts:
-    - Ask where they are
-    - One step at a time
-    - Send the help article after
+    - לשאול איפה הם
+    - צעד אחד בכל פעם
+    - לשלוח מאמר עזרה אחרי
 - id: escalate
-  title: Escalate
+  title: הסלמה
   triggers:
+    - להסלים
+    - מנהל
+    - אני רוצה מנהל
+    - מישהו אחר
+    - בכיר
+    - מהנדס
+    - מפתח
+    - זה לא מקובל
+    - תלונה
+    - אני רוצה לדבר עם אחראי
+    - אחראי משמרת
     - escalate
     - manager
     - supervisor
@@ -296,14 +505,24 @@
     - developer
     - this is not acceptable
     - complaint
-  say: I hear you. I will pass this to a senior colleague with all the details, so you do not have to repeat yourself.
+  say: שומעים אתכם. אעביר את זה לעמית בכיר עם כל הפרטים, כך שלא תצטרכו לחזור על הכול.
   facts:
-    - Pass on with details
-    - No need to repeat
-    - Tell them who will follow up
+    - להעביר עם פרטים
+    - לא לחזור על הסיפור
+    - לומר מי יחזור אליהם
 - id: follow-up
-  title: Close the call
+  title: סגירת השיחה
   triggers:
+    - זה הכול
+    - עוד משהו
+    - תודה על העזרה
+    - תודה רבה
+    - זה תוקן
+    - זה עובד עכשיו
+    - עובד עכשיו
+    - סיימנו
+    - מה קורה עכשיו
+    - מה הלאה
     - is that all
     - anything else
     - thank you
@@ -312,8 +531,8 @@
     - it works now
     - we are done
     - what happens now
-  say: I am glad it works. I will send you a short summary of what we did, so you have it if it comes back.
+  say: טוב שזה עובד. אשלח סיכום קצר של מה שעשינו, כדי שיהיה לכם אם זה יחזור.
   facts:
-    - Summary by email
-    - Ask if anything is left
-    - Say how to reach us again
+    - סיכום במייל
+    - לשאול אם נשאר משהו
+    - להסביר איך לפנות שוב

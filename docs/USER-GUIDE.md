@@ -137,6 +137,7 @@ If you used an older version that kept calls in the repo folder (`calls/` and `d
   wingman profile show
   ```
 - A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answers (the file `bank.yaml`), house style, keyterms and topic words. Without one, the invented example web/hosting pack in `app/data/example-pack/` is used. File formats: [docs/PACK-FORMAT.md](PACK-FORMAT.md).
+- **Build answers from your notes.** If you have an FAQ file, `pnpm run pack:from-notes <file.txt|.md|.pdf>` (in `app/`) drafts the cards for you into a separate folder. You read and fix them, then copy them into your pack. Prices, dates and promises in your notes become safe "I will check" cards. Details: [Build answers from your notes](PACK-FORMAT.md#build-answers-from-your-notes).
 
 Do not confuse these with a **settings preset** (`app/profiles/<name>.yaml`, used with `--profile <name>`). A preset is a set of setting overrides, such as `first-client-call`. It has nothing to do with `profile.yaml`.
 
