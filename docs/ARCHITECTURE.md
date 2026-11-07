@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes how Wingman is built today (the app in `app/`). Where this document and the code differ, the code is right.
+For developers and reviewers who want to know how Wingman is built today (the app in `app/`). Where this document and the code differ, the code is right. To run something first, see [Getting started](GETTING-STARTED.md); for the reasons behind the choices, see [DECISIONS.md](DECISIONS.md).
 
 Contents: [Big picture](#big-picture) · [Process diagram](#process-diagram) · [Components](#components) · [Processes and data flow](#processes-and-data-flow) · [Call lifecycle](#call-lifecycle-and-phases) · [Files on disk](#files-on-disk) · [Latency budget and cost model](#latency-budget-and-cost-model) · [Testing](#testing)
 
@@ -210,7 +210,7 @@ Caps: `budget.maxUsdPerCall` (default $2) drops AI to bank-only when reached; `b
 
 | Layer | What | Run |
 |---|---|---|
-| Unit tests | 650+ tests in 67 files in `app/src/*.test.ts` and `app/src/e2e/*.test.ts` (node's test runner through tsx, run one file at a time): detector, bank, guards, calc, split, echo, settings, keys (mocked `security`), CLI, control socket, controller (fake child), dashboard security, overlay logic, health ladder, supervised audio, sleep and disk handling, survived errors, install and migration, setup, profile and pack, flow, interview mode, summary, frame, tips, a repo guard (no private words in tracked files, when you set a list), and an offline end-to-end call with scripted speech and scripted AI. CI runs the type check and the unit tests on macOS, Linux and Windows (Windows is experimental), the end-to-end tests and `pnpm eval` on macOS and Linux, and lint and the format check on macOS. | `pnpm test`, `pnpm eval` |
+| Unit tests | 650+ tests in 68 files in `app/src/*.test.ts` and `app/src/e2e/*.test.ts` (node's test runner through tsx, run one file at a time): detector, bank, guards, calc, split, echo, settings, keys (mocked `security`), CLI, control socket, controller (fake child), dashboard security, overlay logic, health ladder, supervised audio, sleep and disk handling, survived errors, install and migration, setup, profile and pack, flow, interview mode, summary, frame, tips, a repo guard (no private words in tracked files, when you set a list), and an offline end-to-end call with scripted speech and scripted AI. CI runs the type check and the unit tests on macOS, Linux and Windows (Windows is experimental), the end-to-end tests and `pnpm eval` on macOS and Linux, and lint and the format check on macOS. | `pnpm test`, `pnpm eval` |
 | Corpora | Detector precision/recall on `data/questions.tsv`; bank accuracy on 40 held-out utterances. | `pnpm detector`, `pnpm banktest` |
 | STT gate | Scores Deepgram on your recording of 40 Hebrew sentences with English tech terms (term recall, endpoint-to-final lag). | `pnpm gate` |
 | QA harness | `qa/scenarios/*.json` (32 invented call scripts) are rendered with macOS voices to stereo WAV (left = me, right = them, with pauses and overlaps), played in real time through the real engine with real Deepgram and real Haiku, and graded: question recall and precision, right card, price questions stall, split-question join, first-card time, STT word accuracy, summary present, guard leaks, cost. Output: `qa/report.md`. `--replay` re-plays what Deepgram heard for pennies; `--dry` only estimates cost; `--cap` sets a spend cap. | `pnpm qa --all` |
@@ -218,3 +218,5 @@ Caps: `budget.maxUsdPerCall` (default $2) drops AI to bank-only when reached; `b
 | Deep test | A one-off round (real Deepgram and Haiku, a 60-minute soak, failure injection, a 166-utterance answer-quality judge). Results are summarised in [ROADMAP.md](ROADMAP.md). | manual |
 
 Limits of the tests: synthetic voices are cleaner than real people, so speech accuracy and detection are optimistic; "talking over each other" is two clean signals added together; the Electron click paths and macOS permission prompts are only partly automated.
+
+Next: [Development](DEVELOPMENT.md) · [Decisions](DECISIONS.md) · [Privacy and security](PRIVACY-AND-SECURITY.md)
