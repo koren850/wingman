@@ -546,11 +546,13 @@ function settingsReader(o) {
   if ((o.platform || process.platform) === "win32")
     for (const k of ["USERPROFILE", "APPDATA", "LOCALAPPDATA", "SystemRoot", "SystemDrive", "TEMP", "TMP", "ComSpec", "PATHEXT", "WINGMAN_DATA_DIR"])
       if (process.env[k]) env[k] = process.env[k];
-  // o.tsx (tests) replaces the tool path; otherwise shared/bin.cjs picks .bin/tsx or, on Windows, node + the tsx CLI.
-  const t = o.tsx ? { cmd: o.tsx, args: [] } : require("../shared/bin.cjs").binCommand("tsx", [], o.root);
+  // o.tsx (tests) replaces the tool path; otherwise shared/bin.cjs picks .bin/tsx, node + the tsx CLI (Windows) or the packaged app's own engine.
+  const t = o.tsx
+    ? { cmd: o.tsx, args: ["src/settings-edit-cli.ts", "read"] }
+    : require("../shared/bin.cjs").binCommand("tsx", ["src/settings-edit-cli.ts", "read"], o.root);
   return () =>
     new Promise((resolve) =>
-      o.execFile(t.cmd, [...t.args, "src/settings-edit-cli.ts", "read"], { cwd: o.root, timeout: 20_000, maxBuffer: 2_000_000, env }, (e, out) => {
+      o.execFile(t.cmd, t.args, { cwd: o.root, timeout: 20_000, maxBuffer: 2_000_000, env }, (e, out) => {
         try {
           resolve(
             JSON.parse(

@@ -21,11 +21,37 @@ function electronExe(root, { path = nodePath, fs = nodeFs, env = process.env } =
   return env.ELECTRON_OVERRIDE_DIST_PATH ? path.join(env.ELECTRON_OVERRIDE_DIST_PATH, rel) : path.join(dir, "dist", rel);
 }
 
+/** The tools the packaged app can run (the bundled engine, src/<name>.mjs). Anything else is refused. */
+const PACKED_TOOLS = ["call", "run", "doctor", "summary", "settings-edit-cli", "profile-edit-cli", "mics-cli", "settings-cli"];
+
+/** True inside the packaged app: the build writes packaged.json next to the code. A checkout never has it. */
+function isPackaged(root, fs = nodeFs) {
+  try {
+    return fs.existsSync(nodePath.join(root, "packaged.json"));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Packaged app (no Node, no node_modules): the app's own executable runs the bundled engine.
+ * tsx tool  -> Wingman --wingman-tool <name> -- <args>     (see tray/app-entry.cjs)
+ * electron  -> Wingman --wingman-overlay -- <args>         (the answer window)
+ */
+function packedCommand(name, list, o) {
+  const cmd = o.execPath || process.execPath;
+  if (name === "electron") return { cmd, args: ["--wingman-overlay", "--", ...list.slice(1)] };
+  const tool = nodePath.basename(String(list[0] || "")).replace(/\.ts$/, "");
+  if (name !== "tsx" || !PACKED_TOOLS.includes(tool)) throw new Error(`"${tool || name}" is not part of the packaged app`);
+  return { cmd, args: ["--wingman-tool", tool, "--", ...list.slice(1)] };
+}
+
 /**
  * Command and arguments to run a local tool: spawn(cmd, args). `name` is "tsx" or "electron".
- * o.platform / o.path / o.fs / o.execPath / o.env are injectable for tests.
+ * o.platform / o.path / o.fs / o.execPath / o.env / o.packaged are injectable for tests.
  */
 function binCommand(name, args, root, o = {}) {
+  if (o.packaged ?? isPackaged(root, o.fs)) return packedCommand(name, Array.isArray(args) ? args : [], o);
   const platform = o.platform || process.platform;
   const path = o.path || (platform === "win32" ? nodePath.win32 : nodePath.posix);
   const list = Array.isArray(args) ? args : [];
@@ -35,4 +61,4 @@ function binCommand(name, args, root, o = {}) {
   return { cmd: path.join(root, "node_modules", ".bin", name + ".cmd"), args: list };
 }
 
-module.exports = { binCommand, tsxCli, electronExe };
+module.exports = { binCommand, tsxCli, electronExe, isPackaged, PACKED_TOOLS };
