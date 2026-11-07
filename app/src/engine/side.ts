@@ -83,6 +83,7 @@ export async function notesRound() {
       lines,
       signal: notesAbort.signal,
       timeoutMs: S.notes.timeoutMs,
+      sttLanguage: S.stt.language,
     });
     if (st.call.shuttingDown) return;
     const c = cost.addLlm("notes", S.notes.model, r.usage, r.providerMetadata);

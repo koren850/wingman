@@ -73,7 +73,7 @@ export function selfCheckLine(text: string) {
   if (text.split(/\s+/).filter(Boolean).length < MIN_WORDS) return;
   const now = Date.now();
   if (sc.careful) {
-    const c = detectCareful(text);
+    const c = detectCareful(text, S.stt.language);
     if (c) {
       if (selfGate.canCareful(now)) {
         selfGate.noteCareful(now);
@@ -106,6 +106,7 @@ export function selfCheckLine(text: string) {
         line: text,
         signal: notesAbort.signal,
         timeoutMs: sc.timeoutMs,
+        sttLanguage: S.stt.language,
       });
       const cu = cost.addLlm("selfcheck", S.tips.model, r.usage, r.providerMetadata);
       log.write("usage", { role: "selfcheck", model: S.tips.model, usage: r.usage, usd: cu.usd });

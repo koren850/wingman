@@ -10,6 +10,7 @@ import { ModelRegistry, generateOnce, providerOptionsFor, temperatureFor, cacheO
 import { untag } from "./reflex.ts";
 import { getProfile, userName } from "./profile.ts";
 import { loadTopics } from "./pack.ts";
+import { callLanguage, type CallLang } from "./calllang.ts";
 
 export const KINDS = ["client", "support", "vendor", "team", "consult", "personal", "other"] as const;
 export type Kind = (typeof KINDS)[number];
@@ -41,7 +42,7 @@ export const kindLabel = (k: Kind, lang?: "he" | "en"): string => (lang === "en"
 /** Cap on checklist items kept in a frame. */
 export const MAX_ITEMS = 10;
 
-export const frameSystem = (): string => {
+export const frameSystem = (lang: CallLang = "he"): string => {
   const P = getProfile(),
     u = userName(P);
   return `You build the call frame for Wingman, a live meeting AI assistant that helps ${u} during ANY phone or video call or meeting (or while ${u} thinks aloud alone). The meeting can be about anything: a customer of ${u}'s own business${P.business ? ` (${P.business})` : ""}, a support problem, a supplier negotiation, a team meeting, a consultation with an accountant or lawyer, or a personal chat.
@@ -58,7 +59,7 @@ Answer with ONE JSON object and nothing else:
 kind: client = a customer or prospect of ${u}'s business; support = a customer with a problem to fix; vendor = ${u} buys or negotiates from a supplier (services, tools, freelancers); team = colleagues, standup, planning, and colleagues discussing bugs, builds, code, tools or architecture (technical talk between teammates is team, never support: support needs a customer who reports a problem with their own site or service); a job interview is other even when its questions are technical; consult = ${u} asks a professional (accountant, lawyer, advisor) about their business; personal = friends and family, small talk; other = none of these (a job interview, a practice interview, a lecture, a call that is not about ${u}'s own customer or work).
 checklist: 4 to 8 things a GOOD call of this kind should cover, written for THIS call (use the topic and the brief; include the brief's must-cover items first). "must": true for the few items without which the call fails, false for nice-to-have. "done": true only when the transcript clearly covered it.
 If a current frame is given: return its checklist items with EXACTLY the same text, flipping done to true only when the transcript clearly covered the item; you may add at most ONE new item. Keep the kind unless the call clearly changed.
-Never invent names, numbers or facts. Speech-to-text garbles names: take a person's name from ${u}'s notes/brief when it is there; otherwise only a name that is clear and repeated in the transcript, else use "them". Hebrew for topic, goal and checklist unless the call is in English. If the call is too short to tell, use kind "other" and an empty checklist.`;
+Never invent names, numbers or facts. Speech-to-text garbles names: take a person's name from ${u}'s notes/brief when it is there; otherwise only a name that is clear and repeated in the transcript, else use "them". ${lang === "en" ? "English (the call is in English) for topic, goal and checklist" : "Hebrew for topic, goal and checklist"}. If the call is too short to tell, use kind "other" and an empty checklist.`;
 };
 
 // Model output is untrusted: strip bidi overrides, control chars and markdown characters, collapse spaces, cap length.
@@ -244,6 +245,7 @@ export type FrameRun = {
   signal: AbortSignal;
   timeoutMs: number;
   generate?: typeof generateText;
+  sttLanguage?: string; // the stt.language setting; the call language is judged from the transcript
 };
 /** User message for the frame model: trusted notes, the current frame (so it keeps stable text) and the untagged transcript window. */
 export function frameUserMessage(o: Pick<FrameRun, "transcript" | "contextNotes" | "current">): string {
@@ -261,7 +263,11 @@ export async function runFrame(o: FrameRun): Promise<{ frame: Frame; usage: unkn
     abortSignal: AbortSignal.any([o.signal, AbortSignal.timeout(o.timeoutMs)]),
     providerOptions: providerOptionsFor(o.model, { effort: "low", thinking: false }),
     temperature: temperatureFor(o.model), // 0 for providers that accept it; omitted for Anthropic (see temperatureFor)
-    instructions: { role: "system", content: frameSystem() + (o.background ? `\n\n${o.background}` : ""), ...(cache ? { providerOptions: cache } : {}) },
+    instructions: {
+      role: "system",
+      content: frameSystem(callLanguage(o.transcript, o.sttLanguage)) + (o.background ? `\n\n${o.background}` : ""),
+      ...(cache ? { providerOptions: cache } : {}),
+    },
     messages: [{ role: "user", content: frameUserMessage(o) }],
   });
   const frame = parseFrame(r.text);

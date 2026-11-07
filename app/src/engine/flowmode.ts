@@ -37,7 +37,7 @@ export async function flowTick() {
   flowTopicAt = Date.now();
   try {
     const lines = transcript.slice(-14).map(lineOf);
-    const r = await runTopic({ registry, model: S.flow.model, lines, signal: notesAbort.signal, timeoutMs: S.flow.timeoutMs });
+    const r = await runTopic({ registry, model: S.flow.model, lines, signal: notesAbort.signal, timeoutMs: S.flow.timeoutMs, sttLanguage: S.stt.language });
     const c = cost.addLlm("flow", S.flow.model, r.usage, r.providerMetadata);
     log.write("usage", { role: "flow", model: S.flow.model, usage: r.usage, usd: c.usd });
     if (r.topic && flow.internal && !st.call.shuttingDown && r.topic !== flowTopic) {

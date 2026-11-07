@@ -1,5 +1,6 @@
 // Call frame (what is this call about?) and live coaching tips: timer jobs plus the one place that emits a tip card.
 import { runFrame, progress, kindLabel, type Frame } from "../frame.ts";
+import { callLanguage } from "../calllang.ts";
 import { runTip, checkTip, talkRatio, talkTip, wrapUpTip, type Tip } from "../tips.ts";
 import {
   transcript,
@@ -66,6 +67,7 @@ export function frameRound(final = false): Promise<void> {
         current: tracker.current,
         signal: new AbortController().signal,
         timeoutMs: S.frame.timeoutMs,
+        sttLanguage: S.stt.language,
       });
       const c = cost.addLlm("frame", S.frame.model, r.usage, r.providerMetadata);
       log.write("usage", { role: "frame", model: S.frame.model, usage: r.usage, usd: c.usd });
@@ -126,6 +128,7 @@ async function aiTip() {
       elapsedMin: (now - callStart) / 60000,
       signal: notesAbort.signal,
       timeoutMs: S.tips.timeoutMs,
+      sttLanguage: S.stt.language,
     });
     const c = cost.addLlm("tips", S.tips.model, r.usage, r.providerMetadata);
     log.write("usage", { role: "tips", model: S.tips.model, usage: r.usage, usd: c.usd });
@@ -149,11 +152,19 @@ export function tipsTick() {
     .filter((l) => now - l.at < 20_000)
     .map((l) => l.text)
     .join(" ");
+  const lang = callLanguage(
+    transcript
+      .slice(-40)
+      .map((l) => l.text)
+      .join("\n"),
+    S.stt.language,
+  );
   const wrap = wrapUpTip(tracker.current, {
     latestText: latest,
     elapsedMin: (now - callStart) / 60_000,
     wrapUpAfterMin: S.tips.wrapUpAfterMin,
     alreadyNudged: wrapNudged,
+    lang,
   });
   if (wrap && tipGate.can(now, { quiet: st.call.quiet, ignoreGap: true })) {
     wrapNudged = true;
@@ -162,7 +173,7 @@ export function tipsTick() {
   }
   if (!tipGate.can(now, { quiet: st.call.quiet })) return;
   if (S.tips.talkRatio && now - lastTalkTipAt > 10 * 60_000) {
-    const t = interview ? talkTip(talkRatio(transcript, now), 0.85, true) : talkTip(talkRatio(transcript, now));
+    const t = interview ? talkTip(talkRatio(transcript, now), 0.85, true, lang) : talkTip(talkRatio(transcript, now), 0.75, false, lang);
     if (t) {
       lastTalkTipAt = now;
       emitTip(t, "talk");
