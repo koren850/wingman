@@ -105,7 +105,7 @@ More worked examples: [docs/EXAMPLES.md](docs/EXAMPLES.md).
 | Feature | What it does |
 |---|---|
 | **Prepared** cards | A local answer bank (your pack's `bank.yaml`) answers common questions in about 0.6 s, with no AI call. |
-| **AI** cards | When the bank has nothing, a small Claude model writes a short answer, always marked "not verified". |
+| **AI** cards | When the bank has nothing, a small Claude model writes a short answer, always marked "AI · unverified". |
 | **Buy time** lines | For prices, dates and promises Wingman never invents a number. It shows a safe line such as "I will check and come back with a proper price". |
 | **For you** and math | Ask out loud (Ctrl+Opt+A) and get an answer in its own card. Arithmetic, in Hebrew or English, is computed locally. |
 | **Call frame, tips and checklist** | Detects what kind of call it is, keeps a checklist of what it should cover and shows at most one tip every two minutes. |
@@ -242,7 +242,7 @@ The docs also have a "What leaves your Mac" table and a "Known gaps" list: [docs
 
 Tell the other people on the call that you use Wingman, and follow the recording and privacy laws that apply to you (some places require everyone's consent). It is not a recording or consent tool and gives no legal advice.
 
-- **Consent default.** Listening starts with the call. The consent step was removed on purpose and is off by default ([ADR 29](docs/DECISIONS.md#adr-29-consent-step-removed-optional-ask-me-before-listening-starts)). If you want a pause first, turn on **Ask me before listening starts** in Settings: nothing is sent to the cloud until you press Start listening. Who to tell, and how, is your decision and your responsibility.
+- **Consent default.** Listening starts with the call: there is no consent step by default ([ADR 29](docs/DECISIONS.md#adr-29-consent-step-removed-optional-ask-me-before-listening-starts)). If you want a pause first, turn on **Ask me before listening starts** in Settings: nothing is sent to the cloud until you press Start listening. Who to tell, and how, is your decision and your responsibility.
 - **Answer window and screen sharing.** The answer window sits on a second screen and asks the system to hide it from screen capture (`overlay.contentProtection`, on by default). That is so your own notes do not show up in a share. It has not been tested with Zoom, Meet or Teams yet (see the [roadmap](docs/ROADMAP.md)), so check it before you rely on it. With one screen the window refuses to open.
 - **Practice and mock-interview mode is a practice coach.** You rehearse with your own notes and get suggested answers in your own words, then review. It is not for live use in a real job interview or an exam: do not use Wingman where outside help is forbidden ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [user guide](docs/USER-GUIDE.md#practice-and-prep-mode)). The rule is social, not technical; the tool cannot enforce it.
 
