@@ -400,7 +400,9 @@ body.paused #tips {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  unicode-bidi: plaintext;
+}
+.q .qt {
+  unicode-bidi: isolate;
 }
 .q .ql {
   unicode-bidi: isolate;

@@ -501,9 +501,12 @@ function buildCard(el, c, consent) {
   top.append(pill, span("age"));
   el.append(top);
   if (c.question && !consent) {
-    const q = div("q", UIDIR === "ltr" && WingmanText.isLatin(c.question) ? "ltr" : "rtl");
+    // The label follows the interface direction; the question is isolated, so an English question in a Hebrew window (or the reverse) stays in order.
+    const q = div("q", UIDIR === "ltr" ? "ltr" : "rtl");
     q.append(span("ql", c.badge === "fix" || c.badge === "careful" ? tr("card.youSaid") : tr("card.answering")));
-    mixed(q, c.question);
+    const qt = span("qt");
+    mixed(qt, c.question);
+    q.append(qt);
     el.append(q);
   }
   el._say = div("say", "rtl");
