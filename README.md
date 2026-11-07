@@ -1,6 +1,6 @@
 <h1 align="center">Wingman</h1>
 
-<p align="center"><b>Real-time answer cards for live calls. It hears both sides and shows a short answer in about a second.</b><br>A macOS app built with Electron and TypeScript.</p>
+<p align="center"><b>Real-time answer cards for live calls, in English and Hebrew. It hears both sides and shows a short answer in about a second.</b><br>A macOS app built with Electron and TypeScript.</p>
 
 <p align="center">
   <a href="https://github.com/koren850/wingman/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/koren850/wingman/actions/workflows/ci.yml/badge.svg"></a>
@@ -16,7 +16,7 @@
 
 Wingman is a live call copilot for client, support and team calls. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. After the call it writes a summary and a follow-up email draft.
 
-It is Hebrew-first and works in English too (see [Languages](#languages)). The interesting part is how it stays fast and safe on a live call: see [The hard parts](#the-hard-parts).
+It works in English and in Hebrew, including calls that mix the two. Hebrew is a real strength (right-to-left text, Hebrew word forms, English tech terms inside Hebrew speech); other languages are not supported yet (see [Languages](#languages)). The interesting part is how it stays fast and safe on a live call: see [The hard parts](#the-hard-parts).
 
 **See it run in about two minutes, with no keys:** the [offline demo](#try-it-without-keys) replays a scripted call through the real engine.
 
@@ -42,7 +42,7 @@ Latency figures come from the project's own synthetic-voice test rounds, so real
 
 Also:
 
-- **Tested without a live call.** 650+ tests in 70 files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 89% (84% branch) over the `src/`, `shared/` and `tray/` files the tests load (`pnpm test:coverage`); the Electron window code is exercised by snapshot tools, not unit tests.
+- **Tested without a live call.** 680+ tests in 70+ files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 89% (84% branch) over the `src/`, `shared/` and `tray/` files the tests load (`pnpm test:coverage`); the Electron window code is exercised by snapshot tools, not unit tests.
 - **Private by design, decided in writing.** No telemetry, no cloud account, audio never stored on your Mac (it does go to Deepgram to be transcribed, see [Privacy and security](#privacy-and-security)). [docs/DECISIONS.md](docs/DECISIONS.md) holds 37 design records with context, alternatives and consequences, including what was left out on purpose ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [ADR 36](docs/DECISIONS.md#adr-36-web-lookup-is-not-built)).
 
 ## Screenshots
@@ -59,9 +59,18 @@ A guided tour of every part of the windows: [docs/USER-GUIDE.md](docs/USER-GUIDE
 
 ## Examples
 
-Everything here is invented. The terminal output is real, trimmed to the card lines: it comes from the [offline demo](#try-it-without-keys) (`pnpm demo`), which prints cards the way the answer window shows them. The demo call is Hebrew, so the English lines under each block are translations.
+Everything here is invented. The terminal output is real, trimmed to the card lines: it comes from the [offline demo](#try-it-without-keys) (`pnpm demo` for the English call, `pnpm demo --he` for the Hebrew one), which prints cards the way the answer window shows them.
 
-**1. A prepared card.** The client says: "our WooCommerce site has been loading really slowly, why does that happen?" A trigger in the answer bank matches, so a card shows at once and no AI is called.
+**1. A prepared card.** The client says: "We have a WooCommerce shop and the site has been really slow lately, why does that happen?" A trigger in the answer bank matches, so a card shows at once and no AI is called.
+
+```text
+[📗 prepared] A slow site is usually heavy images, missing cache, heavy plugins or a weak server. We check the cause first and then fix it.
+   • Common causes: images, plugins, server
+   • Measure before and after
+   • Not always the server
+```
+
+The same question in Hebrew gives the Hebrew card (`pnpm demo --he`):
 
 ```text
 [📗 prepared] אתר איטי בדרך כלל נובע מתמונות כבדות, חוסר ב-cache, תוספים כבדים או שרת חלש. נבדוק מה הגורם ואז נטפל.
@@ -69,15 +78,14 @@ Everything here is invented. The terminal output is real, trimmed to the card li
    • בודקים מהירות לפני ואחרי שינוי
 ```
 
-> A slow site is usually heavy images, missing cache, heavy plugins or a weak server. We check the cause first and then fix it.
-
-**2. A price question gets a buy-time line.** The client asks: "how much does the whole package cost per month?" The pack's `stall-price` card always wins for price questions, so the card is a safe line, not a number.
+**2. A price question gets a buy-time line.** The client asks: "How much does the whole package cost per month?" The pack's `stall-price` card always wins for price questions, so the card is a safe line, not a number.
 
 ```text
-[📗 prepared] המחיר תלוי בהיקף ובדרישות. אצטרך לבדוק את הפרטים ואחזור עם מחיר מסודר.
+[📗 prepared] The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
+   • Depends on scope and requirements
+   • No number without details
+   • Come back after checking
 ```
-
-> The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
 
 **3. The guards check AI text.** If the AI writes a price, a date or a promise, a code rule blocks it and a stall line is shown instead. Real results from `guard()` in `app/src/guards.ts`:
 
@@ -123,7 +131,7 @@ More in the [user guide](docs/USER-GUIDE.md).
 flowchart LR
   mic["Microphone (you)"] --> stt
   sys["System audio (them)<br/>AudioTee, Core Audio tap"] --> stt
-  stt["Deepgram Nova-3<br/>one stream per channel"] --> det["Question detector<br/>(local, Hebrew-aware)"]
+  stt["Deepgram Nova-3<br/>one stream per channel"] --> det["Question detector<br/>(local, English and Hebrew)"]
   det --> bank["Prepared bank<br/>(local, about 0.6 s)"]
   det --> llm["Claude Haiku<br/>skip, stall, bank pick or AI answer<br/>(about 1-2 s)"]
   bank --> guards["Guards<br/>price, date, promise"]
@@ -146,11 +154,11 @@ Everything below runs offline, with no API keys and no private data.
 | Answer-bank matcher | 40 held-out utterances | top-1 93% (37/40), wrong card 3% (1/40), no card 5% (2/40) |
 | Guards (price / date / promise) | 76 must-block, 53 must-pass sentences (technical ones such as "TLS 1.3" and "nginx 1.5", invoice numbers) | 76/76 blocked with the right rule, 0/53 false positives |
 | Practice-mode salary guard | 12 must-block, 6 must-pass | 12/12, 0/6 |
-| Whole suite | 650+ tests (630+ unit, 19 end-to-end) in 70 files | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
+| Whole suite | 680+ tests (660+ unit, 21 end-to-end) in 70+ files | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
 
 Reproduce: `cd app && pnpm eval` prints these numbers and fails if one drops below `qa/eval-baseline.json`. CI runs it on every push.
 
-Caveats: the sets are small and were used while tuning, so treat them as regression gates, not as generalisation estimates. They are Hebrew-first: English coverage is thinner. The live model is only called by `pnpm qa`, which needs paid keys.
+Caveats: the sets are small and were used while tuning, so treat them as regression gates, not as generalisation estimates. Most of them are Hebrew, so English coverage is thinner. The live model is only called by `pnpm qa`, which needs paid keys.
 
 ## Tech stack
 
@@ -164,7 +172,14 @@ Caveats: the sets are small and were used while tuning, so treat them as regress
 
 ## Quick start
 
-Needs **macOS 14.2 or newer** (system audio uses a Core Audio tap), **Node 24 or newer** (the installer does not install it), `ffmpeg` (microphone capture; the installer offers `brew install ffmpeg`), pnpm 11 (comes with corepack, which the installer turns on) and a **second screen** (with one screen the answer window refuses to open, so it cannot end up in a screen share). Optional: `poppler` to attach PDF files to a meeting. For live calls you also need a Deepgram and an Anthropic API key (next section). Windows and Linux: see [Platform support](#platform-support).
+**What you need**
+
+- macOS 14.2 or newer (system audio uses a Core Audio tap)
+- Node 24 or newer (the installer does not install it), `ffmpeg` for the microphone (the installer offers `brew install ffmpeg`), pnpm 11 (comes with corepack)
+- A second screen: with one screen the answer window refuses to open, so it cannot end up in a screen share
+- For live calls, a Deepgram key and an Anthropic key. Cost is about $1.50 per hour of call (an estimate, see [Cost](#cost))
+
+Optional: `poppler` to attach PDF files to a meeting. Other systems: see [Platforms](#platforms).
 
 ```bash
 brew install node@24                       # skip if you already have Node 24
@@ -174,15 +189,17 @@ cd wingman && ./install.sh                 # checks the Mac, installs, builds Wi
 
 `./install.sh --check` shows what is present and changes nothing; `--dry-run` shows every step; `--uninstall` removes it. The installer never uses sudo and asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg`. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`).
 
-Then open **Wingman**. A guided setup walks you through keys, your name, permissions, microphone, screens, the answer pack, a readiness check and a **practice call** (a pretend client; free, offline, no keys needed). Full steps: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#first-run). Problems: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+Then open **Wingman**. A guided setup starts with a free **practice call** (a pretend client; offline, no keys needed), then walks you through keys, your privacy choices, your name, permissions, microphone, screens, the answer pack and a readiness check. Full steps: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#first-run). Problems: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ### Languages
 
-Hebrew first, English works, other languages are untested. The shipped example answer pack, the practice call and the offline demo are **Hebrew** (`app/data/example-pack/bank.en.yaml` is the English version of the pack). The answer window's labels follow `ui.language`: the default `auto` shows Hebrew labels, so set `ui.language: en` (Settings, answer window language) to get English labels.
+Wingman works in **English and Hebrew**, and in calls that mix both. Hebrew is a real strength, not a limit: right-to-left cards, Hebrew word forms and spoken numbers, and English terms inside Hebrew speech. Other languages are **not supported yet**: if the call is in one, Wingman shows a one-time "not supported yet" notice and gives no cards for those lines.
+
+The example answer pack has Hebrew cards (`bank.yaml`) and English versions of them (`bank.en.yaml`); a question in English gets the English card. `pnpm demo` plays an English call, `pnpm demo --he` a Hebrew one. The in-app **Practice call** is still Hebrew. Window labels follow `ui.language` (`auto` shows Hebrew labels, so set `ui.language: en` for English).
 
 ### Try it without keys
 
-The offline demo plays a scripted, invented Hebrew call (a client asking about a slow shop, backups and a price) through the real engine, with scripted speech and scripted AI. It needs no keys, no network and no ffmpeg, and takes about 90 seconds. From the repository root:
+The offline demo plays a scripted, invented English call (a client asking about a slow shop, backups and a price; `pnpm demo --he` plays a Hebrew one) through the real engine, with scripted speech and scripted AI. It needs no keys, no network and no ffmpeg, and takes about 90 seconds. From the repository root:
 
 ```bash
 cd app
@@ -190,7 +207,7 @@ WINGMAN_SKIP_APP=1 pnpm install    # code only, skips the Electron download (not
 pnpm demo
 ```
 
-Cards print in the terminal as they would appear in the answer window (run `pnpm overlay` in a second terminal for the window). The last lines show the spend: the demo uses no AI, so it reads `AI $0.000 of $2`, where $2 is the default per-call cap (see [Cost](#cost)). The same call runs from the app as the **Practice call** button. A step-by-step version with the full output is in [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
+Cards print in the terminal as they would appear in the answer window (run `pnpm overlay` in a second terminal for the window). The last lines show the spend: the demo uses no AI, so it reads `AI $0.000 of $2`, where $2 is the default per-call cap (see [Cost](#cost)). The Hebrew call also runs from the app as the **Practice call** button. A step-by-step version with the full output is in [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
 <details>
 <summary><b>API keys, cost and a fresh Mac</b></summary>
@@ -206,7 +223,7 @@ Paste both keys into the first-run setup (step 1, "Keys") or later in **Settings
 
 #### Cost
 
-About $1.10 an hour of call for speech (Deepgram Nova-3, two channels at about $0.55 per hour each) plus roughly 5 to 20 cents an hour for AI: about $1.20 an hour in total. A per-call cap (`budget.maxUsdPerCall`, default $2) limits AI spend. Prices in the config are estimates; check your providers' price pages. See [the cost model](docs/ARCHITECTURE.md#latency-budget-and-cost-model).
+About $1.40 an hour of call for speech (Deepgram Nova-3, two channels, with the add-ons Wingman turns on) plus roughly 5 to 20 cents an hour for AI: about **$1.50 an hour** in total. This is an estimate from the price table in the config; check your providers' price pages. A per-call cap (`budget.maxUsdPerCall`, default $2) limits AI spend, and `budget.warnUsdPerCall` (default $3) shows one amber warning when the whole call costs more. See [the cost model](docs/ARCHITECTURE.md#latency-budget-and-cost-model).
 
 #### Fresh Mac
 
@@ -246,11 +263,13 @@ Tell the other people on the call that you use Wingman, and follow the recording
 - **Answer window and screen sharing.** The answer window sits on a second screen and asks the system to hide it from screen capture (`overlay.contentProtection`, on by default). That is so your own notes do not show up in a share. It has not been tested with Zoom, Meet or Teams yet (see the [roadmap](docs/ROADMAP.md)), so check it before you rely on it. With one screen the window refuses to open.
 - **Practice and mock-interview mode is a practice coach.** You rehearse with your own notes and get suggested answers in your own words, then review. It is not for live use in a real job interview or an exam: do not use Wingman where outside help is forbidden ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [user guide](docs/USER-GUIDE.md#practice-and-prep-mode)). The rule is social, not technical; the tool cannot enforce it.
 
-## Platform support
+## Platforms
 
-- **macOS 14.2 or newer:** supported (the full app, live calls and the installer).
-- **Linux:** the engine, file replay (`--file`), the command line and the offline demo run and are tested in CI. Live system-audio capture, the menu-bar app and the installer are macOS only.
-- **Windows:** not supported yet. The engine is being ported; CI runs the unit tests there as an experimental job that may fail, and it has not been tried on a real machine. **Help wanted**, see [CONTRIBUTING.md](CONTRIBUTING.md).
+| Platform | Status |
+|---|---|
+| macOS 14.2+ | Supported: the full app, live calls and the installer. |
+| Linux | Engine, file replay (`--file`), command line and offline demo run and are tested in CI. No live system-audio capture, menu-bar app or installer. |
+| Windows | Planned. The engine and unit tests pass in CI. System audio capture and an installer are not done yet. **Help wanted**, see [CONTRIBUTING.md](CONTRIBUTING.md). |
 
 Limits: Wingman needs the internet and both keys for live calls, and its answers are hints, not facts. More in the [roadmap](docs/ROADMAP.md).
 
@@ -281,7 +300,7 @@ Issues and pull requests are welcome; small focused changes are the easiest to r
 
 Wingman is a solo project by [koren850](https://github.com/koren850), built in about a week with [Claude Code](https://claude.com/claude-code) as the coding agent. Most commits carry a `Co-Authored-By: Claude` trailer.
 
-- **My part:** the product idea and scope (a second screen for my own client calls, Hebrew first), the architecture and the trade-offs recorded in [docs/DECISIONS.md](docs/DECISIONS.md), the quality bars (answer in about a second, guards in code rather than in the prompt, a numeric gate before a change ships), reviewing what the agent wrote, and using it on my own calls and practice sessions to find what was wrong.
+- **My part:** the product idea and scope (a second screen for my own client calls, English and Hebrew), the architecture and the trade-offs recorded in [docs/DECISIONS.md](docs/DECISIONS.md), the quality bars (answer in about a second, guards in code rather than in the prompt, a numeric gate before a change ships), reviewing what the agent wrote, and using it on my own calls and practice sessions to find what was wrong.
 - **The agent's part:** most of the code, tests and documentation, written to those decisions and reviewed before merging.
 - **How it was checked:** the tests and `pnpm eval` gates above, scripted end-to-end calls, separate review passes (architecture, security, reliability, docs) whose findings were fixed before release, and real use.
 

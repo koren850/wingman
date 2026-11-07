@@ -96,7 +96,7 @@ No link yet? Run `./install.sh` and say yes to the `wingman` command question. W
 
 Signs: an amber bar "AI slow", cards arrive late, more "Buy time" lines (the bar may be in Hebrew).
 
-Wingman steps down by itself: first it uses only Prepared cards and "Buy time" lines (reduced AI), then Prepared cards only. It steps back up after a minute of calm. The call never stops because of this.
+Wingman steps down by itself: first, when the AI is slow, answers keep coming but one that arrives too late is not shown (reduced AI), then Prepared cards only. It steps back up after a minute of calm. The call never stops because of this.
 
 What you can do:
 
@@ -142,7 +142,7 @@ cd app
 pnpm demo
 ```
 
-It should print about a dozen cards, then a summary, then `Demo done`. If it does, the engine is fine. Then check audio permission, keys (`pnpm keys status`) and the Readiness check (`pnpm run doctor --offline` for the free part). If `pnpm demo` fails, open an issue with the last lines of its output.
+It should print a few cards (and, with `pnpm demo --he`, a summary), then `Demo done`. If it does, the engine is fine. Then check audio permission, keys (`pnpm keys status`) and the Readiness check (`pnpm run doctor --offline` for the free part). If `pnpm demo` fails, open an issue with the last lines of its output.
 
 ## Still stuck
 

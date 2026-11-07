@@ -17,7 +17,7 @@ For code work only (no Electron download, no app):
 cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
-pnpm test                               # all tests (650+, about 5 minutes)
+pnpm test                               # all tests (680+, about 5 minutes)
 pnpm demo                               # the offline demo call, no keys (about 90 seconds)
 pnpm eval                               # detector, bank and guard quality numbers, no keys
 ```
@@ -59,7 +59,7 @@ What `pnpm install` does in `app/`:
 
 | Script | What it does |
 |---|---|
-| `pnpm demo` | The offline demo: a scripted, invented Hebrew call through the real engine. No keys, no network. |
+| `pnpm demo` | The offline demo: a scripted, invented English call (`--he` for Hebrew) through the real engine. No keys, no network. |
 | `pnpm eval` | Offline quality numbers for the detector, the bank matcher and the guards. Fails if one drops below `qa/eval-baseline.json`. |
 | `pnpm check` | Type check, lint, format check, unit tests and `pnpm eval`. |
 | `pnpm start` | The call engine (`src/run.ts`) in the terminal. Flags: `--file x.wav` (replay a stereo WAV, left = me, right = them), `--no-ai`, `--discard`, `--profile`, `--set key=value`. |

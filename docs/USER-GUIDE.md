@@ -78,7 +78,7 @@ This is the window you read during a call. Put it on the second screen.
 
 <img src="ux/setup-step.png" alt="The setup guide on the Home page with the Answer pack step open" width="520">
 
-1. **Set up Wingman** shows how many of the 8 steps are done.
+1. **Set up Wingman** shows how many of the 9 steps are done. The first step offers a free practice call (no keys); the second asks for your keys and the next, "Your privacy", for two privacy choices.
 2. **Open** shows the details of a step. **Close** hides them again.
 3. Each step explains what it is for. Here, the **Answer pack** step lets you copy the example pack to your own folder, or keep the example for now.
 4. **Skip this step** is always allowed. You can come back from **Settings, Setup guide**.

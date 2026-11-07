@@ -52,12 +52,42 @@ WINGMAN_SKIP_APP=1 pnpm install
 ### 4. Run the demo
 
 ```bash
-pnpm demo
+pnpm demo          # an English call
+pnpm demo --he     # the same story in Hebrew
 ```
 
-The demo plays a scripted call through the real engine. The speech and the AI are scripted, so it needs no keys, no network and no microphone. It takes about a minute and a half, because it plays the call at call speed. The call is invented: a client called Dana (from a made-up shop) asks about a slow site, backups and a price. The call is in Hebrew, like the example pack.
+The demo plays a scripted call through the real engine. The speech and the AI are scripted, so it needs no keys, no network and no microphone. It takes about a minute and a half, because it plays the call at call speed. The call is invented: a client called Dana (from a made-up shop) asks about a slow site, backups and a price. The default call is in English; `--he` plays a Hebrew call. Wingman handles both, and calls that mix them.
 
 You see the cards as they would appear in the answer window. This is a trimmed copy of the real output:
+
+```text
+Wingman · call 01M6VSSNZZQHB9VDE16GRS1FX9 · file .../silence.wav · 41 prepared cards
+
+[🗂 fact] Acme Stores Ltd
+   • acmestores.com · wordpress 6.9 · PHP 8.3
+
+[📗 prepared] A slow site is usually heavy images, missing cache, heavy plugins or a weak server. We check the cause first and then fix it.
+   • Common causes: images, plugins, server
+   • Measure before and after
+   • Not always the server
+
+[📗 prepared] Yes, we can work with automatic backups of the files and the database, and restore from them if something goes wrong.
+   • Files and database
+   • Keep a copy off the server
+   • Frequency depends on the plan
+
+[📗 prepared] The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
+   • Depends on scope and requirements
+   • No number without details
+   • Come back after checking
+
+[📋 email] dana@acmestores.com
+
+Speed: 4 questions · first card p50 0.3s / p95 0.3s · Prepared cards 3 (p50 0.3s)
+Cost: AI $0.000 of $2 · STT $0.00 · total $0.00 (estimate from settings budget.prices)
+```
+
+The Hebrew call (`pnpm demo --he`) prints Hebrew cards and, at the end, a Hebrew call summary. The English demo does not print the call frame, notes or summary yet, because their scripted AI text is Hebrew only. Trimmed:
 
 ```text
 Wingman · call 01M6V9ST8H6K7V8ETV1W7RJESV · file .../silence.wav · 41 prepared cards
@@ -99,7 +129,7 @@ How to read it:
 | `🧭 call` | The call frame: what kind of call, the topic, and a checklist (`0/5` done). |
 | `📋 phone`, `📋 email` | Captured from what the other side said. In the app you copy them with a hotkey. |
 | `Speed` | How long after the question the first card appeared. The demo timing is scripted, so it is not a speed test. |
-| `Cost` | The demo uses no AI, so it costs nothing. The `$2` is the default cap for one call (`budget.maxUsdPerCall`). |
+| `Cost` | The demo uses no real AI, so it costs nothing. The `$2` is the default cap for one call (`budget.maxUsdPerCall`). |
 
 Look at the price question. The client asks "how much" and Wingman shows a safe line, never a number. That is the main idea of the project: the answer is something you can say, and it never promises a price, a date or a result. [EXAMPLES.md](EXAMPLES.md#c-what-the-guards-do) shows what the guards block and why.
 
@@ -144,7 +174,7 @@ This part needs the Mac app and two paid accounts, so it is described from the c
 | Deepgram | Turns speech into text | Sign up at [console.deepgram.com/signup](https://console.deepgram.com/signup), then create a key in the console |
 | Anthropic | The AI that writes answers and the summary | Create an account at [platform.claude.com](https://platform.claude.com), add credit under Billing, create a key under [Settings, API keys](https://platform.claude.com/settings/keys) |
 
-Cost: about $1.10 an hour for speech plus roughly 5 to 20 cents an hour for the AI. Set a spend limit in both consoles too. Wingman has its own cap per call (`budget.maxUsdPerCall`, $2 by default).
+Cost: about $1.40 an hour for speech plus roughly 5 to 20 cents an hour for the AI (about $1.50 in total, an estimate). Set a spend limit in both consoles too. Wingman has its own cap per call (`budget.maxUsdPerCall`, $2 by default).
 
 ### 2. Install the app
 
@@ -174,13 +204,13 @@ pnpm keys status
 
 ### 4. Finish the setup guide
 
-The rest of the guided setup: your name, permissions (microphone and System Audio Recording; quit and reopen Wingman after you allow System Audio Recording), the microphone, your screens, the answer pack, the Readiness check, and a practice call. Details are in the [User guide](USER-GUIDE.md#first-run).
+The rest of the guided setup: your privacy choices (ask before listening starts, Deepgram model-training opt-out), your name, permissions (microphone and System Audio Recording; quit and reopen Wingman after you allow System Audio Recording), the microphone, your screens, the answer pack, the Readiness check, and a practice call. Details are in the [User guide](USER-GUIDE.md#first-run).
 
 The Readiness check tests the mic, the system audio, the keys, the speech service and the AI. It ends with `READY`, `READY WITH WARNINGS` or `NOT READY`, and tells you what to fix. The full check costs a few cents. From the terminal, `pnpm run doctor --offline` runs the free part only.
 
 ### 5. Do a practice call
 
-Press **Practice call** in the setup guide (or on Home). A pretend client plays through the real call loop and the real answer window. It is free and nothing leaves your Mac. It is the same invented call as `pnpm demo`, now in the real window.
+Press **Practice call** in the setup guide (or on Home). A pretend client plays through the real call loop and the real answer window. It is free and nothing leaves your Mac. It is the Hebrew invented call from `pnpm demo --he`, now in the real window (an English practice call is not in the app yet).
 
 What you see:
 

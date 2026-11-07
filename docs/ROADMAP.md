@@ -13,7 +13,7 @@ For anyone who wants to know how finished Wingman is, what has and has not been 
 - Answers for you, local math, call frame and checklist, tips, fact cards (with your own snapshot), capture chips, summary and follow-up draft.
 - Health ladder, reconnect buffer, cost caps, idle stop, sleep recovery, disk-space warning.
 - The `wingman` CLI over an owner-only socket.
-- A test suite of 650+ tests in 70 files; a CI workflow (type check, tests and `pnpm eval` on macOS and Linux, Windows experimental); a synthetic QA harness with 32 invented scenarios; a UX review of the window and answer window with the findings fixed.
+- A test suite of 680+ tests in 70+ files; a CI workflow (type check, tests and `pnpm eval` on macOS and Linux, Windows experimental); a synthetic QA harness with 32 invented scenarios; a UX review of the window and answer window with the findings fixed.
 - A deep test round (real Deepgram and Haiku, a 60-minute soak, failure injection, a 166-utterance answer-quality judge) on synthetic voices. Measured numbers: question recall 98 percent, right card about 86 percent on replay, Prepared first card p50 0.57 s and p95 1.9 s, math 0.43 s, AI answer for you 1.65 s, AI answer for them 1.4 s, 0 guard leaks, AI cost about 20 cents an hour in the longest test (roughly 5 to 20 cents an hour in normal use). Synthetic voices are cleaner than real speech, so treat these as optimistic.
 
 ## Verification status: not yet checked on real audio
@@ -34,9 +34,9 @@ Everything above ran on synthetic voices and hidden-window snapshots. Not yet ch
 
 ## Known limits
 
-- **macOS only** for the full app (system audio capture needs macOS 14.2 or newer). The engine and file replay run on Linux (tested in CI) and are being made to run on Windows; the live app does not. Help wanted.
-- **Hebrew first.** English works; other languages are untested.
-- Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.10 an hour for speech plus roughly 5 to 20 cents for AI. Prices in the config are estimates.
+- **macOS only** for the full app (system audio capture needs macOS 14.2 or newer). The engine and file replay run on Linux (tested in CI) and pass unit tests on Windows in CI; system audio capture and an installer are not done, and the live app does not run there. Help wanted.
+- **English and Hebrew** (and calls that mix them). Other languages are not supported yet: a call in one shows a one-time notice. More languages are possible later; see the roadmap below.
+- Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.50 an hour (an estimate): about $1.40 for speech with Deepgram add-ons plus roughly 5 to 20 cents for AI. Prices in the config are estimates.
 - Not a recording or consent tool; the user is responsible for telling participants (see [PRIVACY-AND-SECURITY.md](PRIVACY-AND-SECURITY.md)).
 - Call files are not encrypted at rest.
 - No signed or notarised build (only ad hoc signed); the app runs the repo's code and needs Node 24 at launch. Permissions attach to the app or terminal that runs it.

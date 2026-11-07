@@ -13,7 +13,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [5](#adr-5-two-audio-channels-me-and-them) | Two audio channels: me and them |
 | [6](#adr-6-audiotee-for-system-audio) | AudioTee for system audio |
 | [7](#adr-7-speakers-mode-no-headphones-needed) | Speakers mode, no headphones needed |
-| [8](#adr-8-hebrew-first-with-multi-language-speech-to-text) | Hebrew first, with multi-language speech to text |
+| [8](#adr-8-english-and-hebrew-with-multi-language-speech-to-text) | English and Hebrew, with multi-language speech to text |
 | [9](#adr-9-a-hebrew-aware-question-detector) | A Hebrew-aware question detector |
 | [10](#adr-10-the-prepared-bank-comes-before-the-ai) | The Prepared bank comes before the AI |
 | [11](#adr-11-claude-haiku-for-the-live-reflex) | Claude Haiku for the live reflex |
@@ -144,7 +144,7 @@ Date: 2026-11-03
 
 **Consequences.** Talking over each other on speakers loses some of your words. With headphones, the `filter` mode keeps your words when you interrupt.
 
-## ADR 8: Hebrew first, with multi-language speech to text
+## ADR 8: English and Hebrew, with multi-language speech to text
 
 Date: 2026-11-03
 
@@ -156,7 +156,7 @@ Date: 2026-11-03
 
 **Alternatives.** `he` only; a post-processing alias table (still available, `data/aliases.yaml`).
 
-**Consequences.** The measurement used a computer voice, not real speech; re-check with real recordings. Languages other than Hebrew and English are untested.
+**Consequences.** The measurement used a computer voice, not real speech; re-check with real recordings. Languages other than Hebrew and English are not supported yet; the engine shows a notice when it hears one.
 
 ## ADR 9: A Hebrew-aware question detector
 
