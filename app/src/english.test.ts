@@ -204,7 +204,7 @@ test("fact cards and the short summary follow the UI language", () => {
   };
   assert.match(
     formatShort(s, "en"),
-    /Call summary[\s\S]*Next steps:[\s\S]*- Me: y[\s\S]*Open questions: 1[\s\S]*Email draft: ready \(2 sentences replaced with \[to fill\]\)/,
+    /Call summary[\s\S]*Next steps:[\s\S]*- Me: y[\s\S]*Open questions: 1[\s\S]*Email draft: ready \(2 sentences replaced with \[fill in\]\)/,
   );
   assert.match(formatShort(s), /סיכום השיחה/);
 });
