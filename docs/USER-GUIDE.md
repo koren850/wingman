@@ -32,7 +32,7 @@ All pictures use invented data. The client, the numbers and the answers are made
 
 ### The answer window
 
-This is the window you read during a call. Put it on the second screen.
+This is the window you read during a call. Put it on the second screen. By default it uses the **Focus** layout: what they said, one big answer, and a small **More: 3** button (or Ctrl+Opt+L) that opens the checklist, client card, AI notes and captured details. In **Settings, Answer window layout** you can switch to **Full**, which shows everything at once, as in the picture below.
 
 <img src="ux/answer-window-en-ui.png" alt="The answer window with a transcript line, an AI card, a buy-time line, captured details, a checklist, a client card and AI notes" width="520">
 
@@ -43,7 +43,8 @@ This is the window you read during a call. Put it on the second screen.
 5. **Buy time**: a safe line to say while you check a number. Wingman uses it instead of inventing a price or a date.
 6. **Numbered chips** (Phone, Email, Domain): details heard in the call. Press Ctrl+Opt and the number to copy one.
 7. **You have not talked about:** your checklist of topics still open. **Levy Electronics** is the client card. **AI notes** are points the AI noticed.
-8. **Bottom bar**: the hotkeys. Ctrl+Opt+A asks the AI, R shows what they said, L opens the checklist, P pauses, C clears.
+8. **Bottom bar**: the hotkeys. In Focus it shows three: Ctrl+Opt+A asks the AI, L opens More, P pauses. Press **?** to see all of them (R shows what they said, C clears, 1-3 copy a detail). Full shows them all.
+9. **Writing...**: while an AI answer is still arriving, its label says so. Wait until it stops before you read it out.
 
 ### Home, during a call
 
