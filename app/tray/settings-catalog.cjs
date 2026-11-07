@@ -204,6 +204,17 @@ const ITEMS = [
     unit: "USD",
     help: "At the cap the AI stops and only Prepared cards are used for the rest of the call. Speech recognition cost is only warned about.",
   },
+  {
+    key: "budget.warnUsdPerCall",
+    group: "money",
+    label: "Warn when a call costs more than",
+    kind: "number",
+    min: 0,
+    max: 100,
+    step: 0.5,
+    unit: "USD",
+    help: "One amber warning when AI plus speech recognition passes this amount. Nothing is stopped. 0 = no warning.",
+  },
 
   {
     key: "audio.warnBluetooth",
