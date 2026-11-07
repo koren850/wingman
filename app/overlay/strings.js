@@ -147,7 +147,7 @@
     "notes.title": "AI notes",
     "reminder.title": "Not discussed yet:",
     "reminder.more": "and {n} more",
-    "frame.label": "Call:",
+    "frame.label": "About this call:",
     "frame.goal": "Goal: ",
     "frame.must": "Must cover",
     "kind.client": "Client",
