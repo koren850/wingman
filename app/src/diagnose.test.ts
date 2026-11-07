@@ -151,7 +151,7 @@ test("diagnose: the file has the useful parts and none of the words said, no ema
   );
   const consent = Object.entries(changed).find(([k]) => k.startsWith("privacy.consentText"));
   assert.match(String(consent?.[1]), /^<text, \d+ chars>$/);
-  assert.equal(statSync(file).mode & 0o077, 0, "private file");
+  if (process.platform !== "win32") assert.equal(statSync(file).mode & 0o077, 0, "private file"); // no POSIX modes on Windows
 });
 
 test("diagnose: no call id means the latest call; with no calls the file still has app, system and settings", async () => {

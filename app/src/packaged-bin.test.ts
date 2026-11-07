@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import bin from "../shared/bin.cjs";
 
 const EXE = "/Applications/Wingman.app/Contents/MacOS/Wingman";
@@ -35,7 +35,7 @@ test("packaged: detected by packaged.json in the app folder, never in a checkout
   const dir = mkdtempSync(join(tmpdir(), "wingman-packed-"));
   try {
     assert.equal(bin.isPackaged(dir), false);
-    assert.equal(bin.binCommand("tsx", ["src/call.ts"], dir, { platform: "darwin" }).cmd, join(dir, "node_modules", ".bin", "tsx"));
+    assert.equal(bin.binCommand("tsx", ["src/call.ts"], dir, { platform: "darwin" }).cmd, posix.join(dir, "node_modules", ".bin", "tsx")); // a macOS path keeps forward slashes on any host
     writeFileSync(join(dir, "packaged.json"), "{}");
     assert.equal(bin.isPackaged(dir), true);
     assert.equal(bin.binCommand("tsx", ["src/call.ts"], dir, { execPath: EXE }).args[0], "--wingman-tool");
