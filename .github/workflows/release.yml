@@ -1,0 +1,68 @@
+name: Release
+
+# A tag like v0.0.1 builds the macOS app (unsigned for now) and attaches the .dmg to a DRAFT release. Nothing is published
+# until someone reviews the draft and clicks "Publish release".
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  dmg:
+    name: build the .dmg (macOS, arm64)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # create the draft release and upload the .dmg
+    defaults:
+      run:
+        working-directory: app
+    env:
+      # Skip the dev launcher build in postinstall: the packaged app is built by `pnpm dist`.
+      WINGMAN_SKIP_APP: "1"
+      # Signing and notarizing are OFF. To switch them on later, set WINGMAN_SIGN=1 and add the secrets listed in app/electron-builder.cjs
+      # (CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID) to the repository and pass them here.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Enable pnpm for Node 24
+        run: corepack enable
+
+      - name: Check that the tag matches the version
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          [ "$GITHUB_REF_NAME" = "v$version" ] || { echo "Tag $GITHUB_REF_NAME does not match app/package.json version $version"; exit 1; }
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Build the app
+        run: pnpm dist
+
+      - name: Check the fuses of the built app
+        run: node scripts/set-fuses.cjs dist/mac-arm64/Wingman.app --check
+
+      - name: Draft release with the .dmg
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Wingman $GITHUB_REF_NAME" \
+            --notes "Unsigned build for Apple Silicon Macs (macOS 14.2 or newer). macOS asks you to confirm the first start: see the README." \
+            dist/Wingman-*-arm64.dmg
