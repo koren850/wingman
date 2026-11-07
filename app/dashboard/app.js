@@ -450,7 +450,7 @@ function gateStrip() {
     h(
       "div",
       { class: "stat" },
-      h("h2", { id: "gate-h", class: "label", style: false }, "Usefulness gate"),
+      h("h2", { id: "gate-h", class: "label", style: false }, "Card usefulness"),
       h("div", { class: "big " + (none ? "muted" : ok ? "good" : "bad") }, none ? "–" : ltr(g.ph.toFixed(1)), h("small", {}, "useful / hour")),
     ),
     h(
@@ -469,7 +469,7 @@ function gateStrip() {
         chip(verdict, none ? "" : ok ? "good" : "bad", { dot: true }),
       ),
       h("span", {}, `${g.n} of ${GATE_CALLS} calls rated · ${g.useful} useful in `, ltr(g.hours.toFixed(1) + " h")),
-      h("span", { class: "faint" }, left ? plural(left, "more call") + " to decide" : "Decision reached"),
+      h("span", { class: "faint" }, left ? plural(left, "more call") + " for a final result" : "Final result reached"),
     ),
     h(
       "button",
@@ -496,7 +496,7 @@ function closePopover(restore) {
   document.removeEventListener("pointerdown", p._outside, true);
   if (restore && t) t.focus();
 }
-/** Toggle the "How the usefulness gate works" dialog under the gate strip. Escape or a click outside closes it. */
+/** Toggle the "How the usefulness score works" dialog under the usefulness strip. Escape or a click outside closes it. */
 function gatePopover(anchor, trigger, g, ok, none) {
   if ($("gate-pop")) {
     closePopover(true);
@@ -505,12 +505,12 @@ function gatePopover(anchor, trigger, g, ok, none) {
   const first = state.calls.find((c) => !c.crashed && pendingOf(c) > 0);
   const pop = h(
     "div",
-    { id: "gate-pop", class: "popover", role: "dialog", "aria-label": "How the usefulness gate works", tabindex: "-1" },
-    h("h3", {}, "How the usefulness gate works"),
+    { id: "gate-pop", class: "popover", role: "dialog", "aria-label": "How the usefulness score works", tabindex: "-1" },
+    h("h3", {}, "How the usefulness score works"),
     h(
       "p",
       {},
-      `Wingman only gets built further if its cards help on real calls. After each call you mark every card Useful or Not useful. The gate counts useful cards per hour of live calls. It needs ${TARGET} or more, measured over ${GATE_CALLS} rated live calls.`,
+      `This checks that Wingman's cards really help on real calls. After each call you mark every card Useful or Not useful. The score counts useful cards per hour of live calls. It needs ${TARGET} or more, measured over ${GATE_CALLS} rated live calls.`,
     ),
     h(
       "p",
@@ -596,7 +596,7 @@ function callTable(rows, label) {
     h(
       "table",
       { "aria-label": label },
-      h("thead", {}, h("tr", {}, th("When"), th("Length", "w-len"), th("Waiting"), th("Useful/h", "num w-num"))),
+      h("thead", {}, h("tr", {}, th("When"), th("Length", "w-len"), th("To do"), th("Useful per h", "num w-num"))),
       h(
         "tbody",
         {},
@@ -810,7 +810,7 @@ function viewInbox(restoreFocus) {
       const d = h(
         "details",
         { class: "collapsed" },
-        h("summary", {}, ico("chevron"), `Practice calls (${practice.length})`, h("span", { class: "faint" }, "· not counted in the gate")),
+        h("summary", {}, ico("chevron"), `Practice calls (${practice.length})`, h("span", { class: "faint" }, "· not counted in the usefulness score")),
         callTable(practice, "Practice calls"),
       );
       out.append(d);
@@ -835,7 +835,7 @@ const TABS = [
   ["followup", "Follow-up", "follow"],
   ["rate", "Rate", "rate"],
   ["transcript", "Transcript", "transcript"],
-  ["missed", "Missed", "missed"],
+  ["missed", "Missed questions", "missed"],
   ["details", "Details", "details"],
 ];
 /** Turn a tab name plus optional extra (filter, line number or sub-tab) into { tab, filter?, line?, sub? }. tab is null when unknown. */
@@ -1467,7 +1467,7 @@ function ratebar(d) {
     ["unrated", "Unrated"],
     ["rated", "Rated"],
     ["useful", "Useful"],
-    ["side", "Side"],
+    ["side", "Side notes"],
   ]) {
     seg.append(
       h(

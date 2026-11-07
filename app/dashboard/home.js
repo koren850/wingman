@@ -1366,7 +1366,7 @@ function waitingCard() {
             "span",
             { class: "wait" },
             p ? linkChip([h("span", { class: "ctr" }, p), " to rate"], "warn", () => go({ tab: "rate", filter: "unrated" }), `${p} to rate, open Rate`) : null,
-            c.hasSummary ? linkChip("Send summary", "info", () => go({ tab: "followup" }), "Summary ready, open Follow-up") : null,
+            c.hasSummary ? linkChip("Follow-up email", "info", () => go({ tab: "followup" }), "Summary ready, open Follow-up") : null,
           ),
         );
       }),

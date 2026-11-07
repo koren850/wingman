@@ -177,14 +177,17 @@ function renderSide(c) {
   el.className = `side ${c.badge}${c.warn ? " warn" : ""}`;
   el.replaceChildren();
   const t = div("t");
-  mixed(t, c.say);
+  const reminder = c.badge === "reminder" && c.say === WingmanStrings.STRINGS.he["reminder.title"]; // the engine's fixed Hebrew heading: shown in the UI language
+  mixed(t, reminder ? tr("reminder.title") : c.say);
   el.append(t);
   if (c.facts?.length) {
     const ul = document.createElement("ul");
     for (const f of c.facts) {
       const li = document.createElement("li");
       li.dir = "rtl";
-      mixed(li, f);
+      const pre = WingmanStrings.STRINGS.he["reminder.more"].replace("{n}", ""),
+        n = reminder && String(f).startsWith(pre) ? String(f).slice(pre.length) : "";
+      mixed(li, /^\d+$/.test(n) ? tr("reminder.more", { n }) : f);
       ul.append(li);
     }
     el.append(ul);
