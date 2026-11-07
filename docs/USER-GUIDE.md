@@ -1,30 +1,35 @@
 # User guide
 
-For people who have installed Wingman and use it on calls. It covers everyday use of Wingman after it is installed: first run, updating, where your files live, profile and pack, practice and prep mode, flow mode and the command line. For install and requirements see the [README](../README.md); for a first walk-through see [Getting started](GETTING-STARTED.md); for every setting and hotkey see [app/README.md](../app/README.md).
+For people who have installed Wingman and use it on calls. It covers everyday use of Wingman after it is installed: first run, updating, where your files live, profile and pack, practice and prep mode, group call mode, words used in Wingman and the command line. For install and requirements see the [README](../README.md); for a first walk-through see [Getting started](GETTING-STARTED.md); for every setting and hotkey see [app/README.md](../app/README.md).
 
-Contents: [First run](#first-run) · [Tour of the windows](#tour-of-the-windows) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Flow mode](#flow-mode) · [Command line](#command-line)
+Contents: [First run](#first-run) · [Tour of the windows](#tour-of-the-windows) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Group call mode](#group-call-mode) · [Words used in Wingman](#words-used-in-wingman) · [Command line](#command-line)
 
 ## First run
 
-Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup:
+Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup with three steps. The chip at the top shows your progress, for example "2 of 3".
 
-1. **Keys.** Paste your Deepgram and Anthropic keys. They go into the macOS Keychain.
-2. **About you.** Your name and how to address you. (Also in Settings later.)
-3. **Permissions.** Allow the microphone and System Audio Recording. After you allow System Audio Recording, **quit and reopen Wingman**. macOS gives no live status for it.
-4. **Microphone.** Pick the one you use. Avoid AirPods for the first call.
-5. **Your screens.** With one screen, you can allow the answer window on it. Never share that screen.
-6. **Answer pack.** Pick a starter (sales, customer support, job interview practice, empty, or the web hosting example). It is copied to your own folder and you edit the copy.
-7. **Readiness check.** Tests the mic, system audio, keys, speech service and the AI.
-8. **Practice call.** A pretend client plays through the real call loop and the real answer window. Free, and nothing leaves your Mac.
+1. **Try it.** A practice call: a pretend client plays through the real call loop and the real answer window. Free, no keys, and nothing leaves your Mac.
+2. **Connect.** Paste your Deepgram and Anthropic keys. They go into the macOS Keychain. Press **Test** to check each one. The step shows the cost: about $1.40 per hour of call for Deepgram plus roughly 5 to 20 cents an hour for Anthropic.
+3. **Allow.** Allow the microphone and System Audio Recording. After you allow System Audio Recording, **quit and reopen Wingman**: macOS gives no live status for it. Then choose your screens. Wingman shows its answers in a small window on a second screen, because that window must never be in your screen share. With one screen the answer window stays closed (the call still works, and every answer is saved in the Wingman window). You can allow the window on your one screen, but then never share that whole screen.
 
-Every step can be skipped and reopened from **Settings, Setup guide**. When you are ready, press **Quick call**, or **Start** on a prepared meeting.
+Then it says "You're ready". Press **Quick call**, or **Start** on a prepared meeting.
+
+Below the three steps is **Make it yours (optional)**. Nothing in it is needed to start, and each item can be skipped:
+
+- **About you.** Your name and how to address you. (Also in Settings later.)
+- **Your privacy.** Two choices: ask before listening starts, and keep your audio out of Deepgram's model training.
+- **Choose your microphone.** Pick the one you use. Avoid AirPods for the first call.
+- **Starter answers.** Pick a starter (sales, customer support, job interview practice, empty, or the web hosting example). It is copied to your own folder and you edit the copy.
+- **Run the readiness check.** Tests the mic, system audio, keys, speech service and the AI.
+
+Every step can be skipped and reopened from **Settings, Setup guide**.
 
 Without the app, from the terminal: `cd app && pnpm dashboard`. See [app/README.md](../app/README.md) for all commands, settings and hotkeys.
 
 Notes:
 - `pnpm run doctor`, not `pnpm doctor` (the second one is pnpm's own command).
 - Never put keys in the repo. They belong in the Keychain.
-- No second screen yet? Turn on the one-screen option in the setup, and never share that screen.
+- No second screen yet? Turn on the one-screen option in the setup (step 3, Allow), and never share that screen.
 
 ## Tour of the windows
 
@@ -86,16 +91,17 @@ In the Full layout all of this is on screen all the time.
 
 ### Setup guide
 
-<img src="ux/setup-step.png" alt="The setup guide on the Home page with the first step open: a free practice call, then the two key fields" width="520">
+<img src="ux/setup-step.png" alt="The setup guide on the Home page: three steps (Try it, Connect, Allow) with the practice call open, then Make it yours (optional)" width="520">
 
-1. **Set up Wingman** shows how many of the 9 steps are done. The first step, **Add your keys**, starts with **Try a practice call first (free, no keys)**. A pretend caller talks to Wingman on your Mac, so you can see the windows before you pay for anything.
+1. **Set up Wingman** shows how many of the 3 steps are done ("2 of 3"). The first step, **Try it**, is a free practice call: a pretend caller talks to Wingman on your Mac, so you can see the windows before you pay for anything.
 2. **Open** shows the details of a step. **Close** hides them again.
-3. Below the practice call are the two key fields (Deepgram and Anthropic). Paste a key, press **Save**, then test it. The next steps cover "Your privacy" (two choices about listening and your audio), permissions, microphone, screens, your answer pack, a readiness check and a practice call.
-4. **Skip this step** is always allowed. You can come back from **Settings, Setup guide**.
+3. **Connect** has the two key fields (Deepgram and Anthropic). Paste a key, press **Save**, then **Test**. **Allow** covers the microphone, System Audio Recording and your screens.
+4. **Make it yours (optional)** lists About you, Your privacy, Choose your microphone, Starter answers and the readiness check.
+5. **Skip this step** is always allowed. You can come back from **Settings, Setup guide**.
 
-The **Answer pack** step offers starter packs, so you do not begin with an empty folder:
+The **Starter answers** item offers starter packs, so you do not begin with an empty folder:
 
-<img src="ux/setup-starter-packs.png" alt="The Answer pack step open, with a Start from list: Sales, Customer support, Job interview practice, Empty pack and Web hosting example, and a Copy to my folder button" width="520">
+<img src="ux/setup-starter-packs.png" alt="The Starter answers item open, with a Start from list: Sales, Customer support, Job interview practice, Empty pack and Web hosting example, and a Copy to my folder button" width="520">
 
 1. **Start from**: pick the starter closest to your work. **Web hosting (example)** is the invented example Wingman uses until you choose.
 2. **Copy to my folder** copies the starter to your own pack folder. You edit the copy there. **Keep the example for now** changes nothing.
@@ -130,7 +136,7 @@ If you used an older version that kept calls in the repo folder (`calls/` and `d
   wingman profile set --name Dana --spelling Dana --address female --timezone Asia/Jerusalem
   wingman profile show
   ```
-- A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answer bank, house style, keyterms and topic words. Without one, the invented example web/hosting pack in `app/data/example-pack/` is used. File formats: [docs/PACK-FORMAT.md](PACK-FORMAT.md).
+- A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answers (the file `bank.yaml`), house style, keyterms and topic words. Without one, the invented example web/hosting pack in `app/data/example-pack/` is used. File formats: [docs/PACK-FORMAT.md](PACK-FORMAT.md).
 
 Do not confuse these with a **settings preset** (`app/profiles/<name>.yaml`, used with `--profile <name>`). A preset is a set of setting overrides, such as `first-client-call`. It has nothing to do with `profile.yaml`.
 
@@ -149,13 +155,37 @@ In this mode:
 
 Real interviews and exams that forbid outside help are out of scope ([ADR 35](DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams)). You are responsible for following the rules that apply to you.
 
-## Flow mode
+## Group call mode
 
-For calls with several people on the other side (needs `stt.speakers`, on by default; turn flow off with `flow.enabled: false`).
+For calls with several people on the other side (needs `stt.speakers`, on by default; turn it off with `flow.enabled: false`). The setting keys still start with `flow`.
 
 - When two or more of them talk to each other and you are quiet, a muted line shows who is talking and about what. Answer cards wait (`flow.holdCards`). Price and date cards, and questions with your name, still show.
 - When someone turns to you (says your name, or "you" right after their own discussion), an orange alert shows who.
 - Nothing is kept between calls. Names only live for the call.
+
+## Words used in Wingman
+
+The window uses plain words. Some older docs, file names and settings keep the internal names. This table links the two. Names in files and settings did not change.
+
+| Old or internal term | Name in the app | What it means |
+|---|---|---|
+| Bank, answer bank (`bank.yaml`) | Your answers | The answers you wrote before the call. Cards from it are marked **Prepared**. |
+| Pack, answer pack | Starter answers / your answers folder | The folder of your answers, tone rules and word lists. |
+| Bank card | Prepared | An answer from your own files. Local and instant. |
+| AI card | AI · unverified | An answer written by the AI. Check it before you say it. |
+| Stall line | Buy time | A safe line to say while the real answer is found. |
+| Call frame | About the call | What kind of call it is, its topic and goal, and a checklist of what to cover. |
+| Frame kind | Client, Support, Vendor, Team, Consult, Personal, Interview, Other | The kind of call. |
+| Flow mode | Group call mode | Several people on the other side: cards wait while they talk to each other. |
+| Capture chip | Detail 1 to 3 (phone, email, domain) | Details Wingman picked up, ready to copy. |
+| Reflex | Answers (in the cost table) | The part that writes answers while someone speaks. |
+| STT | Speech to text | Turns the call audio into text. Shown as a cost. |
+| LLM | AI | The model that writes answers. Shown as a cost. |
+| Haiku tag | AI decision | What the AI chose for a question: No card, Buy time, Prepared or AI. |
+| Latency | Time to answer | How long after the question a card showed. |
+| Degrade ladder, rung | Health bar | The steps Wingman takes when something is slow or down. |
+| Brief, plan, prepared meeting | Plan, prepared meeting | The notes for one specific call. |
+| Doctor | Readiness check | Tests the microphone, system audio, keys and services. |
 
 ## Command line
 

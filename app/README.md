@@ -9,7 +9,7 @@ Wingman is a live call copilot for client, support and team calls. It listens to
 Launched from the app or the terminal. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
 
 ## Setup (once)
-1. Install with `./install.sh` at the repo root (see the [root README](../README.md#quick-start)). Then open Wingman. The first window is a guided setup: keys, About you, permissions, microphone, screens, pack, readiness check, practice call. You can reopen it from **Settings, Setup guide**.
+1. Install with `./install.sh` at the repo root (see the [root README](../README.md#quick-start)). Then open Wingman. The first window is a guided setup with three steps (Try it, Connect, Allow), then optional items: About you, privacy, microphone, starter answers, readiness check. You can reopen it from **Settings, Setup guide**.
 2. Keys: in the setup, or **Settings, Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; makes a mode-600 backup first). Never put keys in this repo.
 3. Permissions: allow **Microphone** and **System Audio Recording** for Wingman. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it.
    When you run from a terminal instead of the app, the permission belongs to the terminal. Use Terminal.app. In iTerm/Warp/IDE terminals add the app by hand under Privacy & Security > Screen & System Audio Recording > System Audio Recording Only.
@@ -70,10 +70,10 @@ Decision rule: client call only if the gate passes (term recall >= 85% after one
 ## It works for any kind of call
 Wingman does not assume a client call: it works for any kind of call. About once a minute a small model writes the **call frame** (kind: client, support, vendor, team, consult, personal or other; topic; goal; people; a checklist of what this kind of call should cover): `src/frame.ts`, settings `frame.*`. The frame feeds the answers, the **live tips** (`src/tips.ts`, settings `tips.*`: at most one small tip per two minutes), the summary (its sections follow the kind) and the answer window / dashboard (header line, `3/6` checklist). On a call that is not with a client, bank cards are weak (dimmed, the model may drop them); price / timeline / guarantee stall cards stay. A prepared meeting (the "Plan") also takes background files (.txt, .md, pasted text; .pdf when `pdftotext` is installed): `tray/attachments.cjs`. QA for this: `pnpm qa vendor-hosting team-planning consult-accountant personal-casual`.
 
-## Several speakers and flow mode
+## Several speakers and group call mode
 **Several people on the other side.** With `stt.speakers` on (the default), the other side's voices are told apart ("Speaker 1", 2... or names taken from introductions and from the meeting's attendees). A name is only taken from an introduction when it matches an attendee or is a short intro line ("this is Zoom" does not name a voice). Rename a voice on the dashboard or with `wingman speaker <n> "<name>"` (`--clear` removes it). A rename also relabels the earlier lines, for the AI and the summary. Names live only for the call.
 
-**Flow mode** (`flow.*`, `src/flow.ts`).
+**Group call mode** (`flow.*`, `src/flow.ts`).
 - When two or more of them talk among themselves while you are quiet (at least 3 lines in 30 s, you quiet for 20 s), a muted "talking among themselves" line shows who and what about (`flow.topic`, one small AI line every 45 s at most).
 - While they do, answer cards wait (`flow.holdCards`). Price and date cards, and questions that use your name, still show.
 - When someone says your name, or says "you" right after their own discussion, an orange "turned to you" alert shows who.
@@ -177,7 +177,7 @@ Notes on a few of them:
 - `privacy.requireConsentAck`: the call waits for **Start listening** before any audio is sent.
 - `overlay.allowPrimary`: lets the answer window open on the only screen. Never share that screen.
 - `system.sleepGapMs` (5000): a gap longer than this between health ticks means the Mac slept. Wingman shows a warning, restarts the audio and reopens the speech connection. 0 turns the check off.
-- `flow.*`: see Flow mode above. `selfCheck.*`: cards about what you said.
+- `flow.*`: see Group call mode above. `selfCheck.*`: cards about what you said.
 
 **Switch the speech-to-text provider**
 ```yaml

@@ -7,7 +7,7 @@ For anyone who wants to know how finished Wingman is, what has and has not been 
 - Live call loop: two-channel speech to text, question detector, Prepared bank, AI answers with guards, answer window.
 - Menu-bar app with Home, Calls and Settings; prepared meetings; practice call; Readiness check; keys in the Keychain.
 - An installer (`install.sh`, with update and uninstall), a guided first-run setup, and user data in `~/Library/Application Support/Wingman` with a one-time copy migration.
-- Practice and mock-interview mode (kind `interview`, a practice coach) and flow mode (several people on the other side).
+- Practice and mock-interview mode (kind `interview`, a practice coach) and group call mode (several people on the other side).
 - Reliability: audio sources restart by themselves, the call survives sleep, a stray error and a full disk, and a dead speech channel steps down to transcript-only instead of ending the call.
 - Security: confirmation in the app before a CLI start or delete, safe file attach, strict Content-Security-Policy, Electron fuses set at build time, short error text, profile validation.
 - Answers for you, local math, call frame and checklist, tips, fact cards (with your own snapshot), capture chips, summary and follow-up draft.

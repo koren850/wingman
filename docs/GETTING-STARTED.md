@@ -139,7 +139,7 @@ How to read it:
 |---|---|
 | `📗 prepared` | A card from your answer pack, picked by keywords. Local, instant. |
 | `🗂 fact` | A fact about a known client, from a local snapshot. |
-| `🧭 call` | The call frame: what kind of call, the topic, and a checklist (`0/5` done). |
+| `🧭 call` | About the call: what kind of call, the topic, and a checklist (`0/5` done). |
 | `📋 phone`, `📋 email` | Captured from what the other side said. In the app you copy them with a hotkey. |
 | `Speed` | How long after the question the first card appeared. The demo timing is scripted, so it is not a speed test. |
 | `Cost` | The demo uses no real AI, so it costs nothing. The `$2` is the default cap for one call (`budget.maxUsdPerCall`). |
@@ -217,7 +217,7 @@ pnpm keys status
 
 ### 4. Finish the setup guide
 
-The rest of the guided setup: your privacy choices (ask before listening starts, Deepgram model-training opt-out), your name, permissions (microphone and System Audio Recording; quit and reopen Wingman after you allow System Audio Recording), the microphone, your screens, the answer pack, the Readiness check, and a practice call. Details are in the [User guide](USER-GUIDE.md#first-run).
+The guided setup has three steps: **Try it** (a practice call), **Connect** (your keys) and **Allow** (microphone, System Audio Recording and your screens; quit and reopen Wingman after you allow System Audio Recording). Below them, **Make it yours (optional)** has your name, your privacy choices (ask before listening starts, Deepgram model-training opt-out), the microphone, starter answers and the Readiness check. Details are in the [User guide](USER-GUIDE.md#first-run).
 
 The Readiness check tests the mic, the system audio, the keys, the speech service and the AI. It ends with `READY`, `READY WITH WARNINGS` or `NOT READY`, and tells you what to fix. The full check costs a few cents. From the terminal, `pnpm run doctor --offline` runs the free part only.
 
@@ -252,7 +252,7 @@ A **pack** is plain files: your answer cards, your tone rules and two word lists
 
 ### 1. Copy a starter pack
 
-In the app: **Settings, Setup guide, Answer pack**. Pick a starter (sales, customer support, job interview practice, an empty pack, or the web hosting example) and press **Copy to my folder**. The starters are in English. Or by hand (swap `example-pack` for `starter-packs/sales`, `support`, `interview` or `empty`):
+In the app: **Settings, Setup guide, Starter answers**. Pick a starter (sales, customer support, job interview practice, an empty pack, or the web hosting example) and press **Copy to my folder**. The starters are in English. Or by hand (swap `example-pack` for `starter-packs/sales`, `support`, `interview` or `empty`):
 
 ```bash
 mkdir -p ~/.config/wingman/pack

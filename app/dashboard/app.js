@@ -137,7 +137,7 @@ const tip = (text, end) =>
 /** The one badge legend. Same names, hues and glyphs as the answer window: [label, colour class, meaning, glyph]. A glyph backs the colour so it is never the only signal. */
 const BADGE = {
   bank: ["Prepared", "t-prep", "A ready-made answer written before the call.", "\u2714"],
-  ai: ["AI", "t-ai", "Written by the AI. Not verified: check it before you say it.", "\u2726"],
+  ai: ["AI · unverified", "t-ai", "Written by the AI. Not verified: check it before you say it.", "\u2726"],
   stall: ["Buy time", "t-stall", "A line to say while the real answer is found.", "\u25F7"],
   tip: ["Tip", "t-tip", "A small suggestion, not an answer.", ""],
   me: ["For you", "t-me", "An answer to your own question.", "\u2606"],
@@ -1452,7 +1452,7 @@ function capturesSection(d) {
 const SRC = {
   me: "For you",
   bank: "Prepared",
-  ai: "AI",
+  ai: "AI · unverified",
   stall: "Buy time",
   tip: "Tip",
   careful: "Careful",
@@ -2005,6 +2005,18 @@ function tDetails(pane, d, o) {
   pane.append(box);
   draw(state.sub || "speed");
 }
+/** Plain names for the cost rows (the file keeps the internal role names). */
+const ROLE_NAMES = {
+  reflex: "Answers",
+  notes: "Live notes",
+  frame: "About the call",
+  tips: "Tips",
+  tip: "Tips",
+  me: "For you answers",
+  "call-summary": "Call summary",
+};
+/** The AI's first-line decision, in the answer window's words. Unknown values show as they are. */
+const tagName = (t) => ({ SKIP: "No card", STALL: "Buy time", BANK: "Prepared", ANS: "AI" })[String(t).split(/\s/)[0].toUpperCase()] || String(t);
 function subSpeed(out, d) {
   const rows = d.latency.map((l) => ({
     l,
@@ -2014,9 +2026,9 @@ function subSpeed(out, d) {
   }));
   if (!rows.length) return out.append(h("div", { class: "empty" }, "No speed data"));
   const def = [
-    ["fin", "Speech end → final", 600, 1200],
-    ["card", "→ First card", 1000, 3000],
-    ["tag", "→ Haiku tag", 3000, 5000],
+    ["fin", "Words final after", 600, 1200],
+    ["card", "First card after", 1000, 3000],
+    ["tag", "AI decision after", 3000, 5000],
   ];
   const stat = (k) => {
     const a = rows.map((r) => r[k]);
@@ -2028,7 +2040,7 @@ function subSpeed(out, d) {
       { class: "tblwrap" },
       h(
         "table",
-        { "aria-label": "Latency per question" },
+        { "aria-label": "Time to answer, per question" },
         h(
           "thead",
           {},
@@ -2037,7 +2049,7 @@ function subSpeed(out, d) {
             {},
             h("th", { scope: "col" }, "Question"),
             def.map(([, label]) => h("th", { scope: "col", class: "num" }, label)),
-            h("th", { scope: "col" }, "Tag"),
+            h("th", { scope: "col" }, "AI decision"),
           ),
         ),
         h(
@@ -2077,7 +2089,7 @@ function subSpeed(out, d) {
                     : [ltr(sec(r[k])), r[k] != null && tone(r[k], g, o) === "lat-bad" ? h("span", { class: "sr" }, " (slow)") : null],
                 ),
               ),
-              h("td", {}, r.l.tag ? chip(r.l.tag, "", { mono: true }) : ""),
+              h("td", {}, r.l.tag ? chip(tagName(r.l.tag), "") : ""),
             );
           }),
         ),
@@ -2127,8 +2139,8 @@ function subCost(out, d) {
         h("div", { class: "v" }, ltr(usd(total))),
         h("div", { class: "s" }, ltr(usd(total / hrs)), " per hour"),
       ),
-      sum ? h("div", { class: "kpi" }, h("div", { class: "k" }, "LLM"), h("div", { class: "v" }, ltr(usd(sum.llmUsd || 0)))) : null,
-      sum ? h("div", { class: "kpi" }, h("div", { class: "k" }, "STT"), h("div", { class: "v" }, ltr(usd(sum.sttUsd || 0)))) : null,
+      sum ? h("div", { class: "kpi" }, h("div", { class: "k" }, "AI"), h("div", { class: "v" }, ltr(usd(sum.llmUsd || 0)))) : null,
+      sum ? h("div", { class: "kpi" }, h("div", { class: "k" }, "Speech to text"), h("div", { class: "v" }, ltr(usd(sum.sttUsd || 0)))) : null,
     ),
   );
   const maxUsd = Math.max(...Object.values(byRole).map((r) => r.usd), 1e-9);
@@ -2138,14 +2150,14 @@ function subCost(out, d) {
       { class: "tblwrap" },
       h(
         "table",
-        { "aria-label": "Cost per role" },
+        { "aria-label": "Cost per part of Wingman" },
         h(
           "thead",
           {},
           h(
             "tr",
             {},
-            h("th", { scope: "col" }, "Role"),
+            h("th", { scope: "col" }, "What it did"),
             h("th", { scope: "col", class: "num w-num" }, "Calls"),
             h("th", { scope: "col", class: "num" }, "Cost"),
           ),
@@ -2157,7 +2169,7 @@ function subCost(out, d) {
             h(
               "tr",
               {},
-              h("td", {}, h("span", { class: "mono" }, k)),
+              h("td", {}, ROLE_NAMES[k] || h("span", { class: "mono" }, k)),
               h("td", { class: "num w-num" }, r.n),
               h("td", { class: "num" }, h("div", { class: "share" }, meter(r.usd / maxUsd), ltr(usd(r.usd)))),
             ),

@@ -192,7 +192,11 @@ function setupGuideBlock() {
       h(
         "div",
         { class: "keyfile" },
-        h("p", { class: "help" }, "Keys, your name, permissions, microphone, screens and the answer pack, step by step. Steps you skipped come back."),
+        h(
+          "p",
+          { class: "help" },
+          "Three steps to get going (try it, connect, allow), then optional extras: your name, privacy, microphone, starter answers and the readiness check. Steps you skipped come back.",
+        ),
         h(
           "div",
           { class: "actions" },
@@ -203,6 +207,7 @@ function setupGuideBlock() {
             onclick: () => {
               SU.force = true;
               SU.skipped = {};
+              SU.acks.closed = false;
               SU.open = "auto";
               suSave();
               viewHome();
@@ -228,27 +233,31 @@ function micChip() {
 }
 const linkBtn = (which, label) => btn(label, { cls: "sm ghost", icon: "jump", onclick: () => api.setupOpenLink(which).catch(() => {}) });
 
-/** "Try a practice call first": a pretend caller, offline and free. It needs no key, so it sits at the top of the first step. */
-function practiceFirst() {
+/** Step 1 "Try it": a pretend caller, offline and free. It needs no key. */
+function tryPanel() {
   return h(
     "div",
-    { class: "su-row", id: "su-practice-first" },
+    { class: "su-body" },
     h(
       "div",
-      { class: "grow" },
-      h("div", { class: "st-t" }, "Try a practice call first (free, no keys)"),
+      { class: "su-row", id: "su-practice-first" },
       h(
         "div",
-        { class: "faint st-w" },
-        "A pretend caller talks to Wingman. It runs on your Mac only: nothing is sent anywhere and nothing is charged. Real calls need the keys below.",
+        { class: "grow" },
+        h("div", { class: "st-t" }, "A practice call (free, no keys)"),
+        h(
+          "div",
+          { class: "faint st-w" },
+          "A pretend caller talks to Wingman and you see the answer window work. It runs on your Mac only: nothing is sent anywhere and nothing is charged.",
+        ),
       ),
+      btn("Start practice call", {
+        id: "su-practice-now",
+        icon: "play",
+        cls: "sm primary",
+        onclick: () => act(() => api.practice({ quick: true }), "Practice call"),
+      }),
     ),
-    btn("Start practice call", {
-      id: "su-practice-now",
-      icon: "play",
-      cls: "sm primary",
-      onclick: () => act(() => api.practice({ quick: true }), "Practice call"),
-    }),
   );
 }
 
@@ -354,10 +363,105 @@ function privacyPanel() {
   );
 }
 
-const STEPS = [
+function permsPanel() {
+  const s = SU.status,
+    m = s && s.mic;
+  return h(
+    "div",
+    { class: "su-body" },
+    h(
+      "div",
+      { class: "su-row" },
+      h("div", { class: "grow" }, h("div", { class: "st-t" }, "Microphone"), h("div", { class: "faint st-w" }, "Lets Wingman hear you.")),
+      micChip(),
+      m === "granted"
+        ? null
+        : btn(m === "not-determined" ? "Allow microphone" : "Open Microphone settings", {
+            id: "su-mic",
+            cls: "sm",
+            icon: "mic",
+            disabled: SU.busy.has("mic"),
+            onclick: () =>
+              suAct(
+                "mic",
+                async () => (m === "not-determined" ? api.setupAskMic() : api.setupOpenPrivacy("mic")),
+                (r) => (r && r.granted ? "Microphone allowed." : "Opened. Switch Wingman on, then press Check again."),
+              ).then(() => loadSetup().then(suRedraw)),
+          }),
+      btn("Check again", { cls: "sm ghost", icon: "refresh", onclick: () => loadSetup().then(suRedraw) }),
+    ),
+    suMsg("mic"),
+    h(
+      "div",
+      { class: "su-row" },
+      h(
+        "div",
+        { class: "grow" },
+        h("div", { class: "st-t" }, "System Audio Recording"),
+        h(
+          "div",
+          { class: "faint st-w" },
+          "Lets Wingman hear the other side of the call. macOS does not tell apps whether this is on, so the readiness check tests it for real.",
+        ),
+      ),
+      SU.acks.audio ? chip("You said it is on", "good", { dot: true }) : null,
+      btn("Open System Audio Recording settings", {
+        id: "su-audio",
+        cls: "sm",
+        icon: "jump",
+        onclick: () => api.setupOpenPrivacy("audio").catch(() => {}),
+      }),
+      SU.acks.audio
+        ? null
+        : btn("I allowed it", {
+            id: "su-audio-ok",
+            cls: "sm ghost",
+            icon: "check",
+            onclick: () => {
+              SU.acks.audio = true;
+              suSave();
+              suRedraw();
+            },
+          }),
+    ),
+    h(
+      "p",
+      { class: "su-note" },
+      ico("warning"),
+      h("span", {}, "After you allow either permission, quit Wingman (menu bar icon, Quit Wingman) and open it again. macOS only applies it to a new start."),
+    ),
+  );
+}
+
+/** Step 3 "Allow": the two permissions, then the screen choice. */
+function allowPanel() {
+  const d = permsPanel();
+  d.insertBefore(
+    h(
+      "div",
+      { class: "su-sub" },
+      h("div", { class: "st-t" }, "Screens"),
+      h("p", { class: "help" }, "Where the answer window shows. Pick below if you have one screen."),
+    ),
+    d.querySelector(".su-note"),
+  );
+  d.insertBefore(screenPanel(), d.querySelector(".su-note"));
+  return d;
+}
+const screensOk = () => !!(SU.status && (SU.status.displays >= 2 || SU.status.allowPrimary || SU.acks.screen));
+
+/** The three required steps. done(ctx): ctx.practiced says a practice call exists. */
+const REQUIRED_STEPS = [
   {
-    id: "keys",
-    title: "Add your keys",
+    id: "try",
+    title: "Try it",
+    why: () => "A practice call with a pretend client. Free, no keys.",
+    done: (c) => c.practiced,
+    panel: () => tryPanel(),
+  },
+  {
+    id: "connect",
+    title: "Connect",
     why: () =>
       keysMissing().length
         ? `Missing: ${keysMissing().join(" and ")}. Deepgram hears the call, Anthropic writes the AI answers.`
@@ -367,11 +471,10 @@ const STEPS = [
       h(
         "div",
         { class: "su-body" },
-        practiceFirst(),
         h(
           "p",
           { class: "help" },
-          "For real calls you need two keys, both from paid services. Paste each one and press Save, then Test. Typical cost: about $1.40 per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit.",
+          "For real calls you need two keys, both from paid services. Paste each one, press Save, then Test. Cost: about $1.40 per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit.",
         ),
         h("div", { class: "actions" }, linkBtn("deepgram", "Get a Deepgram key"), linkBtn("anthropic", "Get an Anthropic key")),
         h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic")),
@@ -379,12 +482,16 @@ const STEPS = [
       ),
   },
   {
-    id: "privacy",
-    title: "Your privacy",
-    why: () => (SU.acks.privacy ? "Your choice is saved." : "Two choices about listening and your audio."),
-    done: () => !!SU.acks.privacy,
-    panel: () => privacyPanel(),
+    id: "allow",
+    title: "Allow",
+    why: () => "Microphone for your voice, System Audio Recording for the other side, and where the answer window shows.",
+    done: (c) => c.hadLive || !!(SU.status && SU.status.mic === "granted" && SU.acks.audio && screensOk()),
+    panel: () => allowPanel(),
   },
+];
+
+/** "Make it yours": optional, each skippable. Built after the page data is known (needs practice and check state). */
+const OPTIONAL_STEPS = [
   {
     id: "about",
     title: "About you",
@@ -394,109 +501,46 @@ const STEPS = [
     panel: () => (SU.profile ? aboutForm("su") : h("div", { class: "loading" }, "Loading…")),
   },
   {
-    id: "perms",
-    title: "Permissions",
-    why: () => "Microphone for your voice, System Audio Recording for the other side. macOS asks once.",
-    done: () => !!(SU.status && SU.status.mic === "granted" && SU.acks.audio),
-    panel: () => {
-      const s = SU.status,
-        m = s && s.mic;
-      return h(
-        "div",
-        { class: "su-body" },
-        h(
-          "div",
-          { class: "su-row" },
-          h("div", { class: "grow" }, h("div", { class: "st-t" }, "Microphone"), h("div", { class: "faint st-w" }, "Lets Wingman hear you.")),
-          micChip(),
-          m === "granted"
-            ? null
-            : btn(m === "not-determined" ? "Allow microphone" : "Open Microphone settings", {
-                id: "su-mic",
-                cls: "sm",
-                icon: "mic",
-                disabled: SU.busy.has("mic"),
-                onclick: () =>
-                  suAct(
-                    "mic",
-                    async () => (m === "not-determined" ? api.setupAskMic() : api.setupOpenPrivacy("mic")),
-                    (r) => (r && r.granted ? "Microphone allowed." : "Opened. Switch Wingman on, then press Check again."),
-                  ).then(() => loadSetup().then(suRedraw)),
-              }),
-          btn("Check again", { cls: "sm ghost", icon: "refresh", onclick: () => loadSetup().then(suRedraw) }),
-        ),
-        suMsg("mic"),
-        h(
-          "div",
-          { class: "su-row" },
-          h(
-            "div",
-            { class: "grow" },
-            h("div", { class: "st-t" }, "System Audio Recording"),
-            h(
-              "div",
-              { class: "faint st-w" },
-              "Lets Wingman hear the other side of the call. macOS does not tell apps whether this is on, so the readiness check tests it for real.",
-            ),
-          ),
-          SU.acks.audio ? chip("You said it is on", "good", { dot: true }) : null,
-          btn("Open System Audio Recording settings", {
-            id: "su-audio",
-            cls: "sm",
-            icon: "jump",
-            onclick: () => api.setupOpenPrivacy("audio").catch(() => {}),
-          }),
-          SU.acks.audio
-            ? null
-            : btn("I allowed it", {
-                id: "su-audio-ok",
-                cls: "sm ghost",
-                icon: "check",
-                onclick: () => {
-                  SU.acks.audio = true;
-                  suSave();
-                  suRedraw();
-                },
-              }),
-        ),
-        h(
-          "p",
-          { class: "su-note" },
-          ico("warning"),
-          h(
-            "span",
-            {},
-            "After you allow either permission, quit Wingman (menu bar icon, Quit Wingman) and open it again. macOS only applies it to a new start.",
-          ),
-        ),
-      );
-    },
+    id: "privacy",
+    title: "Your privacy",
+    why: () => (SU.acks.privacy ? "Your choice is saved." : "Two choices about listening and your audio."),
+    done: () => !!SU.acks.privacy,
+    panel: () => privacyPanel(),
   },
   {
     id: "mic",
-    title: "Microphone",
+    title: "Choose your microphone",
     why: () => (SU.status ? `Now: ${fmtMic(SU.status.micDevice)}.` : "Which microphone Wingman listens to."),
     done: () => !!(SU.acks.mic || (SU.status && SU.status.micDevice !== ":default")),
     panel: () => micPanel(),
   },
   {
-    id: "screen",
-    title: "Your screens",
-    why: () => (SU.status ? (SU.status.displays >= 2 ? `${SU.status.displays} screens found.` : "Only one screen found.") : "Where the answer window shows."),
-    done: () => !!(SU.status && (SU.status.displays >= 2 || SU.status.allowPrimary || SU.acks.screen)),
-    panel: () => screenPanel(),
-  },
-  {
     id: "pack",
-    title: "Answer pack",
+    title: "Starter answers",
     why: () =>
       SU.status
         ? SU.status.pack.using === "user"
-          ? "Your own pack is in use."
-          : "The example pack is in use (invented web and hosting answers)."
+          ? "Your own answers are in use."
+          : "The example answers are in use (invented web and hosting answers)."
         : "The answers Wingman prepares from.",
     done: () => !!(SU.status && (SU.status.pack.using === "user" || SU.acks.pack)),
     panel: () => packPanel(),
+  },
+  {
+    id: "check",
+    title: "Run the readiness check",
+    why: () => "Tests the microphone, system audio, the speech service and the AI. About 20 seconds, a few cents.",
+    done: (c) => c.fullOk,
+    panel: () =>
+      h(
+        "div",
+        { class: "su-body" },
+        h(
+          "div",
+          { class: "actions" },
+          btn("Run readiness check", { id: "setup-check", cls: "sm", icon: "mic", disabled: checking(), onclick: () => runCheck(false) }),
+        ),
+      ),
   },
 ];
 
@@ -596,7 +640,7 @@ function screenPanel() {
     h(
       "p",
       { class: "help" },
-      "Wingman shows its answers in a small window on a second screen, so they are never in your screen share. You have one screen, so by default the answer window stays closed. The call still works and every card is saved in the Wingman window.",
+      "Wingman shows its answers in a small window on a second screen, because that window must never be in your screen share. You have one screen, so the answer window stays closed. The call still works, and every answer is saved in the Wingman window. If you cannot add a second screen, you can allow the window on this screen: then share one window in your call, never the whole screen.",
     ),
     s.allowPrimary
       ? h(
@@ -640,7 +684,7 @@ const STARTER_PACKS = [
   ["sales", "Sales (B2B software)", "Calls with prospects: what we do, integrations, security, onboarding, next steps."],
   ["support", "Customer support", "Calls about a problem with a software product: login, slow, sync, billing, escalate."],
   ["interview", "Job interview practice", "Practice mode only: outlines for behavioural and technical questions."],
-  ["empty", "Empty pack", "Only the safe 'check and come back' cards. You write the rest."],
+  ["empty", "Empty (write your own)", "Only the safe 'check and come back' cards. You write the rest."],
   ["example", "Web hosting (example)", "An invented web and hosting business, in Hebrew with English versions."],
 ];
 function packPanel() {
@@ -676,7 +720,7 @@ function packPanel() {
       "p",
       { class: "help" },
       p.using === "user"
-        ? `Wingman answers from your own pack (${p.userFiles.join(", ")}) in ${p.userDir}.`
+        ? `Wingman prepares its answers from your own files (${p.userFiles.join(", ")}) in ${p.userDir}.`
         : "Until you pick one, Wingman answers from an invented web and hosting example. Pick a starter that is close to your work. It is copied to your own folder, and you edit the copy there.",
     ),
     p.canCopy ? picker : null,
@@ -697,7 +741,7 @@ function packPanel() {
               ).then(() => loadSetup().then(suRedraw)),
           })
         : null,
-      p.using === "user" ? btn("Show my pack folder", { cls: "sm", icon: "folder", onclick: () => api.setupRevealPack().catch(() => {}) }) : null,
+      p.using === "user" ? btn("Show my answers folder", { cls: "sm", icon: "folder", onclick: () => api.setupRevealPack().catch(() => {}) }) : null,
       p.using === "user"
         ? null
         : btn("Keep the example for now", {
@@ -713,68 +757,36 @@ function packPanel() {
   );
 }
 
-/** The guided setup card for Home. Null when nothing is left to do (unless the user opened it from Settings). */
+/** The guided setup card for Home: three required steps, then "Make it yours" (optional). Null when nothing is left to do (unless the user opened it from Settings). */
 function setupCard() {
   if (isRunning()) return null;
   const d = doc(),
-    practiced = state.calls.some((c) => c.mode !== "live" && !c.crashed);
-  const fullOk = !!(d && d.ok && d.at !== H.quickAt);
-  const steps = [
-    ...STEPS,
-    {
-      id: "check",
-      title: "Run the readiness check",
-      why: () => "Tests the microphone, system audio, the speech service and the AI. About 20 seconds, a few cents.",
-      done: () => fullOk,
-      panel: () =>
-        h(
-          "div",
-          { class: "su-body" },
-          h(
-            "div",
-            { class: "actions" },
-            btn("Run readiness check", { id: "setup-check", cls: "sm", icon: "mic", disabled: checking(), onclick: () => runCheck(false) }),
-          ),
-        ),
-    },
-    {
-      id: "practice",
-      title: "Try a practice call",
-      why: () => "A pretend call through the real answer window. Free, offline.",
-      done: () => practiced,
-      panel: () =>
-        h(
-          "div",
-          { class: "su-body" },
-          h(
-            "div",
-            { class: "actions" },
-            btn("Practice call", { id: "setup-practice", cls: "sm", icon: "play", onclick: () => act(api.practice, "Practice call") }),
-          ),
-        ),
-    },
-  ];
-  const isDone = (s) => s.done(),
+    ctx = {
+      practiced: state.calls.length > 0, // a practice call, or any call at all
+      hadLive: state.calls.some((c) => c.mode === "live" && !c.crashed),
+      fullOk: !!(d && d.ok && d.at !== H.quickAt),
+    };
+  const SL = WingmanSetup;
+  const doneOf = (s) => !!s.done(ctx),
     isSkipped = (s) => !!SU.skipped[s.id];
-  const open = steps.filter((s) => !isDone(s) && !isSkipped(s));
-  const old = keysMissing().length > 0 || !d || (state.calls.length === 0 && !fullOk); // the earlier rule: keys missing, or never checked
-  const loaded = !!(SU.status && SU.profile);
-  if (!SU.force && !old && !(loaded && open.some((s) => s.id === "about"))) return null;
-  const nDone = steps.filter(isDone).length;
-  const auto = SU.open === "auto" ? (open[0] ? open[0].id : "") : SU.open;
+  const flags = { done: {}, skipped: SU.skipped };
+  for (const s of REQUIRED_STEPS) flags.done[s.id] = doneOf(s);
+  const pl = SL.plan({ ...flags, force: SU.force, closed: SU.acks.closed });
+  if (!pl.visible) return null;
+  const auto = SU.open === "auto" ? pl.next : SU.open;
   const toggle = (id) => {
     SU.open = auto === id ? "" : id;
     suRedraw();
   };
-  const items = steps.map((s) => {
+  const item = (s, n) => {
     const isOpen = auto === s.id,
-      dn = isDone(s),
+      dn = doneOf(s),
       sk = isSkipped(s) && !dn;
     const row = h(
       "div",
       { class: "su-head" },
       dn ? ico("check") : h("span", { class: "tick" }),
-      h("div", { class: "grow" }, h("div", { class: "st-t" }, s.title), h("div", { class: "faint st-w" }, s.why())),
+      h("div", { class: "grow" }, h("div", { class: "st-t" }, n ? `${n}. ${s.title}` : s.title), h("div", { class: "faint st-w" }, s.why())),
       sk ? chip("Skipped", "") : null,
       h(
         "button",
@@ -823,7 +835,15 @@ function setupCard() {
         )
       : null;
     return h("li", { class: (dn ? "done " : "") + "has-panel" }, row, panel);
-  });
+  };
+  const ready = pl.ready
+    ? h(
+        "p",
+        { class: "su-note su-ready", id: "su-ready", role: "status" },
+        ico("check"),
+        h("span", {}, h("b", {}, "You're ready. "), "Press Quick call below, or Start on a prepared meeting."),
+      )
+    : null;
   return h(
     "section",
     { class: "card-big setup", "aria-labelledby": "setup-h" },
@@ -831,19 +851,33 @@ function setupCard() {
       "div",
       { class: "rhead" },
       h("h2", { id: "setup-h" }, "Set up Wingman"),
-      chip(`${nDone} of ${steps.length} done`, nDone === steps.length ? "good" : "warn"),
+      chip(SL.progressText(pl.count, pl.total), pl.ready ? "good" : "warn"),
       h("span", { class: "grow" }),
-      SU.force && !old && !open.length
+      pl.settled
         ? btn("Close", {
             id: "su-close",
             cls: "sm",
             onclick: () => {
               SU.force = false;
+              SU.acks.closed = true;
+              suSave();
               suRedraw();
             },
           })
         : null,
     ),
-    h("ul", { class: "setuplist" }, items),
+    ready,
+    h(
+      "ul",
+      { class: "setuplist", "aria-label": "Required steps" },
+      REQUIRED_STEPS.map((s, i) => item(s, i + 1)),
+    ),
+    h("h3", { class: "su-opt-h", id: "su-opt-h" }, "Make it yours (optional)"),
+    h("p", { class: "faint su-opt-note" }, "None of this is needed to start. Each one can be skipped and done later."),
+    h(
+      "ul",
+      { class: "setuplist", "aria-labelledby": "su-opt-h" },
+      OPTIONAL_STEPS.map((s) => item(s, 0)),
+    ),
   );
 }

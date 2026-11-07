@@ -11,7 +11,7 @@ For each file, in this order:
 
 The lookup is **per file**. If your pack has `bank.yaml` but no `topics.txt`, the example `topics.txt` is used. That would mix invented example words into your setup, so the Readiness check lists every file that falls back. Copy all the files you need into your pack.
 
-The easy way: open the app, **Setup guide, Answer pack**, pick a starter and press **Copy to my folder**. Starters (in `app/data/starter-packs/`, all invented): sales (B2B software), customer support, job interview practice (practice mode only), and an empty pack with only the safe "check and come back" cards. The web hosting example is the fifth choice. Then edit the copies. Changes apply to the next call.
+The easy way: open the app, **Setup guide, Starter answers**, pick a starter and press **Copy to my folder**. Starters (in `app/data/starter-packs/`, all invented): sales (B2B software), customer support, job interview practice (practice mode only), and an empty pack with only the safe "check and come back" cards. The web hosting example is the fifth choice. Then edit the copies. Changes apply to the next call.
 
 ## The files
 

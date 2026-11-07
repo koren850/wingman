@@ -5,7 +5,7 @@ A checklist for using Wingman on a real call. For first-time setup see the [user
 ## Before the call (about 10 minutes)
 
 - Run the readiness check until it reports READY (**Home, Run readiness check**, or `pnpm run doctor`).
-- Turn on Do Not Disturb. Wired headphones work best (AirPods switch audio profiles and can degrade the microphone). Pick the microphone in **Settings, Setup guide, Microphone**.
+- Turn on Do Not Disturb. Wired headphones work best (AirPods switch audio profiles and can degrade the microphone). Pick the microphone in **Settings, Setup guide, Choose your microphone**.
 - Permissions: Microphone and System Audio Recording are allowed, and Wingman was restarted after System Audio Recording was allowed.
 - Second screen connected. Test your screen-share mode (window, primary screen, secondary screen, all screens) before the call. Never share the screen that shows the answer window.
 - Keys: **Settings, Keys**, then Test both. Each should read "Saved in Keychain". If you still have an old `keys.env` file, use Move to Keychain once.

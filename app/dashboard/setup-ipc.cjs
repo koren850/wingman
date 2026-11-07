@@ -70,11 +70,11 @@ function packInfo(root, env, home) {
 const STARTERS = ["example", "sales", "support", "interview", "empty"];
 /** Copies a starter pack (default: the example pack) into the user pack folder (folder 700, files 600). Refuses when the user already has pack files. */
 function copyExamplePack(root, env, home, pick = "example") {
-  if (!STARTERS.includes(pick)) return { ok: false, error: "Unknown starter pack." };
+  if (!STARTERS.includes(pick)) return { ok: false, error: "Unknown starter answers." };
   const d = packDirs(root, env, home),
     info = packInfo(root, env, home);
   if (pick !== "example") d.example = path.join(root, "data", "starter-packs", pick);
-  if (!info.canCopy) return { ok: false, error: "Your pack folder already has files, so nothing was copied." };
+  if (!info.canCopy) return { ok: false, error: "Your answers folder already has files, so nothing was copied." };
   fs.mkdirSync(d.user, { recursive: true, mode: 0o700 });
   const copied = [];
   for (const f of PACK_FILES) {
@@ -86,7 +86,7 @@ function copyExamplePack(root, env, home, pick = "example") {
       fs.chmodSync(dst, 0o600);
       copied.push(f);
     } catch (e) {
-      if (e.code !== "EEXIST") return { ok: false, error: "Could not copy the pack: " + String(e.message).slice(0, 120) };
+      if (e.code !== "EEXIST") return { ok: false, error: "Could not copy the answers: " + String(e.message).slice(0, 120) };
     }
   }
   return { ok: true, copied, dir: d.user };
@@ -207,7 +207,7 @@ function register(o) {
   o.handle("setup:revealPack", async () => {
     if (o.preview) return preview;
     const d = packDirs(o.root, env, home).user;
-    if (!fs.existsSync(d)) return { ok: false, error: "You have no pack folder yet." };
+    if (!fs.existsSync(d)) return { ok: false, error: "You have no answers folder yet." };
     const err = await o.shell.openPath(d);
     return err ? { ok: false, error: "Could not open the folder." } : { ok: true };
   });

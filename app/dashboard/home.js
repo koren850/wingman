@@ -1508,7 +1508,7 @@ const SHORTCUTS = [
       [["Ctrl", "Opt", "P"], "Pause the answer window: cards are hidden, new ones keep arriving and show on resume"],
       [["Ctrl", "Opt", "R"], "Rewind: show or hide what was just said (last 30 s)"],
       [["Ctrl", "Opt", "K"], "Copy the newest phone number, email or domain"],
-      [["Ctrl", "Opt", "1…3"], "Copy capture chip 1, 2 or 3 (phone, email, domain) shown in the answer window"],
+      [["Ctrl", "Opt", "1…3"], "Copy detail 1, 2 or 3 (phone, email or domain) shown in the answer window"],
       [["Ctrl", "Opt", "L"], "Show or hide the call checklist"],
     ],
   ],

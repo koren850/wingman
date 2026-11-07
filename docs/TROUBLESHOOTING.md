@@ -44,7 +44,7 @@ Then open Wingman and allow the question.
 
 Signs: a red bar that says the microphone is not picking up, ten seconds after listening starts (`audio.watchdog.micSilentMs`), or the wrong mic is picked.
 
-1. Open **Settings, Setup guide, Microphone** and choose the right one.
+1. Open **Settings, Setup guide, Choose your microphone** and choose the right one.
 2. List the devices: `ffmpeg -f avfoundation -list_devices true -i ""`. Then set `audio.mic.device` (for example `":1"`), or run with `WINGMAN_MIC=":1"`.
 3. Avoid AirPods and other Bluetooth headsets. They drop to phone quality when the mic is in use. Wingman warns you. Use the built-in mic or wired headphones.
 4. If the device disappears during a call (headphones switched off), Wingman restarts that audio source by itself and falls back to the default mic after a couple of tries. A red or amber bar shows while it recovers.
@@ -127,7 +127,7 @@ If you missed something, ask the other side to repeat it. To keep the Mac awake 
 
 ## The answer window does not open
 
-With one screen, the answer window refuses to open, so it cannot end up in a screen share. Connect a second screen. If you must use one screen, turn on **Setup guide, Your screens, Allow the answer window on this screen** (`overlay.allowPrimary`) and never share that screen.
+With one screen, the answer window refuses to open, so it cannot end up in a screen share. Connect a second screen. If you must use one screen, turn on **Setup guide, Allow, Allow the answer window on this screen** (`overlay.allowPrimary`) and never share that screen.
 
 ## A call started from the command line does not begin
 

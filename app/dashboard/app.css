@@ -4151,3 +4151,23 @@ button.chip.spk-btn:focus-visible,
 .su-pick input {
   margin-top: 4px;
 }
+.su-opt-h {
+  margin: 20px 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.su-ready {
+  margin: 0 0 12px;
+}
+.su-ready .ico {
+  color: var(--good);
+}
+.su-sub .st-t {
+  font-size: 13px;
+  font-weight: 600;
+}
+.su-opt-note {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 18px;
+}

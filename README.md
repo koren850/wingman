@@ -130,12 +130,12 @@ More worked examples: [docs/EXAMPLES.md](docs/EXAMPLES.md).
 
 | Feature | What it does |
 |---|---|
-| **Prepared** cards | A local answer bank (your pack's `bank.yaml`) answers common questions in about 0.6 s, with no AI call. |
-| **AI** cards | When the bank has nothing, a small Claude model writes a short answer, always marked "AI · unverified". |
+| **Prepared** cards | A local set of your answers (your pack's `bank.yaml`) answers common questions in about 0.6 s, with no AI call. |
+| **AI** cards | When your answers have nothing, a small Claude model writes a short answer, always marked "AI · unverified". |
 | **Buy time** lines | For prices, dates and promises Wingman never invents a number. It shows a safe line such as "I will check and come back with a proper price". |
 | **For you** and math | Ask out loud (Ctrl+Opt+A) and get an answer in its own card. Arithmetic, in Hebrew or English, is computed locally. |
-| **Call frame, tips and checklist** | Detects what kind of call it is, keeps a checklist of what it should cover and shows at most one tip every two minutes. |
-| **Flow mode** | Tells several speakers apart. When they talk among themselves, cards wait; when someone turns to you, an alert shows who. |
+| **About the call, tips and checklist** | Detects what kind of call it is, keeps a checklist of what it should cover and shows at most one tip every two minutes. |
+| **Group call mode** | Tells several speakers apart. When they talk among themselves, cards wait; when someone turns to you, an alert shows who. |
 | **Practice and mock-interview mode** | A practice coach: rehearse with a pretend client or a mock interview, using your own notes, then review. Not for live use in real interviews. See [Responsible use](#responsible-use). |
 | **Summary** | Summary, decisions, next steps, open questions and a follow-up email draft. Prices and promises become placeholders for you to fill in. |
 | **Health and fallbacks** | A visible bar when something degrades, and a ladder that keeps the call going. See [How it works](#how-it-works). |
@@ -299,7 +299,7 @@ Limits: Wingman needs the internet and both keys for live calls, and its answers
 |---|---|
 | Run it for the first time, step by step | [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) |
 | See worked examples of calls and cards | [docs/EXAMPLES.md](docs/EXAMPLES.md) |
-| Use the app day to day (profile, practice mode, flow mode, command line) | [docs/USER-GUIDE.md](docs/USER-GUIDE.md) |
+| Use the app day to day (profile, practice mode, group call mode, command line) | [docs/USER-GUIDE.md](docs/USER-GUIDE.md) |
 | Write my own answer cards and word lists | [docs/PACK-FORMAT.md](docs/PACK-FORMAT.md) |
 | Fix no sound, permissions, install or slow-AI problems | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
 | Set up the code, run tests, the QA harness and snapshot tools | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [CONTRIBUTING.md](CONTRIBUTING.md) |
