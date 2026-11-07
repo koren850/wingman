@@ -207,6 +207,8 @@ cd wingman && ./install.sh                 # checks the Mac, installs, builds Wi
 
 `./install.sh --check` shows what is present and changes nothing; `--dry-run` shows every step; `--uninstall` removes it. The installer never uses sudo and asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg`. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`).
 
+**Download (coming soon, unsigned builds for now).** A ready-made `Wingman.app` in a `.dmg` (no Node, no `git clone`) can be built with `pnpm dist` today. No download is published yet, and the first builds will not be signed by Apple, so macOS will ask you to confirm the first start. Details: [Building the app](docs/DEVELOPMENT.md#building-the-app-dmg).
+
 Then open **Wingman**. A guided setup starts with a free **practice call** (a pretend client; offline, no keys needed), then walks you through keys, your privacy choices, your name, permissions, microphone, screens, the answer pack and a readiness check. Full steps: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#first-run). Problems: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ### Languages

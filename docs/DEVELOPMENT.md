@@ -82,6 +82,7 @@ What `pnpm install` does in `app/`:
 | `pnpm factscheck` | Counts false fact-card hits on ordinary lines. |
 | `pnpm qa` | Synthetic QA harness (below). |
 | `pnpm make-app` | Builds `.app/Wingman.app` (below). `scripts/make-app.sh --check` only reports. |
+| `pnpm dist` | Builds the self-contained `dist/Wingman-<version>-arm64.dmg` (below: Building the app). |
 | `pnpm run install-app` | `make-app.sh --install`: build and copy to `/Applications`. |
 
 ## Tests
@@ -117,6 +118,20 @@ Used for UX checks and for the images in `docs/ux/`. They need the Electron runt
 - Window: set `WINGMAN_DASHBOARD_SNAPSHOT=<out.png>` and optionally `_VIEW=home|inbox|settings`, `_THEME`, `_SIZE`, `_OPEN`, `_FOCUS`, `_SCROLL`, `_EVAL`; `WINGMAN_DASHBOARD_FAKE_CALL=waiting|live|live-warn|stopping|ended`; `WINGMAN_DASHBOARD_FAKE_DOCTOR=ready|notready`. Use `WINGMAN_CALLS_DIR`, `WINGMAN_BRIEFS_DIR` (or `WINGMAN_DATA_DIR`) and `WINGMAN_USER_SETTINGS` to point at fixtures so real data is never shown.
 - Answer window: `overlay/snapshot.sh <outDir> [scenario:keys ...]` (scenarios such as full, empty, listening, waiting, overflow, quiet, foryou, flow, flowyou, speakers; keys such as rewind, pause). Fixtures are in `overlay/fixtures.cjs`. For your own cards, write a `cards.jsonl` in a temp folder and run `WINGMAN_CALLS_DIR=<temp> WINGMAN_OVERLAY_SNAPSHOT=<out.png> app/node_modules/.bin/electron app/overlay/main.cjs`.
 - Use only invented data in anything you publish.
+
+## Building the app (.dmg)
+
+`pnpm dist` builds a Wingman.app that carries its own engine and needs no Node, no pnpm and no checkout. It writes `app/dist/Wingman-<version>-arm64.dmg` and the app itself in `app/dist/mac-arm64/`. It needs a normal `pnpm install` first (esbuild and electron-builder are dev dependencies). The dev setup above (`pnpm`, `tsx`, `install.sh`, `make-app.sh`) does not change.
+
+- **Why electron-builder.** It makes the .dmg, handles signing and notarizing, and writes the files an updater needs, all from one config (`electron-builder.cjs`). Electron Forge would need a separate maker for each of these.
+- **The engine.** `scripts/package-app.cjs` bundles `src/*.ts` with esbuild into `src/*.mjs` (the call, the readiness check, the summary and the small settings tools) and copies the menu-bar code, the windows, the example pack, the practice-call data and the `audiotee` binary into `app/.stage/`. electron-builder packs that folder without an asar archive (the engine runs child processes from it).
+- **How it runs.** The app starts its own executable for each tool: `Wingman --wingman-tool <name> -- <args>` and `Wingman --wingman-overlay` (`tray/app-entry.cjs`). Only the tool names listed in `shared/bin.cjs` can run, and no path from the command line is loaded. The `RunAsNode` fuse stays off (`scripts/after-pack.cjs` calls `scripts/set-fuses.cjs`). `shared/bin.cjs` switches to this mode when `packaged.json` is next to the code; in a checkout it never is.
+- **Data.** Settings, keys, packs and calls are in the same places as for the dev app (`~/.config/wingman`, the Keychain, `~/Library/Application Support/Wingman`), so the two builds share them. Do not run both at once.
+- **Not in the app.** `ffmpeg` (the microphone) is found on the PATH at run time, with `/opt/homebrew/bin` added; `pdftotext` is optional. The `wingman` command-line tool stays a dev feature for now: it needs the checkout.
+- **Unsigned.** There is no Apple Developer account yet, so the app is only ad hoc signed. On first start macOS says it cannot verify the app: open System Settings, Privacy & Security, and choose "Open Anyway". Microphone and system-audio permissions are asked again after each new build, because an ad hoc signature changes with every build.
+- **Signing later.** Set `WINGMAN_SIGN=1` plus `CSC_LINK`, `CSC_KEY_PASSWORD` (Developer ID certificate) and `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` (or an App Store Connect API key). `WINGMAN_NOTARIZE=0` signs without notarizing. The entitlements are in `build/entitlements.mac.plist`.
+- **Release.** `.github/workflows/release.yml` builds the .dmg on a `v*` tag and attaches it to a draft release. It has not been run yet.
+- **Check a build without showing windows.** Run `dist/mac-arm64/Wingman.app/Contents/MacOS/Wingman` with `WINGMAN_DASHBOARD_SNAPSHOT=<out.png>` (hidden window), or run the offline demo from inside the bundle: `Wingman --wingman-tool run -- --profile demo-en --file silence.wav --no-brief` with `WINGMAN_DEMO=1`, `WINGMAN_STT_SCRIPT=<app>/Contents/Resources/app/data/demo/demo-call.en.json` and every `WINGMAN_*` path pointing at a scratch folder.
 
 ## Building the .app
 
