@@ -1,5 +1,6 @@
 // The settings a user can change in the Wingman window: plain words, real controls. Each key is a dotted path into config/defaults.yaml.
 // Everything else stays in the "Advanced" list (read-only) and in ~/.config/wingman/settings.yaml.
+// main: true = one of the few choices shown by default; everything else sits under the Advanced fold.
 // kind: bool | select (options [[value, label]]) | int | number (min/max/step/unit are enforced by toStored). help/label are shown as written.
 // `invert`: the screen shows the opposite of the stored boolean. `scale`: the screen shows stored / scale (ms -> seconds).
 const GROUPS = [
@@ -15,6 +16,7 @@ const GROUPS = [
 const ITEMS = [
   {
     key: "stt.language",
+    main: true,
     group: "call",
     label: "Language the call is heard in",
     kind: "select",
@@ -27,10 +29,18 @@ const ITEMS = [
   },
   {
     key: "privacy.requireConsentAck",
+    main: true,
     group: "call",
     label: "Ask me before listening starts",
     kind: "bool",
     help: "Off: a call starts listening straight away. On: it waits for your click on Start listening (or Ctrl+Opt+Return) before any audio is sent.",
+  },
+  {
+    key: "stt.deepgram.mipOptOut",
+    group: "call",
+    label: "Keep my audio out of Deepgram's model training",
+    kind: "bool",
+    help: "On: Deepgram is asked not to use your call audio to improve its models. Deepgram does not publish a price for this, and some users report a higher rate. Off: Deepgram may use the audio.",
   },
   {
     key: "privacy.askBeforeCliStart",
@@ -65,6 +75,7 @@ const ITEMS = [
   },
   {
     key: "run.noAi",
+    main: true,
     group: "answers",
     label: "Use the AI at all",
     kind: "bool",
@@ -87,6 +98,7 @@ const ITEMS = [
   },
   {
     key: "cards.quiet",
+    main: true,
     group: "answers",
     label: "Start every call in quiet mode",
     kind: "bool",
@@ -173,6 +185,7 @@ const ITEMS = [
 
   {
     key: "summary.enabled",
+    main: true,
     group: "after",
     label: "Write a summary when the call ends",
     kind: "bool",
@@ -181,6 +194,7 @@ const ITEMS = [
 
   {
     key: "budget.maxUsdPerCall",
+    main: true,
     group: "money",
     label: "Spend cap per call",
     kind: "number",
@@ -200,6 +214,7 @@ const ITEMS = [
   },
   {
     key: "overlay.display",
+    main: true,
     group: "audio",
     label: "Answer window goes to",
     kind: "select",
@@ -211,6 +226,7 @@ const ITEMS = [
   },
   {
     key: "ui.language",
+    main: true,
     group: "audio",
     label: "Language of the answer window labels",
     kind: "select",

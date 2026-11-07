@@ -4,7 +4,19 @@
 // Also the Keys section (write-only API key entry, see keys-ipc.cjs) and the read-only Advanced list. Loaded after home.js; viewSettings is called from boot.js.
 
 // SET: settings state (data from main, in-flight keys, per-row errors, "Saved" timestamps). Rows are drawn from the catalog sent by main, not hard-coded.
-const SET = { data: null, busy: new Set(), errors: {}, savedAt: {}, tuneOpen: false };
+const SET = { data: null, busy: new Set(), errors: {}, savedAt: {}, tuneOpen: false, advOpen: false };
+// The few choices shown by default (catalog items marked main), in this order. The microphone row sits after the spend cap.
+const MAIN_ORDER = [
+  "stt.language",
+  "privacy.requireConsentAck",
+  "cards.quiet",
+  "run.noAi",
+  "summary.enabled",
+  "budget.maxUsdPerCall",
+  "@mic",
+  "overlay.display",
+  "ui.language",
+];
 
 /** Draw Settings. focus: "advanced" opens the debug list, "keys" jumps to the first key field. */
 async function viewSettings(focus) {
@@ -40,6 +52,8 @@ async function viewSettings(focus) {
     const d = $("adv");
     if (d) {
       d.open = true;
+      const all = $("adv-all");
+      if (all) all.open = true;
       d.scrollIntoView({ block: "start" });
       loadAdvanced();
     }
@@ -106,36 +120,19 @@ function drawSettingsBody(body) {
   );
   main.append(keysBlock(r));
   jump.push(["g-keys", "Keys"]); // keys first: nothing works without them
-  main.append(aboutBlock());
-  jump.push(["g-about", "About you"]);
+  const rows = MAIN_ORDER.map((k) => (k === "@mic" ? micRow() : settingRowFor(r, k))).filter(Boolean);
+  main.append(
+    h(
+      "section",
+      { class: "setgroup", "aria-labelledby": "g-main" },
+      h("h2", { id: "g-main", class: "label", tabindex: "-1" }, "Main settings"),
+      h("div", { class: "setlist" }, rows),
+    ),
+  );
+  jump.push(["g-main", "Main settings"]);
   main.append(setupGuideBlock());
   jump.push(["g-setup", "Setup guide"]);
-  for (const g of r.groups) {
-    const rows = r.items.filter((i) => i.group === g.id);
-    if (!rows.length) continue;
-    const list = h("div", { class: "setlist" }, rows.map(settingRow));
-    if (g.id === "tune") {
-      // expert numbers: folded away unless one was changed
-      const open = rows.some((i) => i.changed) || SET.tuneOpen;
-      const d = h(
-        "details",
-        { class: "collapsed adv tune", id: "tune", open },
-        h("summary", {}, ico("chevron"), "Fine-tuning", h("span", { class: "faint" }, "· limits and timings, the defaults are fine")),
-        list,
-      );
-      d.addEventListener("toggle", () => {
-        SET.tuneOpen = d.open;
-      });
-      main.append(d);
-      jump.push(["tune", g.title]);
-      continue;
-    }
-    main.append(
-      h("section", { class: "setgroup", "aria-labelledby": "g-" + g.id }, h("h2", { id: "g-" + g.id, class: "label", tabindex: "-1" }, g.title), list),
-    );
-    jump.push(["g-" + g.id, g.title]);
-  }
-  main.append(advancedBlock());
+  main.append(advancedBlock(r));
   jump.push(["adv", "Advanced"]);
   // The right side is a short "On this page" list (sticky), so a wide window has no empty third.
   const nav = h(
@@ -162,6 +159,76 @@ function drawSettingsBody(body) {
     ),
   );
   body.append(main, nav);
+}
+
+/** The row for one catalog key, or null when the catalog does not have it. */
+function settingRowFor(r, key) {
+  const i = r.items.find((x) => x.key === key);
+  return i ? settingRow(i) : null;
+}
+/** The microphone choice (audio.mic.device is saved by the setup tool, not the catalog). Same list as the setup step. */
+function micRow() {
+  const cur = SU.status ? SU.status.micDevice : ":default",
+    saving = SET.busy.has("audio.mic.device"),
+    err = SET.errors["audio.mic.device"];
+  const mics = ensureMics();
+  const sel = h(
+    "select",
+    {
+      id: "set-audio-mic-device",
+      "aria-describedby": "set-audio-mic-device-h",
+      disabled: saving || !mics || !SU.status,
+      onchange: async (e) => {
+        SET.busy.add("audio.mic.device");
+        delete SET.errors["audio.mic.device"];
+        drawSettings();
+        let res;
+        try {
+          res = await api.setupSetMic(e.target.value);
+        } catch (x) {
+          res = { ok: false, message: x.message };
+        }
+        SET.busy.delete("audio.mic.device");
+        if (res && res.ok) {
+          SET.savedAt["audio.mic.device"] = Date.now();
+          announce("Microphone saved. Applies to the next call.");
+          setTimeout(() => state.view === "settings" && drawSettings(), 4100);
+          await loadSetup();
+        } else {
+          SET.errors["audio.mic.device"] = (res && (res.message || res.error)) || "Not saved";
+          fail("Microphone: " + SET.errors["audio.mic.device"]);
+        }
+        drawSettings();
+      },
+    },
+    mics
+      ? [
+          h("option", { value: ":default", selected: cur === ":default" }, "System default" + (mics.defaultInput ? ` (${mics.defaultInput})` : "")),
+          mics.devices.map((d) => h("option", { value: ":" + d.index, selected: cur === ":" + d.index }, d.name)),
+        ]
+      : h("option", {}, "Looking for microphones…"),
+  );
+  return h(
+    "div",
+    { class: "setrow" },
+    h(
+      "div",
+      { class: "txt" },
+      h("label", { class: "lab", for: "set-audio-mic-device" }, "Microphone"),
+      h(
+        "p",
+        { class: "help", id: "set-audio-mic-device-h" },
+        "The microphone Wingman listens to for your voice. Avoid Bluetooth headsets for the first calls.",
+      ),
+      err ? h("p", { class: "errline", role: "alert" }, ico("x"), err) : null,
+    ),
+    h("div", { class: "ctl" }, sel),
+    h(
+      "div",
+      { class: "st" },
+      SET.savedAt["audio.mic.device"] && Date.now() - SET.savedAt["audio.mic.device"] < 4000 ? h("span", { class: "saved good" }, ico("check"), "Saved") : null,
+    ),
+  );
 }
 
 /** One setting row from a catalog item (kind bool / select / number): label, help, control, changed chip, reset button. */
@@ -434,8 +501,7 @@ function keysBlock(r) {
         h(
           "p",
           { class: "help" },
-          "Keys are stored in the macOS Keychain (item \u201cwingman\u201d), set here. Wingman never shows them: only the last 4 characters. Your other settings are in this file: ",
-          h("code", {}, r.userFile),
+          "Keys are stored in the macOS Keychain (item \u201cwingman\u201d), set here. Wingman never shows them: only the last 4 characters.",
           // Only for keys still in the old plain-text file; most users never had one.
           anyInFile ? h("span", {}, " ") : null,
           anyInFile ? h("button", { type: "button", class: "linkbtn", onclick: () => api.reveal("keys") }, "Show the old keys file in Finder") : null,
@@ -445,18 +511,75 @@ function keysBlock(r) {
   );
 }
 
-/* ---- Advanced (read only, for debugging) ---- */
+/* ---- Advanced: one fold, closed by default (remembered). Holds About you, every other setting, the settings file and the read-only list ---- */
 let advLoaded = false;
-function advancedBlock() {
+function advancedBlock(r) {
   advLoaded = false;
+  const body = h("div", { class: "advbody advmain" });
+  if (r && r.ok) {
+    body.append(aboutBlock());
+    for (const g of r.groups) {
+      const rows = r.items.filter((i) => i.group === g.id && !i.main);
+      if (!rows.length) continue;
+      const list = h("div", { class: "setlist" }, rows.map(settingRow));
+      if (g.id === "tune") {
+        // expert numbers: folded away unless one was changed
+        const open = rows.some((i) => i.changed) || SET.tuneOpen;
+        const d = h(
+          "details",
+          { class: "collapsed adv tune", id: "tune", open },
+          h("summary", {}, ico("chevron"), "Fine-tuning", h("span", { class: "faint" }, "\u00b7 limits and timings, the defaults are fine")),
+          list,
+        );
+        d.addEventListener("toggle", () => {
+          SET.tuneOpen = d.open;
+        });
+        body.append(d);
+        continue;
+      }
+      body.append(
+        h("section", { class: "setgroup", "aria-labelledby": "g-" + g.id }, h("h2", { id: "g-" + g.id, class: "label", tabindex: "-1" }, g.title), list),
+      );
+    }
+  }
+  body.append(
+    h(
+      "section",
+      { class: "setgroup", "aria-labelledby": "g-file" },
+      h("h2", { id: "g-file", class: "label", tabindex: "-1" }, "Settings file"),
+      h(
+        "div",
+        { class: "setlist" },
+        h(
+          "div",
+          { class: "keyfile" },
+          h("p", { class: "help" }, "Your choices are saved in this file. You can edit it by hand."),
+          r && r.userFile ? h("code", {}, r.userFile) : null,
+          h("div", { class: "actions" }, btn("Show in Finder", { icon: "folder", cls: "sm", onclick: () => api.reveal("settings") })),
+        ),
+      ),
+    ),
+  );
+  const all = h(
+    "details",
+    { class: "collapsed adv", id: "adv-all" },
+    h("summary", {}, ico("chevron"), "All values (read only)", h("span", { class: "faint" }, "\u00b7 every setting, where each value comes from")),
+    h("div", { id: "adv-body", class: "advbody" }, h("div", { class: "loading" }, "Loading\u2026")),
+  );
+  all.addEventListener("toggle", () => {
+    if (all.open) loadAdvanced();
+  });
+  body.append(all);
   const d = h(
     "details",
-    { class: "collapsed adv", id: "adv" },
-    h("summary", {}, ico("chevron"), "Advanced (for debugging)", h("span", { class: "faint" }, "· every setting, where each value comes from")),
-    h("div", { id: "adv-body", class: "advbody" }, h("div", { class: "loading" }, "Loading…")),
+    { class: "collapsed adv", id: "adv", open: SET.advOpen || !!SU.acks.advOpen },
+    h("summary", {}, ico("chevron"), "Advanced", h("span", { class: "faint" }, "\u00b7 about you, tuning, the settings file")),
+    body,
   );
   d.addEventListener("toggle", () => {
-    if (d.open) loadAdvanced();
+    SET.advOpen = d.open;
+    SU.acks.advOpen = d.open; // remembered with the other setup flags (kept by setup.js)
+    suSave();
   });
   return d;
 }

@@ -14,7 +14,7 @@ const tmp = () => join(mkdtempSync(join(tmpdir(), "wingman-cat-")), "settings.ya
 
 test("every catalog key exists, its default is inside the allowed range, and the plain-words fields are filled", () => {
   const d = defaultsFlat();
-  assert.ok(cat.ITEMS.length >= 10 && cat.ITEMS.length <= 26, "about 10-24 settings");
+  assert.ok(cat.ITEMS.length >= 10 && cat.ITEMS.length <= 28, "about 10-27 settings");
   for (const i of cat.ITEMS) {
     assert.ok(i.key in d, i.key);
     assert.ok(i.label && i.help && i.help.length > 30 && i.help.length < 260, i.key + " help");
@@ -58,4 +58,12 @@ test("describe marks changed rows and shows screen values", () => {
   assert.equal(get("run.noAi").changed, true);
   assert.equal(get("tips.minGapMs").value, 60);
   assert.equal(get("cards.quiet").changed, false);
+});
+
+test("about eight choices are marked main; the privacy choices exist in the catalog and the first one is main", () => {
+  const main = cat.ITEMS.filter((i: any) => i.main).map((i: any) => i.key);
+  assert.ok(main.length >= 7 && main.length <= 9, main.join());
+  assert.ok(main.includes("privacy.requireConsentAck"));
+  assert.ok(cat.BY_KEY.has("stt.deepgram.mipOptOut"));
+  assert.equal(cat.toStored(cat.BY_KEY.get("stt.deepgram.mipOptOut"), true), true);
 });
