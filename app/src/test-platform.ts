@@ -30,6 +30,10 @@ export const SYMLINK = { skip: !canSymlink && "cannot create symbolic links here
 /** For tests whose premise is that the temp folder is outside the home folder (on Windows it is inside it: %USERPROFILE%/AppData/Local/Temp). */
 export const TMP_OUTSIDE_HOME = { skip: process.platform === "win32" && "the temp folder is inside the home folder on Windows" } as const;
 
+/** For the test that runs a real engine child in file mode: it needs ffmpeg, which the Windows CI runner does not have, and the engine child exits at once there.
+ *  Not yet checked on a real Windows machine, so it is skipped rather than guessed at. */
+export const ENGINE_CHILD = { skip: process.platform === "win32" && "real engine child needs ffmpeg and is not verified on Windows yet" } as const;
+
 /** Asserts a file's permission bits; Windows has no POSIX modes, so there it checks only that the path exists. */
 export function assertMode(path: string, expected: number, message?: string) {
   const st = statSync(path);

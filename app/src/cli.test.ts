@@ -14,7 +14,7 @@ import { ROOT } from "./env.ts";
 import { writeWav } from "./audio.ts";
 import { main } from "./cli/index.ts";
 import { HELP } from "./cli/help.ts";
-import { assertMode, tsx, POSIX, SYMLINK } from "./test-platform.ts";
+import { assertMode, tsx, POSIX, SYMLINK, ENGINE_CHILD } from "./test-platform.ts";
 
 const req = createRequire(import.meta.url);
 const { createController } = req("../tray/controller.cjs");
@@ -192,7 +192,7 @@ test("socket: start/stop drive the app's controller (one call, no second engine)
     const s = await r.run("start", "--json", "--no-wait");
     assert.equal(s.code, 0, s.out + s.err);
     assert.equal(r.f.spawned.length, 1);
-    assert.ok(r.f.spawned[0].args[0].endsWith("call.ts"));
+    assert.ok(r.f.spawned[0].args[process.platform === "win32" ? 1 : 0].endsWith("call.ts")); // Windows: node + tsx CLI first
     assert.equal(r.f.spawned[0].opts.env.WINGMAN_CONTROL, "1");
     const again = await r.run("start", "--json", "--no-wait");
     assert.equal(again.code, 4, "second start refused");
@@ -846,62 +846,66 @@ test("doctor: runs directly when the app is not there (scripted runner), exit 7 
   }
 });
 
-test("hidden instance: the real controller + scripted engine (file mode) driven through the socket by the CLI", { timeout: 90_000 }, async () => {
-  const dir = tmp("eng");
-  const wav = join(dir, "silence.wav");
-  await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 30), 2);
-  // Same controller as the app; only the child command is swapped from call.ts (which opens the answer window) to run.ts in scripted file mode.
-  const realSpawn = spawn;
-  const spawnEngine = (bin: string, args: string[], opts: any) =>
-    realSpawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
-      ...opts,
-      env: {
-        ...opts.env,
-        WINGMAN_CALLS_DIR: join(dir, "calls"),
-        WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json"),
-        WINGMAN_SCRIPT_GAP_MS: "1100",
-      },
-    });
-  const r = await rig({ spawn: spawnEngine, callsDir: join(dir, "calls") });
-  try {
-    const s = await r.run("start", "--json");
-    assert.equal(s.code, 0, s.out + s.err);
-    assert.ok(["live", "waiting"].includes(s.json.phase), s.out);
-    assert.equal((await r.run("start", "--json")).code, 4, "no second engine");
-    let id = "",
-      lines = 0;
-    for (let i = 0; i < 60 && !lines; i++) {
-      await new Promise((res) => setTimeout(res, 500));
-      const st = await r.run("status", "--json");
-      id = st.json.call.callId;
-      const lv = await r.run("live", "--json").catch(() => undefined);
-      lines = lv?.json?.lines?.length ?? 0;
+test(
+  "hidden instance: the real controller + scripted engine (file mode) driven through the socket by the CLI",
+  { timeout: 90_000, ...ENGINE_CHILD },
+  async () => {
+    const dir = tmp("eng");
+    const wav = join(dir, "silence.wav");
+    await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 30), 2);
+    // Same controller as the app; only the child command is swapped from call.ts (which opens the answer window) to run.ts in scripted file mode.
+    const realSpawn = spawn;
+    const spawnEngine = (bin: string, args: string[], opts: any) =>
+      realSpawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
+        ...opts,
+        env: {
+          ...opts.env,
+          WINGMAN_CALLS_DIR: join(dir, "calls"),
+          WINGMAN_STT_SCRIPT: join(ROOT, "data", "test", "e2e-call.json"),
+          WINGMAN_SCRIPT_GAP_MS: "1100",
+        },
+      });
+    const r = await rig({ spawn: spawnEngine, callsDir: join(dir, "calls") });
+    try {
+      const s = await r.run("start", "--json");
+      assert.equal(s.code, 0, s.out + s.err);
+      assert.ok(["live", "waiting"].includes(s.json.phase), s.out);
+      assert.equal((await r.run("start", "--json")).code, 4, "no second engine");
+      let id = "",
+        lines = 0;
+      for (let i = 0; i < 60 && !lines; i++) {
+        await new Promise((res) => setTimeout(res, 500));
+        const st = await r.run("status", "--json");
+        id = st.json.call.callId;
+        const lv = await r.run("live", "--json").catch(() => undefined);
+        lines = lv?.json?.lines?.length ?? 0;
+      }
+      assert.ok(id && lines > 0, "transcript lines are readable through the CLI while the call runs");
+      assert.equal((await r.run("note", "invented note about a server move", "--json")).code, 0);
+      assert.equal((await r.run("quiet", "on", "--json")).code, 0);
+      assert.equal((await r.run("quiet", "off", "--json")).code, 0);
+      const aq = await r.run("ask", "what was the price", "--json");
+      assert.equal(aq.code, 0);
+      assert.equal(aq.json.engineSupportsAsk, true);
+      assert.equal((await r.run("ask", "--listen", "--json")).code, 0);
+      const stop = await r.run("stop", "--json");
+      assert.equal(stop.code, 0, stop.out);
+      assert.equal(stop.json.finished, true);
+      const list = await r.run("calls", "list", "--json");
+      assert.ok(
+        list.json.calls.some((c: any) => c.id === id),
+        "the call was saved in the temp calls dir",
+      );
+      const events = readFileSync(join(dir, "calls", id, "events.jsonl"), "utf8");
+      assert.match(events, /context\.note/);
+      assert.match(events, /"reason":"typed"/, "the typed question reached the engine as a forced question");
+      assert.equal((await r.run("calls", "purge", id, "--yes", "--json")).code, 0);
+    } finally {
+      await r.done();
+      rmSync(dir, { recursive: true, force: true });
     }
-    assert.ok(id && lines > 0, "transcript lines are readable through the CLI while the call runs");
-    assert.equal((await r.run("note", "invented note about a server move", "--json")).code, 0);
-    assert.equal((await r.run("quiet", "on", "--json")).code, 0);
-    assert.equal((await r.run("quiet", "off", "--json")).code, 0);
-    const aq = await r.run("ask", "what was the price", "--json");
-    assert.equal(aq.code, 0);
-    assert.equal(aq.json.engineSupportsAsk, true);
-    assert.equal((await r.run("ask", "--listen", "--json")).code, 0);
-    const stop = await r.run("stop", "--json");
-    assert.equal(stop.code, 0, stop.out);
-    assert.equal(stop.json.finished, true);
-    const list = await r.run("calls", "list", "--json");
-    assert.ok(
-      list.json.calls.some((c: any) => c.id === id),
-      "the call was saved in the temp calls dir",
-    );
-    const events = readFileSync(join(dir, "calls", id, "events.jsonl"), "utf8");
-    assert.match(events, /context\.note/);
-    assert.match(events, /"reason":"typed"/, "the typed question reached the engine as a forced question");
-    assert.equal((await r.run("calls", "purge", id, "--yes", "--json")).code, 0);
-  } finally {
-    await r.done();
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
+  },
+);
 
 test("stop --no-summary: keeps the call, sends stop-no-summary, refuses --delete, help documents it", async () => {
   const r = await rig();
