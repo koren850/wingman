@@ -400,6 +400,7 @@ function keyRow(p) {
 }
 function keysBlock(r) {
   const anyFile = KEYS.data && Object.values(KEYS.data.providers).some((x) => x.source === "file");
+  const anyInFile = KEYS.data && Object.values(KEYS.data.providers).some((x) => x.inFile);
   const mig = KEYS.msg.migrate;
   return h(
     "section",
@@ -433,11 +434,11 @@ function keysBlock(r) {
         h(
           "p",
           { class: "help" },
-          "Keys are stored in the macOS Keychain (item \u201cwingman\u201d), set here. Wingman never shows them: only the last 4 characters. Your other settings are in ",
+          "Keys are stored in the macOS Keychain (item \u201cwingman\u201d), set here. Wingman never shows them: only the last 4 characters. Your other settings are in this file: ",
           h("code", {}, r.userFile),
-          ".",
-          h("span", {}, " "),
-          h("button", { type: "button", class: "linkbtn", onclick: () => api.reveal("keys") }, "Show the old keys file in Finder"),
+          // Only for keys still in the old plain-text file; most users never had one.
+          anyInFile ? h("span", {}, " ") : null,
+          anyInFile ? h("button", { type: "button", class: "linkbtn", onclick: () => api.reveal("keys") }, "Show the old keys file in Finder") : null,
         ),
       ),
     ),
