@@ -250,9 +250,9 @@ Tell the people you talk to that you use a call assistant if the law or your rul
 
 A **pack** is plain files: your answer cards, your tone rules and two word lists. The format is in [PACK-FORMAT.md](PACK-FORMAT.md). A worked, tested example is in [EXAMPLES.md](EXAMPLES.md#a-a-full-pack).
 
-### 1. Copy the example pack
+### 1. Copy a starter pack
 
-In the app: **Settings, Setup guide, Answer pack, Copy the example pack to my folder**. Or by hand:
+In the app: **Settings, Setup guide, Answer pack**. Pick a starter (sales, customer support, job interview practice, an empty pack, or the web hosting example) and press **Copy to my folder**. The starters are in English. Or by hand (swap `example-pack` for `starter-packs/sales`, `support`, `interview` or `empty`):
 
 ```bash
 mkdir -p ~/.config/wingman/pack

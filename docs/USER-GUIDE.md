@@ -13,7 +13,7 @@ Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup:
 3. **Permissions.** Allow the microphone and System Audio Recording. After you allow System Audio Recording, **quit and reopen Wingman**. macOS gives no live status for it.
 4. **Microphone.** Pick the one you use. Avoid AirPods for the first call.
 5. **Your screens.** With one screen, you can allow the answer window on it. Never share that screen.
-6. **Answer pack.** Use the invented example pack, or copy it to your own folder and edit it.
+6. **Answer pack.** Pick a starter (sales, customer support, job interview practice, empty, or the web hosting example). It is copied to your own folder and you edit the copy.
 7. **Readiness check.** Tests the mic, system audio, keys, speech service and the AI.
 8. **Practice call.** A pretend client plays through the real call loop and the real answer window. Free, and nothing leaves your Mac.
 
@@ -72,7 +72,7 @@ This is the window you read during a call. Put it on the second screen.
 1. **Live** or **Practice** shows what kind of call it was. **Delete call** removes it.
 2. **Tabs**: **Follow-up**, **Rate** (mark each card useful or not), **Transcript**, **Missed questions** (questions with no card) and **Details**.
 3. **Next steps**: tick them off when done. **Me** is for you, **Client** is for the other side.
-4. **Follow-up email**: a draft written by the AI. Read it, then press **Copy email**. Wingman never sends anything.
+4. **Follow-up email**: a draft written by the AI. Read it, then press **Copy follow-up email** (big button at the top; **Copy summary** is next to it). Placeholders such as `[fill in: ...]` are highlighted. A finished call opens on this tab. Rating cards (**Rate**) is optional. Wingman never sends anything.
 
 ### Setup guide
 
