@@ -51,7 +51,7 @@ Also:
 |---|---|
 | <img src="docs/ux/answer-window-hero.png" alt="The answer window in the default Focus layout: the other side's question, one big AI answer, a buy-time line and the key bar" width="480"> | <img src="docs/ux/home-window.png" alt="The Home view of the main window during a live call" width="480"> |
 
-| English labels | Hebrew card (right-to-left by itself) |
+| More panel open | Hebrew card (right-to-left by itself) |
 |---|---|
 | <img src="docs/ux/answer-window-more.png" alt="The answer window with the More panel open: captured details, a checklist, a client card and AI notes" width="400"> | <img src="docs/ux/for-you-card.png" alt="The answer window with a Hebrew card, right-to-left" width="400"> |
 
