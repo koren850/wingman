@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "Real-time answer cards for live calls on macOS: hears both sides and shows a short answer in about a second. Electron and TypeScript.",
+  "description": "Real-time answer cards for live calls on macOS, in English and Hebrew: hears both sides and shows a short answer in about a second. Electron and TypeScript.",
   "author": "koren850",
   "homepage": "https://github.com/koren850/wingman#readme",
   "repository": {
