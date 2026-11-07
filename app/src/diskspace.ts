@@ -1,6 +1,7 @@
 // Free-space check for the calls folder. A call that cannot write loses its transcript and summary, so the engine warns early:
 // amber under 500 MB, red under 100 MB (run.ts shows a health bar; the tray turns a red bar into a macOS notification).
 import { statfsSync } from "node:fs";
+import { ht, type UiLang } from "./htext.ts";
 
 export const DISK_AMBER_BYTES = 500 * 1024 * 1024;
 export const DISK_RED_BYTES = 100 * 1024 * 1024;
@@ -20,10 +21,8 @@ export function diskLevel(bytes: number | null, amber = DISK_AMBER_BYTES, red = 
   if (bytes === null) return "ok";
   return bytes < red ? "red" : bytes < amber ? "amber" : "ok";
 }
-/** Hebrew bar text for the health bar. */
-export function diskText(level: "amber" | "red", bytes: number): string {
+/** Text for the health bar in the UI language (default Hebrew). */
+export function diskText(level: "amber" | "red", bytes: number, lang: UiLang = "he"): string {
   const mb = Math.max(0, Math.round(bytes / 1024 / 1024));
-  return level === "red"
-    ? `כמעט אין מקום בדיסק (${mb} MB פנויים). השיחה עלולה לא להישמר. פנה מקום בדיסק עכשיו`
-    : `מעט מקום בדיסק (${mb} MB פנויים). פנה מקום כדי שהשיחה והסיכום יישמרו`;
+  return ht(lang, level === "red" ? "disk.red" : "disk.amber", { mb });
 }

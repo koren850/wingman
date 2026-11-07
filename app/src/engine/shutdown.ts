@@ -11,8 +11,27 @@ import { describe, type ProviderError } from "../providers/errors.ts";
 import { runSummary, formatShort, backgroundSummaryArgs } from "../summary.ts";
 import { progress, missedMust } from "../frame.ts";
 import { errBrief, status, health, healthClear } from "./out.ts";
+import { ht } from "../htext.ts";
 import { strayCounter, strayAction, STRAY_WINDOW_MS, STRAY_WARN_ABOVE } from "./strays.ts";
-import { log, S, profile, noAi, discard, cost, tracker, frameOn, ECHO, brief, sup, notesAbort, contextNotes, speakers, transcript, registry } from "./boot.ts";
+import {
+  log,
+  S,
+  profile,
+  noAi,
+  discard,
+  UI_LANG,
+  cost,
+  tracker,
+  frameOn,
+  ECHO,
+  brief,
+  sup,
+  notesAbort,
+  contextNotes,
+  speakers,
+  transcript,
+  registry,
+} from "./boot.ts";
 import { st, chans } from "./state.ts";
 import { askKey } from "./control.ts";
 import { frameRound } from "./coach.ts";
@@ -299,7 +318,7 @@ function stray(kind: string, e: unknown) {
   console.error(`\n⚠️ ${kind} (call continues): ${errBrief(e)}`);
   if (count > STRAY_WARN_ABOVE) {
     try {
-      if (action === "warn") health("stray-errors", "amber", "Internal errors are repeating. The call is still being recorded.");
+      if (action === "warn") health("stray-errors", "amber", ht(UI_LANG, "strays"));
       clearTimeout(strayBarTimer);
       strayBarTimer = setTimeout(() => healthClear("stray-errors"), STRAY_WINDOW_MS);
       strayBarTimer.unref();

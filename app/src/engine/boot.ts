@@ -22,7 +22,7 @@ import { ModelRegistry, parseModelRef } from "../providers/llm.ts";
 import { CardPipe } from "../relay.ts";
 import { CallLog, sweepLive } from "../log.ts";
 import { PhoneRouter, isPhoneCall } from "../phone.ts";
-import { loadSettingsOrExit, expandHome } from "../settings.ts";
+import { loadSettingsOrExit, expandHome, resolveUiLanguage } from "../settings.ts";
 import { CostMeter } from "../cost.ts";
 import { EchoFilter, MicGate } from "../echo.ts";
 import { HealthSupervisor, CircuitBreaker } from "../health.ts";
@@ -40,6 +40,8 @@ try {
   console.error(`Wingman: ${(e as Error).message}\nFix ~/.config/wingman/profile.yaml (or run: wingman profile set ...).`);
   process.exit(2);
 } // an invalid user profile stops the call before it starts
+/** Language of the status texts the user reads (health bars, ladder): ui.language, auto = Hebrew unless the call language is English. */
+export const UI_LANG = resolveUiLanguage(S);
 export const fileArg = S.run.file ?? undefined;
 export const noAi = S.run.noAi;
 export const discard = S.run.discard;

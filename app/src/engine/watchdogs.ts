@@ -2,10 +2,10 @@
 import { callAppRunning } from "../callapp.ts";
 import { SupervisedSource, peakOf } from "../audio.ts";
 import { health, healthClear, safe } from "./out.ts";
-import { log, sup, S, fileArg } from "./boot.ts";
+import { log, sup, S, fileArg, UI_LANG } from "./boot.ts";
+import { ht } from "../htext.ts";
 import { st, mono } from "./state.ts";
 
-const ONLY_YOU_TEXT = "אני שומע רק אותך. כדי לקבל תשובות גם לצד השני, הצטרף לשיחה או הפעל את השמע שלה. אפשר לשאול אותי כל דבר: Ctrl+Opt+A";
 const MIC_LONG_SILENT_MS = 5 * 60_000;
 let micPeakAfterStart = 0,
   micPeakWin = 0,
@@ -43,11 +43,11 @@ export function startMicWatch() {
       if (micPeakAfterStart < S.audio.watchdog.micPeak) {
         if (!micSilentShown) {
           micSilentShown = true;
-          health("mic", "red", "המיקרופון לא קולט. בדוק הרשאת מיקרופון ב-Settings ובחירת מיקרופון, ואז הרץ בדיקת מוכנות");
+          health("mic", "red", ht(UI_LANG, "mic.never"));
         }
       } else if (now - silentSince >= MIC_LONG_SILENT_MS && !micSilentShown) {
         micSilentShown = true;
-        health("mic", "amber", "לא שמעתי אותך כמה דקות. אם דיברת, בדוק את המיקרופון");
+        health("mic", "amber", ht(UI_LANG, "mic.long"));
       }
       micPeakWin = 0;
     }, S.audio.watchdog.micSilentMs);
@@ -101,11 +101,7 @@ export function startTapWatchdog(sys: SupervisedSource | undefined, deadFrameMs:
           shownKind = "red";
           sup.set({ themDead: true });
           log.write("events", { type: "watchdog.tap-dead" });
-          health(
-            "them-silent",
-            "red",
-            "אין שמע מהצד השני (ערוץ השמע של המערכת לא שולח כלום). התשובות אליך עדיין פועלות. בדוק שהשמע של השיחה מופעל ושהווליום למעלה",
-          );
+          health("them-silent", "red", ht(UI_LANG, "tap.dead"));
         }
         return;
       }
@@ -120,7 +116,7 @@ export function startTapWatchdog(sys: SupervisedSource | undefined, deadFrameMs:
         lastOnlyYouAt = Date.now();
         log.write("events", { type: "watchdog.silent-them", callApp: app ?? null });
         shownKind = "calm";
-        health("only-you", "info", ONLY_YOU_TEXT);
+        health("only-you", "info", ht(UI_LANG, "only.you"));
       });
     }),
     2000,

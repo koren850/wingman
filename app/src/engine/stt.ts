@@ -5,7 +5,8 @@ import { getSttProvider, sttChain } from "../providers/stt/index.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
 import { sttRetryDelayMs, isPermanentSttError } from "../health.ts";
 import { health, chHe, healthClear, safe, errBrief } from "./out.ts";
-import { log, sup, S, keyterms, PHONE, keys, NO_KEY, phone } from "./boot.ts";
+import { log, sup, S, keyterms, PHONE, keys, NO_KEY, phone, UI_LANG } from "./boot.ts";
+import { ht } from "../htext.ts";
 import { st, chans } from "./state.ts";
 import { tickHealth } from "./degrade.ts";
 import { onResult } from "./ingest.ts";
@@ -40,12 +41,7 @@ function makeChannel(ch: Channel): SttChannel {
 const sttRetrying = new Set<string>();
 const SLOW_RETRY_MS = Number(process.env.WINGMAN_STT_SLOW_RETRY_MS) || 30_000; // (the env override exists for tests)
 function sttMarkPermanent(ch: string, e: ProviderError) {
-  health(
-    `stt-${ch}`,
-    "red",
-    `תמלול ${chHe(ch)} – ${describe(e)}. בדוק את המפתח והקרדיט ב-Settings. מנסה שוב כל ${Math.round(SLOW_RETRY_MS / 1000)} שניות`,
-    e.message,
-  );
+  health(`stt-${ch}`, "red", ht(UI_LANG, "stt.refused", { ch: chHe(ch), err: describe(e), sec: Math.round(SLOW_RETRY_MS / 1000) }), e.message);
   if (ch === "them") sup.set({ themSttDown: true });
   log.write("events", { type: "stt.permanent", ch, kind: e.kind });
 }
@@ -90,11 +86,11 @@ async function openChannel(ch: SttChannel, name: string) {
       if (!pe.kind || (!pe.retryable && pe.kind !== "unknown")) throw e; // auth / quota / spend cap / bad request: fatal with its clear message
       log.write("events", { type: "stt.open.retry", ch: name, n: n + 1, kind: pe.kind, error: pe.message });
       if (Date.now() - t0 > 30_000) {
-        health(`stt-${name}`, "red", `תמלול ${chHe(name)} אין חיבור – ${describe(pe)}. מנסה שוב ושוב עד שיחזור. בדוק חיבור לאינטרנט`);
+        health(`stt-${name}`, "red", ht(UI_LANG, "stt.noconn", { ch: chHe(name), err: describe(pe) }));
         void sttRetryLoop(ch, name);
         return;
       }
-      if (!n) health(`stt-${name}`, "amber", `מתחבר לשירות התמלול (${name})…`);
+      if (!n) health(`stt-${name}`, "amber", ht(UI_LANG, "stt.connecting", { name }));
       await new Promise((r) => setTimeout(r, Math.min(8000, 1000 * 2 ** n)));
     }
   }
@@ -145,7 +141,7 @@ export function wireChannels() {
     s.on(
       "disconnected",
       safe(`disconnected ${ch}`, (d: { code?: number; reason?: string }) =>
-        health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} התנתק – מנסה להתחבר מחדש. בדוק את חיבור האינטרנט`, JSON.stringify({ code: d.code, reason: d.reason })),
+        health(`stt-${ch}`, "red", ht(UI_LANG, "stt.disconnected", { ch: chHe(ch) }), JSON.stringify({ code: d.code, reason: d.reason })),
       ),
     );
     s.on(
@@ -163,7 +159,7 @@ export function wireChannels() {
         healthClear(`stt-${ch}`);
         if (ch === "them") sup.set({ themSttDown: false });
         log.write("events", { type: "stt.switch", ch, ...d });
-        health(`stt-switch-${ch}`, "amber", `תמלול ${chHe(ch)}: עברנו מ-${d.from} ל-${d.to}`, d.reason);
+        health(`stt-switch-${ch}`, "amber", ht(UI_LANG, "stt.switched", { ch: chHe(ch), from: d.from, to: d.to }), d.reason);
         tickHealth();
       }),
     );
@@ -178,7 +174,7 @@ export function wireChannels() {
           void sttRetryLoop(s as SttChannel, ch, true);
           return;
         }
-        health(`stt-${ch}`, "red", `תמלול ${chHe(ch)} אין חיבור – ${describe(e)}. מנסה שוב ושוב עד שיחזור. בדוק חיבור לאינטרנט`);
+        health(`stt-${ch}`, "red", ht(UI_LANG, "stt.noconn", { ch: chHe(ch), err: describe(e) }));
         void sttRetryLoop(s as SttChannel, ch);
       }),
     );

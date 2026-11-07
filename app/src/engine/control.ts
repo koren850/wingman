@@ -11,7 +11,8 @@ import { shutdown, skipSummaryNow } from "./shutdown.ts";
 import { st } from "./state.ts";
 import { nameSpeaker, confirmClient, clientProposed } from "./side.ts";
 import { armAsk, askTyped } from "./me.ts";
-import { ORPHAN_IDLE_MIN, log, contextNotes } from "./boot.ts";
+import { ORPHAN_IDLE_MIN, log, contextNotes, UI_LANG } from "./boot.ts";
+import { ht } from "../htext.ts";
 
 // Single-key input (terminal mode only; with WINGMAN_CONTROL the tray uses stdin lines instead): Enter = consent, q = quiet, a = ask, n = note, y = confirm client, Ctrl+C = stop.
 let keyWaiter: ((k: string) => void) | undefined;
@@ -58,7 +59,7 @@ function toggleQuiet(on = !st.call.quiet) {
   if (on === st.call.quiet) return;
   st.call.quiet = on;
   log.write("events", { type: "quiet", on: st.call.quiet });
-  st.call.quiet ? health("quiet", "info", "מצב שקט: הכרטיסים נשמרים אבל לא מוצגים. לחזרה כבה את Quiet mode בתפריט") : healthClear("quiet");
+  st.call.quiet ? health("quiet", "info", ht(UI_LANG, "quiet")) : healthClear("quiet");
   console.log(`\nquiet ${st.call.quiet ? "ON: cards are logged, not shown" : "OFF"}`);
   status("quiet", { on: st.call.quiet });
 }
@@ -96,7 +97,7 @@ function onControlClosed() {
   st.call.orphaned = true;
   log.write("events", { type: "control.closed", live: true, idleStopMin: ORPHAN_IDLE_MIN });
   console.log(`\nThe menu-bar app closed: the call continues and stops by itself after ${ORPHAN_IDLE_MIN} minutes of silence.`);
-  health("control", "amber", `אפליקציית Wingman בתפריט נסגרה. השיחה ממשיכה, ותיעצר לבד אחרי ${ORPHAN_IDLE_MIN} דקות בלי דיבור`);
+  health("control", "amber", ht(UI_LANG, "orphan", { min: ORPHAN_IDLE_MIN }));
 }
 /** Menu-bar app commands (WINGMAN_CONTROL=1): one per line on stdin. A closed stdin (see onControlClosed) means the app crashed. */
 export function setupControl(onConsent: () => void) {

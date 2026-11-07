@@ -7,7 +7,8 @@ import { readAudioDevices, bluetoothInUse } from "../devices.ts";
 import { stopConsentTimer } from "./consent.ts";
 import { startTapWatchdog, noteMicFrame, micBack, stopMicWatch } from "./watchdogs.ts";
 import { stops, shutdown } from "./shutdown.ts";
-import { sup, log, PHONE, gate, phone, S, ECHO } from "./boot.ts";
+import { sup, log, PHONE, gate, phone, S, ECHO, UI_LANG } from "./boot.ts";
+import { ht } from "../htext.ts";
 import { chans, st } from "./state.ts";
 import { safe, healthClear, health } from "./out.ts";
 
@@ -144,13 +145,7 @@ export async function startLiveSources() {
       const bt = bluetoothInUse(devs);
       if (!bt || st.call.shuttingDown) return;
       log.write("events", { type: "audio.bluetooth", role: bt.role, device: bt.device.name });
-      health(
-        "bluetooth",
-        "amber",
-        bt.role === "mic"
-          ? `${bt.device.name} הוא המיקרופון: איכות התמלול יורדת. עדיף מיקרופון המק או אוזניות חוטיות`
-          : `${bt.device.name} ברמקולים: אם המיקרופון שלהן ייפתח, האיכות תרד`,
-      );
+      health("bluetooth", "amber", bt.role === "mic" ? ht(UI_LANG, "bt.mic", { dev: bt.device.name }) : ht(UI_LANG, "bt.out", { dev: bt.device.name }));
     });
   console.log(
     `Mic device: ${avDevice(micDevice)} (audio.mic.device / WINGMAN_MIC) · client audio: ${srcKind}${srcKind === "device" ? ` (${S.audio.system.device})` : ""}`,
@@ -165,14 +160,7 @@ export async function startLiveSources() {
     }),
   );
   // Supervisor events -> log + health bars. The bar appears at the first failure and goes when frames flow again.
-  wireSource(
-    mic,
-    "mic",
-    "mic",
-    "המיקרופון נפל. מנסה להתחבר מחדש לבד (אם האוזניות נותקו, עובר למיקרופון המק). אם זה נמשך: חבר מיקרופון או בחר אחר ב-Settings",
-    () => {},
-    micBack,
-  );
+  wireSource(mic, "mic", "mic", ht(UI_LANG, "mic.down"), () => {}, micBack);
   if (sys) {
     sys.on(
       "pcm",
@@ -185,7 +173,7 @@ export async function startLiveSources() {
       sys,
       "sys",
       "sys",
-      "לא שומעים את הצד השני. מנסה להתחבר מחדש לבד. אם זה נמשך: בדוק את הרשאת הקלטת המסך/שמע המערכת והרץ בדיקת מוכנות",
+      ht(UI_LANG, "sys.down"),
       () => sup.set({ themDead: true }),
       () => sup.set({ themDead: false }),
     );

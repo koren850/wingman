@@ -22,7 +22,9 @@ test("ladder: signals map to rungs, worst wins", () => {
   assert.equal(decide(sig({ themDead: true, llmDown: true })).rung, 4);
   assert.equal(decide(sig({ bankFailed: true })).rung, 4);
   assert.equal(decide(sig({ fatal: "STT down", themDead: true })).rung, 5);
-  assert.deepEqual(capabilities(1), { detect: true, bank: true, llm: true, ans: false, listening: true, meAns: true });
+  assert.deepEqual(capabilities(1), { detect: true, bank: true, llm: true, ans: true, listening: true, meAns: true });
+  assert.equal(capabilities(2).ans, true);
+  assert.equal(capabilities(3).ans, false);
   assert.equal(capabilities(3).llm, false);
   assert.equal(capabilities(4).detect, false);
   assert.equal(capabilities(5).listening, false);
@@ -96,7 +98,7 @@ test("slow AI: p50 of the last tags above slowMs drops to reduced AI; recovery c
   s.recordTag(1900);
   s.tick();
   assert.equal(s.rung, 1);
-  assert.equal(s.caps.ans, false);
+  assert.equal(s.caps.ans, true, "slow AI keeps answering; stale ones are dropped by reflex.dropStaleMs");
   now.t += 61_000;
   s.recordTag(2000);
   s.tick(); // still slow when the minute passes: the flag stays; samples are cleared only on recovery
@@ -295,4 +297,28 @@ test("recovery from other reasons is not shortened", () => {
   now.t += 20_000;
   s.tick();
   assert.equal(s.rung, 3);
+});
+
+test("slow AI: median of the last 8 samples, so one or two slow replies do not flap the state", () => {
+  const now = { t: 0 };
+  const s = new HealthSupervisor({ tickMs: 1000, recoverStableMs: 60_000, slowMs: 2500, slowSttMs: 1500, minSamples: 3 }, () => now.t);
+  for (const ms of [800, 900, 850, 3000, 900, 3200]) s.recordTag(ms);
+  assert.equal(s.signals.llmSlow, false, "2 slow of 6 is not slow");
+  for (const ms of [3000, 3100, 3300]) s.recordTag(ms);
+  assert.equal(s.signals.llmSlow, true, "most of the last 8 are slow");
+  for (let i = 0; i < 8; i++) s.recordTag(700);
+  assert.equal(s.signals.llmSlow, false, "old samples fall out of the window");
+});
+
+test("ladder texts follow the UI language and keep the same meaning", () => {
+  for (const r of [1, 2, 3, 4, 5] as Rung[]) {
+    const he = describeRung(r, ["AI slow"], false, "he")!,
+      en = describeRung(r, ["AI slow"], false, "en")!;
+    assert.equal(he.level, en.level);
+    assert.match(he.text, /[\u0590-\u05FF]/);
+    assert.doesNotMatch(en.text, /[\u0590-\u05FF]/);
+  }
+  assert.match(describeRung(1, ["AI slow"], false, "en")!.text, /^AI is slow \(AI slow\)/);
+  assert.match(describeRung(1, ["AI slow"])!.text, /[\u0590-\u05FF]/, "default language is Hebrew");
+  assert.match(describeRung(3, [], true, "en")!.text, /no AI/);
 });

@@ -6,7 +6,8 @@
 // the tray IPC contract is at the top of engine/control.ts. State is module-level on purpose (one call per process); everything async checks `shuttingDown`.
 // Safety and cost: audio is sent for transcription only once listening has started (`consented`): at call start by default, or after "Start listening" when privacy.requireConsentAck is on (ADR 29); AI text passes guards.ts; budget.maxUsdPerCall caps model jobs.
 import { st } from "./engine/state.ts";
-import { fileArg, noAi, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO } from "./engine/boot.ts";
+import { fileArg, noAi, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO, UI_LANG } from "./engine/boot.ts";
+import { ht } from "./htext.ts";
 import { setPhase, status, health, safe } from "./engine/out.ts";
 import { crash, installProcessHandlers } from "./engine/shutdown.ts";
 import { createChannels, openBothChannels, wireChannels } from "./engine/stt.ts";
@@ -20,13 +21,7 @@ import { startFileSource, startLiveSources } from "./engine/audio-sources.ts";
 // A card row that cannot be saved (disk full) still raises the health bar; the call goes on.
 log.onWriteFail = (e) => {
   try {
-    health(
-      "disk",
-      "amber",
-      // User-facing health text (Hebrew, the default UI language): "The call cannot be saved to disk (no space?). The call goes on, but the recording and summary may be partial. Free some disk space."
-      "לא ניתן לשמור את השיחה בדיסק (אין מקום?). השיחה ממשיכה, אבל ההקלטה והסיכום עלולים להיות חלקיים. פנה מקום בדיסק",
-      String(e?.message ?? e),
-    );
+    health("disk", "amber", ht(UI_LANG, "disk.write"), String(e?.message ?? e));
   } catch {
     /* best effort: the bar itself needs the log */
   }

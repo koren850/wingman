@@ -3,6 +3,7 @@
 // Rule: the applied rung changes only BETWEEN questions (except 5/off), and recovery needs a stable period.
 // Rung 5 is only for a user stop or withdrawn consent (signal `fatal`); a dead STT channel is rung 4 (transcript-only), retried in the background.
 import { EventEmitter } from "node:events";
+import { ht, reasonText, type UiLang } from "./htext.ts";
 
 /** Degrade level, 0 = everything works, 5 = Wingman stopped. Higher is worse. */
 export type Rung = 0 | 1 | 2 | 3 | 4 | 5;
@@ -55,28 +56,33 @@ export function decide(s: Signals): { rung: Rung; reasons: string[] } {
 
 /** What each rung allows the call loop to do. */
 export function capabilities(r: Rung) {
+  // ans: model answers continue while the AI is only slow (rung 1): a late answer is dropped by reflex.dropStaleMs, so a slow model costs cards, not all cards.
   // meAns: answers for the user's own questions (assist.*) do not depend on the other side being heard, so they survive the transcript-only rung (4).
-  return { detect: r <= 3, bank: r <= 3, llm: r <= 2, ans: r === 0 || r === 2, listening: r <= 4, meAns: r <= 4 };
+  return { detect: r <= 3, bank: r <= 3, llm: r <= 2, ans: r <= 2, listening: r <= 4, meAns: r <= 4 };
 }
 
-/** User-facing bar text (Hebrew) and level. noAi alone is the user's own choice: info, not a warning. */
-export function describeRung(r: Rung, reasons: string[], userChoiceOnly = false): { level: "red" | "amber" | "info"; text: string } | null {
-  const why = reasons.length ? ` (${reasons.join(", ")})` : "";
+/** User-facing bar text in the UI language (default Hebrew) and level. noAi alone is the user's own choice: info, not a warning. */
+export function describeRung(
+  r: Rung,
+  reasons: string[],
+  userChoiceOnly = false,
+  lang: UiLang = "he",
+): { level: "red" | "amber" | "info"; text: string } | null {
+  const list = reasons.map((x) => reasonText(lang, x));
+  const why = list.length ? ` (${list.join(", ")})` : "";
   switch (r) {
     case 0:
       return null;
     case 1:
-      return { level: "amber", text: `AI מופחת: רק כרטיסים מוכנים מראש ותשובת "לקנות זמן"${why}. הכרטיסים ממשיכים; אם זה נמשך, בדוק חיבור לאינטרנט` };
+      return { level: "amber", text: ht(lang, "rung.1", { why }) };
     case 2:
-      return { level: "amber", text: `עברנו לספק גיבוי${why}. אין צורך לעשות כלום; אחרי השיחה בדוק את המפתח ב-Settings` };
+      return { level: "amber", text: ht(lang, "rung.2", { why }) };
     case 3:
-      return userChoiceOnly
-        ? { level: "info", text: "רק כרטיסים מוכנים מראש (בלי AI). להפעלת AI התחל שיחה חדשה בלי הבחירה הזו" }
-        : { level: "red", text: `רק כרטיסים מוכנים מראש: ה-AI לא זמין${why}. בדוק חיבור לאינטרנט ומפתח ב-Settings` };
+      return userChoiceOnly ? { level: "info", text: ht(lang, "rung.3.user") } : { level: "red", text: ht(lang, "rung.3", { why }) };
     case 4:
-      return { level: "red", text: `אין כרטיסים לצד השני${why}. תשובות אליך (Ctrl+Opt+A) עדיין פועלות; בדוק חיבור לאינטרנט` };
+      return { level: "red", text: ht(lang, "rung.4", { why }) };
     case 5:
-      return { level: "red", text: `Wingman כבוי${why}. פתח את חלון Wingman ופתח שיחה חדשה` };
+      return { level: "red", text: ht(lang, "rung.5", { why }) };
   }
 }
 
@@ -150,6 +156,8 @@ export type HealthConfig = {
 };
 
 /** The reasons a short AI outage shows (breaker open, then rate-limited). Only these may recover on the shorter `llmRecoverMs`. */
+/** Latency samples kept for the "AI slow" verdict (median of the last N first-tag times). */
+const TAG_WINDOW = 8;
 const LLM_TRANSIENT_REASONS = new Set(["no LLM provider usable", "AI rate-limited/overloaded"]);
 
 /**
@@ -200,9 +208,9 @@ export class HealthSupervisor extends EventEmitter {
     return this.busy === 0;
   }
 
-  // Slow detection uses the median of the last 5 samples and needs minSamples, so one slow reply does not degrade the call.
+  // Slow detection uses the median of the last 8 samples and needs minSamples: a majority of slow replies, not one or two, makes the AI "slow".
   recordTag(ms: number) {
-    this.tags = [...this.tags.slice(-4), ms];
+    this.tags = [...this.tags.slice(-(TAG_WINDOW - 1)), ms];
     this.set({ llmSlow: this.p50(this.tags) > this.cfg.slowMs && this.tags.length >= this.cfg.minSamples });
   }
   recordSttLag(ms: number) {

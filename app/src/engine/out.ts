@@ -1,11 +1,12 @@
 // Output to the outside: the "@@wingman {json}" status lines the menu-bar app reads on stdout, health bars, and the error helpers (errBrief, safe, survived).
 import { errText, errStack } from "../errtext.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
-import { log, CONTROL } from "./boot.ts";
+import { log, CONTROL, UI_LANG } from "./boot.ts";
+import { ht } from "../htext.ts";
 import { emitCard } from "./cards.ts";
 
-/** Hebrew label for a channel, used in health texts. */
-export const chHe = (c: string) => (c === "me" ? "(המיקרופון שלך)" : "(הצד השני)");
+/** Label for a channel in the UI language, used in health texts. */
+export const chHe = (c: string) => ht(UI_LANG, c === "me" ? "ch.me" : "ch.them");
 /** Call phase for the answer window: written into call.json at each change (best effort, like every CallLog write). */
 export function setPhase(phase: "starting" | "waiting" | "live" | "ended", extra: Record<string, unknown> = {}) {
   try {

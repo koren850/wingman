@@ -45,7 +45,7 @@ llm:
     effort: low # Anthropic only: low | medium | high
     thinking: false # Anthropic only: true = allow extended thinking (slower)
     cache: 1h # Anthropic only: prompt cache TTL: off | 5m | 1h
-    slowMs: 1500 # first-tag p50 above this = "AI slow" (reduced AI rung)
+    slowMs: 2500 # median of the last 8 first-tag times above this = "AI slow" (amber; answers keep coming, late ones are dropped by reflex.dropStaleMs). Haiku first tag is ~0.9 s normally
   circuit:
     failures: 3 # LLM failures within 10 s that open the circuit
     cooldownMs: 15000 # circuit stays open this long, then a half-open probe

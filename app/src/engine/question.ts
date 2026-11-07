@@ -9,6 +9,7 @@ import type { SttResult } from "../providers/stt/types.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
 import { frameText, isAgencyKind, isAgencyTopic } from "../frame.ts";
 import { health, errBrief, healthClear, survived } from "./out.ts";
+import { ht } from "../htext.ts";
 import { emitCard, recordLatency, type Card, focusWorthy } from "./cards.ts";
 import {
   stall,
@@ -29,6 +30,7 @@ import {
   background,
   flow,
   flowOn,
+  UI_LANG,
 } from "./boot.ts";
 import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.ts";
 import { interviewAllowed } from "./selfcheck.ts";
@@ -534,5 +536,5 @@ function onReflexError(t: Turn, e: ProviderError) {
 }
 /** Two failures in a row (errors, timeouts, hung requests that were replaced) raise the "AI not answering" bar. */
 function countReflexFailure(e: ProviderError) {
-  if (++reflexErrors >= 2) health("ai", "amber", "AI לא עונה: מוצגים רק כרטיסים מוכנים מראש. בדוק חיבור לאינטרנט ומפתח ב-Settings", String(e?.message ?? e));
+  if (++reflexErrors >= 2) health("ai", "amber", ht(UI_LANG, "ai.silent"), String(e?.message ?? e));
 }

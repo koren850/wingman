@@ -5,9 +5,10 @@ import { describe, type ProviderError } from "../providers/errors.ts";
 import { detectGap } from "../clock.ts";
 import { freeBytes, diskLevel, diskText } from "../diskspace.ts";
 import { describeRung, type Rung } from "../health.ts";
+import { ht } from "../htext.ts";
 import { shutdown } from "./shutdown.ts";
 import { health, healthClear, status, safe } from "./out.ts";
-import { sup, log, cost, fileArg, S, ORPHAN_IDLE_MIN, REFLEX_MODELS, noAi, downUntil, breakers, registry } from "./boot.ts";
+import { sup, log, cost, fileArg, S, ORPHAN_IDLE_MIN, REFLEX_MODELS, noAi, downUntil, breakers, registry, UI_LANG } from "./boot.ts";
 import { sttSwitchedCh, sttRetryLoop } from "./stt.ts";
 import { st, mono, chans } from "./state.ts";
 import { liveSources } from "./audio-sources.ts";
@@ -29,7 +30,7 @@ export function llmFailed(model: string, err: ProviderError) {
   log.write("events", { type: "llm.error", model, kind: err.kind, retryable: err.retryable, switchProvider: err.switchProvider, status: err.status });
   if (hard) {
     aiBars.add(model);
-    health(`ai-${model}`, "red", `AI ${describe(err)}${REFLEX_MODELS.length > 1 ? "" : ". בנק בלבד"}`);
+    health(`ai-${model}`, "red", ht(UI_LANG, "ai.hard", { err: describe(err), bankOnly: REFLEX_MODELS.length > 1 ? "" : "1" }));
   }
   refreshSignals();
 }
@@ -70,13 +71,13 @@ export function checkDisk(force = false) {
   diskShown = lvl;
   log.write("events", { type: "disk.free", level: lvl, mb: b === null ? null : Math.round(b / 1024 / 1024) });
   if (lvl === "ok") healthClear("disk-space");
-  else health("disk-space", lvl, diskText(lvl, b ?? 0));
+  else health("disk-space", lvl, diskText(lvl, b ?? 0, UI_LANG));
 }
 
 /** After a sleep gap: timers that count silence start again, both audio sources are rebuilt (they may be dead after wake) and both STT sockets reopened. */
 function onWake(gapMs: number) {
   log.write("events", { type: "sleep.gap", ms: gapMs });
-  health("sleep", "amber", `המחשב נרדם ל-${Math.round(gapMs / 1000)} שניות. חלק מהשיחה לא נשמע. אם פספסת משהו, בקש שיחזרו עליו`);
+  health("sleep", "amber", ht(UI_LANG, "sleep", { sec: Math.round(gapMs / 1000) }));
   sleepClearAt = Date.now() + 20_000;
   const m = mono();
   st.voice.lastSpeechMono = m;
@@ -129,7 +130,7 @@ export function tickHealth() {
       void shutdown();
     } else if (idle >= Math.max(1, idleMin - 2) * 60_000 && !idleWarned) {
       idleWarned = true;
-      health("idle", "amber", `אף אחד לא דיבר ${Math.round(idle / 60_000)} דקות. השיחה תיעצר לבד בעוד כ-2 דקות`);
+      health("idle", "amber", ht(UI_LANG, "idle", { min: Math.round(idle / 60_000) }));
     } else if (idleWarned && idle < 60_000) {
       idleWarned = false;
       healthClear("idle");
@@ -141,19 +142,19 @@ export function tickHealth() {
   const costState = cost.llmState();
   if (costState === "warn" && !costWarned) {
     costWarned = true;
-    health("cost", "amber", `עלות AI ${cost.line()}. אפשר להמשיך; לעצירה לחץ Stop call`);
+    health("cost", "amber", ht(UI_LANG, "cost.ai", { line: cost.line() }));
     log.write("events", { type: "cost.warn", line: cost.line() });
   }
   if (cost.minutesState() !== "ok" && !minutesWarned) {
     minutesWarned = true;
-    health("minutes", "amber", `השיחה רצה ${cost.sttMinutes.toFixed(0)} דקות. אם היא הסתיימה, לחץ Stop call`);
+    health("minutes", "amber", ht(UI_LANG, "minutes", { min: cost.sttMinutes.toFixed(0) }));
   }
   sup.tick();
 }
 /** Ladder change handler: log it, show/clear the "ladder" bar, and at rung 5 (everything down) stop the call. */
 export function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reasons: string[] }) {
   log.write("events", { type: "ladder", from, to, reasons, idle: sup.idle });
-  const d = describeRung(to, reasons, sup.userChoiceOnly);
+  const d = describeRung(to, reasons, sup.userChoiceOnly, UI_LANG);
   if (from !== to) console.log(`\n⇅ ladder: rung ${from} -> ${to} (${reasons.join(", ") || "recovered"})`);
   if (!d) healthClear("ladder");
   else health("ladder", d.level, d.text);
