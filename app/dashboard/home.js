@@ -640,7 +640,12 @@ function livePanel(s) {
     { class: "livehead" },
     h("div", {}, h("div", { class: "label", id: "live-h" }, s.practice ? "Practice call" : "Call"), h("div", { class: "phase", id: "phase" })),
     ph === "live"
-      ? h("div", { class: "bigtime", id: "big-timer", "aria-label": "Call time" })
+      ? h(
+          "div",
+          { class: "timerbox" },
+          h("span", { class: "hdot good", id: "health-dot", role: "img", "aria-label": "Status: all good", title: "Status: all good" }),
+          h("div", { class: "bigtime", id: "big-timer", "aria-label": "Call time" }),
+        )
       : chip(ph === "waiting" ? "Nothing is sent yet" : ph === "stopping" ? "Saving…" : "Starting…", ph === "waiting" ? "good" : "warn", { dot: true }),
   );
   wrap.append(head, h("div", { id: "off-banner" }), h("div", { id: "health-box" }));
@@ -956,6 +961,15 @@ function patchLive(s) {
         : "The answer window closed. Still listening; cards are saved.",
     );
   if (s.lastError && ph !== "live") adv.push(s.lastError.slice(0, 160));
+  // The small status dot next to the timer: red = a blind fault, amber = a notice, green = all good.
+  const dot = $("health-dot");
+  if (dot) {
+    const lv = blind.length ? "bad" : adv.length ? "warn" : "good",
+      tx = { bad: "Status: problem", warn: "Status: check the notice", good: "Status: all good" }[lv];
+    dot.className = "hdot " + lv;
+    dot.title = tx;
+    dot.setAttribute("aria-label", tx);
+  }
   const hk = JSON.stringify([blind, adv]);
   if (hk !== H.lastHealth) {
     H.lastHealth = hk;
