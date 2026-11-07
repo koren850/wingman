@@ -14,7 +14,7 @@ const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "a
  * Builds the controller. o: { root, spawn (child_process.spawn-like), lib?, fs?, path?, bin?, logPath?, tmpDir?, env?, plans?,
  * notify?(title, body), onChange?(), setTimeout?, kill?, doctorTimeoutMs? } (fs/spawn/timers are injectable for tests).
  * State lives in lib.reduce; every change calls onChange so the tray and window can redraw. Only one call child at a time.
- * @param {object} o Options as listed above.
+ * @param {any} o Options as listed above.
  * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, confirmClient, note, ask, speaker,
  *   stop, stopDelete, stopNoSummary, skipSummary, briefSaved, briefCleared, boot, refreshPlans, runDoctor, shutdown, logLine.
  */

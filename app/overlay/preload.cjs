@@ -3,6 +3,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 /** Events main.cjs sends to the window: [channel, exposed name, whether the event carries a payload]. */
+/** @type {[string, string, boolean][]} */
 const EVENTS = [
   ["config", "onConfig", true],
   ["card", "onCard", true],

@@ -33,7 +33,11 @@ function clean(t, max) {
     .trim()
     .slice(0, max);
 }
-/** An array of strings, or text split on ";" and line breaks, as up to 12 clean items. */
+/**
+ * An array of strings, or text split on ";" and line breaks, as up to 12 clean items.
+ * @param {any} v
+ * @returns {string[]}
+ */
 function items(v) {
   const arr = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[;\n]/) : [];
   return arr
@@ -134,8 +138,9 @@ function createPlanStore(o) {
     if (readOnly) return;
     const latest = path.join(base, "latest.yaml"),
       flat = path.join(base, "attachments");
-    let brief = null,
-      mtime = 0;
+    /** @type {any} */
+    let brief = null;
+    let mtime = 0;
     try {
       mtime = fs.statSync(latest).mtimeMs;
       brief = require("yaml").parse(fs.readFileSync(latest, "utf8")) || {};

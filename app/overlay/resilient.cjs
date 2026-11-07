@@ -94,7 +94,7 @@ class StdinRows {
   push(chunk) {
     this.rest += typeof chunk === "string" ? chunk : this.dec.write(chunk);
     const parts = this.rest.split("\n");
-    this.rest = parts.pop();
+    this.rest = parts.pop() ?? "";
     if (this.rest.length > this.max) this.rest = "";
     const rows = [];
     for (const l of parts) {

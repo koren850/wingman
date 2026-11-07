@@ -183,6 +183,7 @@ function refresh() {
   const key = lib.menuKey(s, running, Date.now()) + v.statusLine.replace(/\d+:\d\d/, "");
   if (key === lastMenuKey) return; // rebuilding an open menu every second would close it
   lastMenuKey = key;
+  /** @type {Electron.MenuItemConstructorOptions[]} */
   const items = [
     { label: "Open Wingman", click: () => openWindow({ view: "home" }) },
     { type: "separator" },
@@ -338,6 +339,7 @@ app.whenReady().then(() => {
   }
   if (WANT_WINDOW) host.open({ view: "home" });
 });
+// @ts-expect-error Electron's typings leave out the event argument that this handler needs.
 app.on("window-all-closed", (e) => {
   if (SNAPSHOT) app.quit();
   else e.preventDefault();

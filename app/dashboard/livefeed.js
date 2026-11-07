@@ -136,8 +136,9 @@
     // seq numbers lines for the renderer; cards is a Map so re-sent ids keep one entry.
     let lines = [],
       seq = 0,
-      frame = null,
       names = {};
+    /** @type {ReturnType<typeof cleanFrame>} */
+    let frame = null;
     const cards = new Map();
     const api = {
       get lines() {
@@ -172,6 +173,7 @@
       },
       /** Newest valid frame among raw cards.jsonl rows (type "frame"); returns it when it changed, else null. */
       addFrameRows(rows) {
+        /** @type {ReturnType<typeof cleanFrame>} */
         let last = null;
         for (const r of rows) if (r && r.type === "frame") last = cleanFrame(r) || last;
         return api.setFrame(last);

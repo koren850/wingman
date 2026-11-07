@@ -147,6 +147,7 @@ function readKeysFile(file) {
  * `provider` is set only for the two providers that can live in the Keychain; `account` is the env var / keys.env name.
  * Returns the value and where it came from; a missing key is { value: null, source: "missing" }. A Keychain error counts as "not there".
  */
+/** @param {{ provider?: string | null, account: string, keychain?: any, env?: any, fromFile?: any }} o */
 function resolveKey({ provider = null, account, keychain = null, env = process.env, fromFile = {} }) {
   const kc = provider && keychain ? safe(() => keychain.get(provider)) : null;
   if (kc) return { value: kc, source: "keychain" };
@@ -157,6 +158,7 @@ function resolveKey({ provider = null, account, keychain = null, env = process.e
 }
 
 /** Where each key comes from. Values never leave this function except as the last 4 characters. */
+/** @param {{ keychain: any, file: string, env?: any }} o */
 function keyStatus({ keychain, file, env = process.env }) {
   const fromFile = readKeysFile(file);
   const out = {};
@@ -184,8 +186,10 @@ function safe(fn) {
  * mode 600, fsync, rename. A keys.env that is itself a symlink or not a regular file is refused. The file is re-read right before the rewrite,
  * and a line is only dropped if it still holds the value that was moved (a concurrent edit is never overwritten).
  * Returns only provider ids and counts, never values. The caller (Settings button / `pnpm keys migrate`) is the only trigger.
+ * @param {{ keychain: any, file: string }} o
  */
 function migrateKeysToKeychain({ keychain, file }) {
+  /** @type {{ moved: string[], alreadyInKeychain: string[], failed: { provider: string, reason: string }[], backup: null }} */
   const result = { moved: [], alreadyInKeychain: [], failed: [], backup: null };
   let st;
   try {
@@ -195,6 +199,7 @@ function migrateKeysToKeychain({ keychain, file }) {
   }
   if (st.isSymbolicLink() || !st.isFile()) throw new KeychainError("keys.env is a link or not a regular file. Nothing was changed.");
   const parsed = parseKeysFile(fs.readFileSync(file, "utf8"));
+  /** @type {string[]} */
   const todo = [];
   for (const p of PROVIDERS) {
     const a = ACCOUNTS[p];
@@ -272,6 +277,7 @@ function createRateLimiter(max = 5, windowMs = 60000, now = () => Date.now()) {
 /** The smallest authenticated request per provider. Resolves "ok" | "invalid" | "network". Never throws, never includes the key in the result. */
 async function testKey(provider, key, fetchFn = globalThis.fetch) {
   if (!PROVIDERS.includes(provider) || !key || !/^[\x21-\x7e]+$/.test(key)) return "invalid"; // printable ASCII only: no header injection from a hand-edited keys.env
+  /** @type {[string, RequestInit]} */
   const req =
     provider === "deepgram"
       ? ["https://api.deepgram.com/v1/projects", { headers: { Authorization: `Token ${key}` } }]

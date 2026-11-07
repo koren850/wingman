@@ -254,6 +254,7 @@ function createControlServer(o) {
       },
       run: (a) => {
         if (ctl.isRunning()) return refused("A call is already running. Stop it first (wingman stop).");
+        /** @type {any} */
         let m = null;
         if (a.planId) {
           const r = findReady(a.planId);
@@ -493,6 +494,7 @@ function createControlServer(o) {
   }
   /** Stops listening and removes the socket file. */
   function stop() {
+    /** @type {Promise<void>} */
     return new Promise((resolve) => {
       if (!server) return resolve();
       const s = server;

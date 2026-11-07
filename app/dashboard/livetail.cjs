@@ -22,9 +22,11 @@ function createLiveTail(o) {
   const every = o.interval || 150,
     setT = o.setInterval || setInterval,
     clearT = o.clearInterval || clearInterval;
-  let cur = null,
-    timer = null;
+  /** @type {ReturnType<typeof fresh> | null} */
+  let cur = null;
+  let timer = null;
 
+  /** @param {string} id */
   const fresh = (id) => ({ id, feed: feedLib.create(), files: { transcript: { off: 0, carry: Buffer.alloc(0) }, cards: { off: 0, carry: Buffer.alloc(0) } } });
 
   /** New complete JSONL rows of <name>.jsonl since the last read (st = { off, carry }); at most MAX_READ bytes per call. [] on any error. */

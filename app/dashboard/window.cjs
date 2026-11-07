@@ -27,7 +27,7 @@ const execTsx = (args, opts, cb) => {
 };
 const BG = { dark: "#120E0B", light: "#FEF7EC" };
 const SNAP = process.env.WINGMAN_DASHBOARD_SNAPSHOT || "";
-const SIZE = /^(\d{3,4})x(\d{3,4})$/.test(process.env.WINGMAN_DASHBOARD_SIZE || "") ? process.env.WINGMAN_DASHBOARD_SIZE.split("x").map(Number) : null;
+const SIZE = /^(\d{3,4})x(\d{3,4})$/.test(process.env.WINGMAN_DASHBOARD_SIZE || "") ? String(process.env.WINGMAN_DASHBOARD_SIZE).split("x").map(Number) : null;
 
 /** Snapshot-only fake call states (WINGMAN_DASHBOARD_FAKE_CALL=waiting|live|live-ask|live-warn|stopping|stopping-summary|ended). Nothing is spawned. */
 function fakeCall(kind, now = Date.now()) {
@@ -533,8 +533,8 @@ function create(ctx) {
         }
       });
       if (input != null) {
-        p.stdin.on("error", () => {});
-        p.stdin.end(input);
+        p.stdin?.on("error", () => {});
+        p.stdin?.end(input);
       }
     });
   const readSettings = async () => {

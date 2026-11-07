@@ -98,6 +98,7 @@ if (process.env.WINGMAN_WATCH_PARENT === "1") {
   }, 2000).unref();
 }
 // Tailed files of calls/latest: cards.jsonl (cards + captures) and transcript.jsonl (for the rewind panel).
+/** @type {Record<"cards" | "transcript" | "live", { file: string | undefined, offset: number }>} */
 const tails = { cards: { file: undefined, offset: 0 }, transcript: { file: undefined, offset: 0 }, live: { file: undefined, offset: 0 } };
 
 // With a single display the overlay would sit on the shared screen. Refuse unless overlay.allowPrimary (WINGMAN_ALLOW_PRIMARY=1).
@@ -263,7 +264,7 @@ function snapshotMode() {
         1300,
       );
     setTimeout(async () => {
-      fs.writeFileSync(SNAP, (await win.webContents.capturePage()).toPNG());
+      fs.writeFileSync(String(SNAP), (await win.webContents.capturePage()).toPNG());
       app.quit();
     }, 2200);
   });

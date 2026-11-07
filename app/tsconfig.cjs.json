@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "allowJs": true, "checkJs": true, "noImplicitAny": false, "allowImportingTsExtensions": false },
-  "include": ["shared/*.cjs", "tray/lib.cjs"],
+  "compilerOptions": { "allowJs": true, "checkJs": true, "noImplicitAny": false, "useUnknownInCatchVariables": false, "allowImportingTsExtensions": false },
+  "include": ["shared/*.cjs", "tray/*.cjs", "dashboard/*.cjs", "overlay/*.cjs"],
   "exclude": ["shared/*.d.cts"]
 }

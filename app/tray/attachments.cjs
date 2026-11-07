@@ -17,9 +17,10 @@ const NAME_RE = /^(a[0-9a-z]{6,12})__(.{1,80})\.txt$/;
 
 /** Plain, short, safe display name: no path parts, no control or bidi characters. */
 function safeName(name) {
-  const base = String(name == null ? "" : name)
-    .split(/[\\/]/)
-    .pop();
+  const base =
+    String(name == null ? "" : name)
+      .split(/[\\/]/)
+      .pop() ?? "";
   const clean = base
     .replace(/[\u0000-\u001f\u007f‪-‮⁦-⁩]/g, "")
     .replace(/[^\p{L}\p{N}._ -]/gu, "_")

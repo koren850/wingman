@@ -17,6 +17,7 @@ function build(liveAt, callId) {
     { t: at(8, 2), ch: "them", text: "ומה לגבי אחסון, מי אחראי על הגיבויים אם משהו נופל בשבת?" },
   ];
   // "side-1" has turnId "side" and must be filtered out by livefeed (it is the check that side cards stay hidden).
+  /** @type {any[]} */
   const cards = [
     {
       type: "card",
