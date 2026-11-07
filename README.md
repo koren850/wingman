@@ -55,7 +55,7 @@ Also:
 |---|---|
 | <img src="docs/ux/answer-window-en-ui.png" alt="The answer window with English labels: an AI card, a buy-time line, captured details and notes" width="400"> | <img src="docs/ux/for-you-card.png" alt="The answer window with a Hebrew card, right-to-left" width="400"> |
 
-All screenshots use invented data. The Hebrew card answers "What is the difference between a CDN and DNS?": a CDN spreads copies of the site to servers near the visitor, and DNS only translates a domain name into the server's address.
+A guided tour of every part of the windows: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#tour-of-the-windows). All screenshots use invented data. The Hebrew card answers "What is the difference between a CDN and DNS?": a CDN spreads copies of the site to servers near the visitor, and DNS only translates a domain name into the server's address.
 
 ## Examples
 

@@ -2,7 +2,7 @@
 
 For people who have installed Wingman and use it on calls. It covers everyday use of Wingman after it is installed: first run, updating, where your files live, profile and pack, practice and prep mode, flow mode and the command line. For install and requirements see the [README](../README.md); for a first walk-through see [Getting started](GETTING-STARTED.md); for every setting and hotkey see [app/README.md](../app/README.md).
 
-Contents: [First run](#first-run) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Flow mode](#flow-mode) · [Command line](#command-line)
+Contents: [First run](#first-run) · [Tour of the windows](#tour-of-the-windows) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Flow mode](#flow-mode) · [Command line](#command-line)
 
 ## First run
 
@@ -25,6 +25,63 @@ Notes:
 - `pnpm run doctor`, not `pnpm doctor` (the second one is pnpm's own command).
 - Never put keys in the repo. They belong in the Keychain.
 - No second screen yet? Turn on the one-screen option in the setup, and never share that screen.
+
+## Tour of the windows
+
+All pictures use invented data. The client, the numbers and the answers are made up.
+
+### The answer window
+
+This is the window you read during a call. Put it on the second screen.
+
+<img src="ux/answer-window-en-ui.png" alt="The answer window with a transcript line, an AI card, a buy-time line, captured details, a checklist, a client card and AI notes" width="520">
+
+1. **Listening** (top): Wingman hears the call. It says **Paused** when you pause it.
+2. **Other side**: the last thing the other person said.
+3. **AI · unverified** (dashed border): an answer written by the AI. Check it before you say it. A line starting "Answering:" shows which question it answers.
+4. **Prepared** (green, not shown here): an answer from your own answer pack. You wrote it, so you can trust it more.
+5. **Buy time**: a safe line to say while you check a number. Wingman uses it instead of inventing a price or a date.
+6. **Numbered chips** (Phone, Email, Domain): details heard in the call. Press Ctrl+Opt and the number to copy one.
+7. **You have not talked about:** your checklist of topics still open. **Levy Electronics** is the client card. **AI notes** are points the AI noticed.
+8. **Bottom bar**: the hotkeys. Ctrl+Opt+A asks the AI, R shows what they said, L opens the checklist, P pauses, C clears.
+
+### Home, during a call
+
+<img src="ux/home-window.png" alt="The Home view of the main window during a call, with the timer, a client suggestion, quiet mode and a note box" width="640">
+
+1. **Timer and state**: how long the call has run, and whether Wingman is listening.
+2. **Looks like ... Confirm client**: Wingman guesses who the call is with. Press **Confirm client** if it is right. The AI then gets that client's details.
+3. **Quiet mode**: hides the cards in the answer window. They are still saved for the review.
+4. **Note for the AI** and **Ask Wingman**: type a short note, or ask a question. **Listen for my question** lets you ask by voice.
+5. **Show conversation**: the live text is hidden so it does not appear if you share your screen.
+6. **Stop call** ends the call. **Delete this call...** stops it and removes everything saved from it.
+
+### Calls
+
+<img src="ux/calls-page.png" alt="The Calls page with the next call to review, the card usefulness meter and a table of calls" width="640">
+
+1. **Next up**: the call that most needs you. **Review** opens it.
+2. **Card usefulness**: how many useful cards you get per hour. It needs a few rated calls before it shows a result.
+3. **Search transcripts**: find a word in all your calls.
+4. **To do** column: **3 to rate** means three cards wait for a rating. **Summary** opens the written summary.
+
+### One call: Follow-up
+
+<img src="ux/call-detail-followup.png" alt="A finished call with the Follow-up tab: summary, next steps, decisions, open questions and a follow-up email" width="640">
+
+1. **Live** or **Practice** shows what kind of call it was. **Delete call** removes it.
+2. **Tabs**: **Follow-up**, **Rate** (mark each card useful or not), **Transcript**, **Missed questions** (questions with no card) and **Details**.
+3. **Next steps**: tick them off when done. **Me** is for you, **Client** is for the other side.
+4. **Follow-up email**: a draft written by the AI. Read it, then press **Copy email**. Wingman never sends anything.
+
+### Setup guide
+
+<img src="ux/setup-step.png" alt="The setup guide on the Home page with the Answer pack step open" width="520">
+
+1. **Set up Wingman** shows how many of the 8 steps are done.
+2. **Open** shows the details of a step. **Close** hides them again.
+3. Each step explains what it is for. Here, the **Answer pack** step lets you copy the example pack to your own folder, or keep the example for now.
+4. **Skip this step** is always allowed. You can come back from **Settings, Setup guide**.
 
 ## Update and uninstall
 
