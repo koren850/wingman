@@ -581,6 +581,13 @@ async function askBeforeCliStart(o) {
   }
 }
 
+/** Interface language ("he" or "en") from the flat settings values; "auto" is Hebrew unless the call language is English only (same rule as resolveUiLanguage in settings.ts). */
+function uiLanguageOf(values) {
+  const v = values || {};
+  if (v["ui.language"] === "en" || v["ui.language"] === "he") return v["ui.language"];
+  return v["stt.language"] === "en" ? "en" : "he";
+}
+
 /** Poll until pred() is true or ms passed. Resolves true when pred became true. */
 function waitUntil(pred, ms, o = {}) {
   const st = o.setTimeout || setTimeout,
@@ -624,6 +631,7 @@ module.exports = {
   confirmCliStopDelete,
   askBeforeCliStart,
   settingsReader,
+  uiLanguageOf,
   CLI_CONFIRM_MS,
   planMenu,
   KEYS,

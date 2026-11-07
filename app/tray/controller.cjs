@@ -174,7 +174,8 @@ function createController(o) {
     const exp = pid && o.plans ? o.plans.exportBrief(pid) : null;
     if (o2.planId && !exp) return false;
     dropLingering();
-    const script = path.join(root, "data", "demo", "demo-call.json"),
+    const en = !!o.uiLanguage && o.uiLanguage() === "en"; // English interface: the English pretend call
+    const script = path.join(root, "data", "demo", en ? "demo-call.en.json" : "demo-call.json"),
       gapMs = 4500;
     let lines = 16;
     try {
@@ -185,7 +186,7 @@ function createController(o) {
     const wav = path.join(tmpDir, "wingman-practice.wav");
     lib.writeSilentWav(wav, Math.ceil((lines * gapMs) / 1000) + 12);
     const ok = startCall(
-      ["--profile", "demo", "--file", wav, ...(exp ? ["--brief", exp.briefFile] : ["--no-brief"])],
+      ["--profile", en ? "demo-en" : "demo", "--file", wav, ...(exp ? ["--brief", exp.briefFile] : ["--no-brief"])],
       { WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: String(gapMs), ...(exp ? { WINGMAN_ATTACH_DIR: exp.attachDir } : {}) },
       exp ? exp.meeting.id : "",
     );

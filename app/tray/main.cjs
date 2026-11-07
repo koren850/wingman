@@ -289,7 +289,21 @@ app.whenReady().then(() => {
     fs.mkdirSync(CALLS_DIR, { recursive: true, mode: 0o700 });
   }
   plans = createPlanStore({ dir: BRIEFS_DIR, readOnly: SNAPSHOT }); // snapshot mode never converts, sweeps or writes
+  // Interface language for the practice call: read from the settings in the background (at most every 5 s), the last known value is used now.
+  let uiLang = "he",
+    uiLangAt = 0;
+  const readSettings = lib.settingsReader({ execFile: require("node:child_process").execFile, root: ROOT });
+  const uiLanguage = () => {
+    if (!SNAPSHOT && Date.now() - uiLangAt > 5000) {
+      uiLangAt = Date.now();
+      readSettings().then((r) => {
+        if (r && r.ok) uiLang = lib.uiLanguageOf(r.values);
+      });
+    }
+    return uiLang;
+  };
   ctl = createController({
+    uiLanguage,
     // Snapshot mode can never start anything: the spawn function itself refuses.
     spawn: SNAPSHOT
       ? () => {
@@ -305,6 +319,7 @@ app.whenReady().then(() => {
   });
   host = windowHost.create({ app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, systemPreferences, controller: ctl, plans });
   ctl.refreshPlans();
+  uiLanguage();
   // Local control channel for the `wingman` CLI: owner-only Unix socket, fixed command list (tray/control-socket.cjs). Never in snapshot mode.
   if (!SNAPSHOT) {
     // A start from the command line and every stop-and-delete ask the user in a native window first (tray/lib.cjs); settings are read when asked, so a change applies at once.

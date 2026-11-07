@@ -12,7 +12,7 @@ import { ROOT } from "./env.ts";
 
 const { createController, COMMANDS } = createRequire(import.meta.url)("../tray/controller.cjs");
 
-function fake() {
+function fake(extra: Record<string, unknown> = {}) {
   const spawned: any[] = [],
     kills: any[] = [],
     timers: { fn: () => void; ms: number }[] = [],
@@ -47,6 +47,7 @@ function fake() {
     notify: (t: string) => notes.push(t),
     onChange: () => changes++,
     env: {},
+    ...extra,
   });
   return { ctl, spawned, kills, timers, notes, changes: () => changes };
 }
@@ -208,6 +209,14 @@ test("practice call uses the demo profile and scripted speech", () => {
   assert.equal(ctl.getState().practice, true);
 });
 
+test("practice call uses the English pretend call when the interface language is English", () => {
+  const { ctl, spawned } = fake({ uiLanguage: () => "en" });
+  assert.equal(ctl.practice(), true);
+  const c = spawned[0];
+  assert.ok(c.args.includes("demo-en") && !c.args.includes("demo"));
+  assert.ok(c.opts.env.WINGMAN_STT_SCRIPT.endsWith("demo-call.en.json"));
+});
+
 test("doctor: refused during a call, summarised otherwise", async () => {
   const { ctl, spawned } = fake();
   ctl.start({});
@@ -277,4 +286,13 @@ test("a Hebrew letter split across two stderr chunks is decoded intact", () => {
   c.stderr.emit("data", bytes.subarray(0, 1));
   c.stderr.emit("data", bytes.subarray(1));
   assert.equal(ctl.getState().lastError, "שלום עולם");
+});
+
+test("uiLanguageOf: explicit language wins; auto is English only when the call language is English", () => {
+  const { uiLanguageOf } = createRequire(import.meta.url)("../tray/lib.cjs");
+  assert.equal(uiLanguageOf({ "ui.language": "en", "stt.language": "multi" }), "en");
+  assert.equal(uiLanguageOf({ "ui.language": "he", "stt.language": "en" }), "he");
+  assert.equal(uiLanguageOf({ "ui.language": "auto", "stt.language": "en" }), "en");
+  assert.equal(uiLanguageOf({ "ui.language": "auto", "stt.language": "multi" }), "he");
+  assert.equal(uiLanguageOf(null), "he");
 });
