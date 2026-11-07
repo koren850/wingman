@@ -4,3 +4,4 @@ onlyBuiltDependencies:
 allowBuilds:
   esbuild: true
   electron: true
+  electron-winstaller: false # Windows installer helper pulled in by electron-builder; not used for the macOS build
