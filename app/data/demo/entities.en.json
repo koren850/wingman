@@ -1,0 +1,3 @@
+{ "generatedAt": "2026-11-02T00:00:00Z", "source": "demo fixture (fake clients)",
+  "clients": [ { "id": 9001, "name": "Acme Stores Ltd", "aliases": ["Acme Stores", "acme"] } ],
+  "domains": [ { "domain": "acmestores.com", "clientId": 9001, "server": "test-1", "cms": "wordpress", "cmsVersion": "6.9", "php": "8.3", "sslExpires": null, "suspended": false } ] }

@@ -1,0 +1,16 @@
+[
+ { "speaker": "me", "text": "Hi, how are you?" },
+ { "speaker": "them", "text": "Hi, this is Dana from Acme Stores, a friend gave me your number" },
+ { "speaker": "them", "text": "We have a WooCommerce shop and the site has been really slow lately, why does that happen?" },
+ { "speaker": "me", "text": "Usually it is the hosting, heavy images or plugins, I will check" },
+ { "speaker": "them", "text": "And do you have a backup of the site?" },
+ { "speaker": "me", "text": "Yes, I will explain exactly how it works for us" },
+ { "speaker": "them", "text": "Great. Our site is acmestores.com" },
+ { "speaker": "them", "text": "How much does the whole package cost per month?" },
+ { "speaker": "me", "text": "I want to look at the site first and then send you a proper quote" },
+ { "speaker": "them", "text": "Sounds good. My number is zero five four, one two three four, five six seven" },
+ { "speaker": "them", "text": "And you can send the quote to dana at acmestores dot com" },
+ { "speaker": "them", "text": "One last thing, can the shop connect to an invoicing system?" },
+ { "speaker": "me", "text": "Sure, we will cover that in the quote. Thanks Dana" },
+ { "speaker": "them", "text": "Thank you so much, have a good day" }
+]
