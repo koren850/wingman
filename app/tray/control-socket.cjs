@@ -35,7 +35,7 @@ function endpointFor(file, platform = process.platform) {
 function socketPath(env = process.env, os = nodeOs, platform = process.platform) {
   const e = env.WINGMAN_CONTROL_SOCKET;
   if (pipes.usesPipes(platform)) return e ? endpointFor(e, platform) : pipes.pipeName("control");
-  return e ? nodePath.resolve(e) : nodePath.join(os.homedir(), ".config", "wingman", "run", "control.sock");
+  return e ? nodePath.resolve(e) : nodePath.posix.join(os.homedir(), ".config", "wingman", "run", "control.sock"); // not Windows here: it uses a pipe
 }
 
 const err = (code, error) => ({ ok: false, code, error });

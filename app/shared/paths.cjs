@@ -28,13 +28,16 @@ function dataDir(env = process.env, home = os.homedir(), platform = process.plat
   const d = env.WINGMAN_DATA_DIR;
   return d && d.trim() ? path.resolve(d.trim()) : defaultDataDir(env, home, platform);
 }
+/** The path module that matches a platform's folder style (so a Linux path built on Windows keeps forward slashes). */
+const pathFor = (platform) => (platform === "win32" ? path.win32 : path.posix);
+
 function callsDir(env = process.env, home = os.homedir(), platform = process.platform) {
   const d = env.WINGMAN_CALLS_DIR;
-  return d && d.trim() ? path.resolve(d.trim()) : path.join(dataDir(env, home, platform), "calls");
+  return d && d.trim() ? path.resolve(d.trim()) : pathFor(platform).join(dataDir(env, home, platform), "calls");
 }
 function briefsDir(env = process.env, home = os.homedir(), platform = process.platform) {
   const d = env.WINGMAN_BRIEFS_DIR;
-  return d && d.trim() ? path.resolve(d.trim()) : path.join(dataDir(env, home, platform), "briefs");
+  return d && d.trim() ? path.resolve(d.trim()) : pathFor(platform).join(dataDir(env, home, platform), "briefs");
 }
 const attachDir = (env = process.env, home = os.homedir()) => path.join(briefsDir(env, home), "attachments");
 const entitiesFile = (env = process.env, home = os.homedir()) => path.join(dataDir(env, home), "entities.json");

@@ -27,7 +27,7 @@ function electronExe(root, { path = nodePath, fs = nodeFs, env = process.env } =
  */
 function binCommand(name, args, root, o = {}) {
   const platform = o.platform || process.platform;
-  const path = o.path || (platform === "win32" ? nodePath.win32 : nodePath);
+  const path = o.path || (platform === "win32" ? nodePath.win32 : nodePath.posix);
   const list = Array.isArray(args) ? args : [];
   if (platform !== "win32") return { cmd: path.join(root, "node_modules", ".bin", name), args: list };
   if (name === "tsx") return { cmd: o.execPath || process.execPath, args: [tsxCli(root, path), ...list] };
