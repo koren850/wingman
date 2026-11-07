@@ -6,7 +6,7 @@
 //   setup:askMic / setup:openPrivacy / setup:openLink   the Microphone prompt, the Privacy panes and the two key pages (fixed addresses)
 //   setup:mics / setup:setMic    list microphones, save audio.mic.device
 //   setup:setOneScreen           save overlay.allowPrimary
-//   setup:copyPack / setup:revealPack   copy the example pack into your own pack folder (never overwrites)
+//   setup:copyPack / setup:revealPack   copy a starter pack (or the example pack) into your own pack folder (never overwrites)
 // Snapshot/preview mode (o.preview) never reads or writes anything real.
 const fs = require("node:fs");
 const os = require("node:os");
@@ -66,10 +66,14 @@ function packInfo(root, env, home) {
   });
   return { using: mine.length ? "user" : "example", userDir: d.user, userFiles: mine, canCopy: !mine.length };
 }
-/** Copies the example pack files into the user pack folder (folder 700, files 600). Refuses when the user already has pack files. */
-function copyExamplePack(root, env, home) {
+/** Packs the user can start from: "example" (data/example-pack) or a folder in data/starter-packs. */
+const STARTERS = ["example", "sales", "support", "interview", "empty"];
+/** Copies a starter pack (default: the example pack) into the user pack folder (folder 700, files 600). Refuses when the user already has pack files. */
+function copyExamplePack(root, env, home, pick = "example") {
+  if (!STARTERS.includes(pick)) return { ok: false, error: "Unknown starter pack." };
   const d = packDirs(root, env, home),
     info = packInfo(root, env, home);
+  if (pick !== "example") d.example = path.join(root, "data", "starter-packs", pick);
   if (!info.canCopy) return { ok: false, error: "Your pack folder already has files, so nothing was copied." };
   fs.mkdirSync(d.user, { recursive: true, mode: 0o700 });
   const copied = [];
@@ -199,7 +203,7 @@ function register(o) {
     if (o.preview) return preview;
     return done(await o.child(["src/settings-edit-cli.ts", "write"], JSON.stringify({ "overlay.allowPrimary": on ? true : null })));
   });
-  o.handle("setup:copyPack", () => (o.preview ? preview : copyExamplePack(o.root, env, home)));
+  o.handle("setup:copyPack", (pick) => (o.preview ? preview : copyExamplePack(o.root, env, home, typeof pick === "string" ? pick : "example")));
   o.handle("setup:revealPack", async () => {
     if (o.preview) return preview;
     const d = packDirs(o.root, env, home).user;

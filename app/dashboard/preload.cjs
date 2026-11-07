@@ -82,7 +82,7 @@ contextBridge.exposeInMainWorld("wingman", {
   setupMics: () => ipcRenderer.invoke("setup:mics"),
   setupSetMic: (v) => ipcRenderer.invoke("setup:setMic", v === null ? null : String(v)),
   setupSetOneScreen: (on) => ipcRenderer.invoke("setup:setOneScreen", !!on),
-  setupCopyPack: () => ipcRenderer.invoke("setup:copyPack"),
+  setupCopyPack: (pick) => ipcRenderer.invoke("setup:copyPack", pick),
   setupRevealPack: () => ipcRenderer.invoke("setup:revealPack"),
   reveal: (what) => ipcRenderer.invoke("settings:reveal", String(what)),
 });

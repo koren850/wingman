@@ -635,10 +635,40 @@ function screenPanel() {
     suMsg("onescreen"),
   );
 }
+/** Starter packs offered in setup. The first four are English; the web hosting example is Hebrew with English versions. */
+const STARTER_PACKS = [
+  ["sales", "Sales (B2B software)", "Calls with prospects: what we do, integrations, security, onboarding, next steps."],
+  ["support", "Customer support", "Calls about a problem with a software product: login, slow, sync, billing, escalate."],
+  ["interview", "Job interview practice", "Practice mode only: outlines for behavioural and technical questions."],
+  ["empty", "Empty pack", "Only the safe 'check and come back' cards. You write the rest."],
+  ["example", "Web hosting (example)", "An invented web and hosting business, in Hebrew with English versions."],
+];
 function packPanel() {
   const s = SU.status;
   if (!s) return h("div", { class: "loading" }, "Loading…");
   const p = s.pack;
+  SU.pick = SU.pick || "sales";
+  const picker = h(
+    "fieldset",
+    { class: "su-picks" },
+    h("legend", { class: "help" }, "Start from"),
+    STARTER_PACKS.map(([id, label, text]) =>
+      h(
+        "label",
+        { class: "su-pick" },
+        h("input", {
+          type: "radio",
+          name: "su-starter",
+          value: id,
+          checked: SU.pick === id,
+          onchange: () => {
+            SU.pick = id;
+          },
+        }),
+        h("span", {}, h("b", {}, label), " ", h("span", { class: "muted" }, text)),
+      ),
+    ),
+  );
   return h(
     "div",
     { class: "su-body" },
@@ -647,13 +677,14 @@ function packPanel() {
       { class: "help" },
       p.using === "user"
         ? `Wingman answers from your own pack (${p.userFiles.join(", ")}) in ${p.userDir}.`
-        : "Wingman answers from the example pack that comes with it: an invented web and hosting business. It works for a try-out. To make it yours, copy it to your own folder and edit the files there.",
+        : "Until you pick one, Wingman answers from an invented web and hosting example. Pick a starter that is close to your work. It is copied to your own folder, and you edit the copy there.",
     ),
+    p.canCopy ? picker : null,
     h(
       "div",
       { class: "actions" },
       p.canCopy
-        ? btn("Copy the example pack to my folder", {
+        ? btn("Copy to my folder", {
             id: "su-copypack",
             cls: "sm",
             icon: "folder",
@@ -661,7 +692,7 @@ function packPanel() {
             onclick: () =>
               suAct(
                 "pack",
-                () => api.setupCopyPack(),
+                () => api.setupCopyPack(SU.pick),
                 (r) => `Copied ${r.copied.length} files to ${r.dir}. Edit them there; changes apply to the next call.`,
               ).then(() => loadSetup().then(suRedraw)),
           })

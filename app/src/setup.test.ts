@@ -182,6 +182,18 @@ test("pack: copying the example pack never overwrites, uses 700/600, and the use
   assert.equal(readFileSync(join(env.WINGMAN_PACK_DIR, "bank.yaml"), "utf8"), "MY EDIT");
 });
 
+test("pack: a starter pack is copied from data/starter-packs, an unknown name is refused", () => {
+  const root = tmp(),
+    home = tmp(),
+    env = { WINGMAN_PACK_DIR: join(home, "pack") };
+  mkdirSync(join(root, "data", "starter-packs", "sales"), { recursive: true });
+  writeFileSync(join(root, "data", "starter-packs", "sales", "bank.yaml"), "sales bank");
+  assert.equal(setup.copyExamplePack(root, env, home, "../etc").ok, false);
+  const c = setup.copyExamplePack(root, env, home, "sales");
+  assert.deepEqual(c.copied, ["bank.yaml"]);
+  assert.equal(readFileSync(join(env.WINGMAN_PACK_DIR, "bank.yaml"), "utf8"), "sales bank");
+});
+
 test("profile child: read, write (keeps timezone), and it refuses unknown fields", () => {
   const dir = tmp(),
     file = join(dir, "profile.yaml");
