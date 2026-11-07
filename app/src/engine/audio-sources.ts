@@ -1,7 +1,8 @@
 // Audio input: the replay file (--file) or the supervised mic and system-audio sources, with the echo gate for the mic.
 import { spawn } from "node:child_process";
 import { childEnv } from "../env.ts";
-import { SystemSource, MicSource, FileSource, SupervisedSource, pickMicDevice, avDevice, peakOf } from "../audio.ts";
+import { FileSource, SupervisedSource, pickMicDevice, avDevice, peakOf } from "../audio.ts";
+import { backendFor } from "../audio-platform.ts";
 import { resolveEchoMode, type EchoMode } from "../echo.ts";
 import { readAudioDevices, bluetoothInUse } from "../devices.ts";
 import { stopConsentTimer } from "./consent.ts";
@@ -103,6 +104,7 @@ export async function startLiveSources() {
       .on("error", () => {})
       .unref();
   // Client audio: audiotee (macOS tap) | device (avfoundation input such as BlackHole, via ffmpeg) | off.
+  const backend = backendFor();
   const srcKind = S.audio.system.source;
   const W = S.audio.watchdog;
   const deadFrameMs = Math.max(W.silentThemMs, 8000);
@@ -113,7 +115,7 @@ export async function startLiveSources() {
       ? new SupervisedSource({
           name: "sys",
           stallMs: deadFrameMs + 4000,
-          make: () => (srcKind === "audiotee" ? new SystemSource() : new MicSource(S.audio.system.device)),
+          make: () => backend.createSystem(srcKind, S.audio.system.device),
         })
       : undefined;
   const micDevice = S.audio.mic.device;
@@ -127,7 +129,7 @@ export async function startLiveSources() {
         log.write("events", { type: "audio.mic.device", configured: micDevice, using: dev, failures });
         console.log(`mic: trying ${dev}`);
       }
-      return new MicSource(dev);
+      return backend.createMic(dev);
     },
   });
   liveSources.push(mic);

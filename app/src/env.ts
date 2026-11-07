@@ -7,6 +7,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import paths from "../shared/paths.cjs";
 import migrate from "../shared/migrate.cjs";
+import { KEY_VARS_ALL } from "./providers/catalog.ts";
 import { realKeychain, resolveKey, ACCOUNTS, type Keychain } from "./keychain.ts";
 export { childEnv } from "./keychain.ts";
 
@@ -27,17 +28,8 @@ export const resolveUserPath = (p: string): string => paths.resolveUserPath(p);
 const migration = migrate.ensureUserData({});
 export { migration };
 
-/** provider id -> env var holding its key. */
-export const KEY_VARS = {
-  anthropic: "ANTHROPIC_API_KEY",
-  openai: "OPENAI_API_KEY",
-  google: "GOOGLE_GENERATIVE_AI_API_KEY",
-  mistral: "MISTRAL_API_KEY",
-  groq: "GROQ_API_KEY",
-  deepgram: "DEEPGRAM_API_KEY",
-  soniox: "SONIOX_API_KEY",
-  gladia: "GLADIA_API_KEY",
-} as const;
+/** provider id -> env var holding its key. Derived from the provider catalog (providers/catalog.ts). */
+export const KEY_VARS = KEY_VARS_ALL;
 export type KeyName = keyof typeof KEY_VARS;
 export type Keys = Partial<Record<KeyName, string>>;
 

@@ -10,12 +10,13 @@ import { soniox } from "./soniox.ts";
 import { gladia } from "./gladia.ts";
 import { script } from "../scripted.ts";
 import type { SttProvider } from "./types.ts";
+import type { SttId } from "../catalog.ts";
 
 /** All adapters, including the offline "script" double. */
-export const STT_PROVIDERS: Record<string, SttProvider> = { deepgram, soniox, gladia, script };
+export const STT_PROVIDERS: Record<SttId, SttProvider> = { deepgram, soniox, gladia, script };
 /** Adapter by id. Throws with the list of valid ids. */
 export function getSttProvider(id: string): SttProvider {
-  const p = STT_PROVIDERS[id];
+  const p = (STT_PROVIDERS as Record<string, SttProvider | undefined>)[id];
   if (!p) throw new Error(`Unknown STT provider "${id}". Available: ${Object.keys(STT_PROVIDERS).join(", ")}`);
   return p;
 }

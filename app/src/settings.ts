@@ -9,6 +9,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { z } from "zod";
+import { STT_IDS } from "./providers/catalog.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const APP_DIR = join(HERE, "..");
@@ -19,7 +20,7 @@ export const expandHome = (p: string) => (p.startsWith("~/") ? join(homedir(), p
 
 const int = (min: number, max: number) => z.number().int().min(min).max(max);
 const modelRef = z.string().regex(/^[a-z0-9_-]+:.+$/i, "expected provider:model, e.g. anthropic:claude-haiku-5-5");
-const sttName = z.enum(["deepgram", "soniox", "gladia", "script"]); // script = offline test double (src/providers/scripted.ts)
+const sttName = z.enum(STT_IDS); // from providers/catalog.ts (script = offline test double)
 const price = z.strictObject({
   inUsdPerM: z.number().min(0),
   outUsdPerM: z.number().min(0),

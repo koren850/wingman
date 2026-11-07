@@ -2,6 +2,7 @@
 // other providers are imported on demand and give a clear "pnpm add" error when the package is missing.
 import { generateText, type LanguageModel } from "ai";
 import { KEY_VARS, type Keys, type KeyName } from "../env.ts";
+import { LLM_CATALOG } from "./catalog.ts";
 import { classifyLlmError, ProviderError } from "./errors.ts";
 
 /** Bad or missing configuration (model ref, package, key). `fix` is a command or hint shown to the user. */
@@ -15,16 +16,11 @@ export class ConfigError extends Error {
   }
 }
 
-/** How to load a provider: npm package, factory export name, and which key it needs (none for the offline double). */
-export type ProviderSpec = { pkg: string; factory: string; key?: KeyName };
-export const LLM_PROVIDERS: Record<string, ProviderSpec> = {
-  anthropic: { pkg: "@ai-sdk/anthropic", factory: "createAnthropic", key: "anthropic" },
-  openai: { pkg: "@ai-sdk/openai", factory: "createOpenAI", key: "openai" },
-  google: { pkg: "@ai-sdk/google", factory: "createGoogleGenerativeAI", key: "google" },
-  mistral: { pkg: "@ai-sdk/mistral", factory: "createMistral", key: "mistral" },
-  groq: { pkg: "@ai-sdk/groq", factory: "createGroq", key: "groq" },
-  scripted: { pkg: "./scripted.ts", factory: "createScripted" }, // offline test double, no key
-};
+/** How to load a provider: npm package, factory export name, and which key it needs (none for the offline double). Data lives in catalog.ts. */
+export type ProviderSpec = { pkg: string; factory: string; keyVar?: string; key?: KeyName };
+export const LLM_PROVIDERS: Record<string, ProviderSpec> = Object.fromEntries(
+  Object.entries(LLM_CATALOG).map(([id, e]) => [id, { ...e, ...("keyVar" in e ? { key: id as KeyName } : {}) }]),
+);
 
 /** "provider:model" -> parts. Throws ConfigError for a bad format or an unknown provider. */
 export function parseModelRef(ref: string): { provider: string; model: string } {

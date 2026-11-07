@@ -4,6 +4,7 @@
 // SttChannel (channel.ts) sits on top and adds provider switching; the adapters here only reconnect their own socket.
 import type { EventEmitter } from "node:events";
 import type { ProviderError } from "../errors.ts";
+import type { SttId } from "../catalog.ts";
 
 /** "me" = the user's microphone, "them" = system audio (the other side). */
 export type Channel = "me" | "them";
@@ -53,7 +54,7 @@ export interface SttStreamLike extends EventEmitter {
 
 /** An STT adapter: capabilities plus a factory for streams. */
 export interface SttProvider {
-  id: "deepgram" | "soniox" | "gladia";
+  id: SttId;
   experimental: boolean;
   capabilities: { keyterms: boolean; diarize: boolean; interim: boolean; maxKeyterms: number };
   create(opts: SttOptions): SttStreamLike;

@@ -156,6 +156,13 @@ Used for UX checks and for the images in `docs/ux/`. They need the Electron runt
 - User data paths come from `shared/paths.cjs` (and `src/env.ts`). Never hard-code `calls/` or `data/private/`. `app/data/` is for shipped data only.
 - Print errors with `errText` (`src/errtext.ts`), not the raw error object: it can contain prompts.
 
+## Extending
+
+- **A speech or model provider.** Write the adapter (`app/src/providers/stt/<name>.ts`, or an AI SDK package for models). Add one line to `app/src/providers/catalog.ts` (id and key variable) and one to the registry (`STT_PROVIDERS` in `providers/stt/index.ts`). The settings schema, key names and types follow from the catalog, and the compiler fails if the registry and the catalog disagree. The Keys page in the dashboard lists only Deepgram and Anthropic on purpose.
+- **A language.** Add `app/src/lang/<id>.ts` that satisfies the `Language` type (question heads, request cues, fillers, price/date/promise/salary patterns) and list it in `lang/index.ts`. `lang.test.ts` fails if a guard family is empty. Run `pnpm eval` after any list change.
+- **A platform.** Implement `AudioBackend` (`app/src/audio-platform.ts`): a mic source and a system-audio source. win32 and linux are stubs with TODO notes.
+- **Lint rules.** "Never use X" checks (innerHTML, eval, hand-built `.bin` paths) are ESLint rules in `app/eslint.config.mjs`, not tests.
+
 ## Folder map
 
 | Path | Content |

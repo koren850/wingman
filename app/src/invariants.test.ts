@@ -1,7 +1,7 @@
 // Static invariants: checks that read the source text of the repo on purpose.
 //
 // Most tests in this repo call code and assert on what it does. The ones here cannot, for one of three reasons, and each test says which:
-//  - the property is "this never appears" (innerHTML, a hand-built .bin path, a key in a log call), so no run can prove it;
+//  - the property is "this never appears" (a key in a log call), so no run can prove it. Pure "never use X" rules (innerHTML, eval, a hand-built .bin path, glossary words) are ESLint rules in eslint.config.mjs;
 //  - the code is an Electron main process, a shell installer or a browser page, none of which a unit test can start;
 //  - the code is an engine singleton (boot.ts and the modules that import it load settings and keys on import).
 // They are kept few and labelled, in the way a lint rule is. Anything that can be tested by calling a function lives in a behavioural test instead.
@@ -19,15 +19,6 @@ const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
 const require = createRequire(import.meta.url);
 const strings = require("../overlay/strings.js");
 const readOverlayFile = readFileSync;
-
-// Why static: Every window must keep its CSP, sender checks and fixed command lists. A regression here is silent at runtime (the page just becomes less safe), so the check reads the source.
-test("renderer scripts never inject HTML or evaluate strings", () => {
-  for (const f of ["dashboard/app.js", "dashboard/home.js", "dashboard/settings.js", "dashboard/setup.js", "dashboard/boot.js", "dashboard/bidi.js"]) {
-    const t = read(f);
-    for (const bad of [/\.innerHTML\b/, /\.outerHTML\b/, /insertAdjacentHTML/, /document\.write/, /\beval\(/, /new Function\(/, /setTimeout\(\s*["'`]/])
-      assert.doesNotMatch(t, bad, `${f} uses ${bad}`);
-  }
-});
 
 // Why static: Every window must keep its CSP, sender checks and fixed command lists. A regression here is silent at runtime (the page just becomes less safe), so the check reads the source.
 test("CSP is strict and the page loads only its own files", () => {
@@ -381,6 +372,7 @@ test("static: key values can only reach memory; no logging or persistence path t
     "src/summary.ts",
     "src/settings-cli.ts",
     "src/providers/llm.ts",
+    "src/providers/catalog.ts", // env var names only, no values
     "src/keys.test.ts",
     "src/stt.ts",
     "src/providers/stt/channel.ts",
@@ -546,18 +538,6 @@ test("every Electron main process installs the permission lockdown", async () =>
     assert.match(readFileSync(join(ROOT, f), "utf8"), /require\("\.\.\/shared\/permissions\.cjs"\)\.install\(app\)/, f);
 });
 
-// Why static: a new Electron window or spawn site is where these slip in; there is no runtime path to exercise.
-test("no spawn site builds .bin/tsx or .bin/electron by hand", async () => {
-  const { readFileSync, readdirSync } = await import("node:fs");
-  const bad: string[] = [];
-  for (const d of ["src", "src/cli", "src/engine", "tray", "dashboard", "overlay"])
-    for (const f of readdirSync(join(ROOT, d))) {
-      if (!/\.(ts|cjs|js)$/.test(f) || /\.test\./.test(f)) continue;
-      if (/"\.bin"/.test(readFileSync(join(ROOT, d, f), "utf8"))) bad.push(`${d}/${f}`);
-    }
-  assert.deepEqual(bad, []);
-});
-
 // Why static: a child process that inherits the environment would inherit the API keys; the spawn sites are the only place to check it.
 test("child processes get a scrubbed environment: the engine drops key variables at start, and caffeinate, ffmpeg and the settings tools use childEnv()", () => {
   const boot = read("src/engine/boot.ts"),
@@ -574,23 +554,6 @@ test("the window host sends settings write commands through the serial queue", (
   assert.match(read("dashboard/window.cjs"), /args\.includes\("write"\) \? writes\(/);
 });
 
-// Why static: the menu-bar app registers global shortcuts in an Electron main process; a collision with the answer window's keys is silent.
-test("the menu-bar app's main process registers no Ctrl+Opt+1-3 (the answer window's keys)", () => {
-  assert.ok(!/Control\+Alt\+[123]\b/.test(read("tray/main.cjs")), "main.cjs registers no Ctrl+Opt+1-3");
-});
-
-// Why static: a wording rule over the page scripts (a lint rule in test form); there is no function to call.
-test("visible dashboard text follows the glossary (no consent, briefing, bank, stall, doctor wording)", () => {
-  for (const f of ["dashboard/home.js", "dashboard/live.js", "dashboard/app.js", "dashboard/settings.js", "dashboard/boot.js", "tray/settings-catalog.cjs"]) {
-    const t = read(f);
-    assert.doesNotMatch(
-      t,
-      /Waiting for consent|Consent given|consent line|Check everything|Stop and delete|"Bank"|"Stall"|Briefing\b|"Calc"|(?<!run)Doctor\b/,
-      f,
-    );
-  }
-});
-
 test("every HTML page has a CSP with default-src 'none' and no unsafe-inline, and no inline style or script", () => {
   for (const f of ["dashboard/index.html", "overlay/index.html", "tray/prompt.html"]) {
     const t = read(f);
@@ -600,4 +563,27 @@ test("every HTML page has a CSP with default-src 'none' and no unsafe-inline, an
     assert.doesNotMatch(t, /<style[\s>]|\sstyle="|\son[a-z]+="/i, `${f} has inline style or handler`);
     assert.doesNotMatch(t.replace(/<!--[\s\S]*?-->/g, ""), /<script(?![^>]*\ssrc=)/i, `${f} has an inline script`);
   }
+});
+
+// These rules used to be source-text tests here. They are ESLint rules now (eslint.config.mjs), which see syntax, not comments, and cover new files too.
+// This test proves the rules still fire, so the protection cannot be dropped by accident.
+test("lint rules that replaced source-text tests still fire", async () => {
+  const { ESLint } = await import("eslint");
+  const eslint = new ESLint({ cwd: ROOT });
+  const rulesFor = async (code: string, filePath: string) => (await eslint.lintText(code, { filePath: join(ROOT, filePath) }))[0].messages.map((m) => m.ruleId);
+  for (const bad of [
+    "el.innerHTML = x;",
+    "el.outerHTML = x;",
+    "el.insertAdjacentHTML('beforeend', x);",
+    "document.write(x);",
+    "eval('1');",
+    "new Function('a');",
+    "setTimeout('f()', 1);",
+  ])
+    for (const f of ["dashboard/app.js", "overlay/app.js"]) assert.ok((await rulesFor(bad, f)).length > 0, `${f}: ${bad} must be flagged`);
+  for (const f of ["src/x.ts", "tray/x.cjs", "dashboard/home.js"])
+    assert.ok((await rulesFor('const p = ".bin";\nvoid p;', f)).includes("no-restricted-syntax"), `${f}: .bin`);
+  assert.ok((await rulesFor('void "Briefing";', "dashboard/home.js")).includes("no-restricted-syntax"), "glossary word");
+  assert.ok((await rulesFor('void "Control+Alt+1";', "tray/main.cjs")).includes("no-restricted-syntax"), "Ctrl+Opt+1 shortcut");
+  assert.deepEqual(await rulesFor("el.textContent = x;", "dashboard/app.js"), [], "textContent is fine");
 });
