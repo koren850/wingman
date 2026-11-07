@@ -371,7 +371,7 @@ const STEPS = [
         h(
           "p",
           { class: "help" },
-          "For real calls you need two keys, both from paid services. Paste each one and press Save, then Test. Typical cost: about one dollar per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit.",
+          "For real calls you need two keys, both from paid services. Paste each one and press Save, then Test. Typical cost: about $1.40 per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit.",
         ),
         h("div", { class: "actions" }, linkBtn("deepgram", "Get a Deepgram key"), linkBtn("anthropic", "Get an Anthropic key")),
         h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic")),
