@@ -93,7 +93,7 @@
           ? "The microphone is not picking up sound. Check microphone permission and selection in Settings, then run the readiness check."
           : "I have not heard you for a few minutes. If you spoke, check the microphone.";
       case "them-silent":
-        return "No audio from the other side (the system audio channel sends nothing). Answers for you still work. Check that the call audio is on and the volume is up.";
+        return "No audio from the other side (the system audio channel sends nothing). Cards about what you say still work. Check that the call audio is on and the volume is up.";
       default:
         return null;
     }
