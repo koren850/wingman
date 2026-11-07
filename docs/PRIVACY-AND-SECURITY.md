@@ -98,7 +98,7 @@ The answer window has content protection on, which asks macOS to hide it from sc
 
 - AI text passes through code guards that replace prices, dates, timelines and promises with a stall line. Guards are patterns and can miss a paraphrase. Treat every card as a hint.
 - AI cards are labelled "AI · unverified". Prepared cards are the ones you wrote.
-- The summary and the follow-up email draft are drafts, marked "Written by AI, so check it before you send". Prices, dates and promises become `[להשלים: ...]` placeholders for you to fill in. So does every link, web address (also an IP address, or one hidden with zero-width or fullwidth characters), email address and phone number that is not in your own notes, because the other side of a call can try to make the model write one into your email.
+- The summary and the follow-up email draft are drafts, marked "Written by AI, so check it before you send". Prices, dates and promises become placeholders for you to fill in (`[fill in: ...]` on an English call, `[להשלים: ...]` on a Hebrew one). So does every link, web address (also an IP address, or one hidden with zero-width or fullwidth characters), email address and phone number that is not in your own notes, because the other side of a call can try to make the model write one into your email.
 
 ## Known gaps
 

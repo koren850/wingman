@@ -279,7 +279,7 @@ After the guards:
 דן
 ```
 
-Placeholders: `[להשלים: מחיר]` (price), `[להשלים: תאריך]` (date), `[להשלים: התחייבות]` (promise), `[להשלים: קישור]` (link), `[להשלים: אימייל]` (email), `[להשלים: טלפון]` (phone). In the demo you can see the count: "טיוטת מייל: מוכנה (2 משפטים הוחלפו ב-[להשלים])", "email draft: ready (2 sentences replaced)".
+Placeholders: `[להשלים: מחיר]` (price), `[להשלים: תאריך]` (date), `[להשלים: התחייבות]` (promise), `[להשלים: קישור]` (link), `[להשלים: אימייל]` (email), `[להשלים: טלפון]` (phone). In the demo you can see the count: "טיוטת מייל: מוכנה (2 משפטים הוחלפו ב-[להשלים])", "email draft: ready (2 sentences replaced)". On an English call the same placeholders are in English: `[fill in: price]`, `[fill in: date]`, `[fill in: promise]`, `[fill in: link]`, `[fill in: email]`, `[fill in: phone]`.
 
 ## E. Practice mode
 

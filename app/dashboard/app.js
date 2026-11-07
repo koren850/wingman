@@ -1142,7 +1142,9 @@ function summaryWhy(d) {
   return r.startsWith("short") ? "The call was too short to summarize (summary.minWords)" : SKIP_WHY[r] || "";
 }
 // Placeholder the summary writes where it lacks a fact (Hebrew "to fill in"); shown highlighted in the email. One capture group so split() keeps the matches.
-const PH = /(\[להשלים[^\]\n]*\])/;
+// Next-step owners are stored in Hebrew (summary.json); the window is English.
+const whoLabel = (w) => (w === "אני" ? "Me" : w === "לקוח" ? "Client" : w === "הצד השני" ? "Other side" : w);
+const PH = /(\[(?:להשלים|fill in)[^\]\n]*\])/;
 /** Email draft as one div per line, each with its own direction (mixed Hebrew/English drafts) and placeholders highlighted. */
 function emailLines(text) {
   return text.split("\n").map((ln) => {
@@ -1244,7 +1246,7 @@ function tFollowup(pane, d) {
         "label",
         { class: "step" + (done[i] ? " done" : ""), for: "step-" + i },
         cb,
-        chip(n.who === "אני" ? "Me" : n.who === "לקוח" ? "Client" : n.who, n.who === "אני" ? "me" : "info"),
+        chip(whoLabel(n.who), n.who === "אני" ? "me" : "info"),
         h(
           "span",
           { class: "what", dir: dirOf(n.what), lang: langOf(n.what) },
@@ -1262,10 +1264,9 @@ function tFollowup(pane, d) {
       stepsUl.append(h("li", {}, row));
     });
     upd();
-    const stepsText = () =>
-      s.nextSteps.map((n) => `- [ ] ${n.who === "אני" ? "Me" : n.who === "לקוח" ? "Client" : n.who}: ${n.what}${n.when ? " (" + n.when + ")" : ""}`).join("\n");
+    const stepsText = () => s.nextSteps.map((n) => `- [ ] ${whoLabel(n.who)}: ${n.what}${n.when ? " (" + n.when + ")" : ""}`).join("\n");
     const email = s.followUpEmail || "";
-    const phN = (email.match(/\[להשלים[^\]\n]*\]/g) || []).length || s.guardReplaced || 0;
+    const phN = (email.match(/\[(?:להשלים|fill in)[^\]\n]*\]/g) || []).length || s.guardReplaced || 0;
     const aside = h(
       "aside",
       { class: "emailbox", "aria-label": "Follow-up email" },
