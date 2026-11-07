@@ -225,7 +225,8 @@ export async function shutdown() {
     }
     console.log(`\nDeleted ${log.dir}`);
   } else {
-    console.log(`\nSaved ${log.dir}\nRate the cards: pnpm tag · delete later: pnpm purge ${log.id}`);
+    // `pnpm demo` runs in a temporary folder that it deletes, so the hint would point nowhere.
+    if (process.env.WINGMAN_DEMO !== "1") console.log(`\nSaved ${log.dir}\nRate the cards: pnpm tag · delete later: pnpm purge ${log.id}`);
     // A long call's summary does not fit the ~12 s stop budget (a 70-minute call ended with no summary). It is finished by a separate
     // background process that outlives this one (same code as `wingman calls summary <id> --generate`).
     if (!summaryDone && !summarySkipped && !st.call.crashed && !noAi && S.summary.enabled) {

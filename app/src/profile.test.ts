@@ -418,8 +418,9 @@ test("repo guard: no tracked Markdown file or LICENSE contains a word from the p
     }
     // The LICENSE copyright holder is the owner's public GitHub handle on purpose: allow exactly that word, in LICENSE only.
     if (rel === "LICENSE") text = text.replace(/koren850/g, "");
-    // The README names the owner's public GitHub repo and profile on purpose (clone URL, CI badge, credit): allow exactly those, in README.md only.
-    if (rel === "README.md") text = text.replace(REPO_URL, "").replaceAll(PROFILE_LINK, "");
+    // Any doc may name the public repo (clone URL, CI badge). Only the README may link the owner's profile (credit).
+    text = text.replace(REPO_URL, "");
+    if (rel === "README.md") text = text.replaceAll(PROFILE_LINK, "");
     text.split("\n").forEach((l, i) => {
       if (re.test(l) || re.test(rel)) hits.push(`${rel}:${i + 1}`);
     });

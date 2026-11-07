@@ -1,6 +1,6 @@
 // `pnpm demo`: the offline demo call, one command, no keys, no network, no ffmpeg.
 // Writes a silent stereo WAV (the replay clock; the engine ignores its audio), then runs the engine on the
-// scripted demo call (scripted speech and scripted AI) with a throwaway data folder.
+// scripted demo call (scripted speech and scripted AI) with a throwaway data folder, default settings and the example pack.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -39,6 +39,11 @@ function main(): number {
       env: {
         ...process.env,
         WINGMAN_DATA_DIR: join(tmp, "data"),
+        // Ignore the personal settings, profile and pack, so every machine shows the defaults and the example pack.
+        WINGMAN_USER_SETTINGS: join(tmp, "settings.yaml"),
+        WINGMAN_PROFILE_FILE: join(tmp, "profile.yaml"),
+        WINGMAN_PACK_DIR: join(tmp, "pack"),
+        WINGMAN_DEMO: "1",
         WINGMAN_STT_SCRIPT: join(APP, "data", "demo", "demo-call.json"),
         WINGMAN_SCRIPT_GAP_MS: "3000",
       },
@@ -46,7 +51,7 @@ function main(): number {
     return r.status ?? 1;
   } finally {
     rmSync(tmp, { recursive: true, force: true });
-    console.log("\nDemo done. It ran in a temporary folder, now deleted, so ignore the 'pnpm tag / pnpm purge' hint above.");
+    console.log("\nDemo done. It ran in a temporary folder, now deleted.");
   }
 }
 

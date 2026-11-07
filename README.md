@@ -1,6 +1,6 @@
 <h1 align="center">Wingman</h1>
 
-<p align="center"><b>Real-time answer cards for live calls. Hears both sides, shows a short answer in about a second.<br>macOS, Electron, TypeScript.</b></p>
+<p align="center"><b>Real-time answer cards for live calls. It hears both sides and shows a short answer in about a second.</b><br>A macOS app built with Electron and TypeScript.</p>
 
 <p align="center">
   <a href="https://github.com/koren850/wingman/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/koren850/wingman/actions/workflows/ci.yml/badge.svg"></a>
@@ -14,7 +14,9 @@
   <img src="docs/ux/hero.gif" alt="The Wingman answer window during a call: a client asks about a CDN, a migration and a price, and answer cards appear within about a second (invented example)" width="560">
 </p>
 
-Wingman is a live call copilot for client, support and team calls. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. After the call it writes a summary and a follow-up email draft. It is Hebrew-first and works in English too (see [Languages](#languages)).
+Wingman is a live call copilot for client, support and team calls. It listens to your call (the other side on system audio, you on the microphone), transcribes it in real time and shows short answer cards on a second screen: a ready-made answer from your own answer bank when the other side asks a common question, or a short AI answer when it does not. After the call it writes a summary and a follow-up email draft.
+
+It is Hebrew-first and works in English too (see [Languages](#languages)). The interesting part is how it stays fast and safe on a live call: see [The hard parts](#the-hard-parts).
 
 **See it run in about two minutes, with no keys:** the [offline demo](#try-it-without-keys) replays a scripted call through the real engine.
 
@@ -57,7 +59,7 @@ All screenshots use invented data. The Hebrew card answers "What is the differen
 
 ## Examples
 
-Everything here is invented. The terminal output is real: it comes from the [offline demo](#try-it-without-keys) (`pnpm demo`), which prints cards the way the answer window shows them. The demo call is Hebrew, so the English lines under each block are translations.
+Everything here is invented. The terminal output is real, trimmed to the card lines: it comes from the [offline demo](#try-it-without-keys) (`pnpm demo`), which prints cards the way the answer window shows them. The demo call is Hebrew, so the English lines under each block are translations.
 
 **1. A prepared card.** The client says: "our WooCommerce site has been loading really slowly, why does that happen?" A trigger in the answer bank matches, so a card shows at once and no AI is called.
 
@@ -146,7 +148,7 @@ Everything below runs offline, with no API keys and no private data.
 | Practice-mode salary guard | 12 must-block, 6 must-pass | 12/12, 0/6 |
 | Whole suite | 650+ tests (630+ unit, 19 end-to-end) in 70 files | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
 
-Reproduce: `cd app && pnpm eval` prints these numbers and fails if one drops below `qa/eval-baseline.json`. CI runs it on every push. The older commands still work: `pnpm detector` (detector corpus), `pnpm banktest` (bank matcher) and `pnpm test` (the full suite).
+Reproduce: `cd app && pnpm eval` prints these numbers and fails if one drops below `qa/eval-baseline.json`. CI runs it on every push.
 
 Caveats: the sets are small and were used while tuning, so treat them as regression gates, not as generalisation estimates. They are Hebrew-first: English coverage is thinner. The live model is only called by `pnpm qa`, which needs paid keys.
 
@@ -180,16 +182,15 @@ Hebrew first, English works, other languages are untested. The shipped example a
 
 ### Try it without keys
 
-The offline demo plays a scripted, invented Hebrew call (a client asking about a slow shop, backups and a price) through the real engine, with scripted speech and scripted AI. It needs no keys and makes no network calls. Run it from `app/`:
+The offline demo plays a scripted, invented Hebrew call (a client asking about a slow shop, backups and a price) through the real engine, with scripted speech and scripted AI. It needs no keys, no network and no ffmpeg, and takes about 90 seconds. From the repository root:
 
 ```bash
 cd app
-ffmpeg -f lavfi -i anullsrc=r=16000:cl=stereo -t 90 /tmp/wingman-silence.wav   # the replay clock; its audio is ignored
-WINGMAN_STT_SCRIPT=data/demo/demo-call.json WINGMAN_SCRIPT_GAP_MS=3000 \
-  pnpm start --profile demo --file /tmp/wingman-silence.wav --no-brief
+WINGMAN_SKIP_APP=1 pnpm install    # code only, skips the Electron download (not needed after ./install.sh)
+pnpm demo
 ```
 
-Cards print in the terminal as they would appear in the answer window (add `pnpm overlay` in a second terminal for the window). The status line ends with the spend: the demo uses no AI, so it reads `AI $0.000`, and the number after "of" is the per-call cap (see [Cost](#cost)). The same call runs from the app as the **Practice call** button.
+Cards print in the terminal as they would appear in the answer window (run `pnpm overlay` in a second terminal for the window). The last lines show the spend: the demo uses no AI, so it reads `AI $0.000 of $2`, where $2 is the default per-call cap (see [Cost](#cost)). The same call runs from the app as the **Practice call** button. A step-by-step version with the full output is in [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
 <details>
 <summary><b>API keys, cost and a fresh Mac</b></summary>
@@ -232,11 +233,7 @@ Then run the `git clone` and `./install.sh` lines above.
 ## Privacy and security
 
 - Audio goes to **Deepgram** to be transcribed, together with hints taken from your meeting plan (names) and word list. Text of the call goes to **Anthropic** for AI answers and the summary. Nothing else leaves your Mac: no telemetry, no analytics, no update check, no cloud account. Audio is **never saved**; transcripts and cards stay in `~/Library/Application Support/Wingman/calls/<id>/` with owner-only permissions until you delete them.
-- **Sandboxed windows, narrow IPC.** Context-isolated windows with a strict Content-Security-Policy, permission requests denied, navigation and popups blocked, no `innerHTML` or `eval`. Every IPC call checks the sender and validates its arguments; the API-key box is write-only.
-- **Keys in the macOS Keychain**, written through stdin (never argv or environment). Keychain note: keys are stored through `/usr/bin/security`, so other programs you run as the same macOS user can read them without a prompt. It protects against file copies and backups, not against malware running as you.
-- **Owner-only control socket** (directory 700, socket 600, rate limits), a fixed command list, and native confirmation dialogs for starting or deleting a call from the command line. **No shell anywhere:** every child process takes an argument array. Electron fuses for RunAsNode, NODE_OPTIONS and inspect are off at build time.
-- **LLM safety by design.** The model has no tools, so it cannot act. Untrusted text is wrapped and tag-stripped; model output is sanitised and guarded (unknown links and phone numbers in the email draft are neutralised).
-- **Supply chain:** sha512 lockfile, two allowed build scripts, checksum-verified Electron download, GitHub Actions pinned to commit SHAs with a read-only token, Dependabot. The one closed binary, [AudioTee](https://github.com/makeusabrew/audiotee) (a prebuilt, ad-hoc-signed helper whose npm package ships no source), is pinned by hash in `pnpm-lock.yaml` and disclosed; review it before a dependency update.
+- **Hardened by default:** sandboxed windows with a strict Content-Security-Policy, keys in the macOS Keychain, an owner-only control socket, no shell anywhere, a model with no tools, and a pinned supply chain. Details, including the one closed binary ([AudioTee](https://github.com/makeusabrew/audiotee)) and the Keychain caveat, are in [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md).
 - **Deepgram model improvement.** By default Deepgram may use audio for its model improvement program. Turn on `stt.deepgram.mipOptOut` to opt out (it may cost more).
 
 The docs also have a "What leaves your Mac" table and a "Known gaps" list: [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md), [SECURITY.md](SECURITY.md).
@@ -282,7 +279,7 @@ Issues and pull requests are welcome; small focused changes are the easiest to r
 
 ## How it was built
 
-Wingman is a solo project by [koren850](https://github.com/koren850), built in about a week with [Claude Code](https://claude.com/claude-code) as the coding agent. Most commits carry a `Co-Authored-By: Claude` trailer, and that is accurate.
+Wingman is a solo project by [koren850](https://github.com/koren850), built in about a week with [Claude Code](https://claude.com/claude-code) as the coding agent. Most commits carry a `Co-Authored-By: Claude` trailer.
 
 - **My part:** the product idea and scope (a second screen for my own client calls, Hebrew first), the architecture and the trade-offs recorded in [docs/DECISIONS.md](docs/DECISIONS.md), the quality bars (answer in about a second, guards in code rather than in the prompt, a numeric gate before a change ships), reviewing what the agent wrote, and using it on my own calls and practice sessions to find what was wrong.
 - **The agent's part:** most of the code, tests and documentation, written to those decisions and reviewed before merging.

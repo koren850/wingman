@@ -8,7 +8,7 @@ Three parts:
 2. [Use it with keys](#part-2-use-it-with-keys): add a Deepgram key and an Anthropic key, do a practice call, then a real one. Needs the Mac app.
 3. [Make your own pack](#part-3-make-your-own-pack): write your own answer cards and check them.
 
-Commands in Part 1 and Part 3 were run on macOS (Apple silicon, Node 24, pnpm 11) when this guide was written. The output shown is copied from those runs and trimmed. Part 2 needs real keys and the real Mac app, so it was not run for this guide. It says so where that matters.
+Commands in Part 1 and Part 3 were run on macOS (Apple silicon, Node 24, pnpm 11) when this guide was written. The output shown is copied from those runs and trimmed.
 
 ## Part 1: try it with no keys
 
@@ -79,7 +79,7 @@ Wingman · call 01M6V9ST8H6K7V8ETV1W7RJESV · file .../silence.wav · 41 prepare
 [📋 email] dana@acmestores.co.il
 
 Speed: 4 questions · first card p50 0.3s / p95 0.3s · Prepared cards 4 (p50 0.3s)
-Cost: AI $0.000 of $5 · STT $0.00 (estimate from settings budget.prices)
+Cost: AI $0.000 of $2 · STT $0.00 (estimate from settings budget.prices)
 
 📋 סיכום השיחה
   • הלקוחה פנתה בגלל אתר שנטען לאט
@@ -99,11 +99,11 @@ How to read it:
 | `🧭 call` | The call frame: what kind of call, the topic, and a checklist (`0/5` done). |
 | `📋 phone`, `📋 email` | Captured from what the other side said. In the app you copy them with a hotkey. |
 | `Speed` | How long after the question the first card appeared. The demo timing is scripted, so it is not a speed test. |
-| `Cost` | The demo uses no AI, so it costs nothing. The `$5` is the cap for one call. |
+| `Cost` | The demo uses no AI, so it costs nothing. The `$2` is the default cap for one call (`budget.maxUsdPerCall`). |
 
 Look at the price question. The client asks "how much" and Wingman shows a safe line, never a number. That is the main idea of the project: the answer is something you can say, and it never promises a price, a date or a result. [EXAMPLES.md](EXAMPLES.md#c-what-the-guards-do) shows what the guards block and why.
 
-The demo writes to a temporary folder and deletes it at the end. Ignore the `pnpm tag / pnpm purge` hint it prints.
+The demo writes to a temporary folder and deletes it at the end. It also ignores your own settings file, so it looks the same on every machine.
 
 ### 5. Run the checks
 
@@ -135,7 +135,7 @@ You can also run the unit tests with `pnpm test:unit`.
 
 ## Part 2: use it with keys
 
-This part needs the Mac app and two paid accounts. It was not run for this guide, so the descriptions come from the code and the other docs.
+This part needs the Mac app and two paid accounts, so it is described from the code and the other docs rather than from a recorded run.
 
 ### 1. Get the keys
 
@@ -213,7 +213,7 @@ In the app: **Settings, Setup guide, Answer pack, Copy the example pack to my fo
 
 ```bash
 mkdir -p ~/.config/wingman/pack
-cp -R wingman/app/data/example-pack/. ~/.config/wingman/pack/
+cp -R app/data/example-pack/. ~/.config/wingman/pack/     # run from the repository root
 ```
 
 Wingman looks in `~/.config/wingman/pack/` first (or in the folder named by `WINGMAN_PACK_DIR`), then in the example pack, file by file. Copy all five files so none of the invented example text mixes in.
