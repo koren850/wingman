@@ -1,0 +1,17 @@
+# Prepared cards for one practice meeting (kind "interview"). Same format as bank.yaml.
+# Invented practice data: a rehearsal for a role at a made-up company.
+- id: intro
+  title: Short introduction
+  triggers: [tell me about yourself, "walk me through your background", introduce yourself]
+  say: I am a backend developer. I build small services in TypeScript and care about tests and clear logs.
+  facts: [Backend developer, TypeScript services, Tests and logs]
+- id: why-us
+  title: Why this company
+  triggers: ["why do you want to work here", "why this role", "why our company"]
+  say: I like that the team ships small changes often and keeps the docs close to the code.
+  facts: [Small steady changes, Docs next to the code]
+- id: salary
+  title: Salary expectations
+  triggers: ["salary expectations", "what are your salary expectations", "expected salary", "how much do you expect"]
+  say: I would like to talk about the full package once I know the scope. I will share my range then.
+  facts: [Talk about the full package, Scope first, Share the range then]

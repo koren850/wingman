@@ -1,0 +1,13 @@
+# Words that mean "this call is about our own work" (invented studio).
+website
+hosting
+backup
+אתר
+אחסון
+גיבוי
+[strict]
+=ssl
+=dns
+wordpress
+woocommerce
+דומיין
