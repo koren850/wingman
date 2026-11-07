@@ -183,7 +183,7 @@ const M = {
   "sum.none": m("אין", "none"),
   "sum.replaced": m(
     (p) => ` (${p.n} משפטים הוחלפו ב-[להשלים])`,
-    (p) => ` (${p.n} sentences replaced with [to fill])`,
+    (p) => ` (${p.n} sentences replaced with [fill in])`,
   ),
   // language not supported
   "lang.unsupported": m("השפה הזו עדיין לא נתמכת. Wingman מבין אנגלית ועברית.", "This language is not supported yet. Wingman understands English and Hebrew."),
