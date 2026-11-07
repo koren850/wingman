@@ -1,0 +1,2 @@
+# Words that mean "this call is about my own work". One word or phrase per line.
+# "=word" matches a whole word only. Lines under [strict] are the unmistakable terms.

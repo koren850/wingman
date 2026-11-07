@@ -1,0 +1,25 @@
+API
+webhook
+SSO
+two-factor
+authenticator
+browser
+cache
+cookies
+incognito
+sync
+integration
+dashboard
+invoice
+subscription
+status page
+ticket
+screenshot
+reproduce
+admin
+permissions
+OAuth
+CSV
+Chrome
+Safari
+Firefox

@@ -1,0 +1,17 @@
+# Words that mean "this call is about my own work". One per line; "=word" matches a whole word; lines under [strict] are the unmistakable terms.
+software
+platform
+crm
+demo
+pilot
+onboarding
+integration
+workspace
+subscription
+contract
+=api
+=sso
+[strict]
+our product
+our platform
+customer success

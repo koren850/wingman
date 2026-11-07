@@ -1,0 +1,120 @@
+# English text of the cards (the cards are already English; this file lets them show on English turns).
+stall:
+  say: I want to check that properly and come back to you with an accurate answer.
+  facts:
+    - We do not guess
+    - We check and come back
+    - The question is noted
+  alts:
+    - I don't want to guess. Let me check and come back with a clear answer.
+    - Let me verify that first, and I will get back to you.
+stall-price:
+  say: The price depends on the details. I need the details first, and then I will send a clear quote.
+  facts:
+    - No number without details
+    - Come back after checking
+  alts:
+    - It depends on the details. Let me check and come back to you with a proper figure.
+stall-timeline:
+  say: It depends on the details. Let me check and I will come back with a realistic estimate.
+  facts:
+    - Depends on scope
+    - Estimate after checking
+    - No date on the call
+  alts:
+    - I would rather check than guess. I will come back with an estimate.
+stall-guarantee:
+  say: I don't want to commit before checking. I will come back with what we can commit to, in writing.
+  facts:
+    - No commitment on the call
+    - We define it in writing
+what-we-do:
+  say: In short, we help teams keep all their customer work in one place, so nothing falls between people.
+  facts:
+    - One shared workspace
+    - Built for small and mid-size teams
+    - Works in the browser
+who-for:
+  say: Mostly teams of ten to a few hundred people who share customer work. Sales, support and account managers use it most.
+  facts:
+    - Sales and success teams
+    - Teams that share an inbox or a sheet today
+    - Not built for single users
+how-different:
+  say: I will not judge other tools. Customers tell us it is simple to set up, and the whole team uses it.
+  facts:
+    - Fast to set up
+    - Simple enough for the whole team
+    - Ask what matters most to you
+integrations:
+  say: Yes, it connects to the common email, calendar and chat tools. I will check your exact list and confirm.
+  facts:
+    - Email and calendar
+    - Chat tools
+    - Open API for the rest
+api:
+  say: There is an API and webhooks, so your developers can connect it to your own systems. You can also export your data.
+  facts:
+    - API and webhooks
+    - Data export
+    - Your developers get documentation
+security:
+  say: Data is encrypted in transit and at rest, and access is by role. I can send our security overview for your team to review.
+  facts:
+    - Encryption in transit and at rest
+    - Role-based access
+    - Security overview available
+sso:
+  say: Single sign-on and two-step login are supported for company accounts. I will confirm which providers on the plan you would use.
+  facts:
+    - SSO for company accounts
+    - Two-step login
+    - Confirm the provider
+privacy-gdpr:
+  say: We handle personal data under a data processing agreement, and we can discuss where your data is stored. I will send the details.
+  facts:
+    - Data processing agreement
+    - Storage location is a choice to discuss
+    - Details sent after the call
+onboarding:
+  say: "We help you set it up: we import your data, connect your tools and train your team. You are not left alone with it."
+  facts:
+    - Data import
+    - Tools connected
+    - Team training
+training:
+  say: Your team gets training at the start and a named contact after that. There is also a help center with guides.
+  facts:
+    - Training at the start
+    - A named contact
+    - Help center
+pilot:
+  say: Yes, a short pilot with a small team is a good way to start. We agree on what success looks like first.
+  facts:
+    - Start with a small team
+    - Agree on the goal first
+    - Decide after the pilot
+roi:
+  say: Customers usually tell us they save time on admin and miss fewer follow-ups. I can share a case study from a similar team.
+  facts:
+    - Less admin time
+    - Fewer missed follow-ups
+    - Case study on request
+reporting:
+  say: There are ready-made dashboards for the team and for managers, and you can build your own reports.
+  facts:
+    - Team and manager dashboards
+    - Custom reports
+    - Export to a sheet
+contract:
+  say: Terms depend on the plan. I will send the standard terms, and your legal team can ask me about anything unclear.
+  facts:
+    - Standard terms sent after the call
+    - Legal can ask questions
+    - No surprises
+decision:
+  say: A good next step is a short session with the people who will use it. Who else should be involved in the decision?
+  facts:
+    - Session with the users
+    - Ask who else decides
+    - Agree the next step before we end

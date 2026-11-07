@@ -1,0 +1,62 @@
+- id: stall
+  title: Check and come back
+  triggers: []
+  say: I want to check that properly and come back to you with an accurate answer.
+  facts:
+    - We do not guess
+    - We check and come back
+    - The question is noted
+  alts:
+    - I don't want to guess. Let me check and come back with a clear answer.
+    - Let me verify that first, and I will get back to you.
+- id: stall-price
+  title: Price question
+  triggers:
+    - price
+    - pricing
+    - how much
+    - cost
+    - quote
+    - budget
+    - what does it cost
+    - discount
+    - rates
+  say: The price depends on the scope and the requirements. I need the details first, and then I will send a clear quote.
+  facts:
+    - No number without details
+    - Come back after checking
+  alts:
+    - It depends on the details. Let me check and come back to you with a proper figure.
+- id: stall-timeline
+  title: Time question
+  triggers:
+    - how long
+    - how soon
+    - when can
+    - deadline
+    - timeline
+    - turnaround
+    - by when
+    - how fast
+  say: It depends on the details. Let me check and I will come back with a realistic estimate.
+  facts:
+    - Depends on scope
+    - Estimate after checking
+    - No date on the call
+  alts:
+    - I would rather check than guess. I will come back with an estimate.
+- id: stall-guarantee
+  title: Promise question
+  triggers:
+    - guarantee
+    - promise
+    - sla
+    - uptime
+    - will you commit
+    - can you commit
+    - in writing
+    - are you sure
+  say: I don't want to commit before checking. I will come back with what we can commit to, in writing.
+  facts:
+    - No commitment on the call
+    - We define it in writing

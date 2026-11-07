@@ -1,0 +1,319 @@
+- id: stall
+  title: Check and come back
+  triggers: []
+  say: I want to check that properly and come back to you with an accurate answer.
+  facts:
+    - We do not guess
+    - We check and come back
+    - The question is noted
+  alts:
+    - I don't want to guess. Let me check and come back with a clear answer.
+    - Let me verify that first, and I will get back to you.
+- id: stall-price
+  title: Price question
+  triggers:
+    - price
+    - pricing
+    - how much
+    - cost
+    - quote
+    - budget
+    - what does it cost
+    - discount
+    - rates
+  say: The price depends on the plan and the details. I need the details first, and then I will send a clear quote.
+  facts:
+    - No number without details
+    - Come back after checking
+  alts:
+    - It depends on the details. Let me check and come back to you with a proper figure.
+- id: stall-timeline
+  title: Time question
+  triggers:
+    - how long
+    - how soon
+    - when can
+    - deadline
+    - timeline
+    - turnaround
+    - by when
+    - how fast
+  say: It depends on the details. Let me check and I will come back with a realistic estimate.
+  facts:
+    - Depends on scope
+    - Estimate after checking
+    - No date on the call
+  alts:
+    - I would rather check than guess. I will come back with an estimate.
+- id: stall-guarantee
+  title: Promise question
+  triggers:
+    - guarantee
+    - promise
+    - sla
+    - uptime
+    - will you commit
+    - can you commit
+    - in writing
+    - are you sure
+  say: I don't want to commit before checking. I will come back with what we can commit to, in writing.
+  facts:
+    - No commitment on the call
+    - We define it in writing
+- id: empathy
+  title: Acknowledge the problem
+  triggers:
+    - not working
+    - broken
+    - frustrated
+    - this is a problem
+    - again
+    - keeps happening
+    - i am stuck
+    - i'm stuck
+    - cannot use
+    - can't use
+  say: I understand, that is frustrating. Let me make sure I have the whole picture, and then we will work on it together.
+  facts:
+    - Acknowledge first
+    - Then ask questions
+    - Stay calm
+- id: gather-info
+  title: What I need to know
+  triggers:
+    - what happened
+    - steps to reproduce
+    - how do i reproduce
+    - error message
+    - what do you see
+    - screenshot
+    - when did it start
+    - what changed
+  say: Could you tell me what you did just before it happened, and what you see on the screen? A screenshot would help.
+  facts:
+    - What they clicked
+    - The exact error text
+    - When it started
+- id: login
+  title: Cannot log in
+  triggers:
+    - cannot log in
+    - can't log in
+    - login
+    - log in
+    - sign in
+    - password
+    - locked out
+    - forgot password
+    - reset password
+    - account locked
+  say: Let us start with a password reset from the sign-in page. If the email does not arrive, check the spam folder and tell me.
+  facts:
+    - Reset from the sign-in page
+    - Check spam
+    - Confirm the account email
+- id: two-factor
+  title: Two-step login
+  triggers:
+    - two factor
+    - 2fa
+    - mfa
+    - verification code
+    - authenticator
+    - lost my phone
+    - new phone
+    - code does not arrive
+  say: If you lost access to your second step, I can start an identity check so the account owner can reset it safely.
+  facts:
+    - Identity check first
+    - Account owner resets it
+    - Never skip the check
+- id: slow
+  title: Slow or freezing
+  triggers:
+    - slow
+    - laggy
+    - freezing
+    - frozen
+    - hangs
+    - takes forever
+    - loading
+    - spinning
+    - not loading
+    - performance
+  say: "Let us check a few simple things: the browser and its version, the connection, and whether it is slow for everyone or only for you."
+  facts:
+    - Browser and version
+    - Connection
+    - One person or everyone
+- id: clear-cache
+  title: Refresh and try again
+  triggers:
+    - clear cache
+    - refresh
+    - try again
+    - cookies
+    - incognito
+    - private window
+    - different browser
+    - restart
+  say: Please try a private window, or another browser. If it works there, the cause is probably saved data in your usual browser.
+  facts:
+    - Private window
+    - Another browser
+    - Clear saved data after
+- id: known-issue
+  title: Known issue
+  triggers:
+    - outage
+    - is it down
+    - status page
+    - everyone has this
+    - known issue
+    - other customers
+    - service down
+    - incident
+  say: I will check our status page and our open issues right now. If it is a known issue, I will tell you where we are with it.
+  facts:
+    - Status page
+    - Open issues
+    - Tell them what is known
+- id: bug-report
+  title: Report a bug
+  triggers:
+    - bug
+    - report a bug
+    - defect
+    - feature request
+    - can you add
+    - missing feature
+    - suggestion
+    - feedback
+  say: Thank you for telling us. I will write it up with your steps and screenshots, so the product team can see it clearly.
+  facts:
+    - Write it up with steps
+    - Add screenshots
+    - Share the reference with the customer
+- id: data-loss
+  title: Missing data
+  triggers:
+    - lost my data
+    - data is gone
+    - deleted by mistake
+    - accidentally deleted
+    - missing records
+    - restore
+    - recover
+    - undo
+    - backup
+  say: First, please do not make more changes. Let me check whether we can restore it, and I will tell you what is possible.
+  facts:
+    - Stop making changes
+    - Check restore options
+    - Tell what is possible, not more
+- id: billing
+  title: Billing question
+  triggers:
+    - invoice
+    - billing
+    - charged
+    - charged twice
+    - refund
+    - payment failed
+    - subscription
+    - receipt
+    - credit card
+    - upgrade
+    - downgrade
+  say: I can see how to help with that, but billing questions go through our billing team so they are exact. I will pass it on with your details.
+  facts:
+    - Billing team handles it
+    - Pass details on
+    - No promises about refunds
+- id: permissions
+  title: Permissions and access
+  triggers:
+    - permission
+    - permissions
+    - access denied
+    - cannot see
+    - can't see
+    - no access
+    - invite a user
+    - add a user
+    - admin
+    - role
+    - share with
+  say: That is usually a permission setting. An admin of your account can change the role. Do you know who the admin is?
+  facts:
+    - Ask who the admin is
+    - Check the role
+    - Invite from the admin page
+- id: integration-issue
+  title: Integration not syncing
+  triggers:
+    - integration
+    - sync
+    - not syncing
+    - connection lost
+    - disconnected
+    - api key
+    - webhook
+    - import failed
+    - export failed
+    - connector
+  say: Let us reconnect the integration first. If it still fails, I need the error message and the time it last worked.
+  facts:
+    - Reconnect first
+    - Collect the error
+    - When it last worked
+- id: how-to
+  title: How do I do this
+  triggers:
+    - how do i
+    - how can i
+    - where do i find
+    - where is the setting
+    - how to
+    - can i change
+    - is it possible
+    - walk me through
+    - show me
+  say: Sure. Where are you in the app right now? I will walk you through it one step at a time.
+  facts:
+    - Ask where they are
+    - One step at a time
+    - Send the help article after
+- id: escalate
+  title: Escalate
+  triggers:
+    - escalate
+    - manager
+    - supervisor
+    - speak to someone else
+    - senior
+    - engineer
+    - developer
+    - this is not acceptable
+    - complaint
+  say: I hear you. I will pass this to a senior colleague with all the details, so you do not have to repeat yourself.
+  facts:
+    - Pass on with details
+    - No need to repeat
+    - Tell them who will follow up
+- id: follow-up
+  title: Close the call
+  triggers:
+    - is that all
+    - anything else
+    - thank you
+    - thanks for your help
+    - that fixed it
+    - it works now
+    - we are done
+    - what happens now
+  say: I am glad it works. I will send you a short summary of what we did, so you have it if it comes back.
+  facts:
+    - Summary by email
+    - Ask if anything is left
+    - Say how to reach us again

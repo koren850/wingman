@@ -1,0 +1,15 @@
+# Words that mean "this call is about my own work". One per line; "=word" matches a whole word; lines under [strict] are the unmistakable terms.
+interview
+role
+position
+candidate
+resume
+experience
+team
+manager
+hiring
+project
+[strict]
+tell me about
+your background
+this role

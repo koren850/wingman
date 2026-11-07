@@ -1,0 +1,111 @@
+# English text of the cards (the cards are already English; this file lets them show on English turns).
+stall:
+  say: I want to check that properly and come back to you with an accurate answer.
+  facts:
+    - We do not guess
+    - We check and come back
+    - The question is noted
+  alts:
+    - I don't want to guess. Let me check and come back with a clear answer.
+    - Let me verify that first, and I will get back to you.
+tell-me-about-yourself:
+  say: "Practice outline: where I am now, two things I am proud of, and why this role is the next step. Keep it to about a minute."
+  facts:
+    - "Now: current role"
+    - "Proof: two short examples"
+    - "Next: why this role"
+why-this-role:
+  say: "Practice outline: one fact about the company that you checked, how it matches your work, and what you want to learn."
+  facts:
+    - Use a real fact you researched
+    - Link it to your work
+    - Say what you want to learn
+strengths:
+  say: "Practice outline: pick one strength that fits the role, and back it with one short example and its result."
+  facts:
+    - One strength, not five
+    - One concrete example
+    - Say the result
+weakness:
+  say: "Practice outline: name a real, small weakness, say what you do about it now, and show how it has improved."
+  facts:
+    - Real but small
+    - What you do about it
+    - Show progress
+star-method:
+  say: "Practice outline, STAR: the situation in one line, your task, what you did, and the result. Spend most of the time on what you did."
+  facts:
+    - Situation
+    - Task
+    - "Action: most of the time"
+    - Result
+conflict:
+  say: "Practice outline: describe the disagreement fairly, how you listened first, what you agreed, and what you learned."
+  facts:
+    - Be fair to the other person
+    - Listening first
+    - What you learned
+failure:
+  say: "Practice outline: own the mistake in the first sentence, say what you changed afterwards, and give one proof that it worked."
+  facts:
+    - Own it first
+    - What you changed
+    - Proof it worked
+leadership:
+  say: "Practice outline: a case where you took the lead without being asked, what you did, and how the team or the result changed."
+  facts:
+    - Not asked, but you stepped up
+    - Specific actions
+    - Result for the team
+pressure:
+  say: "Practice outline: how you list the tasks, ask what matters most, say no or move something, and keep people informed."
+  facts:
+    - List and rank
+    - Ask what matters most
+    - Communicate early
+system-design:
+  say: "Practice outline: clarify the needs, list the main parts, pick a simple design, then talk about limits and trade-offs."
+  facts:
+    - Ask clarifying questions
+    - Main components
+    - Start simple
+    - Trade-offs and limits
+coding-approach:
+  say: "Practice outline: repeat the problem, give an example, say the plain approach first, then improve it and state the complexity."
+  facts:
+    - Restate and give an example
+    - Plain approach first
+    - Improve it
+    - State the complexity
+debugging:
+  say: "Practice outline: what was visible, how you narrowed it down, the root cause, the fix and what you changed so it does not return."
+  facts:
+    - Symptom
+    - How you narrowed it
+    - Root cause
+    - What you changed after
+teamwork:
+  say: "Practice outline: how you share progress, ask for help early, and give credit. Add one short example with a team result."
+  facts:
+    - Share progress
+    - Ask early
+    - Give credit
+    - One example
+questions-for-them:
+  say: "Practice outline: ask about how success is measured, what the team is working on now, and what the first months look like."
+  facts:
+    - How success is measured
+    - Current team work
+    - The first months
+career-goals:
+  say: "Practice outline: say what you want to get better at, link it to the role, and stay honest and modest about the path."
+  facts:
+    - Skills you want to grow
+    - Link to the role
+    - Honest, no big claims
+salary-practice:
+  say: "Practice outline: say you want a fair offer for the role, that you would like to hear their range first, and that you are flexible."
+  facts:
+    - Hear their range first
+    - Stay flexible
+    - Do not name a figure in practice

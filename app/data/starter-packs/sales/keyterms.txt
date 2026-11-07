@@ -1,0 +1,23 @@
+CRM
+SaaS
+API
+webhook
+SSO
+SAML
+Okta
+GDPR
+SOC 2
+ISO 27001
+onboarding
+integration
+Slack
+Zapier
+Salesforce
+HubSpot
+pipeline
+renewal
+procurement
+proof of concept
+stakeholder
+dashboard
+ROI

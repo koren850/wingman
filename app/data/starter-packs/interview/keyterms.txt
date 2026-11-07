@@ -1,0 +1,24 @@
+behavioural
+STAR
+stakeholder
+system design
+API
+latency
+scalability
+microservices
+Kubernetes
+Docker
+CI/CD
+TypeScript
+Python
+SQL
+NoSQL
+REST
+GraphQL
+big O
+algorithm
+data structure
+root cause
+postmortem
+OKR
+roadmap

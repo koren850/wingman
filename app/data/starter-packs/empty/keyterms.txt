@@ -1,0 +1,1 @@
+# One term per line: names and words the speech engine should hear right.

@@ -1,0 +1,19 @@
+# Words that mean "this call is about my own work". One per line; "=word" matches a whole word; lines under [strict] are the unmistakable terms.
+account
+login
+password
+error
+bug
+ticket
+support
+integration
+invoice
+subscription
+dashboard
+sync
+=app
+=api
+[strict]
+our product
+the app
+our software
