@@ -142,8 +142,13 @@ export const schema = z.strictObject({
     warnAt: z.number().min(0).max(1),
     maxMinutesPerCall: int(1, 600),
     idleStopMin: int(0, 240),
+    warnUsdPerCall: z.number().min(0),
     maxUsdPerMonth: z.number().min(0).nullable(),
-    prices: z.strictObject({ llm: z.record(z.string(), price), stt: z.record(z.string(), z.number().min(0)) }),
+    prices: z.strictObject({
+      llm: z.record(z.string(), price),
+      stt: z.record(z.string(), z.number().min(0)),
+      sttAddons: z.record(z.string(), z.strictObject({ diarizeUsdPerHour: z.number().min(0), keytermsUsdPerHour: z.number().min(0) })).optional(),
+    }),
   }),
   privacy: z.strictObject({
     requireConsentAck: z.boolean(),
@@ -205,7 +210,7 @@ export function formatSettingsError(e: SettingsError): string {
 }
 
 // Records that are keyed by model/provider ids (which may contain dots): kept as one leaf, merged key by key.
-const RECORD_LEAVES = new Set(["budget.prices.llm", "budget.prices.stt"]);
+const RECORD_LEAVES = new Set(["budget.prices.llm", "budget.prices.stt", "budget.prices.sttAddons"]);
 
 /** Nested object -> flat dotted keys. Arrays and the RECORD_LEAVES stay as single values. */
 export function flatten(obj: unknown, prefix = "", out: Flat = {}): Flat {

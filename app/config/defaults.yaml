@@ -184,6 +184,7 @@ budget:
   warnAt: 0.8 # fraction of a cap that shows an amber warning
   maxMinutesPerCall: 90 # warn at warnAt of this (a long real meeting is never cut)
   idleStopMin: 15 # stop the call when nobody spoke for this many minutes (a session left running). 0 = off
+  warnUsdPerCall: 3 # amber warning when the whole call (AI + speech to text) has cost more than this. Only a warning: speech to text is never stopped. A 90 minute call costs about 2.4 USD
   maxUsdPerMonth: null # null = no monthly cap (used by the readiness check, from usage.jsonl)
   # Price table. ESTIMATES: check your provider's pricing page and edit. A model missing here costs $0 and is flagged.
   prices:
@@ -194,6 +195,8 @@ budget:
       deepgram: 0.55
       soniox: 0.12
       gladia: 0.61
+    sttAddons: # USD per hour of audio, per channel that uses the add-on. Added to the speech-to-text estimate when the add-on is on
+      deepgram: { diarizeUsdPerHour: 0.12, keytermsUsdPerHour: 0.078 } # speaker labels on the other side's channel (stt.speakers), keyterm prompting (stt.keyterms)
 
 # ---- Privacy ----
 privacy:

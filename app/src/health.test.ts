@@ -322,3 +322,33 @@ test("ladder texts follow the UI language and keep the same meaning", () => {
   assert.match(describeRung(1, ["AI slow"])!.text, /[\u0590-\u05FF]/, "default language is Hebrew");
   assert.match(describeRung(3, [], true, "en")!.text, /no AI/);
 });
+
+test("CostMeter: Deepgram add-ons (speaker labels, keyterms) are added to the STT estimate", () => {
+  const m = new CostMeter(S.budget.prices, S.budget);
+  // one hour, two channels: base 2 x 0.55; diarize on one channel (0.12); keyterms on both (2 x 0.078)
+  m.setSttSeconds({ deepgram: 7200 }, 2);
+  assert.ok(Math.abs(m.sttUsd - 1.1) < 1e-9, "no add-ons set: base price only");
+  m.setSttAddonSeconds({ deepgram: { diarize: 3600, keyterms: 7200 } });
+  assert.ok(Math.abs(m.sttBaseUsd - 1.1) < 1e-9);
+  assert.ok(Math.abs(m.sttAddonUsd - (0.12 + 2 * 0.078)) < 1e-9);
+  assert.ok(Math.abs(m.sttUsd - 1.376) < 1e-9, "about 1.38 USD per hour, as Deepgram bills it");
+  const noPrice = new CostMeter({ llm: {}, stt: { deepgram: 0.55 } }, S.budget); // old settings without sttAddons
+  noPrice.setSttSeconds({ deepgram: 3600 }, 1);
+  noPrice.setSttAddonSeconds({ deepgram: { diarize: 3600, keyterms: 3600 } });
+  assert.ok(Math.abs(noPrice.sttUsd - 0.55) < 1e-9);
+});
+
+test("CostMeter: the meter line shows AI, STT and the total; the total warns once past warnUsdPerCall and never caps STT", () => {
+  assert.equal(S.budget.warnUsdPerCall, 3);
+  const m = new CostMeter({ llm: {}, stt: { deepgram: 1 } }, { maxUsdPerCall: 2, warnAt: 0.8, maxMinutesPerCall: 90, warnUsdPerCall: 3 });
+  m.setSttSeconds({ deepgram: 3600 * 2.5 }, 1);
+  assert.equal(m.totalState(), "ok");
+  assert.match(m.line(), /^AI \$0\.000 of \$2 · STT \$2\.50 · total \$2\.50$/);
+  m.setSttSeconds({ deepgram: 3600 * 3 }, 1);
+  assert.equal(m.totalState(), "warn");
+  assert.equal(m.llmState(), "ok", "STT spend never caps the AI or stops the call");
+  assert.equal(
+    new CostMeter({ llm: {}, stt: { deepgram: 100 } }, { maxUsdPerCall: 2, warnAt: 0.8, maxMinutesPerCall: 90, warnUsdPerCall: 0 }).totalState(),
+    "ok",
+  );
+});

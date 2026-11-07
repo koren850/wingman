@@ -8,7 +8,7 @@ import { describeRung, type Rung } from "../health.ts";
 import { ht } from "../htext.ts";
 import { shutdown } from "./shutdown.ts";
 import { health, healthClear, status, safe } from "./out.ts";
-import { sup, log, cost, fileArg, S, ORPHAN_IDLE_MIN, REFLEX_MODELS, noAi, downUntil, breakers, registry, UI_LANG } from "./boot.ts";
+import { sup, log, cost, fileArg, S, ORPHAN_IDLE_MIN, REFLEX_MODELS, noAi, downUntil, breakers, registry, UI_LANG, PHONE, keyterms } from "./boot.ts";
 import { sttSwitchedCh, sttRetryLoop } from "./stt.ts";
 import { st, mono, chans } from "./state.ts";
 import { liveSources } from "./audio-sources.ts";
@@ -56,7 +56,22 @@ export const sttSeconds = () => {
   for (const c of [chans.me, chans.them]) for (const [k, v] of Object.entries(c?.audioSecondsByProvider() ?? {})) out[k] = (out[k] ?? 0) + v;
   return out;
 };
+/** Audio seconds that ran with add-ons, per provider: speaker labels on the channels that ask for them, keyterms on both channels when terms are sent. Cost input. */
+export const sttAddonSeconds = () => {
+  const out: Record<string, { diarize: number; keyterms: number }> = {};
+  for (const [name, c] of [
+    ["me", chans.me],
+    ["them", chans.them],
+  ] as const)
+    for (const [k, v] of Object.entries(c?.audioSecondsByProvider() ?? {})) {
+      const o = (out[k] ??= { diarize: 0, keyterms: 0 });
+      if ((name === "them" && S.stt.speakers) || (PHONE && name === "me")) o.diarize += v;
+      if (S.stt.keyterms.enabled !== "off" && keyterms.length > 0) o.keyterms += v;
+    }
+  return out;
+};
 let costWarned = false,
+  totalWarned = false,
   minutesWarned = false;
 /** Free-space check of the calls folder (at start and every 15 s): amber < 500 MB, red < 100 MB. The red bar also becomes a macOS notification (tray). */
 let diskShown: "ok" | "amber" | "red" = "ok",
@@ -138,12 +153,18 @@ export function tickHealth() {
   }
   refreshSignals();
   cost.setSttSeconds(sttSeconds(), [chans.me, chans.them].filter(Boolean).length);
+  cost.setSttAddonSeconds(sttAddonSeconds());
   sup.set({ sttOnFallback: sttSwitchedCh.size > 0 });
   const costState = cost.llmState();
   if (costState === "warn" && !costWarned) {
     costWarned = true;
     health("cost", "amber", ht(UI_LANG, "cost.ai", { line: cost.line() }));
     log.write("events", { type: "cost.warn", line: cost.line() });
+  }
+  if (cost.totalState() === "warn" && !totalWarned) {
+    totalWarned = true;
+    health("spend", "amber", ht(UI_LANG, "cost.total", { limit: S.budget.warnUsdPerCall, line: cost.line() }));
+    log.write("events", { type: "cost.total-warn", line: cost.line(), limit: S.budget.warnUsdPerCall });
   }
   if (cost.minutesState() !== "ok" && !minutesWarned) {
     minutesWarned = true;
