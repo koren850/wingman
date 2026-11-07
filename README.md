@@ -40,7 +40,7 @@ Latency figures come from the project's own synthetic-voice test rounds, so real
 
 Also:
 
-- **Tested without a live call.** 650+ tests in 67 files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 89% (84% branch) over the `src/`, `shared/` and `tray/` files the tests load (`pnpm test:coverage`); the Electron window code is exercised by snapshot tools, not unit tests.
+- **Tested without a live call.** 650+ tests in 70 files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 89% (84% branch) over the `src/`, `shared/` and `tray/` files the tests load (`pnpm test:coverage`); the Electron window code is exercised by snapshot tools, not unit tests.
 - **Private by design, decided in writing.** No telemetry, no cloud account, audio never stored on your Mac (it does go to Deepgram to be transcribed, see [Privacy and security](#privacy-and-security)). [docs/DECISIONS.md](docs/DECISIONS.md) holds 37 design records with context, alternatives and consequences, including what was left out on purpose ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [ADR 36](docs/DECISIONS.md#adr-36-web-lookup-is-not-built)).
 
 ## Screenshots
@@ -144,7 +144,7 @@ Everything below runs offline, with no API keys and no private data.
 | Answer-bank matcher | 40 held-out utterances | top-1 93% (37/40), wrong card 3% (1/40), no card 5% (2/40) |
 | Guards (price / date / promise) | 76 must-block, 53 must-pass sentences (technical ones such as "TLS 1.3" and "nginx 1.5", invoice numbers) | 76/76 blocked with the right rule, 0/53 false positives |
 | Practice-mode salary guard | 12 must-block, 6 must-pass | 12/12, 0/6 |
-| Whole suite | 650+ tests (630+ unit, 19 end-to-end) in 67 files | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
+| Whole suite | 650+ tests (630+ unit, 19 end-to-end) in 70 files | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
 
 Reproduce: `cd app && pnpm eval` prints these numbers and fails if one drops below `qa/eval-baseline.json`. CI runs it on every push. The older commands still work: `pnpm detector` (detector corpus), `pnpm banktest` (bank matcher) and `pnpm test` (the full suite).
 
