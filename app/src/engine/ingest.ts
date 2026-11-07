@@ -8,13 +8,15 @@ import type { SttResult, Channel, Word } from "../providers/stt/types.ts";
 import { joinSplit, isBareQuestionTail, type PrevUtterance } from "../split.ts";
 import { splitMergedQuestions } from "../multiq.ts";
 import { isAgencyTopic } from "../frame.ts";
-import { S, log, flow, flowOn, transcript, lineOf, notesOn, speakers, attendees, echo, ECHO, sup, bank, interview } from "./boot.ts";
+import { S, log, flow, flowOn, transcript, lineOf, notesOn, speakers, attendees, echo, ECHO, sup, bank, interview, UI_LANG } from "./boot.ts";
 import { voiceName, flowEvents } from "./flowmode.ts";
 import { st, mono } from "./state.ts";
 import { queueNoteLine, nameSpeaker, spotFacts, capture } from "./side.ts";
 import { addWords } from "./coach.ts";
 import { wordCount } from "../text-util.ts";
-import { survived } from "./out.ts";
+import { survived, health, healthClear } from "./out.ts";
+import { LangWatch } from "../langwatch.ts";
+import { ht } from "../htext.ts";
 import { onQuestion } from "./question.ts";
 import { handleMe } from "./me.ts";
 
@@ -125,11 +127,22 @@ export function onResult(r: SttResult) {
     survived("onResult", e);
   }
 }
+/** Unsupported-language notice: a streak of foreign-script or non-English Latin finals shows ONE status line (health bar "lang"), see langwatch.ts. */
+const langWatch = new LangWatch();
+function watchLanguage(r: SttResult) {
+  if (!r.text || st.call.closing || st.call.shuttingDown) return;
+  const act = langWatch.note(r.text);
+  if (act === "show") {
+    log.write("events", { type: "lang.unsupported", ch: r.channel, ...langWatch.counts });
+    health("lang", "amber", ht(UI_LANG, "lang.unsupported"));
+  } else if (act === "clear") healthClear("lang");
+}
 function onResultCore(r: SttResult) {
   if (!r.isFinal) {
     livePartial(r);
     return;
   }
+  watchLanguage(r);
   // Hebrew + English mixing sometimes hallucinates Telugu / Persian / Arabic on short clips: such a final triggers nothing.
   if (S.stt.dropForeignScript && r.text) {
     const sc = checkScript(r.text);

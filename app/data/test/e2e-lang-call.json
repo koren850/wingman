@@ -1,0 +1,6 @@
+[
+{"speaker":"them","text":"Здравствуйте, можете рассказать подробнее о ваших услугах"},
+{"speaker":"them","text":"Спасибо, а сколько времени занимает такая работа","afterMs":600},
+{"speaker":"them","text":"Хорошо, мы подумаем и вернёмся к вам позже","afterMs":600},
+{"speaker":"them","text":"Hola buenos días, quería preguntar cuánto cuesta el servicio","afterMs":600}
+]
