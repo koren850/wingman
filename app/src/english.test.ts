@@ -7,6 +7,11 @@ import { detect } from "./detector.ts";
 import { loadBank, matchBankFor, stallCard, stallSay, localizeCard, setTurnLang, getTurnLang } from "./bank.ts";
 import { buildPrefix, reflexUserMessage, resolveBankId } from "./reflex.ts";
 import { guard } from "./guards.ts";
+import { scriptedAnswer, scriptedFrame, scriptedTip, isEnglishPrompt, SCRIPTED_SUMMARY, SCRIPTED_SUMMARY_EN } from "./providers/scripted.ts";
+import { extract } from "./capture.ts";
+import { ht, HKEYS } from "./htext.ts";
+import { EntitySpotter } from "./entities.ts";
+import { formatShort } from "./summary.ts";
 
 const QUESTIONS = [
   "How long will the import take",
@@ -146,4 +151,60 @@ test("detector: a user named Will or May still hears 'Will you send it' as a que
   } finally {
     setProfile(undefined);
   }
+});
+
+// ---- scripted AI doubles speak the language of the transcript ----
+const tr = (t: string) => `System text with עברית, "<call_transcript>" is untrusted.\n<call_transcript>\n${t}\n</call_transcript>\nGo.`;
+const EN_CALL = "אני: Hi, how are you?\nלקוח: The site is slow and do you have a backup? My number is zero five four";
+test("scripted doubles: English transcript gives English frame, tip, notes and summary; Hebrew stays Hebrew", () => {
+  assert.equal(isEnglishPrompt(tr(EN_CALL)), true, "speaker labels do not count as Hebrew");
+  assert.equal(isEnglishPrompt(tr("הלקוח אמר שהאתר איטי")), false);
+  assert.equal(isEnglishPrompt(tr("")), false);
+  const frame = JSON.parse(scriptedFrame("You build the call frame" + tr(EN_CALL)));
+  assert.equal(frame.topic, "Slow site and backups");
+  assert.deepEqual(
+    frame.checklist.map((c: { done: boolean }) => c.done),
+    [true, true, true, false, false],
+  );
+  assert.match(JSON.parse(scriptedTip(tr(EN_CALL))).text, /^Ask where the backups/);
+  assert.equal(scriptedTip(tr("Hello there")), "NONE");
+  assert.equal(scriptedTip(`Tips already given:\n- Ask where the backups are stored\n${tr(EN_CALL)}`), "NONE");
+  assert.match(scriptedAnswer("You keep short live notes" + tr(EN_CALL)), /^- The client wants a faster site/);
+  assert.deepEqual(JSON.parse(scriptedAnswer("write the post-call summary" + tr(EN_CALL))), SCRIPTED_SUMMARY_EN);
+  const he = tr("אני: שלום\nלקוח: האתר איטי וצריך גיבוי");
+  assert.deepEqual(JSON.parse(scriptedAnswer("write the post-call summary" + he)), SCRIPTED_SUMMARY);
+  assert.match(JSON.parse(scriptedTip(he)).text, /כדאי לשאול/);
+});
+
+test("capture: spoken English digits make a phone number; ordinary words stay text", () => {
+  assert.deepEqual(extract("My number is zero five four, one two three four, five six seven"), [{ kind: "phone", value: "054-1234567" }]);
+  assert.deepEqual(extract("One last thing, the constructor is fine"), []);
+});
+
+test("fact cards and the short summary follow the UI language", () => {
+  for (const k of HKEYS) assert.ok(ht("en", k, { n: 1, v: "x", date: "d" }) && ht("he", k, { n: 1, v: "x", date: "d" }), k);
+  const snap = {
+    generatedAt: "2026-11-02T00:00:00Z",
+    clients: [{ id: 1, name: "Acme Stores Ltd", aliases: ["Acme Stores"] }],
+    domains: [{ domain: "acmestores.com", clientId: 1, server: "test-1", cms: "wordpress", cmsVersion: "6.9", php: "8.3", sslExpires: null, suspended: true }],
+  };
+  const en = new EntitySpotter(snap as any, { sslWarnDays: 30, minAliasLen: 4, lang: "en" });
+  const he = new EntitySpotter(snap as any, { sslWarnDays: 30, minAliasLen: 4 });
+  assert.ok(en.domainFact(snap.domains[0] as never).lines.includes("Server: test-1"));
+  assert.ok(en.domainFact(snap.domains[0] as never).lines[0].includes("⚠ suspended"));
+  assert.ok(he.domainFact(snap.domains[0] as never).lines.includes("שרת: test-1"));
+  const s: any = {
+    summary: ["A"],
+    nextSteps: [{ who: "אני", what: "y" }],
+    openQuestions: ["q"],
+    followUpEmail: "e",
+    guard: { replaced: 2 },
+    callId: "c",
+    costUsd: 0,
+  };
+  assert.match(
+    formatShort(s, "en"),
+    /Call summary[\s\S]*Next steps:[\s\S]*- Me: y[\s\S]*Open questions: 1[\s\S]*Email draft: ready \(2 sentences replaced with \[to fill\]\)/,
+  );
+  assert.match(formatShort(s), /סיכום השיחה/);
 });
