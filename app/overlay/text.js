@@ -112,12 +112,23 @@
     const m = /^[A-Z][A-Za-z0-9 ()_.,/]*?\s[–-]\s(.+)$/.exec(raw); // "NOT HEARING THE OTHER SIDE – ...", "STT (them) – ...": drop the English tag
     let t = m ? m[1] : raw;
     if (S.STRINGS[L]["health.who." + key] && m) t = `${S.t(L, "health.who." + key)}: ${t}`;
-    if (/^stt-(me|them)$/.test(key) && !/בדוק|מנסה/.test(t)) t += S.t(L, "health.checkNet");
-    else if (/^stt-(me|them)$/.test(key) && /מנסה/.test(t) && !/בדוק/.test(t)) t += S.t(L, "health.checkNetShort");
+    if (/^stt-(me|them)$/.test(key) && !/בדוק|מנסה|check|retry/i.test(t)) t += S.t(L, "health.checkNet");
+    else if (/^stt-(me|them)$/.test(key) && /מנסה|retry/i.test(t) && !/בדוק|check/i.test(t)) t += S.t(L, "health.checkNetShort");
     return t;
   }
 
-  const api = { segments, healthText, isLatin };
+  /** Worst state of the health bars for the status dot: "red" (not working), "amber" (degraded), else "ok". Info bars and the quiet bar do not count. */
+  function healthLevel(bars) {
+    let level = "ok";
+    for (const [id, h] of bars) {
+      if (id === "health-quiet" || !h) continue;
+      if (h.level === "red") return "red";
+      if (h.level === "amber") level = "amber";
+    }
+    return level;
+  }
+
+  const api = { segments, healthText, isLatin, healthLevel };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WingmanText = api;
 })(typeof window !== "undefined" ? window : globalThis);

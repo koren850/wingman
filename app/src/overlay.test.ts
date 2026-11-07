@@ -165,3 +165,25 @@ test("ui.language: auto resolves to Hebrew unless the call language is English; 
   assert.equal(resolveUiLanguage(mk("he", "en")), "he");
   assert.equal(schema.shape.ui.safeParse({ language: "fr" }).success, false);
 });
+
+test("healthLevel: the status dot shows the worst bar, info and quiet do not count", () => {
+  const bar = (level: string) => ({ level, text: "x" });
+  assert.equal(text.healthLevel(new Map()), "ok");
+  assert.equal(text.healthLevel(new Map([["health-only-you", bar("info")]])), "ok");
+  assert.equal(text.healthLevel(new Map([["health-quiet", bar("red")]])), "ok");
+  assert.equal(text.healthLevel(new Map([["health-ladder", bar("amber")]])), "amber");
+  assert.equal(
+    text.healthLevel(
+      new Map([
+        ["health-ladder", bar("amber")],
+        ["health-mic", bar("red")],
+      ]),
+    ),
+    "red",
+  );
+});
+
+test("healthText: English engine texts are not changed or doubled", () => {
+  const t = "Transcription (the other side) has no connection: network. Retrying until it returns. Check your internet connection";
+  assert.equal(text.healthText("health-stt-them", t, "", "en"), t);
+});

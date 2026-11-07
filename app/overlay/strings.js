@@ -97,6 +97,9 @@
     "health.who.stt-me": "המיקרופון שלך",
     "health.who.stt-them": "הצד השני",
     "health.checkNet": ". בדוק את חיבור האינטרנט",
+    "dot.ok": "הכול עובד",
+    "dot.degraded": "פועל חלקית",
+    "dot.down": "לא עובד",
     "health.checkNetShort": ". אם זה נמשך, בדוק אינטרנט",
   };
   const en = {
@@ -184,6 +187,9 @@
     "health.who.stt-me": "Your microphone",
     "health.who.stt-them": "The other side",
     "health.checkNet": ". Check your internet connection",
+    "dot.ok": "Everything works",
+    "dot.degraded": "Degraded",
+    "dot.down": "Not working",
     "health.checkNetShort": ". If it continues, check your internet",
   };
   const STRINGS = { he, en };

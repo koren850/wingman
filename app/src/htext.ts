@@ -155,6 +155,8 @@ const M = {
 } satisfies Record<string, Msg>;
 
 export type HKey = keyof typeof M;
+/** All message keys (tests check that each has both languages). */
+export const HKEYS = Object.keys(M) as HKey[];
 
 /** Text for `key` in `lang` (unknown language = Hebrew, the default UI language). */
 export function ht(lang: UiLang | undefined, key: HKey, p: P = {}): string {

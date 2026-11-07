@@ -106,6 +106,29 @@ body.quiet #dot {
 body.ended #dot {
   background: var(--t-stall);
 }
+/* Health dot: green = all good, amber = degraded, red = not working. Label only when not green; the tooltip has the one-line reason. */
+#hdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--good);
+  opacity: 0.85;
+}
+#hdot.amber {
+  background: var(--advisory);
+  opacity: 1;
+}
+#hdot.red {
+  background: var(--fault);
+  opacity: 1;
+}
+#hlabel {
+  font-size: 13px;
+  color: var(--muted);
+}
+#hlabel:empty {
+  display: none;
+}
 #ask {
   display: none;
   align-items: center;

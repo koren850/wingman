@@ -140,7 +140,27 @@ function drawHealth() {
     mixed(el, advs[0] + (advs.length > 1 ? `  (+${advs.length - 1})` : ""));
     healthBox.append(el);
   }
+  drawHealthDot();
   fadeCheck();
+}
+// One small always-visible dot from the same bars: green ok, amber degraded, red not working. Tooltip = the first reason, one line.
+const hdot = document.getElementById("hdot"),
+  hlabel = document.getElementById("hlabel");
+function drawHealthDot() {
+  const level = WingmanText.healthLevel(bars);
+  let reason = "";
+  if (level !== "ok")
+    for (const [id, h] of bars)
+      if (h.level === level && id !== "health-quiet") {
+        reason = cleanText(id, h.text);
+        break;
+      }
+  const word = tr(level === "red" ? "dot.down" : level === "amber" ? "dot.degraded" : "dot.ok");
+  const tip = reason ? `${word}: ${reason}` : word;
+  hdot.className = level;
+  hdot.title = tip;
+  hdot.setAttribute("aria-label", tip);
+  hlabel.textContent = level === "ok" ? "" : word;
 }
 function renderHealth(c) {
   if (c.id === "health-quiet") {
@@ -742,6 +762,7 @@ function setLanguage(lang) {
   }
 }
 setLanguage(LANG);
+drawHealthDot();
 // Clears everything about the call (client data too), so nothing stays on screen after the call or when a new call starts.
 function wipe() {
   askUntil = 0;
