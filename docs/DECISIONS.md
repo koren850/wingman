@@ -648,3 +648,18 @@ Date: 2026-11-08
 **Alternatives.** Let the model write the pack straight into place (fast, but an invented number can go live). Only starter packs (no help for a user's own business).
 
 **Consequences.** Drafts need a human pass, and the model only sees the notes. The dashboard has no button for it yet; it is a CLI command. Tests use a scripted model double, so the real quality of drafts is unmeasured.
+
+## ADR 43: Model tests use a fake that obeys, and cassettes at the model seam
+
+Date: 2026-11-08
+
+**Context.** The first offline fake model (`scriptedAnswer`) looked at phrases in the prompt and chose the answer itself. A prompt wording change could break it, and it could not fail, hang or lie on request. New features (moment cards, session memory) need tests for exactly those cases, and a real model call in a test is slow, costs money and is not repeatable.
+
+**Decision.** Tests use a policy fake model: the test lists the replies and the faults, and the fake never decides by itself. A cassette layer wraps the model at `ModelRegistry.resolve`: `WINGMAN_LLM_MODE=replay` serves recorded or hand-written answers by a hash of role, model, prompt and options, with the original timing; a miss fails with a diff. `record` needs a key and is never run in CI. Prompts are compared with committed snapshots. A virtual clock replaces the timers so a 90 second meeting runs in milliseconds. The old fake stays as `legacyScripted` until the v2 engine is in.
+
+**Why.** A fake that obeys makes a test say what it expects. Cassettes keep real answers without a key in CI. Snapshots turn a prompt change into a reviewed diff.
+
+**Alternatives.** Keep adding phrases to the keyword fake (fragile). Call the real model in CI (cost, noise, secrets). Mock only `generateText` (misses the streaming path the engine uses).
+
+**Consequences.** The engine is one process per call with a real clock, so engine-level tests run in real time; the virtual clock is for in-process code. A cassette can go stale when a prompt changes; the miss diff shows why.
+

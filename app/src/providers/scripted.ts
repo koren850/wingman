@@ -7,10 +7,11 @@
 //   llm model "scripted:bank" -> a fake model: the reflex answers "BANK <id>" for the first bank card id named in
 //                                the prompt's question line, STALL for prices, else SKIP; notes get one note.
 import { EventEmitter } from "node:events";
-import { readFileSync } from "node:fs";
+import { readFileSync, appendFileSync } from "node:fs";
 import { MockLanguageModelV4 } from "ai/test";
 import type { SttOptions, SttProvider, SttResult, SttStreamLike } from "./stt/types.ts";
 import { matchBank, loadBank } from "../bank.ts";
+import { PolicyModel } from "../testkit/policy-model.ts";
 
 // Fault injection for tests: WINGMAN_STT_FAIL=<channel>:<http status>@<ms since this process started> makes that channel fail like a real provider
 // (e.g. them:401@3000 = a refused key 3 s in; later open() calls fail too) until WINGMAN_STT_HEAL_AT_MS (ms since start; default never).
@@ -269,8 +270,11 @@ export function scriptedPackgen(prompt: string): string {
     .filter(Boolean);
   return JSON.stringify({ cards });
 }
-/** Picks the fake model reply by which system-prompt phrase the prompt contains; the first match wins. */
-export function scriptedAnswer(prompt: string): string {
+/**
+ * The keyword-lookup fake model of the first version: picks the reply by which system-prompt phrase the prompt contains; the first match wins.
+ * It decides by itself, which is why new tests use the policy fake (src/testkit/policy-model.ts) instead. Kept until the v2 engine is in.
+ */
+export function legacyScripted(prompt: string): string {
   if (prompt.includes("You draft answer cards")) return scriptedPackgen(prompt);
   if (prompt.includes("You build the call frame")) return scriptedFrame(prompt);
   if (prompt.includes("You write at most one live tip")) return scriptedTip(prompt);
@@ -283,6 +287,8 @@ export function scriptedAnswer(prompt: string): string {
   const hit = matchBank(q, bank);
   return hit ? `BANK ${hit.card.id}` : "SKIP";
 }
+/** Old name of legacyScripted, kept as the same function so existing imports keep working. */
+export const scriptedAnswer = legacyScripted;
 const usage = { inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 5, text: 5, reasoning: 0 } };
 const finish = { unified: "stop" as const, raw: "end_turn" };
 
@@ -290,34 +296,56 @@ const finish = { unified: "stop" as const, raw: "end_turn" };
 // Fault injection for tests: WINGMAN_LLM_FAIL=<n>:<http status> makes the first n reflex calls (questions from the other side) fail like a real provider.
 let llmFailsLeft = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[0]) || 0;
 const llmFailStatus = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[1]) || 401;
+// Model "scripted:policy" serves a policy file (env WINGMAN_POLICY_FILE, written by PolicyModel.toJSON()), so a child-process engine test can use the
+// policy fake. One PolicyModel per process: rule counters (times, nth) and the call log are shared by all calls.
+let policyShared: PolicyModel | undefined;
+function policyFromEnv(): PolicyModel {
+  if (policyShared) return policyShared;
+  const f = process.env.WINGMAN_POLICY_FILE;
+  if (!f) throw new Error("model scripted:policy needs WINGMAN_POLICY_FILE=<policy.json> (see src/testkit/policy-model.ts)");
+  // WINGMAN_POLICY_LOG=<file>: one JSON line per call (role, last line, which rule served it), for tests that read what the engine asked.
+  const log = process.env.WINGMAN_POLICY_LOG;
+  policyShared = PolicyModel.fromJSON(JSON.parse(readFileSync(f, "utf8")), {
+    onCall: log
+      ? (c) =>
+          appendFileSync(
+            log,
+            JSON.stringify({ role: c.view.role, model: c.view.model, lastLine: c.view.lastLine, rule: c.rule, tokens: c.view.tokens, at: c.at }) + "\n",
+          )
+      : undefined,
+  });
+  return policyShared;
+}
 export function createScripted() {
   return (modelId: string) =>
-    new MockLanguageModelV4({
-      provider: "scripted",
-      modelId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the mock model's result types are stricter than the scripted reply needs
-      doGenerate: async (o) => ({ content: [{ type: "text", text: scriptedAnswer(promptText(o)) }], finishReason: finish, usage, warnings: [] }) as any,
-      doStream: async (o) => {
-        const text = scriptedAnswer(promptText(o));
-        if (llmFailsLeft > 0 && questionOf(promptText(o))) {
-          llmFailsLeft--;
-          throw Object.assign(new Error(`HTTP ${llmFailStatus} (injected)`), { statusCode: llmFailStatus });
-        }
-        const parts = [
-          { type: "stream-start", warnings: [] },
-          { type: "text-start", id: "t" },
-          { type: "text-delta", id: "t", delta: text },
-          { type: "text-end", id: "t" },
-          { type: "finish", usage, finishReason: finish },
-        ];
-        return {
-          stream: new ReadableStream({
-            start(c) {
-              for (const p of parts) c.enqueue(p);
-              c.close();
-            },
-          }),
-        } as any; // eslint-disable-line @typescript-eslint/no-explicit-any -- as above: the scripted stream parts are plain objects
-      },
-    });
+    modelId === "policy"
+      ? policyFromEnv().model
+      : new MockLanguageModelV4({
+          provider: "scripted",
+          modelId,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the mock model's result types are stricter than the scripted reply needs
+          doGenerate: async (o) => ({ content: [{ type: "text", text: legacyScripted(promptText(o)) }], finishReason: finish, usage, warnings: [] }) as any,
+          doStream: async (o) => {
+            const text = legacyScripted(promptText(o));
+            if (llmFailsLeft > 0 && questionOf(promptText(o))) {
+              llmFailsLeft--;
+              throw Object.assign(new Error(`HTTP ${llmFailStatus} (injected)`), { statusCode: llmFailStatus });
+            }
+            const parts = [
+              { type: "stream-start", warnings: [] },
+              { type: "text-start", id: "t" },
+              { type: "text-delta", id: "t", delta: text },
+              { type: "text-end", id: "t" },
+              { type: "finish", usage, finishReason: finish },
+            ];
+            return {
+              stream: new ReadableStream({
+                start(c) {
+                  for (const p of parts) c.enqueue(p);
+                  c.close();
+                },
+              }),
+            } as any; // eslint-disable-line @typescript-eslint/no-explicit-any -- as above: the scripted stream parts are plain objects
+          },
+        });
 }

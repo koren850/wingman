@@ -34,6 +34,8 @@ First public release. Nothing is published yet; the date is set on the day it is
 - **English and Hebrew.** An English offline demo (`pnpm demo`; `pnpm demo --he` for Hebrew). A call in another language shows a one-time "not supported yet" notice. The English demo and the in-app Practice call also show the call frame, a tip, notes and the summary in English. Status texts, fact cards and the short summary follow the interface language, with a status dot in the answer window and on Home. Summary, notes, tips, frame and self-check follow the call language. Language rules for the detector and the guards live in one module per language (`src/lang/`), so a new language is one file.
 - **Documentation.** Architecture, 42 architecture decision records, privacy and security guide, development guide, troubleshooting, pack format and roadmap.
 
+- **Test kit for model behaviour.** A policy fake model, a cassette layer (`WINGMAN_LLM_MODE=replay`), prompt snapshots, a virtual clock and golden-meeting helpers, so model-driven features can be tested with no key and no network. No change for users.
+
 ### Security and privacy
 
 - No telemetry and no cloud account. Audio is never stored.

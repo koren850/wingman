@@ -1,0 +1,29 @@
+# Offline end-to-end tests with the policy fake model (src/e2e/helpers.ts runGolden): scripted STT + the model rules in WINGMAN_POLICY_FILE.
+# Only the reflex and "ask Wingman" calls use the fake; the side features are off so the fake needs no rules for them.
+stt:
+  provider: script
+  fallback: []
+llm:
+  reflex:
+    model: "scripted:policy"
+    fallbacks: []
+assist:
+  model: "scripted:policy"
+  minGapMs: 0
+  maxPerMin: 20
+notes:
+  enabled: false
+summary:
+  enabled: false
+facts:
+  enabled: false
+privacy:
+  requireConsentAck: false
+system:
+  caffeinate: false
+frame:
+  enabled: false
+tips:
+  enabled: false
+cards:
+  focus: false

@@ -1,9 +1,10 @@
 // LLM side of the providers layer: ModelRegistry resolves "provider:model" strings to AI SDK language models. Only @ai-sdk/anthropic is installed;
 // other providers are imported on demand and give a clear "pnpm add" error when the package is missing.
-import { generateText, type LanguageModel } from "ai";
+import { generateText, wrapLanguageModel, type LanguageModel } from "ai";
 import { KEY_VARS, type Keys, type KeyName } from "../env.ts";
 import { LLM_CATALOG } from "./catalog.ts";
 import { classifyLlmError, ProviderError } from "./errors.ts";
+import { llmMode, cassetteFor, wrapCassette } from "./cassette.ts";
 
 /** Bad or missing configuration (model ref, package, key). `fix` is a command or hint shown to the user. */
 export class ConfigError extends Error {
@@ -57,9 +58,27 @@ export class ModelRegistry {
     private importer: Importer = defaultImporter,
   ) {}
 
-  /** Throws ConfigError when the package or API key is missing. The key is read when the factory is first built. */
-  async resolve(ref: string): Promise<LanguageModel> {
+  /**
+   * Throws ConfigError when the package or API key is missing. The key is read when the factory is first built.
+   * `role` (moment, memory, ask...) names what the call is for. It only matters to the test seams: the cassette key and the policy fake model use it.
+   * WINGMAN_LLM_MODE=replay answers from the cassette and needs no package and no key; =record calls the real model and writes the cassette (see cassette.ts).
+   */
+  async resolve(ref: string, role?: string): Promise<LanguageModel> {
     const { provider, model } = parseModelRef(ref);
+    const mode = llmMode();
+    if (mode === "replay" && provider !== "scripted") return wrapCassette({ mode, cassette: cassetteFor(), ref, role });
+    const real = await this.resolveReal(ref, provider, model);
+    if (mode === "record" && provider !== "scripted") return wrapCassette({ mode, cassette: cassetteFor(), ref, role, inner: real });
+    if (role && provider === "scripted") {
+      return wrapLanguageModel({
+        model: real as never,
+        middleware: { transformParams: async ({ params }) => ({ ...params, providerOptions: { ...params.providerOptions, wingman: { role } } }) },
+      });
+    }
+    return real;
+  }
+
+  private async resolveReal(ref: string, provider: string, model: string): Promise<LanguageModel> {
     const spec = LLM_PROVIDERS[provider];
     let make = this.factories.get(provider);
     if (!make) {

@@ -39,8 +39,8 @@ export const callDir = (calls: string) => {
   const d = readdirSync(calls).filter((x) => x !== "latest");
   return d.length ? join(calls, d[0]) : "";
 };
-export function runEngine(args: string[], env: Record<string, string>) {
-  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--no-brief", ...args]), {
+export function runEngine(args: string[], env: Record<string, string>, profile = "e2e") {
+  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", profile, "--no-brief", ...args]), {
     cwd: ROOT,
     env: { ...process.env, WINGMAN_CALL_APP: "none", ...env },
   });
@@ -84,3 +84,128 @@ export const stopSoon = async (e: ReturnType<typeof runEngine>, afterMs: number)
   e.p.kill("SIGINT");
   return e.done;
 };
+
+// ---------------------------------------------------------------- golden meetings (testkit)
+// Two ways to play a Golden meeting (src/testkit/golden-types.ts, `t` in seconds):
+//  - replayOnVClock: in this process, on a virtual clock. For code that can run in-process (pacing, cadence, gates). 90 s of meeting take milliseconds.
+//  - runGolden: the real engine (src/run.ts) as a child process on scripted STT and the policy fake model. The engine is one process per call and
+//    keeps its own real clock, so the lines are played in real time, divided by `speed` (the engine's own timers, such as stall timers, are not scaled).
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import type { Golden } from "../testkit/golden-types.ts";
+import type { VClock } from "../testkit/vclock.ts";
+import { PolicyModel } from "../testkit/policy-model.ts";
+import { writeWav } from "../audio.ts";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- call-log rows are loose JSON, as in the other e2e tests
+type Row = Record<string, any>;
+type GLine = Golden["lines"][number];
+
+/** Plays the lines of `g` on `vc`: each line's `feed` runs at its time; then time runs on for `tailMs`. Returns when the clock has reached the end. */
+export async function replayOnVClock(vc: VClock, g: Pick<Golden, "lines">, feed: (line: GLine, atMs: number) => void | Promise<void>, tailMs = 5000) {
+  const t0 = g.lines.length ? g.lines[0].t : 0;
+  const base = vc.elapsed();
+  let last = 0;
+  for (const l of g.lines) {
+    const at = Math.round((l.t - t0) * 1000);
+    last = Math.max(last, at);
+    vc.setTimeout(() => void feed(l, at), at - (vc.elapsed() - base));
+  }
+  await vc.advance(last + tailMs - (vc.elapsed() - base));
+}
+
+/** One card seen on screen. `msAfterLine` is the time from the end of its trigger line (the latest line that arrived before the card). */
+export type CardEvent = { id: string; kind: string; text: string; badge: string; atMs: number; afterLine?: string; msAfterLine?: number };
+const KIND_BY_BADGE: Record<string, string> = {
+  ai: "answer",
+  bank: "answer",
+  me: "answer",
+  stall: "answer",
+  fact: "fact",
+  note: "fact",
+  tip: "prompt",
+  check: "check",
+  prompt: "prompt",
+};
+
+/**
+ * The card timeline of a run: shown cards in order. `lineTimes` maps a golden line id to its time (ms since the call started); the card is tied to the last
+ * line that started before it. Rows that only update an earlier card (same id) are merged, and the first row sets the time.
+ */
+export function collectCards(rows: Row[], startedAt: number, lineTimes: { id: string; atMs: number }[] = []): CardEvent[] {
+  const seen = new Set<string>();
+  const out: CardEvent[] = [];
+  for (const c of rows) {
+    if (c.type !== "card" || c.health || c.withdraw || c.badge === "info") continue;
+    const id = String(c.id ?? c.turnId ?? out.length);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const atMs = Math.round(Number(c.t) - startedAt);
+    const line = [...lineTimes].reverse().find((l) => l.atMs <= atMs);
+    out.push({
+      id,
+      kind: String(c.kind ?? KIND_BY_BADGE[c.badge] ?? "answer"),
+      text: String(c.say ?? c.text ?? ""),
+      badge: String(c.badge ?? ""),
+      atMs,
+      afterLine: line?.id,
+      msAfterLine: line ? atMs - line.atMs : undefined,
+    });
+  }
+  return out;
+}
+
+export type GoldenRun = {
+  code: number | null;
+  out: string;
+  cards: CardEvent[];
+  /** what the engine asked the fake model: role, last line, serving rule (-1 = no rule) */ modelCalls: Row[];
+  rows: (f: string) => Row[];
+  dir: string;
+  cleanup: () => void;
+};
+/**
+ * Runs the real engine over a golden meeting. The model is `policy` (a PolicyModel, written to a file for the child); profile `e2e-policy` uses it for the reflex.
+ * `speed` 2 plays the meeting twice as fast. Returns the card timeline; call cleanup() when done.
+ */
+export async function runGolden(
+  g: Pick<Golden, "lines">,
+  o: { policy: PolicyModel; speed?: number; tailSeconds?: number; profile?: string; env?: Record<string, string>; args?: string[] },
+): Promise<GoldenRun> {
+  const speed = o.speed ?? 1,
+    tmp = mkdtempSync(join(tmpdir(), "wingman-golden-")),
+    calls = join(tmp, "calls");
+  const t0 = g.lines[0]?.t ?? 0;
+  const lead = 600; // ms before the first line
+  const times = g.lines.map((l) => ({ id: l.id, atMs: lead + Math.round(((l.t - t0) * 1000) / speed) }));
+  const script = g.lines.map((l, i) => ({ speaker: l.side, text: l.text, atMs: times[i].atMs, speechFinal: true }));
+  const total = Math.ceil((times.at(-1)?.atMs ?? 0) / 1000 + (o.tailSeconds ?? 5));
+  const wav = join(tmp, "silence.wav");
+  await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * total), 2);
+  const policy = join(tmp, "policy.json");
+  writeFileSync(policy, JSON.stringify(o.policy.toJSON()));
+  const e = runEngine(
+    ["--file", wav, ...(o.args ?? [])],
+    {
+      WINGMAN_STT_SCRIPT: scriptFile(tmp, script),
+      WINGMAN_POLICY_FILE: policy,
+      WINGMAN_POLICY_LOG: join(tmp, "policy-calls.jsonl"),
+      WINGMAN_CALLS_DIR: calls,
+      ...o.env,
+    },
+    o.profile ?? "e2e-policy",
+  );
+  const code = await e.done;
+  const dir = existsSync(calls) ? callDir(calls) : "";
+  const rows = (f: string) => (dir ? readRows(dir, f) : []);
+  const startedAt = Number(rows("transcript.jsonl")[0]?.t ?? rows("cards.jsonl")[0]?.t ?? 0) - (times[0]?.atMs ?? 0);
+  return {
+    code,
+    out: e.out(),
+    modelCalls: readRows(tmp, "policy-calls.jsonl"),
+    cards: collectCards(rows("cards.jsonl"), startedAt, times),
+    rows,
+    dir,
+    cleanup: () => rmSync(tmp, { recursive: true, force: true }),
+  };
+}

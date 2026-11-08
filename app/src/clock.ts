@@ -13,3 +13,18 @@ export function detectGap(prev: ClockPoint, cur: ClockPoint, gapMs: number, tick
   if (wall > gapMs + tickMs && mono > gapMs + tickMs) return { kind: "sleep", ms: Math.round(wall) }; // a frozen process on a clock that keeps counting
   return { kind: null, ms: 0 };
 }
+
+// ---- time source seam for new code and tests
+// Code that wants a clock tests can drive calls wallNow() / monoNow(). By default they are exactly Date.now() and performance.now().
+// src/testkit/vclock.ts swaps the source with setClockSource(); nothing else changes, and code that still calls Date.now() directly is
+// covered when the virtual clock is installed on the globals.
+export type ClockSource = { wall: () => number; mono: () => number };
+let source: ClockSource | undefined;
+/** Wall time in ms (Date.now unless a test installed a source). */
+export const wallNow = (): number => (source ? source.wall() : Date.now());
+/** Monotonic time in ms (performance.now unless a test installed a source). */
+export const monoNow = (): number => (source ? source.mono() : performance.now());
+/** Test hook: use `s` as the time source; undefined restores the real clocks. */
+export function setClockSource(s: ClockSource | undefined) {
+  source = s;
+}

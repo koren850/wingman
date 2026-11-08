@@ -97,6 +97,17 @@ What `pnpm install` does in `app/`:
 - There is an offline end-to-end test (`src/e2e/scripted-call.test.ts`) that runs a whole call with scripted speech and a scripted AI (`src/providers/scripted.ts`).
 - `src/e2e/chaos.test.ts` is a repeatable chaos test (about 45 s, offline): one scripted live call with AI timeouts, a mic drop, a 20 s speech-to-text outage and a sleep/wake, then it checks the health and ladder events and that the call recovers. Run it alone with `pnpm exec tsx --import ./src/test-setup.ts --test src/e2e/chaos.test.ts` from `app/`.
 
+## Test kit (model tests without a key)
+
+New model-driven features are tested with these tools, all in `app/src/testkit/` and `app/src/providers/cassette.ts`. None of them calls a real API.
+
+- **Policy fake model** (`testkit/policy-model.ts`). The test declares what the model says; the fake never decides by itself. `pm.reply({ role: "moment", lastLine: "l3" }, text, { ms })`, and `garbage()`, `truncate(n)`, `hang()`, `refuse()`, `error(529)`, `slow(ms)`, `injection(text)`. A rule can match the role (`moment`, `memory`, `ask`, `digest`, `compact`, `wrapup`), the last transcript line (its `[id]` or its text) and any text in the system block. The first rule that matches wins. A call with no matching rule fails loudly. `pm.assertPrompt(...)` checks what the model received (a memory block, a token limit). `setUsage()` sets the tokens it reports, for cost tests. `pm.serve(golden.script)` serves the scripted replies of a golden meeting. A package that adds a role calls `registerRole(role, marker)` (in `testkit/prompt.ts`) with a phrase from its system prompt.
+- **Cassettes** (`providers/cassette.ts`). `WINGMAN_LLM_MODE=live|record|replay`, default `live`. In `replay` every call must be in the cassette (`WINGMAN_CASSETTE`, default `data/cassettes/default.cassette.json`) and no key or network is used. A miss shows a diff against the nearest entry. `record` needs a key and is for the owner only; it is never run in CI. Each entry says if it was `recorded` or `authored`.
+- **Prompt snapshots** (`testkit/prompt-snapshot.ts`). `assertPromptSnapshot("moment", { system, user })` compares the prompt with `data/snapshots/prompts/moment.txt`. After an intended change run once with `WINGMAN_UPDATE_SNAPSHOTS=1` and review the diff of the file.
+- **Virtual clock** (`testkit/vclock.ts`). `withVClock(async (vc) => { await vc.advance(90_000); })` fakes `Date.now`, `new Date()`, `performance.now`, `setTimeout`, `setInterval` and `setImmediate`. 90 seconds of meeting run in a few milliseconds. New code can read time through `wallNow()` and `monoNow()` in `clock.ts`.
+- **Golden helpers** (`e2e/helpers.ts`). `replayOnVClock` plays `Golden.lines` in this process. `runGolden` plays them into the real engine (`src/run.ts`) with scripted speech and the policy fake (profile `e2e-policy`) and returns the card timeline: id, kind, text, and ms after the line. The engine is one process per call and keeps its real clock, so `runGolden` runs in real time (use `speed` to compress the gaps between lines).
+- `legacyScripted` (also exported as `scriptedAnswer`) is the old keyword fake. It stays until the v2 engine is in; do not use it in new tests.
+
 ## QA harness
 
 ```bash
