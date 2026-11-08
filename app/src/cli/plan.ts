@@ -5,7 +5,7 @@
 import { basename } from "node:path";
 import { request } from "./client.ts";
 import { CliError, EXIT, plansLib, Plans, attachments, parse, usage, type Ctx, type Result } from "./common.ts";
-import { KINDS } from "../frame.ts";
+import { KINDS } from "../session/types.ts";
 
 const LIMIT_NOTES = 12;
 
@@ -146,7 +146,7 @@ async function setPlan(ctx: Ctx, args: string[], forceNew: boolean): Promise<Res
     "add-must": { type: "string", multiple: true },
     fresh: { type: "boolean" },
   });
-  const PLAN_KINDS = [...KINDS, "interview"]; // interview: a plan-only kind (src/brief.ts isInterview); the call frame never guesses it
+  const PLAN_KINDS: string[] = [...KINDS]; // the one list is in session/types.ts (interview is a plan kind: src/brief.ts isInterview)
   if (values.kind && !PLAN_KINDS.includes(values.kind)) throw usage(`--kind must be one of: ${PLAN_KINDS.join(", ")}`);
   const wantNew = forceNew || !!values.new;
   if (wantNew && values.id) throw usage("--new makes a new meeting; --id edits an existing one. Not both.");

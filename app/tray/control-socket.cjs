@@ -312,6 +312,17 @@ function createControlServer(o) {
         need(ctl.isRunning() && ctl.getState().phase !== "stopping", "No call is running. Start one with wingman start.") ||
         done(ctl.speaker(a.spk, a.name || ""), "The speaker number or name was not accepted."),
     },
+    // The call mode: a built-in kind, a custom mode id from the user's pack, or "auto" (the model may guess again). The engine knows which ids exist.
+    mode: {
+      args: (a) => {
+        const r = shape(a, { kind: { type: "string", required: true, min: 1, max: 24 } });
+        if (!/^[a-z0-9][a-z0-9-]*$/.test(r.kind)) throw new Error('"kind" must be a mode name: letters, digits and "-"');
+        return r;
+      },
+      run: (a) =>
+        need(ctl.getState().phase === "live", "The mode can only change while a call is live (wingman status shows the phase).") ||
+        done(ctl.mode(a.kind), "Could not change the mode."),
+    },
     ask: {
       args: (a) => shape(a, { text: { type: "string", required: true, min: 1, max: 2000 } }),
       run: (a) =>

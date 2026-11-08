@@ -36,7 +36,8 @@ export type CallRecord = {
 
 const TTL = { "5m": 300_000, "1h": 3_600_000 } as const;
 const sha = (s: string) => createHash("sha1").update(s).digest("hex");
-type Content = string | { type?: string; text?: string }[];
+type Part = { type?: string; text?: string; providerOptions?: { anthropic?: { cacheControl?: { ttl?: "5m" | "1h" } } } };
+type Content = string | Part[];
 const textOf = (c: Content) => (typeof c === "string" ? c : c.map((p) => p.text ?? "").join(""));
 
 /**
@@ -80,8 +81,17 @@ export function observePolicy(
       ttlMs: m.providerOptions?.anthropic?.cacheControl?.ttl ? TTL[m.providerOptions.anthropic.cacheControl.ttl] : undefined,
     }));
     const now = Date.now();
+    // The user message in parts (the cached tail, build.ts `tailChunk`): every part carries on the prefix, and a part with a marker is a cache point too.
+    for (const m of rest)
+      if (Array.isArray(m.content))
+        for (const part of m.content as Part[])
+          blocks.push({
+            text: part.text ?? "",
+            ttlMs: part.providerOptions?.anthropic?.cacheControl?.ttl ? TTL[part.providerOptions.anthropic.cacheControl.ttl] : undefined,
+          });
     const tok = blocks.map((b) => estimateTokens(b.text));
     const userTokens = rest.reduce((a, m) => a + estimateTokens(textOf(m.content)), 0);
+    const nSystem = sys.length;
     let read = 0,
       write = 0,
       prefix = "",
@@ -100,7 +110,7 @@ export function observePolicy(
     if (hitAt >= 0) read = marked[hitAt].tokens;
     for (let i = hitAt + 1; i < marked.length; i++) write = marked[i].tokens - read;
     for (const m of marked) cache.set(m.key, now + m.ttl); // a hit or a write refreshes the clock
-    const total = tok.reduce((a, b) => a + b, 0) + userTokens;
+    const total = tok.slice(0, nSystem).reduce((a, b) => a + b, 0) + userTokens;
     const out = estimateTokens(outText());
     const rec: CallRecord = {
       role,
@@ -237,6 +247,8 @@ export type WorkerOptions = {
   replay?: { cassette: string };
   /** price the calls with the cache layout of before round 12 (A, memory for every role, rules and facts last with no marker) */
   legacyLayout?: boolean;
+  /** simulator study: raw transcript lines per cached tail chunk, by role (build.ts `tailChunk`; 0 or missing = tail not cached) */
+  tailChunk?: Partial<Record<string, number>>;
 };
 
 /** Plays one dev meeting through the engine (child process). Times out after `timeoutMs`. */

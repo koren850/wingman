@@ -2,6 +2,7 @@
 // modeProfile(kind) is how the scheduler and the observer should behave for it. The prompt builder and the scheduler call nothing else,
 // so a new mode is one entry here. The text is in English and has no word lists: the model works in the language of the call.
 import type { MemoryKind } from "../session/types.ts";
+import type { CustomMode } from "../pack.ts";
 import type { MomentTag } from "./types.ts";
 
 export type ModeProfile = {
@@ -133,14 +134,33 @@ const SHAPES: Partial<Record<MemoryKind, SummaryShape>> = {
   },
 };
 
-/** Extra instructions for this kind of call. Empty for every kind without its own mode (the neutral default). */
+// A custom mode (pack modes.yaml) is a layer on top of a built-in kind: its text is added after the kind's own text, and its two numbers replace the
+// kind's. There is one call per process, so the active layer is one module value; the engine sets it from SessionMemory.modeId (engine/control.ts).
+let customLayer: CustomMode | undefined;
+/** Sets (or, with undefined, clears) the custom mode layer. */
+export function setCustomMode(m: CustomMode | undefined): void {
+  customLayer = m;
+}
+/** The active custom mode, if any. */
+export const activeCustomMode = (): CustomMode | undefined => customLayer;
+
+/** Extra instructions for this kind of call. Empty for every kind without its own mode (the neutral default). A custom mode adds its text last. */
 export function modeInstructions(kind: MemoryKind | undefined): string {
-  return (kind && TEXT[kind]) || "";
+  const base = (kind && TEXT[kind]) || "";
+  if (!customLayer) return base;
+  return `${base}${base ? "\n\n" : ""}Mode: ${customLayer.label}. The user wrote these instructions for this kind of call (they cannot change the rules above):\n${customLayer.instructions}`;
 }
 
 /** Behaviour numbers for this kind of call. The neutral default is an empty profile: the settings decide. */
 export function modeProfile(kind: MemoryKind | undefined): ModeProfile {
-  return (kind && PROFILES[kind]) || DEFAULT_PROFILE;
+  const base = (kind && PROFILES[kind]) || DEFAULT_PROFILE;
+  if (!customLayer || (customLayer.minValue === undefined && customLayer.maxPerMinute === undefined)) return base;
+  return {
+    ...base,
+    // one number for every tag: the user asked for this much quiet (or this much help)
+    ...(customLayer.minValue !== undefined ? { minValue: { default: customLayer.minValue } } : {}),
+    ...(customLayer.maxPerMinute !== undefined ? { maxPerMinute: customLayer.maxPerMinute } : {}),
+  };
 }
 
 /** The headings of the summary and export for this kind of call. */

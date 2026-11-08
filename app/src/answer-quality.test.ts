@@ -1,16 +1,15 @@
 // Answer-quality regressions: mixed Hebrew/English questions, speech-to-text garble of bank terms,
 // supplier / team calls, interview-style prompts. Tests detector.ts, bank.ts, reflex.ts (prompt prefix), frame.ts.
-// Offline; all sentences are invented. resetTrackedKind() clears FrameTracker's module-level state between tests.
+// Offline; all sentences are invented. The kind is passed to isAgencyTopic() by the caller (frame.ts has no module-level kind any more).
 import "./test-setup.ts";
-import { test, beforeEach } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadBank, matchBank, sttAliases } from "./bank.ts";
 import { detect } from "./detector.ts";
 import { buildPrefix } from "./reflex.ts";
-import { isAgencyTopic, FrameTracker, resetTrackedKind, type Frame } from "./frame.ts";
+import { isAgencyTopic } from "./frame.ts";
 
 const bank = loadBank();
-beforeEach(() => resetTrackedKind());
 
 test("detector: asking for a view or experience is a question even without a question word or mark", () => {
   for (const q of [
@@ -48,13 +47,10 @@ test("agency topic: on a supplier or team call only unmistakable service terms c
   assert.equal(isAgencyTopic(q, "other"), true); // a call still being recognised keeps the loose rule
 });
 
-test("agency topic follows the frame tracker's settled kind", () => {
-  const f = (kind: Frame["kind"]): Frame => ({ kind, topic: "t", goal: "g", people: [], entities: [], checklist: [] });
-  const tr = new FrameTracker(1);
-  tr.apply(f("vendor"));
-  assert.equal(isAgencyTopic("כמה אתרים יש לכם באחסון"), false);
-  tr.apply(f("client"));
-  assert.equal(isAgencyTopic("כמה אתרים יש לכם באחסון"), true);
+test("agency topic follows the kind the caller passes (the call memory's kind), not a module global", () => {
+  assert.equal(isAgencyTopic("כמה אתרים יש לכם באחסון", "vendor"), false);
+  assert.equal(isAgencyTopic("כמה אתרים יש לכם באחסון", "client"), true);
+  assert.equal(isAgencyTopic("כמה אתרים יש לכם באחסון"), true, "no kind = the loose rule");
 });
 
 test("reflex prompt: technical questions and interview prompts are answered, nothing is invented about Dan", () => {

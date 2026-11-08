@@ -26,6 +26,9 @@ export function toView(m: SessionMemory): MemoryView {
   ];
   return {
     ver: m.ver,
+    kind: m.kind,
+    kindLocked: !!m.kindLocked,
+    ...(m.modeId ? { modeId: m.modeId } : {}),
     topic: clip(m.topic.now, 80),
     soFar: so.slice(0, 4).map((t) => clip(t, 140)),
     open: m.openQuestions.filter((q) => q.status === "open").map((q) => ({ id: q.id, text: clip(q.text, 140) })),

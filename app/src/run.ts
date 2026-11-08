@@ -13,7 +13,7 @@ import { crash, installProcessHandlers } from "./engine/shutdown.ts";
 import { createChannels, openBothChannels, wireChannels } from "./engine/stt.ts";
 import { resolveReflexModels, startHealthTick, checkDisk, v2Active } from "./engine/degrade.ts";
 import { notesRound, reminderTick } from "./engine/side.ts";
-import { frameRound, tipsTick } from "./engine/coach.ts";
+import { tipsTick } from "./engine/coach.ts";
 import { flowTick } from "./engine/flowmode.ts";
 import { startConsent } from "./engine/consent.ts";
 import { startControlReader } from "./engine/control.ts";
@@ -36,10 +36,6 @@ if (CONTROL) startControlReader(); // Stop must work while the STT sockets are s
 function startTimers() {
   startHealthTick();
   setInterval(safe("notes", notesRound), S.notes.everyMs).unref();
-  setInterval(
-    safe("frame", () => frameRound()),
-    5000,
-  ).unref();
   setInterval(safe("tips", tipsTick), 5000).unref();
   setInterval(safe("reminders", reminderTick), 30_000).unref();
   setInterval(safe("flow", flowTick), 5000).unref();

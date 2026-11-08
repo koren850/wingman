@@ -30,7 +30,7 @@ import { tipsSystem, masculine } from "./tips.ts";
 import { summarySystem, kindGuidance, buildPrompt } from "./summary.ts";
 import { notesSystem } from "./notes.ts";
 import { selfcheckSystem } from "./selfcheck.ts";
-import { frameSystem, frameUserMessage, isAgencyTopic, resetTrackedKind } from "./frame.ts";
+import { isAgencyTopic } from "./frame.ts";
 import { topicSystem } from "./flow.ts";
 import { isClearQuestion } from "./detector.ts";
 import { loadKeyterms } from "./providers/stt/index.ts";
@@ -159,7 +159,6 @@ test("pack: topics.txt compiles to the loose and strict regexes (=word is a whol
 });
 
 test("pack: isAgencyTopic uses the user's topics.txt, and an empty pack means no topic words", () => {
-  resetTrackedKind();
   const dir = tmp("agency");
   writeFileSync(join(dir, "topics.txt"), "bicycle\n[strict]\nderailleur\n");
   const old = process.env.WINGMAN_PACK_DIR;
@@ -216,8 +215,6 @@ function allPrompts(): Record<string, string> {
     }),
     notes: notesSystem(),
     selfcheck: selfcheckSystem(),
-    frame: frameSystem(),
-    frameUser: frameUserMessage({ transcript: "t", contextNotes: [], current: undefined }),
     topic: topicSystem(),
   };
 }
@@ -232,21 +229,20 @@ test("prompts: with an empty profile no prompt names anyone; they say 'the user'
   const all = allPrompts();
   assert.match(all.prefix, /the user/);
   assert.ok(!/masculine|feminine/.test(all.prefix));
-  assert.ok(!/web and hosting/.test(all.prefix + all.frame + all.summary));
+  assert.ok(!/web and hosting/.test(all.prefix + all.summary));
   assert.match(all.tips, /gender-neutral/);
 });
 
 test("prompts: a profile name, address form, about and business are injected into the prompts", () => {
   setProfile({ name: SENTINEL, address: "female", about: "ABOUT-TEXT", business: "BUSINESS-TEXT" });
   const all = allPrompts();
-  for (const k of ["prefix", "prefixInterview", "interview", "userMsgMe", "classify", "tips", "summary", "notes", "selfcheck", "frame", "topic"])
+  for (const k of ["prefix", "prefixInterview", "interview", "userMsgMe", "classify", "tips", "summary", "notes", "selfcheck", "topic"])
     assert.match(all[k], new RegExp(SENTINEL), k);
   assert.match(all.prefix, /feminine/);
   assert.match(all.tips, /feminine/);
   assert.match(all.prefix, /ABOUT-TEXT/);
   assert.match(all.prefix, /BUSINESS-TEXT/);
   assert.match(all.summary, /BUSINESS-TEXT/);
-  assert.match(all.frame, /BUSINESS-TEXT/);
   assert.ok(!/masculine/.test(all.prefix));
 });
 

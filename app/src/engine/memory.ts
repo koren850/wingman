@@ -17,6 +17,8 @@
 import { buildContext, modelMessages, type ContextOutput, type RawLine, type SharedContext } from "../context/build.ts";
 import { withSettings, type Budgets } from "../context/budget.ts";
 import { applyPatch } from "../session/patch.ts";
+import { lostOnCompact, restoreLost } from "../session/safety.ts";
+import { matchRoster } from "../context/names.ts";
 import { MEMORY_UPDATER_INSTRUCTIONS, COMPACTOR_INSTRUCTIONS } from "../session/prompt.ts";
 import { renderMemoryDetailed } from "../session/render.ts";
 import { CAPS } from "../session/caps.ts";
@@ -151,6 +153,11 @@ export class MemoryLoop {
   private readonly seen = new Set<string>(); // every token heard so far (bounded)
   private lastSpeaker = "";
   private lastNewTokenAt = -Infinity;
+  /** Heard word (lower case) -> the roster word it was matched to by edit distance. Only for words that were new to the call after a speaker change. */
+  private readonly aliases = new Map<string, string>();
+  /** New words that matched nobody on the roster. The next updater run gets them once, with the roster list. */
+  private readonly askedNames = new Set<string>();
+  private pendingNames: string[] = [];
   private localNumbers: { what: string; value: string; who: string }[] = [];
   private readonly prompted = new Set<string>();
   /** "Last time": the first time a person with a past fact is named, one Fact card may show it. Once per call. */
@@ -159,7 +166,7 @@ export class MemoryLoop {
   private lastPromptAt = 0;
   private abort = new AbortController();
   private stopped = false;
-  stats = { runs: 0, compactions: 0, dropped: 0, failures: 0, applied: 0, shed: 0 };
+  stats = { runs: 0, compactions: 0, dropped: 0, failures: 0, applied: 0, shed: 0, nameMapped: 0, nameAsked: 0, compactLost: 0 };
 
   constructor(
     private readonly deps: MemoryDeps,
@@ -202,9 +209,10 @@ export class MemoryLoop {
   // ------------------------------------------------------------ input
   /** One transcript line (final). Both sides. */
   addLine(line: MemInput): void {
-    const text = line.text.replace(/\s+/g, " ").trim();
-    if (!text || this.stopped) return;
+    const clean = line.text.replace(/\s+/g, " ").trim();
+    if (!clean || this.stopped) return;
     const now = this.deps.now();
+    const { text, unknownName } = this.nameStep(line, clean, now);
     const l: MemLine = { side: line.side, text, ...(line.name ? { name: line.name } : {}), at: now };
     this.tail.push(l);
     if (this.tail.length > MAX_TAIL) this.tail.shift();
@@ -218,7 +226,7 @@ export class MemoryLoop {
     this.lastLineAt = now;
     if (line.name) this.learnName(line.name);
     this.checkPastMention(text);
-    this.hints(line, text, words, now);
+    this.hints(text, words, now, unknownName, line.final === true);
     // Interview and legacy only: claims.ts numbers (a number with its unit) go into `numbers` without a model call.
     if (this.deps.localNumbers)
       for (const s of spokenNumbers(text)) this.localNumbers.push({ what: s.unit, value: String(s.n), who: line.side === "me" ? "me" : (line.name ?? "them") });
@@ -243,28 +251,53 @@ export class MemoryLoop {
     this.pastDone = true;
     return { id: f.id, text: f.text, who: f.who ?? "" };
   }
-  /** Wake-up hints. None of them reads a word list or a capital letter, so Hebrew and English behave alike. The updater decides what the line means. */
-  private hints(line: MemInput, text: string, words: number, now: number): void {
-    if (/\d/.test(text)) this.events.add("number");
-    if (/[?？؟]\s*$/.test(text) && !this.questionAt) this.questionAt = now;
-    if (words >= LONG_LINE_WORDS) this.events.add("length");
-    if (line.final && this.unreadWords >= Math.ceil(this.cfg.minNewWords / 2)) this.events.add("turn");
-    // A token that is new to the call (not in the roster, never heard) right after the speaker changed: a name, a product, a place.
+  /**
+   * Names. A word that is new to the call right after the speaker changed (not on the roster, never heard, 3+ letters) is a name, a product or a place.
+   * If it is close to a name on the roster by edit distance (context/names.ts: Hebrew letter fold, no word list), it is that person: the word is replaced
+   * by the roster name in the text the updater reads, and nothing wakes. If it is close to nobody, it is a new name: the updater is woken once for it and
+   * gets the roster list with it (see runUpdater). Each word costs at most one extra call, and new-word wakes are 30 s apart at the least.
+   * Returns the text to use, and whether a word matched nobody.
+   */
+  private nameStep(line: MemInput, text: string, now: number): { text: string; unknownName: boolean } {
     const speaker = `${line.side}:${line.name ?? ""}`;
     const changed = this.lastSpeaker !== "" && speaker !== this.lastSpeaker;
     this.lastSpeaker = speaker;
     const toks = tokensOf(text);
-    let fresh = false;
-    if (changed && this.seen.size >= NEW_TOKEN_WARMUP && now - this.lastNewTokenAt >= NEW_TOKEN_GAP_MS)
-      fresh = toks.some((t) => t.length >= NEW_TOKEN_MIN_LEN && !/^\d+$/.test(t) && !this.rosterTokens.has(t) && !this.seen.has(t));
+    let unknown = false;
+    if (changed && this.seen.size >= NEW_TOKEN_WARMUP) {
+      for (const t of toks) {
+        if (t.length < NEW_TOKEN_MIN_LEN || /^\d+$/.test(t) || this.rosterTokens.has(t) || this.seen.has(t) || this.aliases.has(t)) continue;
+        const hit = matchRoster(
+          t,
+          this.mem.roster.map((p) => p.name),
+        );
+        if (hit) {
+          this.aliases.set(t, hit.name);
+          this.stats.nameMapped++;
+          this.deps.log("events", { type: "name.map", from: t, to: hit.name, dist: hit.dist });
+        } else if (!unknown && now - this.lastNewTokenAt >= NEW_TOKEN_GAP_MS && !this.askedNames.has(t)) {
+          unknown = true;
+          this.askedNames.add(t);
+          this.pendingNames.push(t);
+          this.lastNewTokenAt = now;
+        }
+      }
+    }
     for (const t of toks) {
       this.seen.add(t);
       if (this.seen.size > SEEN_MAX) this.seen.delete(this.seen.values().next().value as string);
     }
-    if (fresh) {
-      this.lastNewTokenAt = now;
-      this.events.add("name");
-    }
+    if (!this.aliases.size) return { text, unknownName: unknown };
+    const out = text.replace(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu, (w) => this.aliases.get(w.toLowerCase()) ?? w);
+    return { text: out, unknownName: unknown };
+  }
+  /** Wake-up hints. None of them reads a word list or a capital letter, so Hebrew and English behave alike. The updater decides what the line means. */
+  private hints(text: string, words: number, now: number, unknownName: boolean, final: boolean): void {
+    if (/\d/.test(text)) this.events.add("number");
+    if (/[?？؟]\s*$/.test(text) && !this.questionAt) this.questionAt = now;
+    if (words >= LONG_LINE_WORDS) this.events.add("length");
+    if (final && this.unreadWords >= Math.ceil(this.cfg.minNewWords / 2)) this.events.add("turn");
+    if (unknownName) this.events.add("name");
   }
   /** A hint from outside: a topic shift in a moment call, a new speaker name, a manual wake. */
   noteEvent(kind: TriggerKind): void {
@@ -327,7 +360,17 @@ export class MemoryLoop {
     const r = applyPatch(this.mem, patch, { now });
     if (!r.applied) return { applied: false, reason: r.reason };
     const prev = this.mem;
+    // Compaction safety: an open question, open promise or unhandled objection must still be there (or have been resolved). If not, they are put back.
+    if (role === "compact") {
+      const lost = lostOnCompact(prev, r.mem);
+      if (lost.length) {
+        r.mem = restoreLost(prev, r.mem, lost);
+        this.stats.compactLost += lost.length;
+        this.deps.log("events", { type: "compact.lost", n: lost.length, ids: lost.map((l) => l.id).slice(0, 20), kept: true });
+      }
+    }
     this.mem = r.mem;
+    for (const p of this.mem.roster) this.learnName(p.name);
     this.stats.applied++;
     try {
       this.deps.save(this.mem);
@@ -408,7 +451,12 @@ export class MemoryLoop {
     const t0 = now;
     let outcome: "applied" | "empty" | "dropped" | "failed" = "failed";
     try {
-      const ctx = this.ctxFor("memory", batch, "Update the memory with the new lines.");
+      const names = this.pendingNames.splice(0);
+      if (names.length) this.stats.nameAsked += names.length;
+      const trigger = names.length
+        ? `Update the memory with the new lines. New name heard: ${names.join(", ")}. If it is a garbled form of a name on the roster (${this.mem.roster.map((p) => p.name).join(", ") || "empty"}), use the roster name. If it is a new person, add them to the roster.`
+        : "Update the memory with the new lines.";
+      const ctx = this.ctxFor("memory", batch, trigger);
       const reply = await this.deps.run({ role: "memory", ctx, signal: this.abort.signal, timeoutMs: this.cfg.timeoutMs });
       if (this.stopped && this.abort.signal.aborted) throw new Error("stopped");
       outcome = this.take(reply.text, "memory", this.deps.now());
@@ -451,6 +499,31 @@ export class MemoryLoop {
       this.lastCompactVer = this.mem.ver; // the compacted version counts as seen
       this.busy = undefined;
     }
+  }
+
+  // ------------------------------------------------------------ changes from outside
+  /** The user changed the memory (the call mode): the new memory replaces the old one, is saved and sent to the UI. Returns false when it changed nothing. */
+  replaceMemory(next: SessionMemory, why: string): boolean {
+    if (next === this.mem) return false;
+    const prev = this.mem;
+    this.mem = next;
+    try {
+      this.deps.save(next);
+    } catch (e) {
+      this.deps.log("events", { type: "memory.save.error", error: String((e as Error)?.message ?? e).slice(0, 160) });
+    }
+    try {
+      this.deps.sendView(toView(next));
+    } catch {
+      /* best effort */
+    }
+    this.deps.log("events", { type: "memory.patch", role: why, ver: next.ver, notes: [] });
+    try {
+      this.deps.onChange?.(next, prev);
+    } catch (e) {
+      this.deps.log("events", { type: "error.survived", where: "memory.onChange", error: String((e as Error)?.message ?? e).slice(0, 160) });
+    }
+    return true;
   }
 
   // ------------------------------------------------------------ open loops

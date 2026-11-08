@@ -18,6 +18,10 @@ export type SessionMemory = {
   updatedAt: number;
   ver: number; // +1 per applied patch
   kind: MemoryKind;
+  /** True when the user (or a prepared meeting) chose the kind. A model patch cannot change a locked kind. */
+  kindLocked?: boolean;
+  /** Id of a custom mode from the user's pack (modes.yaml) that sits on top of `kind`. Set only by the user. */
+  modeId?: string;
   topic: { now: string; history: { label: string; from: number }[] };
   roster: Person[];
   facts: Fact[];
@@ -51,6 +55,11 @@ export type MemoryPatch = {
 /** Sent to the UI over the relay as { type: "memory", view }. Small. */
 export type MemoryView = {
   ver: number;
+  /** The call mode. `kindLocked` false means it is only the model's guess (the UI shows it as a guess). */
+  kind: MemoryKind;
+  kindLocked: boolean;
+  /** Custom mode id, when one is active. */
+  modeId?: string;
   topic: string;
   soFar: string[]; // max 4
   open: { id: string; text: string }[];
@@ -92,4 +101,12 @@ export function isEmptyMemory(m: SessionMemory): boolean {
     !m.objections.length &&
     !m.mustCover.length
   );
+}
+
+/**
+ * The kind the gates may trust: only one the user chose (or a prepared meeting stored). The model's guess is shown as a guess and does not switch
+ * the prepared answer bank off: a call whose kind the updater never settled on stays "other", and that must not mean "not a customer call".
+ */
+export function chosenKind(m: SessionMemory): MemoryKind | undefined {
+  return m.kindLocked ? m.kind : undefined;
 }

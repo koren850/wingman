@@ -102,25 +102,10 @@ test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, 
       rows("usage.jsonl").some((u) => u.role === "summary" && u.roles?.summary?.calls === 1),
       "call cost includes the summary",
     );
-    // Call frame (scripted:frame): logged as an event and sent to the overlay as a cards.jsonl row; checklist ticks follow the transcript; cost is in the call total.
-    const fr = events.filter((e) => e.type === "frame");
-    assert.ok(fr.length >= 1 && fr.at(-1).frame.kind === "client" && fr.at(-1).frame.checklist.length >= 4, "frame event");
-    assert.ok(
-      fr.at(-1).frame.checklist.some((c: any) => c.done),
-      "some checklist item covered",
-    );
-    assert.ok(
-      cards.some((c) => c.type === "frame" && c.frame?.topic),
-      "frame row for the overlay",
-    );
-    assert.ok(
-      events.some((e) => e.type === "frame.summary"),
-      "checklist result logged",
-    );
-    assert.ok(
-      rows("usage.jsonl").some((u) => u.role === "frame") && rows("usage.jsonl").some((u) => u.role === "summary" && u.roles?.frame?.calls >= 1),
-      "frame cost in the call total",
-    );
+    // The call frame model call is gone (round 12): no frame event, no frame usage row, no frame row for the overlay.
+    assert.ok(!events.some((e) => e.type === "frame" || e.type === "frame.summary"), "no frame events");
+    assert.ok(!rows("usage.jsonl").some((u) => u.role === "frame"), "no frame model call");
+    assert.ok(!cards.some((c) => c.type === "frame"), "no frame row for the overlay");
     // A live tip (scripted:tips): a distinct small card, never counted as an answer.
     const tips = cards.filter((c) => c.type === "card" && c.badge === "tip");
     assert.ok(tips.length >= 1 && tips.every((c) => c.turnId === "tips" && c.say.length <= 140), `a live tip (${tips.length})`);

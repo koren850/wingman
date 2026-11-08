@@ -105,7 +105,10 @@ test("only the fixed commands reach stdin, and only in the right phase", () => {
   assert.deepEqual(c.written, ["consent\n", "quiet on\n", "quiet off\n", "client\n", "note שיחה על מעבר שרת\n", "note " + "x".repeat(300) + "\n"]);
   for (const w of c.written)
     assert.ok(
-      COMMANDS.includes(w.trim()) || /^note [^\n\r]{1,300}\n$/.test(w) || /^speaker \d{1,2}( [^\n\r]{1,40})?\n$/.test(w),
+      COMMANDS.includes(w.trim()) ||
+        /^note [^\n\r]{1,300}\n$/.test(w) ||
+        /^speaker \d{1,2}( [^\n\r]{1,40})?\n$/.test(w) ||
+        /^mode [a-z0-9][a-z0-9-]{0,23}\n$/.test(w),
       "unexpected stdin: " + JSON.stringify(w),
     );
 });

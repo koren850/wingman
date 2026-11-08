@@ -19,6 +19,12 @@ const lines = () =>
     return { side: l.ch, text: l.text, ...(who ? { name: who } : {}) };
   });
 
+/** The call memory: the live one (the engine keeps it current) unless the file on disk is newer (a restarted engine, a user edit). */
+function freshest() {
+  const disk = loadMemory(log.dir, Date.now()).mem;
+  return st.m.mem.ver >= disk.ver ? st.m.mem : disk;
+}
+
 /** Models for ask and recap: the same chain as the reflex, minus any model whose circuit is open. Empty = AI unavailable. */
 const models = () => (cost.llmState() === "capped" ? [] : usableModels());
 
@@ -28,7 +34,7 @@ function env(offline = false): AskEnv {
     registry,
     models: offline ? [] : models(),
     cfg: { timeoutMs: Math.min(S.llm.reflex.timeoutMs, 9000), maxTokens: 220, cache: S.llm.reflex.cache, effort: "low", thinking: false },
-    memory: loadMemory(log.dir, Date.now()).mem,
+    memory: freshest(),
     lines: lines(),
     shared: {
       rules: `You are Wingman, a live meeting assistant for ${userName()}. In the transcript "me" is ${userName()} and "them" is the other side.`,

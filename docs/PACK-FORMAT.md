@@ -104,6 +104,25 @@ wordpress
 
 Whole-word matching works for Hebrew too.
 
+## modes.yaml (optional)
+
+Your own call modes. A mode adds a few lines of instructions to the help Wingman gives, and can set how many cards it shows. There is no example file in the example pack, so nobody gets a mode they did not write.
+
+```yaml
+- id: weekly-sales
+  label: Weekly sales review
+  instructions: Watch the pipeline numbers. Note who owns each deal and the date they promised.
+  minValue: 2
+  maxPerMinute: 2
+```
+
+- At most 6 modes. Extra entries are ignored.
+- `id`: lower case letters, digits and `-`, up to 24 characters. The names of the built-in kinds (`client`, `support`, `vendor`, `team`, `consult`, `personal`, `interview`, `other`, `auto`) cannot be used.
+- `label` is up to 40 characters. `instructions` is up to 600 characters. Angle brackets and `&` are escaped, so the text cannot close a tag in the prompt.
+- `minValue` (1 to 3) is the least value a card needs. `maxPerMinute` (1 to 6) is how many cards show in a minute before the rest become chips. Both are optional.
+- Your text cannot change the safety rules: the prompt says so, and the rules above it stay.
+- Choose a mode in a live call with `mode <id>` through the control socket (or `mode auto` to let Wingman guess again). A prepared meeting keeps the mode you chose for it. An unknown id is refused.
+
 ## Cards for a practice meeting
 
 A practice meeting (kind `interview`) can have its own cards, in the same format as `bank.yaml` (and an optional `.en.yaml` file next to it). Save the file anywhere you like, then add this note to the meeting:

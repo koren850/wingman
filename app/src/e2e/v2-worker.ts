@@ -31,6 +31,11 @@ async function main() {
   const g = loadSplit(split, { final: split !== "dev", ship: split === "test-c" }).find((x) => x.id === id);
   if (!g) throw new Error(`no ${split} meeting ${id}`);
   const e = await setupEngine({ "llm.reflex.model": "anthropic:claude-haiku-5-5", ...(opts.sets ?? {}) });
+  if (opts.tailChunk) {
+    // Simulator study (r3-context-modes): cache the raw tail in chunks for these roles. CACHE_POLICY is read for every call, so a change here is in force.
+    const { CACHE_POLICY } = await import("../context/cache.ts");
+    for (const [role, n] of Object.entries(opts.tailChunk)) (CACHE_POLICY as Record<string, { tailChunk: number }>)[role].tailChunk = n ?? 0;
+  }
   const obs = observeModel(e, { legacyLayout: opts.legacyLayout });
   if (opts.record) {
     // Record mode: every model call goes through the cassette recorder. The inner model is the observed policy fake ("mock" transport, used by the

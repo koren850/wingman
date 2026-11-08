@@ -1,16 +1,15 @@
 // Every v2 token budget in one place. The legacy constants (12 lines, 80 lines, 6000 chars, 300, 40k chars ...) stay where they are.
 // Token counts are estimates (no tokenizer, no dependency). The estimate leans high so a budget is never broken in reality.
+import { charCounts, estimateFromCounts } from "./calibration.ts";
 
 export type Role = "moment" | "observer" | "memory" | "compact" | "ask" | "digest" | "wrapup";
 export const ROLES: readonly Role[] = ["moment", "observer", "memory", "compact", "ask", "digest", "wrapup"];
 
-/** Estimated tokens of a text. ASCII about 3.5 characters per token; every other character (Hebrew, emoji ...) counts 0.6 token. */
+/** Estimated tokens of a text. By default ASCII about 3.5 characters per token and every other character (Hebrew, emoji ...) 0.6 token; the numbers come from
+ *  context/calibration.ts (not fitted to real calls until scripts/calibrate-tokens.ts has run on real usage rows). */
 export function estimateTokens(s: string): number {
   if (!s) return 0;
-  let ascii = 0,
-    other = 0;
-  for (let i = 0; i < s.length; i++) s.charCodeAt(i) < 128 ? ascii++ : other++;
-  return Math.ceil(ascii / 3.5 + other * 0.6);
+  return estimateFromCounts(charCounts(s));
 }
 
 /** Cuts a text so that estimateTokens(result) <= maxTokens. Cuts at a line or word end when it can. */
@@ -94,11 +93,11 @@ export function driftPct(estimate: number, actual: number): number | undefined {
   if (!(estimate > 0) || !(actual > 0)) return undefined;
   return Math.round(((estimate - actual) / actual) * 1000) / 10;
 }
-/** Keeps the drift per role. `note` says when to write a warning: the first time a role is off by more than DRIFT_WARN, then at most once every `everyMs` for that role. */
+/** Keeps the drift per role. `note` says when to write a warning: the first time a role is off by more than DRIFT_WARN in this tracker (one line per role per call, not one per request); with a finite `everyMs` it may repeat after that long. */
 export class DriftTracker {
   private last = new Map<string, number>();
   readonly samples = new Map<string, { n: number; sum: number; worst: number }>();
-  note(role: string, estimate: number, actual: number, now: number, everyMs = 300_000): { pct?: number; warn: boolean } {
+  note(role: string, estimate: number, actual: number, now: number, everyMs = Infinity): { pct?: number; warn: boolean } {
     const pct = driftPct(estimate, actual);
     if (pct === undefined) return { warn: false };
     const s = this.samples.get(role) ?? { n: 0, sum: 0, worst: 0 };

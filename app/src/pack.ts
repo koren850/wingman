@@ -4,7 +4,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DATA } from "./env.ts";
+import YAML from "yaml";
 import { escapeRe } from "./text-util.ts";
+import { KINDS } from "./session/types.ts";
 
 export const EXAMPLE_PACK = join(DATA, "example-pack");
 export const USER_PACK = join(homedir(), ".config", "wingman", "pack");
@@ -73,4 +75,63 @@ export function loadTopics(env: NodeJS.ProcessEnv = process.env): Topics {
   const t = parseTopics(raw);
   topicsCache = { key: f + raw, t };
   return t;
+}
+
+// ---------- custom call modes (modes.yaml) ----------
+/** A mode the user wrote in their pack (modes.yaml). It adds text to the moment prompt and can set two numbers. The text is the user's own, but still untrusted. */
+export type CustomMode = { id: string; label: string; instructions: string; minValue?: number; maxPerMinute?: number };
+export const MAX_CUSTOM_MODES = 6;
+export const MAX_MODE_TEXT = 600;
+/** Names a custom mode cannot take: the built-in kinds (the list is in session/types.ts) and the control word "auto". */
+const builtinModeId = (id: string): boolean => (KINDS as readonly string[]).includes(id) || id === "auto";
+/** Plain text for a prompt: control and direction characters out, angle brackets and ampersands escaped, capped (in characters, not bytes). */
+const modeText = (x: unknown, max: number): string =>
+  Array.from(
+    (typeof x === "string" ? x : "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E\u2066-\u2069]/g, "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/[ \t]+/g, " ")
+      .trim(),
+  )
+    .slice(0, max)
+    .join("");
+/** Reads the text of modes.yaml (a list of { id, label, instructions, minValue?, maxPerMinute? }). A bad entry is skipped, never fatal: at most 6 modes. */
+export function parseCustomModes(raw: string): CustomMode[] {
+  let doc: unknown;
+  try {
+    doc = YAML.parse(raw);
+  } catch {
+    return [];
+  }
+  const list = Array.isArray(doc)
+    ? doc
+    : doc && typeof doc === "object" && Array.isArray((doc as { modes?: unknown }).modes)
+      ? (doc as { modes: unknown[] }).modes
+      : [];
+  const out: CustomMode[] = [];
+  for (const e of list) {
+    if (out.length >= MAX_CUSTOM_MODES) break;
+    if (!e || typeof e !== "object") continue;
+    const o = e as Record<string, unknown>;
+    const id = typeof o.id === "string" ? o.id.trim().toLowerCase() : "";
+    if (!/^[a-z0-9][a-z0-9-]{0,23}$/.test(id) || builtinModeId(id) || out.some((m) => m.id === id)) continue;
+    const instructions = modeText(o.instructions, MAX_MODE_TEXT);
+    if (!instructions) continue;
+    const m: CustomMode = { id, label: modeText(o.label, 40).replace(/\s+/g, " ") || id, instructions };
+    if (Number.isInteger(o.minValue) && (o.minValue as number) >= 1 && (o.minValue as number) <= 3) m.minValue = o.minValue as number;
+    if (Number.isInteger(o.maxPerMinute) && (o.maxPerMinute as number) >= 1 && (o.maxPerMinute as number) <= 6) m.maxPerMinute = o.maxPerMinute as number;
+    out.push(m);
+  }
+  return out;
+}
+/** The custom modes of the user's pack (no example fallback: an example mode would show up for everyone). Missing or broken file = none. */
+export function loadCustomModes(env: NodeJS.ProcessEnv = process.env): CustomMode[] {
+  const f = join(packDirs(env)[0], "modes.yaml");
+  try {
+    return existsSync(f) ? parseCustomModes(readFileSync(f, "utf8")) : [];
+  } catch {
+    return [];
+  }
 }

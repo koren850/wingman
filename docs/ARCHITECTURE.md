@@ -69,7 +69,7 @@ The tray app starts one call at a time through the controller, which runs `call.
 | Guards | `guards.ts` | Code (regular expressions, not prompts) that blocks prices, dates, deadlines and promises in AI text, in Hebrew and English, including number words. A hit replaces the text with a stall line. |
 | Calc | `calc.ts` | Local arithmetic for "For you" questions and to keep math away from the price stall line. |
 | Assist | `assist.ts` | Answers questions the user asks out loud (`assist.answerMe`) or after the Ctrl+Opt+A key. Local cues first, then one tiny classifier call only if unsure. |
-| Frame | `frame.ts` | About once a minute: what kind of call is this (client, support, vendor, team, consult, personal, other), topic, goal, people, and a checklist. The kind changes only after two updates agree. Feeds answers, tips and the summary. |
+| Frame | `frame.ts` | Since round 12 (r3) it has no model call. The call memory (`session/`) learns what a call is about, and the call kinds are listed once in `session/types.ts`. What stays in `frame.ts` is pure: the `Frame` shape that tips, the summary and old call folders still read, its parser and stability rules, and `isAgencyTopic(text, kind)`, which takes the kind from its caller (no module-level state). |
 | Speakers and flow | `speakers.ts`, `flow.ts` | The speech provider tells the other side's voices apart (`stt.speakers`); `speakers.ts` gives them call-local numbers and names (from introductions, a prepared meeting's attendees, or `wingman speaker`). `flow.ts` (`FlowTracker`) notices when several of them talk among themselves (a muted line, answer cards wait) and when someone turns to the user (an alert). Setting `flow.enabled`. Renaming a voice relabels the earlier lines. Nothing is kept across calls. |
 | Practice and mock-interview mode (kind `interview`) | `brief.ts`, `run.ts`, `guards.ts` | A prepared meeting of kind `interview` switches to practice coaching: a mock interview with suggested answers in your own words, built from your own notes. Not for live use in a real interview. The meeting's own cards (note `Prepared cards: <file.yaml>`, bank format, one file per meeting) replace the bank. No Buy time lines, no card limit, every question gets an answer built from the background notes. The guard blocks only a salary figure (`guardInterview`). No fact cards and no self-check cards. Tips follow the normal settings. |
 | Tips and notes | `tips.ts`, `notes.ts`, `brief.ts` | At most one small tip every two minutes (AI or local: "you talk more than 75 percent"). Live notes every 30 s. Must-cover reminders from the Plan. |
@@ -167,6 +167,20 @@ Every usage row now carries `input_tokens`, `output_tokens`, `cache_read` and `c
 
 Memory quality is measured, not assumed. `qa/memory-eval.ts` plays 12 labelled calls (6 English, 6 Hebrew, `data/memory-eval/`) through the real memory loop and scores the final memory per class (promises with their owner, open questions, numbers with their owner, decisions). A null control (nothing written) and a copy-all control (every line in every class) must stay under their limits. `pnpm eval:memory` runs it offline with the policy fake; with `WINGMAN_LLM_MODE=replay` it reads a cassette, and the owner can record one.
 
+### Context, modes and the second memory (round 12, r3)
+
+One memory. `frame.ts` lost its model call, its own kind list and `trackedKind`; the answer-bank gates read `chosenKind(st.m.mem)` (`session/types.ts`): the kind only when the user chose it (`kindLocked`). The model's guess is shown as a guess and does not switch the prepared bank off. `claims.ts`, `entities.ts` and the keyword helpers of `brief.ts` are fenced in their headers: interview mode and the legacy engine only. The question path without a memory loop (AI paused, legacy) sends the rendered call memory and `localTail()` (`engine/tail.ts`, newest lines up to a token budget) instead of the last 12 lines.
+
+Names. `engine/memory.ts` replaces a word that is new to the call after a speaker change by the roster name it is close to (`context/names.ts`: edit distance with a Hebrew letter fold, no word list). A word close to nobody wakes the updater once and travels with the roster list; each word is asked about once.
+
+Compaction safety. After a compaction patch, `session/safety.ts` finds open questions, open promises and unhandled objections that are gone, puts them back (new items give way first if a list is at its cap) and logs `compact.lost`. No model call.
+
+Trim order (`context/build.ts TRIM_STEPS`): chunks after the best one, the oldest raw lines, memory down to its floor (its summary detail goes before any exact item), the best chunk, memory to nothing, role text, trigger, block A. The card's `ctx` record also lists `sources` (chunk id and file name), `trimmed` and `chars` (the input of the token calibration, `context/calibration.ts`).
+
+Measuring. `cost.ts cacheReport()` gives input, cache read, cache write, hit share and USD an hour per role from usage rows; `blockAReport()` says whether block A reaches the model's cache minimum alone, only with the role rules, or not at all. `wingman doctor` prints both. A fixture run is labelled simulated. The tail cache (`tailChunk`) stays 0 for every role: `src/e2e/r3-context-modes-cache.test.ts` runs the golden dev calls with and without it on the simulated cache and checks that a role has it on only when the simulation gains more than 10 percent.
+
+Modes. `SessionMemory.kindLocked` (the user chose; a model patch cannot change the kind), `modeId` (a custom mode from the pack `modes.yaml`, see PACK-FORMAT). `setMode()` in `session/patch.ts` is the one function that changes them; the control command `mode <kind|id|auto>` (stdin line, tray controller, control socket allowlist) calls it through `setCallMode()` in `engine/coach.ts`. `moments/modes.ts` adds the custom text and numbers on top of the built-in kind while a custom mode is active.
+
 ## Processes and data flow
 
 The process diagram is at the top of this document ([Process diagram](#process-diagram)).
@@ -186,7 +200,7 @@ them audio -> Deepgram (interim + final text) -> join/split fragments
 
 For lines from the user's own channel ("me"): echo filter, then `assist.ts` decides "is this for Wingman?", then the math evaluator or one model call answers into a "For you" card.
 
-Background loops run beside this: call frame (every 60 s), live notes (every 30 s), tips (max one per 2 min), must-cover reminders, health supervisor (every 1 s), idle stop (15 min of silence).
+Background loops run beside this: live notes (every 30 s), tips (max one per 2 min), must-cover reminders, health supervisor (every 1 s), idle stop (15 min of silence).
 
 ## Call lifecycle and phases
 

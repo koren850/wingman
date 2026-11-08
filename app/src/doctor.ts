@@ -254,11 +254,16 @@ section("Prompt cache (usage of the last 5 calls)");
 {
   const { recentUsageRows, cacheReport, formatCacheReport, cacheAdvice } = await import("./cost.ts");
   const { cacheMinTokens } = await import("./context/cache.ts");
-  const rep = cacheReport(recentUsageRows(CALLS, 5));
+  const rows = recentUsageRows(CALLS, 5);
+  const rep = cacheReport(rows);
+  // Calls from the scripted test models are fixtures, not real usage: say so on the report.
+  const simulated = rows.length > 0 && rows.every((r) => typeof r.model === "string" && r.model.startsWith("scripted:"));
   const modelOf = (role: string) => (role === "memory" || role === "compact" ? S.memory.model : S.llm.reflex.model);
   if (!rep.length) ok("no saved calls with token counts yet: the report shows after the first call");
   else {
-    for (const l of formatCacheReport(rep)) console.log(`     ${l}`);
+    for (const l of formatCacheReport(rep, { simulated })) console.log(`     ${l}`);
+    const { blockAReport, formatBlockA } = await import("./cost.ts");
+    for (const l of formatBlockA(blockAReport(rows, (role) => cacheMinTokens(modelOf(role))))) console.log(`     ${l}`);
     const adv = cacheAdvice(rep, (role) => cacheMinTokens(modelOf(role)));
     adv.length ? adv.forEach((a) => warn(a)) : ok("cache reads and the token estimate look right");
   }

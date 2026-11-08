@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import { mkdtempSync, readdirSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseFrame, FrameTracker, isAgencyKind, missedMust, progress, frameText, runFrame, sameItem, type Frame } from "./frame.ts";
+import { parseFrame, FrameTracker, isAgencyKind, missedMust, progress, frameText, sameItem, type Frame } from "./frame.ts";
 import { parseTip, checkTip, TipGate, talkRatio, talkTip, wrapUpTip, hasWrapCue, runTip, type TimedLine } from "./tips.ts";
 import { backgroundBlock } from "./attachments.ts";
 import { kindGuidance, parseSummary, runSummary, type CallData } from "./summary.ts";
@@ -200,7 +200,7 @@ test("guards apply to tips: prices, dates and promises never get through; a repe
   assert.ok(!dup.ok && dup.why === "duplicate");
 });
 
-test("scripted frame and tip doubles; runFrame / runTip with them; unusable answers throw or give no tip", async () => {
+test("scripted frame and tip doubles; parseFrame / runTip with them; unusable answers give no frame or no tip", async () => {
   const said = "<call_transcript>\nthem: האתר נטען לאט\nthem: ויש גיבוי?\n</call_transcript>";
   const fr = JSON.parse(scriptedFrame(said));
   assert.equal(fr.kind, "client");
@@ -218,12 +218,10 @@ test("scripted frame and tip doubles; runFrame / runTip with them; unusable answ
     signal: new AbortController().signal,
     timeoutMs: 5000,
   };
-  const r = await runFrame({ ...common, model: "scripted:frame" });
-  assert.equal(r.frame.kind, "client");
-  assert.ok(r.usage);
-  const t = await runTip({ ...common, model: "scripted:tips", transcript: "them: ויש גיבוי?", frame: r.frame, factLines: [], given: [], elapsedMin: 2 });
+  const parsed = parseFrame(scriptedFrame(said))!;
+  assert.equal(parsed.kind, "client");
+  const t = await runTip({ ...common, model: "scripted:tips", transcript: "them: ויש גיבוי?", frame: parsed, factLines: [], given: [], elapsedMin: 2 });
   assert.equal(t.tip?.type, "ask");
-  await assert.rejects(runFrame({ ...common, model: "scripted:frame", generate: (async () => ({ text: "sorry" })) as any }), /no usable JSON/);
   assert.equal(
     (
       await runTip({

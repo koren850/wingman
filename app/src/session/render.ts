@@ -9,7 +9,7 @@ import { stripTag } from "../reflex.ts";
 import { clipWords } from "./caps.ts";
 import { isEmptyMemory, type SessionMemory } from "./types.ts";
 
-export const TRIM_ORDER = ["resolvedQuestions", "oldFacts", "handledObjections", "doneCommitments", "summary", "lastResort"] as const;
+export const TRIM_ORDER = ["summaryDetail", "resolvedQuestions", "oldFacts", "handledObjections", "doneCommitments", "summary", "lastResort"] as const;
 export type TrimStep = (typeof TRIM_ORDER)[number];
 export type Rendered = { text: string; tokens: number; /** steps applied, in order; "oldFacts:3" says how many facts went */ trimmed: string[] };
 
@@ -141,6 +141,12 @@ export function renderMemoryDetailed(m: SessionMemory, budgetTokens: number): Re
   const finish = (): Rendered => ({ text, tokens: estimateTokens(text), trimmed });
 
   if (fits()) return finish();
+  // 0. summary detail first: the summary is the lossy part (it is a rewrite of older items), the lists hold exact ids and wording. Half the words go before anything exact does.
+  if (m.summary && clipWords(m.summary, 250).split(/\s+/).filter(Boolean).length > 125) {
+    v.summaryWords = 125;
+    trimmed.push("summaryDetail");
+    if (redo()) return finish();
+  }
   // 1. resolved questions
   if (m.openQuestions.some((q) => q.status !== "open")) {
     v.dropResolvedQ = true;

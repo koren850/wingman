@@ -50,12 +50,24 @@ export type CacheReportRow = {
   hitPct: number;
   writePct: number;
   usd: number;
+  /** USD per hour of call time (the time between the first and the last usage row of each call). Undefined when the rows cover less than a minute. */
+  usdPerHour?: number;
   drift?: number;
 };
 /** Cache report from usage rows (usage.jsonl rows of one or more calls). Rows without token fields are read from `usage` the same way addLlm does.
  *  Roles are listed by input tokens, biggest first. `drift` is the mean of (estimate - actual) / actual over the rows that carry `est_tokens`. */
 export function cacheReport(rows: readonly Record<string, unknown>[]): CacheReportRow[] {
   const by = new Map<string, CacheReportRow & { dsum: number; dn: number }>();
+  // Call time: per call (rows carry `_call` when they come from recentUsageRows, else all rows are one call), the span between the first and last row.
+  const span = new Map<string, [number, number]>();
+  for (const r of rows) {
+    const t = Number(r.t);
+    if (!Number.isFinite(t) || t <= 0) continue;
+    const k = typeof r._call === "string" ? r._call : "";
+    const w = span.get(k);
+    span.set(k, w ? [Math.min(w[0], t), Math.max(w[1], t)] : [t, t]);
+  }
+  const hours = [...span.values()].reduce((a, [lo, hi]) => a + (hi - lo), 0) / HOUR_MS;
   for (const r of rows) {
     const role = typeof r.role === "string" ? r.role : "";
     if (!role || role === "stt" || role === "summary" || (r.usage === undefined && r.input_tokens === undefined)) continue;
@@ -77,18 +89,21 @@ export function cacheReport(rows: readonly Record<string, unknown>[]): CacheRepo
   return [...by.values()]
     .map(({ dsum, dn, ...o }) => ({
       ...o,
+      ...(hours >= 1 / 60 ? { usdPerHour: Math.round((o.usd / hours) * 1e6) / 1e6 } : {}),
       hitPct: o.input ? Math.round((o.read / o.input) * 1000) / 10 : 0,
       writePct: o.input ? Math.round((o.write / o.input) * 1000) / 10 : 0,
       ...(dn ? { drift: Math.round((dsum / dn) * 10) / 10 } : {}),
     }))
     .sort((a, b) => b.input - a.input);
 }
-/** The report as text lines for the terminal and `wingman doctor`. */
-export function formatCacheReport(rep: readonly CacheReportRow[]): string[] {
-  return rep.map(
+/** The report as text lines for the terminal and `wingman doctor`. `simulated`: the numbers come from a fixture with a simulated provider cache, not from real calls. */
+export function formatCacheReport(rep: readonly CacheReportRow[], o: { simulated?: boolean } = {}): string[] {
+  const n = (x: number) => x.toLocaleString("en-US");
+  const lines = rep.map(
     (r) =>
-      `${r.role.padEnd(9)} ${String(r.calls).padStart(5)} calls  input ${String(r.input).padStart(8)}  cache read ${String(r.hitPct).padStart(5)}%  cache write ${String(r.writePct).padStart(5)}%  $${r.usd.toFixed(4)}${r.drift !== undefined ? `  estimate off by ${r.drift > 0 ? "+" : ""}${r.drift}%` : ""}`,
+      `${r.role.padEnd(9)} ${String(r.calls).padStart(5)} calls  input ${n(r.input).padStart(9)}  cache read ${n(r.read).padStart(9)}  cache write ${n(r.write).padStart(8)}  hit share ${String(r.hitPct).padStart(5)}%  $${r.usd.toFixed(4)}${r.usdPerHour !== undefined ? `  $${r.usdPerHour.toFixed(4)}/hour` : ""}${r.drift !== undefined ? `  estimate off by ${r.drift > 0 ? "+" : ""}${r.drift}%` : ""}`,
   );
+  return o.simulated ? ["(simulated: fixture calls with a simulated provider cache, not real usage)", ...lines] : lines;
 }
 
 /** Usage roles (usage.jsonl). `reflex`, `notes`, `assist`... are the older jobs; the last seven are the moment engine's (PLAN 3.5). */
@@ -268,6 +283,55 @@ export function cacheAdvice(rep: readonly CacheReportRow[], minTokens: (role: st
   return out;
 }
 
+/**
+ * Block A (the shared start of every prompt) against the model's cache minimum, from the context records in usage rows. One line per role that has records.
+ * "cached on its own": A reaches the minimum, so every role reads it. "with the role rules": only A plus the role's fixed rules reaches it (a marker on the
+ * rules block caches both). "not cached": even together they are under the minimum.
+ */
+export function blockAReport(
+  rows: readonly Record<string, unknown>[],
+  minTokens: (role: string) => number,
+): { role: string; a: number; rules: number; min: number; state: "alone" | "with-rules" | "none" }[] {
+  const by = new Map<string, { n: number; a: number; rules: number }>();
+  for (const r of rows) {
+    const ctx = r.ctx as { parts?: Record<string, number> } | undefined;
+    const role = typeof r.role === "string" ? r.role : "";
+    if (!ctx?.parts || !role) continue;
+    // Block A is every part of the record that is not one of the role's own parts (rules, profile, house style, bank index, brief).
+    const own = (k: string) => Number(ctx.parts![k]) || 0;
+    const a =
+      Object.values(ctx.parts).reduce((n, v) => n + (Number(v) || 0), 0) -
+      own("memory") -
+      own("roleInstructions") -
+      own("retrieved") -
+      own("rawTail") -
+      own("trigger");
+    const o = by.get(role) ?? { n: 0, a: 0, rules: 0 };
+    o.n++;
+    o.a += a;
+    o.rules += own("roleInstructions");
+    by.set(role, o);
+  }
+  return [...by.entries()].map(([role, o]) => {
+    const a = Math.round(o.a / o.n),
+      rules = Math.round(o.rules / o.n),
+      min = minTokens(role);
+    return { role, a, rules, min, state: a >= min ? ("alone" as const) : a + rules >= min ? ("with-rules" as const) : ("none" as const) };
+  });
+}
+export function formatBlockA(rep: ReturnType<typeof blockAReport>): string[] {
+  return rep.map(
+    (r) =>
+      `${r.role.padEnd(9)} block A ${String(r.a).padStart(5)} tokens, role rules ${String(r.rules).padStart(5)}, model minimum ${r.min === Infinity ? "none" : r.min}: ${
+        r.state === "alone"
+          ? "block A is cached on its own"
+          : r.state === "with-rules"
+            ? "cached only together with the role rules"
+            : "under the minimum, not cached"
+      }`,
+  );
+}
+
 /** The usage rows of the newest `n` call folders under `callsDir`, oldest first. Unreadable folders and rows are skipped. */
 export function recentUsageRows(callsDir: string, n = 5): Record<string, unknown>[] {
   if (!existsSync(callsDir)) return [];
@@ -287,7 +351,7 @@ export function recentUsageRows(callsDir: string, n = 5): Record<string, unknown
     for (const line of readFileSync(join(d, "usage.jsonl"), "utf8").split("\n")) {
       if (!line) continue;
       try {
-        rows.push(JSON.parse(line) as Record<string, unknown>);
+        rows.push({ ...(JSON.parse(line) as Record<string, unknown>), _call: d });
       } catch {
         /* a row that is not valid JSON is skipped */
       }

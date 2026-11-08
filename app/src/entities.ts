@@ -1,3 +1,5 @@
+// SCOPE (round 12): the legacy engine and agency-style calls only. The client snapshot and the GENERIC name list here are private, local data for fact
+// cards. They are not part of the call memory (session/), and the v2 engine does not read them for context. Do not present them as the context model.
 // Fact cards: when a known client or domain is mentioned in the transcript, show what we know about it (hosting, CMS, PHP, SSL).
 // Data comes from a local snapshot (data/private/entities.json, git-ignored) that you build before the call from your own
 // client/domain lists. Nothing is looked up over the network during the call. Used by run.ts; matching reuses normalize.ts.

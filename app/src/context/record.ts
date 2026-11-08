@@ -17,6 +17,10 @@ export type CtxRecord = {
   aHash: string;
   /** ids of the background chunks that were added */
   chunks: string[];
+  /** the same chunks with a short label of their source (the file name), for the "what this card saw" view */
+  sources: { id: string; src: string }[];
+  /** characters sent, by script (ASCII, Hebrew, other): the input of the token calibration (context/calibration.ts) */
+  chars: { ascii: number; hebrew: number; other: number };
 };
 
 export const shortHash = (s: string): string => createHash("sha1").update(s).digest("hex").slice(0, 12);
@@ -29,6 +33,8 @@ export function makeRecord(o: {
   a: string;
   b: string;
   chunks: string[];
+  sources?: { id: string; src: string }[];
+  chars?: { ascii: number; hebrew: number; other: number };
 }): CtxRecord {
   const tokens = Object.values(o.parts).reduce((x, y) => x + y, 0);
   return {
@@ -40,5 +46,7 @@ export function makeRecord(o: {
     hash: shortHash(o.a + "\u0000" + o.b),
     aHash: shortHash(o.a),
     chunks: o.chunks.slice(),
+    sources: (o.sources ?? o.chunks.map((id) => ({ id, src: "file" }))).map((x) => ({ id: x.id, src: x.src })),
+    chars: o.chars ? { ...o.chars } : { ascii: 0, hebrew: 0, other: 0 },
   };
 }

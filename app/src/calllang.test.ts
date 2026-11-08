@@ -5,7 +5,6 @@ import { callLanguage, resetCallLang } from "./calllang.ts";
 import { summarySystem, buildPrompt, guardEmail, neutralizeLinks, fixGreeting, generateSummary, type CallData } from "./summary.ts";
 import { notesSystem, takeNotes } from "./notes.ts";
 import { tipsSystem, runTip, talkTip, wrapUpTip } from "./tips.ts";
-import { frameSystem, runFrame } from "./frame.ts";
 import { topicSystem, runTopic } from "./flow.ts";
 import { selfcheckSystem, detectCareful, runSelfCheck } from "./selfcheck.ts";
 import { guard } from "./guards.ts";
@@ -91,10 +90,6 @@ test("notes, tips, topic, frame and self-check prompts: language line for Englis
   assert.doesNotMatch(topicSystem("en"), /איזה|Hebrew/);
   assert.match(topicSystem("he"), /ONE short Hebrew line/);
 
-  assert.match(frameSystem("en"), /English \(the call is in English\) for topic, goal and checklist/);
-  assert.match(frameSystem("he"), /Hebrew for topic, goal and checklist/);
-  assert.ok(frameSystem("en").includes("You build the call frame"));
-
   assert.match(selfcheckSystem("en"), /the correct fact, English/);
   assert.doesNotMatch(selfcheckSystem("en"), /Hebrew|שאל/);
   assert.match(selfcheckSystem("he"), /the correct fact, Hebrew/);
@@ -141,9 +136,9 @@ const spy = () => {
 };
 
 test("run functions send an English prompt for an English transcript and a Hebrew prompt for a Hebrew one", async () => {
-  for (const [name, transcript, want, wantNot] of [
-    ["en", EN, /English/, /Hebrew for topic/],
-    ["he", HE, /Hebrew/, /English \(the call is in English\)/],
+  for (const [name, transcript, want] of [
+    ["en", EN, /English/],
+    ["he", HE, /Hebrew/],
   ] as const) {
     const s = spy();
     const common = { ...base, generate: s.generate };
@@ -152,8 +147,7 @@ test("run functions send an English prompt for an English transcript and a Hebre
     await runTopic({ ...common, lines });
     await runTip({ ...common, cache: "off", transcript, contextNotes: [], background: "", factLines: [], given: [], elapsedMin: 3 });
     await runSelfCheck({ ...common, cache: "off", background: "BG", transcript, line: lines[2].replace(/^me: /, "") });
-    await runFrame({ ...common, cache: "off", transcript, contextNotes: [], background: "" }).catch(() => {});
-    assert.equal(s.seen.length, 5, name);
+    assert.equal(s.seen.length, 4, name);
     for (const sys of s.seen) assert.match(sys, want, `${name}: ${sys.slice(0, 60)}`);
     if (name === "en")
       for (const sys of s.seen)
@@ -162,7 +156,6 @@ test("run functions send an English prompt for an English transcript and a Hebre
           /Hebrew for topic|ONE short Hebrew|Rules: Hebrew|a Hebrew (call|meeting)|one sentence, Hebrew|correct fact, Hebrew|הבטחת|דנה|איזה תוכן/,
           "no Hebrew instruction in an English prompt",
         );
-    assert.doesNotMatch(s.seen[4], wantNot);
   }
 });
 
@@ -186,7 +179,6 @@ test("generateSummary: English transcript gets the English summary prompt, Hebre
 
 test("scripted doubles still answer the new English prompts", () => {
   const prompt = (sys: string, t: string) => `${sys}\n<call_transcript>\n${t}\n</call_transcript>`;
-  assert.match(scriptedAnswer(prompt(frameSystem("en"), "them: my site is slow")), /"kind":"client"/);
   assert.match(scriptedAnswer(prompt(notesSystem("en"), "them: my site is slow")), /^- The client wants/);
   assert.match(scriptedAnswer(prompt(tipsSystem("en"), "them: what about backups")), /Ask where the backups/);
   assert.match(scriptedAnswer(prompt(summarySystem("en"), "them: my site is slow")), /Hi Dana/);

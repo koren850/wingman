@@ -831,3 +831,16 @@ Date: 2026-11-09
 
 **Consequences.** The floors for the judgement set and the memory eval are provisional; the owner moves them after the first recorded run and the report says by how much. The held-out size in the estimate is assumed from the file count because reading a split is a one-time act. `test-c` is skipped until that split exists.
 
+## ADR 56: One call memory, a user-chosen mode that the model cannot change, and measured token budgets
+
+Date: 2026-11-08
+
+**Context.** Two memories were alive: the call frame (its own model call, its own kind list, a module-level kind) and the call memory. The question path without a memory loop sent the last 12 lines and no memory. The token estimate was never compared with the provider's count in a way a person could read. The trim order cut the background chunk first, even when the question was about a fact in a loaded file. The compactor could push an open item out of a full list. A garbled name was a new word to the updater.
+
+**Decision.** (1) The frame has no model call; the call memory is the one source, and the kind list is in `session/types.ts`. The paused and legacy question path reads the memory and a size-based tail. (2) `kindLocked`: a kind the user (or a prepared meeting) chose cannot be changed by a patch; `auto` unlocks it. Custom modes from the pack sit on top of a kind and are capped (6 modes, 600 characters, escaped). (3) The report prints input, cache read, cache write, hit share and USD an hour per role; the drift warning is once per role per call; the estimate factors have a calibration module that a script fits from real rows. (4) Trim order: the summary detail first, the best chunk last of the background. (5) A local check after each compaction puts back lost open items. (6) A new word after a speaker change is matched to the roster by edit distance before the updater is asked.
+
+**Why.** One memory cannot disagree with itself. A choice the user made is worth more than a guess. A number that is never compared with reality drifts. Losing an open promise is worse than keeping one item too many. Edit distance is cheap, works in any script and needs no list.
+
+**Alternatives.** Keep the frame as an optional second opinion (two memories again). A model call to match names (cost on every new word). Raise the cache by padding block A (a write cost for text nobody needs). Turn the tail cache on (the simulator shows less than 10 percent for every role, and a loss for some).
+
+**Consequences.** The legacy engine has no call frame and no frame tips. Numbers in the calibration are the old defaults until someone runs `scripts/calibrate-tokens.ts` on real calls; no saving is claimed. The simulated cache is a model of the documented rules, not a bill.

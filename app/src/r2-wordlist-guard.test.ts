@@ -74,7 +74,6 @@ const LEGACY: Record<string, number> = {
   "engine/cards-v2.ts": 1,
   "engine/question.ts": 1,
   "entities.ts": 3,
-  "frame.ts": 2,
   "langwatch.ts": 1,
   "moments/observer.ts": 2,
   "moments/parse.ts": 2,

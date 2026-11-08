@@ -217,40 +217,43 @@ test("record: tokens equal the sum of the parts, memV and hashes are set", () =>
   assert.equal(buildContext(input("ask", { memory: m })).record.hash, r.record.hash);
 });
 
-test("trim order: retrieved, then raw tail, then memory, then role text, then trigger", () => {
-  const base = buildContext(input("ask", { trigger: "When does the Eilat warehouse close for the inventory?" }));
+test("trim order: raw tail first, memory to its floor, then the best background chunk, then role text and trigger", () => {
+  const trig = "When does the Eilat warehouse close for the inventory?";
+  const base = buildContext(input("ask", { trigger: trig }));
   assert.ok(base.record.parts.retrieved > 50, "retrieval found the chunk");
   assert.ok(base.record.chunks.includes("a"));
   const run = (cut: number) => {
     const budgets: Budgets = { ...DEFAULT_BUDGETS, ask: { ...DEFAULT_BUDGETS.ask, total: base.record.tokens - cut } };
-    return buildContext(input("ask", { trigger: "When does the Eilat warehouse close for the inventory?", budgets }));
+    return buildContext(input("ask", { trigger: trig, budgets }));
   };
   const p = base.record.parts;
-  // step 1: a little over, only the background chunks shrink
+  // step 1: a little over. The background chunk stays; the oldest raw lines go (the newest stay).
   let r = run(10);
-  assert.deepEqual(core(r), ["retrieved"]);
-  assert.equal(r.record.parts.rawTail, p.rawTail);
-  assert.equal(r.record.parts.memory, p.memory);
-  assert.ok(r.record.parts.retrieved < p.retrieved);
-  // step 2: chunks gone, the oldest raw lines go (the newest stay)
-  r = run(p.retrieved + 30);
-  assert.deepEqual(core(r).slice(0, 2), ["retrieved", "rawTail"]);
-  assert.equal(r.record.parts.retrieved, 0);
+  assert.deepEqual(core(r), ["rawTail"]);
+  assert.equal(r.record.parts.retrieved, p.retrieved, "the top chunk is kept");
   assert.equal(r.record.parts.memory, p.memory);
   assert.ok(r.record.parts.rawTail < p.rawTail);
   assert.match(r.messages[0].content, /line 29 /);
   assert.ok(!r.messages[0].content.includes("line 0 "));
-  // step 3: tail gone, memory is cut next (down to its floor first)
-  r = run(p.retrieved + p.rawTail + 100);
-  assert.deepEqual(core(r).slice(0, 3), ["retrieved", "rawTail", "memory"]);
+  // step 2: the tail is gone, the chunk is still there; memory is cut next (down to its floor first)
+  r = run(p.rawTail + 100);
+  assert.deepEqual(core(r).slice(0, 2), ["rawTail", "memory"]);
   assert.equal(r.record.parts.rawTail, 0);
+  assert.equal(r.record.parts.retrieved, p.retrieved, "the top chunk outlives the raw tail and the memory");
   assert.equal(r.record.parts.roleInstructions, p.roleInstructions);
   assert.ok(r.record.parts.memory < p.memory && r.record.parts.memory > 0);
-  // step 4: memory down to nothing, then role text and trigger are cut, and the total still holds
-  r = run(p.retrieved + p.rawTail + p.memory + 3);
+  assert.ok(r.record.chunks.includes("a"));
+  // step 3: memory squeezed to almost nothing, the chunk still stays
+  r = run(p.rawTail + p.memory - 60);
+  assert.ok(r.record.parts.memory < 300, "memory is below its floor only because the render could not do better");
+  assert.equal(r.record.parts.retrieved, p.retrieved);
+  // step 4: only now the chunk goes, then memory to nothing, then role text and trigger; the total still holds
+  const cut4 = p.rawTail + p.memory + p.retrieved + 3;
+  r = run(cut4);
   assert.equal(r.record.parts.memory, 0);
-  assert.ok(r.record.parts.roleInstructions < p.roleInstructions);
-  assert.ok(r.record.tokens <= base.record.tokens - (p.retrieved + p.rawTail + p.memory + 3));
+  assert.equal(r.record.parts.retrieved, 0);
+  assert.ok(core(r).indexOf("retrievedTop") > core(r).indexOf("memory"));
+  assert.ok(r.record.tokens <= base.record.tokens - cut4);
   // the order never changes, whatever the squeeze
   const steps = TRIM_STEPS as readonly string[];
   for (let cut = 5; cut < base.record.tokens - 100; cut += 137) {
@@ -270,7 +273,7 @@ test("memory trim inside the block follows the memory order", () => {
   assert.ok(r.record.parts.memory <= 700);
   assert.ok(r.record.trimmed.some((t) => t.startsWith("memory:")));
   const inner = r.record.trimmed.filter((t) => t.startsWith("memory:")).map((t) => t.split(":")[1]);
-  const order = ["resolvedQuestions", "oldFacts", "handledObjections", "doneCommitments", "summary", "lastResort"];
+  const order = ["summaryDetail", "resolvedQuestions", "oldFacts", "handledObjections", "doneCommitments", "summary", "lastResort"];
   const idx = inner.map((t) => order.indexOf(t));
   assert.ok(idx.every((i) => i >= 0));
   assert.deepEqual(

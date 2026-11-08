@@ -9,7 +9,6 @@ import type { Channel } from "../providers/stt/types.ts";
 import { sttChain } from "../providers/stt/index.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
 import { runSummary, runWrapup, formatShort, backgroundSummaryArgs } from "../summary.ts";
-import { progress, missedMust } from "../frame.ts";
 import { errBrief, status, health, healthClear } from "./out.ts";
 import { ht } from "../htext.ts";
 import { strayCounter, strayAction, STRAY_WINDOW_MS, STRAY_WARN_ABOVE } from "./strays.ts";
@@ -22,7 +21,6 @@ import {
   UI_LANG,
   cost,
   tracker,
-  frameOn,
   ECHO,
   brief,
   sup,
@@ -35,7 +33,7 @@ import {
 } from "./boot.ts";
 import { st, chans } from "./state.ts";
 import { askKey } from "./control.ts";
-import { frameRound, flushMemory, memoryLoop } from "./coach.ts";
+import { flushMemory, memoryLoop } from "./coach.ts";
 import { endCallLearning } from "./moments.ts";
 import { engineV2 } from "./memory.ts";
 import { speedSummary } from "./cards.ts";
@@ -281,13 +279,6 @@ export async function shutdown() {
     clearTimeout(memTimer);
   } else await flushMemory(0).catch(() => {});
   // (usage was logged twice on purpose: once above so the numbers exist even if the summary hangs, again below with the summary's own cost.)
-  // One last frame look so the checklist result in the review is current (a few seconds at most, never when the call is discarded or crashed).
-  if (frameOn && left() > 6000 && !st.call.crashed && !discard && !st.call.discardNow && cost.llmState() !== "capped") {
-    await Promise.race([frameRound(true), new Promise((res) => setTimeout(res, Math.min(S.frame.timeoutMs + 500, left() - 5000)))]).catch(() => {});
-    const f = tracker.current;
-    if (f)
-      log.write("events", { type: "frame.summary", kind: f.kind, done: progress(f).done, total: progress(f).total, missed: missedMust(f).map((m) => m.item) });
-  }
   status("stopphase", { phase: "summary" });
   await Promise.race([postCallSummary(), summarySkipWait, new Promise((res) => setTimeout(res, Math.max(1500, left())))]);
   if (summarySkipped) status("summary", { ok: false, skipped: true });

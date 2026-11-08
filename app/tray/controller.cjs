@@ -15,7 +15,7 @@ const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "a
  * notify?(title, body), onChange?(), setTimeout?, kill?, doctorTimeoutMs? } (fs/spawn/timers are injectable for tests).
  * State lives in lib.reduce; every change calls onChange so the tray and window can redraw. Only one call child at a time.
  * @param {any} o Options as listed above.
- * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, recap, confirmClient, note, ask, speaker,
+ * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, recap, confirmClient, note, ask, speaker, mode,
  *   stop, stopDelete, stopNoSummary, skipSummary, briefSaved, briefCleared, boot, refreshPlans, runDoctor, shutdown, logLine.
  */
 const QUIT_GRACE_MS = 3000; // quit: a call asked to stop longer ago than this and still alive is killed at once
@@ -250,7 +250,12 @@ function createController(o) {
   /** Writes one line to the call's stdin. Only the fixed COMMANDS, or "note"/"ask" plus one clean line of text, are allowed; anything else is refused. */
   function send(cmd) {
     if (!child) return false;
+    // The call mode: a kind name or a custom mode id, nothing else on the line. The engine checks the name against the kinds and the pack.
+    if (/^mode [a-z0-9][a-z0-9-]{0,23}$/.test(cmd)) return write(cmd);
     if (!COMMANDS.includes(cmd) && !/^(note|ask) [^\n\r]{1,300}$/.test(cmd) && !/^speaker (?:[1-9]|1[0-9]|20)(?: [^\n\r]{1,40})?$/.test(cmd)) return false;
+    return write(cmd);
+  }
+  function write(cmd) {
     try {
       if (child.stdin.writable) {
         child.stdin.write(cmd + "\n");
@@ -347,6 +352,8 @@ function createController(o) {
       if (name.trim() && !t) return false;
       return !!child && state.phase !== "stopping" && send(t ? `speaker ${n} ${t}` : `speaker ${n}`);
     },
+    /** The call mode: a built-in kind, a custom mode id from the pack, or "auto". Only while the call is live; the engine refuses an id it does not know. */
+    mode: (kind) => typeof kind === "string" && /^[a-z0-9][a-z0-9-]{0,23}$/.test(kind) && !!child && state.phase === "live" && send("mode " + kind),
     /** Stops the call gracefully and saves it with its summary. */
     stop: () => stop(false),
     /** Stops the call and deletes it. Callers must ask the user first. */

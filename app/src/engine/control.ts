@@ -1,7 +1,7 @@
 // Input from the user: terminal keys (Enter, q, a, n, y, Ctrl+C) and the menu-bar app's line commands on stdin (WINGMAN_CONTROL=1).
 //
 // IPC contract with the tray app (WINGMAN_CONTROL=1):
-//   stdin  lines: consent | quiet [on|off] | client | ask [text] | recap | note <text> | stop | stop-no-summary | skip-summary | stop-delete
+//   stdin  lines: consent | quiet [on|off] | client | ask [text] | recap | mode <kind|custom id|auto> | note <text> | stop | stop-no-summary | skip-summary | stop-delete
 //   stdout "@@wingman {json}" lines (see out.ts). Stop sequence: {ev:"stopphase",phase:"saving"} -> "summary" -> "done", then {ev:"ended"}.
 //   call.json in the call folder also carries phase ("starting"|"waiting"|"live"|"ended") and liveAt for the answer window.
 //   The reader starts with the process (run.ts); stop commands run at once, others wait until the consent step.
@@ -13,6 +13,7 @@ import { st } from "./state.ts";
 import { nameSpeaker, confirmClient, clientProposed } from "./side.ts";
 import { armAsk, askTyped } from "./me.ts";
 import { catchMeUp } from "./askcall.ts";
+import { setCallMode } from "./coach.ts";
 import { ORPHAN_IDLE_MIN, log, contextNotes, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { eventError } from "../errtext.ts";
@@ -143,6 +144,10 @@ function runControlCommand(line: string, onConsent?: () => void) {
   else if (cmd === "recap") {
     // "Catch me up" (Ctrl+Opt+U, `wingman recap`): the five-line sheet from the call memory
     void catchMeUp().catch((e) => log.write("events", { type: "recap.error", error: eventError(e).slice(0, 200) }));
+  } else if (cmd === "mode") {
+    // The user picks the call mode ("mode team", "mode auto", or a custom id from the pack's modes.yaml). A chosen mode is locked: the memory updater cannot change it.
+    const r = setCallMode(rest[0] ?? "");
+    log.write("events", { type: "mode.set", mode: (rest[0] ?? "").slice(0, 24), ok: r.ok, ...(r.reason ? { reason: r.reason } : {}) });
   } else if (cmd === "note") addNote(rest.join(" "));
   else if (cmd === "speaker") {
     const n = Number(rest[0]);

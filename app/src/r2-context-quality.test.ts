@@ -179,7 +179,7 @@ test("the call log adds the cache numbers and the estimate drift to every usage 
   assert.equal(warns[0].pct, 60);
 });
 
-test("drift: percent, the 25 percent line, one warning per role per interval", () => {
+test("drift: percent, the 25 percent line, one warning per role per call", () => {
   assert.equal(driftPct(1250, 1000), 25);
   assert.equal(driftPct(500, 1000), -50);
   assert.equal(driftPct(0, 1000), undefined);
@@ -188,7 +188,11 @@ test("drift: percent, the 25 percent line, one warning per role per interval", (
   assert.equal(DRIFT_WARN, 0.25);
   assert.equal(d.note("ask", 1300, 1000, 1).warn, true);
   assert.equal(d.note("ask", 1300, 1000, 2000).warn, false, "same role, soon after");
-  assert.equal(d.note("ask", 1300, 1000, 400_000).warn, true, "after the interval");
+  assert.equal(d.note("ask", 1300, 1000, 400_000).warn, false, "one line per role per call, however late");
+  assert.equal(new DriftTracker().note("ask", 1300, 1000, 0, 300_000).warn, true);
+  const d2 = new DriftTracker();
+  d2.note("ask", 1300, 1000, 0, 300_000);
+  assert.equal(d2.note("ask", 1300, 1000, 400_000, 300_000).warn, true, "a finite interval may repeat");
   assert.equal(d.note("moment", 600, 1000, 3).warn, true, "too low is a warning too");
   assert.equal(d.samples.get("ask")?.n, 4);
 });
@@ -215,7 +219,7 @@ test("cache report: per role calls, input, read and write share; advice says why
   assert.equal(moment.hitPct, 75);
   assert.equal(moment.writePct, 5);
   assert.equal(rep.find((r) => r.role === "memory")!.drift, 40);
-  assert.match(formatCacheReport(rep)[1], /moment\s+10 calls.*cache read\s+75%/);
+  assert.match(formatCacheReport(rep)[1], /moment\s+10 calls.*cache read.*hit share\s+75%/);
   const adv = cacheAdvice(rep, () => 512);
   assert.ok(
     adv.some((a) => /^memory: 400 input tokens a call is under the model's cache minimum \(512\)/.test(a)),

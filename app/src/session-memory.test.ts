@@ -545,7 +545,17 @@ test("toView: small and complete", () => {
   );
   assert.equal(v.numbers[0].value, "40k");
   assert.equal(v.soFar[0], "e", "newest decision first");
-  assert.deepEqual(toView(emptyMemory()), { ver: 0, topic: "", soFar: [], open: [], promises: [], coverLeft: [], numbers: [] });
+  assert.deepEqual(toView(emptyMemory()), {
+    ver: 0,
+    kind: "other",
+    kindLocked: false,
+    topic: "",
+    soFar: [],
+    open: [],
+    promises: [],
+    coverLeft: [],
+    numbers: [],
+  });
 });
 
 test("seedFromDigest: roster, must-cover and brief facts; chunks stay out; an empty digest is fine", () => {

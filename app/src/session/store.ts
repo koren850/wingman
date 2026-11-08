@@ -26,12 +26,14 @@ export function checkMemory(raw: unknown): { ok: true; mem: SessionMemory } | { 
   if (raw.v !== 1) return { ok: false, reason: "unknown version" };
   if (!num(raw.updatedAt) || !num(raw.ver)) return { ok: false, reason: "bad updatedAt or ver" };
   if (!(KINDS as readonly string[]).includes(raw.kind as string)) return { ok: false, reason: "bad kind" };
+  if (raw.kindLocked !== undefined && typeof raw.kindLocked !== "boolean") return { ok: false, reason: "bad kindLocked" };
+  if (raw.modeId !== undefined && (!str(raw.modeId) || (raw.modeId as string).length > 24)) return { ok: false, reason: "bad modeId" };
   if (!isObj(raw.topic) || !str(raw.topic.now) || !Array.isArray(raw.topic.history)) return { ok: false, reason: "bad topic" };
   for (const h of raw.topic.history) if (!isObj(h) || !str(h.label) || !num(h.from)) return { ok: false, reason: "bad topic history" };
   if (!str(raw.summary)) return { ok: false, reason: "bad summary" };
   const lists: [string, (it: Record<string, unknown>) => boolean, number][] = [
     ["roster", (i) => str(i.name) && (i.side === "me" || i.side === "them") && optStr(i.role) && optStr(i.stance), CAPS.roster],
-    ["facts", (i) => str(i.text) && optStr(i.who) && num(i.at) && (i.src === "brief" || i.src === "call" || i.src === "user"), CAPS.facts],
+    ["facts", (i) => str(i.text) && optStr(i.who) && num(i.at) && (i.src === "brief" || i.src === "call" || i.src === "user" || i.src === "past"), CAPS.facts],
     ["numbers", (i) => str(i.what) && str(i.value) && optStr(i.who) && num(i.at), CAPS.numbers],
     ["commitments", (i) => str(i.who) && str(i.what) && optStr(i.due) && num(i.at) && (i.status === "open" || i.status === "done"), CAPS.commitments],
     [

@@ -284,8 +284,11 @@ export function applyPatch(mem: SessionMemory, patch: unknown, ctx: ApplyCtx): A
   const src = ctx.src ?? "call";
 
   if (p.kind && p.kind !== next.kind) {
-    next.kind = p.kind;
-    changed = true;
+    if (next.kindLocked) notes.push(`kind locked to ${next.kind}, ignored ${p.kind}`);
+    else {
+      next.kind = p.kind;
+      changed = true;
+    }
   }
 
   for (const { name, side, role, stance } of p.roster) {
@@ -400,4 +403,21 @@ export function applyPatch(mem: SessionMemory, patch: unknown, ctx: ApplyCtx): A
   capped.ver = mem.ver + 1;
   capped.updatedAt = ctx.now;
   return { mem: capped, applied: true, notes };
+}
+
+/**
+ * The user picks the call mode (control command `mode`). A built-in kind locks it: the memory updater can no longer change it.
+ * A custom mode id (from the pack) locks the current kind and sets `modeId`. "auto" unlocks and clears the custom mode, so the updater may guess again.
+ * `customIds` are the ids the pack knows. An id nobody knows returns undefined (the caller says so). Pure.
+ */
+export function setMode(mem: SessionMemory, mode: string, now: number, customIds: readonly string[] = []): SessionMemory | undefined {
+  const bump = (m: SessionMemory): SessionMemory => ({ ...m, ver: mem.ver + 1, updatedAt: now });
+  const strip = ({ modeId: _m, ...rest }: SessionMemory): SessionMemory => rest;
+  if (mode === "auto") return mem.kindLocked || mem.modeId ? bump(strip({ ...mem, kindLocked: false })) : mem;
+  if ((KINDS as readonly string[]).includes(mode)) {
+    const kind = mode as MemoryKind;
+    return mem.kind === kind && mem.kindLocked && !mem.modeId ? mem : bump({ ...strip(mem), kind, kindLocked: true });
+  }
+  if (customIds.includes(mode)) return mem.modeId === mode && mem.kindLocked ? mem : bump({ ...mem, kindLocked: true, modeId: mode });
+  return undefined;
 }

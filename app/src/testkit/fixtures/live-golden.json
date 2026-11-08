@@ -580,6 +580,8 @@
     ],
     "memView": {
       "ver": 2,
+      "kind": "other",
+      "kindLocked": false,
       "topic": "checkout error 500",
       "soFar": ["Rolled back PayFlow to 3.9 on the copy", "payment plugin updated from 3.9 to 4.2"],
       "open": [
@@ -1200,6 +1202,8 @@
     ],
     "memView": {
       "ver": 2,
+      "kind": "other",
+      "kindLocked": false,
       "topic": "שגיאת קופה 500",
       "soFar": ["החזרנו את PayFlow לגרסה 3.9 על העותק", "תוסף התשלום עודכן מ-3.9 ל-4.2"],
       "open": [

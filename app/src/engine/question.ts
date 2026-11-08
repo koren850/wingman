@@ -12,13 +12,16 @@ import {
   type BankHit,
 } from "../bank.ts";
 import { evalMath } from "../calc.ts";
-import { isClearQuestion, addressesYou } from "../detector.ts";
-import { addressesUser, isFresh, isBankRepeat, agencyGate, questionSkip } from "./rules.ts";
+import { isClearQuestion } from "../detector.ts";
+import { addressesYou, addressesUser } from "../lang/address.ts";
+import { isFresh, isBankRepeat, agencyGate, questionSkip } from "./rules.ts";
 import { guard, guardInterview } from "../guards.ts";
 import { runReflex, resolveBankId, leakedTag, type Tag, type ReflexHandlers } from "../reflex.ts";
 import type { SttResult } from "../providers/stt/types.ts";
 import { describe, ProviderError } from "../providers/errors.ts";
-import { frameText, isAgencyKind, isAgencyTopic } from "../frame.ts";
+import { isAgencyKind, isAgencyTopic } from "../frame.ts";
+import { chosenKind, type MemoryKind } from "../session/types.ts";
+import { localTail, memoryForAsk } from "./tail.ts";
 import { health, errBrief, healthClear, survived } from "./out.ts";
 import { ht } from "../htext.ts";
 import { emitCard, recordLatency, noteModel, type Card, focusWorthy } from "./cards.ts";
@@ -30,7 +33,6 @@ import {
   breakers,
   bank,
   sup,
-  tracker,
   contextNotes,
   prefix,
   S,
@@ -71,6 +73,9 @@ import { st } from "./state.ts";
 
 // st.q: turnSeq, reflexErrors (consecutive model failures: 2 in a row raise the "AI not answering" bar, 1 for an ask by the user; a success clears it)
 // and bankShownAt (per-call state, see state.ts).
+
+/** The call kind the answer-bank gates may trust: the one the user chose. A kind the model only guessed does not gate the bank (see chosenKind). */
+const askKind = (): MemoryKind | undefined => chosenKind(st.m.mem);
 
 /** The cancel scope of one final. A final that holds several questions opens one scope: a newer final aborts all of its parts, but a part never aborts a sibling. */
 export interface QScope {
@@ -280,13 +285,13 @@ function pickBank(t: Turn) {
   // Not a client / support call (frame, after hysteresis) and the question is not about the user's web / hosting services: Wingman never
   // speaks for the user here. No agency bank card and no stall line, whatever the keywords say (team meeting, interview, friend, supplier).
   // A short follow-up ("יהיה מוכן?", "את הדומיין?") has no topic word of its own: it counts as agency talk for 60 s after one that did (the frame can also guess "vendor" wrongly).
-  t.agencyTopic = isAgencyTopic(r.text);
+  t.agencyTopic = isAgencyTopic(r.text, askKind());
   t.agencyRecent = Date.now() - st.turn.lastAgencyTopicAt < 60_000;
   if (t.agencyTopic) st.turn.lastAgencyTopicAt = Date.now();
   ({ noAgency: t.noAgency, noStall: t.noStall } = agencyGate({
     interview,
-    kind: tracker.kind,
-    kindIsAgency: !!tracker.kind && isAgencyKind(tracker.kind),
+    kind: askKind(),
+    kindIsAgency: !!askKind() && isAgencyKind(askKind()),
     agencyTopic: t.agencyTopic,
     agencyRecent: t.agencyRecent,
     stallEnabled: S.reflex.stall,
@@ -307,7 +312,7 @@ function pickBank(t: Turn) {
       hit = undefined;
     }
   }
-  if (t.noAgency && matchBank(r.text, bank)) log.write("events", { type: "agency.gated", turnId, kind: tracker.kind });
+  if (t.noAgency && matchBank(r.text, bank)) log.write("events", { type: "agency.gated", turnId, kind: askKind() });
   if (!hit && !t.noAgency && matchBank(r.text, bank)?.card.id === "stall-price")
     log.write("events", { type: "stall.suppressed", turnId, why: priceOffTopic(r.text) ?? "off-topic" });
   t.hit = hit;
@@ -339,7 +344,7 @@ function weighBank(t: Turn) {
   const { hit, reason } = t;
   // Not a client / support call (frame, after hysteresis): a keyword hit on the agency bank is weak (dimmed, the model may drop it),
   // except the price / timeline / guarantee stall tier, which always stays.
-  const offKind = !interview && !!tracker.kind && !isAgencyKind(tracker.kind);
+  const offKind = !interview && !!askKind() && !isAgencyKind(askKind());
   // A prepared meeting with background files: a general topical card (SEO basics, "move a site") may be the wrong card for this meeting,
   // so it shows dimmed and an AI answer from the background replaces it ("old links and Google ranking" got the generic SEO card).
   t.bgBank = !interview && !!background && !!hit && !STALL_TIER.has(hit.card.id);
@@ -350,7 +355,7 @@ function weighBank(t: Turn) {
     (reason.startsWith("head:") && !(hit && hit.score >= 2)) ||
     reason.startsWith("problem") ||
     t.weakBank ||
-    (!interview && !tracker.kind && !!hit && !STALL_TIER.has(hit.card.id) && !t.agencyTopic && !t.agencyRecent) ||
+    (!interview && !askKind() && !!hit && !STALL_TIER.has(hit.card.id) && !t.agencyTopic && !t.agencyRecent) ||
     t.bgBank;
 }
 
@@ -376,7 +381,8 @@ function showBank(t: Turn, hit: BankHit) {
 /** Streams the model's answer for this question. */
 function askModel(t: Turn, usable: string[]): Promise<void> {
   const { r } = t;
-  const recent = transcript.slice(-12).map(lineOf).join("\n");
+  // The paused-AI and legacy path has no memory loop: it reads what the call memory knows (session.json, kept by the v2 loop when it ran) and a plain tail.
+  const recent = localTail(transcript.map(lineOf));
   t.lat.reqAt = Date.now();
   noteModel(t.id, usable[0]);
   return runReflex({
@@ -388,7 +394,7 @@ function askModel(t: Turn, usable: string[]): Promise<void> {
     question: r.text,
     context: contextNotes,
     signal: t.ac.signal,
-    frame: frameText(tracker.current) || undefined,
+    frame: memoryForAsk(st.m.mem) || undefined,
     weakBank: t.weakBank ? t.hit!.card.id : undefined,
     noAgency: t.noAgency,
     anyLanguage: interview,
@@ -515,7 +521,7 @@ function presentMoment(t: Turn, m0: Moment) {
     return;
   }
   if (t.noAgency && (m.tag === "STALL" || m.tag === "BANK")) {
-    log.write("events", { type: "agency.gated", turnId: t.id, kind: tracker.kind, tag: m.tag, model: true });
+    log.write("events", { type: "agency.gated", turnId: t.id, kind: askKind(), tag: m.tag, model: true });
     return momentSkip(t, "agency-gated", "moment.drop", { tag: m.tag });
   }
   if (m.tag === "ANS" && !t.allowAns) {
@@ -678,8 +684,8 @@ function onTag(t: Turn, tagIn: Tag) {
   if (t.noAgency && (tag.kind === "STALL" || tag.kind === "BANK")) {
     clearTimeout(t.stallTimer);
     t.modelIgnored = true;
-    lat.tag = `${lat.tag} (gated: ${tracker.kind})`;
-    log.write("events", { type: "agency.gated", turnId, kind: tracker.kind, tag: tag.kind, model: true });
+    lat.tag = `${lat.tag} (gated: ${askKind()})`;
+    log.write("events", { type: "agency.gated", turnId, kind: askKind(), tag: tag.kind, model: true });
     return;
   }
   if (tag.kind === "ANS" && !t.allowAns) {

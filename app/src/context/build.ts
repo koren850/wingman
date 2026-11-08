@@ -15,13 +15,16 @@
 // The strings the caller passes for rules, profile, house style and bank index are the app's own text and go in as they are.
 //
 // The input never goes over the role's total budget. When it would, parts are cut in a fixed order (see TRIM_STEPS):
-//   1 background chunks, 2 raw tail (oldest lines first), 3 memory (down to a floor, then to nothing), 4 role instructions, 5 trigger, 6 block A.
+//   1 background chunks after the best one, 2 raw tail (oldest lines first), 3 memory (down to a floor; its summary detail goes before any fact),
+//   4 the best background chunk, 5 memory (to nothing), 6 role instructions, 7 trigger, 8 block A.
+// The best chunk stays longer than the raw tail: a question about a fact in a loaded file is answered by that chunk, and the tail is mostly in the memory too.
 import type { Digest } from "../session/seed.ts";
 import { escapeUntrusted, renderMemoryDetailed } from "../session/render.ts";
 import { isEmptyMemory, type SessionMemory } from "../session/types.ts";
 import { DEFAULT_BUDGETS, estimateTokens, MEMORY_FLOOR_TOKENS, truncateToTokens, type Budgets, type Role, type RoleBudget } from "./budget.ts";
 import { CACHE_POLICY, splitRoleText, type CachePolicy } from "./cache.ts";
 import { makeRecord, type CtxRecord } from "./record.ts";
+import { addCounts, charCounts } from "./calibration.ts";
 import { buildIndex, search, type Bm25Index, type Chunk } from "./retrieve.ts";
 
 export type RawLine = { side: "me" | "them"; text: string; name?: string };
@@ -62,7 +65,7 @@ export type ContextOutput = {
 export const modelMessages = (ctx: Pick<ContextOutput, "messages" | "parts">): { role: "user"; content: string | MessagePart[] }[] =>
   ctx.parts ? [{ role: "user", content: ctx.parts }] : ctx.messages;
 
-export const TRIM_STEPS = ["retrieved", "rawTail", "memory", "memoryAll", "roleInstructions", "trigger", "shared"] as const;
+export const TRIM_STEPS = ["retrievedRest", "rawTail", "memory", "retrievedTop", "memoryAll", "roleInstructions", "trigger", "shared"] as const;
 
 const indexCache = new WeakMap<object, Bm25Index>();
 function indexFor(sh: SharedContext | undefined): Bm25Index | undefined {
@@ -119,7 +122,8 @@ function buildShared(sh: SharedContext | undefined, cap: number): { text: string
   return { text: order.map((k) => texts[k]).join(""), parts, cut };
 }
 
-const lineText = (l: RawLine): string => `${l.side === "me" ? "me" : "them" + (l.name ? ` (${esc(l.name)})` : "")}: ${esc(l.text).replace(/\s+/g, " ").trim()}`;
+// A name on the "me" side is a second voice on the user's side (a room mic, two people at one desk): it gets its own label, "me (Voice 2)".
+const lineText = (l: RawLine): string => `${l.side === "me" ? "me" : "them"}${l.name ? ` (${esc(l.name)})` : ""}: ${esc(l.text).replace(/\s+/g, " ").trim()}`;
 
 /** A line starts a chunk when the hash of its text is a multiple of `chunk`. The anchors depend only on the text, so every call sees the same ones. */
 const isAnchor = (text: string, chunk: number): boolean => {
@@ -166,8 +170,20 @@ export function renderTailParts(lines: RawLine[], allowance: number, chunk: numb
   return { text: stable.join("") + rest, stable, rest };
 }
 
-function renderRetrieved(hits: { chunk: Chunk }[], allowance: number): { text: string; ids: string[] } {
+/** The label of a chunk's source for the card record: the file name only, one short line (the name came from a file the user loaded). */
+const srcLabel = (s: string | undefined): string =>
+  Array.from(
+    String(s ?? "file")
+      .replace(/^.*[\\/]/, "")
+      .replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, "")
+      .trim() || "file",
+  )
+    .slice(0, 40)
+    .join("");
+
+function renderRetrieved(hits: { chunk: Chunk }[], allowance: number): { text: string; ids: string[]; sources: { id: string; src: string }[] } {
   const ids: string[] = [];
+  const sources: { id: string; src: string }[] = [];
   let body = "";
   for (const h of hits) {
     const piece = `[${esc(h.chunk.source ?? "file")} ${h.chunk.id}]\n${esc(h.chunk.text)}\n`;
@@ -175,8 +191,9 @@ function renderRetrieved(hits: { chunk: Chunk }[], allowance: number): { text: s
     if (estimateTokens(`<background_files>\n${next}</background_files>\n`) > allowance) break;
     body = next;
     ids.push(h.chunk.id);
+    sources.push({ id: h.chunk.id, src: srcLabel(h.chunk.source) });
   }
-  return body ? { text: `<background_files>\n${body}</background_files>\n`, ids } : { text: "", ids: [] };
+  return body ? { text: `<background_files>\n${body}</background_files>\n`, ids, sources } : { text: "", ids: [], sources: [] };
 }
 
 const renderTrigger = (t: string, allowance: number): string => {
@@ -199,10 +216,11 @@ export function buildContext(inp: ContextInput): ContextOutput {
   const ix = rb.retrieved > 0 ? indexFor(inp.shared) : undefined;
   const query = [inp.trigger, ...inp.rawLines.slice(-3).map((l) => l.text)].join(" ");
   const hits = ix ? search(ix, query, { maxTokens: rb.retrieved }) : [];
+  let topOnly = false; // trim step 1: only the best chunk is kept
 
   type Made = {
     memory: ReturnType<typeof renderMemoryDetailed>;
-    retrieved: { text: string; ids: string[] };
+    retrieved: { text: string; ids: string[]; sources: { id: string; src: string }[] };
     tail: string;
     stable: string[];
     rest: string;
@@ -212,7 +230,7 @@ export function buildContext(inp: ContextInput): ContextOutput {
   const pol: CachePolicy = { ...CACHE_POLICY[inp.role], ...inp.cache };
   const make = (): Made => ({
     memory: rb.memory > 0 && !isEmptyMemory(inp.memory) ? renderMemoryDetailed(inp.memory, al.memory) : { text: "", tokens: 0, trimmed: [] },
-    retrieved: al.retrieved > 0 ? renderRetrieved(hits, al.retrieved) : { text: "", ids: [] },
+    retrieved: al.retrieved > 0 ? renderRetrieved(topOnly ? hits.slice(0, 1) : hits, al.retrieved) : { text: "", ids: [], sources: [] },
     ...(al.rawTail > 0
       ? (({ text, stable, rest }) => ({ tail: text, stable, rest }))(renderTailParts(inp.rawLines, al.rawTail, pol.tailChunk))
       : { tail: "", stable: [], rest: "" }),
@@ -237,14 +255,17 @@ export function buildContext(inp: ContextInput): ContextOutput {
     if (over() <= 0) break;
     const before = total(made);
     switch (step) {
-      case "retrieved":
-        al.retrieved = cutTo(estimateTokens(made.retrieved.text));
+      case "retrievedRest":
+        topOnly = hits.length > 1;
         break;
       case "rawTail":
         al.rawTail = cutTo(estimateTokens(made.tail));
         break;
       case "memory":
         al.memory = Math.max(Math.min(MEMORY_FLOOR_TOKENS, al.memory), cutTo(made.memory.tokens));
+        break;
+      case "retrievedTop":
+        al.retrieved = cutTo(estimateTokens(made.retrieved.text));
         break;
       case "memoryAll":
         al.memory = cutTo(made.memory.tokens);
@@ -303,6 +324,17 @@ export function buildContext(inp: ContextInput): ContextOutput {
     content = "(no new lines)";
     parts.trigger += estimateTokens(content);
   }
-  const record = makeRecord({ role: inp.role, memV: inp.memory.ver, parts, trimmed, a: aText, b: made.memory.text, chunks: made.retrieved.ids });
+  const sent = [aText, ...system.filter((b) => b.name !== "shared").map((b) => b.text), content];
+  const record = makeRecord({
+    role: inp.role,
+    memV: inp.memory.ver,
+    parts,
+    trimmed,
+    a: aText,
+    b: made.memory.text,
+    chunks: made.retrieved.ids,
+    sources: made.retrieved.sources,
+    chars: sent.map(charCounts).reduce(addCounts, { ascii: 0, hebrew: 0, other: 0 }),
+  });
   return { system, messages: [{ role: "user", content }], ...(msgParts ? { parts: msgParts } : {}), record };
 }

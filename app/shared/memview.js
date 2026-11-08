@@ -24,6 +24,9 @@
           .trimEnd() + "…";
   };
   const num = (id) => Number(String(id).slice(1)) || 0;
+  /** The call kinds (the list is in src/session/types.ts; a test keeps both equal) and the shape of a custom mode id (pack modes.yaml). */
+  const KINDS = ["client", "support", "vendor", "team", "consult", "personal", "interview", "other"];
+  const MODE_ID = /^[a-z0-9][a-z0-9-]{0,23}$/;
   const arr = (v) => (Array.isArray(v) ? v : []);
   const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
   const norm = (s) =>
@@ -48,6 +51,9 @@
     ];
     return {
       ver: Number(mem.ver) || 0,
+      kind: KINDS.includes(mem.kind) ? mem.kind : "other",
+      kindLocked: mem.kindLocked === true,
+      ...(typeof mem.modeId === "string" && MODE_ID.test(mem.modeId) ? { modeId: mem.modeId } : {}),
       topic: clip(str(obj(mem.topic).now, 400), 80),
       soFar: so.slice(0, 4).map((t) => clip(t, 140)),
       open: arr(mem.openQuestions)
@@ -80,6 +86,9 @@
     if (v.ver === undefined && v.topic === undefined) return null;
     return {
       ver: Number.isFinite(v.ver) ? Math.max(0, Math.round(v.ver)) : 0,
+      // the call mode (r3-context-modes): only when it is a known kind, so an older sender's view stays as it was
+      ...(KINDS.includes(v.kind) ? { kind: v.kind, kindLocked: v.kindLocked === true } : {}),
+      ...(typeof v.modeId === "string" && MODE_ID.test(v.modeId) ? { modeId: v.modeId } : {}),
       topic: str(v.topic, 120),
       soFar: arr(v.soFar)
         .map((t) => str(t, 200))

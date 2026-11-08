@@ -1,6 +1,5 @@
-// Call frame (what is this call about?) and live coaching tips: timer jobs plus the one place that emits a tip card.
+// Live coaching tips and the v2 memory loop wiring: timer jobs plus the one place that emits a tip card. (The old call frame model call is gone: the call memory knows what the call is about.)
 import { eventError } from "../errtext.ts";
-import { runFrame, progress, kindLabel, type Frame } from "../frame.ts";
 import { callLanguage } from "../calllang.ts";
 import { runTip, checkTip, talkRatio, talkTip, wrapUpTip, type Tip } from "../tips.ts";
 import {
@@ -19,9 +18,7 @@ import {
   contextNotes,
   registry,
   sup,
-  frameOn,
   lineOf,
-  UI_LANG,
   speakers,
   brief,
   briefArg,
@@ -33,7 +30,7 @@ import { liveNotes } from "./side.ts";
 import { emitCard, emitMoment, closeCards, cardSched } from "./cards.ts";
 import { applyFeedback, topicChanged } from "./moments.ts";
 import { parseTags } from "./cards-v2.ts";
-import { recentWindow, capTail, frameDue } from "./rules.ts";
+import { recentWindow, capTail } from "./rules.ts";
 import { MemoryLoop, engineV2, makeModelRunner, memoryConfigFrom, memoryGate } from "./memory.ts";
 import { emitMemoryView, safe } from "./out.ts";
 import { loadMemory, saveMemory } from "../session/store.ts";
@@ -41,18 +38,18 @@ import { seedForCall } from "../session/callseed.ts";
 import { PEOPLE_FILE } from "../session/people.ts";
 import { CALLS, USER_DATA } from "../env.ts";
 import { renderMemory } from "../session/render.ts";
+import { toView } from "../session/view.ts";
 import { isEmptyMemory, type SessionMemory } from "../session/types.ts";
-import { briefNotes } from "../brief.ts";
+import { briefNotes, briefKind } from "../brief.ts";
+import { setMode } from "../session/patch.ts";
+import { loadCustomModes, type CustomMode } from "../pack.ts";
 import { memoryWrapUpTip, openLoopSay, timeLeftTip } from "../tips.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Moment } from "../moments/types.ts";
-import { modeProfile } from "../moments/modes.ts";
+import { modeProfile, setCustomMode } from "../moments/modes.ts";
 
-let frameBusy: Promise<void> | undefined,
-  lastFrameAt = 0,
-  frameWords = 0,
-  tipSeq = 0,
+let tipSeq = 0,
   tipBusy = false,
   lastTipTryAt = 0,
   tipWords = 0,
@@ -62,53 +59,6 @@ let frameBusy: Promise<void> | undefined,
 export function recentTranscript(minutes: number, maxLines = 80): string {
   return capTail(recentWindow(transcript, Date.now(), minutes, maxLines).map(lineOf).join("\n"));
 }
-const framePct = (f: Frame) => {
-  const p = progress(f);
-  return `${p.done}/${p.total}`;
-};
-/** Call-frame update: one model call that says what the call is about and which checklist items were covered. Single flight (returns the running promise).
- *  `final` = the last look at shutdown: ignores the shuttingDown check and needs fewer new words. */
-export function frameRound(final = false): Promise<void> {
-  if (engineV2(S)) return Promise.resolve(); // v2: the call memory replaces the frame
-  if (frameBusy) return frameBusy;
-  if (!frameOn || !st.call.consented || (!final && st.call.shuttingDown) || !sup.caps.llm || cost.llmState() === "capped") return Promise.resolve();
-  const now = Date.now();
-  // The very first frame comes early (half the usual words, no waiting): the first question of a call should already know what the call is about.
-  if (!frameDue({ final, hasFrame: !!tracker.current, newWords: frameWords, minNewWords: S.frame.minNewWords, now, lastFrameAt, everyMs: S.frame.everyMs }))
-    return Promise.resolve();
-  lastFrameAt = now;
-  frameWords = 0;
-  const run = (async () => {
-    try {
-      const r = await runFrame({
-        registry,
-        model: S.frame.model,
-        cache: S.llm.reflex.cache,
-        transcript: recentTranscript(S.frame.windowMin),
-        contextNotes,
-        background,
-        current: tracker.current,
-        signal: new AbortController().signal,
-        timeoutMs: S.frame.timeoutMs,
-        sttLanguage: S.stt.language,
-      });
-      const c = cost.addLlm("frame", S.frame.model, r.usage, r.providerMetadata);
-      log.write("usage", { role: "frame", model: S.frame.model, usage: r.usage, usd: c.usd });
-      const { frame, changed } = tracker.apply(r.frame);
-      if (!changed) return;
-      log.write("events", { type: "frame", frame });
-      log.write("cards", { type: "frame", frame, at: Date.now() });
-      console.log(`\n[🧭 call] ${kindLabel(frame.kind, UI_LANG)} · ${frame.topic || "?"} · ${framePct(frame)}`);
-    } catch (e) {
-      log.write("events", { type: "frame.error", error: eventError(e).slice(0, 200) });
-    } finally {
-      frameBusy = undefined;
-    }
-  })();
-  frameBusy = run;
-  return run;
-}
-
 /** One tip card. Guards (price / date / promise) and the repeat check run here, for every source. */
 function emitTip(tip: Tip, source: "ai" | "talk" | "wrapup" | "time"): boolean {
   const chk = checkTip(tip, tipsGiven);
@@ -125,15 +75,7 @@ function emitTip(tip: Tip, source: "ai" | "talk" | "wrapup" | "time"): boolean {
 /** Asks the model for one coaching tip. Rate-limited (30 s between tries, 30 new words, TipGate); the result is dropped if an answer card appeared meanwhile. */
 async function aiTip() {
   const now = Date.now();
-  if (
-    tipBusy ||
-    (frameOn && !tracker.current) ||
-    tipWords < 30 ||
-    now - lastTipTryAt < Math.max(30_000, S.tips.minGapMs / 2) ||
-    !sup.caps.llm ||
-    cost.llmState() === "capped"
-  )
-    return;
+  if (tipBusy || tipWords < 30 || now - lastTipTryAt < Math.max(30_000, S.tips.minGapMs / 2) || !sup.caps.llm || cost.llmState() === "capped") return;
   tipBusy = true;
   lastTipTryAt = now;
   tipWords = 0;
@@ -210,9 +152,8 @@ export function tipsTick() {
   void aiTip();
 }
 
-/** New transcript words since the last frame look and the last tip try (both are paced by word counts). */
+/** New transcript words since the last tip try (paced by a word count). */
 export function addWords(n: number) {
-  frameWords += n;
   tipWords += n;
 }
 
@@ -226,6 +167,40 @@ let loop: MemoryLoop | undefined,
   tagRowsRead = 0,
   v2Nudged = false,
   timeCardShown = false;
+// ---- the call mode: a built-in kind or a custom mode from the pack (modes.yaml), chosen by the user or by the prepared meeting
+let customModes: CustomMode[] | undefined;
+/** The user's custom modes (read once per call). */
+export const customModeList = (): CustomMode[] => (customModes ??= loadCustomModes());
+/** Puts the custom mode text and numbers of the memory's `modeId` into force for the prompts and the scheduler (moments/modes.ts). */
+function syncCustomMode(m: SessionMemory): void {
+  setCustomMode(m.modeId ? customModeList().find((c) => c.id === m.modeId) : undefined);
+}
+/** `mode <id>`: the user picks the mode. Returns ok:false with a reason for an id nobody knows. Works with or without the v2 loop. */
+export function setCallMode(mode: string): { ok: boolean; reason?: string } {
+  const l = memoryLoop();
+  const cur = l ? l.memory : st.m.mem;
+  const next = setMode(
+    cur,
+    mode,
+    Date.now(),
+    customModeList().map((c) => c.id),
+  );
+  if (!next) return { ok: false, reason: "unknown mode" };
+  if (next === cur) return { ok: true };
+  if (l) l.replaceMemory(next, "mode");
+  else {
+    st.m.mem = next;
+    emitMemoryView(toView(next));
+    try {
+      saveMemory(log.dir, next);
+    } catch {
+      /* best effort */
+    }
+  }
+  syncCustomMode(next);
+  return { ok: true };
+}
+
 /** The v2 memory loop of this call (created on first use), or undefined when the call is not v2, has no AI, or memory.enabled is false. */
 export function memoryLoop(): MemoryLoop | undefined {
   if (!engineV2(S) || noAi || !memCfg.enabled) return undefined;
@@ -245,6 +220,18 @@ export function memoryLoop(): MemoryLoop | undefined {
       peopleFile: join(USER_DATA, PEOPLE_FILE),
       callId: log.id,
     });
+  // A prepared meeting stores the mode its owner chose ("Call kind:" in the plan). That is a choice, so it is locked; the model's guess in the digest is not.
+  const planned = !mem.kindLocked ? briefKind(brief) : "";
+  if (planned) {
+    const locked = setMode(
+      mem,
+      planned,
+      now,
+      customModeList().map((c) => c.id),
+    );
+    if (locked) mem = locked;
+  }
+  syncCustomMode(mem);
   const run = makeModelRunner({
     registry,
     model: memCfg.model,
@@ -271,6 +258,7 @@ export function memoryLoop(): MemoryLoop | undefined {
           capped: cost.llmState() === "capped",
         }),
       onChange: (m, prev) => {
+        syncCustomMode(m);
         st.m.mem = m; // the moment and observer calls read st.m.mem: they must see what the call has taught the memory
         // A resolved item closes the cards that point at it.
         const open = new Set([
@@ -313,7 +301,10 @@ function startV2Timer() {
 function pullLines(l: MemoryLoop) {
   for (; pulled < transcript.length; pulled++) {
     const t = transcript[pulled];
-    l.addLine({ side: t.ch === "me" ? "me" : "them", text: t.text, ...(t.who ? { name: speakers.name(t.who.spk) } : {}) });
+    // The other side's voices are named by the speaker book. A voice on the "me" side (a mic source that tells two people apart) gets its own label
+    // ("Voice 2"); the first voice has no label, so a call with one person on the user's side reads as before.
+    const name = t.ch === "me" ? (t.who && t.who.spk > 1 ? `Voice ${t.who.spk}` : undefined) : t.who ? speakers.name(t.who.spk) : undefined;
+    l.addLine({ side: t.ch === "me" ? "me" : "them", text: t.text, ...(name ? { name } : {}) });
   }
 }
 function v2Tick() {
