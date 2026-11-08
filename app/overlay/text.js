@@ -128,7 +128,17 @@
     return level;
   }
 
-  const api = { segments, healthText, isLatin, healthLevel };
+  /**
+   * Is an AI answer card still "writing"? Yes while its text changed in the last 0.8 s, or (for 2.5 s after it first shows) when it stops mid-sentence.
+   * Once the engine says the stream is done, never: a finished answer without a final full stop is not unfinished.
+   * c = { ai, done, updated, age (ms since the text last changed), text }
+   */
+  function isWriting(c) {
+    if (!c.ai || c.done) return false;
+    return (c.updated && c.age < 800) || (c.age < 2500 && !/[.!?…:;)"\u201d\u05f4]$/.test(String(c.text || "").trim()));
+  }
+
+  const api = { segments, healthText, isLatin, healthLevel, isWriting };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WingmanText = api;
 })(typeof window !== "undefined" ? window : globalThis);

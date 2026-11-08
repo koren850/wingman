@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, statSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "./cli/index.ts";
-import { scrub, scrubDevice, settingValue } from "./diagnose.ts";
+import { scrub, scrubDevice, settingValue, buildReport } from "./diagnose.ts";
 
 const ID = "01JTESTDIAGNOSE00000000000";
 const SECRET_KEY = "sk-ant-api03-AbCdEf1234567890ZyXwVuTsRq";
@@ -199,4 +199,52 @@ test("settings values: secrets, paths, free text and word lists are not copied",
   assert.equal(settingValue("llm.reflex.model", "anthropic:claude-haiku-5-5"), "anthropic:claude-haiku-5-5");
   assert.equal(settingValue("x.y", "sk-ant-api03-AbCdEf1234567890ZyXwVuTsRq"), "<text, 39 chars>");
   assert.equal(settingValue("cards.maxPerMinute", 4), 4);
+});
+
+test("scrub: adversarial secrets, credentials in URLs and home folders with spaces or Windows paths", () => {
+  const gone = (s: string, secret: string) => assert.ok(!scrub(s).includes(secret), `${s} -> ${scrub(s)}`);
+  gone("wss://x.example/v1?access_token=abc123xyz", "abc123xyz");
+  gone("https://x.example/?client_secret=hunter22&a=1", "hunter22");
+  gone("ANTHROPIC_API_KEY=abcDEF123", "abcDEF123");
+  gone("env: DEEPGRAM_API_KEY: abcDEF123", "abcDEF123");
+  gone("password: hunter2", "hunter2");
+  gone('{"password":"hunter2","a":1}', "hunter2");
+  gone("https://user:pw12@host.example/x", "pw12");
+  gone("Authorization: Basic dXNlcjpwYXNz", "dXNlcjpwYXNz");
+  gone("Authorization: Bearer abc.def.ghi-123456", "abc.def.ghi-123456");
+  assert.equal(scrub("https://x.example/a?b=1&c=2"), "https://x.example/a?b=1&c=2");
+  assert.equal(scrub("/Users/Dana Cohen/Library/x"), "/Users/<user>/Library/x");
+  assert.equal(scrub("C:\\Users\\Dana\\AppData\\Local\\x"), "C:\\Users\\<user>\\AppData\\Local\\x");
+  assert.equal(scrub("C:\\\\Users\\\\Dana Cohen\\\\x"), "C:\\\\Users\\\\<user>\\\\x");
+  assert.equal(scrub("/home/dana/.config"), "/home/<user>/.config");
+});
+
+test("scrubDevice: product words stay, any other word (Latin or Hebrew) becomes <name>", () => {
+  assert.equal(scrubDevice("Dana Cohen AirPods Pro"), "<name> AirPods Pro");
+  assert.equal(scrubDevice("Dana Cohen's MacBook Pro Microphone"), "<name>'s MacBook Pro Microphone");
+  assert.equal(scrubDevice("Built-in Microphone"), "Built-in Microphone");
+  assert.equal(scrubDevice("האוזניות של דנה"), "<name>");
+  assert.equal(scrubDevice("AirPods של דנה כהן"), "AirPods <name>");
+  assert.equal(scrubDevice("Jabra Evolve2 65"), "Jabra <name> 65"); // unknown words are cut, even product names
+  assert.ok(!scrubDevice("Zebra Moon Headset").includes("Zebra"));
+});
+
+test("diagnose: error events never carry quoted text, JSON parser detail or secrets", () => {
+  const f = fixture();
+  const msg = `Unexpected token 'ש', "שלום, אני "... is not valid JSON`;
+  const rows = [
+    { type: "notes.error", error: msg },
+    { type: "frame.error", error: `Something failed "ZEBRA-MOON offer" access_token=abc123xyz` },
+    { type: "me.error", error: "APICallError (HTTP 500): upstream said 'send riverstone now'" },
+  ];
+  writeFileSync(join(f.calls, ID, "events.jsonl"), rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  const out = JSON.stringify(buildReport({ appVersion: "0.0.1", callDir: join(f.calls, ID) }));
+  for (const bad of ["שלום", "ZEBRA", "abc123xyz", "riverstone"]) assert.ok(!out.includes(bad), bad);
+});
+
+test("scrub: kernel and OS version strings stay readable, real phone numbers still go", () => {
+  const v = "Darwin Kernel Version 25.1.0: Tue Oct 7 2026; root:xnu-12377.41.6~2/RELEASE_ARM64_T6000";
+  assert.equal(scrub(v), v);
+  assert.equal(scrub("Windows 10.0.19045"), "Windows 10.0.19045");
+  assert.equal(scrub("call 555.010.9999 now"), "call <phone> now");
 });

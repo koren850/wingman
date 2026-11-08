@@ -1,4 +1,5 @@
 // Answers for the user's own questions (the ask key, a typed `ask`, or a detected question on the "me" channel). A "me" card is only for the user.
+import { eventError } from "../errtext.ts";
 import { evalMath } from "../calc.ts";
 import { audienceByCues, classify, decideAudience, guardMe } from "../assist.ts";
 import { detect } from "../detector.ts";
@@ -58,7 +59,7 @@ export function askTyped(q: string) {
     now = Date.now();
   log.write("events", { type: "me.detect", text, forced: true, reason: "typed" });
   void onMeQuestion({ channel: "me", text, isFinal: true, speechFinal: true, words: [], arrivedAt: now, speechEndWall: now } as SttResult, true).catch((e) =>
-    log.write("events", { type: "me.error", error: String((e as Error)?.message ?? e).slice(0, 200) }),
+    log.write("events", { type: "me.error", error: eventError(e).slice(0, 200) }),
   );
 }
 /** A "me" utterance has ended. Decide whether it is a question for Wingman and answer it. */
@@ -83,7 +84,7 @@ function handleMeCore(joined: SttResult) {
   const d = detect(text);
   if (!forced && !d.isQuestion && !math) return;
   log.write("events", { type: "me.detect", text, forced, reason: forced ? "hotkey" : math ? "math" : d.reason });
-  void onMeQuestion(joined, forced).catch((e) => log.write("events", { type: "me.error", error: String((e as Error)?.message ?? e).slice(0, 200) }));
+  void onMeQuestion(joined, forced).catch((e) => log.write("events", { type: "me.error", error: eventError(e).slice(0, 200) }));
 }
 /** Answers one "me" question. `forced` = the ask key / typed ask was used, so it is surely for Wingman and may wait for a protected card slot.
  *  Steps: 1 audience decision (rules, maybe classifier in parallel with the answer), 2 show gate (meGate, stale check), 2a arithmetic, 2b model. */
@@ -127,7 +128,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
         log.write("usage", { role: "assist", model: S.assist.model, turnId, usage: c.usage, usd: cu.usd });
         verdict = c.verdict;
       } catch (e) {
-        if (!dead()) log.write("events", { type: "me.classify-error", turnId, error: String((e as Error)?.message ?? e).slice(0, 160) });
+        if (!dead()) log.write("events", { type: "me.classify-error", turnId, error: eventError(e).slice(0, 160) });
       }
     })();
   }
@@ -277,6 +278,6 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
       },
     },
   }).catch((e: ProviderError) => {
-    if (!dead()) log.write("events", { type: "me.error", turnId, kind: e?.kind ?? "unknown", error: String(e?.message ?? e).slice(0, 200) });
+    if (!dead()) log.write("events", { type: "me.error", turnId, kind: e?.kind ?? "unknown", error: eventError(e) });
   });
 }

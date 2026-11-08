@@ -202,3 +202,14 @@ test("strings: the answer window labels for More, all keys and Writing exist and
   assert.equal(strings.t("en", "more.title", { n: 3 }), "More: 3");
   for (const v of Object.values(strings.STRINGS.en) as string[]) assert.doesNotMatch(v, /\b(bank|frame|flow|turn)\b/i, v);
 });
+
+test("overlay text.isWriting: a finished answer is never 'Writing', even without a final full stop", () => {
+  const base = { ai: true, done: false, updated: false, age: 100, text: "כן, אפשר להגדיר גיבויים אוטומטיים" };
+  assert.equal(text.isWriting(base), true, "just appeared, stops mid-sentence");
+  assert.equal(text.isWriting({ ...base, done: true }), false, "the engine says it is done");
+  assert.equal(text.isWriting({ ...base, done: true, updated: true, age: 100 }), false);
+  assert.equal(text.isWriting({ ...base, updated: true, age: 100, text: "Done." }), true, "still streaming");
+  assert.equal(text.isWriting({ ...base, age: 3000 }), false, "old card");
+  assert.equal(text.isWriting({ ...base, text: "Yes." }), false);
+  assert.equal(text.isWriting({ ...base, ai: false }), false);
+});

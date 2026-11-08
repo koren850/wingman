@@ -1,4 +1,5 @@
 // Call frame (what is this call about?) and live coaching tips: timer jobs plus the one place that emits a tip card.
+import { eventError } from "../errtext.ts";
 import { runFrame, progress, kindLabel, type Frame } from "../frame.ts";
 import { callLanguage } from "../calllang.ts";
 import { runTip, checkTip, talkRatio, talkTip, wrapUpTip, type Tip } from "../tips.ts";
@@ -77,7 +78,7 @@ export function frameRound(final = false): Promise<void> {
       log.write("cards", { type: "frame", frame, at: Date.now() });
       console.log(`\n[🧭 call] ${kindLabel(frame.kind, UI_LANG)} · ${frame.topic || "?"} · ${framePct(frame)}`);
     } catch (e) {
-      log.write("events", { type: "frame.error", error: String((e as Error)?.message ?? e).slice(0, 200) });
+      log.write("events", { type: "frame.error", error: eventError(e).slice(0, 200) });
     } finally {
       frameBusy = undefined;
     }
@@ -139,7 +140,7 @@ async function aiTip() {
     }
     emitTip(r.tip, "ai");
   } catch (e) {
-    log.write("events", { type: "tip.error", error: String((e as Error)?.message ?? e).slice(0, 200) });
+    log.write("events", { type: "tip.error", error: eventError(e).slice(0, 200) });
   } finally {
     tipBusy = false;
   }

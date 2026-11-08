@@ -1,4 +1,5 @@
 // Cards that are not an answer to a question: fact cards from the local snapshot, the proposed client, live notes, must-cover reminders, the capture box (phones, emails, domains), and speaker names.
+import { eventError } from "../errtext.ts";
 import { type Fact } from "../entities.ts";
 import { takeNotes } from "../notes.ts";
 import { SaidIndex } from "../brief.ts";
@@ -94,7 +95,7 @@ export async function notesRound() {
       console.log(`\n[📝 note] ${n}`);
     }
   } catch (e) {
-    log.write("events", { type: "notes.error", error: String((e as Error)?.message ?? e) });
+    log.write("events", { type: "notes.error", error: eventError(e) });
   } finally {
     notesBusy = false;
   }

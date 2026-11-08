@@ -528,15 +528,15 @@ function buildCard(el, c, consent) {
   }
   el._label = kind.label;
 }
-/** An AI answer is "writing" while its text is still changing, or (when it first shows) it stops mid-sentence. Marked, not hidden, so the first words appear at once. */
+/** An AI answer is "writing" while its text is still changing, or (when it first shows, before the engine says it is done) it stops mid-sentence. Marked, not hidden, so the first words appear at once. */
 function applyWriting(el) {
-  const age = Date.now() - (el._chg || 0),
-    txt = (el._txt || "").trim();
-  const on =
-    el.classList.contains("ai") &&
-    !el.classList.contains("calc") &&
-    !el.classList.contains("consent") &&
-    ((el._upd && age < 800) || (age < 2500 && !/[.!?…:;)"\u201d\u05f4]$/.test(txt)));
+  const on = WingmanText.isWriting({
+    ai: el.classList.contains("ai") && !el.classList.contains("calc") && !el.classList.contains("consent"),
+    done: el._done,
+    updated: el._upd,
+    age: Date.now() - (el._chg || 0),
+    text: el._txt,
+  });
   el.classList.toggle("writing", !!on);
   clearTimeout(el._wt);
   if (on) el._wt = setTimeout(() => applyWriting(el), 300);
@@ -592,6 +592,7 @@ function render(c) {
     el._txt = say;
     el._chg = Date.now();
   }
+  if (c.done) el._done = true;
   setSay(el, say);
   applyWriting(el);
   layoutRoles();
@@ -758,6 +759,7 @@ window.wingman.onCapture((c) => {
 window.wingman.onCopied((t) => {
   const el = caps.get(t);
   if (el) {
+    if (LAYOUT === "focus" && !moreOpen()) toggleMore(true); // the details are behind More: open it so the copied one is seen
     el.classList.add("copied");
     setTimeout(() => el.classList.remove("copied"), 1200);
   }

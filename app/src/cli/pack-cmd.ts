@@ -1,7 +1,7 @@
 // wingman pack from-notes <file.txt|.md|.pdf> [--lang en|he] [--out dir] [--force] [--model provider:model]
 // Drafts a bank (bank.yaml + bank.en.yaml) from the user's own notes with one model call (src/packgen.ts). The result is a DRAFT in a
 // folder of its own (default ./pack-draft). It never goes into the live pack by itself and never replaces an existing bank without --force.
-import { existsSync, mkdirSync, writeFileSync, chmodSync } from "node:fs";
+import { lstatSync, mkdirSync, writeFileSync, chmodSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CliError, EXIT, parse, usage, type Ctx, type Result } from "./common.ts";
 import { loadSettings, SettingsError, formatSettingsError, expandHome, type Settings } from "../settings.ts";
@@ -39,7 +39,17 @@ export async function pack(ctx: Ctx, args: string[]): Promise<Result> {
   const out = resolve(values.out ?? "pack-draft");
   const bankFile = join(out, "bank.yaml"),
     enFile = join(out, "bank.en.yaml");
-  const clash = [bankFile, enFile].filter((f) => existsSync(f));
+  // lstat, not exists: a link (even a dangling one) is never written through.
+  const present = (f: string) => {
+    try {
+      return lstatSync(f);
+    } catch {
+      return undefined;
+    }
+  };
+  const link = [bankFile, enFile].find((f) => present(f)?.isSymbolicLink());
+  if (link) throw new CliError("refused", `${link} is a link. Nothing was written.`, EXIT.REFUSED, "Remove the link or choose another folder with --out.");
+  const clash = [bankFile, enFile].filter((f) => present(f));
   if (clash.length && !values.force)
     throw new CliError(
       "exists",
@@ -50,7 +60,7 @@ export async function pack(ctx: Ctx, args: string[]): Promise<Result> {
 
   let notes: string;
   try {
-    notes = await readNotes(file, { force: false, home: ctx.home });
+    notes = await readNotes(file, { force: !!values.force, home: ctx.home });
   } catch (e) {
     if (!(e instanceof NotesError)) throw e;
     throw new CliError(e.code === "missing" ? "not_found" : "refused", e.message, e.code === "missing" ? EXIT.NOT_FOUND : EXIT.REFUSED);
@@ -85,7 +95,8 @@ export async function pack(ctx: Ctx, args: string[]): Promise<Result> {
     [bankFile, text.bank],
     [enFile, text.en],
   ] as const) {
-    writeFileSync(f, body, { mode: 0o600 });
+    if (present(f)) unlinkSync(f); // only reached with --force; "wx" below fails if something appears meanwhile
+    writeFileSync(f, body, { mode: 0o600, flag: "wx" });
     try {
       chmodSync(f, 0o600);
     } catch {

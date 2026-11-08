@@ -31,3 +31,19 @@ export function errStack(e: unknown, frames = 4): string {
     .map((l) => l.trim());
   return [head, ...at].join("\n").slice(0, 2000);
 }
+
+/** The error text for events.jsonl: the class name plus a short message cut at the first quote, and no JSON parser detail (it can quote the model's output, i.e. transcript words). */
+export function eventError(e: unknown): string {
+  const name = e && typeof e === "object" && typeof (e as { name?: unknown }).name === "string" ? (e as { name: string }).name : "Error";
+  const msg =
+    e && typeof e === "object" && typeof (e as { message?: unknown }).message === "string"
+      ? (e as { message: string }).message
+      : typeof e === "string"
+        ? e
+        : "";
+  if (name === "SyntaxError" || /\bJSON\b/.test(msg)) return `${name}: invalid JSON`;
+  const t = errText(e)
+    .replace(/\s*["'`‘’“”].*$/s, "")
+    .trim();
+  return t.slice(0, 160) || name;
+}

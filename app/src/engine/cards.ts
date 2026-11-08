@@ -24,6 +24,7 @@ export type Card = {
   withdraw?: boolean;
   forMe?: boolean;
   source?: "calc" | "ai"; // badge "me": an answer for the user (their own question). source "calc" on an "ai" card: local arithmetic, no model
+  done?: boolean; // the model finished writing this answer (the answer window stops showing "Writing…")
   priority?: boolean; // "don't commit yet" bank cards (stall-price, stall-guarantee…): never hidden by the per-minute cap
 };
 /** Writes a side card (fact, note, reminder, client proposal) that is not tied to a question. */

@@ -1,4 +1,5 @@
 // Speech-to-text channels: creation, opening with retries, the reconnect loops, and the wiring of channel events to the transcript and the health bars.
+import { eventError } from "../errtext.ts";
 import type { Channel, SttResult } from "../providers/stt/types.ts";
 import { SttChannel } from "../providers/stt/channel.ts";
 import { getSttProvider, sttChain } from "../providers/stt/index.ts";
@@ -60,7 +61,7 @@ export async function sttRetryLoop(s: SttChannel, ch: string, permanent = false,
         return;
       } catch (e) {
         const pe = e as ProviderError;
-        log.write("events", { type: "stt.retry.fail", ch, n: n + 1, kind: pe.kind, error: pe.message });
+        log.write("events", { type: "stt.retry.fail", ch, n: n + 1, kind: pe.kind, error: eventError(pe) });
         if (!permanent && isPermanentSttError(pe)) {
           permanent = true;
           sttMarkPermanent(ch, pe);
@@ -84,7 +85,7 @@ async function openChannel(ch: SttChannel, name: string) {
     } catch (e) {
       const pe = e as ProviderError;
       if (!pe.kind || (!pe.retryable && pe.kind !== "unknown")) throw e; // auth / quota / spend cap / bad request: fatal with its clear message
-      log.write("events", { type: "stt.open.retry", ch: name, n: n + 1, kind: pe.kind, error: pe.message });
+      log.write("events", { type: "stt.open.retry", ch: name, n: n + 1, kind: pe.kind, error: eventError(pe) });
       if (Date.now() - t0 > 30_000) {
         health(`stt-${name}`, "red", ht(UI_LANG, "stt.noconn", { ch: chHe(name), err: describe(pe) }));
         void sttRetryLoop(ch, name);
@@ -128,7 +129,7 @@ export function wireChannels() {
       "stt_error",
       safe(`stt_error ${ch}`, (e: ProviderError) => {
         console.error("stt error", ch, errBrief(e));
-        log.write("events", { type: "stt.error", ch, kind: e.kind, error: e.message });
+        log.write("events", { type: "stt.error", ch, kind: e.kind, error: eventError(e) });
       }),
     );
     s.on(

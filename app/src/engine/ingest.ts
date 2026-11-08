@@ -1,4 +1,5 @@
 // STT results into the call: foreign-script and echo drops, side features, transcript, the per-channel buffer, and flush() into questions ("them") or handleMe ("me").
+import { eventError } from "../errtext.ts";
 import { matchBank, matchBankFor } from "../bank.ts";
 import { evalMath } from "../calc.ts";
 import { checkScript } from "../lang.ts";
@@ -234,12 +235,12 @@ function acceptResultCore(r: SttResult, checkEcho: boolean) {
     try {
       capture(r.channel, r.text);
     } catch (e) {
-      log.write("events", { type: "capture.error", error: String((e as Error)?.message ?? e) });
+      log.write("events", { type: "capture.error", error: eventError(e) });
     }
     try {
       spotFacts(r.text);
     } catch (e) {
-      log.write("events", { type: "facts.error", error: String((e as Error)?.message ?? e) });
+      log.write("events", { type: "facts.error", error: eventError(e) });
     }
     let who = r.channel === "them" && S.stt.speakers ? speakers.of(r.words) : undefined;
     // "היי, אני רות מצוות ה-IT" / "I'm Dana": the voice that introduces itself gets that name (the meeting's attendees first).
@@ -257,7 +258,7 @@ function acceptResultCore(r: SttResult, checkEcho: boolean) {
       try {
         flowEvents(flow.add({ ch: r.channel, spk: who?.spk, who: who ? voiceName(who) : undefined, text: r.text, at: Date.now() }));
       } catch (e) {
-        log.write("events", { type: "flow.error", error: String((e as Error)?.message ?? e) });
+        log.write("events", { type: "flow.error", error: eventError(e) });
       }
     addWords(wordCount(r.text));
     log.write("transcript", { ch: r.channel, text: r.text, words: r.words, ...(who ? { spk: who.spk, ...(who.name ? { name: who.name } : {}) } : {}) });

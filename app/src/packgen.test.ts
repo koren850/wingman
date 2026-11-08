@@ -3,14 +3,16 @@
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import YAML from "yaml";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { main } from "./cli/index.ts";
 import { HELP } from "./cli/help.ts";
 import { loadBank } from "./bank.ts";
 import { guard } from "./guards.ts";
-import { detectLang, finalizeDraft, readNotes, packgenSystem, packgenPrompt, parseCards, NotesError } from "./packgen.ts";
+import { detectLang, finalizeDraft, renderDraft, readNotes, packgenSystem, packgenPrompt, parseCards, NotesError } from "./packgen.ts";
 import { scriptedPackgen } from "./providers/scripted.ts";
 import { FAKE_BIN } from "./test-platform.ts";
 
@@ -185,4 +187,68 @@ test("pack from-notes: usage errors, a missing file, a missing key", async () =>
 
 test("help documents pack from-notes", () => {
   assert.ok(HELP.includes("pack from-notes"));
+});
+
+test("renderDraft: a file name with a line break cannot add a YAML line", () => {
+  const d = finalizeDraft([], "en");
+  const t = renderDraft(d, "x\nevil: 1.txt", "scripted:m\nbad: 1");
+  for (const body of [t.bank, t.en]) {
+    const loose = body.split("\n").filter((l) => /^(evil|bad):/.test(l));
+    assert.deepEqual(loose, []);
+  }
+  assert.ok(Array.isArray(YAML.parse(t.bank)));
+});
+
+test("finalizeDraft: a card title with a price is replaced by the card id", () => {
+  const d = finalizeDraft([{ id: "plans", title: "Pricing: $99 a month", triggers: ["plans"], say: "We have a few plans." }], "en");
+  assert.equal(d.bank.find((c) => c.id === "plans")!.title, "plans");
+});
+
+test("readNotes: pdftotext gets the checked absolute path, even for a name that starts with a dash", FAKE_BIN, async () => {
+  const h = home();
+  const tool = join(h, "pdftotext");
+  writeFileSync(tool, '#!/bin/sh\nfor a; do last="$a"; done\nprintf "Q: path\\nA: %s" "$(printf %s "$@" | tr -d " ")"\n');
+  chmodSync(tool, 0o755);
+  writeFileSync(join(h, "-faq.pdf"), "%PDF-1.4 fake");
+  const rel = relative(process.cwd(), join(h, "-faq.pdf"));
+  const text = await readNotes(rel, { home: h, pdftotext: tool });
+  assert.ok(text.includes(join(h, "-faq.pdf").replace(/ /g, "")), text);
+});
+
+test("pack from-notes: never writes through a link in the output folder", FAKE_BIN, async () => {
+  const h = home();
+  writeFileSync(join(h, "faq.txt"), NOTES_EN);
+  const out = join(h, "out");
+  mkdirSync(out);
+  const victim = join(h, "victim.txt");
+  symlinkSync(victim, join(out, "bank.yaml")); // dangling link
+  for (const extra of [[], ["--force"]]) {
+    const r = await run(h, "pack", "from-notes", join(h, "faq.txt"), "--out", out, "--model", "scripted:packgen", ...extra);
+    assert.equal(r.code, 4, r.err);
+    assert.match(r.err, /is a link/);
+    assert.ok(!existsSync(victim));
+  }
+});
+
+test("attachments: the macOS Wingman data folder is a secret folder", () => {
+  const A = createRequire(import.meta.url)("../tray/attachments.cjs");
+  const h = home();
+  mkdirSync(join(h, "Library", "Application Support", "Wingman", "briefs"), { recursive: true });
+  writeFileSync(join(h, "Library", "Application Support", "Wingman", "briefs", "a.txt"), "private");
+  assert.throws(() => A.readSourceFile(join(h, "Library", "Application Support", "Wingman", "briefs", "a.txt"), { home: h }), { code: "secret" });
+});
+
+test("pack from-notes: --force allows a notes file outside home, but never a secret folder", async () => {
+  const h = home(),
+    other = home();
+  writeFileSync(join(other, "faq.txt"), NOTES_EN);
+  const no = await run(h, "pack", "from-notes", join(other, "faq.txt"), "--out", join(h, "o1"), "--model", "scripted:packgen");
+  assert.equal(no.code, 4, no.err);
+  assert.match(no.err, /--force/);
+  const yes = await run(h, "pack", "from-notes", join(other, "faq.txt"), "--out", join(h, "o2"), "--model", "scripted:packgen", "--force");
+  assert.equal(yes.code, 0, yes.err);
+  mkdirSync(join(h, ".ssh"));
+  writeFileSync(join(h, ".ssh", "notes.txt"), NOTES_EN);
+  const sec = await run(h, "pack", "from-notes", join(h, ".ssh", "notes.txt"), "--out", join(h, "o3"), "--model", "scripted:packgen", "--force");
+  assert.equal(sec.code, 4, sec.err);
 });

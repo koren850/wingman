@@ -11,31 +11,63 @@ export const REPORT_VERSION = 1;
 
 // ---------------------------------------------------------------- scrubbing
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g;
-const PHONE = /(?<![\w.])\+?\(?\d[\d\s().-]{5,}\d(?![\w])/g;
+const PHONE = /(?<![\w.]|[A-Za-z]-)\+?\(?\d[\d\s().-]{5,}\d(?![\w])/g;
 const KEYLIKE = [
   /\b(?:sk|pk|rk|xox[abprs]|gh[pousr]|AKIA)[-_A-Za-z0-9]{10,}/g,
   /\bBearer\s+[\w.~+/=-]{10,}/gi,
   /\b[A-Fa-f0-9]{32,}\b/g,
   /\b(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{28,}\b/g,
 ];
-const SECRET_QUERY = /([?&;]\s*(?:api_?key|key|token|secret|password|auth)=)[^&\s"']+/gi;
-const HOME = /\/(Users|home)\/[^/\s"'\\]+/g;
+// A secret name followed by = or : (query strings, env lines, "password: x"), with an optional Bearer/Basic word before the value.
+const SECRET_QUERY =
+  /((?:^|[?&;\s,{"'])(?:[\w-]*(?:api_?key|key|token|secret|password|passwd|auth|authorization|credential)[\w-]*)["']?\s*[=:]\s*["']?)(?:(?:Bearer|Basic)\s+)?[^&\s"',;]+/gi;
+const URL_CREDS = /\b([a-z][a-z0-9+.-]*:\/\/)[^\s/@:]+:[^\s/@]+@/gi;
+const BASIC_AUTH = /\bBasic\s+[A-Za-z0-9+/=]{8,}/gi;
+// The whole folder name after /Users/, /home/ or \Users\ (spaces included), up to the next separator, quote or line end.
+const HOME = /(\/Users\/|\/home\/|\\{1,2}Users\\{1,2})[^/\\\n"']*?(?=[/\\"'\n]|$)/g;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Removes emails, phone numbers, key-like strings and home folder names from one string. */
 export function scrub(s: string): string {
-  let o = s.replace(SECRET_QUERY, "$1<removed>").replace(EMAIL, "<email>");
+  let o = s.replace(URL_CREDS, "$1<creds>@").replace(BASIC_AUTH, "Basic <removed>").replace(SECRET_QUERY, "$1<removed>").replace(EMAIL, "<email>");
   for (const re of KEYLIKE) o = o.replace(re, "<key>");
   o = o.replace(PHONE, (m) => {
     const digits = m.replace(/\D/g, "");
+    if (/^\d+(?:\.\d+){2,}$/.test(m) && !/^\d{3}\.\d{3}\.\d{4}$/.test(m)) return m; // 10.0.19045 is a version, not a phone
     if (DATE_ONLY.test(m.trim()) || digits.length < 7) return m;
     if (digits.length === m.trim().length && digits.length < 9) return m; // a bare 7-8 digit number is a count, not a phone
     return "<phone>";
   });
-  return o.replace(HOME, "/$1/<user>");
+  return o.replace(HOME, "$1<user>");
 }
-/** A device name without the owner's name ("Dana's AirPods" -> "<name>'s AirPods"). */
-export const scrubDevice = (s: string): string => scrub(s).replace(/^[^'’]{1,40}['’]s\s+/, "<name>'s ");
+// Words that may stay in a device name. Everything else made of letters (a first name, a surname, a Hebrew name) becomes <name>.
+const DEVICE_WORDS = new Set(
+  (
+    "airpods pro max air macbook imac mac mini studio iphone ipad apple built-in builtin microphone mic speakers speaker headphones headset earbuds " +
+    "display monitor output input usb bluetooth hdmi audio aggregate device multi-output blackhole zoomaudiodevice teams webcam camera external " +
+    "default stereo mono line in out and wireless gen generation plus lite ultra the logitech jabra poly sony bose samsung razer blue yeti rode shure " +
+    "scarlett focusrite elgato realtek dell hp lenovo anker soundcore beats jbl sennheiser steelseries hyperx corsair creative"
+  ).split(" "),
+);
+const MODEL_CODE = /^(?:[A-Za-z]{1,4}-?\d[\w-]*|\d[\w.-]*)$/;
+function deviceWord(w: string): string {
+  const poss = /^(.+?)['’]s$/i.exec(w);
+  const base = poss ? poss[1]! : w;
+  const bare = base.replace(/^[([]+|[)\],.:;]+$/g, "");
+  if (!/[\p{L}]/u.test(bare)) return w; // digits and punctuation only
+  if (!poss && (DEVICE_WORDS.has(bare.toLowerCase()) || MODEL_CODE.test(bare))) return w;
+  return poss ? "<name>'s" : "<name>";
+}
+/** A device name without the owner's name. Known product words stay ("AirPods Pro", "Built-in Microphone"); any other word becomes <name>. */
+export const scrubDevice = (s: string): string =>
+  scrub(s)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(deviceWord)
+    .join(" ")
+    .replace(/(?:<name> )+<name>'s/g, "<name>'s")
+    .replace(/(?:<name>(?: |$)){2,}/g, "<name> ")
+    .trim();
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
 /** Applies scrub() to every string in a value, however deep. A last safety net over the whole report. */
@@ -171,6 +203,13 @@ const DENY_FIELDS = new Set([
   "file",
 ]);
 const DEVICE_FIELDS = new Set(["device", "using", "configured", "output", "dev"]);
+// Error text may quote what was parsed (a JSON.parse message holds the start of the model output). Cut the first line at the first quote; drop JSON parser detail.
+const ERROR_FIELD = /error|message|stack|reason/i;
+function safeErrorText(v: string): string {
+  const [first = "", ...rest] = v.split("\n");
+  const head = /\bJSON\b/.test(first) ? first.replace(/\bJSON\b.*$/s, "JSON").replace(/\s*["'`‘’“”].*$/s, "") : first.replace(/\s*["'`‘’“”].*$/s, "");
+  return [head, ...rest.filter((l) => /^\s+at /.test(l))].join("\n");
+}
 const keepEvent = (type: string) => EVENT_TYPES.has(type) || EVENT_PREFIXES.test(type);
 const MAX_EVENTS = 400;
 
@@ -182,7 +221,8 @@ export function safeEvent(e: Row): Row | undefined {
   for (const [k, v] of Object.entries(e)) {
     if (DENY_FIELDS.has(k) && !(type === "health" && k === "text")) continue; // a health bar text is a status line the app wrote, not speech
     if (typeof v === "number" || typeof v === "boolean" || v === null) out[k] = v;
-    else if (typeof v === "string") out[k] = DEVICE_FIELDS.has(k) ? clip(scrubDevice(v), 120) : clip(scrub(v), /stack|error/i.test(k) ? 600 : 300);
+    else if (typeof v === "string")
+      out[k] = DEVICE_FIELDS.has(k) ? clip(scrubDevice(v), 120) : ERROR_FIELD.test(k) ? clip(scrub(safeErrorText(v)), 600) : clip(scrub(v), 300);
     else if (Array.isArray(v) && v.length <= 12 && v.every((x) => typeof x === "string" || typeof x === "number"))
       out[k] = v.map((x) => (typeof x === "string" ? clip(scrub(x), 120) : x));
   }

@@ -520,11 +520,16 @@ function onDone(t: Turn, { usage, providerMetadata, text, model }: Parameters<Re
   const c = cost.addLlm("reflex", model, usage, providerMetadata);
   log.write("usage", { role: "reflex", model, prompt: PROMPT_V, turnId, usage, providerMetadata, usd: c.usd, roleTotalUsd: cost.roles.reflex.usd });
   log.write("events", { type: "reflex.raw", turnId, text });
-  if (t.shown && t.shown.badge === "ai" && ai.facts.length) {
-    const g = (interview ? guardInterview : guard)(ai.facts.join(" "));
-    if (g.ok)
-      emitCard({ ...t.shown, facts: ai.facts }); // upsert same id with facts
-    else log.write("events", { type: "guard", turnId, rule: g.rule, where: "facts" });
+  if (t.shown && t.shown.badge === "ai") {
+    // Upsert the same id: it carries "done" (the stream ended) and, when they pass the guard, the facts.
+    let facts = t.shown.facts;
+    if (ai.facts.length) {
+      const g = (interview ? guardInterview : guard)(ai.facts.join(" "));
+      if (g.ok) facts = ai.facts;
+      else log.write("events", { type: "guard", turnId, rule: g.rule, where: "facts" });
+    }
+    t.shown = { ...t.shown, facts, done: true };
+    emitCard(t.shown);
   }
   t.lat.doneAt = Date.now();
   recordLatency(t.lat);

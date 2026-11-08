@@ -4,7 +4,7 @@
 // The result is a DRAFT for the user to read; nothing here writes into the live pack.
 import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { join, resolve as resolvePath } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
 import type { generateText } from "ai";
@@ -51,7 +51,7 @@ export async function readNotes(file: string, o: { force?: boolean; home?: strin
     if (!tool) throw new NotesError("A PDF needs the pdftotext tool, which is not installed. Save the notes as .txt or .md instead.", "no_pdf");
     if (!bytes.subarray(0, 5).equals(Buffer.from("%PDF-"))) throw new NotesError("That is not a PDF file.", "refused");
     text = await new Promise<string>((resolve, reject) =>
-      execFile(tool, ["-q", "-layout", "-enc", "UTF-8", file, "-"], { timeout: 20_000, maxBuffer: 8 * 1024 * 1024 }, (err, out) =>
+      execFile(tool, ["-q", "-layout", "-enc", "UTF-8", resolvePath(file), "-"], { timeout: 20_000, maxBuffer: 8 * 1024 * 1024 }, (err, out) =>
         err
           ? reject(new NotesError("Could not read that PDF (scanned or protected?). Save the notes as .txt or .md instead.", "refused"))
           : resolve(String(out)),
@@ -202,8 +202,9 @@ export function finalizeDraft(raw: RawCard[], lang: Lang, base: BankCard[] = bas
     let id = slug(clean(r.id)) || slug(clean(r.title)) || `card-${n}`;
     if (id.startsWith("stall")) id = `note-${id}`;
     for (let i = 2; used.has(id); i++) id = `${id.replace(/-\d+$/, "")}-${i}`;
-    const say = clean(r.say),
-      title = clean(r.title) || id;
+    const say = clean(r.say);
+    let title = clean(r.title) || id;
+    if (!guard(title).ok) title = id; // a card title can be shown, so it gets the same check as the answer
     const triggers: string[] = [];
     for (const t of Array.isArray(r.triggers) ? r.triggers.map(clean) : [])
       if (t && t.length <= 60 && !triggers.some((x) => x.toLowerCase() === t.toLowerCase())) triggers.push(t);
@@ -255,8 +256,9 @@ export function finalizeDraft(raw: RawCard[], lang: Lang, base: BankCard[] = bas
 }
 
 // ---------- writing the draft ----------
+const oneLine = (t: string) => t.replace(/[\r\n\u2028\u2029]+/g, " ");
 const HEADER = (src: string, model: string) =>
-  `# DRAFT bank, written by "wingman pack from-notes" from ${src} (model ${model}).\n# Read every card before you use it. Edit the words, triggers and facts. Cards are shown as written, so check each one is true.\n`;
+  `# DRAFT bank, written by "wingman pack from-notes" from ${oneLine(src)} (model ${oneLine(model)}).\n# Read every card before you use it. Edit the words, triggers and facts. Cards are shown as written, so check each one is true.\n`;
 /** The two files' text: bank.yaml (card language) and bank.en.yaml (English, keyed by id). */
 export function renderDraft(d: Draft, src: string, model: string): { bank: string; en: string } {
   const bank = d.bank.map(({ en: _en, ...c }) => c);

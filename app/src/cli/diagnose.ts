@@ -15,7 +15,7 @@ const readJson = (f: string): { version?: string } | undefined => {
     return undefined;
   }
 };
-const stamp = (d = new Date()) => d.toISOString().replace(/[-:]/g, "").replace(/\..*/, "").replace("T", "-");
+const stamp = (d = new Date()) => d.toISOString().replace(/[-:]/g, "").replace(/\..*/, "").replace("T", "-") + "Z"; // UTC, like createdAt
 
 export async function diagnose(ctx: Ctx, args: string[]): Promise<Result> {
   const { values, positionals } = parse(args, { out: { type: "string" } });

@@ -1,4 +1,5 @@
 // Cards about what the user himself said: interview claims and long answers (local), and the amber / red self-check cards (selfcheck.ts).
+import { eventError } from "../errtext.ts";
 import { getProfile } from "../profile.ts";
 import { checkClaims, claimSay } from "../claims.ts";
 import { detectCareful, looksFactual, runSelfCheck, checkFix, MIN_WORDS } from "../selfcheck.ts";
@@ -131,7 +132,7 @@ export function selfCheckLine(text: string) {
       emitCard({ id: `sc-${n}`, turnId: `sc${n}`, badge: "fix", question: v.said, say: v.correct, facts: v.source ? [v.source] : [], priority: true, at: t });
       selfEvent("selfcheck.fix", {});
     } catch (e) {
-      selfEvent("selfcheck.error", { error: String((e as Error)?.message ?? e).slice(0, 200) });
+      selfEvent("selfcheck.error", { error: eventError(e).slice(0, 200) });
     } finally {
       selfGate.endModel();
     }

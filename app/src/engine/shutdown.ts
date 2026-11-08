@@ -1,7 +1,7 @@
 // The one exit path: stop, post-call summary, deletion question, and the crash / stray-error handling that leads into it.
 import { rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { errStack } from "../errtext.ts";
+import { errStack, eventError } from "../errtext.ts";
 import bin from "../../shared/bin.cjs";
 import { join } from "node:path";
 import { childEnv, CALLS, ROOT } from "../env.ts";
@@ -120,7 +120,7 @@ async function postCallSummary() {
     status("summary", { ok: r.ok, id: log.id });
   } catch (e) {
     try {
-      log.write("events", { type: "summary.error", error: String((e as Error)?.message ?? e) });
+      log.write("events", { type: "summary.error", error: eventError(e) });
     } catch {
       /* best effort: the log itself may be what failed */
     }

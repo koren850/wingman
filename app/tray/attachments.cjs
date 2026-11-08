@@ -61,6 +61,7 @@ const SECRET_DIRS = [
   ".config/gh",
   ".local/share/keyrings",
   "Library/Keychains",
+  "Library/Application Support/Wingman",
   "AppData/Roaming/Microsoft/Credentials",
   "AppData/Local/Microsoft/Credentials",
   "AppData/Roaming/Wingman",

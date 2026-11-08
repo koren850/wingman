@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import "./test-setup.ts";
 import assert from "node:assert/strict";
-import { callLanguage } from "./calllang.ts";
+import { callLanguage, resetCallLang } from "./calllang.ts";
 import { summarySystem, buildPrompt, guardEmail, neutralizeLinks, fixGreeting, generateSummary, type CallData } from "./summary.ts";
 import { notesSystem, takeNotes } from "./notes.ts";
 import { tipsSystem, runTip, talkTip, wrapUpTip } from "./tips.ts";
@@ -30,8 +30,11 @@ test("callLanguage: Hebrew by default, English by letters, Hebrew with English t
 
 test("callLanguage: stt.language en decides; other settings leave it to the text", () => {
   assert.equal(callLanguage(HE, "en"), "en");
+  resetCallLang();
   assert.equal(callLanguage(EN, "multi"), "en");
+  resetCallLang();
   assert.equal(callLanguage(EN, "auto"), "en");
+  resetCallLang();
   assert.equal(callLanguage(HE, "multi"), "he");
   assert.equal(callLanguage(HE, "he"), "he");
   assert.equal(callLanguage("", "en"), "en");
@@ -187,4 +190,25 @@ test("scripted doubles still answer the new English prompts", () => {
   assert.match(scriptedAnswer(prompt(notesSystem("en"), "them: my site is slow")), /^- The client wants/);
   assert.match(scriptedAnswer(prompt(tipsSystem("en"), "them: what about backups")), /Ask where the backups/);
   assert.match(scriptedAnswer(prompt(summarySystem("en"), "them: my site is slow")), /Hi Dana/);
+});
+
+test("callLanguage with multi/auto: decided once, kept across batches, changed only by two strong verdicts in a row", () => {
+  resetCallLang();
+  const heLong = "אנחנו רוצים לשפר את האתר שלנו לפני הקמפיין ולהבין כמה זמן זה ייקח וגם מה העלות של התחזוקה החודשית";
+  assert.equal(callLanguage("Yes sure.", "auto"), "he", "too little text: default");
+  assert.equal(callLanguage(heLong, "multi"), "he");
+  // short English batches of names do not flip a Hebrew call
+  for (const b of ["Salesforce HubSpot integration", "SAP NetSuite Oracle Workday Coupa", "Yes sure."]) assert.equal(callLanguage(b, "auto"), "he", b);
+  const enA = "Hi, my website is very slow and I need to know about backups and how long a migration would take for us";
+  const enB = "Sure, let me look at the hosting setup first and then we can talk about the plan and the monthly maintenance";
+  assert.equal(callLanguage(enA, "multi"), "he", "one English verdict is not enough");
+  assert.equal(callLanguage(enA, "multi"), "he", "the same text again is not new evidence");
+  assert.equal(callLanguage(enB, "multi"), "en", "second strong verdict flips");
+  assert.equal(callLanguage("שלום", "multi"), "en", "stays");
+  resetCallLang();
+  assert.equal(callLanguage(enA, "auto"), "en", "first verdict of an English call");
+  assert.equal(callLanguage(heLong, "auto"), "en");
+  // stt.language "en" and the plain rule are unchanged
+  assert.equal(callLanguage("hi", "en"), "en");
+  assert.equal(callLanguage(heLong), "he");
 });

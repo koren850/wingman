@@ -61,3 +61,24 @@ test("the notice clears after two supported lines and is shown at most 3 times",
   w.note(HE, 6000);
   assert.equal(w.note(RU, 7000), null, "maxShows reached: no spam");
 });
+
+test("English lines made of names and products are not 'latin'; real Spanish, French, German and Italian lines still are", () => {
+  for (const t of [
+    "Salesforce HubSpot Zapier Slack integration",
+    "SAP NetSuite Oracle Workday Coupa",
+    "Dana Cohen Acme Ltd Tel Aviv",
+    "Thanks Dana, bye now",
+    "we use postgres redis kafka terraform",
+  ])
+    assert.notEqual(classifyFinal(t), "latin", t);
+  const w = new LangWatch();
+  for (let i = 0; i < 8; i++) assert.equal(w.note("Salesforce HubSpot Zapier Slack integration", i * 5000), null);
+  assert.equal(w.counts.notices, 0);
+  for (const t of [
+    "Hola, quería saber cuánto cuesta el servicio",
+    "Bonjour, je voudrais savoir combien coûte votre service",
+    "Guten Tag, ich möchte wissen was das für uns kostet",
+    "Buongiorno, vorrei sapere quanto costa il servizio per la nostra azienda non lo so",
+  ])
+    assert.equal(classifyFinal(t), "latin", t);
+});

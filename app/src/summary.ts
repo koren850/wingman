@@ -19,7 +19,7 @@ import { guard } from "./guards.ts";
 import type { CostMeter } from "./cost.ts";
 import type { Settings } from "./settings.ts";
 import { parseFrame, missedMust, frameText, isAgencyKind, type Frame, type Kind } from "./frame.ts";
-import { errText } from "./errtext.ts";
+import { errText, eventError } from "./errtext.ts";
 import { ht, type UiLang } from "./htext.ts";
 import { callLanguage, type CallLang } from "./calllang.ts";
 
@@ -471,7 +471,7 @@ export async function runSummary(o: RunOpts): Promise<RunResult> {
   } catch (e) {
     if (o.signal?.aborted) return { ok: false, skipped: "user" };
     const error = String((e as Error)?.message ?? e).slice(0, 300);
-    o.write("events", { type: "summary.error", error, ms: Date.now() - t0 });
+    o.write("events", { type: "summary.error", error: eventError(e), ms: Date.now() - t0 });
     return { ok: false, error };
   }
 }

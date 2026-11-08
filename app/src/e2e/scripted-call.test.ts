@@ -37,6 +37,10 @@ test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, 
       transcript = rows("transcript.jsonl");
     const shown = cards.filter((c) => c.type === "card" && !c.health && c.badge !== "info");
     const ids = new Set(shown.map((c) => `${c.badge}:${c.turnId === "side" ? c.say : ""}`));
+    // A streamed AI answer ends with a row marked done (the answer window stops showing "Writing…").
+    const lastAi = new Map<string, any>();
+    for (const c of shown) if (c.badge === "ai" && c.source !== "calc" && !c.withdraw) lastAi.set(c.id, c);
+    for (const c of lastAi.values()) assert.equal(c.done, true, `ai card ${c.id} is marked done`);
     // Answers: slow site and backups from the bank; price -> stall line, never a price.
     assert.ok(
       shown.some((c) => c.badge === "bank" && /איטי/.test(c.say)),

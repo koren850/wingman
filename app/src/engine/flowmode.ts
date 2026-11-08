@@ -1,4 +1,5 @@
 // Flow mode (several people on the other side): their own discussion, its topic line, and the moment they turn to the user.
+import { eventError } from "../errtext.ts";
 import { type SpeakerInfo } from "../speakers.ts";
 import { runTopic, type FlowEvent } from "../flow.ts";
 import { log, flow, S, cost, notesAbort, registry, lineOf, transcript, sup, noAi, flowOn } from "./boot.ts";
@@ -46,7 +47,7 @@ export async function flowTick() {
       console.log(`\n[👥 topic] ${r.topic}`);
     }
   } catch (e) {
-    log.write("events", { type: "flow.error", error: String((e as Error)?.message ?? e).slice(0, 200) });
+    log.write("events", { type: "flow.error", error: eventError(e).slice(0, 200) });
   } finally {
     flowBusy = false;
   }
