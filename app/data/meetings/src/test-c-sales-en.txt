@@ -1,0 +1,34 @@
+id: test-c-sales-en
+split: test-c
+lang: en
+type: sales
+variant: clean
+user: Noa
+context: Sales call with a cinema chain about a ticket scanner kit. Noa sells the kit. Facts: the kit costs 7,400 per site per year, installation takes 3 days, the pilot covers 2 sites for 60 days, the contract renews each January.
+roster: Gil Harel | them | operations manager
+roster: Tali Brandt | them | finance
+agenda: pilot scope
+agenda: price
+brief: Kit costs 7,400 per site per year
+brief: Installation takes 3 days
+brief: Pilot covers 2 sites for 60 days
+brief: Contract renews each January
+likely: How long does installation take?
+---
+me: Hi Gil, hi Tali, thanks for making the time today.
+them@Gil: Hi Noa. We have six sites and the lines at the doors on Friday nights are the problem.
+me: That is the case the kit was built for.
+them@Tali: Before we go further, how much is the kit for one site? ## m: answer || 7,400 || direct,v=3 || The kit is 7,400 per site per year. || Direct price question.
+me: It is 7,400 per site per year, and the pilot covers two sites.
+them@Gil: And how long does installation take, because we cannot close a screen room for a week. ## m: answer || 3 days || direct || Installation takes 3 days per site. || Direct question, fact in the brief.
+me: Three days per site, done in the morning before the first show.
+them@Tali: Our budget for this is 5,000 per site, so your price is well above that. ## m: check || 7,400;5,000 || noq,number-conflict || The kit is 7,400 per site and their budget is 5,000. Name the gap. || Budget conflicts with the price.
+me: I hear you on the budget, the pilot lets you test the value first.
+them@Gil: Our current vendor scans slowly and the staff stop using it, so we are looking around. ## m: prompt || vendor;pilot || noq,problem,implied || Vendor scans slowly; offer the 60 day pilot on 2 sites. || Pain point stated as a plain fact.
+me: Slow scanning is exactly the thing the pilot would measure.
+.. 30
+them@Tali: I need the contract to renew in January like our other tools, not in the middle of the year. ## m: check || January || noq,date || Their wish matches ours: the contract renews each January. || Date requirement.
+me: That works, the contract renews each January.
+them@Gil: Fine, send the pilot terms for the two sites by Thursday. ## mem: c:Noa>send pilot terms for 2 sites>Thursday / n:kit price=7,400 / n:their budget=5,000 / d:pilot on 2 sites ## m: prompt || pilot || noq,promise || Pilot terms are on your list; confirm the send day. || A promise made by the user, in the other voice.
+me: I will send them by Thursday.
+them@Tali: Then we are done for today. ## chk: Thursday;5,000;7,400

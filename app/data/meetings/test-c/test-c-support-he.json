@@ -1,0 +1,247 @@
+{
+ "id": "test-c-support-he",
+ "split": "test-c",
+ "lang": "he",
+ "type": "support",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "שיחת תמיכה עם בעל חנות מקוונת על שגיאה בקופה. אורי הוא איש התמיכה. עובדות: גרסת תוסף התשלום היא 4.2, העדכון האחרון היה ביום שני, שגיאת הקופה היא קוד 500, הגרסה היציבה הקודמת היא 3.9, ההזמנות הנכשלות עד עכשיו הן 6.",
+ "profile": {
+  "userName": "אורי"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6120,
+   "side": "me",
+   "text": "שלום יובל תודה שהתקשרת אני רואה את החנות שלך על המסך"
+  },
+  {
+   "id": "l2",
+   "t": 12699,
+   "side": "them",
+   "speaker": "יובל",
+   "text": "היי אורי הקופה זורקת שגיאה חמש מאות כל פעם שלקוח לוחץ על תשלום"
+  },
+  {
+   "id": "l3",
+   "t": 17177,
+   "side": "me",
+   "text": "הבנתי אני בודק את הלוג של הקופה"
+  },
+  {
+   "id": "l4",
+   "t": 22494,
+   "side": "them",
+   "speaker": "יובל",
+   "text": "זה התחיל אחרי האפדייט של התוסף ביום שני"
+  },
+  {
+   "id": "l5",
+   "t": 25470,
+   "side": "me",
+   "text": "אני רואה את זה בלוג"
+  },
+  {
+   "id": "l6",
+   "t": 30125,
+   "side": "them",
+   "speaker": "יובל",
+   "text": "איזו גרסה של התוסף מותקנת אצלי בחנות עכשיו"
+  },
+  {
+   "id": "l7",
+   "t": 33939,
+   "side": "me",
+   "text": "מותקנת גרסה ארבע נקודה שתיים"
+  },
+  {
+   "id": "l8",
+   "t": 40272,
+   "side": "them",
+   "speaker": "יובל",
+   "text": "אז אפשר לעשות רולבק לגרסה הקודמת עד שתהיה גרסה חדשה"
+  },
+  {
+   "id": "l9",
+   "t": 44264,
+   "side": "me",
+   "text": "כן נחזור לשלוש נקודה תשע אחרי גיבוי"
+  },
+  {
+   "id": "l10",
+   "t": 78675,
+   "side": "them",
+   "speaker": "יובל",
+   "text": "עד עכשיו נכשלו שש הזמנות והלקוחות כועסים"
+  },
+  {
+   "id": "l11",
+   "t": 83925,
+   "side": "me",
+   "text": "אשלח לך רשימה של ההזמנות הנכשלות עוד היום"
+  },
+  {
+   "id": "l12",
+   "t": 87674,
+   "side": "them",
+   "speaker": "יובל",
+   "text": "תודה גם החתול שלי ישן על המקלדת"
+  },
+  {
+   "id": "l13",
+   "t": 90162,
+   "side": "me",
+   "text": "חה חה מבין"
+  },
+  {
+   "id": "l14",
+   "t": 93069,
+   "side": "them",
+   "speaker": "יובל",
+   "text": "טוב אני סוגר"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "500",
+    "קופה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "number"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "גרסה",
+    "היציבה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "english-in-hebrew"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "ארבע נקודה שתיים"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "asr"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "יציבה"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "asr",
+    "english-in-hebrew"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l10",
+   "kind": "check",
+   "mustMention": [
+    "6"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "number"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l12",
+   "toLine": "l13"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l14",
+   "mustContain": [
+    "3.9",
+    "6"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"יובל ברק\",\"side\":\"them\",\"role\":\"בעל החנות\"}],\"agenda\":[\"שגיאת הקופה\",\"פתרון זמני\"],\"facts\":[{\"text\":\"גרסת תוסף התשלום היא 4.2\",\"src\":\"brief\"},{\"text\":\"העדכון האחרון היה ביום שני\",\"src\":\"brief\"},{\"text\":\"שגיאת הקופה היא קוד 500\",\"src\":\"brief\"},{\"text\":\"הגרסה היציבה הקודמת היא 3.9\",\"src\":\"brief\"}],\"likelyQuestions\":[\"איזו גרסה של התוסף מותקנת?\"],\"chunks\":[\"שיחת תמיכה עם בעל חנות מקוונת על שגיאה בקופה. אורי הוא איש התמיכה. עובדות: גרסת תוסף התשלום היא 4.2, העדכון האחרון היה ביום שני, שגיאת הקופה היא קוד 500, הגרסה היציבה הקודמת היא 3.9, ההזמנות הנכשלות עד עכשיו הן 6.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: שגיאת הקופה היא קוד 500; לבדוק את יומן השגיאות של התשלום.\nWHY: מספר שנאמר במילים.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: העדכון שינה את הגרסה; לבדוק אם הגרסה היציבה הקודמת עובדת.\nWHY: אפדייט באותיות עבריות.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: מותקנת גרסה ארבע נקודה שתיים של תוסף התשלום.\nWHY: שאלה ישירה על גרסה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 3\nAIM: me\nSAY: אפשר לחזור לגרסה היציבה הקודמת; לגבות את החנות לפני כן.\nWHY: רולבק, ללא סימן שאלה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: 6 הזמנות נכשלו; לבדוק איתו שההזמנות האלה לא חויבו.\nWHY: מספר שנאמר במילים.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l11",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"אורי\",\"what\":\"לשלוח רשימת הזמנות נכשלות\",\"due\":\"היום\",\"at\":83925,\"status\":\"open\"}],\"numbers\":[{\"what\":\"הזמנות נכשלות\",\"value\":\"6\",\"at\":83925}],\"facts\":[{\"text\":\"גרסת התוסף 4.2\",\"at\":83925,\"src\":\"call\"}],\"decisions\":[{\"text\":\"חזרה לגרסה 3.9 אחרי גיבוי\",\"at\":83925}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

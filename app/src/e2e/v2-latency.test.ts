@@ -1,5 +1,6 @@
 // Latency budgets of PLAN 3.6, asserted on the virtual clock with the real engine modules and the policy fake model (in-process, one engine per file).
-// The model delays here are chosen by the test; what is measured is everything the engine adds around them: hints, routing, scheduling, the stall timer.
+// The direct-question budget takes its model delays from qa/latency-dist.json (ASSUMED: p50 700 ms, p95 2000 ms, a long tail), not from numbers the test picked.
+// What is measured is everything the engine adds around them: hints, routing, scheduling, the stall timer. The other tests use fixed delays on purpose: they test a boundary (4 s, 6 s, hung).
 import "../test-setup.ts";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -8,6 +9,7 @@ import { hang, slow } from "../testkit/policy-model.ts";
 import { percentile } from "../../qa/grade-golden.ts";
 import { BANK_CASES } from "../bank-cases.ts";
 import { registerRole } from "../testkit/prompt.ts";
+import { readLatencyDist, stratified } from "../testkit/latency-dist.ts";
 
 registerRole("memory", "You keep the memory of a live call");
 registerRole("compact", "You tidy the memory of a live call");
@@ -21,21 +23,30 @@ after(() => e?.stop());
 const reply = (tag: string, say: string, value = 3, aim = "me") => `${tag}\nVALUE: ${value}\nAIM: ${aim}\nSAY: ${say}\nWHY: test`;
 const ms = (xs: number[], p: number) => percentile(xs, p) ?? Infinity;
 
-test("direct question with a model answer: first card p50 <= 1.5 s, p95 <= 2.5 s (model first token 0.5 to 1.5 s)", async () => {
+test("direct question with a model answer: first card p50 <= 1.5 s, p95 <= 2.5 s (model delays from qa/latency-dist.json, ASSUMED p50 0.7 s, p95 2.0 s)", async () => {
   await e.reset();
-  const model = [500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 900, 800, 700, 1000, 1100, 600, 1200, 1400, 800];
+  const dist = readLatencyDist();
+  const model = stratified(dist, 40);
+  assert.equal(
+    dist.basis,
+    "assumed",
+    "tonight the distribution is an assumption; the morning kit replaces it, then this label and the budget below are revisited",
+  );
+  assert.ok(ms(model, 95) >= 1800 && ms(model, 95) <= 2200, `the sample keeps the file's p95: ${ms(model, 95)}`);
   const seen: number[] = [];
   for (let i = 0; i < model.length; i++) {
     await e.reset(30_000);
     const q = `Which kinds of storage engine number ${i} does the reporting tool connect to?`;
     e.pm.reply({ role: "moment", lastLine: `engine number ${i}` }, reply("ANS", `Engine ${i} is supported through the standard driver`), { ms: model[i] });
     const at = e.say("them", q);
-    await e.vc.advance(3000);
+    await e.vc.advance(model[i] + 1500); // the long tail of the distribution is slower than the stall line: the answer replaces it
     const card = e.screen().find((c) => c.kind === "answer");
     assert.ok(card, `question ${i}: ${JSON.stringify(e.screen())}`);
     seen.push(e.firstCardMs(at)!);
   }
-  console.log(`LATENCY direct: p50 ${ms(seen, 50)} ms, p95 ${ms(seen, 95)} ms, max ${Math.max(...seen)} ms (model 0.5 to 1.5 s)`);
+  console.log(
+    `LATENCY direct (ASSUMED model delays, qa/latency-dist.json): model p50 ${ms(model, 50)} ms, p95 ${ms(model, 95)} ms; first card p50 ${ms(seen, 50)} ms, p95 ${ms(seen, 95)} ms, max ${Math.max(...seen)} ms`,
+  );
   assert.ok(ms(seen, 50) <= 1500, `p50 ${ms(seen, 50)}`);
   assert.ok(ms(seen, 95) <= 2500, `p95 ${ms(seen, 95)}`);
   // the engine adds little around the model: every card is within 300 ms of the model's own delay

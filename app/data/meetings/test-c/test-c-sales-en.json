@@ -1,0 +1,258 @@
+{
+ "id": "test-c-sales-en",
+ "split": "test-c",
+ "lang": "en",
+ "type": "sales",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Sales call with a cinema chain about a ticket scanner kit. Noa sells the kit. Facts: the kit costs 7,400 per site per year, installation takes 3 days, the pilot covers 2 sites for 60 days, the contract renews each January.",
+ "profile": {
+  "userName": "Noa"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5300,
+   "side": "me",
+   "text": "Hi Gil, hi Tali, thanks for making the time today."
+  },
+  {
+   "id": "l2",
+   "t": 13259,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Hi Noa. We have six sites and the lines at the doors on Friday nights are the problem."
+  },
+  {
+   "id": "l3",
+   "t": 18217,
+   "side": "me",
+   "text": "That is the case the kit was built for."
+  },
+  {
+   "id": "l4",
+   "t": 24734,
+   "side": "them",
+   "speaker": "Tali",
+   "text": "Before we go further, how much is the kit for one site?"
+  },
+  {
+   "id": "l5",
+   "t": 30550,
+   "side": "me",
+   "text": "It is 7,400 per site per year, and the pilot covers two sites."
+  },
+  {
+   "id": "l6",
+   "t": 37925,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "And how long does installation take, because we cannot close a screen room for a week."
+  },
+  {
+   "id": "l7",
+   "t": 44199,
+   "side": "me",
+   "text": "Three days per site, done in the morning before the first show."
+  },
+  {
+   "id": "l8",
+   "t": 52032,
+   "side": "them",
+   "speaker": "Tali",
+   "text": "Our budget for this is 5,000 per site, so your price is well above that."
+  },
+  {
+   "id": "l9",
+   "t": 58404,
+   "side": "me",
+   "text": "I hear you on the budget, the pilot lets you test the value first."
+  },
+  {
+   "id": "l10",
+   "t": 65955,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Our current vendor scans slowly and the staff stop using it, so we are looking around."
+  },
+  {
+   "id": "l11",
+   "t": 71645,
+   "side": "me",
+   "text": "Slow scanning is exactly the thing the pilot would measure."
+  },
+  {
+   "id": "l12",
+   "t": 109674,
+   "side": "them",
+   "speaker": "Tali",
+   "text": "I need the contract to renew in January like our other tools, not in the middle of the year."
+  },
+  {
+   "id": "l13",
+   "t": 113562,
+   "side": "me",
+   "text": "That works, the contract renews each January."
+  },
+  {
+   "id": "l14",
+   "t": 119389,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Fine, send the pilot terms for the two sites by Thursday."
+  },
+  {
+   "id": "l15",
+   "t": 123735,
+   "side": "me",
+   "text": "I will send them by Thursday."
+  },
+  {
+   "id": "l16",
+   "t": 127000,
+   "side": "them",
+   "speaker": "Tali",
+   "text": "Then we are done for today."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "answer",
+   "mustMention": [
+    "7,400"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "3 days"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "check",
+   "mustMention": [
+    "7,400",
+    "5,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "vendor",
+    "pilot"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "problem",
+    "implied"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "check",
+   "mustMention": [
+    "January"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "date"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l14",
+   "kind": "prompt",
+   "mustMention": [
+    "pilot"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "promise"
+   ]
+  }
+ ],
+ "silent": [],
+ "memoryChecks": [
+  {
+   "atLine": "l16",
+   "mustContain": [
+    "Thursday",
+    "5,000",
+    "7,400"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Gil Harel\",\"side\":\"them\",\"role\":\"operations manager\"},{\"name\":\"Tali Brandt\",\"side\":\"them\",\"role\":\"finance\"}],\"agenda\":[\"pilot scope\",\"price\"],\"facts\":[{\"text\":\"Kit costs 7,400 per site per year\",\"src\":\"brief\"},{\"text\":\"Installation takes 3 days\",\"src\":\"brief\"},{\"text\":\"Pilot covers 2 sites for 60 days\",\"src\":\"brief\"},{\"text\":\"Contract renews each January\",\"src\":\"brief\"}],\"likelyQuestions\":[\"How long does installation take?\"],\"chunks\":[\"Sales call with a cinema chain about a ticket scanner kit. Noa sells the kit. Facts: the kit costs 7,400 per site per year, installation takes 3 days, the pilot covers 2 sites for 60 days, the contract renews each January.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The kit is 7,400 per site per year.\nWHY: Direct price question.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Installation takes 3 days per site.\nWHY: Direct question, fact in the brief.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The kit is 7,400 per site and their budget is 5,000. Name the gap.\nWHY: Budget conflicts with the price.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Vendor scans slowly; offer the 60 day pilot on 2 sites.\nWHY: Pain point stated as a plain fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Their wish matches ours: the contract renews each January.\nWHY: Date requirement.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l14",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Noa\",\"what\":\"send pilot terms for 2 sites\",\"due\":\"Thursday\",\"at\":119389,\"status\":\"open\"}],\"numbers\":[{\"what\":\"kit price\",\"value\":\"7,400\",\"at\":119389},{\"what\":\"their budget\",\"value\":\"5,000\",\"at\":119389}],\"decisions\":[{\"text\":\"pilot on 2 sites\",\"at\":119389}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Pilot terms are on your list; confirm the send day.\nWHY: A promise made by the user, in the other voice.",
+   "ms": 1500
+  }
+ ]
+}

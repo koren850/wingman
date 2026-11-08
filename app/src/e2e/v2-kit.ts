@@ -226,7 +226,7 @@ export type WorkerOptions = {
   /** memory snapshot lag after the check line, ms */
   lagMs?: number;
   /** which split the meeting is in (default dev); the held-out splits check their lock file in the child */
-  split?: "dev" | "test" | "test-b";
+  split?: "dev" | "test" | "test-b" | "test-c";
   /** a deliberately bad model instead of the scripted replies (qa/controls.ts) */
   control?: Control;
   /** record every model call into a cassette. "mock" records the policy fake (tests); "real" the provider (owner only). `pace` > 0 runs the virtual clock at
@@ -257,7 +257,7 @@ export async function runMeeting(id: string, o: WorkerOptions = {}, timeoutMs = 
     if (code !== 0) throw new Error(`worker for ${id} exited with ${code}\n${log.slice(-3000)}`);
     return JSON.parse(readFileSync(out, "utf8")) as MeetingRun;
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    rmSync(tmp, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 }); // a loaded machine can still be writing logs when the child exits
   }
 }
 

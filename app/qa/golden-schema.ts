@@ -8,10 +8,12 @@ export const TYPES = ["sales", "pricing", "support", "vendor", "standup", "one2o
 /** Extra types of the r2 corpus. "noq": the card must show for a line with no "?" and no question word. The others are variety: a long talk by one
  *  person, people talking over each other, three speakers, speech-to-text errors, and a meeting where the right behaviour is silence. */
 export const EXTRA_TYPES = ["noq", "monologue", "crosstalk", "threeway", "asr", "silence"] as const;
-export const SPLITS = ["dev", "test", "test-b"] as const;
+export const SPLITS = ["dev", "test", "test-b", "test-c"] as const;
 export type Split = (typeof SPLITS)[number];
-/** Splits that are held out: they load only with { final: true } and only when their lock file matches. */
-export const HELD_OUT: readonly Split[] = ["test", "test-b"];
+/** Splits that are held out: they load only with { final: true } and only when their lock file matches. test-c also needs { ship: true }. */
+export const HELD_OUT: readonly Split[] = ["test", "test-b", "test-c"];
+/** The blind release split. It loads only for the ship run: `pnpm eval --final --ship` (loadSplit option `ship`). */
+export const SHIP_ONLY: readonly Split[] = ["test-c"];
 
 const Line = z.object({
   id: z.string().regex(/^l\d+$/),

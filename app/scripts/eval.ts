@@ -10,6 +10,9 @@
 //   pnpm eval --update            rewrite the baseline (review the diff: it is the committed evidence)
 //   pnpm eval --final             read the held-out splits test and test-b ONCE, each on its own, printed next to the dev baseline (checks test.lock and
 //                                 test-b.lock). Never use it to tune.
+//   pnpm eval --ship             also judge the ABSOLUTE ship gates in qa/ship.json (separate from the baseline): pass or FAIL per line. recordedOnly lines print
+//                                 "n/a (scripted)" on scripted replies. Exit 1 when a line fails or a bad-model control passes the gate. With --final it also
+//                                 reads the blind split test-c (data/meetings/test-c, test-c.lock); without --ship test-c is never read.
 //   pnpm eval --cassette <file>   play dev against a cassette of REAL model replies (scripts/cassette-record.ts). Numbers are marked RECORDED, compared with
 //                                 the v2Recorded baseline, and the model judge reads <file>.judge.cassette.json if it exists. Works with --final and --update.
 //   pnpm eval --meetings          one line per meeting
@@ -33,6 +36,7 @@ import { play, v2Meetings, v2Metrics, controlResults, baselineOf, compare, fmt, 
 import { measure, checkBudgets, readBudgets, writeBudgets, fmtBudget, BUDGET_TOLERANCE, COST_PER_HOUR_GATE, type Section } from "../qa/budgets.ts";
 import { runMemoryEval, controlBreaches, CONTROL_LIMITS, type MemoryEvalResult } from "../qa/memory-eval.ts";
 import { modelJudgeSummary, judgeCassettePath } from "../qa/judge-eval.ts";
+import { readShip, shipValues, judgeShip, controlShip, fmtLimit } from "../qa/ship.ts";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -41,7 +45,7 @@ if (has("--final") && has("--update")) {
   console.error("--final never writes a baseline.");
   process.exit(2);
 }
-for (const f of ["--cassette", "--only", "--out", "--limit"])
+for (const f of ["--cassette", "--only", "--out", "--limit", "--memory-f1"])
   if (has(f) && (!arg(f) || arg(f)!.startsWith("--"))) {
     console.error(`${f} needs a value.`);
     process.exit(2);
@@ -112,6 +116,37 @@ function printControls(p: Played): number {
   }
   return fails;
 }
+/** The absolute ship gates (qa/ship.json) for one played split: a line per gate, and the bad-model controls, which must NOT pass them. Returns the failures. */
+function shipBlock(p: Played, title: string): number {
+  const file = readShip();
+  const memF1 = arg("--memory-f1") !== undefined ? Number(arg("--memory-f1")) : undefined;
+  const direct = cassette ? p.section.paths.direct?.p95 : undefined;
+  const values = shipValues(p.res, {
+    ...(memF1 !== undefined && Number.isFinite(memF1) ? { "memory.f1": memF1 } : {}),
+    ...(direct !== undefined ? { "ttc.direct.p95": direct } : {}),
+  });
+  const j = judgeShip(values, file.lines, !!cassette);
+  console.log(`\n== Ship gates, ${title} (qa/ship.json, absolute, not the baseline) ==`);
+  console.log(
+    table(
+      ["gate", "sample", "now", "needs", ""],
+      j.rows.map((r) => [r.label, r.n ? `n=${r.n}` : "", r.now === undefined ? "-" : fmt(r.unit, r.now), fmtLimit(r), r.verdict]),
+    ),
+  );
+  let failed = j.failed;
+  console.log(
+    `   ${j.passed} pass, ${j.failed} FAIL, ${j.skipped} n/a. ${cassette ? "RECORDED basis." : "SCRIPTED basis: recordedOnly lines do not count; a scripted pass is not a release pass."}`,
+  );
+  if (!cassette)
+    for (const c of p.controls) {
+      const cs = controlShip(c, file.lines);
+      if (cs.passes) {
+        failed++;
+        console.log(`  FAIL control ${c.name} passes the ship gate: the gate can be fooled`);
+      } else console.log(`  control ${c.name.padEnd(10)} fails the gate as it must (${cs.failing.join(", ")})`);
+    }
+  return failed;
+}
 const basisLine = () =>
   cassette
     ? `   Basis: RECORDED. Model replies are replayed from ${cassette}. These numbers measure the model.`
@@ -119,8 +154,10 @@ const basisLine = () =>
 
 /** The held-out run: test and test-b, each read once behind its own lock, each reported next to the dev baseline. Prints only; never tune on it. */
 async function runFinal(): Promise<number> {
-  const all = loadFinalSplits();
-  const parts = (["test", "test-b"] as const).map((name) => ({
+  const ship = has("--ship");
+  const all = loadFinalSplits(undefined, { ship });
+  const names = ship ? (["test", "test-b", "test-c"] as const) : (["test", "test-b"] as const);
+  const parts = names.map((name) => ({
     name,
     meetings: v2Meetings(all.filter((g) => g.split === name)).sort((a, b) => a.id.localeCompare(b.id)),
   }));
@@ -154,6 +191,11 @@ async function runFinal(): Promise<number> {
       `Rubric judge, ${p.name}, cards that fail a check: relevant ${b.failed.relevant}, language ${b.failed.language}, repeat ${b.failed.fresh}, window ${b.failed.window} (of ${b.cards} cards).`,
     );
     failed += printControls(p);
+    // the blind split decides the ship verdict; the other two are printed for comparison and do not add failures
+    if (ship) {
+      const f = shipBlock(p, `${p.name}${p.name === "test-c" ? " (BLIND, decides)" : " (for comparison)"}`);
+      if (p.name === "test-c") failed += f;
+    }
     const chk = checkBudgets(p.section, readBudgets()[cassette ? "recorded" : "scripted"]);
     console.log(
       `Budgets on ${p.name} (information only, the dev run gates): ${chk.rows.filter((r) => r.verdict === "FAIL").length} over, cost per hour $${p.section.perHour.toFixed(3)}.`,
@@ -267,6 +309,8 @@ async function runV2(): Promise<{ failed: number; baseline?: V2Baseline; section
   );
 
   failed += printControls(p);
+  if (has("--ship") && limit === 0 && !only) failed += shipBlock(p, "dev");
+  else if (has("--ship")) console.log("\nShip gates: skipped (--limit or --only plays part of dev; the numbers would not be comparable).");
 
   // the memory eval (offline modes: the two controls must stay low, the fake run must stay above its floor)
   failed += await memoryBlock();
@@ -428,7 +472,10 @@ function legacySmoke(update: boolean): number {
     if (bad) failed++;
     return [m.label, `${m.hits}/${m.of}`, `${v.toFixed(1)}%`, b === undefined ? "none" : `${b.toFixed(1)}%`, bad ? "FAIL" : "ok"];
   });
-  console.log("\n== Legacy smoke (in-sample: the word lists and the bank were tuned on these sentences; not a quality measure) ==");
+  console.log("\n========================================================================================================================");
+  console.log("== LEGACY SMOKE, in-sample: the old word lists and the bank, scored on the sentences they were tuned on. Below the headline on purpose. ==");
+  console.log("== It checks that the offline path still works. It says nothing about how good Wingman is. ==");
+  console.log("========================================================================================================================");
   const head = ["metric", "count", "now", "baseline", ""];
   const w = head.map((_, i) => Math.max(head[i].length, ...rows.map((r) => r[i].length)));
   const fmtRow = (r: string[]) => r.map((c, i) => c.padEnd(w[i])).join("  ");

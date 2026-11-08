@@ -28,7 +28,7 @@ async function main() {
   registerRole("memory", "You keep the memory of a live call");
   registerRole("compact", "You tidy the memory of a live call");
   const split = opts.split ?? "dev";
-  const g = loadSplit(split, { final: split !== "dev" }).find((x) => x.id === id);
+  const g = loadSplit(split, { final: split !== "dev", ship: split === "test-c" }).find((x) => x.id === id);
   if (!g) throw new Error(`no ${split} meeting ${id}`);
   const e = await setupEngine({ "llm.reflex.model": "anthropic:claude-haiku-5-5", ...(opts.sets ?? {}) });
   const obs = observeModel(e, { legacyLayout: opts.legacyLayout });

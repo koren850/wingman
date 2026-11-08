@@ -10,6 +10,8 @@ const require = createRequire(import.meta.url);
 //   wingman/no-hebrew-literal   no Hebrew letters in a string of the answer window's scripts: UI words live in overlay/strings.js (regex literals are fine:
 //                               text.js recognises the engine's Hebrew health texts with one)
 //   wingman/tr-key-exists       tr("key") with a literal key must name a key of the English table in overlay/strings.js
+//   wingman/installs-permissions  an Electron main process must call require("../shared/permissions.cjs").install(app) at the top level
+//   wingman/main-crash-handlers   overlay/main.cjs must listen for the crash and hang events and its poll() must wrap its body in try (errors only log)
 const HEBREW = /[\u0590-\u05ff]/;
 const wingman = {
   rules: {
@@ -24,6 +26,58 @@ const wingman = {
           if (HEBREW.test(n.value.raw)) ctx.report({ node: n, message: "Hebrew UI text belongs in overlay/strings.js, not in the page script." });
         },
       }),
+    },
+    "installs-permissions": {
+      meta: { type: "problem", schema: [] },
+      create: (ctx) => {
+        let found = false;
+        return {
+          // require("../shared/permissions.cjs").install(app)
+          CallExpression(n) {
+            const c = n.callee;
+            if (
+              c.type === "MemberExpression" &&
+              c.property.name === "install" &&
+              c.object.type === "CallExpression" &&
+              c.object.callee.name === "require" &&
+              c.object.arguments[0]?.value === "../shared/permissions.cjs" &&
+              n.arguments[0]?.name === "app" &&
+              n.parent.parent.type === "Program"
+            )
+              found = true;
+          },
+          "Program:exit"(p) {
+            if (!found)
+              ctx.report({ node: p, message: 'Every Electron main process must call require("../shared/permissions.cjs").install(app) at the top level.' });
+          },
+        };
+      },
+    },
+    "main-crash-handlers": {
+      meta: { type: "problem", schema: [] },
+      create: (ctx) => {
+        const NEED = ["uncaughtException", "unhandledRejection", "render-process-gone", "unresponsive", "did-fail-load"];
+        const seen = new Set();
+        let crash = false,
+          pollTries = false;
+        return {
+          // process.on("x", ...), win.on("x", ...), webContents.on("x", ...)
+          CallExpression(n) {
+            if (n.callee.type === "MemberExpression" && n.callee.property.name === "on" && typeof n.arguments[0]?.value === "string")
+              seen.add(n.arguments[0].value);
+            if (n.callee.type === "MemberExpression" && n.callee.property.name === "forcefullyCrashRenderer") crash = true;
+          },
+          FunctionDeclaration(n) {
+            if (n.id?.name === "poll" && n.body.body[0]?.type === "TryStatement") pollTries = true;
+          },
+          "Program:exit"(p) {
+            const missing = NEED.filter((x) => !seen.has(x));
+            if (missing.length) ctx.report({ node: p, message: `overlay/main.cjs: no handler for ${missing.join(", ")}.` });
+            if (!crash) ctx.report({ node: p, message: "overlay/main.cjs: a hung page must be killed with forcefullyCrashRenderer()." });
+            if (!pollTries) ctx.report({ node: p, message: "overlay/main.cjs: poll() must start with try, so an error in it only logs." });
+          },
+        };
+      },
     },
     "tr-key-exists": {
       meta: { type: "problem", schema: [] },
@@ -146,6 +200,9 @@ export default tseslint.config(
       ],
     },
   },
+  // Both Electron main processes lock down browser permissions; the overlay main process keeps its crash and hang handlers.
+  { files: ["tray/main.cjs", "overlay/main.cjs"], plugins: { wingman }, rules: { "wingman/installs-permissions": "error" } },
+  { files: ["overlay/main.cjs"], plugins: { wingman }, rules: { "wingman/main-crash-handlers": "error" } },
   // The menu-bar app must not register Ctrl+Opt+1-3: they are the answer window's keys, and a collision is silent.
   {
     files: ["tray/main.cjs"],

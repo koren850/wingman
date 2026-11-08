@@ -486,14 +486,18 @@ export function stopObserver() {
 }
 
 function dispatch(w: ObserverWindow) {
-  if (w.trigger === "silence") {
+  // Any trigger: when the newest line of the window is a question the direct path already took, a second call would show a second card for one line.
+  if (w.trigger === "silence" || w.lines.at(-1)?.asked) {
     // The question to the user got no answer in 2 s. If a card was shown since that line, the direct call did its job: nothing to add.
     const askedAt = w.lines.findLast((l) => l.asked)?.at ?? 0;
     // A direct call that is still on its way (a slow model) will answer: a second call would give a duplicate card and cost.
     if (st.m.directBusy > 0 || st.m.sched.shown.some((r) => r.at >= askedAt)) {
       log.write("events", { type: "moment.observer-drop", why: st.m.directBusy > 0 ? "answering" : "answered", trigger: w.trigger, lines: w.lines.length });
-      observer.unfire(w); // no call was made: the slot and the waiting lines come back
-      arm();
+      // A silence window gives its slot and lines back and waits. Any other trigger just ends: giving the lines back would fire the same window again at once.
+      if (w.trigger === "silence") {
+        observer.unfire(w); // no call was made: the slot and the waiting lines come back
+        arm();
+      }
       return;
     }
   }

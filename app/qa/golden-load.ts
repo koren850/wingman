@@ -1,10 +1,10 @@
-// Loads the golden meetings. The dev split is free to read. The test and test-b splits are held out: each loads only with { final: true }
+// Loads the golden meetings. The dev split is free to read. The test, test-b and test-c splits are held out: each loads only with { final: true }
 // (pnpm eval --final) and only when its sha256 matches its lock file (data/meetings/test.lock, data/meetings/test-b.lock). Tuning on dev, one final read.
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { GoldenSchema, HELD_OUT, type Golden, type Split } from "./golden-schema.ts";
+import { GoldenSchema, HELD_OUT, SHIP_ONLY, type Golden, type Split } from "./golden-schema.ts";
 
 const MEETINGS = join(dirname(fileURLToPath(import.meta.url)), "..", "data", "meetings");
 
@@ -37,16 +37,21 @@ export function checkLock(split: Split, dir = MEETINGS): void {
 /** Kept for the old callers: the lock of the test split. */
 export const checkTestLock = (dir = MEETINGS) => checkLock("test", dir);
 
-export function loadSplit(split: Split, opts: { final?: boolean; dir?: string } = {}): Golden[] {
+export function loadSplit(split: Split, opts: { final?: boolean; ship?: boolean; dir?: string } = {}): Golden[] {
   const dir = opts.dir ?? MEETINGS;
   if (HELD_OUT.includes(split)) {
     if (!opts.final) throw new Error(`the ${split} split is held out: read it only with pnpm eval --final`);
+    if (SHIP_ONLY.includes(split) && !opts.ship) throw new Error(`the ${split} split is blind and held out: read it only with pnpm eval --final --ship`);
     checkLock(split, dir);
   }
   return readSplitFiles(split, dir).map((f) => GoldenSchema.parse(JSON.parse(f.text)));
 }
 
-/** What `pnpm eval --final` reads: the test split, then the test-b split, each behind its own lock file. Throws on the first lock that does not match. */
-export function loadFinalSplits(dir?: string): Golden[] {
-  return [...loadSplit("test", { final: true, dir }), ...loadSplit("test-b", { final: true, dir })];
+/** What `pnpm eval --final` reads: the test split, then the test-b split, each behind its own lock file. With `ship` (pnpm eval --final --ship) also the blind test-c split. Throws on the first lock that does not match. */
+export function loadFinalSplits(dir?: string, o: { ship?: boolean } = {}): Golden[] {
+  return [
+    ...loadSplit("test", { final: true, dir }),
+    ...loadSplit("test-b", { final: true, dir }),
+    ...(o.ship ? loadSplit("test-c", { final: true, ship: true, dir }) : []),
+  ];
 }

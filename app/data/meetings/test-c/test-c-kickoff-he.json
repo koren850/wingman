@@ -1,0 +1,220 @@
+{
+ "id": "test-c-kickoff-he",
+ "split": "test-c",
+ "lang": "he",
+ "type": "kickoff",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "פגישת פתיחה לפרויקט אתר חדש עם לקוחה, עם שקט ארוך באמצע וקפיצת נושא. נועם הוא מנהל הפרויקט. עובדות: האתר ייבנה ב-8 שבועות, העלות 62,000 שקל, ההשקה ב-1 בפברואר, איש הקשר בצד שלה הוא שרון אבני.",
+ "profile": {
+  "userName": "נועם"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4440,
+   "side": "me",
+   "text": "שלום שרון תודה שהצטרפת נתחיל בלוח הזמנים"
+  },
+  {
+   "id": "l2",
+   "t": 10599,
+   "side": "them",
+   "speaker": "שרון",
+   "text": "היי נועם בנייה של שמונה שבו עות מתחילה כבר בשבוע הבא נכון"
+  },
+  {
+   "id": "l3",
+   "t": 14657,
+   "side": "me",
+   "text": "שמונה שבועות כן ונקבע תאריך התחלה"
+  },
+  {
+   "id": "l4",
+   "t": 19554,
+   "side": "them",
+   "speaker": "שרון",
+   "text": "העלות שדיברנו עליה היא חמישים אלף שקל"
+  },
+  {
+   "id": "l5",
+   "t": 22950,
+   "side": "me",
+   "text": "ההצעה היא שישים ושניים אלף שקל"
+  },
+  {
+   "id": "l6",
+   "t": 75925,
+   "side": "them",
+   "speaker": "שרון",
+   "text": "סליחה הייתי בשיחה אחרת"
+  },
+  {
+   "id": "l7",
+   "t": 78899,
+   "side": "me",
+   "text": "אין בעיה נמשיך"
+  },
+  {
+   "id": "l8",
+   "t": 85652,
+   "side": "them",
+   "speaker": "שרון",
+   "text": "דרך אגב צריך לדבר על הלוגו כי המעצב עזב בשבוע שעבר"
+  },
+  {
+   "id": "l9",
+   "t": 89224,
+   "side": "me",
+   "text": "נחזור לזה אחרי שנסגור את הלוח"
+  },
+  {
+   "id": "l10",
+   "t": 94895,
+   "side": "them",
+   "speaker": "שרון",
+   "text": "ההשקה חייבת להיות ב-1 בפברואר כי יש כנס באותו שבוע"
+  },
+  {
+   "id": "l11",
+   "t": 100145,
+   "side": "me",
+   "text": "אני אבדוק שנספיק ואחזור אלייך עד יום שלישי"
+  },
+  {
+   "id": "l12",
+   "t": 102634,
+   "side": "them",
+   "speaker": "שרון",
+   "text": "מזג האוויר מדהים השבוע"
+  },
+  {
+   "id": "l13",
+   "t": 105542,
+   "side": "me",
+   "text": "כן סוף סוף שמש"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "8 שבועות"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "asr",
+    "dropped-word"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "62,000",
+    "50,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "לוגו"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "topic-shift",
+    "implied"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "check",
+   "mustMention": [
+    "1 בפברואר"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "date",
+    "deadline"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l12",
+   "toLine": "l13"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l11",
+   "mustContain": [
+    "62,000",
+    "יום שלישי"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"שרון אבני\",\"side\":\"them\",\"role\":\"מנהלת שיווק\"}],\"agenda\":[\"לוח זמנים\",\"עלות\"],\"facts\":[{\"text\":\"האתר ייבנה ב-8 שבועות\",\"src\":\"brief\"},{\"text\":\"העלות 62,000 שקל\",\"src\":\"brief\"},{\"text\":\"ההשקה ב-1 בפברואר\",\"src\":\"brief\"},{\"text\":\"איש הקשר הוא שרון אבני\",\"src\":\"brief\"}],\"likelyQuestions\":[\"מתי האתר עולה לאוויר?\"],\"chunks\":[\"פגישת פתיחה לפרויקט אתר חדש עם לקוחה, עם שקט ארוך באמצע וקפיצת נושא. נועם הוא מנהל הפרויקט. עובדות: האתר ייבנה ב-8 שבועות, העלות 62,000 שקל, ההשקה ב-1 בפברואר, איש הקשר בצד שלה הוא שרון אבני.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 3\nAIM: me\nSAY: הבנייה לוקחת 8 שבועות; לאשר מתי היא מתחילה.\nWHY: קיצור בשאלה, בלי סימן שאלה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: העלות היא 62,000 והיא אומרת 50,000. לתקן את המספר.\nWHY: מספר שסותר את ההצעה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: הלוגו תקוע כי המעצב עזב; להציע מעצב או לדחות את הנושא.\nWHY: קפיצת נושא.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: ההשקה ב-1 בפברואר בגלל הכנס; לבדוק שהבנייה מסתיימת מוקדם.\nWHY: תאריך קשיח.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l11",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"נועם\",\"what\":\"לבדוק לוח זמנים ולחזור לשרון\",\"due\":\"יום שלישי\",\"at\":100145,\"status\":\"open\"}],\"numbers\":[{\"what\":\"עלות\",\"value\":\"62,000\",\"at\":100145},{\"what\":\"בנייה\",\"value\":\"8 שבועות\",\"at\":100145}],\"decisions\":[{\"text\":\"השקה ב-1 בפברואר\",\"at\":100145}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

@@ -1,0 +1,30 @@
+{
+  "v": 1,
+  "about": "Absolute ship gates. They are NOT the regression baseline (qa/eval-baseline.json): that file only says 'not worse than last time'. These lines say 'good enough to release'. A line with recordedOnly needs a recorded cassette run; on scripted replies it prints n/a (scripted) and does not count.",
+  "lines": [
+    { "id": "precision", "label": "card precision, all kinds", "metric": "card.precision", "op": ">=", "limit": 0.8, "unit": "%" },
+    { "id": "precision.answer", "label": "precision, answer cards", "metric": "precision.answer", "op": ">=", "limit": 0.8, "unit": "%" },
+    { "id": "precision.prompt", "label": "precision, prompt cards", "metric": "precision.prompt", "op": ">=", "limit": 0.8, "unit": "%" },
+    { "id": "precision.check", "label": "precision, check cards", "metric": "precision.check", "op": ">=", "limit": 0.8, "unit": "%" },
+    { "id": "precision.fact", "label": "precision, fact cards", "metric": "precision.fact", "op": ">=", "limit": 0.8, "unit": "%" },
+    { "id": "recall", "label": "card recall", "metric": "card.recall", "op": ">=", "limit": 0.8, "unit": "%" },
+    { "id": "noq.recall", "label": "recall, no '?' and no question word", "metric": "noq.recall", "op": ">=", "limit": 0.85, "unit": "%" },
+    { "id": "dup.rate", "label": "duplicate rate", "metric": "dup.rate", "op": "<=", "limit": 0.03, "unit": "%" },
+    { "id": "silent.cpm", "label": "cards per minute in silent windows", "metric": "silent.cpm", "op": "<=", "limit": 0.02, "unit": "/min" },
+    { "id": "cards.perHour", "label": "cards per hour on screen", "metric": "cards.perHour", "op": "<=", "limit": 40, "unit": "#" },
+    { "id": "gap.recall", "label": "English and Hebrew recall: gap", "metric": "gap.recall", "op": "<=", "limit": 0.05, "unit": "%" },
+    { "id": "gap.precision", "label": "English and Hebrew precision: gap", "metric": "gap.precision", "op": "<=", "limit": 0.05, "unit": "%" },
+    { "id": "wrong.lang", "label": "wrong-language rate", "metric": "wrong.lang", "op": "<=", "limit": 0, "unit": "%" },
+    { "id": "cost.perHour", "label": "model cost per hour", "metric": "cost.perHour", "op": "<=", "limit": 0.25, "unit": "usd" },
+    { "id": "memory.f1", "label": "memory F1, worst class", "metric": "memory.f1", "op": ">=", "limit": 0.75, "unit": "%", "recordedOnly": true },
+    {
+      "id": "ttc.direct.p95",
+      "label": "direct question: first card p95",
+      "metric": "ttc.direct.p95",
+      "op": "<=",
+      "limit": 2500,
+      "unit": "ms",
+      "recordedOnly": true
+    }
+  ]
+}

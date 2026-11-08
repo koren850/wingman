@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "about": "Unit tests of the old word-list path (detector, answer bank, question scope, legacy moments). They were tuned on the sentences they score, so they are in-sample smoke tests, not evidence of quality. Proposed lane: `pnpm test:legacy`, run on its own, not part of the headline check. Measured run time on a loaded machine, ms.",
+  "proposedScript": "tsx --import ./src/test-setup.ts --test --test-concurrency=1 $(node -p \"require('./qa/legacy-tests.json').lane.map((t) => 'src/' + t.file).join(' ')\")",
+  "lane": [
+    { "file": "detector-about.test.ts", "ms": 740, "why": "hard-coded question and 'about you' word lists" },
+    { "file": "detector-bank-qa.test.ts", "ms": 1460, "why": "detector plus bank on tuned question sentences" },
+    { "file": "bank-paraphrase.test.ts", "ms": 1050, "why": "bank trigger words and paraphrases tuned on the same cases" },
+    { "file": "bank-prompt-rules.test.ts", "ms": 1430, "why": "bank rules text and trigger lists" },
+    { "file": "question-scope.test.ts", "ms": 1860, "why": "classic question scope over a word-list gate" },
+    { "file": "moments-legacy.test.ts", "ms": 3680, "why": "legacy gate versus v2 on the old labelled lines" }
+  ],
+  "staysInMain": [
+    { "file": "guards-table.test.ts", "why": "safety: price, date and promise guards must hold" },
+    { "file": "guards-unclaimed-terms.test.ts", "why": "safety: guard terms" },
+    { "file": "r2-wordlist-guard.test.ts", "why": "stops new word lists from entering the core path" },
+    { "file": "bank-cache.test.ts", "why": "cache mechanism, not wording" },
+    { "file": "lang.test.ts", "why": "language detection by script, no word list" },
+    { "file": "calllang.test.ts", "why": "call language tracking" },
+    { "file": "reflex-stream.test.ts", "why": "streaming plumbing" }
+  ],
+  "alsoLegacy": [
+    "scripts/detector-test.ts (labelled detector set, data/questions.tsv)",
+    "pnpm eval 'LEGACY SMOKE, in-sample' block (detector, bank, guards on their own sentences)"
+  ]
+}

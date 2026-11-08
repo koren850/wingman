@@ -1,0 +1,255 @@
+{
+ "id": "test-c-threeway-en",
+ "split": "test-c",
+ "lang": "en",
+ "type": "threeway",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Review of a mobile release with two teammates. Ravi leads the release. Facts: the release is version 4.2, the code freeze is on Wednesday, the crash rate must stay under 0.5 percent, the store review takes 2 days.",
+ "profile": {
+  "userName": "Ravi"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6820,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "ok so the crash rate on the beta is zero point eight percent and"
+  },
+  {
+   "id": "l2",
+   "t": 10219,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "sorry lena the login service was"
+  },
+  {
+   "id": "l3",
+   "t": 16317,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "zero point eight percent and most of it is on older phones"
+  },
+  {
+   "id": "l4",
+   "t": 19034,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "go ahead"
+  },
+  {
+   "id": "l5",
+   "t": 25230,
+   "side": "me",
+   "text": "that is above our limit so we need to look at the older phones"
+  },
+  {
+   "id": "l6",
+   "t": 27665,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "and the login"
+  },
+  {
+   "id": "l7",
+   "t": 31279,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "the login fix is merged"
+  },
+  {
+   "id": "l8",
+   "t": 36072,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "ravi when is the code freeze again"
+  },
+  {
+   "id": "l9",
+   "t": 39024,
+   "side": "me",
+   "text": "the freeze is on wednesday"
+  },
+  {
+   "id": "l10",
+   "t": 43535,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "wednesday is too soon for the payments change"
+  },
+  {
+   "id": "l11",
+   "t": 48085,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "it passed all my tests last week"
+  },
+  {
+   "id": "l12",
+   "t": 73454,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "honestly the store review takes two days and we lose the weekend"
+  },
+  {
+   "id": "l13",
+   "t": 79622,
+   "side": "me",
+   "text": "i can move the freeze to tuesday or ship the payments change later"
+  },
+  {
+   "id": "l14",
+   "t": 82789,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "and the release notes"
+  },
+  {
+   "id": "l15",
+   "t": 86375,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "i wrote them already"
+  },
+  {
+   "id": "l16",
+   "t": 92300,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "right so version four point two goes out as soon as review ends"
+  },
+  {
+   "id": "l17",
+   "t": 116364,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "did you see the match last night"
+  },
+  {
+   "id": "l18",
+   "t": 119327,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "i fell asleep"
+  },
+  {
+   "id": "l19",
+   "t": 121969,
+   "side": "me",
+   "text": "i saw the second half"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "0.5",
+    "0.8"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "fact",
+   "mustMention": [
+    "Wednesday"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "review",
+    "freeze"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l16",
+   "kind": "fact",
+   "mustMention": [
+    "4.2"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "version",
+    "crosstalk"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l17",
+   "toLine": "l19"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Lena\",\"side\":\"them\",\"role\":\"QA\"},{\"name\":\"Omar\",\"side\":\"them\",\"role\":\"backend\"}],\"agenda\":[\"release date\",\"open bugs\"],\"facts\":[{\"text\":\"Release is version 4.2\",\"src\":\"brief\"},{\"text\":\"Code freeze on Wednesday\",\"src\":\"brief\"},{\"text\":\"Crash rate must stay under 0.5 percent\",\"src\":\"brief\"},{\"text\":\"Store review takes 2 days\",\"src\":\"brief\"}],\"likelyQuestions\":[\"When is the code freeze?\"],\"chunks\":[\"Review of a mobile release with two teammates. Ravi leads the release. Facts: the release is version 4.2, the code freeze is on Wednesday, the crash rate must stay under 0.5 percent, the store review takes 2 days.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Limit is 0.5 percent, beta shows 0.8. Raise it before the freeze.\nWHY: Number in overlap that breaks the limit.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: TERM\nVALUE: 3\nAIM: me\nSAY: Code freeze: Wednesday.\nWHY: Direct question inside overlap.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Review takes 2 days; a late freeze pushes the release past the weekend.\nWHY: Objection hidden in overlap.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Release is version 4.2.\nWHY: Version in the overlap.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

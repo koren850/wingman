@@ -6,7 +6,7 @@ import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
@@ -214,17 +214,70 @@ test(
 );
 
 // ---------------------------------------------------------------- the snapshot command
-test("snapshot-check.sh: valid shell, executable, runs the overlay checks in en and he and the dashboard matrix, stays hidden", () => {
-  const f = join(ROOT, "scripts", "snapshot-check.sh");
-  assert.ok(existsSync(f));
-  assert.ok((statSync(f).mode & 0o111) !== 0, "executable");
-  assert.equal(spawnSync("sh", ["-n", f]).status, 0, "sh -n");
-  const src = readFileSync(f, "utf8");
-  assert.match(src, /for lang in en he/);
-  assert.match(src, /overlay\/snapshot\.sh/);
-  assert.match(src, /dashboard\/snapshot\.sh" --check/);
-  assert.match(src, /"focused":true/, "fails when a window had focus");
-  assert.doesNotMatch(src, /osascript|open -a|activate/, "nothing that steals focus");
+// Behaviour, not text (r3): the script runs in a temporary tree with stub overlay/dashboard snapshot scripts, so each rule is seen by its effect.
+const runSnapshotCheck = (o: { overlayLines?: string[]; dashboardOk?: boolean; overlayExit?: number }) => {
+  const tmp = mkdtempSync(join(tmpdir(), "wm-snapcheck-"));
+  try {
+    mkdirSync(join(tmp, "scripts"));
+    mkdirSync(join(tmp, "overlay"));
+    mkdirSync(join(tmp, "dashboard"));
+    copyFileSync(join(ROOT, "scripts", "snapshot-check.sh"), join(tmp, "scripts", "snapshot-check.sh"));
+    const lines = o.overlayLines ?? Array.from({ length: 12 }, (_, i) => `{"spec":"s${i}","issues":[]}`);
+    writeFileSync(
+      join(tmp, "overlay", "snapshot.sh"),
+      `echo "$WINGMAN_OVERLAY_LANG $*" >> "${join(tmp, "calls.txt")}"\ncat <<'EOF'\n${lines.join("\n")}\nEOF\nexit ${o.overlayExit ?? 0}\n`,
+    );
+    writeFileSync(join(tmp, "dashboard", "snapshot.sh"), o.dashboardOk === false ? 'echo "bad contrast"\nexit 1\n' : 'echo "all 24 ok"\n');
+    const r = spawnSync("sh", [join(tmp, "scripts", "snapshot-check.sh"), join(tmp, "out")], { encoding: "utf8", timeout: 30_000 });
+    const calls = existsSync(join(tmp, "calls.txt")) ? readFileSync(join(tmp, "calls.txt"), "utf8") : "";
+    return { status: r.status, out: r.stdout, calls };
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+};
+test(
+  "snapshot-check.sh: valid shell and executable; runs the overlay checks in en and he and the dashboard matrix",
+  { skip: process.platform === "win32" && "needs sh (not on Windows)" },
+  () => {
+    const f = join(ROOT, "scripts", "snapshot-check.sh");
+    assert.ok(existsSync(f));
+    assert.ok((statSync(f).mode & 0o111) !== 0, "executable");
+    assert.equal(spawnSync("sh", ["-n", f]).status, 0, "sh -n");
+    const ok = runSnapshotCheck({});
+    assert.equal(ok.status, 0, ok.out);
+    assert.match(ok.out, /snapshot-check: ok/);
+    const calls = ok.calls.trim().split("\n");
+    assert.deepEqual(
+      calls.map((c) => c.split(" ")[0]),
+      ["en", "he"],
+      "the overlay check runs once per language",
+    );
+    assert.ok(
+      calls.every((c) => /--check v2all/.test(c)),
+      "with the v2all spec set and --check",
+    );
+    // each failure mode ends in exit 1 and a clear line
+    const issue = runSnapshotCheck({
+      overlayLines: Array.from({ length: 12 }, (_, i) => `{"spec":"s${i}","issues":${i === 3 ? '["clipped"]' : "[]"}}`),
+      overlayExit: 1,
+    });
+    assert.equal(issue.status, 1, "an overlay check that finds a problem fails the script");
+    assert.match(issue.out, /overlay en: the checks found problems/);
+    const failing = runSnapshotCheck({ dashboardOk: false });
+    assert.equal(failing.status, 1);
+    assert.match(failing.out, /dashboard: the checks found problems/);
+    const few = runSnapshotCheck({ overlayLines: ['{"spec":"s1","issues":[]}'] });
+    assert.equal(few.status, 1);
+    assert.match(few.out, /only 1 result lines/);
+    const focused = runSnapshotCheck({ overlayLines: Array.from({ length: 12 }, (_, i) => `{"spec":"s${i}","focused":${i === 5},"issues":[]}`) });
+    assert.equal(focused.status, 1);
+    assert.match(focused.out, /a window had focus/);
+  },
+);
+
+// Why static (kept): this is a security rule about the file text, not a behaviour. A snapshot tool that steals focus is dangerous on the owner's machine.
+test("snapshot-check.sh never names a command that steals focus", () => {
+  assert.doesNotMatch(readFileSync(join(ROOT, "scripts", "snapshot-check.sh"), "utf8"), /osascript|open -a|activate/);
 });
 
 // ---------------------------------------------------------------- review additions

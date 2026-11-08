@@ -1,0 +1,38 @@
+id: test-c-threeway-en
+split: test-c
+lang: en
+type: threeway
+variant: noisy
+user: Ravi
+context: Review of a mobile release with two teammates. Ravi leads the release. Facts: the release is version 4.2, the code freeze is on Wednesday, the crash rate must stay under 0.5 percent, the store review takes 2 days.
+roster: Lena | them | QA
+roster: Omar | them | backend
+agenda: release date
+agenda: open bugs
+brief: Release is version 4.2
+brief: Code freeze on Wednesday
+brief: Crash rate must stay under 0.5 percent
+brief: Store review takes 2 days
+likely: When is the code freeze?
+---
+them@Lena: ok so the crash rate on the beta is zero point eight percent and
+them@Omar: sorry lena the login service was
+them@Lena: zero point eight percent and most of it is on older phones
+them@Omar: go ahead ## m: check || 0.5;0.8 || noq,number-conflict,crosstalk || Limit is 0.5 percent, beta shows 0.8. Raise it before the freeze. || Number in overlap that breaks the limit.
+me: that is above our limit so we need to look at the older phones
+them@Lena: and the login
+them@Omar: the login fix is merged
+them@Lena: ravi when is the code freeze again ## m: fact || Wednesday || direct,crosstalk || Code freeze: Wednesday. || Direct question inside overlap.
+me: the freeze is on wednesday
+them@Omar: wednesday is too soon for the payments change
+them@Lena: it passed all my tests last week
+.. 20
+them@Omar: honestly the store review takes two days and we lose the weekend ## m: prompt || review;freeze || noq,objection,crosstalk || Review takes 2 days; a late freeze pushes the release past the weekend. || Objection hidden in overlap.
+me: i can move the freeze to tuesday or ship the payments change later
+them@Lena: and the release notes
+them@Omar: i wrote them already
+them@Lena: right so version four point two goes out as soon as review ends ## m: fact || 4.2 || noq,version,crosstalk || Release is version 4.2. || Version in the overlap.
+.. 20
+them@Omar: did you see the match last night ## quiet
+them@Lena: i fell asleep ## quiet
+me: i saw the second half ## quiet

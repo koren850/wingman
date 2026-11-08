@@ -1,0 +1,252 @@
+{
+ "id": "test-c-asr-en",
+ "split": "test-c",
+ "lang": "en",
+ "type": "asr",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Planning call with a small bakery about a delivery app. Ben is the developer. Facts: the app costs 9,000, the build takes 5 weeks, the second shop opens on 1 November, payments go through PayLane.",
+ "profile": {
+  "userName": "Ben"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6440,
+   "side": "me",
+   "text": "hello dora thanks for calling the plan is open in front of me"
+  },
+  {
+   "id": "l2",
+   "t": 16679,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "hi ben so the second shop opens on the first of november and i need the app by then it takes fine weeks right"
+  },
+  {
+   "id": "l3",
+   "t": 22017,
+   "side": "me",
+   "text": "five weeks is right so we have to start soon"
+  },
+  {
+   "id": "l4",
+   "t": 27394,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "the cost was nine thousand for the whole app"
+  },
+  {
+   "id": "l5",
+   "t": 30170,
+   "side": "me",
+   "text": "yes nine thousand for everything"
+  },
+  {
+   "id": "l6",
+   "t": 37165,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "the customers say the pay button does nothing if they tap it on the phone"
+  },
+  {
+   "id": "l7",
+   "t": 41539,
+   "side": "me",
+   "text": "i will look at the payment log"
+  },
+  {
+   "id": "l8",
+   "t": 46332,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "the pay button does nothing if they"
+  },
+  {
+   "id": "l9",
+   "t": 54984,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "the pay button does nothing if they tap it on the phone and it has been like this since tuesday"
+  },
+  {
+   "id": "l10",
+   "t": 57975,
+   "side": "me",
+   "text": "since tuesday that helps"
+  },
+  {
+   "id": "l11",
+   "t": 88665,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "we also want a loyalty card but only after the"
+  },
+  {
+   "id": "l12",
+   "t": 91754,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "second shop is open in december"
+  },
+  {
+   "id": "l13",
+   "t": 95262,
+   "side": "me",
+   "text": "we can leave that for later"
+  },
+  {
+   "id": "l14",
+   "t": 99189,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "it was so hot all week"
+  },
+  {
+   "id": "l15",
+   "t": 102395,
+   "side": "me",
+   "text": "yes very hot"
+  },
+  {
+   "id": "l16",
+   "t": 106420,
+   "side": "them",
+   "speaker": "Dora",
+   "text": "i have to go the oven is calling"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "5 weeks",
+    "1 November"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "dropped-word"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "9,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "prompt",
+   "mustMention": [
+    "PayLane",
+    "button"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "problem",
+    "asr"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l9",
+   "kind": "check",
+   "mustMention": [
+    "Tuesday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "duplicate"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "loyalty",
+    "second shop"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "split-final"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l14",
+   "toLine": "l16"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Dora Katz\",\"side\":\"them\",\"role\":\"bakery owner\"}],\"agenda\":[\"schedule\",\"cost\"],\"facts\":[{\"text\":\"App costs 9,000\",\"src\":\"brief\"},{\"text\":\"Build takes 5 weeks\",\"src\":\"brief\"},{\"text\":\"Second shop opens on 1 November\",\"src\":\"brief\"},{\"text\":\"Payments go through PayLane\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Will the app be ready for the second shop?\"],\"chunks\":[\"Planning call with a small bakery about a delivery app. Ben is the developer. Facts: the app costs 9,000, the build takes 5 weeks, the second shop opens on 1 November, payments go through PayLane.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Build takes 5 weeks and the shop opens 1 November. Check the start date.\nWHY: \"fine weeks\" for \"five weeks\".",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The cost is 9,000 for the whole app.\nWHY: Number spoken in words.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Pay button fails on phones; check the PayLane call and the error log.\nWHY: Plain statement of a bug.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The problem started on Tuesday; check what changed that day.\nWHY: Repeated final with one new fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Loyalty card waits for the second shop; defer it for now.\nWHY: One sentence split in two finals.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

@@ -32,9 +32,12 @@ import { buildAll, MEETINGS } from "../qa/golden-build.ts";
 import { legacyTimeline } from "../qa/legacy-replay.ts";
 
 const dev = () => loadSplit("dev");
-const allRaw = () => [...readSplitFiles("dev"), ...readSplitFiles("test"), ...readSplitFiles("test-b")].map((f) => GoldenSchema.parse(JSON.parse(f.text)));
+const allRaw = () =>
+  [...readSplitFiles("dev"), ...readSplitFiles("test"), ...readSplitFiles("test-b"), ...readSplitFiles("test-c")].map((f) =>
+    GoldenSchema.parse(JSON.parse(f.text)),
+  );
 /** The 24 core meetings of round 1: 8 types x (EN dev, HE dev, one held out). The r2 corpus (noq, variety, test-b) has its own checks in r2-verify-core.test.ts. */
-const core = () => allRaw().filter((g) => (TYPES as readonly string[]).includes(g.type));
+const core = () => allRaw().filter((g) => g.split !== "test-c" && (TYPES as readonly string[]).includes(g.type)); // test-c (r3) has its own checks in r3-verify-ship.test.ts
 
 // ---------------------------------------------------------------- the grader on a toy meeting
 const toy: Golden = {
@@ -239,7 +242,7 @@ test("every golden file validates against the schema, and the JSON on disk match
     assert.ok(d, `${b.id} is on disk`);
     assert.deepEqual(d, b, `${b.id}: run tsx qa/golden-build.ts`);
   }
-  for (const s of ["dev", "test", "test-b"] as const)
+  for (const s of ["dev", "test", "test-b", "test-c"] as const)
     for (const f of readdirSync(join(MEETINGS, s)).filter((x) => x.endsWith(".json"))) assert.match(f, new RegExp(`^${s}-[a-z0-9-]+\\.json$`));
 });
 
@@ -462,7 +465,7 @@ test("pnpm eval: v2 golden table on dev, controls, legacy smoke after it; offlin
   assert.match(r.stdout, /recall, no '\?' and no question word/);
   assert.match(r.stdout, /Controls on \d+ meetings/);
   for (const c of ["null", "noise", "shuffled", "always-ans"]) assert.match(r.stdout, new RegExp(`${c}\\s+recall .* ok`));
-  assert.ok(r.stdout.indexOf("Golden meetings, dev") < r.stdout.indexOf("Legacy smoke (in-sample"), "the legacy smoke comes after the v2 headline");
+  assert.ok(r.stdout.indexOf("Golden meetings, dev") < r.stdout.indexOf("LEGACY SMOKE, in-sample"), "the legacy smoke comes after the v2 headline");
   assert.doesNotMatch(r.stdout, /HELD OUT/, "a plain eval run never touches the held-out splits");
   const both = spawnSync(...tsx([join(ROOT, "scripts", "eval.ts"), "--final", "--update"]), {
     cwd: ROOT,

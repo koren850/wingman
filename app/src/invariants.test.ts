@@ -366,30 +366,6 @@ test("static: key values can only reach memory; no logging or persistence path t
   assert.match(ui, /const v = inp\.value;\s*inp\.value = ""/);
 });
 
-// Why static: The overlay main process needs crash and hang handlers; Electron cannot run in a unit test.
-test("overlay main.cjs: crash and hang handlers are wired, poll cannot throw out, errors only log", () => {
-  const src = readFileSync(join(ROOT, "overlay", "main.cjs"), "utf8");
-  for (const needle of [
-    '"uncaughtException"',
-    '"unhandledRejection"',
-    '"render-process-gone"',
-    '"unresponsive"',
-    '"did-fail-load"',
-    "forcefullyCrashRenderer",
-    "replayBacklog",
-    "readNewRows",
-  ])
-    assert.ok(src.includes(needle), needle);
-  assert.match(src, /function poll\(\) \{\s*try \{/);
-});
-
-// Why static: a new Electron window or spawn site is where these slip in; there is no runtime path to exercise.
-test("every Electron main process installs the permission lockdown", async () => {
-  const { readFileSync } = await import("node:fs");
-  for (const f of ["tray/main.cjs", "overlay/main.cjs"])
-    assert.match(readFileSync(join(ROOT, f), "utf8"), /require\("\.\.\/shared\/permissions\.cjs"\)\.install\(app\)/, f);
-});
-
 // Why static: a child process that inherits the environment would inherit the API keys; the spawn sites are the only place to check it.
 test("child processes get a scrubbed environment: the engine drops key variables at start, and caffeinate, ffmpeg and the settings tools use childEnv()", () => {
   const boot = read("src/engine/boot.ts"),
@@ -438,4 +414,31 @@ test("lint rules that replaced source-text tests still fire", async () => {
   assert.ok((await rulesFor('void "Briefing";', "dashboard/home.js")).includes("no-restricted-syntax"), "glossary word");
   assert.ok((await rulesFor('void "Control+Alt+1";', "tray/main.cjs")).includes("no-restricted-syntax"), "Ctrl+Opt+1 shortcut");
   assert.deepEqual(await rulesFor("el.textContent = x;", "dashboard/app.js"), [], "textContent is fine");
+  // r3: the permission lockdown and the overlay crash handlers (these were two source greps). A main process without them is flagged; the real files pass.
+  const perm = 'require("../shared/permissions.cjs").install(app);\n';
+  for (const f of ["tray/main.cjs", "overlay/main.cjs"]) {
+    assert.ok((await rulesFor("const a = 1;\nvoid a;", f)).includes("wingman/installs-permissions"), `${f}: no lockdown must be flagged`);
+    assert.ok(!(await rulesFor(perm + "void app;", f)).includes("wingman/installs-permissions"), `${f}: the lockdown call passes`);
+    assert.ok(
+      (await rulesFor('function f() {\n  require("../shared/permissions.cjs").install(app);\n}\nvoid f;', f)).includes("wingman/installs-permissions"),
+      `${f}: nested is not top level`,
+    );
+  }
+  const handlers = ["uncaughtException", "unhandledRejection", "render-process-gone", "unresponsive", "did-fail-load"]
+    .map((x) => `x.on("${x}", () => {});`)
+    .join("\n");
+  const good = `${perm}${handlers}\nx.forcefullyCrashRenderer();\nfunction poll() {\n  try {\n    f();\n  } catch {}\n}\nvoid poll;`;
+  assert.ok(!(await rulesFor(good, "overlay/main.cjs")).includes("wingman/main-crash-handlers"), "a complete main process passes");
+  assert.ok(
+    (await rulesFor(good.replace("unresponsive", "other"), "overlay/main.cjs")).includes("wingman/main-crash-handlers"),
+    "a missing handler is flagged",
+  );
+  assert.ok(
+    (await rulesFor(good.replace("try {", "if (1) {").replace("} catch {}", "}"), "overlay/main.cjs")).includes("wingman/main-crash-handlers"),
+    "a poll() with no try is flagged",
+  );
+  assert.ok(
+    (await eslint.lintFiles(["overlay/main.cjs", "tray/main.cjs"])).every((r) => r.messages.length === 0),
+    "the real main processes pass",
+  );
 });

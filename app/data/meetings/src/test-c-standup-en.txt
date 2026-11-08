@@ -1,0 +1,32 @@
+id: test-c-standup-en
+split: test-c
+lang: en
+type: standup
+variant: clean
+user: Kim
+context: Weekly team sync with a long silence in the middle and a sudden topic change. Kim is the team lead. Facts: the sprint ends Friday, the staging server moves on 12 December, the vendor invoice is due on the 20th, the new hire starts Monday.
+roster: Ilan | them | developer
+roster: Sue | them | designer
+agenda: sprint status
+agenda: staging move
+brief: Sprint ends Friday
+brief: Staging server moves on 12 December
+brief: Vendor invoice is due on the 20th
+brief: New hire starts Monday
+likely: Who is on call this week?
+---
+me: good morning everyone let us start with the sprint.
+them@Ilan: the search feature is done and the export feature is blocked on the new staging server. ## m: prompt || staging || noq,blocker,implied || Export waits for the staging move; plan a workaround. || Blocker stated as a fact.
+me: so export cannot finish before the twelfth.
+them@Sue: the new screens are ready for review but I need a day with Ilan. ## m: prompt || Ilan || noq,dependency || Sue needs a day with Ilan; pick the day now. || Dependency, no question.
+me: let us book tomorrow for that.
+.. 45
+them@Ilan: sorry I was reading the logs, nothing important.
+me: no problem, back to the plan.
+them@Sue: by the way the vendor sent a reminder, the invoice is due on the 20th. ## m: fact || 20th || noq,topic-shift,date || Vendor invoice is due on the 20th. || Sudden topic change to a date.
+me: thanks, I will pay it this week. ## mem: c:Kim>pay the vendor invoice>this week / n:invoice due=20th / d:book a day for Sue and Ilan tomorrow
+them@Ilan: the new hire starts Monday so someone must prepare the laptop. ## m: prompt || laptop || noq,promise,unassigned || New hire needs a laptop; nobody owns it yet. Assign it. || Unowned task.
+me: I will ask IT today. ## mem: c:Kim>ask IT to prepare the laptop>today ## chk: vendor invoice;20th
+them@Sue: lovely weather this week by the way. ## quiet
+me: yes, finally some sun. ## quiet
+them@Ilan: see you all tomorrow. ## quiet

@@ -144,11 +144,14 @@ export function decide(m: ScheduledMoment, state: SchedulerState, cfg: Scheduler
   const key = textKey(m.say);
   // The same words again are a repeat, even if the memory moved on. The same ref, bank card or topic is a repeat until the memory changes.
   if (key.length >= 8 && state.shown.some((r) => state.now - r.at < cfg.sameTextMs && r.key === key)) return d("drop", "same-text");
-  const prior = state.shown.find(
-    (r) =>
-      state.now - r.at < cfg.noveltyMs &&
-      ((m.ref && r.ref === m.ref) || (m.tag === "BANK" && r.tag === "BANK" && r.bankId === m.bankId) || (topic && r.topic === topic && r.tag === m.tag)),
-  );
+  // the NEWEST matching record decides: an older one with an older memory version must not let a repeat through
+  const prior = [...state.shown]
+    .reverse()
+    .find(
+      (r) =>
+        state.now - r.at < cfg.noveltyMs &&
+        ((m.ref && r.ref === m.ref) || (m.tag === "BANK" && r.tag === "BANK" && r.bankId === m.bankId) || (topic && r.topic === topic && r.tag === m.tag)),
+    );
   if (prior && state.memVer <= prior.memVer) return d("drop", "not-novel");
 
   if (m.value < threshold) return d(m.value >= 1 && m.value === threshold - 1 ? "chip" : "drop", "below-min-value");

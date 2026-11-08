@@ -1,0 +1,240 @@
+{
+ "id": "test-c-threeway-he",
+ "split": "test-c",
+ "lang": "he",
+ "type": "threeway",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "ישיבת תכנון להשקת אפליקציה עם שני עמיתים. רן הוא מנהל המוצר. עובדות: ההשקה ב-15 בדצמבר, תקציב הפרסום 40,000 שקל, בדיקות הקבלה מסתיימות ב-5 בדצמבר, יש 3 באגים פתוחים בדרגה גבוהה.",
+ "profile": {
+  "userName": "רן"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5700,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "אוקיי אז הפרסום מוכן ואנחנו צריכים חמישים אלף שקל ו"
+  },
+  {
+   "id": "l2",
+   "t": 8499,
+   "side": "them",
+   "speaker": "תומר",
+   "text": "סליחה מיכל הבאג בתשלום"
+  },
+  {
+   "id": "l3",
+   "t": 12137,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "חמישים אלף שקל לקמפיין הראשון"
+  },
+  {
+   "id": "l4",
+   "t": 14514,
+   "side": "them",
+   "speaker": "תומר",
+   "text": "תמשיכי"
+  },
+  {
+   "id": "l5",
+   "t": 18750,
+   "side": "me",
+   "text": "התקציב שאישרנו הוא ארבעים אלף אז צריך לקצץ"
+  },
+  {
+   "id": "l6",
+   "t": 20885,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "ובדיקות הקבלה"
+  },
+  {
+   "id": "l7",
+   "t": 24279,
+   "side": "them",
+   "speaker": "תומר",
+   "text": "הן נגמרות בחמישה בדצמבר"
+  },
+  {
+   "id": "l8",
+   "t": 27672,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "רן מתי ההשקה"
+  },
+  {
+   "id": "l9",
+   "t": 30404,
+   "side": "me",
+   "text": "ההשקה בחמישה עשר בדצמבר"
+  },
+  {
+   "id": "l10",
+   "t": 36915,
+   "side": "them",
+   "speaker": "תומר",
+   "text": "יש עדיין שלושה באגים פתוחים בדרגה גבוהה ואני לא מוכן להשיק ככה"
+  },
+  {
+   "id": "l11",
+   "t": 40905,
+   "side": "me",
+   "text": "נסגור אותם לפני סוף הבדיקות"
+  },
+  {
+   "id": "l12",
+   "t": 62974,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "ואם נדחה בשבוע"
+  },
+  {
+   "id": "l13",
+   "t": 65462,
+   "side": "them",
+   "speaker": "תומר",
+   "text": "הכול ייסגר בזמן"
+  },
+  {
+   "id": "l14",
+   "t": 70889,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "ברור אז ההשקה נשארת וההחלטה היא לקצץ את הקמפיין"
+  },
+  {
+   "id": "l15",
+   "t": 94635,
+   "side": "them",
+   "speaker": "תומר",
+   "text": "ראיתם את המשחק אתמול"
+  },
+  {
+   "id": "l16",
+   "t": 96460,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "נרדמתי באמצע"
+  },
+  {
+   "id": "l17",
+   "t": 99544,
+   "side": "me",
+   "text": "ראיתי את המחצית הראשונה"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "40,000",
+    "50,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "fact",
+   "mustMention": [
+    "15 בדצמבר"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "3 באגים"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l14",
+   "kind": "fact",
+   "mustMention": [
+    "קמפיין"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision",
+    "crosstalk"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l15",
+   "toLine": "l17"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"מיכל\",\"side\":\"them\",\"role\":\"שיווק\"},{\"name\":\"תומר\",\"side\":\"them\",\"role\":\"פיתוח\"}],\"agenda\":[\"מועד השקה\",\"באגים\"],\"facts\":[{\"text\":\"ההשקה ב-15 בדצמבר\",\"src\":\"brief\"},{\"text\":\"תקציב הפרסום 40,000 שקל\",\"src\":\"brief\"},{\"text\":\"בדיקות הקבלה מסתיימות ב-5 בדצמבר\",\"src\":\"brief\"},{\"text\":\"3 באגים פתוחים בדרגה גבוהה\",\"src\":\"brief\"}],\"likelyQuestions\":[\"מתי ההשקה?\"],\"chunks\":[\"ישיבת תכנון להשקת אפליקציה עם שני עמיתים. רן הוא מנהל המוצר. עובדות: ההשקה ב-15 בדצמבר, תקציב הפרסום 40,000 שקל, בדיקות הקבלה מסתיימות ב-5 בדצמבר, יש 3 באגים פתוחים בדרגה גבוהה.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: התקציב הוא 40,000 והיא מבקשת 50,000. לשים את הפער על השולחן.\nWHY: מספר שסותר, בתוך חפיפה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: TERM\nVALUE: 3\nAIM: me\nSAY: ההשקה ב-15 בדצמבר.\nWHY: שאלה ישירה בתוך חפיפה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: יש 3 באגים פתוחים בדרגה גבוהה; להחליט מי סוגר אותם לפני ההשקה.\nWHY: התנגדות בתוך חפיפה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: הוחלט לקצץ את הקמפיין לתקציב של 40,000 שקל.\nWHY: החלטה בתוך חפיפה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

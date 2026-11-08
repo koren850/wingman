@@ -1,0 +1,253 @@
+{
+ "id": "test-c-asr-he",
+ "split": "test-c",
+ "lang": "he",
+ "type": "asr",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "שיחת מכירה עם בעל מסעדה על מערכת הזמנות. דנה היא המוכרת. עובדות: המערכת עולה 450 שקל לחודש, ההטמעה לוקחת 10 ימים, תקופת הניסיון היא 30 יום, החוזה הוא לשנה, התמיכה זמינה עד 22:00.",
+ "profile": {
+  "userName": "דנה"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5280,
+   "side": "me",
+   "text": "שלום אלון תודה שמצאת זמן אני מקווה שהשיחה ברורה"
+  },
+  {
+   "id": "l2",
+   "t": 13119,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "היי דנה אנחנו מחפשים מערכת שתחליף את הטלפון כי ב שישי בערב אי אפשר לענות לכולם"
+  },
+  {
+   "id": "l3",
+   "t": 16757,
+   "side": "me",
+   "text": "זה בדיוק המקרה שהמערכת פותרת"
+  },
+  {
+   "id": "l4",
+   "t": 20394,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "כמה עולה המערכת בחודש"
+  },
+  {
+   "id": "l5",
+   "t": 23370,
+   "side": "me",
+   "text": "ארבע מאות וחמישים שקל לחודש"
+  },
+  {
+   "id": "l6",
+   "t": 28865,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "זה יותר ממה שתכננתי אני חשבתי על שלוש מאות שקל"
+  },
+  {
+   "id": "l7",
+   "t": 33099,
+   "side": "me",
+   "text": "בוא נתחיל בניסיון של שלושים יום"
+  },
+  {
+   "id": "l8",
+   "t": 37332,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "וההטמעה לוקחת בערך שבוע לא"
+  },
+  {
+   "id": "l9",
+   "t": 40484,
+   "side": "me",
+   "text": "עשרה ימים עם עזרה שלנו"
+  },
+  {
+   "id": "l10",
+   "t": 71575,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "אני צריך שהתמיכה תענה גם בערב כי המטבח עובד עד מאוחר"
+  },
+  {
+   "id": "l11",
+   "t": 75565,
+   "side": "me",
+   "text": "התמיכה זמינה עד עשר בלילה"
+  },
+  {
+   "id": "l12",
+   "t": 79734,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "תשלחו לי הצעה ואני אחזור אליכם ביום ראשון"
+  },
+  {
+   "id": "l13",
+   "t": 82642,
+   "side": "me",
+   "text": "אשלח את ההצעה מחר"
+  },
+  {
+   "id": "l14",
+   "t": 86809,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "הכלב של השכן נובח כל הלילה"
+  },
+  {
+   "id": "l15",
+   "t": 90135,
+   "side": "me",
+   "text": "אוי זה מעצבן"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "prompt",
+   "mustMention": [
+    "טלפונים",
+    "ניסיון"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "implied"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "fact",
+   "mustMention": [
+    "450"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "asr"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "450",
+    "300"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "10 ימים"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "asr",
+    "dropped-word"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l10",
+   "kind": "fact",
+   "mustMention": [
+    "22:00"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l14",
+   "toLine": "l15"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l13",
+   "mustContain": [
+    "450",
+    "300",
+    "הצעה"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"אלון שפירא\",\"side\":\"them\",\"role\":\"בעל המסעדה\"}],\"agenda\":[\"מחיר\",\"הטמעה\"],\"facts\":[{\"text\":\"המערכת עולה 450 שקל לחודש\",\"src\":\"brief\"},{\"text\":\"ההטמעה לוקחת 10 ימים\",\"src\":\"brief\"},{\"text\":\"תקופת הניסיון היא 30 יום\",\"src\":\"brief\"},{\"text\":\"התמיכה זמינה עד 22:00\",\"src\":\"brief\"}],\"likelyQuestions\":[\"כמה עולה המערכת בחודש?\"],\"chunks\":[\"שיחת מכירה עם בעל מסעדה על מערכת הזמנות. דנה היא המוכרת. עובדות: המערכת עולה 450 שקל לחודש, ההטמעה לוקחת 10 ימים, תקופת הניסיון היא 30 יום, החוזה הוא לשנה, התמיכה זמינה עד 22:00.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: הבעיה היא עומס הטלפונים בערב; להציע את תקופת הניסיון.\nWHY: כאב במשפט רגיל.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: TERM\nVALUE: 3\nAIM: me\nSAY: 450 שקל לחודש לפי החומר.\nWHY: שאלה ישירה, בלי סימן שאלה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: המחיר 450 והתקציב שלו 300. לדבר על הערך ועל הניסיון.\nWHY: פער מחיר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: ההטמעה לוקחת 10 ימים, לא שבוע.\nWHY: מילה חסרה, שאלה ישירה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: התמיכה זמינה עד 22:00.\nWHY: עובדה מהחומר.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l12",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"דנה\",\"what\":\"לשלוח הצעה\",\"due\":\"ביום ראשון\",\"at\":79734,\"status\":\"open\"}],\"numbers\":[{\"what\":\"מחיר\",\"value\":\"450\",\"at\":79734},{\"what\":\"תקציב הלקוח\",\"value\":\"300\",\"at\":79734}],\"decisions\":[{\"text\":\"ניסיון של 30 יום\",\"at\":79734}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

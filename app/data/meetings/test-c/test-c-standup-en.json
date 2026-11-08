@@ -1,0 +1,236 @@
+{
+ "id": "test-c-standup-en",
+ "split": "test-c",
+ "lang": "en",
+ "type": "standup",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Weekly team sync with a long silence in the middle and a sudden topic change. Kim is the team lead. Facts: the sprint ends Friday, the staging server moves on 12 December, the vendor invoice is due on the 20th, the new hire starts Monday.",
+ "profile": {
+  "userName": "Kim"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4920,
+   "side": "me",
+   "text": "good morning everyone let us start with the sprint."
+  },
+  {
+   "id": "l2",
+   "t": 12119,
+   "side": "them",
+   "speaker": "Ilan",
+   "text": "the search feature is done and the export feature is blocked on the new staging server."
+  },
+  {
+   "id": "l3",
+   "t": 16317,
+   "side": "me",
+   "text": "so export cannot finish before the twelfth."
+  },
+  {
+   "id": "l4",
+   "t": 23594,
+   "side": "them",
+   "speaker": "Sue",
+   "text": "the new screens are ready for review but I need a day with Ilan."
+  },
+  {
+   "id": "l5",
+   "t": 26750,
+   "side": "me",
+   "text": "let us book tomorrow for that."
+  },
+  {
+   "id": "l6",
+   "t": 76085,
+   "side": "them",
+   "speaker": "Ilan",
+   "text": "sorry I was reading the logs, nothing important."
+  },
+  {
+   "id": "l7",
+   "t": 80079,
+   "side": "me",
+   "text": "no problem, back to the plan."
+  },
+  {
+   "id": "l8",
+   "t": 87912,
+   "side": "them",
+   "speaker": "Sue",
+   "text": "by the way the vendor sent a reminder, the invoice is due on the 20th."
+  },
+  {
+   "id": "l9",
+   "t": 91624,
+   "side": "me",
+   "text": "thanks, I will pay it this week."
+  },
+  {
+   "id": "l10",
+   "t": 97275,
+   "side": "them",
+   "speaker": "Ilan",
+   "text": "the new hire starts Monday so someone must prepare the laptop."
+  },
+  {
+   "id": "l11",
+   "t": 101065,
+   "side": "me",
+   "text": "I will ask IT today."
+  },
+  {
+   "id": "l12",
+   "t": 104534,
+   "side": "them",
+   "speaker": "Sue",
+   "text": "lovely weather this week by the way."
+  },
+  {
+   "id": "l13",
+   "t": 107282,
+   "side": "me",
+   "text": "yes, finally some sun."
+  },
+  {
+   "id": "l14",
+   "t": 110449,
+   "side": "them",
+   "speaker": "Ilan",
+   "text": "see you all tomorrow."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "prompt",
+   "mustMention": [
+    "staging"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "blocker",
+    "implied"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "Ilan"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "dependency"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "fact",
+   "mustMention": [
+    "20th"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "topic-shift",
+    "date"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "laptop"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "promise",
+    "unassigned"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l12",
+   "toLine": "l14"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l11",
+   "mustContain": [
+    "vendor invoice",
+    "20th"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Ilan\",\"side\":\"them\",\"role\":\"developer\"},{\"name\":\"Sue\",\"side\":\"them\",\"role\":\"designer\"}],\"agenda\":[\"sprint status\",\"staging move\"],\"facts\":[{\"text\":\"Sprint ends Friday\",\"src\":\"brief\"},{\"text\":\"Staging server moves on 12 December\",\"src\":\"brief\"},{\"text\":\"Vendor invoice is due on the 20th\",\"src\":\"brief\"},{\"text\":\"New hire starts Monday\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Who is on call this week?\"],\"chunks\":[\"Weekly team sync with a long silence in the middle and a sudden topic change. Kim is the team lead. Facts: the sprint ends Friday, the staging server moves on 12 December, the vendor invoice is due on the 20th, the new hire starts Monday.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Export waits for the staging move; plan a workaround.\nWHY: Blocker stated as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Sue needs a day with Ilan; pick the day now.\nWHY: Dependency, no question.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Vendor invoice is due on the 20th.\nWHY: Sudden topic change to a date.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l9",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Kim\",\"what\":\"pay the vendor invoice\",\"due\":\"this week\",\"at\":91624,\"status\":\"open\"}],\"numbers\":[{\"what\":\"invoice due\",\"value\":\"20th\",\"at\":91624}],\"decisions\":[{\"text\":\"book a day for Sue and Ilan tomorrow\",\"at\":91624}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: New hire needs a laptop; nobody owns it yet. Assign it.\nWHY: Unowned task.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l11",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Kim\",\"what\":\"ask IT to prepare the laptop\",\"due\":\"today\",\"at\":101065,\"status\":\"open\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

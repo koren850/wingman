@@ -1,0 +1,33 @@
+id: test-c-asr-en
+split: test-c
+lang: en
+type: asr
+variant: noisy
+user: Ben
+context: Planning call with a small bakery about a delivery app. Ben is the developer. Facts: the app costs 9,000, the build takes 5 weeks, the second shop opens on 1 November, payments go through PayLane.
+roster: Dora Katz | them | bakery owner
+agenda: schedule
+agenda: cost
+brief: App costs 9,000
+brief: Build takes 5 weeks
+brief: Second shop opens on 1 November
+brief: Payments go through PayLane
+likely: Will the app be ready for the second shop?
+---
+me: hello dora thanks for calling the plan is open in front of me
+them@Dora: hi ben so the second shop opens on the first of november and i need the app by then it takes fine weeks right ## m: check || 5 weeks;1 November || noq,asr,dropped-word || Build takes 5 weeks and the shop opens 1 November. Check the start date. || "fine weeks" for "five weeks".
+me: five weeks is right so we have to start soon
+them@Dora: the cost was nine thousand for the whole app ## m: check || 9,000 || noq,number || The cost is 9,000 for the whole app. || Number spoken in words.
+me: yes nine thousand for everything
+them@Dora: the customers say the pay button does nothing if they tap it on the phone ## m: prompt || PayLane;button || noq,problem,asr || Pay button fails on phones; check the PayLane call and the error log. || Plain statement of a bug.
+me: i will look at the payment log
+them@Dora: the pay button does nothing if they
+them@Dora: the pay button does nothing if they tap it on the phone and it has been like this since tuesday ## m: check || Tuesday || noq,asr,duplicate || The problem started on Tuesday; check what changed that day. || Repeated final with one new fact.
+me: since tuesday that helps
+.. 25
+them@Dora: we also want a loyalty card but only after the
+them@Dora: second shop is open in december ## m: prompt || loyalty;second shop || noq,asr,split-final || Loyalty card waits for the second shop; defer it for now. || One sentence split in two finals.
+me: we can leave that for later
+them@Dora: it was so hot all week ## quiet
+me: yes very hot ## quiet
+them@Dora: i have to go the oven is calling ## quiet
