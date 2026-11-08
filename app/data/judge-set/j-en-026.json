@@ -10,7 +10,7 @@
   "add": {
    "facts": [
     {
-     "text": "We deliver to Rivermouth, Tel Aviv and Beer Sheva"
+     "text": "We deliver to Netanya, Tel Aviv and Beer Sheva"
     }
    ]
   }
@@ -25,7 +25,7 @@
  "expected": {
   "tag": "ANS",
   "mustMention": [
-   "rivermouth"
+   "netanya"
   ]
  }
 }

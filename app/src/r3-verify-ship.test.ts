@@ -217,6 +217,8 @@ const KEPT: Record<string, string> = {
     "security config: CSP, sender checks, window flags, preload command lists, the key-value allow-list, the scrubbed child environment, no sudo in the installers. A regression is silent at runtime (the page just becomes less safe), so the text is the only place to check it. The lockdown call and the overlay crash handlers moved to ESLint rules (wingman/installs-permissions, wingman/main-crash-handlers).",
   "r2-gates.test.ts":
     "security config: the snapshot script must never name a command that steals focus (osascript, open -a, activate). Its other rules are behaviour tests with stub scripts now.",
+  "r3-app-ux.test.ts":
+    "template data, not code: the tray menu uses only keys that exist in the tray text table, and every data-t in prompt.html exists in the note window text.",
   "r2-verify-core.test.ts": "template data, not code: every data-i18n name in overlay/index.html must exist in overlay/strings.js.",
 };
 // Files of other packages: they clean up their own tests in round 3 (PLAN-r3: r3-moments-precision, r3-cards-overlay, r3-app-ux). Listed so the count only goes down.
@@ -224,8 +226,9 @@ const OWNER_TODO = [
   "dashboard-i18n.test.ts",
   "overlay-v2.test.ts",
   "r2-dash-ux.test.ts",
-  "r2-modes.test.ts",
-  "r2-overlay-ux.test.ts",
+  "r3-moments-floor.test.ts",
+  "r3-reliability-shutdown.test.ts",
+  "r3-reliability-stt.test.ts",
   "tray-reliability.test.ts",
 ];
 
