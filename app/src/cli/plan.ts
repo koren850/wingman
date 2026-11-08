@@ -4,7 +4,7 @@
 // A call uses a meeting only when it is started with it: `wingman start --plan <id>`. `wingman start --quick` uses none.
 import { basename } from "node:path";
 import { request } from "./client.ts";
-import { CliError, EXIT, plansLib, Plans, attachments, parse, usage, ago, type Ctx, type Result } from "./common.ts";
+import { CliError, EXIT, plansLib, Plans, attachments, parse, usage, type Ctx, type Result } from "./common.ts";
 import { KINDS } from "../frame.ts";
 
 const LIMIT_NOTES = 12;
@@ -43,6 +43,7 @@ interface StoredMeeting {
   at?: number;
   callId?: string;
   expiresAt: number;
+  uses?: number;
   fileList: { id: string; name: string; chars: number }[];
 }
 /** The empty answer when no meeting exists (keeps `plan.ready === false` for older callers). */
@@ -66,7 +67,7 @@ export function toMeeting(m: StoredMeeting, now = Date.now()): Meeting {
     at: m.at ? new Date(m.at).toISOString() : "",
     atText: m.at ? Plans.formatAt(m.at, now) : "",
     status: m.status,
-    used: m.status === "used",
+    used: (m.uses ?? 0) > 0,
     callId: m.callId || "",
     expiresInMin: Math.max(0, Math.round((m.expiresAt - now) / 60000)),
     attachments: m.fileList.map((f) => ({ id: f.id, name: f.name, chars: f.chars })),
@@ -82,10 +83,8 @@ export function readPlans(ctx: Ctx): Meeting[] {
 
 const item = (s: string) => s.replace(/;/g, ",").replace(/\s+/g, " ").trim(); // ';' splits items when text is typed in the app
 function describe(p: Meeting): string {
-  const L = [`${p.name}  [${p.id}]${p.used ? "  (used by a call)" : ""}`];
-  L.push(
-    `  Time:   ${p.atText || "no time"}  ·  ${p.used ? "kept" : "stays"} ${p.used ? "for a few days" : "until " + (p.at ? "about 6 h after" : "14 days after the last edit") + ` (expires in ${ago(p.expiresInMin * 60000)})`}`,
-  );
+  const L = [`${p.name}  [${p.id}]${p.used ? "  (used by a call before)" : ""}`];
+  L.push(`  Time:   ${p.atText || "no time"}  ·  stays until you delete it (a call does not use it up)`);
   if (p.who) L.push(`  Who:    ${p.who}`);
   if (p.kind) L.push(`  Kind:   ${p.kind}`);
   if (p.topic) L.push(`  Topic:  ${p.topic}`);

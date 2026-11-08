@@ -1,5 +1,5 @@
 // Start of listening: the consent card, and "Start listening" (immediately, or after the user confirms when privacy.requireConsentAck is on).
-import { log, CONTROL, fileArg, S, CONSENT_SAY } from "./boot.ts";
+import { log, CONTROL, fileArg, S, CONSENT_SAY, confirmContext } from "./boot.ts";
 import { setPhase, status } from "./out.ts";
 import { st, mono } from "./state.ts";
 import { setupKeys, setupControl } from "./control.ts";
@@ -36,6 +36,7 @@ export function startConsent() {
       console.log("\nListening started: audio is now being sent for transcription.");
     }
     status("consented", { id: log.id });
+    confirmContext(); // the brief and files are kept until now. TODO(w2): move this to the first successful session-memory write ({ev:"memory"} for the tray).
     const consentedAt = Date.now();
     st.call.consentedMono = mono();
     setPhase("live", { liveAt: consentedAt });

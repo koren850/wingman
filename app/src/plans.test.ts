@@ -36,17 +36,24 @@ function rig(start = T0) {
   };
 }
 
-test("rules: a timed meeting lives until 6 h after its time, an untimed one 14 days after the last edit, a used one 7 days", () => {
-  const timed = { id: "m1", at: at(14, 30), createdAt: T0, updatedAt: T0, usedAt: 0 };
-  assert.equal(P.expiresAt(timed), at(14, 30) + 6 * HOUR);
-  assert.equal(P.statusOf(timed, at(20, 29)), "ready");
-  assert.equal(P.statusOf(timed, at(20, 30)), "expired");
-  const untimed = { id: "m2", at: 0, createdAt: T0, updatedAt: T0 + DAY, usedAt: 0 };
-  assert.equal(P.expiresAt(untimed), T0 + 15 * DAY, "the cap counts from the last edit");
-  assert.equal(P.statusOf(untimed, T0 + 14 * DAY), "ready");
-  const used = { ...timed, usedAt: at(14, 40) };
-  assert.equal(P.statusOf(used, at(15)), "used");
-  assert.equal(P.statusOf(used, at(14, 40) + 7 * DAY), "expired");
+test("rules: a plan does not expire; only housekeeping removes one nobody touched for 180 days", () => {
+  const timed = { id: "m1", at: at(14, 30), createdAt: T0, updatedAt: T0, usedAt: 0, liveAt: 0 };
+  assert.equal(P.statusOf(timed, at(20, 31)), "ready", "6 hours after the meeting time is no longer the end");
+  assert.equal(P.statusOf(timed, T0 + 30 * DAY), "ready", "a month later it is still there");
+  assert.equal(P.expiresAt(timed), T0 + 180 * DAY);
+  assert.equal(P.statusOf(timed, T0 + 180 * DAY - 1), "ready");
+  assert.equal(P.statusOf(timed, T0 + 180 * DAY), "expired");
+  const used = { ...timed, usedAt: at(14, 40), liveAt: at(14, 35) };
+  assert.equal(P.statusOf(used, at(15)), "ready", "a used plan is ready for the next call");
+  assert.equal(P.expiresAt(used), at(14, 40) + 180 * DAY, "use counts as touching");
+});
+
+test("rules: a plan whose slot was already held is not 'next' or 'due', but stays in the list", () => {
+  const held = { id: "h", at: at(14, 30), createdAt: T0, updatedAt: T0, liveAt: at(14, 29), usedAt: at(14, 31), uses: 1 };
+  const other = { id: "o", at: at(16), createdAt: T0, updatedAt: T0, usedAt: 0 };
+  assert.equal(P.nextMeeting([held, other], at(14, 40)).id, "o");
+  assert.deepEqual(P.dueNow([held], at(14, 40)), []);
+  assert.equal(P.ready([held], at(15)).length, 1);
 });
 
 test("rules: order is soonest first (timed before untimed); next and due-now use the 30 minute window", () => {
@@ -89,7 +96,7 @@ test("rules: time parsing and labels", () => {
   assert.equal(P.parseAt("", T0), 0);
   assert.equal(P.parseAt("none", T0), 0);
   for (const bad of ["tomorrow", "2026-02-30 10:00", "2026-11-03 25:00", "25:99", "2026-11-03"]) assert.throws(() => P.parseAt(bad, T0), /not a time/, bad);
-  assert.throws(() => P.parseAt("2026-11-02 08:00", T0), /6 hours ago/);
+  assert.equal(P.parseAt("2026-11-02 08:00", T0), new Date(2026, 10, 2, 8, 0).getTime(), "a time in the past is fine: the plan can be reused");
   assert.throws(() => P.parseAt("2027-06-01 08:00", T0), /90 days/);
   assert.equal(P.formatAt(at(14, 30), T0), "Today 14:30");
   assert.equal(P.formatAt(at(9, 5, 1), T0), "Tomorrow 09:05");
@@ -98,7 +105,7 @@ test("rules: time parsing and labels", () => {
   assert.equal(P.toInputValue(at(14, 30)), "2026-11-03T14:30");
   assert.equal(P.label({ title: "T", who: "W" }), "T");
   assert.equal(P.label({ who: "Dana, Acme" }), "Dana, Acme");
-  assert.equal(P.label({}), "Prepared meeting");
+  assert.equal(P.label({}), "Untitled plan");
   assert.equal(P.menuLabel({ who: "Dana · Acme", at: at(14, 30) }, T0), "Dana · Acme (Today 14:30)");
   assert.ok(P.menuLabel({ who: "x".repeat(200) }, T0).length <= 64);
 });
@@ -147,17 +154,17 @@ test("store: create, list in order, edit, delete; fields are cleaned and capped"
   }
 });
 
-test("store: several meetings at once, at most 30, ids resolve by unique prefix", () => {
+test("store: several meetings at once, at most 50, ids resolve by unique prefix", () => {
   const r = rig();
   try {
     const ids: string[] = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 50; i++) {
       r.tick(7);
       const x = r.store.create({ who: "M" + i });
       assert.equal(x.ok, true, x.error);
       ids.push(x.meeting.id);
     }
-    assert.match(r.store.create({ who: "one too many" }).error, /At most 30/);
+    assert.match(r.store.create({ who: "one too many" }).error, /At most 50/);
     assert.equal(r.store.get(ids[3]).who, "M3");
     assert.equal(r.store.resolve("m").error, "not_found", "too short");
     const common = ids[0].slice(0, 3);
@@ -168,78 +175,113 @@ test("store: several meetings at once, at most 30, ids resolve by unique prefix"
   }
 });
 
-test("store: a timed meeting expires 6 h after its time and its folder is removed; an untimed one after 14 days", () => {
+test("store: plans do not expire: a timed plan is still there days after its time, and housekeeping waits 180 days", () => {
   const r = rig();
   try {
     const timed = r.store.create({ who: "Timed", at: at(14, 30) }).meeting;
     const loose = r.store.create({ who: "Loose" }).meeting;
-    r.set(at(20, 29));
-    assert.equal(r.store.list().length, 2);
     r.set(at(20, 31));
+    assert.equal(r.store.list().length, 2, "6 hours after the time: still there");
+    r.set(T0 + 20 * DAY);
+    assert.equal(r.store.list().length, 2, "20 days later: still there");
+    assert.equal(r.store.create({ who: "Late", at: T0 }).ok, true, "a time in the past can be saved");
+    r.set(T0 + 181 * DAY);
     assert.deepEqual(
       r.store.list().map((m: any) => m.who),
-      ["Loose"],
+      ["Late"],
+      "180 days with no touch: housekeeping removes the two old plans; the one saved 20 days ago stays",
     );
-    assert.equal(existsSync(r.store.dirOf(timed.id)), false, "expired meetings are deleted, with their files");
-    r.set(T0 + 13 * DAY);
-    assert.equal(r.store.list().length, 1);
-    r.set(T0 + 14 * DAY + HOUR);
-    assert.equal(r.store.list().length, 0);
+    assert.equal(existsSync(r.store.dirOf(timed.id)), false);
     assert.equal(existsSync(r.store.dirOf(loose.id)), false);
-    r.set(T0 + 20 * DAY);
-    assert.match(r.store.create({ who: "Late", at: T0 }).error, /6 hours ago/);
   } finally {
     r.done();
   }
 });
 
-test("store: editing an untimed meeting refreshes its 14 day cap", () => {
+test("store: editing a plan refreshes the housekeeping clock", () => {
   const r = rig();
   try {
     const m = r.store.create({ who: "Loose" }).meeting;
-    r.set(T0 + 10 * DAY);
+    r.set(T0 + 170 * DAY);
     r.store.update(m.id, { goal: "touched" });
-    r.set(T0 + 20 * DAY);
+    r.set(T0 + 300 * DAY);
     assert.equal(r.store.list().length, 1);
-    r.set(T0 + 25 * DAY);
+    r.set(T0 + 351 * DAY);
     assert.equal(r.store.list().length, 0);
   } finally {
     r.done();
   }
 });
 
-test("store: markUsed uses up only that meeting, drops its files, keeps it 7 days for the Calls view", async () => {
+test("store: a call that goes live and saves memory marks the plan; the plan, its files and Start all stay (reuse)", async () => {
   const r = rig();
   try {
     const a = r.store.create({ who: "Dana", at: at(14, 30) }).meeting,
       b = r.store.create({ who: "Noam", at: at(16) }).meeting;
     await r.store.files(a.id).addPaste("Invented background: Acme runs 12 WordPress sites.");
     await r.store.files(b.id).addPaste("Invented background: Beta Ltd sells shoes online.");
-    assert.equal(r.store.get(a.id).files, 1);
     r.set(at(14, 31));
-    assert.equal(r.store.markUsed(a.id, "01CALLID"), true);
-    assert.equal(r.store.markUsed(a.id, "01OTHER"), false, "already used");
+    assert.equal(r.store.markLive(a.id, "01CALLID"), true);
+    assert.equal(r.store.markLive(a.id, "01CALLID"), false, "same call again: nothing new");
+    let v = r.store.get(a.id);
+    assert.equal(v.pending, true, "live but no memory saved yet");
+    assert.equal(v.uses, 0);
+    assert.equal(v.files, 1, "nothing is deleted when the call goes live");
+    assert.equal(r.store.confirmUsed(a.id, "01CALLID"), true);
+    assert.equal(r.store.confirmUsed(a.id, "01CALLID"), false, "counted once per call");
+    v = r.store.get(a.id);
+    assert.deepEqual([v.pending, v.uses, v.callId, v.status], [false, 1, "01CALLID", "ready"]);
+    assert.equal(v.files, 1, "background files stay for the next call");
     assert.deepEqual(
       r.store.list().map((m: any) => m.who),
-      ["Noam"],
-      "a used meeting is not offered any more",
+      ["Dana", "Noam"],
+      "a used plan is still offered",
     );
-    const all = r.store.list({ includeUsed: true });
-    assert.deepEqual(
-      all.map((m: any) => [m.who, m.status]),
-      [
-        ["Noam", "ready"],
-        ["Dana", "used"],
-      ],
-    );
-    const used = all[1];
-    assert.equal(used.callId, "01CALLID");
-    assert.equal(used.files, 0, "background files are dropped once used");
-    assert.equal(r.store.get(b.id).files, 1, "the other meeting keeps its files");
-    assert.equal(r.store.exportBrief(a.id), null, "a used meeting cannot start another call");
-    assert.equal(r.store.update(a.id, { who: "x" }).ok, false);
-    r.set(at(14, 31) + 8 * DAY);
-    assert.equal(r.store.list({ includeUsed: true }).length, 0);
+    assert.ok(r.store.exportBrief(a.id), "and can start another call");
+    assert.equal(r.store.update(a.id, { who: "Dana L." }).ok, true, "and can be edited");
+    // the second call with the same plan
+    r.tick(60_000);
+    r.store.markLive(a.id, "01SECOND");
+    r.store.confirmUsed(a.id, "01SECOND");
+    assert.deepEqual([r.store.get(a.id).uses, r.store.get(a.id).callId], [2, "01SECOND"]);
+    assert.equal(r.store.get(b.id).uses, 0, "the other plan is untouched");
+  } finally {
+    r.done();
+  }
+});
+
+test("store: crash-resume: the plan survives a kill after Start and before the first memory write", async () => {
+  const r = rig();
+  try {
+    const m = r.store.create({ who: "Dana", goal: "agree a date", mustCover: ["price"], at: at(14, 30) }).meeting;
+    await r.store.files(m.id).addPaste("Invented background: Acme runs 12 WordPress sites. ".repeat(3));
+    const first = r.store.exportBrief(m.id)!;
+    r.set(at(14, 31));
+    r.store.markLive(m.id, "01CRASHED"); // the call went live, then the process was killed: confirmUsed never ran
+    const again = createPlanStore({ dir: r.dir, now: r.now, pdftotext: "" }); // a new process opens the same folder
+    const v = again.get(m.id);
+    assert.ok(v, "the plan is still there");
+    assert.deepEqual([v.who, v.goal, v.mustCover, v.files, v.pending, v.uses], ["Dana", "agree a date", ["price"], 1, true, 0]);
+    const second = again.exportBrief(m.id)!;
+    assert.equal(second.briefFile, first.briefFile);
+    assert.equal(attachments.createStore({ dir: second.attachDir, pdftotext: "" }).readAll({}).length, 1, "the files are there for the retry");
+    assert.equal(again.practiceDefault()?.id, m.id);
+    again.markLive(m.id, "01RETRY");
+    again.confirmUsed(m.id, "01RETRY");
+    assert.deepEqual([again.get(m.id).pending, again.get(m.id).uses], [false, 1]);
+  } finally {
+    r.done();
+  }
+});
+
+test("store: markUsed (engine without session memory) is live plus confirmed in one step and keeps everything", async () => {
+  const r = rig();
+  try {
+    const a = r.store.create({ who: "Dana" }).meeting;
+    await r.store.files(a.id).addPaste("Invented background for the call.");
+    assert.equal(r.store.markUsed(a.id, "01CALLID"), true);
+    const v = r.store.get(a.id);
+    assert.deepEqual([v.uses, v.pending, v.files], [1, false, 1]);
   } finally {
     r.done();
   }
@@ -272,7 +314,7 @@ test("store: exportBrief writes the file the engine reads (--brief), kind and to
       "prefers WhatsApp",
     ]);
     assert.ok(existsSync(x.briefFile), "loadBrief with an explicit file never consumes it");
-    assert.equal(attachments.createStore({ dir: x.attachDir, maxAgeMs: 400 * DAY, pdftotext: "" }).readAll({}).length, 1);
+    assert.equal(attachments.createStore({ dir: x.attachDir, pdftotext: "" }).readAll({}).length, 1);
   } finally {
     r.done();
   }
@@ -299,12 +341,12 @@ test("store: the draft's background files move into the meeting when it is saved
   }
 });
 
-test("store: background files are not limited to 6 hours any more (the meeting's own expiry decides)", async () => {
+test("store: background files do not expire with time", async () => {
   const r = rig();
   try {
     const m = r.store.create({ who: "Dana", at: at(9, 0, 5) }).meeting;
     await r.store.files(m.id).addPaste("Invented background.");
-    r.set(T0 + 3 * DAY);
+    r.set(T0 + 60 * DAY);
     assert.equal(r.store.get(m.id).files, 1);
   } finally {
     r.done();
@@ -378,7 +420,7 @@ test("migration: nothing to migrate is a no-op; a broken old file does not hide 
   }
 });
 
-test("migration: an old Plan past the old 6 h rule still migrates (not silently dropped), with the new 14 day cap from its file time", () => {
+test("migration: an old Plan from days ago still migrates and stays (no expiry)", () => {
   const r = rig();
   try {
     writeFileSync(join(r.dir, "latest.yaml"), 'who: "Old plan"\nnotes: []\nmustCover: []\n');
@@ -387,7 +429,7 @@ test("migration: an old Plan past the old 6 h rule still migrates (not silently 
     const l = r.store.list();
     assert.equal(l.length, 1, "kept, not silently dropped");
     r.set(T0 + 12 * DAY);
-    assert.equal(r.store.list().length, 0, "gone 14 days after the old file time");
+    assert.equal(r.store.list().length, 1, "and not expired 14 days later");
   } finally {
     r.done();
   }

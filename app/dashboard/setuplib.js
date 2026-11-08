@@ -18,9 +18,11 @@
     const visible = !!(o && o.force) || !settled || (ready && !(o && o.closed));
     return { total: REQUIRED.length, count, ready, settled, visible, next };
   }
-  /** "2 of 3" for the progress chip. */
-  const progressText = (count, total) => `${count} of ${total}`;
-  const api = { REQUIRED, OPTIONAL, plan, progressText };
+  /** "2 of 3" for the progress chip (the page passes its own words: "{n} of {total}"). */
+  const progressText = (count, total, fmt) => (fmt ? fmt.replace("{n}", count).replace("{total}", total) : `${count} of ${total}`);
+  /** The first real card needs at most this many steps on screen: keys, permissions (with the restart hint inside), the practice call. */
+  const FIRST_CARD_PATH = ["connect", "allow", "try"];
+  const api = { REQUIRED, OPTIONAL, FIRST_CARD_PATH, plan, progressText };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WingmanSetup = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -1,6 +1,8 @@
 // Prepared start: a 1-minute briefing before the meeting. Loaded by run.ts at startup; also a small interactive CLI (below).
 //   pnpm brief            asks 4 short questions and saves data/private/briefs/latest.yaml
-//   pnpm call / start     (run.ts) loads a brief saved in the last 6 hours (or --brief <file>; --no-brief skips it)
+//   pnpm call / start     (run.ts) loads the brief saved as latest.yaml (or --brief <file>; --no-brief skips it)
+// A brief is NOT used up when it is loaded and it does NOT expire: it is kept until the call is live and has saved its first memory
+// (confirmBrief), so a crash right after Start loses nothing and Start can be pressed again.
 // The brief becomes the user's notes for the AI, and its must-cover items become reminders during the call.
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -63,14 +65,16 @@ export function briefTerms(b: Brief | undefined): string[] {
 }
 export const LATEST_BRIEF = join(BRIEF_DIR, "latest.yaml");
 
+/** The latest.yaml that loadBrief read (path and file time), so confirmBrief moves only that file and never a newer one written during the call. */
+let loadedLatest: { file: string; mtimeMs: number } | undefined;
+
 /**
- * An explicit --brief file, or latest.yaml if written in the last maxAgeMs. latest.yaml is used ONCE: it is renamed
- * to used-<time>.yaml, so a brief for the 9:00 call never leaks into the 11:00 call. A broken file is reported, not fatal.
+ * An explicit --brief file, or latest.yaml. Reading never changes or removes a file, and a file never goes stale by age.
+ * A latest.yaml is retired by confirmBrief() once the call is live and has saved its first memory. A broken file is reported, not fatal.
  */
-export function loadBrief(file: string | undefined, maxAgeMs = 6 * 3600_000, consume = true): Brief | undefined {
+export function loadBrief(file: string | undefined): Brief | undefined {
   const f = file ?? LATEST_BRIEF;
   if (!existsSync(f)) return undefined;
-  if (!file && Date.now() - statSync(f).mtimeMs > maxAgeMs) return undefined; // an old "latest" is not for this call
   let b: Brief;
   try {
     b = (YAML.parse(readFileSync(f, "utf8")) ?? {}) as Brief;
@@ -78,14 +82,31 @@ export function loadBrief(file: string | undefined, maxAgeMs = 6 * 3600_000, con
     console.error(`Brief ${f} is not valid YAML, ignored: ${(e as Error).message}`);
     return undefined;
   }
-  if (!file && consume) {
+  if (!file) {
     try {
-      renameSync(f, join(BRIEF_DIR, `used-${new Date().toISOString().replace(/[:.]/g, "-")}.yaml`));
+      loadedLatest = { file: f, mtimeMs: statSync(f).mtimeMs };
     } catch {
-      /* best effort */
+      loadedLatest = undefined;
     }
   }
   return b;
+}
+
+/**
+ * The call is live and its first memory write worked: the latest.yaml that was loaded is renamed to used-<time>.yaml (history),
+ * so a brief for the 9:00 call does not start the 11:00 call. Returns true if a file was retired. Safe to call twice.
+ */
+export function confirmBrief(): boolean {
+  const l = loadedLatest;
+  loadedLatest = undefined;
+  if (!l) return false;
+  try {
+    if (statSync(l.file).mtimeMs !== l.mtimeMs) return false; // a newer brief was saved during the call: keep it
+    renameSync(l.file, join(BRIEF_DIR, `used-${new Date().toISOString().replace(/[:.]/g, "-")}.yaml`));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Brief -> notes for the AI. */
@@ -186,6 +207,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   mkdirSync(BRIEF_DIR, { recursive: true, mode: 0o700 });
   writeFileSync(LATEST_BRIEF, YAML.stringify(b), { mode: 0o600 });
   console.log(
-    `Saved ${LATEST_BRIEF}. The Wingman app turns it into a prepared meeting the next time it looks (pick it there to start). Running pnpm call yourself uses it once, within 6 hours (--no-brief skips it).`,
+    `Saved ${LATEST_BRIEF}. The Wingman app turns it into a prepared meeting the next time it looks (pick it there to start). Running pnpm call yourself uses it for the next call that goes live (--no-brief skips it).`,
   );
 }

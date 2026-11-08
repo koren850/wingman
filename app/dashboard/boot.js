@@ -1,5 +1,21 @@
 "use strict";
 // Start-up and navigation. Loaded last (app.js, home.js, live.js and settings.js define $, api, state and the views).
+// Window language first: everything drawn after this uses T(). ?lang=he|en is a screenshot aid and wins over the saved choice.
+{
+  const q = new URLSearchParams(location.search).get("lang");
+  const loc = (navigator.languages && navigator.languages[0]) || navigator.language || "en";
+  const lang = q === "he" || q === "en" ? q : WingmanI18n.resolve(windowLangChoice(), loc);
+  WingmanI18n.setLang(lang);
+  const root = document.documentElement;
+  root.lang = lang;
+  root.dir = WingmanI18n.dirOf(lang);
+  const skip = document.querySelector("a.skip");
+  if (skip) skip.textContent = T("nav.skip");
+  const brand = $("brand");
+  brand.setAttribute("aria-label", T("nav.homeAria"));
+  brand.title = T("nav.homeTitle");
+  document.querySelector("nav").setAttribute("aria-label", T("nav.main"));
+}
 $("brand").addEventListener("click", () => viewHome());
 $("nav-home").addEventListener("click", () => viewHome());
 $("nav-list").addEventListener("click", () => {
@@ -56,6 +72,6 @@ Promise.all([
   .catch(() => {
     const main = $("main");
     main.textContent = "";
-    main.append(errorState("Wingman could not load", () => location.reload()));
+    main.append(errorState(T("app.loadError"), () => location.reload()));
     ready();
   });

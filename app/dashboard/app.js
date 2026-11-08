@@ -5,6 +5,28 @@
 // No innerHTML anywhere. Icons are built with createElementNS.
 const api = window.wingman;
 const $ = (id) => document.getElementById(id);
+// Window texts: T("key", { name: "x" }) in the language chosen at start (boot.js). Catalogs: strings.en.js, strings.he.js. A missing Hebrew key shows English.
+const T = (key, vars) => WingmanI18n.t(WingmanI18n.lang, key, vars);
+const LANG_KEY = "wingman.window.lang";
+/** The saved choice: "auto" | "en" | "he". Browser storage can be unavailable (private window), so every access is guarded. */
+function windowLangChoice() {
+  try {
+    const v = localStorage.getItem(LANG_KEY);
+    return v === "en" || v === "he" ? v : "auto";
+  } catch {
+    return "auto";
+  }
+}
+/** Saves the choice and reloads the window so every text is drawn again in the new language. */
+function setWindowLanguage(choice) {
+  try {
+    if (choice === "auto") localStorage.removeItem(LANG_KEY);
+    else localStorage.setItem(LANG_KEY, choice);
+  } catch {
+    /* the choice lasts only until the next start */
+  }
+  location.replace(location.href.split("?")[0]);
+}
 
 /* ---------- tiny DOM helpers ---------- */
 /** Create an element. attrs: "class" -> className, "onX" -> event listener, false/null skipped, true -> empty attribute. kids (nested ok): nodes, or anything else as a text node (never HTML). */
@@ -135,16 +157,20 @@ const tip = (text, end) =>
   h("button", { type: "button", class: "tip" + (end ? " end" : ""), "aria-label": text, "data-tip": text, onclick: (e) => e.stopPropagation() }, "?");
 
 /** The one badge legend. Same names, hues and glyphs as the answer window: [label, colour class, meaning, glyph]. A glyph backs the colour so it is never the only signal. */
-const BADGE = {
-  bank: ["Prepared", "t-prep", "A ready-made answer written before the call.", "\u2714"],
-  ai: ["AI · unverified", "t-ai", "Written by the AI. Not verified: check it before you say it.", "\u2726"],
-  stall: ["Buy time", "t-stall", "A line to say while the real answer is found.", "\u25F7"],
-  tip: ["Tip", "t-tip", "A small suggestion, not an answer.", ""],
-  me: ["For you", "t-me", "An answer to your own question.", "\u2606"],
-  careful: ["Careful", "t-careful", "You committed to a price, date or promise. Consider hedging.", "\u26A0"],
-  fix: ["Correction", "t-fix", "What you said differs from the meeting background.", "\u2716"],
-  calc: ["Math", "t-ai", "Worked out exactly, not by the AI.", "\u2211"],
+const BADGE_DEF = {
+  bank: ["t-prep", "\u2714"],
+  ai: ["t-ai", "\u2726"],
+  stall: ["t-stall", "\u25F7"],
+  tip: ["t-tip", ""],
+  me: ["t-me", "\u2606"],
+  careful: ["t-careful", "\u26A0"],
+  fix: ["t-fix", "\u2716"],
+  calc: ["t-ai", "\u2211"],
 };
+// Each entry reads its label and meaning from the catalog when it is used, so a language change shows at once.
+const BADGE = {};
+for (const [k, [cls, glyph]] of Object.entries(BADGE_DEF))
+  Object.defineProperty(BADGE, k, { enumerable: true, get: () => [T(`badge.${k}.label`), cls, T(`badge.${k}.meaning`), glyph] });
 /** Chip for a card badge, with its glyph and meaning as the tooltip. Unknown badges get a plain dot chip. */
 function badgeChip(badge, label) {
   const b = BADGE[badge],
@@ -160,12 +186,12 @@ function errorState(what, retry, back) {
     { class: "errstate", role: "alert" },
     ico("warning"),
     h("h2", {}, what),
-    h("p", {}, "Something went wrong while loading. Nothing was changed or lost."),
+    h("p", {}, T("app.errState")),
     h(
       "div",
       { class: "actions" },
-      retry ? btn("Try again", { icon: "refresh", cls: "primary", onclick: retry }) : null,
-      back ? btn("Back to Calls", { icon: "back", onclick: back }) : null,
+      retry ? btn(T("app.tryAgain"), { icon: "refresh", cls: "primary", onclick: retry }) : null,
+      back ? btn(T("app.backCalls"), { icon: "back", onclick: back }) : null,
     ),
   );
 }
@@ -364,9 +390,9 @@ const pendingOf = (c) => Math.max(0, c.cardsTotal - c.rated);
 /** Mark the current nav button (a call view counts as Calls). */
 function setNav() {
   const defs = [
-    ["nav-home", "home", "Home", "home"],
-    ["nav-list", "inbox", "Calls", "calls"],
-    ["nav-settings", "settings", "Settings", "settings"],
+    ["nav-home", "home", T("nav.home"), "home"],
+    ["nav-list", "inbox", T("nav.calls"), "calls"],
+    ["nav-settings", "settings", T("nav.settings"), "settings"],
   ];
   const cur = state.view === "call" ? "inbox" : state.view;
   for (const [id, v, label, icon] of defs) {

@@ -92,25 +92,27 @@ const mt = (id: string, o: object = {}) => ({
   ...o,
 });
 
-test("Start card: prepared meetings are listed soonest first, the next timed one is highlighted, used and expired ones never show", () => {
+test("Start card: prepared meetings are listed soonest first, the next timed one is highlighted, a used plan stays in the list (plans are reusable) but is not next for the slot it served", () => {
   const list = [
     mt("mnoTime0", { updatedAt: NOW + 5 }),
     mt("mlate01", { at: at(16), who: "Noam, Beta", mustCount: 3 }),
     mt("mnext01", { at: at(14, 30), who: "Dana, Acme", files: 2 }),
-    mt("mused01", { at: at(14), usedAt: NOW - 10 }),
+    mt("mused01", { at: at(14), usedAt: at(14, 5) }),
     mt("mold001", { at: at(1) }),
   ];
   const r = H.startPaths(list, NOW);
   assert.deepEqual(
     r.rows.map((x: any) => x.id),
-    ["mnext01", "mlate01", "mnoTime0"],
+    ["mold001", "mused01", "mnext01", "mlate01", "mnoTime0"],
   );
   assert.equal(r.next.id, "mnext01");
   assert.equal(H.nextText(r.next), "Next: Dana, Acme at 14:30");
-  assert.deepEqual([r.rows[0].time, r.rows[0].files, r.rows[1].must, r.rows[2].time], ["Today 14:30", 2, 3, ""]);
-  assert.equal(r.rows[0].isNext, true);
-  assert.equal(r.rows[1].isNext, false);
-  assert.equal(r.rows[0].startLabel, "Start Dana, Acme");
+  const row = (id: string) => r.rows.find((x: any) => x.id === id);
+  assert.deepEqual([row("mnext01").time, row("mnext01").files, row("mlate01").must, row("mnoTime0").time], ["Today 14:30", 2, 3, ""]);
+  assert.equal(row("mnext01").isNext, true);
+  assert.equal(row("mlate01").isNext, false);
+  assert.equal(row("mused01").isNext, false, "its slot was already held");
+  assert.equal(row("mnext01").startLabel, "Start Dana, Acme");
   assert.equal(H.startPaths([mt("mnoTime0")], NOW).next, null, "an untimed meeting is never 'Next'");
   assert.deepEqual(H.startPaths([], NOW), { next: null, rows: [] });
   assert.equal(H.startPaths(null, NOW).rows.length, 0);

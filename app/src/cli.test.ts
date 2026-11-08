@@ -557,7 +557,7 @@ test("start: --quick starts with no Plan and leaves every prepared meeting alone
   }
 });
 
-test("start: --plan <id> starts with that meeting, which is used up when the call goes live (and only that one)", async () => {
+test("start: --plan <id> starts with that meeting, which is marked when the call goes live (and only that one) and stays reusable", async () => {
   const r = await rig();
   try {
     const a = r.plans.create({ who: "Dana, Acme", mustCover: ["price"] }).meeting,
@@ -576,11 +576,12 @@ test("start: --plan <id> starts with that meeting, which is used up when the cal
     assert.equal(st.json.call.planId, a.id);
     assert.equal(st.json.liveCallPlan.name, "Dana, Acme");
     r.f.spawned[0].say("consented", { id: "R1" });
-    assert.equal(r.plans.get(a.id).status, "used");
-    assert.equal(r.plans.get(b.id).status, "ready");
-    assert.equal((await r.run("status", "--json")).json.plans.length, 1, "the used meeting leaves the list");
+    r.f.spawned[0].say("memory");
+    assert.equal(r.plans.get(a.id).uses, 1);
+    assert.equal(r.plans.get(b.id).uses, 0);
+    assert.equal((await r.run("status", "--json")).json.plans.length, 2, "a used meeting stays in the list");
     r.f.spawned[0].emit("exit", 0);
-    assert.equal((await r.run("start", "--plan", a.id, "--json")).code, 4, "a used meeting cannot start again");
+    assert.equal((await r.run("start", "--plan", a.id, "--json", "--no-wait")).code, 0, "and can start again");
   } finally {
     await r.done();
   }

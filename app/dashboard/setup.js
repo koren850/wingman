@@ -241,21 +241,12 @@ function tryPanel() {
     h(
       "div",
       { class: "su-row", id: "su-practice-first" },
-      h(
-        "div",
-        { class: "grow" },
-        h("div", { class: "st-t" }, "A practice call (free, no keys)"),
-        h(
-          "div",
-          { class: "faint st-w" },
-          "A pretend caller talks to Wingman and you see the answer window work. It runs on your Mac only: nothing is sent anywhere and nothing is charged.",
-        ),
-      ),
-      btn("Start practice call", {
+      h("div", { class: "grow" }, h("div", { class: "st-t" }, T("su.try.title")), h("div", { class: "faint st-w" }, T("su.try.note"))),
+      btn(T("su.try.start"), {
         id: "su-practice-now",
         icon: "play",
         cls: "sm primary",
-        onclick: () => act(() => api.practice({ quick: true }), "Practice call"),
+        onclick: () => act(() => api.practice({ quick: true }), T("home.practice")),
       }),
     ),
   );
@@ -430,12 +421,7 @@ function permsPanel() {
             },
           }),
     ),
-    h(
-      "p",
-      { class: "su-note" },
-      ico("warning"),
-      h("span", {}, "After you allow either permission, quit Wingman (menu bar icon, Quit Wingman) and open it again. macOS only applies it to a new start."),
-    ),
+    h("p", { class: "su-note" }, ico("warning"), h("span", {}, T("su.restartHint"))),
   );
 }
 
@@ -443,12 +429,7 @@ function permsPanel() {
 function allowPanel() {
   const d = permsPanel();
   d.insertBefore(
-    h(
-      "div",
-      { class: "su-sub" },
-      h("div", { class: "st-t" }, "Screens"),
-      h("p", { class: "help" }, "Where the answer window shows. Pick below if you have one screen."),
-    ),
+    h("div", { class: "su-sub" }, h("div", { class: "st-t" }, T("su.screens")), h("p", { class: "help" }, T("su.screens.note"))),
     d.querySelector(".su-note"),
   );
   d.insertBefore(screenPanel(), d.querySelector(".su-note"));
@@ -460,18 +441,19 @@ const screensOk = () => !!(SU.status && (SU.status.displays >= 2 || SU.status.al
 const REQUIRED_STEPS = [
   {
     id: "try",
-    title: "Try it",
-    why: () => "A practice call with a pretend client. Free, no keys.",
+    get title() {
+      return T("su.try");
+    },
+    why: () => T("su.try.why"),
     done: (c) => c.practiced,
     panel: () => tryPanel(),
   },
   {
     id: "connect",
-    title: "Connect",
-    why: () =>
-      keysMissing().length
-        ? `Missing: ${keysMissing().join(" and ")}. Deepgram hears the call, Anthropic writes the AI answers.`
-        : "Both keys are saved in the Keychain.",
+    get title() {
+      return T("su.connect");
+    },
+    why: () => (keysMissing().length ? T("su.connect.missing", { names: keysMissing().join(T("su.and")) }) : T("su.connect.ok")),
     done: () => !!H.keys && !keysMissing().length,
     panel: () =>
       h(
@@ -489,8 +471,10 @@ const REQUIRED_STEPS = [
   },
   {
     id: "allow",
-    title: "Allow",
-    why: () => "Microphone for your voice, System Audio Recording for the other side, and where the answer window shows.",
+    get title() {
+      return T("su.allow");
+    },
+    why: () => T("su.allow.why"),
     done: (c) => c.hadLive || !!(SU.status && SU.status.mic === "granted" && SU.acks.audio && screensOk()),
     panel: () => allowPanel(),
   },
@@ -500,42 +484,46 @@ const REQUIRED_STEPS = [
 const OPTIONAL_STEPS = [
   {
     id: "about",
-    title: "About you",
-    why: () =>
-      SU.profile && SU.profile.name ? `Hello ${SU.profile.name}.` : "Your name and how to address you. Used in the AI's instructions, so cards fit you.",
+    get title() {
+      return T("su.about");
+    },
+    why: () => (SU.profile && SU.profile.name ? T("su.about.hello", { name: SU.profile.name }) : T("su.about.why")),
     done: () => !!(SU.profile && SU.profile.name),
     panel: () => (SU.profile ? aboutForm("su") : h("div", { class: "loading" }, "Loading…")),
   },
   {
     id: "privacy",
-    title: "Your privacy",
-    why: () => (SU.acks.privacy ? "Your choice is saved." : "Two choices about listening and your audio."),
+    get title() {
+      return T("su.privacy");
+    },
+    why: () => (SU.acks.privacy ? T("su.privacy.saved") : T("su.privacy.why")),
     done: () => !!SU.acks.privacy,
     panel: () => privacyPanel(),
   },
   {
     id: "mic",
-    title: "Choose your microphone",
-    why: () => (SU.status ? `Now: ${fmtMic(SU.status.micDevice)}.` : "Which microphone Wingman listens to."),
+    get title() {
+      return T("su.mic");
+    },
+    why: () => (SU.status ? T("su.mic.now", { mic: fmtMic(SU.status.micDevice) }) : T("su.mic.why")),
     done: () => !!(SU.acks.mic || (SU.status && SU.status.micDevice !== ":default")),
     panel: () => micPanel(),
   },
   {
     id: "pack",
-    title: "Starter answers",
-    why: () =>
-      SU.status
-        ? SU.status.pack.using === "user"
-          ? "Your own answers are in use."
-          : "The example answers are in use (invented web and hosting answers)."
-        : "The answers Wingman prepares from.",
+    get title() {
+      return T("su.pack");
+    },
+    why: () => (SU.status ? (SU.status.pack.using === "user" ? T("su.pack.user") : T("su.pack.example")) : T("su.pack.why")),
     done: () => !!(SU.status && (SU.status.pack.using === "user" || SU.acks.pack)),
     panel: () => packPanel(),
   },
   {
     id: "check",
-    title: "Run the readiness check",
-    why: () => "Tests the microphone, system audio, the speech service and the AI. About 20 seconds, a few cents.",
+    get title() {
+      return T("ready.run");
+    },
+    why: () => T("su.check.why"),
     done: (c) => c.fullOk,
     panel: () =>
       h(
@@ -793,7 +781,7 @@ function setupCard() {
       { class: "su-head" },
       dn ? ico("check") : h("span", { class: "tick" }),
       h("div", { class: "grow" }, h("div", { class: "st-t" }, n ? `${n}. ${s.title}` : s.title), h("div", { class: "faint st-w" }, s.why())),
-      sk ? chip("Skipped", "") : null,
+      sk ? chip(T("su.skippedChip"), "") : null,
       h(
         "button",
         {
@@ -804,7 +792,7 @@ function setupCard() {
           "aria-controls": "su-panel-" + s.id,
           onclick: () => toggle(s.id),
         },
-        h("span", {}, isOpen ? "Close" : dn ? "Edit" : "Open"),
+        h("span", {}, isOpen ? T("su.close") : dn ? T("home.edit") : T("su.open")),
       ),
     );
     const panel = isOpen
@@ -818,7 +806,7 @@ function setupCard() {
                 "div",
                 { class: "actions su-skip" },
                 isSkipped(s)
-                  ? btn("Do this step after all", {
+                  ? btn(T("su.undoSkip"), {
                       cls: "sm ghost",
                       onclick: () => {
                         delete SU.skipped[s.id];
@@ -826,14 +814,14 @@ function setupCard() {
                         suRedraw();
                       },
                     })
-                  : btn("Skip this step", {
+                  : btn(T("su.skip"), {
                       id: "su-skip-" + s.id,
                       cls: "sm ghost",
                       onclick: () => {
                         SU.skipped[s.id] = true;
                         SU.open = "auto";
                         suSave();
-                        announce(s.title + " skipped. You can come back from Settings, Setup guide.");
+                        announce(T("su.skipped", { title: s.title }));
                         suRedraw();
                       },
                     }),
@@ -843,12 +831,7 @@ function setupCard() {
     return h("li", { class: (dn ? "done " : "") + "has-panel" }, row, panel);
   };
   const ready = pl.ready
-    ? h(
-        "p",
-        { class: "su-note su-ready", id: "su-ready", role: "status" },
-        ico("check"),
-        h("span", {}, h("b", {}, "You're ready. "), "Press Quick call below, or Start on a prepared meeting."),
-      )
+    ? h("p", { class: "su-note su-ready", id: "su-ready", role: "status" }, ico("check"), h("span", {}, h("b", {}, T("su.ready1")), T("su.ready2")))
     : null;
   return h(
     "section",
@@ -856,11 +839,11 @@ function setupCard() {
     h(
       "div",
       { class: "rhead" },
-      h("h2", { id: "setup-h" }, "Set up Wingman"),
-      chip(SL.progressText(pl.count, pl.total), pl.ready ? "good" : "warn"),
+      h("h2", { id: "setup-h" }, T("su.title")),
+      chip(SL.progressText(pl.count, pl.total, T("su.progress")), pl.ready ? "good" : "warn"),
       h("span", { class: "grow" }),
       pl.settled
-        ? btn("Close", {
+        ? btn(T("su.close"), {
             id: "su-close",
             cls: "sm",
             onclick: () => {
@@ -875,11 +858,11 @@ function setupCard() {
     ready,
     h(
       "ul",
-      { class: "setuplist", "aria-label": "Required steps" },
+      { class: "setuplist", "aria-label": T("su.required") },
       REQUIRED_STEPS.map((s, i) => item(s, i + 1)),
     ),
-    h("h3", { class: "su-opt-h", id: "su-opt-h" }, "Make it yours (optional)"),
-    h("p", { class: "faint su-opt-note" }, "None of this is needed to start. Each one can be skipped and done later."),
+    h("h3", { class: "su-opt-h", id: "su-opt-h" }, T("su.opt")),
+    h("p", { class: "faint su-opt-note" }, T("su.opt.note")),
     h(
       "ul",
       { class: "setuplist", "aria-labelledby": "su-opt-h" },

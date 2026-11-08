@@ -6,8 +6,10 @@
 //   plans/<id>/files/           its background files (tray/attachments.cjs stores the text only)
 //   plans/<id>/brief.yaml       written by exportBrief() for the engine (src/brief.ts reads it with --brief)
 //   plans/_draft/files/         background files of a meeting that is being written and is not saved yet
-// The rules (expiry, order, "next", "due now") are in shared/plans.js. A call uses a meeting only when it is started with it
-// explicitly; markUsed() is called when that call really goes live, and then drops the background files (one meeting = one real call).
+// The rules (housekeeping, order, "next", "due now") are in shared/plans.js. A call uses a meeting only when it is started with it
+// explicitly. A plan is never used up and never expires: markLive() records that a call went live with it, confirmUsed() records that the
+// call saved its first memory (round 12). Nothing is deleted at either point, so a crash after Start loses nothing, and the same plan
+// can start the next call. Only the owner deleting it (or 180 days of no use) removes a plan.
 // The old single Plan (latest.yaml plus flat attachments/) is turned into one meeting the first time the store is opened (migrate()).
 // No Electron import: unit-tested in src/plans.test.ts. Content is never logged.
 const fs = require("node:fs");
@@ -20,7 +22,7 @@ const DRAFT = "_draft";
 const KIND_PREFIX = "Call kind: ",
   TOPIC_PREFIX = "Topic: ";
 const FLAT_FILE_RE = /^(a[0-9a-z]{6,12})__(.{1,80})\.txt$/;
-const LONG_AGE_MS = 400 * 24 * 3600_000; // the attachment store's own 6 h expiry is switched off here: the meeting's expiry decides
+const CHUNKS_RE = attachments.CHUNKS_RE;
 const DRAFT_KEEP_MS = 24 * 3600_000;
 const LIMITS = { title: 80, who: 120, goal: 200, topic: 120, item: 200, items: 12 };
 
@@ -69,7 +71,6 @@ function createPlanStore(o) {
     attachments.createStore({
       dir: path.join(dirOf(id), "files"),
       now,
-      maxAgeMs: LONG_AGE_MS,
       ...(o.pdftotext !== undefined ? { pdftotext: o.pdftotext } : {}),
     });
 
@@ -96,7 +97,9 @@ function createPlanStore(o) {
         at: n(j.at),
         createdAt: n(j.createdAt),
         updatedAt: n(j.updatedAt) || n(j.createdAt),
+        liveAt: n(j.liveAt),
         usedAt: n(j.usedAt),
+        uses: n(j.uses),
         callId: clean(j.callId, 60),
       };
     } catch {
@@ -112,10 +115,16 @@ function createPlanStore(o) {
   function view(m) {
     const t = now();
     let files = [],
-      chars = 0;
+      chars = 0,
+      ctxChars = 0,
+      ctxPreview = "";
     try {
-      files = filesStore(m.id).list().files;
+      const st = filesStore(m.id);
+      files = st.list().files;
       chars = files.reduce((a, f) => a + f.chars, 0);
+      const ctx = st.getContext();
+      ctxChars = ctx.length;
+      ctxPreview = clean(ctx.slice(0, 200), 60);
     } catch {
       /* none */
     }
@@ -123,9 +132,12 @@ function createPlanStore(o) {
       ...m,
       status: P.statusOf(m, t),
       expiresAt: P.expiresAt(m),
+      pending: m.liveAt > m.usedAt, // a call went live with this plan but did not save its first memory (it may have crashed)
       files: files.length,
-      fileList: files.map((f) => ({ id: f.id, name: f.name, chars: f.chars })),
+      fileList: files.map((f) => ({ id: f.id, name: f.name, chars: f.chars, chunks: f.chunks })),
       fileChars: chars,
+      contextChars: ctxChars,
+      preview: ctxPreview,
     };
   }
 
@@ -149,7 +161,7 @@ function createPlanStore(o) {
     }
     let flatNames = [];
     try {
-      flatNames = fs.readdirSync(flat).filter((n) => FLAT_FILE_RE.test(n) && fs.lstatSync(path.join(flat, n)).isFile());
+      flatNames = fs.readdirSync(flat).filter((n) => (FLAT_FILE_RE.test(n) || CHUNKS_RE.test(n)) && fs.lstatSync(path.join(flat, n)).isFile());
     } catch {
       flatNames = [];
     }
@@ -157,13 +169,15 @@ function createPlanStore(o) {
     const stamp = brief
       ? mtime
       : Math.max(
-          ...flatNames.map((n) => {
-            try {
-              return fs.statSync(path.join(flat, n)).mtimeMs;
-            } catch {
-              return 0;
-            }
-          }),
+          ...flatNames
+            .filter((n) => FLAT_FILE_RE.test(n))
+            .map((n) => {
+              try {
+                return fs.statSync(path.join(flat, n)).mtimeMs;
+              } catch {
+                return 0;
+              }
+            }),
         );
     const id =
       "m" +
@@ -192,7 +206,9 @@ function createPlanStore(o) {
         at: 0,
         createdAt: Math.round(stamp),
         updatedAt: Math.round(stamp),
+        liveAt: 0,
         usedAt: 0,
+        uses: 0,
         callId: "",
       };
       save(m);
@@ -217,7 +233,7 @@ function createPlanStore(o) {
     }
   }
 
-  /** Removes expired meetings and stale drafts. */
+  /** Housekeeping: removes plans nobody touched for 180 days, and stale drafts. */
   function sweep() {
     if (readOnly) return;
     let names = [];
@@ -264,8 +280,8 @@ function createPlanStore(o) {
     sweep();
   };
 
-  /** Meetings in order (soonest first). includeUsed: also the ones a real call already used (kept for the Calls view). */
-  function list(opts = {}) {
+  /** Plans in order (soonest first). Every plan is reusable, so there is no "used" list any more (opts is kept for old callers). */
+  function list() {
     prep();
     let names = [];
     try {
@@ -278,17 +294,16 @@ function createPlanStore(o) {
       .map(readMeeting)
       .filter(Boolean)
       .map(view)
-      .filter((m) => m.status !== "expired" && (opts.includeUsed || m.status === "ready"));
-    const ord = P.order(all);
-    return opts.includeUsed ? [...ord.filter((m) => m.status === "ready"), ...ord.filter((m) => m.status === "used").sort((a, b) => b.usedAt - a.usedAt)] : ord;
+      .filter((m) => m.status === "ready");
+    return P.order(all);
   }
   /** Finds a meeting by exact id or by a unique prefix (3+ characters). { meeting } or { error: "not_found" | "ambiguous", matches? }. */
-  function resolve(idLike, opts = { includeUsed: true }) {
+  function resolve(idLike, _opts) {
     const q = String(idLike == null ? "" : idLike)
       .trim()
       .toLowerCase();
     if (!q || !/^[0-9a-z]+$/.test(q)) return { error: "not_found" };
-    const all = list(opts);
+    const all = list();
     const exact = all.find((m) => m.id === q);
     if (exact) return { meeting: exact };
     if (q.length < 3) return { error: "not_found" };
@@ -311,7 +326,7 @@ function createPlanStore(o) {
     if (f.at !== undefined) out.at = typeof f.at === "number" ? (f.at > 0 ? Math.round(f.at) : 0) : P.parseAt(f.at, now());
     return out;
   }
-  const hasContent = (m) => !!(m.title || m.who || m.goal || m.topic || m.notes.length || m.mustCover.length);
+  const hasContent = (m, ctx) => !!(m.title || m.who || m.goal || m.topic || m.notes.length || m.mustCover.length || (typeof ctx === "string" && ctx.trim()));
 
   /** Saves a new meeting. fields: { title, who, goal, topic, kind, notes, mustCover, at } (notes / mustCover: array or text split on ";" / lines; at: epoch ms or text). adoptDraft: move the unsaved draft's background files in. */
   function create(f, opts = {}) {
@@ -323,8 +338,7 @@ function createPlanStore(o) {
       return { ok: false, error: e.message };
     }
     const t = now();
-    if (list({ includeUsed: false }).length >= P.RULES.maxMeetings)
-      return { ok: false, error: `At most ${P.RULES.maxMeetings} prepared meetings. Delete one first.` };
+    if (list().length >= P.RULES.maxMeetings) return { ok: false, error: `At most ${P.RULES.maxMeetings} plans. Delete one you do not need first.` };
     const m = {
       id: "",
       title: "",
@@ -337,12 +351,13 @@ function createPlanStore(o) {
       at: 0,
       createdAt: t,
       updatedAt: t,
+      liveAt: 0,
       usedAt: 0,
+      uses: 0,
       callId: "",
       ...patch,
     };
-    if (!hasContent(m)) return { ok: false, error: "Fill in at least one field." };
-    if (m.at && m.at + P.RULES.afterMeetingMs <= t) return { ok: false, error: "That time is more than 6 hours ago, so the meeting would expire at once." };
+    if (!hasContent(m, f && f.context)) return { ok: false, error: "Fill in at least one field." };
     for (let i = 0; i < 5 && !m.id; i++) {
       const id =
         "m" +
@@ -355,13 +370,16 @@ function createPlanStore(o) {
     if (!m.id) return { ok: false, error: "Could not make an id. Try again." };
     save(m);
     if (opts.adoptDraft) adoptDraft(m.id);
+    if (f && typeof f.context === "string") {
+      const c = filesStore(m.id).setContext(f.context);
+      if (!c.ok) return { ok: true, meeting: get(m.id), warning: c.error };
+    }
     return { ok: true, meeting: get(m.id) };
   }
   /** Changes some fields of a meeting that is still ready. */
   function update(idLike, f) {
     const r = resolve(idLike);
     if (!r.meeting) return { ok: false, error: r.error === "ambiguous" ? "That id matches more than one meeting." : "No such prepared meeting." };
-    if (r.meeting.status !== "ready") return { ok: false, error: "That meeting was already used by a call. Prepare a new one." };
     let patch;
     try {
       patch = fields(f || {});
@@ -370,11 +388,19 @@ function createPlanStore(o) {
     }
     const cur = readMeeting(r.meeting.id);
     const m = { ...cur, ...patch, updatedAt: now() };
-    if (!hasContent(m)) return { ok: false, error: "A meeting cannot be empty." };
-    if (patch.at && patch.at + P.RULES.afterMeetingMs <= now())
-      return { ok: false, error: "That time is more than 6 hours ago, so the meeting would expire at once." };
+    const ctxNow = f && typeof f.context === "string" ? f.context : filesStore(m.id).getContext();
+    if (!hasContent(m, ctxNow)) return { ok: false, error: "A meeting cannot be empty." };
     save(m);
+    if (f && typeof f.context === "string") {
+      const c = filesStore(m.id).setContext(f.context);
+      if (!c.ok) return { ok: true, meeting: get(m.id), warning: c.error };
+    }
     return { ok: true, meeting: get(m.id) };
+  }
+  /** The pasted Meeting context text of a plan ("" when none). */
+  function getContext(idLike) {
+    const r = resolve(idLike);
+    return r.meeting ? filesStore(r.meeting.id).getContext() : "";
   }
   /** Deletes a meeting and its background files. */
   function remove(idLike) {
@@ -383,17 +409,34 @@ function createPlanStore(o) {
     if (!readOnly) fs.rmSync(dirOf(r.meeting.id), { recursive: true, force: true });
     return { ok: true, id: r.meeting.id };
   }
-  /** A real call went live with this meeting: mark it used (kept 7 days for the Calls view) and drop its background files. */
-  function markUsed(id, callId) {
+  /**
+   * A real call went live with this plan. Records the time and the call id and NOTHING else: no file is deleted, the plan stays ready.
+   * Until confirmUsed() runs for the same call, the plan shows as "pending" (a call that crashed before it saved anything leaves it that way).
+   */
+  function markLive(id, callId) {
     const m = ID_RE.test(String(id)) ? readMeeting(id) : null;
-    if (!m || m.usedAt) return false;
-    save({ ...m, usedAt: now(), callId: clean(callId, 60) });
-    try {
-      filesStore(id).clear();
-    } catch {
-      /* best effort */
-    }
+    if (!m) return false;
+    const cid = clean(callId, 60);
+    if (m.callId === cid && m.liveAt) return false; // same call, already recorded
+    save({ ...m, liveAt: now(), callId: cid });
     return true;
+  }
+  /**
+   * The call saved its first memory: the plan counts as used once for that call (uses + 1, usedAt). Idempotent per call id.
+   * The plan and its background files are kept, so the next call can use the same plan.
+   */
+  function confirmUsed(id, callId) {
+    const m = ID_RE.test(String(id)) ? readMeeting(id) : null;
+    if (!m) return false;
+    const cid = clean(callId, 60);
+    if (m.usedAt && m.callId === cid && m.usedAt >= m.liveAt) return false; // this call is already counted
+    save({ ...m, liveAt: m.liveAt || now(), callId: cid, usedAt: now(), uses: m.uses + 1 });
+    return true;
+  }
+  /** Older callers: the call went live and nothing else will confirm it (the engine without session memory). Same as markLive then confirmUsed. */
+  function markUsed(id, callId) {
+    const a = markLive(id, callId);
+    return confirmUsed(id, callId) || a;
   }
 
   /** Background files of a meeting, or of the unsaved draft (id "" or "draft"). Same {ok,...} store as tray/attachments.cjs. */
@@ -412,7 +455,7 @@ function createPlanStore(o) {
       to = path.join(dirOf(id), "files");
     let names = [];
     try {
-      names = fs.readdirSync(from).filter((n) => FLAT_FILE_RE.test(n));
+      names = fs.readdirSync(from).filter((n) => FLAT_FILE_RE.test(n) || CHUNKS_RE.test(n));
     } catch {
       return 0;
     }
@@ -440,11 +483,11 @@ function createPlanStore(o) {
 
   /**
    * Files for one call: writes plans/<id>/brief.yaml (who, goal, notes with kind/topic as prefixed notes, mustCover: what src/brief.ts reads)
-   * and returns { briefFile, attachDir } for the engine (--brief and WINGMAN_ATTACH_DIR). Only a ready meeting can be exported.
+   * and returns { briefFile, attachDir } for the engine (--brief and WINGMAN_ATTACH_DIR). Any plan can be exported again: plans are reusable.
    */
   function exportBrief(idLike) {
     const m = get(idLike);
-    if (!m || m.status !== "ready") return null;
+    if (!m) return null;
     const y = (v) => JSON.stringify(v); // JSON strings are valid YAML scalars
     const notes = [...(m.kind ? [KIND_PREFIX + m.kind] : []), ...(m.topic ? [TOPIC_PREFIX + m.topic] : []), ...m.notes];
     const lines = [`planId: ${y(m.id)}`];
@@ -471,6 +514,9 @@ function createPlanStore(o) {
     create,
     update,
     remove,
+    getContext,
+    markLive,
+    confirmUsed,
     markUsed,
     files,
     adoptDraft,

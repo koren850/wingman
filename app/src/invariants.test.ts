@@ -242,11 +242,11 @@ test("the snapshot doctor fixtures never mention keys.env or a terminal (the app
 // Why static: The dashboard pages are plain browser scripts loaded by Electron; wiring, one badge palette and main-process-only plan files are checked in the source.
 test("the practice button and the Start card are wired to the plan and the settings read", () => {
   const t = read("dashboard/home.js");
-  assert.match(t, /HL\.practiceLabel\(target\)/);
+  assert.match(t, /HL\.practiceLabel\(target, T\)/);
   assert.match(t, /id: "start-call"[\s\S]*?startFlow\(\{ noAi: false \}\)/); // the Quick call button starts with no meeting
   assert.match(t, /startFlow\(\{ planId: r\.id \}\)/); // a row's Start button starts that meeting
-  assert.match(t, /api\s*\.getSettings\(\)\s*\.then\(\(r\) => \{\s*H\.ai = r && r\.ok \? HL\.aiMode\(r\.items\)/);
-  assert.match(t, /HL\.stopSteps\(s\)/);
+  assert.match(t, /api\s*\.getSettings\(\)\s*\.then\(\(r\) => \{\s*H\.ai = r && r\.ok \? HL\.aiMode\(r\.items, T\)/);
+  assert.match(t, /HL\.stopSteps\(s, T\)/);
 });
 
 // Why static: The dashboard pages are plain browser scripts loaded by Electron; wiring, one badge palette and main-process-only plan files are checked in the source.
@@ -347,7 +347,7 @@ test("engine: fixed stdin commands stop-no-summary and skip-summary, abort signa
 
 // Why static: Stdin command names, the IPC channel and the page script tags are wiring between processes that a unit test cannot start.
 test("pages wired: Skip summary button + fixed IPC, Write summary in Calls, countdown in the answer window", () => {
-  assert.match(read("dashboard/home.js"), /btn\("Skip summary", \{ id: "skip-summary"/);
+  assert.match(read("dashboard/home.js"), /btn\(T\("stop\.skipSummary"\), \{ id: "skip-summary"/);
   assert.match(read("dashboard/preload.cjs"), /skipSummary: \(\) => ipcRenderer\.invoke\("call:cmd", "skipSummary"\)/);
   assert.match(read("dashboard/window.cjs"), /case "skipSummary":\s*return \{ ok: controller\.skipSummary\(\) \}/);
   assert.match(read("dashboard/app.js"), /btn\("Write summary"/);
@@ -447,11 +447,9 @@ test("engine writes call.json phases and emits stop steps in order", () => {
   assert.ok(at('status("stopphase", { phase: "summary" })') < at('status("stopphase", { phase: "done" })'));
   assert.ok(at('status("stopphase", { phase: "done" })') < at('status("ended"'));
   assert.match(src, /phase: "ended"/);
-  assert.match(
-    read("engine/boot.ts"),
-    /loadAttachments\(S\.attachments\.maxChars, \{ consume: !fileArg \}\)/,
-    "a practice call never deletes the real call's files",
-  );
+  const boot = read("engine/boot.ts");
+  assert.match(boot, /loadAttachments\(S\.attachments\.maxChars\)/, "loading the files never deletes them");
+  assert.match(boot, /function confirmContext\(\): void \{\s*if \(fileArg\) return;/, "a practice call never retires the real call's brief or files");
 });
 
 // Why static: The overlay main process needs crash and hang handlers; Electron cannot run in a unit test.

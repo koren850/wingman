@@ -1,35 +1,35 @@
 "use strict";
-// Prepared meetings: the pure rules (expiry, order, "next", "due now", time parsing, labels) shared by the store (tray/plans.cjs),
+// Prepared meetings: the pure rules (housekeeping, order, "next", "due now", time parsing, labels) shared by the store (tray/plans.cjs),
 // the menu bar, the CLI and the window. No file or DOM access here: everything takes plain meeting objects and a clock.
 // Classic script in the window, require() in the tray, the CLI and the tests.
 //
-// A meeting is { id, title, who, goal, kind, topic, notes[], mustCover[], at (epoch ms, 0 = no time), createdAt, updatedAt, usedAt (0 = not used), callId }.
+// A meeting (a "plan" in the window) is { id, title, who, goal, kind, topic, notes[], mustCover[], at (epoch ms, 0 = no time), createdAt, updatedAt,
+//   liveAt (0 = no call went live with it), usedAt (0 = no call saved its first memory with it), uses (how many calls), callId (the last call) }.
+// A plan does NOT expire and is NOT used up: a call reads it, it stays, and it can start the next call too. Only housekeeping removes a plan nobody touched for 180 days.
 (function (root) {
   const HOUR = 3600_000,
     DAY = 24 * HOUR;
-  /** The expiry and window rules in one place. See docs/DECISIONS.md (ADR "Quick call and prepared meetings"). */
+  /** The few time rules in one place. See docs/DECISIONS.md (ADR "Quick call and prepared meetings", and the round 12 note on plans that do not expire). */
   const RULES = {
-    afterMeetingMs: 6 * HOUR, // a meeting with a time stays until this long after that time
-    capMs: 14 * DAY, // a meeting without a time stays this long after it was last edited (the sane cap)
-    usedKeepMs: 7 * DAY, // a used meeting stays visible to the Calls view this long
+    housekeepingMs: 180 * DAY, // a plan nobody opened, edited or used for this long is cleaned up (this is housekeeping, not an expiry)
     dueWindowMs: 30 * 60_000, // plain `wingman start` picks the one meeting scheduled within +/- this
     maxAheadMs: 90 * DAY, // a time further away than this is refused (probably a typo)
-    maxMeetings: 30,
+    maxMeetings: 50,
   };
 
-  /** When the meeting goes away (epoch ms). Used meetings: usedKeepMs after use. Timed: afterMeetingMs after the time. Untimed: capMs after the last edit. */
+  /** The last time anything happened to a plan (epoch ms). */
+  const touched = (m) => Math.max(m.updatedAt || 0, m.createdAt || 0, m.usedAt || 0, m.liveAt || 0);
+  /** When housekeeping may remove the plan (epoch ms). */
   function expiresAt(m) {
-    if (m.usedAt) return m.usedAt + RULES.usedKeepMs;
-    return m.at ? m.at + RULES.afterMeetingMs : (m.updatedAt || m.createdAt || 0) + RULES.capMs;
+    return touched(m) + RULES.housekeepingMs;
   }
-  /** "used" (a real call used it up), "expired" (past expiresAt) or "ready" (can start a call). */
+  /** "ready" (can start a call, again and again) or "expired" (housekeeping: untouched for 180 days). */
   function statusOf(m, now) {
-    if (now >= expiresAt(m)) return "expired";
-    return m.usedAt ? "used" : "ready";
+    return now >= expiresAt(m) ? "expired" : "ready";
   }
-  /** Name for lists and menus: title, else who, else goal, else topic. */
+  /** Name for lists and menus: title, else who, else goal, else topic, else the first words of the pasted context. */
   function label(m) {
-    return m.title || m.who || m.goal || m.topic || "Prepared meeting";
+    return m.title || m.who || m.goal || m.topic || m.preview || "Untitled plan";
   }
 
   /** Soonest first: timed meetings by time, then untimed ones, most recently edited first. Returns a new array. */
@@ -42,13 +42,15 @@
   }
   /** Meetings that can start a call, in order(). */
   const ready = (list, now) => order(list.filter((m) => statusOf(m, now) === "ready"));
-  /** The soonest timed meeting that is not already more than the due window in the past, or null. This is the "Next: ..." one. */
+  /** A call already ran for this time slot (it saved its first memory around the planned time). The plan is still reusable, but it is not "next" any more. */
+  const doneForSlot = (m) => !!(m.usedAt && m.at && m.usedAt >= m.at - RULES.dueWindowMs);
+  /** The soonest timed meeting that is not already more than the due window in the past and was not already held, or null. This is the "Next: ..." one. */
   function nextMeeting(list, now) {
-    return ready(list, now).find((m) => m.at && m.at >= now - RULES.dueWindowMs) || null;
+    return ready(list, now).find((m) => m.at && m.at >= now - RULES.dueWindowMs && !doneForSlot(m)) || null;
   }
   /** Meetings scheduled within +/- dueWindowMs of now (what plain `wingman start` may pick). */
   function dueNow(list, now) {
-    return ready(list, now).filter((m) => m.at && Math.abs(m.at - now) <= RULES.dueWindowMs);
+    return ready(list, now).filter((m) => m.at && Math.abs(m.at - now) <= RULES.dueWindowMs && !doneForSlot(m));
   }
   /** The meeting a practice call uses when none is named: the next one, else the only ready one, else null (a quick practice). */
   function practiceDefault(list, now) {
@@ -89,7 +91,7 @@
   /**
    * Parses a meeting time typed by a person or an agent. Accepts "2026-11-03 14:30" or "2026-11-03T14:30" (local time),
    * an ISO time with Z or an offset, and "14:30" (today, local). "" / "none" / "-" mean no time (returns 0).
-   * Throws an Error with a plain message when it is not a time, is not a real date, is more than the expiry window in the past, or is too far ahead.
+   * Throws an Error with a plain message when it is not a time, is not a real date, or is too far ahead. A time in the past is fine (the plan can be reused).
    */
   function parseAt(text, now) {
     const t = String(text == null ? "" : text).trim();
@@ -109,8 +111,6 @@
       ms = Date.parse(t);
     }
     if (!Number.isFinite(ms)) throw new Error(`"${t.slice(0, 40)}" is not a time. Use "2026-11-03 14:30" (your local time), or "14:30" for today, or "none".`);
-    if (ms + RULES.afterMeetingMs <= now)
-      throw new Error("That time is more than 6 hours ago, so the meeting would expire at once. Give a time that is today or later.");
     if (ms - now > RULES.maxAheadMs) throw new Error("That time is more than 90 days away. Check the date.");
     return ms;
   }
@@ -124,12 +124,16 @@
   }
   /** Changes whenever a list of meetings changes in a way the menu or the window shows. Used to know when to redraw. */
   function signature(list) {
-    return list.map((m) => [m.id, m.title, m.who, m.goal, m.at, m.updatedAt, m.usedAt, (m.mustCover || []).length, m.files || 0].join("\u0001")).join("\u0002");
+    return list
+      .map((m) => [m.id, m.title, m.who, m.goal, m.at, m.updatedAt, m.usedAt, m.liveAt, m.uses, (m.mustCover || []).length, m.files || 0].join("\u0001"))
+      .join("\u0002");
   }
 
   const api = {
     RULES,
     expiresAt,
+    touched,
+    doneForSlot,
     statusOf,
     label,
     order,

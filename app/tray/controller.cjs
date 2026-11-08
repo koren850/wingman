@@ -132,7 +132,10 @@ function createController(o) {
         if (!msg) continue;
         logLine(line.trim());
         const before = set(msg);
-        if (msg.ev === "consented" && !state.practice && state.planId) usePlan(); // a real call is live: its prepared meeting is used up (a practice call never does)
+        // A real call is live: record it on the plan (nothing is deleted; a practice call never does). The plan counts as used when the call
+        // saved its first memory ({ev:"memory"}, sent by the engine) or, for the engine without memory, when the call ends cleanly.
+        if (msg.ev === "consented" && !state.practice && state.planId) usePlan("live");
+        if ((msg.ev === "memory" || (msg.ev === "ended" && !msg.crashed)) && !state.practice && state.planId) usePlan("used");
         for (const n of lib.notifications(before, state, msg)) notify(n.title, n.body);
         change();
         if (msg.ev === "ended") finish(c, msg.crashed ? 1 : 0); // saved: Start is allowed again while call.ts lingers about 5 s for the answer window
@@ -153,10 +156,10 @@ function createController(o) {
     return true;
   }
 
-  /** Marks the live call's prepared meeting used (its background files are dropped) and tells the menu and window. */
-  function usePlan() {
+  /** Records on the live call's plan that the call went live ("live") or saved its first memory ("used"). The plan and its files are kept. Tells the menu and window. */
+  function usePlan(step) {
     try {
-      o.plans && o.plans.markUsed(state.planId, state.callId);
+      if (o.plans) step === "live" ? o.plans.markLive(state.planId, state.callId) : o.plans.confirmUsed(state.planId, state.callId);
     } catch {
       /* the call goes on */
     }

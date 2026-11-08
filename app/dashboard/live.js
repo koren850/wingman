@@ -5,16 +5,10 @@
 // LV: feed = in-memory WingmanLive feed; auto = follow the newest line; els = DOM nodes by key ("l<n>" line, "c<id>" card) so a redraw only adds, moves or removes;
 // lastSeen = last line number seen by the user (for the "N new" count); hydrating = call id whose snapshot is being fetched.
 const LV = { feed: WingmanLive.create(), callId: "", auto: true, els: new Map(), raf: 0, lastSeen: 0, hydrating: "" };
-const LV_KIND = {
-  client: "Client",
-  support: "Support",
-  vendor: "Vendor",
-  team: "Team",
-  consult: "Consult",
-  personal: "Personal",
-  interview: "Interview",
-  other: "Other",
-};
+const LV_KIND = new Proxy(
+  {},
+  { get: (_t, k) => (typeof k === "string" && /^(client|support|vendor|team|consult|personal|interview|other)$/.test(k) ? T("kind." + k) : undefined) },
+);
 
 /** Take one payload from main ("live:update" or a liveGet snapshot): { callId, reset, lines, cards, frame }. Checked again here, because the page does not trust the channel blindly. reset clears first. Redraw is batched to one animation frame. */
 function liveApply(p) {
@@ -45,13 +39,13 @@ function liveSchedule() {
 function liveFeedPanel() {
   if (!H.showConv) return liveHiddenPanel();
   LV.els = new Map();
-  const box = h("div", { id: "lf-scroll", class: "lf-scroll", role: "log", "aria-label": "Live conversation", "aria-live": "off", tabindex: "0" });
+  const box = h("div", { id: "lf-scroll", class: "lf-scroll", role: "log", "aria-label": T("lf.title"), "aria-live": "off", tabindex: "0" });
   box.addEventListener("scroll", liveOnScroll, { passive: true });
   const jump = h(
     "button",
     { type: "button", id: "lf-jump", class: "btn primary sm lf-jump", hidden: "", onclick: () => liveToEnd(true) },
     ico("chevron"),
-    h("span", { id: "lf-jump-t" }, "Jump to latest"),
+    h("span", { id: "lf-jump-t" }, T("lf.jump")),
   );
   const sec = h(
     "section",
@@ -59,17 +53,17 @@ function liveFeedPanel() {
     h(
       "div",
       { class: "rhead" },
-      h("h2", { id: "lf-h" }, "Live conversation"),
+      h("h2", { id: "lf-h" }, T("lf.title")),
       h("span", { class: "grow" }),
       h("span", { id: "lf-state", class: "lf-state faint" }),
-      btn("Card types", {
+      btn(T("kb.cardTypes"), {
         id: "lf-types",
         cls: "ghost sm",
         icon: "help",
-        title: "What the card names and colours mean",
+        title: T("lf.typesTitle"),
         onclick: () => openShortcuts("types"),
       }),
-      btn("Hide", {
+      btn(T("lf.hide"), {
         id: "lf-hide",
         cls: "ghost sm",
         icon: "x",
@@ -109,9 +103,9 @@ function liveHiddenPanel() {
   return h(
     "section",
     { class: "card-big lf-off", "aria-labelledby": "lf-h" },
-    h("h2", { id: "lf-h" }, ico("transcript"), "Live conversation is hidden"),
-    h("p", { class: "sub" }, "It is hidden so nothing from the call shows if you share your screen. Wingman keeps listening and saving it."),
-    btn("Show conversation", {
+    h("h2", { id: "lf-h" }, ico("transcript"), T("lf.hiddenTitle")),
+    h("p", { class: "sub" }, T("lf.hiddenNote")),
+    btn(T("lf.show"), {
       id: "lf-show",
       icon: "transcript",
       cls: "primary",
@@ -122,7 +116,7 @@ function liveHiddenPanel() {
         if (s) s.focus({ preventScroll: true });
       },
     }),
-    h("p", { class: "sub faint" }, "It hides again at the start of the next call."),
+    h("p", { class: "sub faint" }, T("lf.hidesAgain")),
   );
 }
 
@@ -160,17 +154,22 @@ function liveChrome() {
     fresh = lines.filter((l) => l.n > LV.lastSeen).length;
   jump.hidden = LV.auto;
   const t = $("lf-jump-t");
-  if (t) t.textContent = fresh ? `Jump to latest (${fresh} new)` : "Jump to latest";
-  st.textContent = !lines.length ? "" : LV.auto ? "Following" : "Paused: you scrolled up";
+  if (t) t.textContent = fresh ? T("lf.jumpNew", { n: fresh }) : T("lf.jump");
+  st.textContent = !lines.length ? "" : LV.auto ? T("lf.following") : T("lf.paused");
 }
 
 /** One transcript line (Me / Them, mm:ss from the call start). Text via rich() only; dir is set per line for Hebrew with English terms. */
 function liveLineEl(l, t0) {
   const me = l.ch === "me",
-    who = me ? "Me" : speakerName(l);
+    who = me ? T("who.me") : speakerName(l);
   const row = h(
     "div",
-    { class: "lf-row " + (me ? "me" : "them"), dir: dirOf(l.text), role: "article", "aria-label": `${me ? "Me" : who} at ${WingmanLive.stamp(l.t, t0)}` },
+    {
+      class: "lf-row " + (me ? "me" : "them"),
+      dir: dirOf(l.text),
+      role: "article",
+      "aria-label": T("lf.lineAt", { who: me ? T("who.me") : who, time: WingmanLive.stamp(l.t, t0) }),
+    },
     h(
       "div",
       { class: "lf-meta" },
@@ -272,7 +271,7 @@ function liveFrameRender() {
     h(
       "div",
       { class: "lf-fhead" },
-      chip(LV_KIND[f.kind] || "Other", "info", { dot: true }),
+      chip(LV_KIND[f.kind] || T("kind.other"), "info", { dot: true }),
       h("span", { class: "lf-ftopic", dir: dirOf(topic), lang: langOf(topic) }, rich(topic)),
       h("span", { class: "grow" }),
       p.total
@@ -289,7 +288,7 @@ function liveFrameRender() {
     el.append(
       h(
         "ul",
-        { class: "lf-check", "aria-label": "Call checklist" },
+        { class: "lf-check", "aria-label": T("lf.checklist") },
         f.checklist.map((c) =>
           h(
             "li",
@@ -327,7 +326,7 @@ function liveRender() {
   for (const it of items) {
     const k = "l" + it.n;
     let el = LV.els.get(k);
-    const who = it.ch === "me" ? "Me" : speakerName(it);
+    const who = it.ch === "me" ? T("who.me") : speakerName(it);
     if (!el || el._who !== who) {
       const n = liveLineEl(it, t0);
       if (el) el.replaceWith(n);
@@ -353,11 +352,7 @@ function liveRender() {
   const empty = $("lf-empty");
   if (empty) {
     empty.hidden = !!want.length;
-    if (!want.length && !empty.textContent)
-      empty.textContent =
-        state.call && state.call.phase === "waiting"
-          ? "Waiting to start listening."
-          : "Listening. What is said shows up here, with the answer cards under the line they answer.";
+    if (!want.length && !empty.textContent) empty.textContent = state.call && state.call.phase === "waiting" ? T("lf.waitStart") : T("lf.listening");
   }
   if (LV.auto) {
     box.scrollTop = box.scrollHeight;

@@ -159,7 +159,6 @@ function createControlServer(o) {
     const r = plans.resolve(idLike);
     if (r.error === "ambiguous") return err("choose_plan", `That id matches more than one prepared meeting. ${listing()}`);
     if (!r.meeting) return err("not_found", `No such prepared meeting. ${listing()}`);
-    if (r.meeting.status !== "ready") return refused("That prepared meeting was already used by a call. Prepare a new one or use --quick.");
     return { ok: true, meeting: r.meeting };
   }
   /** "Prepared meetings: id (name, time), ..." for hints. */

@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { KEY_ENV_VARS } from "../keychain.ts";
 import { requireKeys, CALLS, resolveUserPath, type KeyName } from "../env.ts";
 import { EntitySpotter, loadSnapshot } from "../entities.ts";
-import { loadBrief, briefNotes, isInterview, briefCardsFile, briefTerms, type Brief } from "../brief.ts";
+import { loadBrief, confirmBrief, briefNotes, isInterview, briefCardsFile, briefTerms, type Brief } from "../brief.ts";
 import { readPack } from "../pack.ts";
 import { getProfile, checkProfile } from "../profile.ts";
 import { loadBank, stallCard, type BankCard } from "../bank.ts";
@@ -30,7 +30,7 @@ import { HealthSupervisor, CircuitBreaker } from "../health.ts";
 import { FrameTracker } from "../frame.ts";
 import { TipGate, type TimedLine } from "../tips.ts";
 import { SelfCheckGate } from "../selfcheck.ts";
-import { loadAttachments, backgroundBlock } from "../attachments.ts";
+import { loadAttachments, confirmAttachments, backgroundBlock } from "../attachments.ts";
 import { factsActive } from "./rules.ts";
 
 export const args = process.argv.slice(2);
@@ -67,8 +67,9 @@ export const registry = new ModelRegistry(keys);
 export const CONSENT_SAY = S.privacy.consentText;
 export const CONTROL = process.env.WINGMAN_CONTROL === "1";
 
-// Prepared start: a brief saved by `pnpm brief` / the Plan (last 6 h), or --brief <file>; --no-brief skips it.
-// A replay (--file) never consumes latest.yaml; it uses a brief only when --brief is given.
+// Prepared start: a brief saved by `pnpm brief` / the Plan, or --brief <file>; --no-brief skips it.
+// Loading never uses a brief up and it never expires: confirmContext() retires latest.yaml once the call is live and has saved its first memory.
+// A replay (--file) uses a brief only when --brief is given.
 export const briefArg = args.includes("--brief") ? args[args.indexOf("--brief") + 1] : undefined;
 export const noBrief = args.includes("--no-brief") || (!!fileArg && !briefArg);
 export const brief: Brief | undefined = noBrief ? undefined : loadBrief(briefArg);
@@ -91,8 +92,14 @@ export const stall = stallCard(bank);
 export const houseStyle = readPack("house-style.md");
 // Names from the plan go first (the cap cuts the end of the list): "Dana Levi (Acme HR)" -> Dana, Levi, Acme.
 export const keyterms = [...new Set([...briefTerms(brief), ...loadKeyterms(S)])].slice(0, Math.max(S.stt.keyterms.max, 1));
-// Background files from "Plan a call": read once (and deleted: one plan = one call). A replay / --no-brief never uses them.
-export const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars, { consume: !fileArg }); // a practice call with the plan never uses up the real call's files
+// Background files from the plan: read, not deleted (a plan can start the next call too). A replay / --no-brief never uses them.
+export const attachFiles = noAi || noBrief ? [] : loadAttachments(S.attachments.maxChars);
+/** Call is live and its first memory write worked: the single-Plan brief and files that were loaded are retired. A replay (--file) retires nothing. */
+export function confirmContext(): void {
+  if (fileArg) return;
+  confirmBrief();
+  confirmAttachments();
+}
 export const background = backgroundBlock(attachFiles);
 export const prefix = buildPrefix(houseStyle, bank, "", background, interview);
 /** Short id of the system prompt text sent to the model (first 8 hex of its sha256). Logged on model cards and usage rows so a bad card can be reproduced. */

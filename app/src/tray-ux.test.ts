@@ -135,7 +135,7 @@ test("practice: --quick or no meetings means --no-brief; a named meeting that is
   assert.ok(e.spawned[0].args.includes("--no-brief"), "no store at all");
 });
 
-test("start: a quick call passes --no-brief and touches no meeting; a chosen meeting passes --brief and is used up only when the call goes live", () => {
+test("start: a quick call passes --no-brief and touches no meeting; a chosen meeting passes --brief, is marked live at consent and used at the first memory, and stays reusable", () => {
   const { ctl, spawned, plans } = withStore();
   const a = plans.create({ who: "Dana", at: Date.now() + 3600_000 }).meeting,
     b = plans.create({ who: "Noam" }).meeting;
@@ -143,7 +143,7 @@ test("start: a quick call passes --no-brief and touches no meeting; a chosen mee
   assert.ok(spawned[0].args.includes("--no-brief") && !spawned[0].args.includes("--brief"));
   assert.equal(spawned[0].opts.env.WINGMAN_ATTACH_DIR, undefined);
   spawned[0].say("consented", { id: "Q1" });
-  assert.equal(plans.list().length, 2, "a quick call uses up nothing");
+  assert.equal(plans.list().length, 2, "a quick call touches nothing");
   spawned[0].emit("exit", 0);
   assert.equal(ctl.start({ planId: b.id, noAi: true }), true);
   const args = spawned[1].args;
@@ -151,18 +151,26 @@ test("start: a quick call passes --no-brief and touches no meeting; a chosen mee
   assert.ok(args.includes("--no-ai") && !args.includes("--no-brief"));
   assert.equal(ctl.getState().planId, b.id);
   spawned[1].say("waiting", { id: "R1" });
-  assert.equal(plans.get(b.id).status, "ready", "not used up before the call is live");
+  assert.equal(plans.get(b.id).liveAt, 0, "not recorded before the call is live");
   spawned[1].say("consented");
-  assert.equal(plans.get(b.id).status, "used");
-  assert.equal(plans.get(b.id, { includeUsed: true }).callId, "R1");
-  assert.equal(plans.get(a.id).status, "ready", "the other meeting is untouched");
+  assert.equal(plans.get(b.id).pending, true, "live, but no memory saved yet");
+  assert.equal(plans.get(b.id).uses, 0);
+  spawned[1].say("memory");
+  assert.equal(plans.get(b.id).pending, false);
+  assert.equal(plans.get(b.id).uses, 1);
+  assert.equal(plans.get(b.id).callId, "R1");
+  assert.equal(plans.get(a.id).liveAt, 0, "the other meeting is untouched");
   assert.deepEqual(
-    plans.list().map((m: any) => m.id),
-    [a.id],
+    plans
+      .list()
+      .map((m: any) => m.id)
+      .sort(),
+    [a.id, b.id].sort(),
+    "a used plan stays in the list",
   );
   assert.equal(ctl.getState().briefReady, true);
   spawned[1].emit("exit", 0);
-  assert.equal(ctl.start({ planId: b.id }), false, "a used meeting cannot start a call again");
+  assert.equal(ctl.start({ planId: b.id }), true, "the same plan starts the next call");
   assert.equal(ctl.start({ planId: "mnope0000" }), false);
 });
 
@@ -406,10 +414,11 @@ test("menu bar: Start prepared meeting lists ready meetings soonest first; the m
   const menu = lib.planMenu([m("c", "No time"), m("b", "Noam, Beta", at(16)), m("a", "Dana, Acme", at(14)), m("u", "Used", at(11), { usedAt: now })], now);
   assert.deepEqual(
     menu.map((x: any) => x.planId),
-    ["a", "b", "c"],
+    ["u", "a", "b", "c"],
+    "a plan that was used is still offered: plans are reusable",
   );
-  assert.equal(menu[0].label, "Dana, Acme (Today 14:00)");
-  assert.equal(menu[2].label, "No time");
+  assert.equal(menu[1].label, "Dana, Acme (Today 14:00)");
+  assert.equal(menu[3].label, "No time");
   assert.deepEqual(lib.planMenu([], now), []);
   const s1 = lib.reduce(lib.initialState(), { ev: "boot", briefReady: true, plansKey: "one" });
   assert.notEqual(lib.menuKey(s1, false), lib.menuKey(lib.reduce(s1, { ev: "boot", briefReady: true, plansKey: "two" }), false));

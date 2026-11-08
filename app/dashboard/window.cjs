@@ -210,7 +210,8 @@ function create(ctx) {
     if (/^(light|dark)$/.test(process.env.WINGMAN_DASHBOARD_THEME || "")) query.theme = process.env.WINGMAN_DASHBOARD_THEME;
     const v = SNAP ? process.env.WINGMAN_DASHBOARD_VIEW : o.view;
     if (/^(home|calls|inbox|settings|system)$/.test(v || "")) query.view = v;
-    if (/^(plan|advanced|keys)$/.test((SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus) || ""))
+    if (SNAP && /^(he|en)$/.test(process.env.WINGMAN_DASHBOARD_LANG || "")) query.lang = process.env.WINGMAN_DASHBOARD_LANG; // window language for screenshots
+    if (/^(plan|edit|advanced|keys)$/.test((SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus) || ""))
       query.focus = SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus;
     if (!SNAP && o.id) {
       query.call = o.id;
@@ -388,13 +389,34 @@ function create(ctx) {
     atInput: Plans.toInputValue(m.at),
     createdAt: m.createdAt,
     updatedAt: m.updatedAt,
+    liveAt: m.liveAt,
     usedAt: m.usedAt,
+    uses: m.uses,
+    pending: !!m.pending,
     status: m.status,
-    expiresAt: m.expiresAt,
     files: m.files,
     fileList: m.fileList,
+    contextChars: m.contextChars,
+    preview: m.preview,
   });
   handle("plans:list", () => plans.list().map(meetingOut));
+  // The pasted Meeting context text of one plan (kept out of the list so the list stays small).
+  handle("plans:context", (id) => {
+    const pid = planArg(id);
+    return pid ? plans.getContext(pid) : "";
+  });
+  // Prepare: wave 2 (digest) replaces this. Until then it reports that nothing was digested and the page shows the saved text as plain background.
+  handle("plans:prepare", (id) => {
+    const pid = planArg(id);
+    const m = pid ? plans.get(pid) : null;
+    return { ok: true, digest: false, reason: "no-digest", id: pid, chars: m ? m.contextChars + m.fileChars : 0 };
+  });
+  // "What Wingman knows": the call memory view for a running call. Wave 1 has only the fixture (snapshots and previews); a real call shows an empty panel until wave 2.
+  handle("knows:get", (mode, lang) => {
+    if (mode !== "before" && mode !== "live") throw new Error("bad mode");
+    const K = require("./knowslib.js");
+    return { ok: true, model: fake || SNAP ? K.fixture(mode, lang === "he" ? "he" : "en") : null };
+  });
   // Recent plans (same private folder, owner-only file): so a repeat call can reuse the text of an earlier one.
   const RECENT = path.join(BRIEFS, "recent.json");
   const readRecent = () => {
@@ -421,19 +443,21 @@ function create(ctx) {
   handle("plans:save", (d) => {
     if (!d || typeof d !== "object") throw new Error("bad plan");
     for (const k of ["title", "who", "goal", "notes", "mustCover", "at"])
-      if (typeof d[k] !== "string" || d[k].length > 1500) throw new Error("bad plan field " + k);
+      if (d[k] !== undefined && (typeof d[k] !== "string" || d[k].length > 1500)) throw new Error("bad plan field " + k);
+    if (d.context !== undefined && (typeof d.context !== "string" || d.context.length > 200000)) throw new Error("bad plan field context");
     if (d.id !== "" && !(typeof d.id === "string" && /^m[0-9a-z]{6,12}$/.test(d.id))) throw new Error("bad meeting id");
     if (fake || SNAP) return { ok: false, error: "preview" };
-    const f = { title: d.title, who: d.who, goal: d.goal, notes: d.notes, mustCover: d.mustCover, at: d.at };
+    const f = {};
+    for (const k of ["title", "who", "goal", "notes", "mustCover", "at", "context"]) if (d[k] !== undefined) f[k] = d[k];
     const r = d.id ? plans.update(d.id, f) : plans.create(f, { adoptDraft: true });
     if (!r.ok) return { ok: false, error: r.error };
     try {
-      writeRecent(data.recentAdd(readRecent(), d));
+      writeRecent(data.recentAdd(readRecent(), { title: "", at: "", who: "", goal: "", notes: "", mustCover: "", ...d }));
     } catch {
       /* the plan itself is saved; the recent list is a convenience */
     }
     controller.refreshPlans();
-    return { ok: true, plan: meetingOut(r.meeting) };
+    return { ok: true, plan: meetingOut(r.meeting), warning: r.warning || "" };
   });
   handle("plans:delete", (id) => {
     if (typeof id !== "string" || !/^m[0-9a-z]{6,12}$/.test(id)) throw new Error("bad meeting id");
@@ -445,9 +469,9 @@ function create(ctx) {
       buttons: ["Cancel", "Delete"],
       defaultId: 0,
       cancelId: 0,
-      title: "Delete prepared meeting",
+      title: "Delete meeting",
       message: `Delete "${Plans.label(m).slice(0, 60)}"?`,
-      detail: "Its plan and background files are removed permanently.",
+      detail: "Its meeting context and files are removed permanently.",
     });
     if (r !== 1) return { ok: false, cancelled: true };
     const x = plans.remove(id);
@@ -480,7 +504,7 @@ function create(ctx) {
     if (!st) return { ok: false, error: "No such prepared meeting.", state: attState("") };
     const r = await st.addFile(name, bytes);
     controller.refreshPlans();
-    return { ok: !!r.ok, error: r.error, truncated: !!r.truncated, state: attState(id) };
+    return { ok: !!r.ok, error: r.error, truncated: !!r.truncated, chunks: r.chunks || 0, fields: r.fields || null, state: attState(id) };
   });
   handle("attach:paste", (id, text) => {
     planId(id);

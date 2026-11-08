@@ -39,16 +39,15 @@ contextBridge.exposeInMainWorld("wingman", {
   writeSummary: (id) => ipcRenderer.invoke("calls:writeSummary", String(id)),
   stopDelete: () => ipcRenderer.invoke("call:cmd", "stopDelete"),
   plansList: () => ipcRenderer.invoke("plans:list"),
-  savePlan: (d) =>
-    ipcRenderer.invoke("plans:save", {
-      id: String(d.id || ""),
-      title: String(d.title || ""),
-      who: String(d.who || ""),
-      goal: String(d.goal || ""),
-      notes: String(d.notes || ""),
-      mustCover: String(d.mustCover || ""),
-      at: String(d.at || ""),
-    }),
+  // Only the keys the page gives are sent (a missing key leaves that field as it is). `context` is the pasted Meeting context text.
+  savePlan: (d) => {
+    const o = { id: String(d.id || "") };
+    for (const k of ["title", "who", "goal", "notes", "mustCover", "at", "context"]) if (d[k] !== undefined) o[k] = String(d[k]);
+    return ipcRenderer.invoke("plans:save", o);
+  },
+  planContext: (id) => ipcRenderer.invoke("plans:context", String(id || "")),
+  preparePlan: (id) => ipcRenderer.invoke("plans:prepare", String(id || "")),
+  knowsGet: (mode, lang) => ipcRenderer.invoke("knows:get", String(mode), String(lang || "en")),
   deletePlan: (id) => ipcRenderer.invoke("plans:delete", String(id)),
   discardDraft: () => ipcRenderer.invoke("plans:discardDraft"),
   recentPlans: () => ipcRenderer.invoke("brief:recent"),

@@ -162,10 +162,10 @@ test("neutralizeLinks: bare domains and www links, trailing punctuation kept, sh
 });
 
 // ---- L3: attachments by extension allow-list ----
-test("attachments from the command line: only .txt, .md and .pdf; the secret folders and names stay refused first", () => {
+test("attachments from the command line: only .txt, .md, .pdf and .ics; the secret folders and names stay refused first", () => {
   const A = req("../tray/attachments.cjs");
   const home = tmp();
-  for (const f of ["a.txt", "b.md", "c.pdf", "d.json", "e.yaml", "f.yml", "g.png", "h.sh", "history", "i.TXT"]) writeFileSync(join(home, f), "text");
+  for (const f of ["a.txt", "b.md", "c.pdf", "d.json", "e.yaml", "f.yml", "g.png", "h.sh", "history", "i.TXT", "j.ics"]) writeFileSync(join(home, f), "text");
   mkdirSync(join(home, ".kube"));
   writeFileSync(join(home, ".kube", "x.txt"), "token");
   mkdirSync(join(home, "AppData", "Roaming", "Microsoft", "Credentials"), { recursive: true });
@@ -178,7 +178,7 @@ test("attachments from the command line: only .txt, .md and .pdf; the secret fol
       return e.code;
     }
   };
-  for (const f of ["a.txt", "b.md", "c.pdf", "i.TXT"]) assert.equal(code(f), "ok", f);
+  for (const f of ["a.txt", "b.md", "c.pdf", "i.TXT", "j.ics"]) assert.equal(code(f), "ok", f);
   for (const f of ["d.json", "e.yaml", "f.yml", "g.png", "h.sh", "history"]) assert.equal(code(f), "type", f);
   assert.equal(code(".kube/x.txt"), "secret");
   mkdirSync(join(home, ".config", "gcloud"), { recursive: true });

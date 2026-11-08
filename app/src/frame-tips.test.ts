@@ -386,20 +386,19 @@ test("attachments: 40,000 character total cap, pasted text, remove, clear, at mo
   assert.ok(!s2.addPaste("thirteenth ".repeat(30)).ok);
 });
 
-test("attachments: expire with the brief after 6 hours; reading can consume them; control and bidi characters are removed", async () => {
+test("attachments: no expiry; control and bidi characters are removed; reading never consumes unless asked", async () => {
   let t = 1_700_000_000_000;
   const { dir, st } = mk({ now: () => t });
   assert.ok(st.addPaste("a‮b\u0007c\r\nline two").ok);
   assert.equal(st.readAll()[0].text, "abc\nline two");
-  for (const f of readdirSync(dir)) utimesSync(join(dir, f), new Date(t - 5.9 * 3600_000), new Date(t - 5.9 * 3600_000));
-  assert.equal(st.list().files.length, 1);
-  assert.ok(st.list().files[0].expiresInMs < 0.2 * 3600_000);
-  t += 0.2 * 3600_000;
-  assert.equal(st.list().files.length, 0);
-  assert.equal(readdirSync(dir).length, 0); // expired files are deleted
+  for (const f of readdirSync(dir)) utimesSync(join(dir, f), new Date(t - 30 * 24 * 3600_000), new Date(t - 30 * 24 * 3600_000));
+  t += 3 * 24 * 3600_000;
+  assert.equal(st.list().files.length, 1, "a file a month old is still there");
+  assert.equal(st.readAll().length, 1, "reading does not delete");
+  assert.equal(st.readAll().length, 1);
   st.addPaste("fresh text for one call".repeat(20));
-  assert.equal(st.readAll({ consume: true }).length, 1);
-  assert.equal(st.list().files.length, 0);
+  assert.equal(st.readAll({ consume: true }).length, 2);
+  assert.equal(st.list().files.length, 0, "consume is still available when a caller asks for it");
 });
 
 test("attachments: the prompt block is data-only, and a closing tag inside a file cannot end it", () => {

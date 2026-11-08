@@ -1,7 +1,9 @@
 "use strict";
-// Background files for "Plan a call": .txt, .md, and .pdf (only when `pdftotext` is already on this Mac; nothing is ever installed),
-// plus pasted text. Only the extracted TEXT is stored, in briefs/attachments/ in the Wingman data folder (mode 600, folder 700), capped at
-// MAX_CHARS in total, and it expires with the brief (6 h). Used as background by the frame / tips / reflex prompts.
+// Background files for the Meeting context: .txt, .md, .ics (a calendar invite, read by shared/ics.cjs) and .pdf (only when `pdftotext` is
+// already on this Mac; nothing is ever installed), plus pasted text. Only the extracted TEXT is stored (mode 600, folder 700), capped at
+// MAX_CHARS in total. Files do not expire: the plan that owns them decides how long they live (see tray/plans.cjs).
+// A text of more than CHUNK_TOKENS tokens is also split into chunks of about 500 tokens at import and the chunks are stored next to it
+// (<id>.chunks.json), so the call can pick the useful parts later without reading everything again.
 // Everything is validated here (type, size, file name); the content is never logged and never printed.
 const fs = require("node:fs");
 const path = require("node:path");
@@ -11,9 +13,15 @@ const { execFile } = require("node:child_process");
 const MAX_BYTES = 2 * 1024 * 1024; // one uploaded file
 const MAX_CHARS = 40_000; // all attachments together
 const MAX_FILES = 12;
-const MAX_AGE_MS = 6 * 3600_000;
+const MAX_AGE_MS = Infinity; // files do not expire on their own (the plan decides); kept as an option for tests
+const CHUNK_TOKENS = 500;
+// The pasted "Meeting context" text of a plan is kept as one reserved attachment, so it is chunked, capped and read like any other background.
+const CONTEXT_ID = "actx0000";
+const CONTEXT_NAME = "meeting context";
 const MIN_USEFUL = 200; // less room than this left: refuse instead of storing a stub
 const NAME_RE = /^(a[0-9a-z]{6,12})__(.{1,80})\.txt$/;
+const CHUNKS_RE = /^a[0-9a-z]{6,12}\.chunks\.json$/;
+const ics = require("../shared/ics.cjs");
 
 /** Plain, short, safe display name: no path parts, no control or bidi characters. */
 function safeName(name) {
@@ -44,6 +52,82 @@ function cleanText(t) {
     .trim();
 }
 
+/** The message for a file type Wingman cannot read. Names the type and the way out. */
+function unsupportedMessage(name) {
+  const e = extOf(safeName(name));
+  const what = e ? `A .${e} file` : "That file";
+  return `${what} cannot be read here. Wingman reads .txt, .md, .pdf and .ics files. Paste the text instead, or save the file as one of those.`;
+}
+
+/**
+ * A rough token count without a tokenizer: 4 characters per token for plain ASCII, 2 for anything else (Hebrew and other scripts take more tokens).
+ * It is an estimate for sizing chunks, never for billing.
+ */
+function estimateTokens(text) {
+  let ascii = 0,
+    other = 0;
+  for (const ch of String(text)) {
+    if (ch.charCodeAt(0) < 128) ascii++;
+    else other++;
+  }
+  return Math.ceil(ascii / 4 + other / 2);
+}
+
+/** Cuts one over-long piece of text on sentence ends, then on spaces, then anywhere, so that each part fits maxTokens. */
+function splitLong(piece, maxTokens) {
+  if (estimateTokens(piece) <= maxTokens) return [piece];
+  const sentences = piece.split(/(?<=[.!?\u05c3\u3002])\s+/u);
+  const out = [];
+  let cur = "";
+  const flush = () => {
+    if (cur) out.push(cur);
+    cur = "";
+  };
+  for (const s of sentences) {
+    if (estimateTokens(s) > maxTokens) {
+      flush();
+      let part = "";
+      for (const w of s.split(/(\s+)/)) {
+        if (estimateTokens(part + w) > maxTokens && part) {
+          out.push(part.trim());
+          part = "";
+        }
+        if (estimateTokens(w) > maxTokens) {
+          // one word that is too long (a pasted blob): cut by characters
+          for (let i = 0; i < w.length; i += maxTokens) out.push(w.slice(i, i + maxTokens));
+        } else part += w;
+      }
+      if (part.trim()) out.push(part.trim());
+      continue;
+    }
+    if (cur && estimateTokens(cur + " " + s) > maxTokens) flush();
+    cur = cur ? cur + " " + s : s;
+  }
+  flush();
+  return out;
+}
+
+/** Splits text into chunks of at most maxTokens (estimated), on paragraph breaks where it can. Empty text gives []. */
+function chunkText(text, maxTokens = CHUNK_TOKENS) {
+  const paras = cleanText(text)
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const chunks = [];
+  let cur = "";
+  for (const p of paras) {
+    for (const piece of splitLong(p, maxTokens)) {
+      if (cur && estimateTokens(cur + "\n\n" + piece) > maxTokens) {
+        chunks.push(cur);
+        cur = "";
+      }
+      cur = cur ? cur + "\n\n" + piece : piece;
+    }
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
 // ---- Reading a file the user names on the command line (`wingman plan attach --file`) ----
 // Any process of this user can run the CLI, so a path is never trusted: a symlink called notes.txt that points at an SSH key must not become an
 // attachment (attachments are sent to the AI). Rules: no symlink as the last path part (opened with O_NOFOLLOW, so there is no swap between check and read);
@@ -66,7 +150,7 @@ const SECRET_DIRS = [
   "AppData/Local/Microsoft/Credentials",
   "AppData/Roaming/Wingman",
 ];
-const ALLOWED_EXT = Object.freeze(["txt", "md", "pdf"]);
+const ALLOWED_EXT = Object.freeze(["txt", "md", "pdf", "ics"]);
 const SECRET_NAME =
   /^(\.env(\..*)?|.*\.env|\.netrc|\.npmrc|\.pgpass|\.git-credentials|\.pypirc|id_(rsa|dsa|ecdsa|ed25519)(\..*)?|.*\.(pem|key|p12|pfx|keychain|keychain-db|kdbx)|keys?|credentials|secrets?|\.(bash|zsh|sh|python|node|psql|mysql)_history)$/i;
 // macOS (APFS/HFS+ default) and Windows compare paths without regard to case, so "~/.SSH" is the same folder as "~/.ssh".
@@ -112,7 +196,7 @@ function readSourceFile(file, o = {}) {
         throw fail("secret", "That file is in a folder that holds keys or settings. It will not be attached.");
   if (SECRET_NAME.test(name) || SECRET_NAME.test(path.basename(abs)))
     throw fail("secret", "That file name looks like a key or secrets file. It will not be attached.");
-  if (!ALLOWED_EXT.includes(extOf(name))) throw fail("type", "Only .txt, .md and .pdf files can be attached.");
+  if (!ALLOWED_EXT.includes(extOf(name))) throw fail("type", unsupportedMessage(name));
   if (!o.force && !inside(real, realHome)) throw fail("outside", "That file is outside your home folder. Add --force if you really mean it.");
   let fd;
   try {
@@ -165,7 +249,7 @@ function findPdftotext(env = process.env) {
 
 /**
  * Makes the attachment store. o: { dir, now?, maxChars?, maxAgeMs?, pdftotext? } (now/limits/pdftotext are overridable for tests).
- * Returns { list, addFile, addPaste, remove, clear, readAll, used, pdfAvailable }. All results are {ok, ...}; errors are user-facing English.
+ * Returns { list, addFile, addPaste, remove, clear, readAll, readChunks, used, pdfAvailable }. All results are {ok, ...}; errors are user-facing English.
  */
 function createStore(o) {
   const dir = o.dir,
@@ -217,10 +301,28 @@ function createStore(o) {
     }
   };
 
+  const chunkFile = (e) => path.join(dir, `${e.id}.chunks.json`);
+  /** Chunks of one attachment: the stored chunk list, else the whole text as one chunk (small files have no chunk file). */
+  function chunksOf(e) {
+    try {
+      const j = JSON.parse(fs.readFileSync(chunkFile(e), "utf8"));
+      if (j && Array.isArray(j.chunks)) return j.chunks.filter((c) => typeof c === "string" && c);
+    } catch {
+      /* no chunk file */
+    }
+    try {
+      const t = fs.readFileSync(e.file, "utf8");
+      return t ? [t] : [];
+    } catch {
+      return [];
+    }
+  }
+  const chunkCount = (e) => chunksOf(e).length;
+
   function list() {
-    const es = entries();
+    const es = entries().filter((e) => e.id !== CONTEXT_ID); // the pasted context is shown in its own box, not in the file list
     return {
-      files: es.map((e) => ({ id: e.id, name: e.name, chars: chars(e), expiresInMs: Math.max(0, maxAge - (now() - e.mtimeMs)) })),
+      files: es.map((e) => ({ id: e.id, name: e.name, chars: chars(e), chunks: chunkCount(e) })),
       maxChars,
       pdf: !!pdftotext,
     };
@@ -229,10 +331,10 @@ function createStore(o) {
     return entries().reduce((a, e) => a + chars(e), 0);
   }
 
-  /** Cleans, caps to the remaining room and writes one attachment (mode 600, "wx" so an id clash fails instead of overwriting). */
-  function store(name, text) {
+  /** Cleans, caps to the remaining room and writes one attachment (mode 600, "wx" so an id clash fails instead of overwriting). fixedId: the reserved context id. */
+  function store(name, text, fixedId) {
     const es = entries();
-    if (es.length >= MAX_FILES) return { ok: false, error: `At most ${MAX_FILES} background files.` };
+    if (!fixedId && es.filter((e) => e.id !== CONTEXT_ID).length >= MAX_FILES) return { ok: false, error: `At most ${MAX_FILES} background files.` }; // the pasted context is not one of the files
     const room = maxChars - es.reduce((a, e) => a + chars(e), 0);
     const clean = cleanText(text);
     if (!clean) return { ok: false, error: "That file has no readable text." };
@@ -241,11 +343,12 @@ function createStore(o) {
     const body = cut ? clean.slice(0, room) : clean;
     ensure();
     const id =
+      fixedId ||
       "a" +
-      now().toString(36).slice(-7) +
-      Math.floor(Math.random() * 36 ** 3)
-        .toString(36)
-        .padStart(3, "0");
+        now().toString(36).slice(-7) +
+        Math.floor(Math.random() * 36 ** 3)
+          .toString(36)
+          .padStart(3, "0");
     const f = path.join(dir, `${id}__${safeName(name).replace(/\.(txt|md|pdf)$/i, "")}.txt`);
     fs.writeFileSync(f, body, { mode: 0o600, flag: "wx" });
     try {
@@ -253,7 +356,14 @@ function createStore(o) {
     } catch {
       /* best effort */
     }
-    return { ok: true, id, chars: body.length, truncated: cut };
+    // A long text is also stored in chunks of about 500 tokens (the call picks the useful ones; nothing is sent twice).
+    let chunks = 1;
+    if (estimateTokens(body) > CHUNK_TOKENS) {
+      const parts = chunkText(body);
+      chunks = parts.length;
+      fs.writeFileSync(path.join(dir, `${id}.chunks.json`), JSON.stringify({ v: 1, tokens: CHUNK_TOKENS, chunks: parts }), { mode: 0o600 });
+    }
+    return { ok: true, id, chars: body.length, truncated: cut, chunks };
   }
 
   /** bytes: Buffer | Uint8Array | ArrayBuffer from the renderer (untrusted). */
@@ -265,6 +375,15 @@ function createStore(o) {
     if (buf.length === 0) return { ok: false, error: "The file is empty." };
     if (buf.length > MAX_BYTES) return { ok: false, error: "Files can be 2 MB at most." };
     const ext = extOf(safeName(name));
+    if (ext === "ics") {
+      if (buf.includes(0)) return { ok: false, error: "That is not a calendar file." };
+      const evs = ics.parseIcs(buf.toString("utf8")).events;
+      const ev = ics.pickEvent(evs, now());
+      if (!ev) return { ok: false, error: "No meeting found in that calendar file. Paste the text instead." };
+      const plan = ics.eventToPlan(ev);
+      const r = store(ev.title || name, plan.text);
+      return r.ok ? { ...r, fields: plan.fields, events: evs.length } : r;
+    }
     if (ext === "txt" || ext === "md") {
       if (buf.includes(0)) return { ok: false, error: "That is not a text file." };
       return store(name, buf.toString("utf8"));
@@ -272,7 +391,7 @@ function createStore(o) {
     if (ext === "pdf") {
       if (!buf.subarray(0, 5).equals(Buffer.from("%PDF-"))) return { ok: false, error: "That is not a PDF file." };
       if (!pdftotext)
-        return { ok: false, error: "PDF needs the pdftotext tool, which is not installed on this Mac. Paste the text instead, or use .txt or .md." };
+        return { ok: false, error: "PDF needs the pdftotext tool, which is not installed on this Mac. Paste the text instead, or use a .txt or .md file." };
       ensure();
       // pdftotext needs a real file; the temp name starts with "." so entries() never lists it, and finally{} removes it.
       const tmp = path.join(dir, `.pdf-${process.pid}-${now().toString(36)}.pdf`);
@@ -290,7 +409,7 @@ function createStore(o) {
         fs.rmSync(tmp, { force: true });
       }
     }
-    return { ok: false, error: "Only .txt, .md and .pdf files." };
+    return { ok: false, error: unsupportedMessage(name) };
   }
   /** Stores pasted text as an attachment named "pasted text". */
   function addPaste(text) {
@@ -298,14 +417,56 @@ function createStore(o) {
     if (text.length > 200_000) return { ok: false, error: "That is too much text to paste." };
     return store("pasted text", text);
   }
+  /** The pasted Meeting context text ("" when none). */
+  function getContext() {
+    const e = entries().find((x) => x.id === CONTEXT_ID);
+    try {
+      return e ? fs.readFileSync(e.file, "utf8") : "";
+    } catch {
+      return "";
+    }
+  }
+  /** Replaces the pasted Meeting context text (empty text removes it). It is background like a file: capped to the room left, chunked when long. */
+  function setContext(text) {
+    if (typeof text !== "string") return { ok: false, error: "Bad text." };
+    if (text.length > 200_000) return { ok: false, error: "That is too much text to paste." };
+    const old = entries().find((x) => x.id === CONTEXT_ID);
+    const keep = old ? fs.readFileSync(old.file, "utf8") : null;
+    const drop = () => {
+      for (const e of entries())
+        if (e.id === CONTEXT_ID) {
+          fs.rmSync(e.file, { force: true });
+          fs.rmSync(chunkFile(e), { force: true });
+        }
+    };
+    drop();
+    if (!cleanText(text)) return { ok: true, id: CONTEXT_ID, chars: 0, chunks: 0 };
+    const r = store(CONTEXT_NAME, text, CONTEXT_ID);
+    if (!r.ok && keep !== null) store(CONTEXT_NAME, keep, CONTEXT_ID); // the old text stays if the new one was refused
+    return r;
+  }
   /** Deletes one attachment by id. Throws on a malformed id (the id comes from the renderer). */
   function remove(id) {
     if (typeof id !== "string" || !/^a[0-9a-z]{6,12}$/.test(id)) throw new Error("bad attachment id");
-    for (const e of entries()) if (e.id === id) fs.rmSync(e.file, { force: true });
+    if (id === CONTEXT_ID) return true; // the context is changed with setContext
+    for (const e of entries())
+      if (e.id === id) {
+        fs.rmSync(e.file, { force: true });
+        fs.rmSync(chunkFile(e), { force: true });
+      }
     return true;
   }
   function clear() {
-    for (const e of entries()) fs.rmSync(e.file, { force: true });
+    for (const e of entries()) {
+      fs.rmSync(e.file, { force: true });
+      fs.rmSync(chunkFile(e), { force: true });
+    }
+  }
+  /** All chunks in file order: [{ file (name), id, i (index in the file), text }]. The call ranks them (BM25) and uses the best. */
+  function readChunks() {
+    const out = [];
+    for (const e of entries()) chunksOf(e).forEach((text, i) => out.push({ id: e.id, file: e.name, i, text }));
+    return out;
   }
   /** All texts, oldest first, trimmed to `limit` characters in total. consume: delete the files (one brief = one call). */
   function readAll(opts = {}) {
@@ -327,7 +488,23 @@ function createStore(o) {
     if (opts.consume) clear();
     return out;
   }
-  return { list, addFile, addPaste, remove, clear, readAll, used, pdfAvailable: !!pdftotext };
+  return { list, addFile, addPaste, remove, clear, readAll, readChunks, getContext, setContext, used, pdfAvailable: !!pdftotext };
 }
 
-module.exports = { createStore, readSourceFile, safeName, cleanText, findPdftotext, MAX_BYTES, MAX_CHARS, MAX_FILES, MAX_AGE_MS };
+module.exports = {
+  createStore,
+  readSourceFile,
+  safeName,
+  cleanText,
+  findPdftotext,
+  chunkText,
+  estimateTokens,
+  unsupportedMessage,
+  CHUNKS_RE,
+  CONTEXT_ID,
+  MAX_BYTES,
+  MAX_CHARS,
+  MAX_FILES,
+  MAX_AGE_MS,
+  CHUNK_TOKENS,
+};

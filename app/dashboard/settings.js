@@ -28,7 +28,7 @@ async function viewSettings(focus) {
   const main = $("main");
   main.textContent = "";
   main.append(
-    h("div", { class: "page-head" }, h("h1", {}, "Settings")),
+    h("div", { class: "page-head" }, h("h1", {}, T("nav.settings"))),
     h("div", { id: "set-body", class: "set" }, h("div", { class: "loading" }, "Loading settings…")),
   );
   let r;
@@ -64,6 +64,33 @@ async function viewSettings(focus) {
       k.focus({ preventScroll: true });
     } else focusTop();
   } else focusTop();
+}
+
+/** The language of this window (not of the answer window): same as the system, English or Hebrew. Kept in the page's own storage; the window reloads to apply it. */
+function windowLanguageBlock() {
+  const cur = windowLangChoice();
+  const sel = h(
+    "select",
+    { id: "win-lang", "aria-describedby": "win-lang-h" },
+    WingmanI18n.CHOICES.map((c) => h("option", { value: c, selected: c === cur ? "" : null }, T("lang." + c))),
+  );
+  sel.addEventListener("change", () => setWindowLanguage(sel.value));
+  return h(
+    "section",
+    { class: "setgroup", "aria-labelledby": "g-lang" },
+    h("h2", { id: "g-lang", class: "label", tabindex: "-1" }, T("lang.title")),
+    h(
+      "div",
+      { class: "setlist" },
+      h(
+        "div",
+        { class: "field" },
+        h("label", { for: "win-lang", class: "sr" }, T("lang.title")),
+        sel,
+        h("p", { class: "help", id: "win-lang-h" }, T("lang.help")),
+      ),
+    ),
+  );
 }
 
 // Redraw everything but keep keyboard focus (focus is matched by id / data-fk).
@@ -118,6 +145,7 @@ function drawSettingsBody(body) {
       ),
     ),
   );
+  main.append(windowLanguageBlock());
   main.append(keysBlock(r));
   jump.push(["g-keys", "Keys"]); // keys first: nothing works without them
   const rows = MAIN_ORDER.map((k) => (k === "@mic" ? micRow() : settingRowFor(r, k))).filter(Boolean);

@@ -4171,3 +4171,203 @@ button.chip.spk-btn:focus-visible,
   font-size: 12px;
   line-height: 18px;
 }
+
+/* ---------- round 12: Meeting context box, What Wingman knows, So far, error boxes ---------- */
+/* Logical properties only (inline-start/end), so the same rules work with dir="rtl" on <html>. */
+.errslot:not(:empty) {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 8px 16px 0;
+}
+.eb {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent);
+  border-radius: var(--r-card);
+  background: var(--bg, var(--s1));
+  background-image: linear-gradient(var(--bad-soft), var(--bad-soft));
+  max-width: 100%;
+}
+.eb > .ico:first-child {
+  flex: none;
+  color: var(--bad);
+  margin-block-start: 2px;
+}
+.eb .eb-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.eb .eb-what {
+  font-weight: 600;
+}
+.eb .eb-next {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+.eb .eb-btn {
+  flex: none;
+  align-self: center;
+}
+.ctx-msg:not(:empty) {
+  margin-block: 8px;
+}
+#ctx-card .help {
+  margin: 0 0 12px;
+}
+#ctx-text {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  line-height: 20px;
+}
+.ctx-count {
+  font-size: 12px;
+  text-align: end;
+  margin: 0;
+}
+.ctx-drop {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  padding: 12px 16px;
+  margin-block: 4px 12px;
+  border: 1.5px dashed var(--line2);
+  border-radius: var(--r-card);
+  color: var(--muted);
+}
+.ctx-drop.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.ctx-drop .ctx-drop-t {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.ctx-morebtn {
+  margin-block: 8px 12px;
+  align-self: flex-start;
+}
+.ctx-more[hidden] {
+  display: none;
+}
+.ctx-more {
+  padding-block-end: 4px;
+}
+.ctx-prepared {
+  margin-block-start: 16px;
+}
+#ctx-card .att-list li .ico {
+  flex: none;
+}
+.knows,
+.sofar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kn-topic {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.kn-sec h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+.kn-n {
+  font-weight: 400;
+}
+.kn-list,
+.sofar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sofar-list {
+  list-style: disc;
+  padding-inline-start: 20px;
+}
+.kn-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  min-width: 0;
+}
+.kn-item .kn-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 20px;
+}
+.kn-item .kn-act {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+}
+.kn-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.kn-add {
+  display: flex;
+  gap: 8px;
+  margin-block-start: 4px;
+}
+.kn-add .kn-input {
+  font-size: 12px;
+}
+.kn-none,
+.kn-empty {
+  font-size: 13px;
+}
+.kn-model summary {
+  cursor: pointer;
+  color: var(--info);
+  margin-block: 8px 4px;
+}
+.kn-pre {
+  max-height: 260px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* Right-to-left window: a few things that are drawn by position, not by flow. */
+[dir="rtl"] .chip.go .ico:last-child,
+[dir="rtl"] .navbtn .ico.chev,
+[dir="rtl"] .btn .ico[data-flip] {
+  transform: scaleX(-1);
+}
+[dir="rtl"] .kb-sheet .kbs {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+[dir="rtl"] kbd,
+[dir="rtl"] .ltr {
+  unicode-bidi: isolate;
+}
+.kbs {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+}
+.startmore {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}

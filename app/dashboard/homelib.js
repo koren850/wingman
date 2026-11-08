@@ -2,10 +2,13 @@
 // Pure helpers for Home, shared by the renderer (classic script) and the unit test (src/dashboard-home.test.ts).
 // No DOM here: everything takes plain data (call state from the controller, settings rows from the catalog) and returns plain data.
 (function (root) {
+  // Texts come from the string catalogs through `t(key, vars)`. Without one (the unit test of the English window) the English catalog is used.
+  const defaultT = (key, vars) =>
+    typeof module !== "undefined" && module.exports ? require("./i18n.js").t("en", key, vars) : root.WingmanI18n.t("en", key, vars);
   const Ask = typeof module !== "undefined" && module.exports ? require("../shared/ask.js") : root.WingmanAsk;
   // Ask is the shared question-timer helper (shared/ask.js): require() under node, window.WingmanAsk in the page.
   /** The stop panel: what is happening now. `call.stopPhase` ("saving" -> "summary" -> "done") comes from run.ts through the controller; when it is empty, infer from the flags. */
-  function stopSteps(call) {
+  function stopSteps(call, t = defaultT) {
     const c = call || {},
       ph = c.stopPhase || "";
     let save, sum;
@@ -24,23 +27,21 @@
     }
     if (c.summarySkipped) sum = "done";
     return [
-      { key: "listening", label: "Stopped listening", state: "done" },
-      { key: "saving", label: "Saving the call", state: save },
-      { key: "summary", label: c.summarySkipped ? "Summary skipped" : "Writing the summary", state: sum },
+      { key: "listening", label: t("stop.listening"), state: "done" },
+      { key: "saving", label: t("stop.saving"), state: save },
+      { key: "summary", label: c.summarySkipped ? t("stop.summarySkipped") : t("stop.summary"), state: sum },
     ];
   }
 
   /** "AI on · ..." line for the Start card, from the settings rows (catalog.describe: { key, value }). Nothing is guessed: missing rows are left out. */
-  function aiMode(items) {
+  function aiMode(items, t = defaultT) {
     const v = {};
     for (const i of items || []) if (i && typeof i.key === "string") v[i.key] = i.value;
     if (!("run.noAi" in v)) return null;
-    if (v["run.noAi"] === false) return { on: false, text: "AI off in Settings · Prepared cards only, nothing goes to Anthropic" }; // run.noAi is shown inverted: false = "Use the AI at all" is off
-    const me = { always: "answers your questions: always", hotkey: "answers your questions: hotkey only", off: "your own questions: only with the hotkey" }[
-      v["assist.answerMe"]
-    ];
-    const them = v["reflex.allowAns"] === false ? "other side: Prepared cards only" : null;
-    const parts = ["AI on", me, them, v["cards.quiet"] === true ? "starts in quiet mode" : null].filter(Boolean);
+    if (v["run.noAi"] === false) return { on: false, text: t("ai.off") }; // run.noAi is shown inverted: false = "Use the AI at all" is off
+    const me = { always: t("ai.me.always"), hotkey: t("ai.me.hotkey"), off: t("ai.me.off") }[v["assist.answerMe"]];
+    const them = v["reflex.allowAns"] === false ? t("ai.them.cardsOnly") : null;
+    const parts = [t("ai.on"), me, them, v["cards.quiet"] === true ? t("ai.quiet") : null].filter(Boolean);
     return { on: true, text: parts.join(" · ") };
   }
 
@@ -54,43 +55,64 @@
    * What the Start card shows for the prepared meetings (list from the main process, already ready ones only, soonest first):
    * { next, rows } where next is the "Next: <who> at 14:30" meeting (timed, not long past) or null, and each row has the texts of one line.
    */
-  function startPaths(list, now) {
+  function startPaths(list, now, t = defaultT, lang = "en") {
     const ready = Plans.ready(list || [], now);
     const next = Plans.nextMeeting(ready, now);
     const rows = ready.map((m) => ({
       id: m.id,
       name: Plans.label(m),
       sub: m.title ? m.who || m.goal || "" : m.who ? m.goal || "" : "",
-      time: m.at ? Plans.formatAt(m.at, now) : "",
+      time: m.at ? formatWhen(m.at, now, t, lang) : "",
+      timeShort: m.at
+        ? formatWhen(m.at, now, t, lang) === t("when.today", { time: Plans.clock(m.at) })
+          ? Plans.clock(m.at)
+          : formatWhen(m.at, now, t, lang)
+        : "",
       isNext: !!next && next.id === m.id,
       must: m.mustCount != null ? m.mustCount : (m.mustCover || []).length,
       files: m.files || 0,
-      startLabel: "Start " + Plans.label(m).slice(0, 50),
+      uses: m.uses || 0,
+      pending: !!m.pending,
+      startLabel: t("home.startNamed", { name: Plans.label(m).slice(0, 50) }),
     }));
     return { next: next ? rows.find((r) => r.id === next.id) : null, rows };
   }
+  /** "Today 14:30", "Tomorrow 09:00", "Yesterday 16:00", else a short date and the time, in the window language. */
+  function formatWhen(ms, now, t = defaultT, lang = "en") {
+    if (!ms) return "";
+    const d = new Date(ms),
+      n = new Date(now);
+    const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diff = Math.round((day(d) - day(n)) / 86400000);
+    const clock = Plans.clock(ms);
+    if (diff === 0) return t("when.today", { time: clock });
+    if (diff === 1) return t("when.tomorrow", { time: clock });
+    if (diff === -1) return t("when.yesterday", { time: clock });
+    let date;
+    try {
+      date = new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).format(d);
+    } catch {
+      date = Plans.formatAt(ms, now).replace(/ \d{2}:\d{2}$/, "");
+    }
+    return `${date} ${clock}`;
+  }
   /** "Next: Dana at 14:30" */
-  const nextText = (row) => `Next: ${row.name}${row.time ? " at " + row.time.replace(/^Today /, "") : ""}`;
+  const nextText = (row, t = defaultT) =>
+    row.time ? t("home.nextAt", { name: row.name, time: row.timeShort || row.time }) : t("home.next", { name: row.name });
   /** Practice uses the next prepared meeting (or the only one), as the app does; none = a plain practice. */
   const practiceTarget = (list, now) => Plans.practiceDefault(list || [], now);
-  const practiceLabel = (m) => (m ? `Practice call · uses "${Plans.label(m).slice(0, 40)}"` : "Practice call (offline, free)");
+  const practiceLabel = (m, t = defaultT) => (m ? t("home.practiceWith", { name: Plans.label(m).slice(0, 40) }) : t("home.practice"));
 
-  /** The combined Note / Ask input. */
-  const COMPOSER = {
-    note: { label: "Note for the AI", button: "Add note", placeholder: "A note for the AI, e.g. this is about the shop migration", sent: "Note added" },
-    ask: {
-      label: "Ask Wingman",
-      button: "Ask",
-      placeholder: "Ask Wingman, e.g. what is a CNAME record?",
-      sent: "Question sent: the answer shows in the answer window",
-    },
+  /** The combined Note / Ask input: its label, button, placeholder and the line announced after sending. */
+  const composer = (mode, t = defaultT) => {
+    const k = mode === "ask" ? "ask" : "note";
+    return { label: t(`compose.${k}.label`), button: t(`compose.${k}.button`), placeholder: t(`compose.${k}.placeholder`), sent: t(`compose.${k}.sent`) };
   };
-  const composer = (mode) => COMPOSER[mode === "ask" ? "ask" : "note"];
   /** Status line while Ctrl+Opt+A (or the Listen button) is armed: the next thing said is a question. */
-  const askStatus = (call, now) => {
+  const askStatus = (call, now, t = defaultT) => {
     if (!call || !call.askArmed) return "";
     const left = Ask.askClock(call.askUntil, now == null ? Date.now() : now);
-    return "Listening for your question. Say it now." + (left ? " " + left + " left" : "");
+    return t("ask.armed") + (left ? " " + t("ask.left", { time: left }) : "");
   };
   /** The "Skip summary" control shows while the summary is the step in progress (not before, not after, not twice). */
   const canSkipSummary = (call) => !!call && call.phase === "stopping" && call.stopPhase === "summary" && !call.summarySkipped && !call.summaryOk;
@@ -116,9 +138,9 @@
     blockedBy,
     startPaths,
     nextText,
+    formatWhen,
     practiceTarget,
     practiceLabel,
-    COMPOSER,
     composer,
     askStatus,
     canSkipSummary,

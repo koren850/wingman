@@ -690,3 +690,17 @@ Date: 2026-11-09
 **Alternatives.** Always show an error card for the other side's questions (too noisy: most questions end with SKIP). A second STT timer in each adapter only (the channel-level limit also covers new adapters).
 
 **Consequences.** With `reflex.stall` off (the default) a single failed question from the other side still shows nothing; the amber bar after the second failure is the signal. The 8 s limit is a constant, not a setting.
+
+## ADR 46: A meeting does not expire and is not used up; the window has two languages
+
+Date: 2026-11-08
+
+**Context.** A prepared meeting lived 6 hours after its time, was marked used when the call went live, and lost its files then. A crash after Start lost the whole brief. The window was English only, and the words "Plan" and "Prepared meeting" were mixed.
+
+**Decision.** (1) A meeting has no expiry and is never used up. `markLive` records that a call went live; `confirmUsed` records that the call saved its first memory (until the session memory exists, the end of a clean call). Nothing is deleted at either step, so the same meeting starts the next call. Only the owner deleting it, or 180 days with no touch (housekeeping), removes it. The single-Plan `latest.yaml` and its files are read without being changed and retired by `confirmContext()` once the call is live. (2) One optional "Meeting context" box: pasted text, files (.txt, .md, .pdf with pdftotext, .ics), a few small fields behind "More". Long text is cut into chunks of about 500 tokens when it is added. (3) The main window has one catalog per language (`dashboard/strings.en.js`, `strings.he.js`), `dir` follows the language, and every error is one row in `dashboard/errors.js` with a next step and a button.
+
+**Why.** Losing a brief to a crash is the worst case for a tool used just before a call. Reuse is how people really work (weekly calls). Plain words and one error table make the window easier to read and to test.
+
+**Alternatives.** Keep the 6 hour rule and only stop deleting files (the list still empties). Translate the window with a library (a dependency for about 450 strings).
+
+**Consequences.** The meeting list can grow, so the limit is 50 and housekeeping is 180 days. Calls, Settings and Setup details are still English-first; a missing Hebrew key shows English. The digest ("Prepare") and the live memory feed "What Wingman knows" in wave 2; until then it shows a sample or the saved details.

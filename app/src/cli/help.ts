@@ -35,11 +35,11 @@ COMMANDS
                [--note ..]... [--add-note ..]... [--must ..]... [--add-must ..]... [--fresh]
                                new = a new meeting. set --id <id> = edit that one (fields you leave out are kept; --fresh starts its fields over).
                                set without --id and without --new: makes the first meeting, edits the only one, and with several it REFUSES (exit 2): name one with --id.
-                               --at is your local time ("14:30" = today); --must items become the checklist. Time rule: a meeting with a time stays until about 6 hours
-                               after it; without a time it stays 14 days after its last edit. A meeting is used up by the real call started with it (Practice never does).
+                               --at is your local time ("14:30" = today); --must items become the checklist. A plan does not expire and is not used up: the same plan can start
+                               the next call too (housekeeping removes one nobody touched for 180 days).
                                --kind interview = a job interview: the user is the candidate. The AI answers technical questions and questions about them from the
                                background files only; no "buy time" lines, no card limit. Add --note "Prepared cards: <file.yaml>" for instant cards (bank format).
-  plan attach [--id <id>] --file <.txt|.md|.pdf> [--force] | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters per meeting). --id is needed when there are several meetings.
+  plan attach [--id <id>] --file <.txt|.md|.pdf|.ics> [--force] | --text "<text>" | --stdin     Background the AI may read (2 MB per file, 40,000 characters per meeting). --id is needed when there are several meetings.
                                --file refuses symbolic links, key/.env style files and anything in ~/.ssh, ~/.aws, ~/.gnupg, ~/.config/wingman, ~/Library/Keychains (exit 4); files outside the home folder need --force.
   plan detach <file id> [--id <id>]       Remove one background file.
   plan delete <id> --yes       Delete a meeting and its background files (exit 6 without --yes).   (plan clear = the old name; it works only when exactly one meeting exists)

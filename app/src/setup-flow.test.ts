@@ -50,8 +50,8 @@ test("setup.js defines exactly these steps, with the same ids the helper knows, 
   };
   assert.deepEqual(ids("REQUIRED_STEPS"), S.REQUIRED);
   assert.deepEqual(ids("OPTIONAL_STEPS"), S.OPTIONAL);
-  assert.match(src, /Make it yours \(optional\)/);
-  assert.match(src, /You're ready\./);
+  assert.match(src, /T\("su\.opt"\)/);
+  assert.match(src, /T\("su\.ready1"\)/);
 });
 
 test("the Allow step explains the screens and the second-screen rule in plain words", () => {
