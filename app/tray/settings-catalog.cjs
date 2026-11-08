@@ -105,6 +105,24 @@ const ITEMS = [
     help: "Cards are saved for the review but not shown on the answer window until you switch quiet off.",
   },
   {
+    key: "moments.engine",
+    group: "answers",
+    label: "Help engine",
+    kind: "select",
+    help: "New: the AI reads the whole call and decides when a card helps, also for objections, numbers and promises. Classic: the older question gate. Takes effect on the next call.",
+    options: [
+      ["legacy", "Classic"],
+      ["v2", "New (live reading)"],
+    ],
+  },
+  {
+    key: "memory.enabled",
+    group: "answers",
+    label: "Keep a memory of the call",
+    kind: "bool",
+    help: "Wingman keeps a short memory of the call (topic, numbers, promises, open questions) that every AI call reads. It is saved with the call. Used by the New help engine.",
+  },
+  {
     key: "reflex.stall",
     group: "answers",
     label: "“Buy time” lines",
@@ -203,6 +221,17 @@ const ITEMS = [
     step: 0.5,
     unit: "USD",
     help: "At the cap the AI stops and only Prepared cards are used for the rest of the call. Speech recognition cost is only warned about.",
+  },
+  {
+    key: "budget.maxLlmUsdPerHour",
+    group: "money",
+    label: "Soft AI spend cap per hour",
+    kind: "number",
+    min: 0,
+    max: 20,
+    step: 0.05,
+    unit: "USD",
+    help: "Typical use costs about 0.09 USD an hour. Near this amount the cheapest jobs stop first (memory clean-up, then live reading). At the cap the AI pauses. 0 = no hourly cap.",
   },
   {
     key: "budget.warnUsdPerCall",

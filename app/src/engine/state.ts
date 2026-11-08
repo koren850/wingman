@@ -3,6 +3,8 @@
 import { performance } from "node:perf_hooks";
 import type { SttChannel } from "../providers/stt/channel.ts";
 import type { EchoMode } from "../echo.ts";
+import { emptyMemory, type SessionMemory } from "../session/types.ts";
+import { newSchedulerState } from "../moments/scheduler.ts";
 import { ECHO, PHONE, S } from "./boot.ts";
 
 /** Monotonic ms (does not jump with the wall clock; on macOS it also stands still while the Mac sleeps). Idle time and frame freshness use it. */
@@ -32,6 +34,20 @@ export const st = {
   turn: { current: undefined as AbortController | undefined, lastAgencyTopicAt: 0 },
   /** Per-call state of the question path (engine/question.ts): turn counter, consecutive model failures, when each prepared card was last shown. */
   q: { turnSeq: 0, reflexErrors: 0, bankShownAt: new Map<string, number>() },
+  /** Moment engine (engine/moments.ts, moments.engine = v2): model call counter, the newest direct and observer call (an older stream cannot show a card), the
+   *  scheduler state, the call memory every model call reads (the memory updater replaces it; a failed update keeps the last good one) and the "AI paused" reason. */
+  m: {
+    seq: 0,
+    direct: 0,
+    obs: 0,
+    sched: newSchedulerState(),
+    mem: emptyMemory() as SessionMemory,
+    paused: undefined as "cap" | "down" | "net" | undefined,
+    lastFailKind: undefined as string | undefined,
+    lastPromiseAt: 0,
+    promised: new Set<string>(),
+    lang: undefined as "he" | "en" | undefined,
+  },
   /** Who spoke last and when (wall ms unless named Mono). */
   voice: {
     lastMeVoiced: 0,

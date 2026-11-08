@@ -3,7 +3,7 @@ import { eventError } from "../errtext.ts";
 import { matchBank, matchBankFor } from "../bank.ts";
 import { evalMath } from "../calc.ts";
 import { checkScript } from "../lang.ts";
-import { detect, addressesYou } from "../detector.ts";
+import { detect, addressesYou, isClearQuestion } from "../detector.ts";
 import { introName } from "../speakers.ts";
 import type { SttResult, Channel, Word } from "../providers/stt/types.ts";
 import { joinSplit, isBareQuestionTail, type PrevUtterance } from "../split.ts";
@@ -12,7 +12,7 @@ import { isAgencyTopic } from "../frame.ts";
 import { S, log, flow, flowOn, transcript, lineOf, notesOn, speakers, attendees, echo, ECHO, sup, bank, interview, UI_LANG } from "./boot.ts";
 import { voiceName, flowEvents } from "./flowmode.ts";
 import { st, mono } from "./state.ts";
-import { queueNoteLine, nameSpeaker, spotFacts, capture } from "./side.ts";
+import { queueNoteLine, nameSpeaker, spotFacts, capture, checkOwnLine } from "./side.ts";
 import { addWords } from "./coach.ts";
 import { wordCount } from "../text-util.ts";
 import { survived, health, healthClear } from "./out.ts";
@@ -20,6 +20,9 @@ import { LangWatch } from "../langwatch.ts";
 import { ht } from "../htext.ts";
 import { onQuestion, openScope, MAX_PARTS } from "./question.ts";
 import { handleMe } from "./me.ts";
+import { v2Active } from "./degrade.ts";
+import { keepLine, noteLine, routeThem } from "./moments.ts";
+import type { HintLevel } from "../moments/types.ts";
 
 // Buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer, stt.flushFallbackMs,
 // for when the end-of-speech mark never arrives).
@@ -42,6 +45,7 @@ function flushCore(ch: Channel) {
   const joined: SttResult = { ...p.last, text: p.texts.join(" "), words: p.words, speechFinal: true };
   if (st.call.shuttingDown) return;
   if (ch === "me") {
+    if (v2Active() && keepLine("me", joined.text, joined.speechEndWall ?? Date.now())) checkOwnLine(joined.text); // the user's own numbers against the notes and the memory
     handleMe(joined);
     return;
   }
@@ -92,6 +96,21 @@ function flushCore(ch: Channel) {
     joined.text = `${lastThem!.text} ${joined.text}`;
   }
   lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: endWall, question: d.isQuestion, spk: p.spk };
+  // Moment engine (moments.engine = v2): every kept line can get help; the model decides. The old gate is only a hint (strong, weak, none).
+  // A strong hint asks the model now (the old path below, with its bank card, calc and stall line, and the moment call inside it).
+  // A weak or no hint waits in the observer window. A paused AI keeps the old path for any question and does nothing for the rest.
+  let toDirect = false;
+  if (v2Active()) {
+    const level: HintLevel = d.isQuestion ? (isClearQuestion(joined.text, d.reason) ? "strong" : "weak") : "none";
+    if (!keepLine("them", joined.text, endWall, p.spk !== undefined ? `s${p.spk}` : undefined)) return;
+    const r = routeThem(level);
+    if (r.route !== "direct" && r.route !== "local") {
+      log.write("events", { type: "moment.route", route: r.route, why: r.why, hint: level, text: joined.text.slice(0, 80) });
+      if (r.route === "observer") noteLine({ text: joined.text, at: endWall, hint: level, hasFigure: /[\p{Nd}\p{Sc}]/u.test(joined.text) });
+      return;
+    }
+    toDirect = r.route === "direct";
+  }
   // Fast back-to-back questions merged into one final: one question (and one card) per piece.
   const parts = d.isQuestion && !followUp ? splitMergedQuestions(joined.text, bank) : [joined.text];
   if (parts.length > 1) {
@@ -106,7 +125,11 @@ function flushCore(ch: Channel) {
     return;
   }
   log.write("events", { type: "detect", text: joined.text, ...d });
-  if (d.isQuestion && sup.caps.detect) onQuestion(joined, d.reason);
+  if (d.isQuestion && sup.caps.detect) {
+    const started = onQuestion(joined, d.reason);
+    // v2: a strong line the old filters skipped (a question between others, "if ..." talk) still reaches the model, through the observer.
+    if (toDirect && !started) noteLine({ text: joined.text, at: endWall, hint: "weak", hasFigure: /[\p{Nd}\p{Sc}]/u.test(joined.text) });
+  }
 }
 
 // Words while they are spoken: interim STT text goes to live.jsonl (at most 4 rows a second per channel) for the answer window's

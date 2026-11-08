@@ -26,6 +26,15 @@ export type Card = {
   source?: "calc" | "ai"; // badge "me": an answer for the user (their own question). source "calc" on an "ai" card: local arithmetic, no model
   done?: boolean; // the model finished writing this answer (the answer window stops showing "Writing…")
   priority?: boolean; // "don't commit yet" bank cards (stall-price, stall-guarantee…): never hidden by the per-minute cap
+  // Card row v2 (PLAN 3.3): set by the moment engine, whose scheduler already limits the cards per minute (so emitCard's own cap does not apply to them).
+  kind?: "answer" | "prompt" | "check" | "fact";
+  value?: 0 | 1 | 2 | 3;
+  why?: string;
+  more?: string[];
+  ref?: string;
+  ctx?: { memV: number; tokens: number; parts: Record<string, number> };
+  pinned?: boolean;
+  closes?: "answered" | "topic" | "time" | "dismissed"; // an update row that closes a card
 };
 /** Writes a side card (fact, note, reminder, client proposal) that is not tied to a question. */
 export function emitSide(row: Record<string, unknown>) {
@@ -69,7 +78,7 @@ export function emitCard(c: Card) {
       if (st.call.quiet) {
         hidden = true;
         reason = "quiet";
-      } else if (forMe || c.badge === "careful" || c.badge === "fix" || c.badge === "stall") {
+      } else if (forMe || c.badge === "careful" || c.badge === "fix" || c.badge === "stall" || c.kind !== undefined) {
         /* no cap, not counted */
       } else if (shownTimes.filter((s) => now - s.t < capWindow()).length >= capMax() && !c.priority) {
         hidden = true;

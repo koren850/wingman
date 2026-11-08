@@ -57,6 +57,27 @@ reflex:
   allowAns: true # false = Prepared + Buy time only (a model ANS answer becomes a stall line). Use false for a first client call
   stall: false # true = show the generic "I'll check and get back to you" line when no answer is ready (in review, almost none were useful). Price / timeline / guarantee cards still show.
 
+# ---- Moment engine (round 12): the model decides when help is useful; the old word-list gate is only a hint ----
+moments:
+  engine: legacy # legacy = the old question gate and reflex answers, unchanged | v2 = every kept line can get a card; the model decides (hint, observer window, memory)
+  observerPerMinute: 6 # at most this many observer calls a minute (lines without a clear question). 0 = observer off
+  windowSeconds: 40 # how much of the call the observer sees as lead-in, in seconds
+  minValue: { default: 2, STALL: 1, CHECK: 1 } # least VALUE (0-3) the model must give for a card to show. A number sets every kind; a map sets single kinds (SKIP ANS BANK STALL REPLY CHECK TERM PROMPT NOTE)
+  checkPromises: true # check numbers you say (digits, money signs, time units) against your notes and what was said in the call, and show a Check card on a mismatch. No model call
+
+# ---- Call memory (round 12) ----
+memory:
+  enabled: true # keep a short memory of the call (topic, numbers, promises, open questions) that every model call reads
+  model: "anthropic:claude-haiku-5-5" # updates the memory. Must have a price in budget.prices.llm
+  everySeconds: 20 # at most one memory update this often
+  minNewWords: 25 # and only when this many new words were said
+  compactEveryMinutes: 6 # fold older memory into the summary this often
+  budgetTokens: 1800 # largest size of the memory text in a model call
+ctx:
+  rawTailTokens: 1200 # largest size of the newest transcript lines in a model call
+digest:
+  model: "anthropic:claude-haiku-5-5" # reads the optional pre-meeting text once. Must have a price in budget.prices.llm
+
 # ---- Answering the user's own questions (the "me" channel) ----
 assist:
   answerMe: always # always = answer a question the user asks the assistant (not one asked of the other person) | hotkey = only after the ask key | off = never (the ask key still works)
@@ -185,6 +206,7 @@ budget:
   maxMinutesPerCall: 90 # warn at warnAt of this (a long real meeting is never cut)
   idleStopMin: 15 # stop the call when nobody spoke for this many minutes (a session left running). 0 = off
   warnUsdPerCall: 3 # amber warning when the whole call (AI + speech to text) has cost more than this. Only a warning: speech to text is never stopped. A 90 minute call costs about 2.4 USD
+  maxLlmUsdPerHour: 0.4 # soft cap on AI spend in any 60 minutes (typical use is about 0.09). Near it the cheapest jobs stop first: compaction at 60%, observer at 80%, memory at 90%; a direct question stops last, at 100% (AI paused). 0 = no hourly cap
   maxUsdPerMonth: null # null = no monthly cap (used by the readiness check, from usage.jsonl)
   # Price table. ESTIMATES: check your provider's pricing page and edit. A model missing here costs $0 and is flagged.
   prices:

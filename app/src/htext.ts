@@ -55,6 +55,19 @@ const M = {
     "AI לא עונה: מוצגים רק כרטיסים מוכנים מראש. בדוק חיבור לאינטרנט ומפתח ב-Settings",
     "AI is not answering: only prepared cards are shown. Check your internet connection and the key in Settings",
   ),
+  // moment engine: the calm "AI paused" bar and the Check card for a number you said
+  "ai.paused": m(
+    (p) => `ה-AI בהפסקה (${p.why}). ממשיכים עם כרטיסים מוכנים, חישובים ושורת קנייה בזמן`,
+    (p) => `AI paused (${p.why}). Prepared cards, calculations and the buy-time line still work`,
+  ),
+  "ai.paused.cap": m("תקרת עלות", "spend cap"),
+  "ai.paused.down": m("המודל לא עונה", "the model is not answering"),
+  "ai.paused.net": m("אין חיבור לאינטרנט", "no internet"),
+  "moment.check": m(
+    (p) => `אמרת ${p.said}. ברשימות או בשיחה: ${p.ref}`,
+    (p) => `You said ${p.said}. Your notes or the call say: ${p.ref}`,
+  ),
+  "moment.check.why": m("מספר שלא תואם את מה שנאמר קודם", "A number that does not match what was said before"),
   // watchdogs
   "mic.never": m(
     "המיקרופון לא קולט. בדוק הרשאת מיקרופון ב-Settings ובחירת מיקרופון, ואז הרץ בדיקת מוכנות",

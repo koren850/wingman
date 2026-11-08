@@ -14,7 +14,7 @@ const tmp = () => join(mkdtempSync(join(tmpdir(), "wingman-cat-")), "settings.ya
 
 test("every catalog key exists, its default is inside the allowed range, and the plain-words fields are filled", () => {
   const d = defaultsFlat();
-  assert.ok(cat.ITEMS.length >= 10 && cat.ITEMS.length <= 30, "about 10-30 settings");
+  assert.ok(cat.ITEMS.length >= 10 && cat.ITEMS.length <= 34, "about 10-34 settings");
   for (const i of cat.ITEMS) {
     assert.ok(i.key in d, i.key);
     assert.ok(i.label && i.help && i.help.length > 30 && i.help.length < 260, i.key + " help");
@@ -66,4 +66,13 @@ test("about eight choices are marked main; the privacy choices exist in the cata
   assert.ok(main.includes("privacy.requireConsentAck"));
   assert.ok(cat.BY_KEY.has("stt.deepgram.mipOptOut"));
   assert.equal(cat.toStored(cat.BY_KEY.get("stt.deepgram.mipOptOut"), true), true);
+});
+
+test("moment engine settings: the switch, the memory toggle and the hourly cap are in the catalog and the real schema accepts them", () => {
+  for (const k of ["moments.engine", "memory.enabled", "budget.maxLlmUsdPerHour"]) assert.ok(cat.BY_KEY.has(k), k);
+  assert.equal(defaultsFlat()["moments.engine"], "legacy", "the default stays the old engine until the integrator flips it");
+  assert.equal(applyEdits(tmp(), { "moments.engine": "v2", "memory.enabled": false, "budget.maxLlmUsdPerHour": 0 }).ok, true);
+  assert.equal(applyEdits(tmp(), { "moments.engine": "v3" }).ok, false);
+  assert.throws(() => cat.toStored(cat.BY_KEY.get("moments.engine"), "v3"));
+  assert.ok(!cat.BY_KEY.get("moments.engine").main, "not one of the few main choices");
 });

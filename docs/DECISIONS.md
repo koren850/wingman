@@ -704,3 +704,17 @@ Date: 2026-11-08
 **Alternatives.** Keep the 6 hour rule and only stop deleting files (the list still empties). Translate the window with a library (a dependency for about 450 strings).
 
 **Consequences.** The meeting list can grow, so the limit is 50 and housekeeping is 180 days. Calls, Settings and Setup details are still English-first; a missing Hebrew key shows English. The digest ("Prepare") and the live memory feed "What Wingman knows" in wave 2; until then it shows a sample or the saved details.
+
+## ADR 47: The moment engine runs behind a switch, with the old path as its fallback
+
+Date: 2026-11-09
+
+**Context.** The new engine asks the model on more lines than the old gate. It must not make the call worse when the model is slow, down or too expensive, and the old behaviour must stay available until the new one is proven.
+
+**Decision.** (1) `moments.engine` is `legacy` or `v2`; the default stays `legacy` until the integrator's gates pass. (2) In `v2` a strong hint takes the old question path, with its bank card, calc and stall timer, and only the model call inside it changes. A weak hint or a long line goes to the observer window. (3) The scheduler and the guards decide what shows; the model only proposes. (4) When the AI is paused (cap, model down, no network) the old path runs without a model, with one calm bar. (5) A soft hourly cap on AI spend stops the cheapest jobs first. (6) Practice interviews keep the old engine, because their coaching prompt is not part of the moment prompt.
+
+**Why.** Reusing the old question path keeps what it learned (agency gate, stall tier, repeat rule, latency rows). Only the decision about meaning moves to the model. A switch makes a bad night cheap to undo.
+
+**Alternatives.** A new path next to the old one (two ways to show a bank card, more bugs). Replacing the old path at once (no fallback).
+
+**Consequences.** `question.ts` has two model calls for one question, chosen per turn. The observer is not fast: a card comes about 1 to 3 s after the sentence. The interview mode needs its own moment prompt before it can use `v2`.

@@ -6,12 +6,12 @@
 // the tray IPC contract is at the top of engine/control.ts. State is module-level on purpose (one call per process); everything async checks `shuttingDown`.
 // Safety and cost: audio is sent for transcription only once listening has started (`consented`): at call start by default, or after "Start listening" when privacy.requireConsentAck is on (ADR 29); AI text passes guards.ts; budget.maxUsdPerCall caps model jobs.
 import { st } from "./engine/state.ts";
-import { fileArg, noAi, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO, UI_LANG } from "./engine/boot.ts";
+import { fileArg, noAi, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO, UI_LANG, interview } from "./engine/boot.ts";
 import { ht } from "./htext.ts";
 import { setPhase, status, health, safe } from "./engine/out.ts";
 import { crash, installProcessHandlers } from "./engine/shutdown.ts";
 import { createChannels, openBothChannels, wireChannels } from "./engine/stt.ts";
-import { resolveReflexModels, startHealthTick, checkDisk } from "./engine/degrade.ts";
+import { resolveReflexModels, startHealthTick, checkDisk, v2Active } from "./engine/degrade.ts";
 import { notesRound, reminderTick } from "./engine/side.ts";
 import { frameRound, tipsTick } from "./engine/coach.ts";
 import { flowTick } from "./engine/flowmode.ts";
@@ -60,6 +60,12 @@ function printBanner() {
   console.log(
     `Wingman · call ${log.id} · ${fileArg ? "file " + fileArg : "live"} · ${bank.length} prepared cards${noAi ? " · prepared only" : ""}${discard ? " · --discard" : ""}`,
   );
+  if (S.moments.engine === "v2")
+    console.log(
+      v2Active()
+        ? "Help engine: New (the AI reads the call and decides when a card helps; observer up to " + S.moments.observerPerMinute + " calls a minute)."
+        : `Help engine: Classic (the New engine is off ${interview ? "in a practice interview" : "with --no-ai"}).`,
+    );
   console.log(
     `Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = start listening (when waiting) · q = Quiet mode · a = ask Wingman · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`,
   );

@@ -7,10 +7,12 @@ import type { Channel } from "../providers/stt/types.ts";
 import { extract } from "../capture.ts";
 import { status } from "./out.ts";
 import { log, S, callStart, brief, transcript, cost, notesAbort, registry, sup, notesOn, contextNotes, CONTROL, spotter, speakers } from "./boot.ts";
-import { emitSide } from "./cards.ts";
+import { emitSide, emitCard } from "./cards.ts";
 import { st } from "./state.ts";
 import { proposeClient, proposeClientHow, reminderTitle, reminderMore } from "./strings.ts";
 import { recentNotes } from "./rules.ts";
+import { quantities, mismatches, refQuantities } from "../moments/overpromise.ts";
+import { checkNumberSay, checkNumberWhy } from "./strings.ts";
 
 /** Name speaker `spk` for the rest of the call (source "intro" = from their own introduction, "user" = the user renamed them). The
  *  answer window and the dashboard follow the cards.jsonl "speaker" row; later transcript rows carry the name. */
@@ -161,4 +163,48 @@ export function clientProposed(): boolean {
 export function queueNoteLine(line: string) {
   notesLines.push(line);
   if (notesLines.length > MAX_NOTES_LINES) notesLines.splice(0, notesLines.length - MAX_NOTES_LINES);
+}
+
+// ---- Over-promise check (moments.engine = v2): a number the user said against the notes and the call memory ----
+const CHECK_GAP_MS = 20_000;
+let checkSeq = 0;
+/** A final line of the user. Digits, currency signs and the unit after a number (any language, no word list) are paired with the numbers of the prepared notes and
+ *  the call memory. A mismatch gives one amber Check card with the user's figure and the figure from the notes (the text comes from the user's own notes, so the price
+ *  guard, which blocks model text, does not apply). Nothing to compare with = no card. No model call. */
+export function checkOwnLine(text: string) {
+  if (!S.moments.checkPromises || !st.call.consented || st.call.shuttingDown) return;
+  const said = quantities(text);
+  if (!said.length) return;
+  const m = st.m.mem;
+  const refs = refQuantities({
+    notes: [...contextNotes, ...(brief?.mustCover ?? [])],
+    numbers: m.numbers,
+    facts: m.facts.map((f) => f.text),
+  });
+  if (!refs.length) return;
+  const hit = mismatches(said, refs)[0];
+  if (!hit) return;
+  const now = Date.now();
+  const key = `${hit.said.unit}:${hit.said.value}`;
+  if (st.m.promised.has(key) || now - st.m.lastPromiseAt < CHECK_GAP_MS) {
+    log.write("events", { type: "moment.check-skip", why: st.m.promised.has(key) ? "repeat" : "gap" });
+    return;
+  }
+  st.m.promised.add(key);
+  st.m.lastPromiseAt = now;
+  const n = ++checkSeq;
+  emitCard({
+    id: `ck-${n}`,
+    turnId: `ck${n}`,
+    badge: "careful",
+    question: text.slice(0, 200),
+    say: checkNumberSay(hit.said.raw, hit.ref.source),
+    facts: [],
+    priority: true,
+    kind: "check",
+    value: 2,
+    why: checkNumberWhy(),
+    at: now,
+  });
+  log.write("events", { type: "moment.check", said: hit.said.raw, ref: hit.ref.source });
 }

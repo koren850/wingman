@@ -13,6 +13,18 @@ export type LlmUsage = {
 export type RoleTotals = { calls: number; usd: number; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
 export type CostState = "ok" | "warn" | "capped";
 
+/** Usage roles (usage.jsonl). `reflex`, `notes`, `assist`... are the older jobs; the last seven are the moment engine's (PLAN 3.5). */
+export const MOMENT_ROLES = ["moment", "observer", "memory", "compact", "ask", "digest", "wrapup"] as const;
+export type MomentRole = (typeof MOMENT_ROLES)[number];
+/** Soft hourly cap: when the last 60 minutes of AI spend reach this share of budget.maxLlmUsdPerHour, that job stops. Cheapest to lose first; a direct question stops last.
+ *  Jobs the user asks for by hand (ask, digest, wrapup) and the older jobs are never stopped by it, but their spend counts. */
+export const SHED_AT: Partial<Record<string, number>> = { compact: 0.6, observer: 0.8, memory: 0.9, moment: 1 };
+/** The same order as a list, first to stop first. */
+export const SHED_ORDER = Object.entries(SHED_AT)
+  .sort((a, b) => a[1]! - b[1]!)
+  .map(([role]) => role);
+const HOUR_MS = 3_600_000;
+
 /** Per-call spend tracker. One instance per call (run.ts). */
 export class CostMeter {
   readonly roles: Record<string, RoleTotals> = {};
@@ -20,8 +32,10 @@ export class CostMeter {
   private sttSeconds: Record<string, number> = {};
   constructor(
     private prices: Settings["budget"]["prices"],
-    private budget: Pick<Settings["budget"], "maxUsdPerCall" | "warnAt" | "maxMinutesPerCall"> & { warnUsdPerCall?: number },
+    private budget: Pick<Settings["budget"], "maxUsdPerCall" | "warnAt" | "maxMinutesPerCall"> & { warnUsdPerCall?: number; maxLlmUsdPerHour?: number },
   ) {}
+  /** Spend rows of the last hours, for the rolling hourly cap: [wall ms, usd]. Older than one hour are dropped when read. */
+  private spend: [number, number][] = [];
 
   /** Cost of one LLM call in USD (also added to the role total). Unknown models cost 0 and are listed in `unpriced`. */
   addLlm(role: string, modelRef: string, usage: unknown, providerMetadata?: unknown): { usd: number; tokens: Omit<RoleTotals, "calls" | "usd"> } {
@@ -45,7 +59,31 @@ export class CostMeter {
     r.calls++;
     r.usd += usd;
     for (const k of Object.keys(tokens) as (keyof typeof tokens)[]) r[k] += tokens[k];
+    if (usd > 0) this.spend.push([Date.now(), usd]);
+    if (this.spend.length > 20000) this.spend.splice(0, this.spend.length - 20000);
     return { usd, tokens };
+  }
+
+  /** AI spend in the last 60 minutes (USD). */
+  hourUsd(now = Date.now()): number {
+    const from = now - HOUR_MS;
+    while (this.spend.length && this.spend[0][0] <= from) this.spend.shift();
+    return this.spend.reduce((a, [, u]) => a + u, 0);
+  }
+  /** Share of budget.maxLlmUsdPerHour used in the last hour (0 when there is no hourly cap). */
+  hourRatio(now = Date.now()): number {
+    const cap = this.budget.maxLlmUsdPerHour ?? 0;
+    return cap > 0 ? this.hourUsd(now) / cap : 0;
+  }
+  /** True when the soft hourly cap says this job should not run now (see SHED_AT). */
+  shed(role: string, now = Date.now()): boolean {
+    const at = SHED_AT[role];
+    return at !== undefined && this.hourRatio(now) >= at;
+  }
+  /** The per-call cap or the soft hourly cap stops direct questions. The reason is a short token for the bar and the log. */
+  paused(now = Date.now()): "call-cap" | "hour-cap" | undefined {
+    if (this.llmState() === "capped") return "call-cap";
+    return this.shed("moment", now) ? "hour-cap" : undefined;
   }
 
   /** Audio seconds sent so far per STT provider, summed over both channels (set, not added). */

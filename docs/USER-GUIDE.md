@@ -43,6 +43,8 @@ All pictures use invented data. The client, the numbers and the answers are made
 
 This is the window you read during a call. Put it on the second screen. By default it uses the **Focus** layout: what they said, one big answer, one small line for the answer before it, and a **More** button. In **Settings, Answer window layout** you can switch to **Full**, which shows everything at once.
 
+**Help engine (Settings, Answers).** *Classic* shows a card when the other side asks a question. *New (live reading)* lets the AI read the whole call and decide when a card helps: a question, an objection, a number that does not fit, a term you may not know, a point you planned to cover. Most lines get no card. A prepared card or a sum shows first; an AI card replaces it only if it is better. If you say a number that does not match your notes, you get a Check card. The New engine keeps a short memory of the call and costs about 3 US cents an hour for this part (Settings, Money, has a soft cap per hour). It is off in practice interviews. Takes effect on the next call.
+
 <img src="ux/answer-window-en-ui.png" alt="The answer window in the Focus layout: the other side's last line, one big AI answer, a buy-time line, a More button and the key bar" width="520">
 
 1. **Listening** (top): Wingman hears the call. It says **Paused** when you pause it. Next to it are two small dots: the first shows the call state, the last one is the health dot. Green means everything works, amber means something is degraded (for example a weak microphone), red means something is not working. Hover over it to read the reason.

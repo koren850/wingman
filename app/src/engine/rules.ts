@@ -96,3 +96,36 @@ export function questionSkip(o: {
 // ---- boot.ts: what the call loads ----
 /** The client snapshot (domains, servers) feeds fact cards about the user's own clients. An interview is not a client call: no snapshot, so no such facts. */
 export const factsActive = (o: { factsEnabled: boolean; interview: boolean }) => o.factsEnabled && !o.interview;
+
+// ---- moments.ts: where a finished line goes in the moment engine, and when the AI counts as paused ----
+export type MomentRoute = "legacy" | "direct" | "observer" | "local" | "drop";
+/** Where a kept line from the other side goes. `direct`: ask the model now (strong hint). `observer`: the line waits in the observer window. `local`: no model call,
+ *  the old path with bank, calc and the stall line (AI paused). `drop`: no call for this line (slow model: observer off; hourly cap: observer shed). A hint never drops a line
+ *  by itself: only the state of the model does. */
+export function momentRoute(o: { v2: boolean; hint: "strong" | "weak" | "none"; paused: boolean; slow: boolean; observerShed: boolean; observerOn: boolean }): {
+  route: MomentRoute;
+  why: string;
+} {
+  if (!o.v2) return { route: "legacy", why: "engine-legacy" };
+  if (o.paused) return { route: o.hint === "strong" ? "local" : "drop", why: "ai-paused" };
+  if (o.hint === "strong") return { route: "direct", why: "strong-hint" };
+  if (o.slow) return { route: "drop", why: "model-slow" };
+  if (!o.observerOn) return { route: "drop", why: "observer-off" };
+  if (o.observerShed) return { route: "drop", why: "observer-shed" };
+  return { route: "observer", why: o.hint === "weak" ? "weak-hint" : "no-hint" };
+}
+/** Why the AI is paused, or undefined when it works: the spend cap (per call or per hour), no usable model, or no network (the last failures were network errors). */
+export function pausedReason(o: {
+  noAi: boolean;
+  usable: number;
+  llmAllowed: boolean;
+  costPaused: string | undefined;
+  lastFailKind?: string;
+}): "cap" | "down" | "net" | undefined {
+  if (o.noAi) return undefined; // the user's own choice: not a pause
+  if (o.costPaused) return "cap";
+  if (o.usable === 0 || !o.llmAllowed) return o.lastFailKind === "network" ? "net" : "down";
+  return undefined;
+}
+/** A stream from turn `id` may show a card only while it is the newest turn of its kind. */
+export const isCurrentTurn = (newest: number, id: number) => id === newest;

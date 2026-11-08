@@ -10,7 +10,7 @@ import { requireKeys, CALLS, resolveUserPath, type KeyName } from "../env.ts";
 import { EntitySpotter, loadSnapshot } from "../entities.ts";
 import { loadBrief, confirmBrief, briefNotes, isInterview, briefCardsFile, briefTerms, type Brief } from "../brief.ts";
 import { readPack } from "../pack.ts";
-import { getProfile, checkProfile } from "../profile.ts";
+import { getProfile, checkProfile, userName, hebrewAddressRule } from "../profile.ts";
 import { loadBank, stallCard, type BankCard } from "../bank.ts";
 import { MeGate } from "../assist.ts";
 import { parseClaim, type Claim } from "../claims.ts";
@@ -32,6 +32,13 @@ import { TipGate, type TimedLine } from "../tips.ts";
 import { SelfCheckGate } from "../selfcheck.ts";
 import { loadAttachments, confirmAttachments, backgroundBlock } from "../attachments.ts";
 import { factsActive } from "./rules.ts";
+import { Intake } from "../moments/intake.ts";
+import { MOMENT_RULES } from "../moments/prompt.ts";
+import { Observer } from "../moments/observer.ts";
+import { DEFAULT_SCHEDULER, minValueFrom, type SchedulerConfig } from "../moments/scheduler.ts";
+import { withSettings, DEFAULT_BUDGETS } from "../context/budget.ts";
+import type { SharedContext } from "../context/build.ts";
+import { chunkText } from "../context/retrieve.ts";
 
 export const args = process.argv.slice(2);
 export const { settings: S, profile } = loadSettingsOrExit(args);
@@ -46,6 +53,8 @@ export const UI_LANG = resolveUiLanguage(S);
 export const fileArg = S.run.file ?? undefined;
 export const noAi = S.run.noAi;
 export const discard = S.run.discard;
+/** The v2 moment engine runs only with an AI: --no-ai keeps the prepared-card path whatever the setting says. */
+export const momentsV2 = S.moments.engine === "v2" && !noAi;
 export const REFLEX_MODELS = [S.llm.reflex.model, ...S.llm.reflex.fallbacks];
 export const keyFile = expandHome(S.keys.file);
 export const NO_KEY = new Set(["script", "scripted"]); // offline test doubles: providers that need no API key
@@ -103,7 +112,10 @@ export function confirmContext(): void {
 export const background = backgroundBlock(attachFiles);
 export const prefix = buildPrefix(houseStyle, bank, "", background, interview);
 /** Short id of the system prompt text sent to the model (first 8 hex of its sha256). Logged on model cards and usage rows so a bad card can be reproduced. */
-export const PROMPT_V = createHash("sha256").update(prefix).digest("hex").slice(0, 8);
+export const PROMPT_V = createHash("sha256")
+  .update(momentsV2 ? prefix + MOMENT_RULES : prefix)
+  .digest("hex")
+  .slice(0, 8);
 export let log: CallLog;
 try {
   log = new CallLog({
@@ -174,3 +186,43 @@ export const claims: Claim[] = getProfile()
   .filter((c): c is Claim => !!c);
 export const selfGate = new SelfCheckGate({ minGapMs: S.selfCheck.minGapMs });
 export const ORPHAN_IDLE_MIN = 5;
+
+// ---- Moment engine (moments.engine = v2). Built always (cheap); used only when momentsV2 is true. ----
+export const intake = new Intake();
+export const observer = new Observer(() => Date.now(), { perMinute: S.moments.observerPerMinute, contextMs: S.moments.windowSeconds * 1000 });
+export const schedCfg: SchedulerConfig = {
+  ...DEFAULT_SCHEDULER,
+  minValue: minValueFrom(S.moments.minValue),
+  maxPerMinute: S.cards.maxPerMinute,
+};
+// ctx.rawTailTokens is a ceiling for the moment and observer calls (their own budgets are smaller: 600 and 800 tokens, so a direct call stays cheap and fast);
+// the memory jobs use it as it is.
+const wanted = withSettings({ memoryTokens: S.memory.budgetTokens, rawTailTokens: S.ctx.rawTailTokens });
+export const ctxBudgets = {
+  ...wanted,
+  moment: { ...wanted.moment, rawTail: Math.min(DEFAULT_BUDGETS.moment.rawTail, S.ctx.rawTailTokens) },
+  observer: { ...wanted.observer, rawTail: Math.min(DEFAULT_BUDGETS.observer.rawTail, S.ctx.rawTailTokens) },
+};
+/** Block A of every v2 model call: the same bytes for every role, so the prompt cache hits. Background files become searchable chunks, not part of the prefix. */
+export const sharedCtx: SharedContext = {
+  profile: (() => {
+    const P = getProfile(),
+      u = userName();
+    return [
+      `The user is ${u} (${hebrewAddressRule(P)}).`,
+      P.about ? `About ${u}: ${P.about}` : "",
+      P.business ? `${u} also runs a business: ${P.business}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  })(),
+  houseStyle,
+  bankIndex: bank.map((c) => `- ${c.id}: ${c.title}`).join("\n"),
+  digest: {
+    roster: [],
+    agenda: [],
+    facts: [],
+    likelyQuestions: [],
+    chunks: background ? chunkText(background.replace(/<\/?background_files>/g, "")).map((text, i) => ({ id: `b${i + 1}`, source: "attachment", text })) : [],
+  },
+};

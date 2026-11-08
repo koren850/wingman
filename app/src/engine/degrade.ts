@@ -8,11 +8,29 @@ import { describeRung, type Rung } from "../health.ts";
 import { ht } from "../htext.ts";
 import { shutdown } from "./shutdown.ts";
 import { health, healthClear, status, safe } from "./out.ts";
-import { sup, log, cost, fileArg, S, ORPHAN_IDLE_MIN, REFLEX_MODELS, noAi, downUntil, breakers, registry, UI_LANG, PHONE, keyterms } from "./boot.ts";
+import {
+  sup,
+  log,
+  cost,
+  fileArg,
+  S,
+  ORPHAN_IDLE_MIN,
+  REFLEX_MODELS,
+  noAi,
+  downUntil,
+  breakers,
+  registry,
+  UI_LANG,
+  PHONE,
+  keyterms,
+  momentsV2,
+  interview,
+} from "./boot.ts";
 import { sttSwitchedCh, sttRetryLoop } from "./stt.ts";
 import { st, mono, chans } from "./state.ts";
 import { liveSources } from "./audio-sources.ts";
-import { llmFailurePolicy } from "./rules.ts";
+import { llmFailurePolicy, pausedReason } from "./rules.ts";
+import { aiPaused } from "./strings.ts";
 
 /** Models whose breaker lets a request through, in configured order. `reserve` (only right before a real request) takes the
  *  half-open probe slot; status checks leave it free, or the health tick would use it up and the model could never recover. */
@@ -22,6 +40,7 @@ export function usableModels(reserve = false): string[] {
 }
 /** Reflex failure hook: opens the model's circuit breaker (hard = auth/quota/spend cap/unsupported opens it for longer), parks a spend-capped model for 6 h, tells the supervisor, shows a bar for hard errors. */
 export function llmFailed(model: string, err: ProviderError) {
+  st.m.lastFailKind = err.kind;
   const { hard, parkMs, noteTrouble } = llmFailurePolicy(err.kind);
   breakers.get(model)?.failure(hard);
   if (parkMs) downUntil.set(model, Date.now() + parkMs);
@@ -41,6 +60,23 @@ export function clearAiBar(model: string) {
   if (aiBars.delete(model)) healthClear(`ai-${model}`);
 }
 
+/** The v2 moment engine drives this call: the setting is v2, there is an AI, and it is not a practice interview (that mode keeps its own coaching prompt). */
+export const v2Active = () => momentsV2 && !interview;
+/** Why the AI is paused right now, or undefined: the spend cap (per call or per hour), no usable model, or no network (the last failures were network errors). */
+export function currentPause() {
+  return pausedReason({ noAi, usable: usableModels().length, llmAllowed: sup.caps.llm, costPaused: cost.paused(), lastFailKind: st.m.lastFailKind });
+}
+/** Shows or clears the calm "AI paused" bar when the reason changes. Part of every refresh of the health signals. */
+export function syncPaused(): void {
+  if (!v2Active() || st.call.shuttingDown) return;
+  const why = currentPause();
+  if (why === st.m.paused) return;
+  st.m.paused = why;
+  log.write("events", { type: why ? "ai.paused" : "ai.resumed", why });
+  if (why) health("ai-paused", "info", aiPaused(why));
+  else healthClear("ai-paused");
+}
+
 /** Push the current facts to the supervisor (called every tick and after events). */
 export function refreshSignals() {
   const usable = usableModels();
@@ -49,6 +85,7 @@ export function refreshSignals() {
     llmOnFallback: usable.length > 0 && usable[0] !== REFLEX_MODELS[0],
     costCapped: cost.llmState() === "capped",
   });
+  syncPaused();
 }
 /** Audio seconds sent per STT provider, both channels summed. Cost input. */
 export const sttSeconds = () => {

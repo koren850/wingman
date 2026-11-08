@@ -229,7 +229,24 @@ section("Budget and data hygiene");
         IS_APP ? "delete the old calls in the Wingman window (Calls tab)" : `pnpm purge --older-than ${S.privacy.retentionDays}`,
       )
     : ok("no calls past retention");
-  const missingPrice = llmRefs.filter((r) => !S.budget.prices.llm[r]);
+  // Soft hourly AI cap (moment engine). Estimates from PLAN 3.6: typical about 0.09 USD an hour, a busy hour about 0.20 USD.
+  {
+    const cap = S.budget.maxLlmUsdPerHour,
+      on = S.moments.engine === "v2";
+    const tail = on ? "" : " (used by the New help engine, which is off)";
+    cap === 0
+      ? ok(`no hourly AI cap (budget.maxLlmUsdPerHour 0)${tail}`)
+      : cap >= 0.2
+        ? ok(`hourly AI cap ${cap} USD: a typical hour costs about 0.09 USD, a busy one about 0.20 USD${tail}`)
+        : warn(
+            `hourly AI cap ${cap} USD is below a busy hour (about 0.20 USD): the cheapest jobs stop early (memory clean-up at 60%, live reading at 80%)${tail}`,
+            "raise budget.maxLlmUsdPerHour, or set it to 0 for no hourly cap",
+          );
+    if (on && !S.memory.enabled) warn("memory.enabled is off: the New help engine has no call memory (cards still work, but know less)");
+  }
+  const missingPrice = [...llmRefs, S.memory.model, S.digest.model].filter(
+    (r, i, a) => a.indexOf(r) === i && !r.startsWith("scripted:") && !S.budget.prices.llm[r],
+  );
   missingPrice.length ? warn(`no price in budget.prices.llm for ${missingPrice.join(", ")}: cost shows $0`) : ok("price table covers the configured models");
 }
 

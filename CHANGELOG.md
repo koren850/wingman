@@ -12,7 +12,8 @@ First public release. Nothing is published yet; the date is set on the day it is
 
 ### Added
 
-- **Moment engine core (not wired yet).** Pure modules in `app/src/moments/`: a tag-first reply parser, a structural intake filter, a frozen question hint, a card scheduler, an observer pacing window and the moment prompt. The bank gets a local 3-gram scorer, so a paraphrase of a card finds it without a model call, and it no longer keeps a global turn language.
+- **Moment engine in the live call (setting `moments.engine`, default `legacy`).** With `v2`, every kept line can get help: a strong question asks the model at once, other lines wait in an observer window (6 calls a minute at most). Cards for answers, replies, checks, terms, prompts and notes. Local bank and calc cards show first. A number you say is checked against your notes and the call memory. A soft hourly cap on AI spend (`budget.maxLlmUsdPerHour`) and a calm "AI paused" bar when the AI cannot be used.
+- **Moment engine core.** Pure modules in `app/src/moments/`: a tag-first reply parser, a structural intake filter, a frozen question hint, a card scheduler, an observer pacing window and the moment prompt. The bank gets a local 3-gram scorer, so a paraphrase of a card finds it without a model call, and it no longer keeps a global turn language.
 - **Hebrew main window.** The window follows the system language (Settings, Window language can change it). Right-to-left layout, one string catalog per language, a test that both have the same keys.
 - **Meeting context.** One optional box on Home: paste text or drop .txt, .md, .pdf (needs pdftotext) or .ics. Long files are cut into parts of about 500 tokens. A meeting never expires and can start the next call too; a crash after Start loses nothing.
 - **What Wingman knows** and **So far** panels (sample data in this version): lines can be edited, removed or added, and the exact AI text can be shown.

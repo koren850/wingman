@@ -116,7 +116,7 @@ The app listens on `~/.config/wingman/run/control.sock` (directory mode 700, soc
 
 The capybara logo with a yuzu on its head, icons and the build script. `scripts/make-app.sh` copies the Electron runtime to `app/.app/Wingman.app`, renames it, turns off three Electron fuses (`scripts/set-fuses.cjs`) and adds a launcher that loads this repo's code, so the Dock and notifications say "Wingman". `install.sh` at the repo root checks the machine, installs, builds the app and can copy it to `/Applications` (see [DEVELOPMENT.md](DEVELOPMENT.md#install-update-uninstall)). **Packaged app.** `pnpm dist` (`scripts/package-app.cjs`, `electron-builder.cjs`) bundles the engine with esbuild into `src/*.mjs` and builds a self-contained `Wingman.app` and `.dmg` that needs no Node, pnpm or checkout. The app starts its own executable for each tool (`Wingman --wingman-tool <name>`, `Wingman --wingman-overlay`; allow-list in `shared/bin.cjs`, `tray/app-entry.cjs`). There is no asar, because the engine starts child processes and the audiotee binary from the app folder; the `RunAsNode` fuse stays off. Builds are ad hoc signed, not notarised; the release workflow has not run yet. The `wingman` command line is still a dev-checkout feature. See [DEVELOPMENT.md](DEVELOPMENT.md#building-the-app-dmg) and [ADR 40](DECISIONS.md#adr-40-a-self-contained-unsigned-app-bundle).
 
-## Moment core (round 12, not wired into the engine yet)
+## Moment core (round 12)
 
 `app/src/moments/` holds the decision pieces for the new "moment" engine. They are pure: no globals, no network, a clock is passed in.
 
@@ -128,6 +128,31 @@ The capybara logo with a yuzu on its head, icons and the build script. `scripts/
 - `prompt.ts` is the moment instruction text. The call language, roster and top 3 bank candidates are data.
 
 The bank (`bank.ts`, `bank-score.ts`) matches in this order: exact trigger, then a local BM25 over character 3-grams of title, triggers and say line, else the top 3 cards go to the model. The language of a turn is passed as an argument.
+
+### Moment engine in the live call (`moments.engine: v2`)
+
+The setting `moments.engine` picks the path for a call. `legacy` (the default for now) runs the old gate and reflex call unchanged. `v2` is off in a practice interview and with `--no-ai`.
+
+For every final line from the other side (`engine/ingest.ts`): intake drops noise, the frozen detector gives a hint (`strong`, `weak`, `none`), and `rules.ts momentRoute` picks the route.
+
+| Route | When | What happens |
+|---|---|---|
+| direct | strong hint | The old question path runs (`engine/question.ts`): the bank or calc card shows at once, the stall timer runs (1.8 s). The model call is a `moment` call (`moments/run.ts`), not a reflex call. |
+| observer | weak hint, no hint but 6+ words or a figure | The line waits in the observer window (`moments/observer.ts`). A due window is one `observer` call (`engine/moments.ts`). At most `moments.observerPerMinute` (6) a minute. |
+| local | the AI is paused | No model call. Bank, calc and the stall line only. |
+| drop | slow model (rung 1), observer off, observer shed by the hourly cap | The line is only context. |
+
+Both calls use `buildContext` (the call memory, the newest transcript lines, the bank candidates), the extended tag set (`ANS BANK STALL REPLY CHECK TERM PROMPT NOTE`) and the scheduler. A card shows when VALUE is high enough, AIM is not `other`, and the point is new. ANS and REPLY pass the price, date and promise guards. The model card replaces a local card only if it is not SKIP and not the same bank id. A stall-tier card (price, timeline, guarantee) is never replaced by an answer.
+
+Safety: a stream carries the id of its turn. A reply from a question that a newer final replaced cannot show a card. The parts of one final share one cancel scope and one turn id. A hang, a 5xx or 429, a refusal, garbage or a cut-off reply on a direct question ends in the stall line (when `reflex.stall` is on) within `reflex.stallAfterMs`. Every SKIP and every drop is logged with its reason and turn id (`moment.skip`, `moment.drop`, `moment.chip`, `moment.invalid`).
+
+Over-promise check (`engine/side.ts checkOwnLine`): numbers the user says (digits, currency signs, the word after a number) are paired with numbers in the prepared notes and the call memory by unit and a shared word. A mismatch gives one Check card. A few currency words and short forms (shekel, dollar, euro) count as their sign. No model call.
+
+Cost: usage rows carry the roles `moment` and `observer` and the context record (`ctx`). `CostMeter` keeps a rolling hour. At `budget.maxLlmUsdPerHour` the cheapest jobs stop first: compaction at 60 percent, observer at 80, memory at 90, direct questions last at 100 (the AI is paused). The per-call cap works as before.
+
+Degrade (rung names are unchanged): a slow model means only strong hints call the model and the observer is off. A model that is down, a cap that is hit or no network means the old detector, bank, calc and stall line, plus one calm bar "AI paused" with the reason. The call memory stays as it was.
+
+Tests: `src/moments-engine.test.ts` runs the real engine modules in the test process on the virtual clock and the policy fake (`testkit/engine-inproc.ts`). `src/moments-golden.test.ts` plays the dev golden meetings with their scripted replies and checks cost per role. `src/e2e/moments-v2.test.ts` runs the real process.
 
 ## Processes and data flow
 

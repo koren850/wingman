@@ -160,3 +160,7 @@ Read the file before you share it. Attach it to the issue. Do not paste transcri
 - Open an issue with the file from `pnpm diagnose`. Describe what you did and what you saw. **Do not paste transcripts, keys or client data.** See [SECURITY.md](../SECURITY.md) for anything security-related.
 
 Next: [User guide](USER-GUIDE.md) · [Development](DEVELOPMENT.md) · [Privacy and security](PRIVACY-AND-SECURITY.md)
+
+## A bar says "AI paused"
+
+The New help engine could not use the AI: the spend cap (per call or per hour) was reached, the model is not answering, or there is no internet. Prepared cards, sums and the buy-time line still work. The bar goes away by itself when the AI works again (for the hourly cap: when the spend of the last hour is below the cap). To change the cap: Settings, Money. To see why the model fails: the call's events file (`events.jsonl`, rows `llm.error` and `ai.paused`).

@@ -22,6 +22,8 @@ const P = {
   n: 2,
   v: "s1",
   date: "2026-01-01",
+  said: "4000 USD",
+  ref: "5000 USD",
 };
 
 test("every status text exists in both languages, fills its placeholders and is in the right script", () => {

@@ -21,6 +21,12 @@ export const expandHome = (p: string) => (p.startsWith("~/") ? join(homedir(), p
 const int = (min: number, max: number) => z.number().int().min(min).max(max);
 const modelRef = z.string().regex(/^[a-z0-9_-]+:.+$/i, "expected provider:model, e.g. anthropic:claude-haiku-5-5");
 const sttName = z.enum(STT_IDS); // from providers/catalog.ts (script = offline test double)
+const MOMENT_TAGS = ["default", "SKIP", "ANS", "BANK", "STALL", "REPLY", "CHECK", "TERM", "PROMPT", "NOTE"];
+/** moments.minValue: one number for every card kind, or a map { default: 2, STALL: 1, CHECK: 1 } (a kind that is not listed uses `default`). */
+const minValue = z.union([
+  int(0, 3),
+  z.record(z.string(), int(0, 3)).refine((m) => Object.keys(m).every((k) => MOMENT_TAGS.includes(k)), { message: `keys must be ${MOMENT_TAGS.join(", ")}` }),
+]);
 const price = z.strictObject({
   inUsdPerM: z.number().min(0),
   outUsdPerM: z.number().min(0),
@@ -68,6 +74,23 @@ export const schema = z.strictObject({
       path: ["stallAfterMs"],
       message: "must be smaller than reflex.dropStaleMs, otherwise the stall line is always judged too late to show",
     }),
+  moments: z.strictObject({
+    engine: z.enum(["legacy", "v2"]),
+    observerPerMinute: int(0, 12),
+    windowSeconds: int(10, 120),
+    minValue,
+    checkPromises: z.boolean(),
+  }),
+  memory: z.strictObject({
+    enabled: z.boolean(),
+    model: modelRef,
+    everySeconds: int(5, 300),
+    minNewWords: int(1, 500),
+    compactEveryMinutes: int(1, 60),
+    budgetTokens: int(300, 6000),
+  }),
+  ctx: z.strictObject({ rawTailTokens: int(200, 6000) }),
+  digest: z.strictObject({ model: modelRef }),
   assist: z.strictObject({
     answerMe: z.enum(["always", "hotkey", "off"]),
     askWindowMs: int(3000, 30000),
@@ -145,6 +168,7 @@ export const schema = z.strictObject({
     idleStopMin: int(0, 240),
     warnUsdPerCall: z.number().min(0),
     maxUsdPerMonth: z.number().min(0).nullable(),
+    maxLlmUsdPerHour: z.number().min(0),
     prices: z.strictObject({
       llm: z.record(z.string(), price),
       stt: z.record(z.string(), z.number().min(0)),
@@ -184,6 +208,11 @@ export const schema = z.strictObject({
 });
 export type Settings = z.infer<typeof schema>;
 
+/** The model settings of the moment engine need a price, or the cost meter and the hourly cap would read $0. The offline test doubles (scripted:*) need none. */
+export function missingMomentPrices(s: Pick<Settings, "memory" | "digest" | "budget">): string[] {
+  return [...new Set([s.memory.model, s.digest.model])].filter((r) => !r.startsWith("scripted:") && !s.budget.prices.llm[r]);
+}
+
 /** Language of the answer window labels: ui.language, with "auto" = Hebrew unless the call language (stt.language, which a profile can set) is English only. */
 export function resolveUiLanguage(s: Pick<Settings, "ui" | "stt">): "he" | "en" {
   if (s.ui.language !== "auto") return s.ui.language;
@@ -212,7 +241,7 @@ export function formatSettingsError(e: SettingsError): string {
 }
 
 // Records that are keyed by model/provider ids (which may contain dots): kept as one leaf, merged key by key.
-const RECORD_LEAVES = new Set(["budget.prices.llm", "budget.prices.stt", "budget.prices.sttAddons"]);
+const RECORD_LEAVES = new Set(["moments.minValue", "budget.prices.llm", "budget.prices.stt", "budget.prices.sttAddons"]);
 
 /** Nested object -> flat dotted keys. Arrays and the RECORD_LEAVES stay as single values. */
 export function flatten(obj: unknown, prefix = "", out: Flat = {}): Flat {
@@ -380,6 +409,20 @@ export function loadSettings(o: LoadOptions = {}): Loaded {
   }
   const res = schema.safeParse(unflatten(flat));
   if (!res.success) throw new SettingsError(res.error.issues.flatMap((iss) => issuesFor(iss, sources)));
+  const unpriced = missingMomentPrices(res.data);
+  if (unpriced.length) {
+    const key = unpriced.includes(res.data.memory.model) ? "memory.model" : "digest.model";
+    const src = sources[key] ?? { layer: "default" as const, file: DEFAULTS_FILE };
+    throw new SettingsError([
+      {
+        file: src.detail ? `${src.file} (${src.detail})` : (src.file ?? "?"),
+        key,
+        layer: src.layer,
+        message: `no price in budget.prices.llm for ${unpriced.join(", ")}`,
+        allowed: "add the model to budget.prices.llm",
+      },
+    ]);
+  }
   return { settings: res.data, sources, profile, userFile };
 }
 
