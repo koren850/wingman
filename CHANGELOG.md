@@ -10,6 +10,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 First public release. Nothing is published yet; the date is set on the day it is.
 
+### Fixed
+
+- **Reliability round 2.** An audio source that hangs after a restart is rebuilt until frames flow, and a wake no longer flashes the red bar. Stop writes the call record first, so a slow close cannot lose it, and a stray error never ends a stopping call early. Stop pressed during a slow start is read at once. STT events are wired before the sockets open. The call goes back to the primary STT provider after a stable minute, a wake leaves healthy sockets alone, and a failing first open no longer opens two fallback sockets. The tray controller caps its stdout buffer, parses a last line without a newline, and recovers from a failed spawn.
+
 ### Added
 
 - **v2 gate tests.** Six e2e files for the whole v2 engine: latency budgets, cost per role against the plan table, golden dev meetings with null and noise controls, a failure matrix (model down, STT down, both, 429 storm, corrupt `session.json`, kill during a save, clock jump, huge brief), a 3-hour soak with faults, and prompt snapshots for every role. See `docs/DEVELOPMENT.md`.

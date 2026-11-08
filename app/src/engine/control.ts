@@ -4,6 +4,7 @@
 //   stdin  lines: consent | quiet [on|off] | client | ask [text] | recap | note <text> | stop | stop-no-summary | skip-summary | stop-delete
 //   stdout "@@wingman {json}" lines (see out.ts). Stop sequence: {ev:"stopphase",phase:"saving"} -> "summary" -> "done", then {ev:"ended"}.
 //   call.json in the call folder also carries phase ("starting"|"waiting"|"live"|"ended") and liveAt for the answer window.
+//   The reader starts with the process (run.ts); stop commands run at once, others wait until the consent step.
 //   The tray escalates a stop with SIGINT at 12 s and SIGKILL at 20 s, so shutdown() must finish inside that.
 import { createInterface } from "node:readline";
 import { safe, health, healthClear, status } from "./out.ts";
@@ -101,44 +102,64 @@ function onControlClosed() {
   console.log(`\nThe menu-bar app closed: the call continues and stops by itself after ${ORPHAN_IDLE_MIN} minutes of silence.`);
   health("control", "amber", ht(UI_LANG, "orphan", { min: ORPHAN_IDLE_MIN }));
 }
-/** Menu-bar app commands (WINGMAN_CONTROL=1): one per line on stdin. A closed stdin (see onControlClosed) means the app crashed. */
-export function setupControl(onConsent: () => void) {
-  const rl = createInterface({ input: process.stdin });
-  rl.on(
+/** Commands that must act at once, also during startup (before the consent card exists). Everything else waits in a queue until setupControl(). */
+const IMMEDIATE = new Set(["stop", "stop-no-summary", "skip-summary", "stop-delete"]);
+let controlReader: ReturnType<typeof createInterface> | undefined;
+let controlHandler: ((line: string) => void) | undefined;
+const controlQueue: string[] = [];
+
+/** Reads the tray's stdin commands from the very start of the process. "stop" and its variants are handled at once, so Stop during the
+ *  (possibly 30 s) STT startup works without waiting for the SIGINT escalation; other commands are queued and run when setupControl() is called. */
+export function startControlReader() {
+  if (controlReader) return;
+  controlReader = createInterface({ input: process.stdin });
+  controlReader.on(
     "line",
     safe("control command", (line: string) => {
-      const [cmd, ...rest] = line.trim().split(" ");
-      if (cmd === "consent") onConsent();
-      else if (cmd === "quiet") toggleQuiet(rest[0] === "on" ? true : rest[0] === "off" ? false : undefined);
-      else if (cmd === "client") confirmClient();
-      else if (cmd === "ask") {
-        const q = rest.join(" ").trim();
-        if (q) askTyped(q);
-        else armAsk();
-      } // "ask" = the hotkey; "ask <text>" = a typed question (wingman CLI)
-      else if (cmd === "recap") {
-        // "Catch me up" (Ctrl+Opt+U, `wingman recap`): the five-line sheet from the call memory
-        void catchMeUp().catch((e) => log.write("events", { type: "recap.error", error: eventError(e).slice(0, 200) }));
-      } else if (cmd === "note") addNote(rest.join(" "));
-      else if (cmd === "speaker") {
-        const n = Number(rest[0]);
-        if (Number.isInteger(n)) nameSpeaker(n, rest.slice(1).join(" "), "user");
-      } // "speaker 2 Dana": the user renamed a voice
-      else if (cmd === "stop") void shutdown();
-      else if (cmd === "stop-no-summary") {
-        skipSummaryNow();
-        void shutdown();
-      } // `wingman stop --no-summary`: keep the call, skip the summary
-      else if (cmd === "skip-summary") {
-        if (st.call.shuttingDown) skipSummaryNow();
-      } // the "Skip summary" button while the summary is being written
-      else if (cmd === "stop-delete") {
-        st.call.discardNow = true;
-        void shutdown();
-      }
+      const cmd = line.trim().split(" ")[0];
+      if (IMMEDIATE.has(cmd) || controlHandler) (controlHandler ?? runControlCommand)(line);
+      else controlQueue.push(line);
     }),
   );
-  rl.on("close", safe("control closed", onControlClosed));
+  controlReader.on("close", safe("control closed", onControlClosed));
+}
+/** Menu-bar app commands (WINGMAN_CONTROL=1): one per line on stdin. A closed stdin (see onControlClosed) means the app crashed. */
+export function setupControl(onConsent: () => void) {
+  startControlReader();
+  const handler = (line: string) => runControlCommand(line, onConsent);
+  controlHandler = handler;
+  for (const line of controlQueue.splice(0)) safe("control command", handler)(line);
+}
+function runControlCommand(line: string, onConsent?: () => void) {
+  const [cmd, ...rest] = line.trim().split(" ");
+  if (cmd === "consent") onConsent?.();
+  else if (cmd === "quiet") toggleQuiet(rest[0] === "on" ? true : rest[0] === "off" ? false : undefined);
+  else if (cmd === "client") confirmClient();
+  else if (cmd === "ask") {
+    const q = rest.join(" ").trim();
+    if (q) askTyped(q);
+    else armAsk();
+  } // "ask" = the hotkey; "ask <text>" = a typed question (wingman CLI)
+  else if (cmd === "recap") {
+    // "Catch me up" (Ctrl+Opt+U, `wingman recap`): the five-line sheet from the call memory
+    void catchMeUp().catch((e) => log.write("events", { type: "recap.error", error: eventError(e).slice(0, 200) }));
+  } else if (cmd === "note") addNote(rest.join(" "));
+  else if (cmd === "speaker") {
+    const n = Number(rest[0]);
+    if (Number.isInteger(n)) nameSpeaker(n, rest.slice(1).join(" "), "user");
+  } // "speaker 2 Dana": the user renamed a voice
+  else if (cmd === "stop") void shutdown();
+  else if (cmd === "stop-no-summary") {
+    skipSummaryNow();
+    void shutdown();
+  } // `wingman stop --no-summary`: keep the call, skip the summary
+  else if (cmd === "skip-summary") {
+    if (st.call.shuttingDown) skipSummaryNow();
+  } // the "Skip summary" button while the summary is being written
+  else if (cmd === "stop-delete") {
+    st.call.discardNow = true;
+    void shutdown();
+  }
 }
 // Typed context note state (terminal key `n`): undefined = not typing.
 let noteBuf: string | undefined;

@@ -147,7 +147,7 @@ function onWake(gapMs: number) {
     [chans.me, "me"],
     [chans.them, "them"],
   ] as const)
-    if (s) void sttRetryLoop(s, ch, false, 0);
+    if (s) void sttRetryLoop(s, ch, false, 0, true); // a healthy socket is left alone
   log.write("events", { type: "wake.recover" });
 }
 /** Every health.tickMs: sleep detection, idle auto-stop, ladder signals, cost and call-length warnings, then the supervisor tick. */

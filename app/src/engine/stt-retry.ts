@@ -7,6 +7,8 @@ export type RetryHooks = {
   reopen: () => Promise<void>;
   stopped: () => boolean;
   sleep?: (ms: number) => Promise<void>;
+  /** True when the channel is open and fine: a wake-up reopen is then skipped, so finals still in flight on the old socket are not dropped. */
+  healthy?: () => boolean;
   slowMs: number;
   onPermanent: (e: Error) => void;
   onFail: (n: number, e: Error) => void;
@@ -35,6 +37,7 @@ export class SttRetryRegistry {
         if (!permanent && this.upgraded.has(ch)) permanent = true;
         await sleep(n === 0 && firstDelayMs !== undefined ? firstDelayMs : sttRetryDelayMs(n, permanent, h.slowMs));
         if (h.stopped()) return;
+        if (h.healthy?.()) return;
         try {
           await h.reopen();
           h.onRecovered(n + 1);

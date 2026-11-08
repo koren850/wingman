@@ -19,6 +19,8 @@ export type ChannelOpts = {
   ringMs?: number; // audio kept while the socket is down, flushed on reopen (0/undefined = drop, old behaviour)
   openTimeoutMs?: number; // one open (or reopen) attempt gives up after this long (default 8 s)
   deadAfterMs?: number; // a socket that stays disconnected this long is treated as dead (default 45 s)
+  /** After a switch to a fallback for a transient reason, try the primary again after this long (default 60 s, 0 = never). */
+  failbackAfterMs?: number;
   now?: () => number;
 };
 
@@ -40,6 +42,8 @@ export class SttChannel extends EventEmitter {
   private everOpened = false;
   private deadTimer?: NodeJS.Timeout;
   private deadFor?: SttStreamLike; // the stream the dead timer is armed for
+  private opening = false; // the first open() is running: failure events of its stream belong to open(), not to switchNext()
+  private failbackTimer?: NodeJS.Timeout;
   constructor(private o: ChannelOpts) {
     super();
   }
@@ -69,6 +73,14 @@ export class SttChannel extends EventEmitter {
 
   /** Open the first provider in the chain that works; a switchProvider failure moves on, others throw. */
   async open(): Promise<void> {
+    this.opening = true;
+    try {
+      await this.openChain();
+    } finally {
+      this.opening = false;
+    }
+  }
+  private async openChain(): Promise<void> {
     let last: ProviderError | undefined;
     for (; this.idx < this.o.chain.length; this.idx++) {
       try {
@@ -208,6 +220,7 @@ export class SttChannel extends EventEmitter {
 
   /** Decide: wait for the SDK/adapter to reconnect, or switch provider now. */
   private onFailure(err: ProviderError, stream: SttStreamLike | undefined, kind: "error" | "disconnected", terminal = false) {
+    if (this.opening) return; // open() sees the same failure as a rejection and moves on itself; two paths would open two fallback sockets
     const t = this.now();
     // One socket failure can surface twice: an "error" event, then the "disconnected" for the same close (or the other way round).
     // An event of the other kind from the same stream within SAME_FAILURE_MS is the same failure: count it once toward the circuit.
@@ -245,6 +258,7 @@ export class SttChannel extends EventEmitter {
           this.failures = [];
           this.emit("switched", { from, to: this.provider, kind: err.kind, reason: err.message });
           void old?.close().catch(() => {});
+          if (!(err.switchProvider && !err.retryable)) this.armFailback(); // a refused key will not come back by itself
           return;
         } catch (e) {
           this.emit("stt_error", classifySttError(this.o.chain[i].id, e));
@@ -253,6 +267,43 @@ export class SttChannel extends EventEmitter {
         }
       }
       this.emit("exhausted", err);
+    } finally {
+      this.switching = false;
+    }
+  }
+
+  /** On a fallback after a transient failure: look at the primary again after a stable period and go back to it when it opens. */
+  private armFailback() {
+    const ms = this.o.failbackAfterMs ?? 60_000;
+    clearTimeout(this.failbackTimer);
+    if (!ms || this.closed || this.idx === 0) return;
+    this.failbackTimer = setTimeout(() => void this.tryFailback(), ms);
+    this.failbackTimer.unref?.();
+  }
+  private async tryFailback() {
+    if (this.closed || this.switching || this.idx === 0) return;
+    this.switching = true;
+    const old = this.stream,
+      prevIdx = this.idx,
+      from = this.provider;
+    try {
+      this.idx = 0; // the old stream stays current until the primary is open, so its events and audio are not disturbed
+      await this.openCurrent();
+      if (this.closed) {
+        void old?.close().catch(() => {});
+        return;
+      }
+      if (this.stream === old) throw new Error("failback produced no new stream");
+      this.seconds[from] = (this.seconds[from] ?? 0) + (old?.audioSeconds ?? 0);
+      this.droppedOld += old?.dropped ?? 0;
+      this.failures = [];
+      this.clearDead();
+      void old?.close().catch(() => {});
+      this.emit("failback", { from, to: this.provider });
+    } catch {
+      this.idx = prevIdx;
+      this.switching = false;
+      this.armFailback(); // still down: look again later
     } finally {
       this.switching = false;
     }
@@ -292,6 +343,7 @@ export class SttChannel extends EventEmitter {
   }
   async close() {
     this.closed = true;
+    clearTimeout(this.failbackTimer);
     this.clearDead();
     await this.stream?.close();
   }

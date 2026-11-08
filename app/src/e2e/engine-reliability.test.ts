@@ -234,7 +234,7 @@ test(
 );
 
 test(
-  "engine (live): a sleep gap (wall clock jumps 20 min, monotonic does not) restarts audio and STT and does not trip the 1-minute idle stop",
+  "engine (live): a sleep gap (wall clock jumps 20 min, monotonic does not) restarts audio, leaves healthy STT sockets alone and does not trip the 1-minute idle stop",
   { timeout: 90_000, ...FAKE_BIN },
   async () => {
     const tmp = mkdtempSync(join(tmpdir(), "wm-sleep-"));
@@ -267,7 +267,8 @@ test(
         "wake recovery ran",
       );
       assert.ok(ev.filter((x) => x.type === "audio.restart" && x.reason === "wake").length === 2, "both audio sources rebuilt");
-      assert.ok(ev.filter((x) => x.type === "stt.recovered").length >= 2, "both STT channels reopened");
+      // Both sockets were healthy at the wake: they are left alone (a reopen would drop finals still in flight on the old socket).
+      assert.equal(ev.filter((x) => x.type === "stt.recovered").length, 0, "healthy STT sockets were not reopened");
       assert.ok(!ev.some((x) => x.type === "idle.stop"), "the 20 wall-clock minutes did not count as silence");
       assert.ok(
         readRows(dir, "cards.jsonl").some((c) => c.id === "health-sleep"),

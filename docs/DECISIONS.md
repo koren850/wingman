@@ -746,3 +746,18 @@ Date: 2026-11-08
 **Alternatives.** Only recorded cassettes (need a key and money for each run). Only unit tests (they missed the memory bug).
 
 **Consequences.** The scripted scores are marked provisional. The release gate still needs a recorded run on the dev and test splits. The cache simulation assumes a 1024-token minimum for a cached prefix; a model with a larger minimum would cache less.
+
+## ADR 50: Reliability rules for restarts, stray errors, startup and failback
+
+Date: 2026-11-08
+
+**Context.** A review found gaps in the seams between modules: a respawned audio source was not watched, a stray error during Stop ended the process before the call record was written, Stop pressed during a slow STT start was not read, and after a switch to the fallback STT provider the call never went back.
+
+**Decision.** (1) The audio supervisor watches every spawned source, also while it is "down". A source that never delivers frames is rebuilt with back-off. A planned restart (wake) shows no red bar. (2) `endedAt` and phase `ended` are written before audio and sockets are closed. The 10 s hard exit also writes the STT usage row. (3) A stray error is logged and counted, also before consent and during Stop. Only a runaway count (200 in a minute) ends a live call, and nothing calls `process.exit` before the 16 s guard. (4) The tray stdin reader starts with the process. Stop commands run at once; other commands wait for the consent step. STT events are wired before the sockets open. (5) After a switch to the fallback for a transient reason, the channel tries the primary again after 60 s (`failbackAfterMs`). A refused key is not retried. (6) A wake-up does not reopen a socket that is open.
+
+**Why.** Each rule keeps the call record and the live audio safe in the second failure, which is when the first fix usually breaks.
+
+**Alternatives.** Ending the call on a stray at Stop (loses the record). A fixed wake reopen (drops finals in flight).
+
+**Consequences.** A socket that died silently during sleep is found by the keep-alive and the dead-socket timer, not by the wake. Failback closes the fallback socket; finals still in flight on it at that moment are dropped (once per failback, at most about a second).
+

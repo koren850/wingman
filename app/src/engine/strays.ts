@@ -19,9 +19,12 @@ export function strayCounter() {
   };
 }
 
-/** What to do with the latest error. Before the call is live (or while stopping) an error ends it; in a live call it is logged,
- *  with "warn" on the first error past the threshold in a window, and a runaway count ends it. */
-export function strayAction(count: number, live: boolean, stopping: boolean): StrayAction {
-  if (!live || stopping || count >= STRAY_RUNAWAY) return "crash";
+/** What to do with the latest error. Always: log it and count it, "warn" on the first error past the threshold in a window.
+ *  Only a runaway count ends the call, and never while it is stopping: Stop aborts model calls and closes sockets, which is exactly when a late
+ *  rejection or socket error shows up, and the stop sequence has its own 10 s and 16 s guards. Before the call is live (waiting for consent) an
+ *  error is survived the same way: both sockets are open and idle then, and one network hiccup must not end the waiting session.
+ *  (`live` is kept in the signature for callers and tests; it no longer changes the answer.) */
+export function strayAction(count: number, _live: boolean, stopping: boolean): StrayAction {
+  if (!stopping && count >= STRAY_RUNAWAY) return "crash";
   return count === STRAY_WARN_ABOVE + 1 ? "warn" : "log";
 }

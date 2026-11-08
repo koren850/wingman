@@ -47,11 +47,12 @@ function sttMarkPermanent(ch: string, e: ProviderError) {
   if (ch === "them") sup.set({ themSttDown: true });
   log.write("events", { type: "stt.permanent", ch, kind: e.kind });
 }
-export function sttRetryLoop(s: SttChannel, ch: string, permanent = false, firstDelayMs?: number) {
+export function sttRetryLoop(s: SttChannel, ch: string, permanent = false, firstDelayMs?: number, skipIfOpen = false) {
   return retries.run(
     ch,
     {
       reopen: () => s.reopen(),
+      healthy: skipIfOpen ? () => s.isOpen : undefined,
       stopped: () => st.call.shuttingDown,
       slowMs: SLOW_RETRY_MS,
       onPermanent: (e) => sttMarkPermanent(ch, e as ProviderError),
@@ -158,6 +159,15 @@ export function wireChannels() {
         if (ch === "them") sup.set({ themSttDown: false });
         log.write("events", { type: "stt.switch", ch, ...d });
         health(`stt-switch-${ch}`, "amber", ht(UI_LANG, "stt.switched", { ch: chHe(ch), from: d.from, to: d.to }), d.reason);
+        tickHealth();
+      }),
+    );
+    s.on(
+      "failback",
+      safe(`failback ${ch}`, (d: { from: string; to: string }) => {
+        sttSwitchedCh.delete(ch);
+        healthClear(`stt-switch-${ch}`);
+        log.write("events", { type: "stt.failback", ch, ...d });
         tickHealth();
       }),
     );

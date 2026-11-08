@@ -151,6 +151,31 @@ async function postCallSummary() {
   }
 }
 
+/** Writes endedAt and phase "ended" to call.json. Safe to call more than once (the last call wins), never throws. */
+function markEnded() {
+  try {
+    log.update({ endedAt: new Date().toISOString(), crashed: st.call.crashed, phase: "ended" });
+  } catch {
+    /* best effort: the log itself may be what failed */
+  }
+}
+/** The speech-to-text usage row. Written once in the normal path, and by the hard-exit timer when closing hung. */
+function writeSttUsage() {
+  try {
+    cost.setSttSeconds(sttSeconds());
+    log.write("usage", {
+      role: "stt",
+      vendor: chans.them?.provider,
+      seconds: { me: chans.me?.audioSeconds, them: chans.them?.audioSeconds },
+      bySeconds: sttSeconds(),
+      usd: cost.sttUsd,
+      dropped: { me: chans.me?.dropped, them: chans.them?.dropped },
+    });
+  } catch {
+    /* best effort */
+  }
+}
+
 /** The one exit path (stop command, Ctrl+C, SIGTERM/SIGHUP, idle stop, file end, crash, rung 5). Idempotent.
  *  Order: abort jobs and timers -> stop audio -> close STT -> write usage + endedAt (phase "ended") -> final frame look -> summary
  *  -> ask about deletion (terminal only) -> process.exit. call.json gets phase "ended" as soon as the call files are written (before the summary);
@@ -167,8 +192,12 @@ export async function shutdown() {
   void flushMemory(); // session.json is on disk before anything slow starts (also on the crash path: crash() calls shutdown())
   status("stopphase", { phase: "saving" }); // the app shows: saving, then summary, then done (tray/lib.cjs STOP_PHASES)
   const shutdownDeadline = Date.now() + 12_000;
+  // The call record first: endedAt and phase "ended" need no audio state, so the hard exit below can never leave call.json at phase "live".
+  markEnded();
   const hard = setTimeout(() => {
     console.error("shutdown stuck: forcing exit");
+    writeSttUsage(); // the numbers exist even when closing the audio or sockets hung
+    markEnded();
     process.exit(1);
   }, 10_000); // a hung audio/socket close must not keep the mic open
   for (const [t, r] of [...meTimers]) {
@@ -199,15 +228,7 @@ export async function shutdown() {
   // The call files (usage, endedAt) are written FIRST; the frame look and the summary are best effort on top of that.
   const left = () => shutdownDeadline - Date.now();
   try {
-    cost.setSttSeconds(sttSeconds());
-    log.write("usage", {
-      role: "stt",
-      vendor: chans.them?.provider,
-      seconds: { me: chans.me?.audioSeconds, them: chans.them?.audioSeconds },
-      bySeconds: sttSeconds(),
-      usd: cost.sttUsd,
-      dropped: { me: chans.me?.dropped, them: chans.them?.dropped },
-    });
+    writeSttUsage();
     if (brief?.mustCover?.length) {
       const left = uncovered();
       log.write("events", { type: "mustcover.summary", left });
@@ -335,7 +356,7 @@ export async function shutdown() {
 }
 /** Last-resort exit after a crash: just after shutdown()'s own 16 s limit. */
 export const CRASH_EXIT_MS = 17_000;
-/** Fatal error path: print, log, then shut down in order to save what we have (crashed=true lands in call.json). A second crash during shutdown exits at once. */
+/** Fatal error path: print, log, then shut down in order to save what we have (crashed=true lands in call.json). A second crash during shutdown is noted and never exits here: the 10 s and 16 s guards of shutdown() do that. */
 export function crash(kind: string, e: unknown) {
   if (kind === "main" && (e as ProviderError)?.kind)
     console.error(
@@ -347,7 +368,11 @@ export function crash(kind: string, e: unknown) {
   } catch {
     /* best effort: the log may be unwritable; the crash is printed above */
   }
-  if (st.call.shuttingDown) process.exit(1);
+  if (st.call.shuttingDown) {
+    // A second failure while stopping: note it, never exit here. shutdown() has its own 10 s and 16 s guards and has already written the call record.
+    st.call.crashed = true;
+    return;
+  }
   st.call.crashed = true;
   // Same budget as a normal stop (shutdown() has its own 10 s and 16 s exits): a 5 s limit here cut the save when two sources were slow to stop.
   setTimeout(() => process.exit(1), CRASH_EXIT_MS).unref(); // never hang on a broken shutdown
@@ -383,9 +408,14 @@ function stray(kind: string, e: unknown) {
 }
 /** Registers the crash and signal handlers (once, at startup). */
 export function installProcessHandlers() {
-  // Test hooks (e2e only): WINGMAN_TEST_CRASH_MS=<ms> crashes the call that long after start; WINGMAN_TEST_SLOW_STOPS=<n>x<ms> adds n sources that take <ms> to stop.
+  // Test hooks (e2e only): WINGMAN_TEST_CRASH_MS=<ms> crashes the call that long after start; WINGMAN_TEST_SLOW_STOPS=<n>x<ms> adds n sources that take <ms> to stop; WINGMAN_TEST_STRAY_AT_STOP=1 raises a stray rejection at stop.
   const slow = /^(\d+)x(\d+)$/.exec(process.env.WINGMAN_TEST_SLOW_STOPS ?? "");
   if (slow) for (let i = 0; i < Number(slow[1]); i++) stops.push(() => new Promise<void>((r) => setTimeout(r, Number(slow[2]))));
+  // WINGMAN_TEST_STRAY_AT_STOP=1 raises an unhandled rejection while the sources are being stopped (a late socket error or aborted model call).
+  if (process.env.WINGMAN_TEST_STRAY_AT_STOP === "1")
+    stops.push(async () => {
+      setTimeout(() => void Promise.reject(new Error("injected stray at stop")), 20);
+    });
   const crashMs = Number(process.env.WINGMAN_TEST_CRASH_MS);
   if (crashMs > 0) setTimeout(() => crash("test", new Error("injected crash")), crashMs).unref();
   process.on("uncaughtException", (e) => stray("uncaughtException", e));

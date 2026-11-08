@@ -20,8 +20,9 @@ test("strays: a live call survives repeated errors, warning once past 3", () => 
   assert.equal(strayAction(STRAY_RUNAWAY - 1, true, false), "log");
 });
 
-test("strays: a runaway loop, an error before the call is live, or one while stopping ends the call", () => {
+test("strays: only a runaway loop ends the call; an error before it is live or while stopping is logged", () => {
   assert.equal(strayAction(STRAY_RUNAWAY, true, false), "crash");
-  assert.equal(strayAction(1, false, false), "crash");
-  assert.equal(strayAction(1, true, true), "crash");
+  assert.equal(strayAction(1, false, false), "log");
+  assert.equal(strayAction(1, true, true), "log");
+  assert.equal(strayAction(STRAY_RUNAWAY + 50, true, true), "log", "the stop guards end a stopping process, not a stray");
 });

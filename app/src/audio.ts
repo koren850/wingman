@@ -165,6 +165,8 @@ export class SupervisedSource extends EventEmitter implements Source {
   private stallTimer?: NodeJS.Timeout;
   private stableTimer?: NodeJS.Timeout;
   private lastFrame = 0;
+  private spawnedAt = 0;
+  private watching = false; // a source was spawned and has not failed yet: the stall check applies, also while "down"
   private downSince = 0;
   frames = 0;
   constructor(private o: SupervisedOpts) {
@@ -195,7 +197,7 @@ export class SupervisedSource extends EventEmitter implements Source {
   restart(reason: string) {
     if (this.stopped) return;
     this.emit("restart", { reason });
-    this.fail(reason, true);
+    this.fail(reason, true, true);
   }
 
   private async drop() {
@@ -214,6 +216,8 @@ export class SupervisedSource extends EventEmitter implements Source {
     if (this.stopped) return;
     const gen = ++this.gen,
       attempt = this.attempt++;
+    this.spawnedAt = this.lastFrame = performance.now(); // per-spawn watchdog: a new source gets its own stall window
+    this.watching = true;
     try {
       const src = await this.o.make(attempt);
       if (this.stopped || gen !== this.gen) {
@@ -230,7 +234,6 @@ export class SupervisedSource extends EventEmitter implements Source {
       src.on("error", (e: Error) => {
         if (gen === this.gen) this.fail(e?.message ?? String(e));
       });
-      this.lastFrame = performance.now();
       await src.start();
     } catch (e) {
       if (gen === this.gen) this.fail((e as Error)?.message ?? String(e));
@@ -251,16 +254,27 @@ export class SupervisedSource extends EventEmitter implements Source {
     this.emit("pcm", b);
   }
   private checkStall() {
-    if (this.stopped || this.isDown || !this.o.stallMs) return;
-    if (performance.now() - this.lastFrame > this.o.stallMs) this.fail(`no audio for ${Math.round((performance.now() - this.lastFrame) / 1000)} s`);
+    if (this.stopped || !this.watching || !this.o.stallMs) return;
+    // Also while down: a respawned source that never delivers frames is rebuilt again (with back-off) until frames flow.
+    const since = performance.now() - Math.max(this.lastFrame, this.spawnedAt);
+    if (since > this.o.stallMs) this.fail(`no audio for ${Math.round(since / 1000)} s`);
   }
-  private fail(reason: string, immediate = false) {
+  /** `quiet` = a planned restart (wake): no "down" event and no failure count, so no red bar. If the new source stays silent, the stall check fails it for real. */
+  private fail(reason: string, immediate = false, quiet = false) {
     if (this.stopped) return;
+    this.watching = false;
     clearTimeout(this.timer);
     clearTimeout(this.stableTimer);
     this.stableTimer = undefined;
     this.gen++; // ignore whatever the old source still says
     void this.drop();
+    if (quiet) {
+      this.timer = setTimeout(() => {
+        this.emit("retry", { n: 0, delayMs: 0, attempt: this.attempt });
+        void this.spawn();
+      }, 0);
+      return;
+    }
     if (!this.isDown) {
       this.isDown = true;
       this.downSince = performance.now();

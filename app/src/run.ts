@@ -6,7 +6,7 @@
 // the tray IPC contract is at the top of engine/control.ts. State is module-level on purpose (one call per process); everything async checks `shuttingDown`.
 // Safety and cost: audio is sent for transcription only once listening has started (`consented`): at call start by default, or after "Start listening" when privacy.requireConsentAck is on (ADR 29); AI text passes guards.ts; budget.maxUsdPerCall caps model jobs.
 import { st } from "./engine/state.ts";
-import { fileArg, noAi, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO, UI_LANG, interview } from "./engine/boot.ts";
+import { fileArg, noAi, CONTROL, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO, UI_LANG, interview } from "./engine/boot.ts";
 import { ht } from "./htext.ts";
 import { setPhase, status, health, safe } from "./engine/out.ts";
 import { crash, installProcessHandlers } from "./engine/shutdown.ts";
@@ -16,6 +16,7 @@ import { notesRound, reminderTick } from "./engine/side.ts";
 import { frameRound, tipsTick } from "./engine/coach.ts";
 import { flowTick } from "./engine/flowmode.ts";
 import { startConsent } from "./engine/consent.ts";
+import { startControlReader } from "./engine/control.ts";
 import { startFileSource, startLiveSources } from "./engine/audio-sources.ts";
 
 // A card row that cannot be saved (disk full) still raises the health bar; the call goes on.
@@ -29,6 +30,7 @@ log.onWriteFail = (e) => {
 setPhase("starting");
 status("mode", { noAi }); // effective AI mode for the app (the setting or --no-ai)
 installProcessHandlers();
+if (CONTROL) startControlReader(); // Stop must work while the STT sockets are still opening (that can take 30 s)
 
 /** Timer jobs (all unref'd: they never keep the process alive on their own). */
 function startTimers() {
@@ -75,13 +77,13 @@ function printBanner() {
 /** Startup: open both STT channels, start timers, wire STT events to health bars, handle consent, then start the audio sources (or the replay file). */
 async function main() {
   createChannels();
+  wireChannels(); // before opening: a terminal failure of the first channel while the second is still opening must reach the retry loop
   await resolveReflexModels();
   await openBothChannels();
   startTimers();
   printStartup();
   checkDisk(true);
   sup.tick();
-  wireChannels();
   printBanner();
   if (st.call.shuttingDown) return; // Stop came during startup: shutdown() is already closing the call, so start nothing new
   startConsent();

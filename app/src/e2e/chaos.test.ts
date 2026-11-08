@@ -98,12 +98,13 @@ test(
         "the question asked after the outage got its price answer",
       );
 
-      // Sleep and wake: both sources and both STT channels rebuilt, no idle stop, an amber bar.
+      // Sleep and wake: both sources rebuilt, healthy STT sockets left alone, no idle stop, an amber bar.
       const gap = ev.find((x) => x.type === "sleep.gap");
       assert.ok(gap && (gap.ms as number) > 15 * 60_000, "sleep detected: " + JSON.stringify(gap));
       assert.ok(types("wake.recover").length === 1, "wake recovery ran once");
       assert.ok(ev.filter((x) => x.type === "audio.restart" && x.reason === "wake").length === 2, "both audio sources rebuilt");
-      assert.ok(ev.filter((x) => x.type === "stt.recovered" && at(x) >= at(gap)).length >= 2, "both STT channels reopened after the wake");
+      // The sockets were healthy at the wake, so they are left alone (no reopen, no dropped finals); the last question still arrives.
+      assert.equal(ev.filter((x) => x.type === "stt.recovered" && at(x) >= at(gap)).length, 0, "healthy STT sockets were not reopened by the wake");
       assert.ok(!types("idle.stop").length, "the 20 wall-clock minutes did not count as silence");
       assert.ok(
         cards.some((c) => c.id === "health-sleep"),
@@ -111,7 +112,13 @@ test(
       );
 
       // The end state: full service, no crash, a clean finish.
-      assert.equal(lad.at(-1)?.to, 0, "ladder back to full: " + JSON.stringify(lad.map((x) => x.to)));
+      // A wake no longer flashes "other side not heard" (rung 4), which used to reset the AI recovery clock. The AI trouble from the first seconds then
+      // needs its own 15 s of calm after the wake, so a call that ends 4 s after the wake may still be at rung 1 for that one reason.
+      const last = lad.at(-1) as { to: number; reasons: string[] };
+      assert.ok(
+        last.to === 0 || (last.to === 1 && last.reasons.every((r) => /AI/.test(r))),
+        "ladder back to full, or only the AI reason left: " + JSON.stringify(lad),
+      );
       assert.ok(!types("crash").length && !types("shutdown.error").length, "no crash");
       assert.equal(JSON.parse(readFileSync(join(dir, "call.json"), "utf8")).crashed, false);
       assert.ok(types("speed.summary").length === 1, "closed cleanly");

@@ -18,6 +18,8 @@ const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "a
  * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, recap, confirmClient, note, ask, speaker,
  *   stop, stopDelete, stopNoSummary, skipSummary, briefSaved, briefCleared, boot, refreshPlans, runDoctor, shutdown, logLine.
  */
+const MAX_LINE = 1024 * 1024; // longest stdout line the controller keeps while waiting for its newline
+
 function createController(o) {
   const lib = o.lib || defaultLib,
     fs = o.fs || nodeFs,
@@ -104,42 +106,66 @@ function createController(o) {
       }
     // detached: call.ts leads its own process group, so a stuck call can be force-killed with everything under it.
     const [cmd, cargs] = binCmd("tsx", [path.join(root, "src", "call.ts"), ...extraArgs]);
-    const c = o.spawn(cmd, cargs, { cwd: root, env, stdio: ["pipe", "pipe", "pipe"], detached: true });
-    child = c;
-    c.on("error", (e) => {
+    let c;
+    const spawnFailed = (e) => {
       logLine("ERR spawn " + e.message);
       notify("Wingman could not start", `${e.message}. Quit Wingman from the menu bar and open it again; if it keeps happening, choose Show log.`);
-      if (child === c) child = undefined;
+      if (c && child === c) child = undefined;
       set({ ev: "stderr", text: e.message });
-      finished.add(c);
+      if (c) finished.add(c);
       set({ ev: "exit", code: 1 });
       change();
-    });
+    };
+    try {
+      c = o.spawn(cmd, cargs, { cwd: root, env, stdio: ["pipe", "pipe", "pipe"], detached: true });
+    } catch (e) {
+      // A synchronous throw (EAGAIN, EMFILE) must not leave the state at "starting" with no process behind it.
+      spawnFailed(e);
+      return false;
+    }
+    child = c;
+    c.on("error", spawnFailed);
     c.stdin.on("error", () => {
       /* the call already ended */
     });
-    let buf = "";
+    let buf = "",
+      skipping = false; // a line longer than MAX_LINE is dropped up to its newline
     // A multi-byte letter (Hebrew is two bytes) can be cut between two pipe reads: decode with a stateful decoder, not chunk.toString().
     const outDec = new StringDecoder("utf8"),
       errDec = new StringDecoder("utf8");
+    const handleLine = (line) => {
+      const msg = lib.parseStatus(line);
+      if (!msg) return;
+      logLine(line.trim());
+      const before = set(msg);
+      // A real call is live: record it on the plan (nothing is deleted; a practice call never does). The plan counts as used when the call
+      // saved its first memory ({ev:"memory"}, sent by the engine) or, for the engine without memory, when the call ends cleanly.
+      if (msg.ev === "consented" && !state.practice && state.planId) usePlan("live");
+      if ((msg.ev === "memory" || (msg.ev === "ended" && !msg.crashed)) && !state.practice && state.planId) usePlan("used");
+      for (const n of lib.notifications(before, state, msg)) notify(n.title, n.body);
+      change();
+      if (msg.ev === "ended") finish(c, msg.crashed ? 1 : 0); // saved: Start is allowed again while call.ts lingers about 5 s for the answer window
+    };
     c.stdout.on("data", (d) => {
       buf += outDec.write(d);
       let i;
       while ((i = buf.indexOf("\n")) >= 0) {
         const line = buf.slice(0, i);
         buf = buf.slice(i + 1);
-        const msg = lib.parseStatus(line);
-        if (!msg) continue;
-        logLine(line.trim());
-        const before = set(msg);
-        // A real call is live: record it on the plan (nothing is deleted; a practice call never does). The plan counts as used when the call
-        // saved its first memory ({ev:"memory"}, sent by the engine) or, for the engine without memory, when the call ends cleanly.
-        if (msg.ev === "consented" && !state.practice && state.planId) usePlan("live");
-        if ((msg.ev === "memory" || (msg.ev === "ended" && !msg.crashed)) && !state.practice && state.planId) usePlan("used");
-        for (const n of lib.notifications(before, state, msg)) notify(n.title, n.body);
-        change();
-        if (msg.ev === "ended") finish(c, msg.crashed ? 1 : 0); // saved: Start is allowed again while call.ts lingers about 5 s for the answer window
+        if (skipping) skipping = false;
+        else handleLine(line);
       }
+      if (buf.length > MAX_LINE) {
+        // No newline in a megabyte: not a status line. Drop it so the buffer cannot grow without bound.
+        buf = "";
+        skipping = true;
+      }
+    });
+    c.stdout.on("end", () => {
+      // The engine's last line may come without "\n" (it was killed or crashed while writing): parse it too.
+      const rest = buf + outDec.end();
+      buf = "";
+      if (rest && !skipping) handleLine(rest);
     });
     c.stderr.on("data", (d) => {
       const text = errDec.write(d);
