@@ -81,3 +81,9 @@ test("error table: real messages from the file store map to a specific entry, no
   }
   assert.equal(errs.classify("pdftotext").code, "pdf-missing");
 });
+
+test("imported text: bidi isolates and overrides are removed, Hebrew and line breaks stay", () => {
+  const { cleanText } = req("../tray/attachments.cjs");
+  const out = cleanText("a⁦b⁩ ‮שלום‬\n\nc");
+  assert.equal(out, "ab שלום\n\nc");
+});

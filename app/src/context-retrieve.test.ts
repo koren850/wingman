@@ -29,8 +29,8 @@ function filler(bytes: number, seed = 7): string {
 
 test("tokenize: English, Hebrew with niqqud and prefixes, numbers", () => {
   assert.deepEqual(tokenize("Quotes for 12,000 units"), ["quotes", "quote", "for", "12,000", "12000", "units", "unit"]);
-  const he = tokenize("בנמל-גל");
-  assert.ok(he.includes("בנמל-גל") && he.includes("נמל-גל"));
+  const he = tokenize("באילת");
+  assert.ok(he.includes("באילת") && he.includes("אילת"));
   assert.ok(tokenize("שָׁלוֹם").includes("שלום"));
   assert.deepEqual(tokenize(""), []);
   assert.deepEqual(tokenize("   ...  "), []);
@@ -54,32 +54,32 @@ test("chunkText: chunks stay under 500 tokens and keep all the text", () => {
 });
 
 test("BM25 finds a fact buried in a 100 KB file", () => {
-  const needle = "The Rivermouth warehouse closes on the fourteenth of March for the yearly inventory count.";
+  const needle = "The Eilat warehouse closes on the fourteenth of March for the yearly inventory count.";
   const parts = filler(100_000).split("\n\n");
   parts.splice(Math.floor(parts.length * 0.6), 0, needle);
   const text = parts.join("\n\n");
   assert.ok(text.length > 100_000);
   const ix = indexFiles([{ source: "notes.txt", text }]);
   assert.ok(ix.chunks.length > 30);
-  const hits = search(ix, "when does the Rivermouth warehouse close for inventory?");
+  const hits = search(ix, "when does the Eilat warehouse close for inventory?");
   assert.ok(hits.length >= 1);
-  assert.ok(hits[0].chunk.text.includes("Rivermouth warehouse"), "best hit holds the fact");
+  assert.ok(hits[0].chunk.text.includes("Eilat warehouse"), "best hit holds the fact");
   assert.equal(hits[0].chunk.source, "notes.txt");
   assert.ok(hits.length <= RETRIEVE.topChunks);
   assert.ok(hits.reduce((n, h) => n + estimateTokens(h.chunk.text), 0) <= RETRIEVE.maxTokens);
 });
 
 test("BM25 ignores an unrelated turn", () => {
-  const text = filler(100_000) + "\n\nThe Rivermouth warehouse closes on the fourteenth of March.";
+  const text = filler(100_000) + "\n\nThe Eilat warehouse closes on the fourteenth of March.";
   const ix = indexFiles([{ text }]);
   for (const q of ["ok sounds good, let's move on to the next point", "thanks everyone, see you tomorrow", "can you hear me now?", "", "   "])
     assert.deepEqual(search(ix, q), [], q);
 });
 
 test("BM25 finds Hebrew text through a one-letter prefix", () => {
-  const text = filler(20_000) + "\n\nמחסן נמל-גל ייסגר בארבעה עשר במרץ לצורך ספירת מלאי.";
+  const text = filler(20_000) + "\n\nמחסן אילת ייסגר בארבעה עשר במרץ לצורך ספירת מלאי.";
   const ix = indexFiles([{ text }]);
-  const hits = search(ix, "מה קורה עם המחסן בנמל-גל");
+  const hits = search(ix, "מה קורה עם המחסן באילת");
   assert.ok(hits.length >= 1 && hits[0].chunk.text.includes("ספירת מלאי"));
 });
 

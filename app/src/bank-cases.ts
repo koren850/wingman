@@ -59,7 +59,7 @@ export const BANK_PARAPHRASE_CASES: [string, string][] = [
 export const BANK_NEGATIVE_CASES: string[] = [
   "טוב אז נדבר מחר בבוקר",
   "אני אחזור אליך עם הצעה בשבוע הבא",
-  "המשפחה שלי גרה בנמל-גל כבר הרבה שנים",
+  "המשפחה שלי גרה באילת כבר הרבה שנים",
   "התקציב של הרבעון הבא עדיין לא סגור",
   "we should schedule the next meeting for tuesday",
   "how was your weekend",

@@ -15,7 +15,7 @@ import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { detect } from "../src/detector.ts";
 import { guard, guardInterview } from "../src/guards.ts";
-import { loadBank, matchBank } from "../src/bank.ts";
+import { loadBank, matchBank, matchBankSmart } from "../src/bank.ts";
 import { BANK_CASES } from "../src/bank-cases.ts";
 import { BLOCKED, ALLOWED, SALARY_BLOCKED, SALARY_ALLOWED } from "../src/guards-cases.ts";
 import { ROOT as APP_DIR, DATA } from "../src/env.ts";
@@ -89,7 +89,8 @@ let right = 0,
   wrong = 0,
   none = 0;
 for (const [text, want] of BANK_CASES) {
-  const got = matchBank(text, bank)?.card.id ?? "-";
+  // trigger match first, then the local scorer (what the moment engine does for a paraphrase)
+  const got = matchBank(text, bank)?.card.id ?? matchBankSmart(text, bank, "he").hit?.card.id ?? "-";
   if (got === want) right++;
   else if (got === "-") {
     none++;

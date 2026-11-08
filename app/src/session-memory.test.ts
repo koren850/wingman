@@ -516,10 +516,10 @@ test("render: prompt injection inside a fact is escaped", () => {
 });
 
 test("render: Hebrew text renders and fits the budget", () => {
-  const m = must(emptyMemory(), { add: { facts: Array.from({ length: 10 }, (_, i) => ({ text: `הלקוח אמר שהמחסן בנמל-גל נסגר בשבוע הבא מספר ${i}` })) } });
+  const m = must(emptyMemory(), { add: { facts: Array.from({ length: 10 }, (_, i) => ({ text: `הלקוח אמר שהמחסן באילת נסגר בשבוע הבא מספר ${i}` })) } });
   const r = renderMemoryDetailed(m, 150);
   assert.ok(r.tokens <= 150);
-  assert.ok(r.text.includes("נמל-גל"));
+  assert.ok(r.text.includes("אילת"));
 });
 
 // ---- view, seed, prompt ----
