@@ -34,8 +34,6 @@ const m = createRequire(import.meta.url)("./keychain.cjs") as {
   childEnv(env?: NodeJS.ProcessEnv): NodeJS.ProcessEnv;
   realRunner: Runner;
   createKeychain(run?: Runner): Keychain;
-  platformKeychain(o?: { platform?: string; run?: Runner; safeStorage?: unknown; file?: string; fs?: unknown }): Keychain;
-  SECURE_KEYS_FILE: string;
   checkKeyFormat(p: string, v: unknown): string | null;
   scrub(t: unknown, secrets?: string[]): string;
   last4(v: unknown): string;
@@ -47,6 +45,13 @@ const m = createRequire(import.meta.url)("./keychain.cjs") as {
   migrateKeysToKeychain(o: { keychain: Keychain; file: string }): MigrateResult;
   testKey(p: string, key: string, f?: typeof fetch): Promise<"ok" | "invalid" | "network">;
 };
+const ck = createRequire(import.meta.url)("./keycheck.cjs") as {
+  checkKey(p: string, key: string, f?: typeof fetch): Promise<KeyCheck>;
+};
+/** The answer of the setup check. See keycheck.cjs. */
+export type KeyCheck = "ok" | "invalid" | "nocredit" | "unavailable" | "network";
+/** One cheap call that proves a pasted key works (and that the account has credit). Never throws, never returns the key. */
+export const checkKey = ck.checkKey;
 export const {
   SERVICE,
   ACCOUNTS,
@@ -55,8 +60,6 @@ export const {
   childEnv,
   realRunner,
   createKeychain,
-  platformKeychain,
-  SECURE_KEYS_FILE,
   checkKeyFormat,
   scrub,
   last4,
@@ -65,5 +68,16 @@ export const {
   migrateKeysToKeychain,
   testKey,
 } = m;
-/** The real key store of this platform (macOS Keychain, Windows safeStorage). Only the CLI, the app and the call tools use this; tests inject a mock runner instead. */
-export const realKeychain = (): Keychain => platformKeychain();
+const secure = createRequire(import.meta.url)("./securestore.cjs") as {
+  createSecureStore(o?: {
+    platform?: string;
+    dataDir?: string;
+    macRun?: Runner;
+    winRun?: (which: string, input: string) => { status: number; stdout: string; stderr: string };
+  }): Keychain & { kind: StoreKind };
+};
+/** Where the keys live: the macOS Keychain, Windows data protection (DPAPI), or an owner-only file on other systems. */
+export type StoreKind = "keychain" | "dpapi" | "file";
+/** The real key store of this platform. Only the CLI, the app and the call tools use this; tests inject a mock instead. */
+export const realKeychain = (): Keychain => secure.createSecureStore({});
+export const createSecureStore = secure.createSecureStore;

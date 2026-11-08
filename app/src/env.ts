@@ -1,4 +1,5 @@
-// Paths (ROOT, DATA, CALLS) and API-key loading. Order (shared with Settings, see resolveKey in keychain.cjs): macOS Keychain, then process env, then the legacy
+// Paths (ROOT, DATA, CALLS) and API-key loading. Order (shared with Settings, see resolveKey in keychain.cjs): the secure store of this platform
+// (macOS Keychain, Windows data protection, or an owner-only file; src/securestore.cjs), then process env, then the legacy
 // ~/.config/wingman/keys.env (never from the repo). Keys are held in memory only; run.ts also deletes them from process.env
 // so child processes (ffmpeg, audiotee) cannot inherit them.
 import { readFileSync, existsSync, statSync, chmodSync } from "node:fs";
@@ -63,7 +64,7 @@ export function securePerms(file: string, platform: string = process.platform): 
 /** Where each loaded key came from (never the value). */
 export type KeySources = Partial<Record<KeyName, "env" | "keychain" | "file">>;
 
-/** Order: the macOS Keychain (Deepgram + Anthropic only), then process env, then keys.env (legacy fallback), via resolveKey. Keys live in memory only.
+/** Order: the secure key store (macOS Keychain, Windows DPAPI or an owner-only file; Deepgram + Anthropic only), then process env, then keys.env (legacy fallback), via resolveKey. Keys live in memory only.
  *  `keychain` is opt-in: null (default) means no Keychain lookup, so tests and tools that pass a file never reach the real one. */
 export function loadKeysWithSources(
   file = KEYS_FILE,

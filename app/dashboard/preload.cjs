@@ -84,6 +84,8 @@ contextBridge.exposeInMainWorld("wingman", {
   resetSetting: (key) => ipcRenderer.invoke("settings:set", String(key), null),
   keysStatus: () => ipcRenderer.invoke("keys:status"),
   keysSet: (provider, value) => ipcRenderer.invoke("keys:set", String(provider), String(value)),
+  keysConnect: (provider, value) => ipcRenderer.invoke("keys:connect", String(provider), String(value)),
+  keysRecheck: (provider) => ipcRenderer.invoke("keys:recheck", String(provider)),
   keysTest: (provider) => ipcRenderer.invoke("keys:test", String(provider)),
   keysRemove: (provider) => ipcRenderer.invoke("keys:remove", String(provider)),
   keysMigrate: () => ipcRenderer.invoke("keys:migrate"),

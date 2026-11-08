@@ -44,13 +44,13 @@ Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN
 | Your pack (answer cards, house style, word lists) | `~/.config/wingman/pack/` | Until you delete it | Never in the repo |
 | Menu-bar app log | `<data folder>/calls/tray.log` | Until you delete it | Status lines, short error text and the matched client name; no transcript, no keys |
 | Rescue copy (only if a call folder could not be written) | `<data folder>/rescue/<call id>/`, else `<temp folder>/wingman-rescue/<call id>/` | Until you delete it (`pnpm purge --all` removes it) | Folder 700, files 600; a shared or linked temp folder is refused |
-| API keys | macOS Keychain, service `wingman`; on Windows `%APPDATA%\Wingman\keys.enc.json`, encrypted for your Windows account (Electron `safeStorage`, DPAPI) | Until you remove them | Keychain, or encrypted file |
+| API keys | macOS: Keychain, service `wingman`. Windows: `<data folder>/secrets/*.dpapi`, encrypted for your Windows account. Other systems: `<data folder>/secrets/*.key`, readable by your user account only | Until you remove them | The system store, or a private file |
 
 The data folder is also where Electron keeps its own files (cache, local storage). Wingman does not put call content there.
 
 Delete a call: **Stop and delete this call** (asks first), `wingman calls purge <id> --yes`, or `pnpm purge <id> | --older-than N | --all`. Deleting a call folder removes its transcript, cards and summary.
 
-Delete everything: `wingman uninstall --purge` removes the data folder, `~/.config/wingman` and the Keychain keys, after you type `DELETE`. Plain `wingman uninstall` removes only the app and the command link.
+Delete everything: `wingman uninstall --purge` removes the data folder, `~/.config/wingman` and the stored keys, after you type `DELETE`. Plain `wingman uninstall` removes only the app and the command link.
 
 **Older versions.** A first start copies calls and meetings from older in-repo folders (`calls/` and `data/private/`) into the data folder. It never moves or overwrites anything. The old folders stay where they were: delete them yourself when you are happy with the copy, and check they are not in a backup you share.
 
@@ -58,10 +58,9 @@ Important: the transcript and the summary of a real call can contain personal da
 
 ## API keys
 
-- Stored in the macOS Keychain (service `wingman`). A legacy `~/.config/wingman/keys.env` is still read if present; **Settings, Keys, Move to Keychain** (or `pnpm keys migrate`) moves it: each key is written to the Keychain and read back, and only then is its line removed from `keys.env`. No backup copy is made (it would be one more plaintext copy of the key); if the Keychain write fails, `keys.env` is left untouched.
+- Stored in the secure store of the platform (see ADR 70). On a Mac that is the Keychain (service `wingman`). On Windows each key is encrypted with Windows data protection (DPAPI, current user) and only the encrypted text is saved in `<data folder>/secrets/`; another Windows user, or the same files on another PC, cannot decrypt it. On other systems it is a file that only your user account can read, which is weaker. The first-run window checks a key with one request to the service (Deepgram: the project list and balance; Anthropic: a one-word message on the cheapest model, about 0.00002 dollars) and saves it only when the service accepts it. A legacy `~/.config/wingman/keys.env` is still read if present; **Settings, Keys, Move to Keychain** (or `pnpm keys migrate`) moves it: each key is written to the Keychain and read back, and only then is its line removed from `keys.env`. No backup copy is made (it would be one more plaintext copy of the key); if the Keychain write fails, `keys.env` is left untouched.
 - **What the Keychain does and does not protect.** Items are created through `/usr/bin/security`, so `security` itself is the trusted program in the item's access list. Any other program you run as the same macOS user can run `security find-generic-password -s wingman ...` and read a key **without a prompt** while your login keychain is unlocked. The threat model: this protects against copies of files, backups, synced folders, screenshots and keys leaking into the repo. It does **not** protect against malware or a malicious script that runs as you. Run only code you trust, and set spend limits in the Deepgram and Anthropic consoles.
-- **Windows.** The keys are encrypted with the Windows user account (DPAPI, through Electron `safeStorage`) and saved in `keys.enc.json` in the data folder. A copy of that file does not open on another account or computer. Like the Keychain, it does not protect against a program that runs as you.
-- All Keychain access goes through one module that runs `/usr/bin/security` without a shell. Keys are written through stdin, so they never show in the process list or the environment, and each write is read back.
+- All store access goes through `src/keychain.cjs` (macOS, `/usr/bin/security`, no shell) and `src/securestore.cjs` (Windows: a fixed PowerShell script, no shell, the key on stdin; other systems: a file only your user account can read). Keys are written through stdin, so they never show in the process list or the environment, and each write is read back.
 - Keys are held in memory only. They are never written to call folders, logs, settings, events or snapshots. The engine removes key variables from its own environment after loading and starts the answer window, ffmpeg and caffeinate without them.
 - The window only ever receives the last 4 characters of a key. The key box is write-only. The main window is the only one allowed to use the key IPC, with a provider allow-list, format checks and a rate limit (5 Save or Test per minute).
 - The CLI can report "present or missing" only. It cannot read, set or move keys.
@@ -107,7 +106,7 @@ The answer window has content protection on, which asks macOS to hide it from sc
 ## Known gaps
 
 - **Prebuilt audio binary.** System audio comes from the npm package `audiotee` (version pinned in `pnpm-lock.yaml` with a sha512 hash). It contains only a prebuilt universal Mach-O binary, ad-hoc signed, with no source in the package. Upstream source: [github.com/makeusabrew/audiotee](https://github.com/makeusabrew/audiotee). It receives system-audio access, so a compromised release would hear the other side of your calls. A lockfile install gets exactly the pinned file; review the diff before you update it.
-- Keys in the Keychain can be read by other programs you run as your user (see API keys above).
+- Keys in the Keychain or in Windows data protection can be read by other programs you run as your user (see API keys above).
 - Call files are not encrypted at rest.
 - Content protection is untested with real screen-sharing tools.
 - Soniox, Gladia and non-Anthropic AI providers are tested with mocks only.

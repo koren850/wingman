@@ -164,6 +164,7 @@ async function viewHome(focus) {
   state.gen++;
   setNav();
   busy();
+  wizPreviewSet(focus); // screenshot aid: focus "setup-<name>" shows a fixed state of the first-run window (setupwizard.js)
   const main = $("main");
   main.textContent = "";
   const leftCol = h("div", { class: "hcol" }, h("div", { id: "call-col", class: "hcol" }), h("div", { id: "ready-slot" }));
@@ -259,6 +260,12 @@ function renderSide() {
         liveFeedPanel(),
       );
       if (H.knows === undefined) loadKnows();
+      return;
+    }
+    // First run: the keys window (setupwizard.js) is all there is until it is finished or skipped.
+    const wz = welcomeCard();
+    if (wz) {
+      slot.append(h("div", { class: "hcol seqcol" }, wz));
       return;
     }
     // Before a call, Home reads as a sequence: 1 Readiness check, 2 Start (a quick call, or one of the prepared meetings). The Plan editor opens above when it is in use.

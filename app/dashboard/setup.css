@@ -1,0 +1,200 @@
+/* The first-run window (setupwizard.js): paste two keys, allow the sound, go. Uses the shared tokens only; logical properties keep Hebrew right-to-left correct. */
+.wiz {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 28px;
+}
+.wiz-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.wiz-head h2 {
+  font-size: 20px;
+  line-height: 28px;
+  margin: 0;
+}
+.wiz-lead {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 22px;
+  margin: 0;
+}
+.wiz-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.wiz-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  color: var(--faint);
+}
+.wiz-steps li[aria-current="step"] {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.wiz-steps .n {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--s3);
+  font-size: 12px;
+  font-weight: 600;
+}
+.wiz-steps li.done .n {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.wiz-steps li[aria-current="step"] .n {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.wiz-steps .ico {
+  width: 14px;
+  height: 14px;
+}
+.wiz-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.wiz-key {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.wiz-key.is-ok {
+  border-color: var(--good);
+}
+.wiz-key.is-bad {
+  border-color: var(--bad);
+}
+.wiz-key-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.wiz-key h3 {
+  font-size: 15px;
+  line-height: 24px;
+  margin: 0;
+}
+.wiz-key .what {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 20px;
+  margin: 0;
+}
+.wiz-key .cost {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+  margin: 0;
+}
+.wiz-input {
+  display: flex;
+  gap: 8px;
+  max-width: 520px;
+}
+.wiz-input .keyin {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-color: var(--input-line);
+  direction: ltr;
+  text-align: start;
+}
+.wiz-err {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: var(--bad);
+  font-size: 13px;
+  line-height: 20px;
+  margin: 0;
+}
+.wiz-err .ico {
+  flex: none;
+  margin-top: 2px;
+}
+.wiz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.wiz-actions .grow {
+  flex: 1 1 auto;
+}
+.wiz-note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+  margin: 0;
+}
+.wiz-perm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 14px 16px;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.wiz-perm.is-bad {
+  border-color: var(--bad);
+}
+.wiz-perm .grow {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.wiz-perm .t {
+  font-weight: 600;
+  font-size: 14px;
+}
+.wiz-perm .w {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+.wiz-perm .wiz-err,
+.wiz-perm .wiz-note {
+  flex-basis: 100%;
+}
+.wiz-ready {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wiz-ready .btn.lg {
+  align-self: flex-start;
+}
+@media (max-width: 640px) {
+  .wiz {
+    padding: 18px 16px;
+  }
+  .wiz-input {
+    flex-direction: column;
+  }
+}

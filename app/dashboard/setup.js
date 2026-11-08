@@ -209,6 +209,7 @@ function setupGuideBlock() {
               SU.skipped = {};
               SU.acks.closed = false;
               SU.open = "auto";
+              if (keysMissing().length) wizReopen(); // keys still missing: the first-run window comes back too
               suSave();
               viewHome();
             },

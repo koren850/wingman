@@ -104,7 +104,7 @@ async function main() {
   for (const p of ["demo", "demo-en", "first-client-call"]) copy(path.join("profiles", p + ".yaml"));
   // Loaded by path at run time (createRequire), so esbuild does not see it.
   fs.mkdirSync(path.join(STAGE, "src"), { recursive: true });
-  copy(path.join("src", "keychain.cjs"));
+  for (const f of ["keychain.cjs", "securestore.cjs", "keycheck.cjs"]) copy(path.join("src", f)); // the key store of each platform and the key check (keychain.ts requires them by path)
   if (plan.audiotee) {
     // audiotee finds its binary at ../bin/audiotee from the bundled code. macOS only: Windows has no such helper.
     const tee = packageDir("audiotee");

@@ -219,7 +219,7 @@ function create(ctx) {
     const v = SNAP ? process.env.WINGMAN_DASHBOARD_VIEW : o.view;
     if (/^(home|calls|inbox|settings|system)$/.test(v || "")) query.view = v;
     if (SNAP && /^(he|en)$/.test(process.env.WINGMAN_DASHBOARD_LANG || "")) query.lang = process.env.WINGMAN_DASHBOARD_LANG; // window language for screenshots
-    if (/^(plan|edit|advanced|keys|review|tab-[a-z]+)$/.test((SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus) || ""))
+    if (/^(plan|edit|advanced|keys|review|tab-[a-z]+|setup-[a-z-]+)$/.test((SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus) || ""))
       query.focus = SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus;
     if (!SNAP && o.id) {
       query.call = o.id;
@@ -852,6 +852,10 @@ function create(ctx) {
     getWin: () => win,
     dialog,
     fake: process.env.WINGMAN_DASHBOARD_FAKE_KEYS || (SNAP ? "missing" : ""), // snapshots never touch the real Keychain
+    demo:
+      SNAP && /^(ok|invalid|nocredit|network|unavailable)$/.test(process.env.WINGMAN_DASHBOARD_FAKE_CONNECT || "")
+        ? process.env.WINGMAN_DASHBOARD_FAKE_CONNECT
+        : "", // hidden checks of the first-run window
     keysFile: async () => {
       if (process.env.WINGMAN_KEYS_FILE) return process.env.WINGMAN_KEYS_FILE;
       const s = await readSettings();

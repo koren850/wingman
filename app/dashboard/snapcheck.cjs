@@ -19,8 +19,12 @@ function rules(name, r) {
   if (/^idle-/.test(base) && r.startDisabled) out.push("Start is disabled on a ready Home");
   if (/^error-/.test(base) && !(r.startDisabled && r.startWhy)) out.push("Start is not disabled with a reason when the check failed");
   if (/^error-/.test(base) && !r.fixIt) out.push("Start has no Fix it button beside the reason");
-  if (/^nokeys-/.test(base) && !(r.startDisabled && r.startWhy && r.fixIt)) out.push("without keys, Start is not disabled with a reason and a Fix it button");
-  if (/^nokeys-/.test(base) && !r.practiceBesideStart) out.push("the practice call is not next to Start on a first run");
+  // First run (no keys): the first-run window is all there is: two key fields, one Check and save button, and the three steps.
+  if (/^nokeys-/.test(base) && !(r.wizard && r.wizInputs === 2 && r.wizCheck && r.wizSteps === 3))
+    out.push("without keys, the first-run window does not show two key fields, Check and save, and three steps");
+  if (/^nokeys-/.test(base) && r.startDisabled) out.push("without keys, the Home Start card shows behind the first-run window");
+  if (/^wiz-/.test(base) && !(r.wizard && r.wizSteps === 3)) out.push("the first-run window did not draw its three steps");
+  if (/^wiz-keys-(?!nocredit)/.test(base) && !(r.wizInputs >= 1 && r.wizCheck)) out.push("the keys step has no key field or no Check and save button");
   if (/^ended-/.test(base) && !r.openSummary) out.push("the ended banner has no Open summary button");
   if (/^settings-/.test(base) && r.settingsTabs !== 5)
     out.push(`Settings has ${r.settingsTabs} tabs, expected 5 (Basics, Keys, Help engine, Privacy, Advanced)`);

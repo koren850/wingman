@@ -81,6 +81,7 @@ function rig(over: Record<string, unknown> = {}) {
     },
     screen: { getAllDisplays: () => [{}] },
     preview: false,
+    platform: "darwin",
     ...over,
   });
   return { handlers, calls, opened, root, home, call: (n: string, ...a: any[]) => handlers.get(n)!(...a) };

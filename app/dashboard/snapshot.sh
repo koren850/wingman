@@ -27,7 +27,15 @@ if [ "$1" = "--check" ]; then
     trust-en-dark:en:dark:home:-:-:01SNAPGOLDENENB00000000000:rate:saw trust-he-light:he:light:home:-:-:01SNAPGOLDENHEB00000000000:rate:saw \
     settings-privacy-en-light:en:light:settings:-:tab-privacy settings-privacy-he-dark:he:dark:settings:-:tab-privacy >/dev/null || exit 1
   WINGMAN_DASHBOARD_FAKE_KEYS=file WINGMAN_SNAP_DOCTOR=notready sh "$0" "$OUT" error-en-light:en:light:home:-:- error-he-dark:he:dark:home:-:- >/dev/null || exit 1
-  # first run: no keys saved. Start is off with the reason and a Fix it button; the practice call sits next to it.
+  # first run: no keys saved. The first-run window (setupwizard.js) is shown: two key fields, Check and save, three steps. Each state of it, in both languages, light and dark.
+  WINGMAN_SNAP_NOCALLS=1 WINGMAN_DASHBOARD_FAKE_KEYS=missing WINGMAN_SNAP_DOCTOR=ready WINGMAN_DASHBOARD_SIZE=1100x1150 sh "$0" "$OUT" \
+    wiz-keys-en-light:en:light:home:-:setup-keys wiz-keys-he-dark:he:dark:home:-:setup-keys wiz-keys-invalid-en-dark:en:dark:home:-:setup-keys-invalid \
+    wiz-keys-nocredit-en-light:en:light:home:-:setup-keys-nocredit wiz-keys-nocredit-he-light:he:light:home:-:setup-keys-nocredit \
+    wiz-keys-network-he-dark:he:dark:home:-:setup-keys-network wiz-keys-checking-en-light:en:light:home:-:setup-keys-checking \
+    wiz-allow-mac-en-light:en:light:home:-:setup-allow-mac wiz-allow-blocked-he-dark:he:dark:home:-:setup-allow-blocked wiz-allow-win-en-dark:en:dark:home:-:setup-allow-win \
+    wiz-allow-done-en-light:en:light:home:-:setup-allow-mac-done wiz-ready-en-light:en:light:home:-:setup-ready wiz-ready-he-dark:he:dark:home:-:setup-ready \
+    wiz-ready-win-en-dark:en:dark:home:-:setup-ready-win >/dev/null || exit 1
+  # (the state with no keys and no focus is the same window with no fixed example)
   WINGMAN_SNAP_NOCALLS=1 WINGMAN_DASHBOARD_FAKE_KEYS=missing WINGMAN_SNAP_DOCTOR=ready sh "$0" "$OUT" nokeys-en-light:en:light:home:-:- nokeys-he-dark:he:dark:home:-:- >/dev/null || exit 1
   WINGMAN_DASHBOARD_SIZE=900x900 WINGMAN_DASHBOARD_FAKE_KEYS=file WINGMAN_SNAP_DOCTOR=ready sh "$0" "$OUT" narrow-idle-en-light:en:light:home:-:- narrow-live-en-dark:en:dark:home:live:- narrow-live-he-light:he:light:home:live:- narrow-ended-en-dark:en:dark:home:ended:- >/dev/null || exit 1
   node "$HERE/snapcheck.cjs" "$OUT"; exit $?

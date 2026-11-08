@@ -83,7 +83,8 @@ The tray app starts one call at a time through the controller, which runs `call.
 | Profile and pack | `profile.ts`, `pack.ts` | The profile (`~/.config/wingman/profile.yaml`) is validated by a strict schema, including the time zone. A bad edit during a call keeps the last good profile; the file is saved atomically. The pack looks up each file in `WINGMAN_PACK_DIR` or `~/.config/wingman/pack/`, then in `data/example-pack/`. Starter packs (sales, support, interview practice, empty; Hebrew and English) live in `data/starter-packs/` and the setup copies one into your pack folder. See [PACK-FORMAT.md](PACK-FORMAT.md). |
 | Cost | `cost.ts` | Counts spend from real usage reported by the providers and an editable price table. LLM spend is capped per call; speech spend is tracked and shown. |
 | Settings | `settings.ts`, `settings-edit.ts`, `config/defaults.yaml` | Layered settings validated by a zod schema. Layers, lowest first: built-in defaults, `~/.config/wingman/settings.yaml`, a profile (`profiles/*.yaml`), `WINGMAN_*` environment variables, CLI flags. Unknown keys are errors. |
-| Keys | `keychain.cjs`, `keychain.ts`, `keys-cli.ts`, `env.ts` | Key store: the macOS Keychain through `/usr/bin/security` (no shell), or on Windows Electron `safeStorage` (DPAPI) with one small file; `platformKeychain` picks. Keys live only in memory during a call. |
+| Keys | `keychain.cjs`, `securestore.cjs`, `keycheck.cjs`, `keychain.ts`, `keys-cli.ts`, `env.ts` | One key store per platform behind one interface (get, set, remove): the macOS Keychain through `/usr/bin/security` (no shell), Windows data protection (DPAPI) through a fixed PowerShell script, or an owner-only file elsewhere (ADR 70). `keycheck.cjs` checks a pasted key with one cheap request. Keys live only in memory during a call. |
+| First-run window | `dashboard/setupwizard.js`, `setuplib.js`, `setup.css`, `keys-ipc.cjs` (`keys:connect`, `keys:recheck`), `setup-ipc.cjs` | Home shows it until the person finishes or skips: two keys, the sound permissions, then a practice call or a real one. `setuplib.js` holds the decisions (which step, which message for which error) and is unit tested; `setupwizard.js` only draws. The page sends a key once to `keys:connect`, which checks it with the service and saves it only when accepted. |
 | Doctor | `doctor.ts`, `mic-check.ts` | The "Readiness check". Ends with READY, READY WITH WARNINGS or NOT READY. |
 | Logging | `log.ts` | Writes the call folder (files are mode 600). |
 | Data paths | `env.ts`, `../shared/paths.cjs`, `../shared/migrate.cjs` | One module decides where user data lives (the data folder). `migrate.cjs` copies the old in-repo folders once (never moves, never overwrites, writes a marker). |
@@ -284,7 +285,7 @@ Outside the call folders:
 
 | Place | Content |
 |---|---|
-| macOS Keychain, service `wingman` (Windows: `<data folder>\keys.enc.json`, encrypted with Electron `safeStorage`) | `DEEPGRAM_API_KEY`, `ANTHROPIC_API_KEY`. |
+| macOS Keychain, service `wingman` (Mac); `<data folder>/secrets/*.dpapi` (Windows, encrypted for your account); `<data folder>/secrets/*.key` (other systems, owner only) | `DEEPGRAM_API_KEY`, `ANTHROPIC_API_KEY`. |
 | `~/.config/wingman/settings.yaml` | Your personal settings (mode 600, comments kept). |
 | `~/.config/wingman/keys.env` | Legacy keys file. Still read if present; Settings, Keys can move it into the Keychain. |
 | `~/.config/wingman/run/control.sock` | The control socket. |

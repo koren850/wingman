@@ -73,7 +73,7 @@ function toolProblem({ execFile, execPath, env, tool = "settings-cli", expect = 
               .slice(0, 200)}`,
           );
         if (!expect.test(String(out))) return resolve(`${tool} printed something unexpected`);
-        // A key saved by this process must be readable in the tool process too. Windows safeStorage keeps its master key in the Electron
+        // A key saved by this process must be readable in the tool process too. A per-process key store (such as Electron safeStorage) keeps its master key in the Electron
         // user-data folder, and every helper process has a folder of its own (tray/app-entry.cjs backgroundProcess), so this can really fail.
         if (expectKey && !expectKey.test(String(out)))
           return resolve(`${tool} could not read a key saved by the app (the key store differs between Wingman processes)`);

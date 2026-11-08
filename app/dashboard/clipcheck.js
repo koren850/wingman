@@ -171,6 +171,11 @@
     startWhy: shown("start-why"),
     practiceBesideStart: !!document.querySelector(".startrow #start-call") && !!document.querySelector(".startrow #practice"),
     fixIt: visible("#start-why .fixit, #start-why #gate-check"),
+    // The first-run window (setupwizard.js)
+    wizard: shown("wizard"),
+    wizInputs: document.querySelectorAll("#wizard input[type=password]").length,
+    wizCheck: shown("wiz-check"),
+    wizSteps: document.querySelectorAll("#wizard .wiz-steps li").length,
     openSummary: shown("open-summary"),
     settingsTabs: [...document.querySelectorAll("#set-body [role=tab]")].filter((b) => b.offsetParent !== null).length,
     classicNew: [...document.querySelectorAll("#set-body .setrow, #set-body .setlist > *")].some(

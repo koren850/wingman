@@ -14,17 +14,24 @@ A **moment** is a point in the call where a short private nudge would help: a qu
 
 ## First run
 
-Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup with three steps. The chip at the top shows your progress, for example "2 of 3".
+Open **Wingman** (Spotlight or Launchpad on a Mac, the Start menu on Windows). The first window is a short welcome with three steps. You need no terminal and you edit no file. English and Hebrew both work: the language box at the top changes the window at once.
 
-1. **Try it.** A practice call: a pretend client plays through the real call loop and the real answer window. Free, no keys, and nothing leaves your Mac.
-2. **Connect.** Paste your Deepgram and Anthropic keys. They are stored safely: in the macOS Keychain, or on Windows encrypted for your Windows account. Press **Test** to check each one. The step shows the cost: about $1.40 per hour of call for Deepgram plus roughly 5 to 20 cents an hour for Anthropic.
-3. **Allow.** Allow the microphone and System Audio Recording. After you allow System Audio Recording, **quit and reopen Wingman**: macOS gives no live status for it. Then choose your screens. Wingman shows its answers in a small window on a second screen, because that window must never be in your screen share. With one screen the answer window stays closed (the call still works, and every answer is saved in the Wingman window). You can allow the window on your one screen, but then never share that whole screen.
+1. **Your two keys.** Wingman needs two keys, one from Deepgram (it turns the call into text) and one from Anthropic (it writes the answers). Each box has a button that opens the right page, a plain line about what it does and what it costs: about $1.40 per hour of call for Deepgram plus about 5 to 20 cents an hour for Anthropic. Paste each key and press **Check and save**. Wingman checks each key with one small request, and saves it only when the service accepts it. It then tells you in plain words if something is wrong:
+   - **The service did not accept the key.** You copied only part of it, or it was switched off. **Get a new key** opens the page.
+   - **The key is right but the account has no credit.** Press **Add credit**, add a few dollars, then **Check again**. You can still go on to a practice call.
+   - **Wingman cannot reach the service.** Check your internet connection and press **Try again**. You do not paste the key a second time.
+2. **Let Wingman hear.** On a Mac, allow the microphone (a box from macOS asks once) and switch on System Audio Recording for Wingman in System Settings, then press **I switched it on**. After you switch it on, **quit Wingman and open it again**: macOS gives no live status for it. On Windows, only the microphone switch exists. If Windows blocks it, **Open Windows microphone settings** takes you to the right page. Windows needs no permission for the sound of the other people on the call.
+3. **Ready.** Press **Start a practice call**: a pretend client plays through the real call loop and the real answer window. It is free, needs no internet, and nothing leaves your computer. When you are ready, press **Start a real call**.
 
-Then it says "You're ready". Press **Quick call**, or **Start** on a saved meeting. The way to your first real card is three steps on screen: Connect (keys), Allow (microphone and system audio, then quit and open Wingman once) and Try it (a free practice call).
+Where the keys are kept: in the macOS Keychain on a Mac, encrypted for your account with Windows data protection on Windows. They are never written to a plain file.
+
+If you press **Set up later**, you land on Home. Start is off with the reason and a **Fix it** button, and the practice call still works. **Settings, Setup guide** opens the welcome again when keys are missing.
+
+The three-step setup card on Home (**Try it**, **Connect**, **Allow**) stays for people who set Wingman up the older way, and it shows what is still open.
 
 **Meeting context (optional).** Choose **Add meeting context** to give Wingman background before a call: paste an invite, an email or notes, or add a file, a web address or your next calendar event (the full list is under [Meeting context](#meeting-context-what-you-can-add)). Under **More details** you can add who is joining, the goal and what you must cover. **Prepare** shows what Wingman understood; you can fix or remove any line. A saved meeting stays until you delete it and can start many calls. **Two language settings.** The Wingman window follows your system language (English or Hebrew). Change it under Settings, Basics, Window language: Same as the system, English or Hebrew. The answer window has its own setting, `ui.language` (Answer window language): `auto` shows Hebrew unless the speech language is English; `he` and `en` force one. The text of a card keeps the language of the call.
 
-Below the three steps is **Make it yours (optional)**. Nothing in it is needed to start, and each item can be skipped:
+Below the setup card is **Make it yours (optional)**. Nothing in it is needed to start, and each item can be skipped:
 
 - **About you.** Your name and how to address you. (Also in Settings later.)
 - **Your privacy.** Two choices: ask before listening starts, and keep your audio out of Deepgram's model training.
@@ -38,8 +45,8 @@ Without the app, from the terminal: `cd app && pnpm dashboard`. See [app/README.
 
 Notes:
 - `pnpm run doctor`, not `pnpm doctor` (the second one is pnpm's own command).
-- Never put keys in the repo. They belong in the Keychain.
-- No second screen yet? Turn on the one-screen option in the setup (step 3, Allow), and never share that screen.
+- Never put keys in the repo. Wingman keeps them in the secure store of your system (macOS Keychain, Windows data protection).
+- No second screen yet? Turn on the one-screen option in the setup (Home, setup card, Allow), and never share that screen.
 
 ## Tour of the windows
 
@@ -186,7 +193,7 @@ Nothing about you is stored in this repository.
 |---|---|
 | `~/Library/Application Support/Wingman/` | Your data: `calls/` (transcripts, cards, summaries), `briefs/` (prepared meetings, with `briefs/attachments/`), `entities.json` (optional client snapshot). Override with `WINGMAN_DATA_DIR`. |
 | `~/.config/wingman/` | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
-| macOS Keychain, service `wingman` (Windows: `%APPDATA%\Wingman\keys.enc.json`, encrypted) | Your API keys. |
+| macOS Keychain, service `wingman` (Mac) or `<data folder>/secrets/*.dpapi` (Windows, encrypted) | Your API keys. |
 
 If you used an older version that kept calls in the repo folder (`calls/` and `data/private/` inside the repo folder), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
 

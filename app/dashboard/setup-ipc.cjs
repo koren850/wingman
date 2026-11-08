@@ -2,8 +2,8 @@
 // IPC for the guided setup and the "About you" settings. Runs in the Electron MAIN process; every handler is registered through the host's
 // sender-checked handle() (window.cjs). The page can only ask for fixed actions: no path, URL or command ever comes from it.
 //   profile:get / profile:set    your name, spellings, how to address you, about, business (the same code as `wingman profile set`)
-//   setup:status                 microphone permission, number of screens, mic, screen and privacy settings, which pack is in use
-//   setup:askMic / setup:openPrivacy / setup:openLink   the Microphone prompt, the Privacy panes and the two key pages (fixed addresses)
+//   setup:status                 platform, microphone permission, number of screens, mic, screen and privacy settings, which pack is in use
+//   setup:askMic / setup:openPrivacy / setup:openLink   the Microphone prompt, the Privacy panes (macOS, Windows) and the key and billing pages (fixed addresses)
 //   setup:mics / setup:setMic    list microphones, save audio.mic.device
 //   setup:setOneScreen           save overlay.allowPrimary
 //   setup:copyPack / setup:revealPack   copy a starter pack (or the example pack) into your own pack folder (never overwrites)
@@ -16,7 +16,15 @@ const PANES = Object.freeze({
   mic: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
   audio: "x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture",
 });
-const LINKS = Object.freeze({ deepgram: "https://console.deepgram.com/signup", anthropic: "https://console.anthropic.com/settings/keys" });
+/** The Windows page for the microphone switch. Windows needs no permission for the sound of the call itself. */
+const WIN_PANES = Object.freeze({ mic: "ms-settings:privacy-microphone" });
+const paneFor = (which, platform) => (platform === "win32" ? WIN_PANES[which] : platform === "darwin" ? PANES[which] : undefined);
+const LINKS = Object.freeze({
+  deepgram: "https://console.deepgram.com/signup",
+  anthropic: "https://console.anthropic.com/settings/keys",
+  deepgramBilling: "https://console.deepgram.com/billing",
+  anthropicBilling: "https://console.anthropic.com/settings/billing",
+});
 const ADDRESS = ["male", "female", "neutral"];
 const PACK_FILES = ["bank.yaml", "bank.en.yaml", "house-style.md", "keyterms.txt", "topics.txt"];
 const preview = { ok: false, error: "preview" };
@@ -111,7 +119,8 @@ function copyExamplePack(root, env, home, pick = "example") {
  */
 function register(o) {
   const env = o.env || process.env,
-    home = o.home || os.homedir();
+    home = o.home || os.homedir(),
+    platform = o.platform || process.platform;
   const lastAsk = { at: 0 };
   const done = (r) => (r && r.ok ? r : { ok: false, message: String((r && r.message) || "Failed.").slice(0, 300) });
 
@@ -154,7 +163,7 @@ function register(o) {
         mipOptOut = s.values["stt.deepgram.mipOptOut"] === true;
       }
     }
-    return { ok: true, mic, systemAudio: "unknown", displays, micDevice, allowPrimary, requireConsent, mipOptOut, pack };
+    return { ok: true, platform, mic, systemAudio: "unknown", displays, micDevice, allowPrimary, requireConsent, mipOptOut, pack };
   });
   o.handle("setup:askMic", async () => {
     if (o.preview) return preview;
@@ -177,11 +186,13 @@ function register(o) {
   o.handle("setup:openPrivacy", async (which) => {
     if (typeof which !== "string" || !Object.prototype.hasOwnProperty.call(PANES, which)) throw new Error("bad pane");
     if (o.preview) return preview;
+    const url = paneFor(which, platform);
+    if (!url) return { ok: false, error: "This system has no such page." };
     try {
-      await o.shell.openExternal(PANES[which]);
+      await o.shell.openExternal(url);
       return { ok: true };
     } catch {
-      return { ok: false, error: "Could not open System Settings." };
+      return { ok: false, error: "Could not open the system settings." };
     }
   });
   o.handle("setup:openLink", async (which) => {
@@ -252,4 +263,4 @@ function register(o) {
   });
 }
 
-module.exports = { register, LINKS, cleanProfile, cleanMic, withMicName, packInfo, copyExamplePack, packDirs, PANES, PACK_FILES };
+module.exports = { register, LINKS, WIN_PANES, paneFor, cleanProfile, cleanMic, withMicName, packInfo, copyExamplePack, packDirs, PANES, PACK_FILES };

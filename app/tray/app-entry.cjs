@@ -105,30 +105,26 @@ if (toolAt >= 0) {
     const file = path.join(ROOT, "src", name + ".mjs");
     process.argv = [process.execPath, file, ...afterDash(argv.slice(toolAt + 2))]; // what the tool would see under node
     const toolArgs = afterDash(argv.slice(toolAt + 2));
-    // Windows safeStorage (the key store) works only after Electron is ready; the tools read keys at start.
-    const ready = process.platform === "win32" ? app.whenReady() : Promise.resolve();
-    ready
-      .then(() => import(pathToFileURL(file).href))
-      .then(
-        () => ONE_SHOT.has(name) && exitWhenIdle(STDIN_TOOLS.has(name) && toolArgs[0] === "write"),
-        (e) => {
-          console.error(`wingman: ${name} failed to start: ${String((e && e.stack) || e).slice(0, 2000)}`);
-          finish(1);
-        },
-      );
+    import(pathToFileURL(file).href).then(
+      () => ONE_SHOT.has(name) && exitWhenIdle(STDIN_TOOLS.has(name) && toolArgs[0] === "write"),
+      (e) => {
+        console.error(`wingman: ${name} failed to start: ${String((e && e.stack) || e).slice(0, 2000)}`);
+        finish(1);
+      },
+    );
   }
 } else if (smoke) {
   // Install check for CI and for support: no window, no tray, no network. See shared/smoke.cjs.
   backgroundProcess("smoke");
   quietCrashes();
   const { runSmoke } = require("../shared/smoke.cjs");
-  const kc = require("../src/keychain.cjs");
+  const { createSecureStore } = require("../src/securestore.cjs");
   app.whenReady().then(async () => {
     const r = await runSmoke({
       root: ROOT,
       resources: process.resourcesPath,
       version: app.getVersion(),
-      makeKeychain: (dir) => (process.platform === "win32" ? kc.platformKeychain({ file: path.join(dir, kc.SECURE_KEYS_FILE) }) : null),
+      makeKeychain: (dir) => (process.platform === "win32" ? createSecureStore({ dataDir: dir }) : null),
       execFile: require("node:child_process").execFile,
       execPath: process.execPath,
       env: process.env,

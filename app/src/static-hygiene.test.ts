@@ -324,12 +324,12 @@ test("static: key values can only reach memory; no logging or persistence path t
       /(?:require|from)\s*\(?\s*["'][^"']*keychain|loadKeys|requireKeys|KEY_VARS/.test(t) &&
       !users.includes(f) &&
       !/^src\/(.*\.test\.ts|settings-edit-cli\.ts)$/.test(f) &&
-      !/^dashboard\/(keys-ipc|window)\.cjs$|^src\/keychain\.cjs$/.test(f)
+      !/^dashboard\/(keys-ipc|window)\.cjs$|^src\/(keychain|securestore|keycheck)\.cjs$/.test(f)
     )
       assert.fail(`${f} touches keys and is not on the reviewed list`);
   }
   // 2. The key modules never log or persist anything themselves, and the window host never logs IPC args.
-  for (const f of ["src/keychain.cjs", "dashboard/keys-ipc.cjs"])
+  for (const f of ["src/keychain.cjs", "src/securestore.cjs", "src/keycheck.cjs", "dashboard/keys-ipc.cjs"])
     assert.doesNotMatch(read(f), /console\.|logLine|appendFile|process\.stdout|process\.stderr|JSON\.stringify\(\s*(value|key)\b/, f);
   assert.doesNotMatch(read("dashboard/window.cjs"), /console\./);
   // 3. Writers of calls/, tray.log, events, settings YAML and snapshots do not know about keys at all.
