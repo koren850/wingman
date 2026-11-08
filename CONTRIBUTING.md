@@ -20,7 +20,7 @@ cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ```
 
-pnpm 11 comes through corepack (`corepack enable`). The version is fixed in `app/package.json`.
+pnpm 11 comes through corepack (`corepack enable`). The version is fixed in `app/package.json`. Run pnpm from `app/`, so corepack uses that version.
 
 More detail: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
@@ -34,8 +34,9 @@ From `app/`:
 pnpm typecheck     # type check
 pnpm lint          # ESLint
 pnpm format:check  # Prettier
-pnpm test:unit     # unit tests, about 40 s
-pnpm test:e2e      # end-to-end tests (whole calls in a subprocess), about 4 min
+pnpm test:unit     # unit tests, the quick option
+pnpm test:e2e      # end-to-end tests (whole calls in a subprocess), slower
+pnpm test          # unit plus end-to-end; a full run can take about half an hour on a busy machine
 pnpm eval          # detector, bank and guard numbers against qa/eval-baseline.json
 pnpm check         # all of the above except the end-to-end tests
 ```
@@ -57,7 +58,7 @@ One test, the "repo guard", fails if a tracked file contains a word from a priva
 Make your own list:
 
 - Put the words in the environment, separated by commas:
-  `WINGMAN_DENYLIST="word1,word2" pnpm test`
+  `WINGMAN_DENYLIST="word1,word2" pnpm test:unit`
 - Or put one word (or regex) per line in `app/data/private/denylist.txt`. That file is git-ignored.
 
 Use words that must never appear: your name, your employer, client names, your own domains, your phone number. If no list is set, the test skips itself. That is what happens in CI.
@@ -96,7 +97,7 @@ The short version. The full list is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md
 - Say what changed and why, in a few sentences.
 - Say how you checked it (which tests, anything you tried by hand).
 - Docs change with the code. If you change a setting, a command or a path, update the docs in the same pull request.
-- CI runs the type check and the tests on macOS and Linux; both must be green. Windows runs the unit tests as an experimental job (a failure there does not block a merge, but do not make it worse). Tests that need macOS, bash or POSIX file modes skip themselves with a reason through `app/src/test-platform.ts`.
+- CI runs the type check, the unit tests, the end-to-end tests and `pnpm eval` on macOS and Linux; both must be green. Windows CI runs the type check and the unit tests only. Tests that need macOS, bash or POSIX file modes skip themselves with a reason through `app/src/test-platform.ts`.
 
 ## Security problems
 

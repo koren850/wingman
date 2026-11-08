@@ -21,7 +21,7 @@ Before a meeting you can give it context (an invite, an email, notes). That is o
 
 You need:
 
-- macOS 14.2 or newer, Node 24 or newer (the installer does not install it), `ffmpeg` for the microphone (the installer offers `brew install ffmpeg`), pnpm 11 (comes with corepack).
+- macOS 14.2 or newer, Node 24 or newer (the installer does not install it), `ffmpeg` for the microphone (the installer offers `brew install ffmpeg`), pnpm 11 (comes with corepack; run pnpm from `app/` so it uses the pinned version).
 - A second screen. With one screen the answer window stays closed, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it).
 - For live calls, a Deepgram key and an Anthropic key. The practice call needs no keys.
 
@@ -48,7 +48,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"               # Apple silicon: brew on
 brew install node@24 && brew link --overwrite node@24   # Node 24 (or: nvm install 24)
 corepack enable                                         # gives you pnpm; ./install.sh also does this
 brew install ffmpeg                                     # microphone capture and file replay
-brew install poppler                                    # optional: attach PDF files to a meeting
+brew install poppler                                    # optional: read PDF files as context
 ```
 
 ### The keys
@@ -60,13 +60,13 @@ brew install poppler                                    # optional: attach PDF f
 
 Open **Wingman**. The setup has three steps: **Try it**, **Connect** (paste both keys; they go into the macOS Keychain, never a file) and **Allow**. Press **Test** next to each key. From a terminal: `pnpm keys set deepgram`, `pnpm keys set anthropic`, `pnpm keys status` (it says only whether a key is present). Never put keys in the repo.
 
-**Cost (an estimate from the price table in the config).** About $1.40 an hour for speech (Deepgram Nova-3, two channels) plus roughly 5 to 20 cents an hour for AI: about $1.50 an hour in total. The scripted model puts live reading at about 3 cents an hour; that is a model of the usage, not a measurement. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits AI spend, and Settings, Money has a soft cap per hour. Set a limit in both provider consoles too.
+**Cost (an estimate from the price table in the config).** AI cost is modelled at about $0.03 an hour; plan for 5 to 20 cents an hour. Speech with Deepgram Nova-3 (two channels) is about $1.40 an hour, so a call is about $1.50 an hour in total. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits AI spend, and Settings, Money has a soft cap per hour. Set a limit in both provider consoles too.
 
 ## Part 2: Try a practice call
 
 Press **Practice call** in the setup, or next to **Start** on Home. A pretend client plays through the real call loop and the real answer window. It is free, needs no keys, and nothing leaves your Mac. The call is invented: a client called Dana asks about a slow site, backups and a price. It is in English when the interface language is English, in Hebrew otherwise. The speech and the AI replies in the practice call are **scripted**. It shows how the windows work, not how good the AI is.
 
-![The answer window: the newest answer large, older ones small](ux/answer-window-hero.png)
+![The answer window in the practice call: the newest card large, older ones small (invented example)](ux/answer-window-hero.png)
 
 What you see:
 
@@ -75,13 +75,15 @@ What you see:
 
 The price question is the main idea: the client asks "how much" and Wingman shows a safe line, never an invented number. Prices, dates and promises are checked in code.
 
-![The Wingman window, Home page](ux/home-window.png)
+![The Wingman window, Home page, before a call (invented example)](ux/home-window.png)
 
-The Readiness check (Home, **Run readiness check**) tests the microphone, the system audio, the keys, the speech service and the AI. It ends with `READY`, `READY WITH WARNINGS` or `NOT READY` and tells you what to fix. The full check costs a few cents; `pnpm run doctor --offline` runs the free part.
+![The Wingman window, Home page, during a live call (invented example)](ux/home-live.png)
+
+The Readiness check (Home, **Run readiness check**) tests the microphone, the system audio, the keys, the speech service and the AI. It ends with `READY`, `READY WITH WARNINGS` or `NOT READY` and tells you what to fix. The full check costs a few cents; `pnpm run doctor --offline` runs the free part. Without keys it ends with `NOT READY`, because missing keys count as errors.
 
 ## Part 3: Start a real call
 
-**Optional: give Wingman context first.** On Home choose **Add meeting context**. Paste an invite, an email or notes, or drop a .txt, .md, .pdf or .ics file. **Prepare** shows what Wingman understood. Before the call starts, Wingman shows **What Wingman knows** once: who is joining, the kind of call, and the facts, each with its source line. Untick or edit any line. **Start without review** is one click. If you add no context, this step is skipped.
+**Optional: give Wingman context first.** On Home choose **Add meeting context**. Paste an invite, an email or notes, drop a file (.txt, .md, .docx, .eml, .pdf or .ics), give a web address (https), a calendar link, or choose your next calendar event. **Prepare** shows what Wingman understood. Before the call starts, Wingman shows **What Wingman knows** once: who is joining, the kind of call, and the facts, each with its source line. Untick or edit any line. **Start without review** is one click. If you add no context, this step is skipped.
 
 Press **Start** on a meeting, or **Quick call** on Home. From a terminal: `wingman start --quick` (the app asks you to confirm in a window). Then talk, or join your call. Wingman builds its memory as you go ("So far" in the live view shows it). When it ends, press **Stop call** and then **Open summary**. Wingman saves the transcript and writes a summary and a follow-up email draft. Everything is in `~/Library/Application Support/Wingman/calls/`. See [EXAMPLES.md](EXAMPLES.md#d-a-call-summary-and-follow-up-email) for what the summary looks like.
 

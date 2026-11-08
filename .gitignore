@@ -1,7 +1,4 @@
 node_modules
-# Backward compatibility: the app folder was called "stage0" before the rename. Checkouts that were updated keep their
-# own calls and private data there as untracked files; keep them out of git.
-stage0/
 app/calls/
 app/data/gold/recordings/
 app/data/gold/report-*.md

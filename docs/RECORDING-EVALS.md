@@ -1,16 +1,19 @@
-# Morning kit
+# Recording evals
 
-One page for the owner. It is the only way to get a **recorded** quality number: a run where the real AI answers. Everything else in the repository is **scripted** (fixtures), which proves the plumbing and the grader, not the AI's judgement ([ADR 62](DECISIONS.md#adr-62-scripted-is-not-recorded-every-number-is-labelled-and-release-needs-the-recorded-run)). An agent never runs this, and CI refuses it.
+For maintainers. This page explains how to record a run where the real AI answers. That is the only way to get a **recorded** quality number. Everything else in the repository is **scripted** (fixtures), which checks the plumbing and the grader, not the AI's judgement ([ADR 62](DECISIONS.md#adr-62-scripted-is-not-recorded-every-number-is-labelled-and-release-needs-the-recorded-run)). The run costs money and needs real keys, so CI refuses it and automated agents must not start it.
 
 ## The command
+
+Run pnpm from `app/`, so corepack uses the pinned version.
 
 ```bash
 cd app
 pnpm morning --cap 5 --estimate        # prints the cost and stops; needs no key
-ANTHROPIC_API_KEY=... pnpm morning --cap 5
+read -s ANTHROPIC_API_KEY; export ANTHROPIC_API_KEY    # paste the key, press Enter
+pnpm morning --cap 5
 ```
 
-If `pnpm morning` is not in your `package.json` yet, run `./node_modules/.bin/tsx scripts/morning.ts --cap 5` (the same file). The key goes in the environment of this one command; nothing reads a key file. Do it on a quiet machine, once. Use `--only dev,judge` to run part of it and `--skip test-c` to leave a split out.
+`read -s` keeps the key out of the shell history and the screen. The key lives in the environment of this shell only; nothing reads a key file. Close the shell when you are done. Run it on a quiet machine, once. Use `--only dev,judge` to run part of it and `--skip test-c` to leave a split out.
 
 ## What it costs
 
@@ -30,13 +33,13 @@ Reading a held-out split is a one-time act. The command asks "yes?" before each 
 
 ## What it writes
 
-- `data/cassettes/dev.cassette.json`, `memory.cassette.json`, `judge-set.cassette.json` and one per held-out split: the recordings. Keep them; later runs replay them for free.
+- The folder `data/cassettes/` is created by the run. In it: `dev.cassette.json`, `memory.cassette.json`, `judge-set.cassette.json` and one file per held-out split. These are the recordings. Keep them; later runs replay them for free.
 - `qa/recorded-baseline.json`: the `v2Recorded` numbers and the cassette they came from. Not written if the dev eval against the recording failed.
 - `qa/out/morning.md`: one page with what ran, what each step cost, the cost check, the dev eval and the held-out read. Open this first.
 
 ## Then, by hand
 
-The morning command does not judge the ship lines. After it, from `app/`:
+The record command does not judge the ship lines. After it, from `app/`:
 
 ```bash
 pnpm eval --ship --cassette data/cassettes/dev.cassette.json
@@ -50,16 +53,16 @@ Each line prints pass or FAIL, and now the two recorded-only lines (memory F1, d
 |---|---|---|
 | `refusing to run in CI`, `--cap ... is required`, `no ANTHROPIC_API_KEY` | A guard, not a bug. | Fix the command line or the environment. |
 | `the estimate is above the cap` | Not enough budget for the steps you asked for. | Raise `--cap`, use `--only`, or add `--allow-partial`. |
-| A step says `failed` | The call, the file or the key failed in that step. The others still ran. | Read the note in `morning.md`. Re-run only that step: `--only <step>`. Recordings that exist are kept. |
+| A step says `failed` | The call, the file or the key failed in that step. The others still ran. | Read the note in `qa/out/morning.md`. Re-run only that step: `--only <step>`. Recordings that exist are kept. |
 | `STALE` or many cassette misses | A prompt changed after the recording. This is not a bug. | Record again (`--only dev`). `pnpm cassette:status --cassette <file>` shows the coverage. |
 | Cost check over 15 percent (total or any role above 5 percent of cost) | The budgets in `qa/budgets.json` came from modelled usage and are wrong. | Do not change the engine. Move the budgets with `pnpm eval --cassette <file> --update` after you read the diff. |
-| `recorded-baseline.json` not written | The dev eval against the recording failed. | Open the dev eval text in `morning.md`; fix the cause, then run `pnpm eval --cassette data/cassettes/dev.cassette.json --update`. |
+| `recorded-baseline.json` not written | The dev eval against the recording failed. | Open the dev eval text in `qa/out/morning.md`; fix the cause, then run `pnpm eval --cassette data/cassettes/dev.cassette.json --update`. |
 | A ship line FAILs on the recorded run | The AI's judgement is below the promise. | Do not lower `qa/ship.json`. Use `pnpm replay <call-folder> --prompt <file> --cassette <file>` to see what another prompt does, then record `dev` again. |
-| A control (null, noise, shuffled, always-answer) passes the gate | The grader can be fooled. | Stop. The numbers of that run mean nothing. Tell the integrator. |
+| A control (null, noise, shuffled, always-answer) passes the gate | The grader can be fooled. | Stop. The numbers of that run mean nothing. Open an issue. |
 | The held-out numbers are far below dev | Dev was tuned on. Expected, to a degree. | Report both. Do not tune on the held-out split. Replace `test-c` by a split from an independent author ([ADR 61](DECISIONS.md#adr-61-ship-thresholds-are-absolute-and-the-final-read-uses-a-split-nobody-tuned-on)). |
 
-## What a good morning looks like
+## What a good run looks like
 
-`morning.md` says "all steps that ran are fine", the cost check is inside 15 percent, `eval --ship` on the recording passes every line, a real call was rated with at least 2 useful cards an hour, and the numbers are written in the docs with the word **recorded** next to them. Until then the public repository stays delayed.
+`qa/out/morning.md` says "all steps that ran are fine", the cost check is inside 15 percent, `eval --ship` on the recording passes every line, a real call was rated with at least 2 useful cards an hour, and the numbers are written in the docs with the word **recorded** next to them. Until then the docs keep the word **scripted** next to every number.
 
-Next: [Development, the morning run](DEVELOPMENT.md#the-morning-run-owner-by-hand) · [Roadmap](ROADMAP.md) · [Decisions](DECISIONS.md)
+Next: [Development](DEVELOPMENT.md) · [Roadmap](ROADMAP.md) · [Decisions](DECISIONS.md)

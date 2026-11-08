@@ -1,16 +1,16 @@
 # Wingman app and operator guide (app)
 
-This is the detailed guide for the app in `app/`. For what Wingman is, requirements and install steps, read the [root README](../README.md). Problems: [TROUBLESHOOTING](../docs/TROUBLESHOOTING.md). Writing your answer cards: [PACK-FORMAT](../docs/PACK-FORMAT.md). Design: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Decisions: [docs/DECISIONS.md](../docs/DECISIONS.md). Privacy: [docs/PRIVACY-AND-SECURITY.md](../docs/PRIVACY-AND-SECURITY.md). Developing: [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md). Limits: macOS only, Hebrew first, needs Deepgram and Anthropic keys, costs money per call, and is not a recording or consent tool.
+This is the detailed guide for the app in `app/`. For what Wingman is, requirements and install steps, read the [root README](../README.md). Problems: [TROUBLESHOOTING](../docs/TROUBLESHOOTING.md). Writing your answer cards: [PACK-FORMAT](../docs/PACK-FORMAT.md). Design: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Decisions: [docs/DECISIONS.md](../docs/DECISIONS.md). Privacy: [docs/PRIVACY-AND-SECURITY.md](../docs/PRIVACY-AND-SECURITY.md). Developing: [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md). Limits: macOS only, English and Hebrew, needs Deepgram and Anthropic keys, costs money per call, and is not a recording or consent tool.
 
-Wingman is a live call copilot for client, support and team calls. It listens to a call or meeting (any kind, or just you thinking aloud), answers questions the other side asks, answers questions **you** ask it, and notes, tips and summarises. The answer bank (your pack; an example web/hosting pack is included) is one knowledge source, used when the call is about that kind of work.
+Wingman is a live agent for client, support and team calls. It listens to a call or meeting (any kind, or just you thinking aloud), builds context as the call goes, shows cards when something needs your attention, answers questions **you** ask it, and writes notes, tips and a summary. The answer bank (your pack; an example web/hosting pack is included) is one knowledge source, used when the call is about that kind of work.
 
 **Ask Wingman:** press **Ctrl+Opt+A**, then say your question within 10 s; the answer appears in a violet "For you" card. With `assist.answerMe: always` (default) it also answers questions you ask out loud that are clearly for it ("כמה זה 36 ועוד 42?", "מה ההבדל בין CDN ל-DNS?"), and stays quiet when you ask the other person ("מה התקציב שלכם?"). Arithmetic is computed locally, no AI.
 
-Launched from the app or the terminal. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: `CALL-DAY.md`.
+Launched from the app or the terminal. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: [CALL-DAY.md](CALL-DAY.md).
 
 ## Setup (once)
 1. Install with `./install.sh` at the repo root (see the [root README](../README.md#quick-start)). Then open Wingman. The first window is a guided setup with three steps (Try it, Connect, Allow), then optional items: About you, privacy, microphone, starter answers, readiness check. You can reopen it from **Settings, Setup guide**.
-2. Keys: in the setup, or **Settings, Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; makes a mode-600 backup first). Never put keys in this repo.
+2. Keys: in the setup, or **Settings, Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; each key is written to the Keychain and read back before its line is removed; no backup copy is made). Never put keys in this repo.
 3. Permissions: allow **Microphone** and **System Audio Recording** for Wingman. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it.
    When you run from a terminal instead of the app, the permission belongs to the terminal. Use Terminal.app. In iTerm/Warp/IDE terminals add the app by hand under Privacy & Security > Screen & System Audio Recording > System Audio Recording Only.
 4. `pnpm run doctor` (the app calls it "Readiness check") checks keys, mic, system audio, Deepgram and Haiku (incl. prompt cache).
@@ -25,7 +25,7 @@ Most people start calls from the app (Home, **Quick call**). `pnpm start` runs t
 |---|---|
 | **`pnpm call`** | **Start a call: opens the answer window and starts listening. Ctrl+C stops, saves the call and prints a speed summary** |
 | `pnpm tag` | After a call: rate each card y/n (about 2 min). Prints useful cards/hour and how often the bank answered (usefulness gate) |
-| `pnpm dashboard` | The Wingman app: menu bar plus a window with Home (start or plan a call, run it, readiness, what is waiting), Calls (calls list with the usefulness gate across live calls, call detail (transcript, cards with useful/not-useful rating written to `tags.jsonl`, side items, speed, cost, events), delete call), Settings (25 plain-words options in 6 groups, an Advanced list, About you, Setup guide). Local only, no network |
+| `pnpm dashboard` | The Wingman app: menu bar plus a window with Home (start or plan a call, run it, readiness, what is waiting), Calls (calls list with the usefulness gate across live calls, call detail (transcript, cards with useful/not-useful rating written to `tags.jsonl`, side items, speed, cost, events), delete call), Settings (plain-words options in groups, an Advanced list, About you, Setup guide). Local only, no network |
 | `pnpm overlay` | Answer window on the second screen. Content protection is on but **untested with Zoom; use the second screen**. With one display it refuses to open unless `overlay.allowPrimary` (or `WINGMAN_ALLOW_PRIMARY=1`) is on. Ctrl+Opt+C = clear, Ctrl+Opt+P = pause, Ctrl+Opt+R = last 30 s as text, Ctrl+Opt+K = copy the newest captured phone/email/domain |
 | `pnpm start` | Live call: system audio = the other side, mic = you. Wear headphones. Listening starts right away (turn on "Ask me before listening starts" in Settings to confirm with `Enter` first). Keys: `q` quiet on/off (cards logged, not shown), `a` ask Wingman (same as Ctrl+Opt+A in the app), Ctrl+C stop. Max ~3 new cards per 60 s |
 | `pnpm start --discard` | Delete the call folder when the call ends (without it, Ctrl+C asks) |
@@ -39,11 +39,13 @@ Most people start calls from the app (Home, **Quick call**). `pnpm start` runs t
 | `pnpm detector` | Question-detector precision/recall on `data/questions.tsv` |
 | `pnpm synth` | Rebuild the synthetic test audio (Carmit voice) |
 | `pnpm settings` | Prints the effective settings, each value tagged with the layer it came from (never prints keys) |
-| `pnpm run doctor` / `--offline` | Tests the configured providers and their fallbacks, settings and the checklist. Ends with READY / NOT READY. `--offline` makes no audio, network or paid calls |
+| `pnpm run doctor` / `--offline` | Tests the configured providers and their fallbacks, settings and the checklist. Ends with READY / READY WITH WARNINGS / NOT READY. `--offline` makes no audio, network or paid calls; without keys it still ends NOT READY, because missing keys are errors |
 | `pnpm diagnose [call id]` | Writes one file for a bug report: versions, changed settings, health and error events, device names, model and prompt ids, counts. No transcript or card text. Read it before you share it |
 | `pnpm run pack:from-notes <file>` | Drafts answer cards from your own notes (`.txt`, `.md`, `.pdf`) into a draft folder; every card goes through the guards. One model call; nothing is written into your live pack |
 | `pnpm dist` | Builds a self-contained, unsigned `Wingman.app` and `.dmg` (see [DEVELOPMENT.md](../docs/DEVELOPMENT.md#building-the-app-dmg)) |
-| `pnpm test` | Unit tests |
+| `pnpm test` | All tests: unit plus end-to-end (a full run can take about half an hour on a busy machine) |
+| `pnpm test:unit` | Unit tests only, the quick option |
+| `pnpm test:e2e` | End-to-end tests only |
 
 ## Your profile and pack
 Your name, spellings, how to address you, your business and your time zone (an IANA name such as `Asia/Jerusalem`; empty means this Mac's zone) are in `~/.config/wingman/profile.yaml`. Set them in **Settings, About you** or with `wingman profile set ...`. A bad file keeps the last good profile during a call.
@@ -113,7 +115,7 @@ Everything tunable is a setting; providers are swapped by setting, not by editin
 
 Invalid settings stop the start with the file, the key and the allowed values, exit code 2. `pnpm settings` shows what is in force and where each value came from. API keys are never settings. Other environment variables: `WINGMAN_DATA_DIR`, `WINGMAN_CALLS_DIR`, `WINGMAN_BRIEFS_DIR` (where your data lives), `WINGMAN_PACK_DIR` (your pack), `WINGMAN_PROFILE_FILE` (your profile file), `WINGMAN_APPS_DIR` and `WINGMAN_BIN_DIR` (where `install.sh` puts the app and the `wingman` link; defaults `/Applications` and `~/.local/bin`), `WINGMAN_SKIP_APP=1` (install without Electron and the app: CI and tests). Keys load in this order: process env, then the macOS Keychain (Deepgram, Anthropic), then the legacy `~/.config/wingman/keys.env` (`DEEPGRAM_API_KEY`, `ANTHROPIC_API_KEY`, and optionally `SONIOX_API_KEY`, `GLADIA_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
 
-**The Settings page.** The app's Settings page has these 29 options. Everything else is in the Advanced list (read-only) or in `~/.config/wingman/settings.yaml`. `config/defaults.yaml` documents every value. Two are shown inverted in the app: "Use the AI at all" is the opposite of `run.noAi`, and "Show answer window in screen share" is the opposite of `overlay.contentProtection`.
+**The Settings page.** The tables below list the options on the app's Settings page. Everything else is in the Advanced list (read-only) or in `~/.config/wingman/settings.yaml`. `config/defaults.yaml` documents every value. Two are shown inverted in the app: "Use the AI at all" is the opposite of `run.noAi`, and "Show answer window in screen share" is the opposite of `overlay.contentProtection`.
 
 **Call**
 
@@ -124,6 +126,9 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 | Keep my audio out of Deepgram's model training | `stt.deepgram.mipOptOut` | off |
 | Ask before a call started from the command line starts listening | `privacy.askBeforeCliStart` | on |
 | Stop by itself after silence | `budget.idleStopMin` | 15 minutes |
+| Live nudges about how I talk | `coach.nudges` | off |
+| My calendar address (a private .ics link) | `context.calendarUrl` | empty |
+| Remember people from earlier calls | `context.pastCalls` | on |
 | Important cards only | `cards.focus` | on |
 | Warn me when I commit to a price, date or promise | `selfCheck.careful` | on |
 | Correct me when I contradict the meeting background | `selfCheck.fix` | on |
@@ -133,6 +138,10 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 | Label in the app | Setting | Default |
 |---|---|---|
 | AI answers to my own questions | `assist.answerMe` | always |
+| Help engine | `moments.engine` | Live reading (Classic is the fallback) |
+| Start early on a stable question | `moments.earlyStart` | off |
+| Keep a memory of the call | `memory.enabled` | on |
+| Look a term up on the web | `lookup.enabled` | off |
 | Use the AI at all | `run.noAi` | on |
 | AI answers to the other side's questions | `reflex.allowAns` | on |
 | Start every call in quiet mode | `cards.quiet` | off |
@@ -153,6 +162,8 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 |---|---|---|
 | Spend cap per call | `budget.maxUsdPerCall` | 2 USD |
 | Warn when a call costs more than | `budget.warnUsdPerCall` | 3 USD |
+| Soft AI spend cap per hour | `budget.maxLlmUsdPerHour` | 0.4 USD |
+| Most one lookup may cost | `lookup.maxUsdPerCall` | 0.05 USD |
 
 **Audio and screens**
 
@@ -173,16 +184,19 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 | How often to re-check the call | `frame.everyMs` | 60 seconds |
 | Time between tips, at least | `tips.minGapMs` | 120 seconds |
 | Background text the AI may read | `attachments.maxChars` | 40000 characters |
+| Nudge when I talk more than | `coach.talkShareMax` | 70 percent |
+| Nudge when I talk faster than | `coach.paceMax` | 180 words a minute |
 
 
 Notes on a few of them:
 - `cards.focus` ("Important cards only"): a card only for a clear question to you (a question mark, a direct request, your name), at most 2 every 2 minutes. Price and date cards and the cards about what you said always show. Off: every likely question gets a card, up to `cards.maxPerMinute` (3). Interview mode ignores the limit.
 - `reflex.stall` (“Buy time” lines): off by default. Price, timeline and guarantee cards always show. `reflex.stallAfterMs` (1.8 s) is the wait before a stall line when `reflex.stall` is on; it is not on the Settings page.
-- `ui.language`: language of the answer window labels. `auto` shows Hebrew unless the speech language is English. The Wingman window itself is English only.
+- `ui.language`: language of the answer window labels. `auto` shows Hebrew unless the speech language is English. The Wingman window itself follows the system language (English or Hebrew); **Settings, Window language** can change it.
 - `privacy.askBeforeCliStart`: a call started with `wingman start` first asks you in a window in the app. Without your click the start is refused (exit 4). Practice calls never ask. Stopping a call with `--delete` always asks.
 - `privacy.requireConsentAck`: the call waits for **Start listening** before any audio is sent.
 - `overlay.allowPrimary`: lets the answer window open on the only screen. Never share that screen.
 - `system.sleepGapMs` (5000): a gap longer than this between health ticks means the Mac slept. Wingman shows a warning, restarts the audio and reopens the speech connection. 0 turns the check off.
+- `moments.*`: more live-reading options are in `config/defaults.yaml` (observer calls a minute, the window the observer sees, the least value a card needs). `coach.*`: nudges are one thin line, at most one every 5 minutes, with no AI call. `lookup.*`: web lookup is off by default and contacts the public page you ask about, see [Privacy and security](../docs/PRIVACY-AND-SECURITY.md#what-leaves-your-mac). `context.*`: where Plan a call gets context.
 - `flow.*`: see Group call mode above. `selfCheck.*`: cards about what you said.
 
 **Switch the speech-to-text provider**
@@ -214,7 +228,7 @@ Model strings are `provider:model`. Only Anthropic is installed. For others run 
 - Keys live in memory only. They are never written to `calls/`, `tray.log`, events, settings or snapshots. `run.ts` removes key variables from its own environment after loading, and the answer window, ffmpeg and caffeinate are started without them.
 - Settings, Keys: write-only password box (cleared on Save), status "Saved in Keychain · …a9F2" / "In file · …a9F2" / "Missing", Test (one tiny authenticated request, answers only ok/invalid/network), Remove (native confirm). The page only ever sees the last 4 characters. IPC: main window only, provider allow-list, format checks, 5 Save/Test per minute.
 - `pnpm keys status|set <provider>|remove <provider>|migrate`. `pnpm run doctor` shows source (Keychain/file/environment) and last 4 only.
-- Migration (`pnpm keys migrate` or the Settings button, never automatic): backup `keys.env.bak-<date>` (600), write + verify each key in the Keychain, then remove that line from keys.env (atomic, 600). Delete the backup once calls work.
+- Migration (`pnpm keys migrate` or the Settings button, never automatic): write and verify each key in the Keychain, then remove that line from keys.env (atomic, mode 600). No backup copy is made, because it would be one more plaintext copy of the key. If the Keychain write fails, `keys.env` is left untouched.
 - Tests use a mocked `security` runner and fake keys (`src/keys.test.ts`); the real runner refuses to run under the test runner.
 
 ## Keys, stopping and quitting (menu-bar app)

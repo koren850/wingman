@@ -2,7 +2,7 @@
 
 For anyone who will use Wingman on a real call, and for anyone judging whether it is safe to run. Wingman listens to calls. Read this before you use it on one.
 
-In short: audio goes to Deepgram and text goes to Anthropic, only while a call is on. Nothing is saved as audio. Your files stay on your Mac, outside the repo. Keys are in the Keychain. You can see what is stored with `ls ~/Library/Application\ Support/Wingman/calls/` and delete it any time.
+In short: audio goes to Deepgram and text goes to Anthropic, only while a call is on. By default nothing else is sent. Three opt-in features contact the hosts you give them (see the table). Nothing is saved as audio. Your files stay on your Mac, outside the repo. Keys are in the Keychain. You can see what is stored with `ls ~/Library/Application\ Support/Wingman/calls/` and delete it any time.
 
 ## Your responsibility
 
@@ -19,8 +19,11 @@ In short: audio goes to Deepgram and text goes to Anthropic, only while a call i
 | **Name and term hints**: up to 100 keyterms, made of the people and company names from your Plan (who, title) plus your pack's `keyterms.txt` | **Deepgram** | When a call connects | They improve recognition of names and terms. They travel as `keyterm=` parameters in the connection URL, so they can appear in Deepgram's request logs or in a proxy you use. Leave the Plan's who and title empty, and keep names out of `keyterms.txt`, if you do not want that. |
 | **Text**: transcript lines, the Plan (who, goal, notes, must-cover items), background files you attach, the answer bank text, house style, your profile (name, "about", business), the call frame, client facts matched in the call | **Anthropic** (the Claude model) | During a call (answers, frame, notes, tips, "is this for me" classifier) and after (summary and follow-up email) | AI answers and the summary |
 | A tiny test request with your key | Deepgram, Anthropic | When you press Test on a key, or run the Readiness check | Checks the key works |
+| **A web address as context** (opt-in) | The host in the address you give (https only; private, loopback and link-local addresses are refused) | When you add the address to a meeting | Wingman reads that one page (8 second limit, 1 MB) as background. Nothing from your Mac is sent except the request itself. |
+| **A calendar link** (opt-in): `context.calendarUrl`, a private .ics address | The host of that link, usually your calendar provider | When you press "Use my next calendar event" | Wingman reads the next event. The link is a secret address: keep it out of screenshots. |
+| **Web lookup** (opt-in, off by default): `lookup.enabled` | The public web page for the term | One request each time you use the lookup button or `wingman lookup` | Shows the page address and one sentence. If the AI shortens the sentence, that text goes to Anthropic. Never started by itself during a call. |
 
-Nothing else is sent: no other host is contacted. There is no telemetry, no analytics, no automatic update check and no cloud account. (`wingman update` runs only when you start it, and talks to your git remote.) The window and the answer window load no web content (strict Content-Security-Policy, navigation blocked). If you configure a fallback provider (Soniox, Gladia, or another model vendor), the same data goes to that vendor when it is used.
+By default nothing else is sent. Three opt-in features contact the hosts you give them: a web address as context, a calendar .ics link, and web lookup (off by default). There is no telemetry, no analytics, no automatic update check and no cloud account. (`wingman update` runs only when you start it, and talks to your git remote.) The window and the answer window load no web content (strict Content-Security-Policy, navigation blocked). If you configure a fallback provider (Soniox, Gladia, or another model vendor), the same data goes to that vendor when it is used.
 
 **Deepgram model improvement.** By default Deepgram may use audio sent to it for its Model Improvement Program, under its own terms. Setting `stt.deepgram.mipOptOut: true` makes Wingman send `mip_opt_out=true` with every connection, which is Deepgram's documented opt-out ([docs](https://developers.deepgram.com/docs/the-deepgram-model-improvement-partnership-program)). The default here is **off**: Deepgram's documentation states no price for opting out, and community reports say that opting out can raise the rate, so Wingman does not change your bill without you choosing it. If call audio is sensitive, turn it on (and check the price with Deepgram).
 
@@ -49,7 +52,7 @@ Delete a call: **Stop and delete this call** (asks first), `wingman calls purge 
 
 Delete everything: `wingman uninstall --purge` removes the data folder, `~/.config/wingman` and the Keychain keys, after you type `DELETE`. Plain `wingman uninstall` removes only the app and the command link.
 
-**Older versions** kept calls in `calls/` and meetings in `data/private/` inside the app folder (older versions stored data in the repo folder, `stage0/`). The first start of a newer version **copies** them into the data folder. It never moves or overwrites anything and writes a marker so it runs once. The old folders stay where they were: **delete them yourself** when you are happy with the copy, and check they are not in a backup you share.
+**Older versions.** A first start copies calls and meetings from older in-repo folders (`calls/` and `data/private/`) into the data folder. It never moves or overwrites anything. The old folders stay where they were: delete them yourself when you are happy with the copy, and check they are not in a backup you share.
 
 Important: the transcript and the summary of a real call can contain personal data and client secrets. Keep them out of backups you do not control and do not share the calls folder or the `qa/` output of real calls.
 
@@ -68,7 +71,7 @@ Important: the transcript and the summary of a real call can contain personal da
 
 The menu-bar app listens on `~/.config/wingman/run/control.sock`.
 
-- Directory mode 700, socket mode 600, and the owner is checked at start.
+- Directory mode 700, socket mode 600, and the user that owns the socket is checked at start.
 - A Unix socket: no network listener, nothing reachable from other machines.
 - A fixed list of commands. Starts are rate-limited. Destructive commands need `--yes`.
 - Any process running as your macOS user can reach the socket, so treat your user account as the trust boundary. Three things are asked of **you**, in a window in the app, because a script cannot click:
@@ -88,7 +91,7 @@ The menu-bar app listens on `~/.config/wingman/run/control.sock`.
 
 ## Git-ignored private folders
 
-These are in `.gitignore` and must never be committed: `app/calls/` and `app/data/private/` (and the former `app/` folder) (the old in-repo locations and the optional denylist), `app/data/gold/recordings/`, `app/qa/out/`, `app/qa/cache/`, `app/qa/calls/`, `*.env`. Your real data is outside the repo, in the data folder and `~/.config/wingman`. The QA scenarios and the demo call use invented clients only. Before you publish a fork, check `git status` and your history for anything from a real call. A test (the repo guard) can check the tracked files against your own private word list: see [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
+These are in `.gitignore` and must never be committed: `app/calls/` and `app/data/private/` (the old in-repo locations and the optional denylist), `app/data/gold/recordings/`, `app/qa/out/`, `app/qa/cache/`, `app/qa/calls/`, `*.env`. Your real data is outside the repo, in the data folder and `~/.config/wingman`. The QA scenarios and the demo call use invented clients only. Before you publish a fork, check `git status` and your history for anything from a real call. A test (the repo guard) can check the tracked files against your own private word list: see [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
 
 ## The answer window and screen sharing
 

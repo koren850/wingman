@@ -177,6 +177,6 @@ console.log(hit ? hit.card.id + ": " + hit.card.say : "no card");
 
 A bad card stops with an error such as `bad bank card: {"id":"x"}` or `duplicate bank id backups`.
 
-Run the Readiness check (**Home, Run readiness check**, or `pnpm run doctor` in `app/`; add `--offline` for the free part). It shows how many cards loaded, whether the ids are unique, how many keyterms were found, and which files fell back to the example pack.
+Run the Readiness check (**Home, Run readiness check**, or `pnpm run doctor` in `app/`; add `--offline` for the free part; without keys it ends `NOT READY`, because missing keys are errors). It shows how many cards loaded, whether the ids are unique, how many keyterms were found, and which files fell back to the example pack.
 
 Next: [Examples](EXAMPLES.md) · [User guide](USER-GUIDE.md) · [Getting started, Part 4](GETTING-STARTED.md#part-4-make-your-own-pack)
