@@ -83,9 +83,19 @@ async function main() {
   fs.rmSync(STAGE, { recursive: true, force: true });
   fs.mkdirSync(STAGE, { recursive: true });
   for (const d of ["tray", "dashboard", "overlay", "shared", "config"]) copy(d, skip);
-  // Shipped data: the example pack and the practice-call data. Profiles: the ones a user can pick (practice calls, cautious first call).
+  // Shipped data: the example pack, the starter packs (setup step "Starter answers") and the practice-call data. Profiles: the ones a user can pick (practice calls, cautious first call).
   copy(path.join("data", "example-pack"));
+  copy(path.join("data", "starter-packs"));
   copy(path.join("data", "demo"));
+  for (const need of [
+    "example-pack/bank.yaml",
+    "starter-packs/sales/bank.yaml",
+    "starter-packs/support/bank.yaml",
+    "starter-packs/interview/bank.yaml",
+    "starter-packs/empty/bank.yaml",
+    "demo/demo-call.json",
+  ])
+    if (!fs.existsSync(path.join(STAGE, "data", need))) throw new Error(`package-app: data/${need} is missing from the stage`);
   fs.mkdirSync(path.join(STAGE, "profiles"));
   for (const p of ["demo", "demo-en", "first-client-call"]) copy(path.join("profiles", p + ".yaml"));
   // Loaded by path at run time (createRequire), so esbuild does not see it.

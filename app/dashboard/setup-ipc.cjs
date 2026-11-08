@@ -89,6 +89,7 @@ function copyExamplePack(root, env, home, pick = "example") {
       if (e.code !== "EEXIST") return { ok: false, error: "Could not copy the answers: " + String(e.message).slice(0, 120) };
     }
   }
+  if (!copied.length) return { ok: false, error: "Those starter answers are not part of this install, so nothing was copied." };
   return { ok: true, copied, dir: d.user };
 }
 
