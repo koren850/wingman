@@ -72,6 +72,29 @@ const fmtKey = (a) =>
     .map((p) => ({ Control: "Ctrl", Alt: "Opt", Option: "Opt", Command: "Cmd" })[p] || p)
     .join("+");
 
+// ---- v2: hero card, WATCHING chips, idle view, Catch me up sheet (v2.js model, v2view.js drawing) ----
+// Card controls go back on the "act" channel (rate / pin / dismiss events); Copy uses the existing copy channel.
+const controls = WingmanV2.createControls(
+  (kind, payload) => window.wingman.act && window.wingman.act(kind, payload),
+  (text) => window.wingman.copy(text),
+);
+let lastFrame = null; // newest call frame row (kind, checklist): feeds the idle view before a view row arrives
+const v2 = createV2View({ tr, mixed, div, span, announce, controls, onChange: () => (emptyCheck(), drawNow(), refreshIdle()) });
+// Look: theme (dark | light | auto) and text size (s | m | l). ?theme= and ?size= give the first frame; the config event (theme, textSize) changes them later.
+const DARK_MQ = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+let THEME = "dark";
+function applyLook(theme, size) {
+  if (theme === "dark" || theme === "light" || theme === "auto") THEME = theme;
+  const dark = THEME === "auto" ? !DARK_MQ || DARK_MQ.matches : THEME === "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  if (["s", "m", "l"].includes(size)) for (const n of ["s", "m", "l"]) document.body.classList.toggle("size-" + n, n === size);
+}
+if (DARK_MQ && DARK_MQ.addEventListener) DARK_MQ.addEventListener("change", () => THEME === "auto" && applyLook());
+{
+  const q = new URLSearchParams(location.search);
+  applyLook(q.get("theme"), q.get("size") || "m");
+}
+
 // ---- status word next to the dot: ended > paused > quiet > starting > listening ----
 const stateEl = document.getElementById("state"),
   emptyT = document.getElementById("emptyT"),
@@ -89,7 +112,13 @@ function refreshState() {
   else if (s === "waiting") mixed(emptyS, tr("state.waiting.sub", { key: fmtKey("Control+Alt+Return") }));
   else if (s === "listening" && liveAt) emptyS.textContent = T[2] + tr("state.listening.for", { time: elapsed(Date.now() - liveAt) });
   else emptyS.textContent = T[2];
+  refreshIdle();
   emptyCheck();
+}
+/** Idle view in the empty state: what Wingman understands so far. The mascot only shows in the first-run states (starting, waiting; see overlay.css). */
+function refreshIdle() {
+  const shown = v2.drawIdle(phase === "listening" && !paused, lastFrame);
+  emptyBox.classList.toggle("idle", shown);
 }
 const elapsed = (ms) => {
   const m = Math.floor(ms / 60000);
@@ -111,7 +140,7 @@ function fadeCheck() {
 }
 function emptyCheck() {
   fadeCheck();
-  emptyBox.style.display = cards.size && !paused && phase !== "ended" ? "none" : "flex";
+  emptyBox.style.display = (cards.size || v2.hasContent()) && !paused && phase !== "ended" ? "none" : "flex";
 }
 function clearCards() {
   for (const el of cards.values()) el.remove();
@@ -324,6 +353,8 @@ const frameBox = document.getElementById("frame"),
   clBox = document.getElementById("cl");
 function renderFrame(f) {
   if (!f || typeof f !== "object") return;
+  lastFrame = f;
+  refreshIdle();
   const list = Array.isArray(f.checklist) ? f.checklist.filter((c) => c && typeof c.item === "string").slice(0, 12) : [];
   const kind = tr("kind." + (KINDS.includes(f.kind) ? f.kind : "other")),
     topic = typeof f.topic === "string" ? f.topic : "";
@@ -546,6 +577,11 @@ function applyWriting(el) {
 function render(c) {
   if (phase === "ended") return;
   listening();
+  if (c.type === "view") {
+    v2.handleView(c);
+    return;
+  }
+  if (v2.handleCard(c)) return; // rows with v2 fields (kind, value, why, more, closes ...); rows without them continue below, as before
   if (c.badge === "tip") {
     renderTip(c);
     return;
@@ -682,11 +718,32 @@ const whoLabel = (l) =>
     ? tr("who.me")
     : (Number.isInteger(l.spk) && NAMES.get(l.spk)) ||
       (typeof l.name === "string" && l.name ? l.name.slice(0, 40) : Number.isInteger(l.spk) ? tr("flow.speaker", { n: l.spk }) : tr("who.them"));
+// NOW line: the newest spoken line while it is fresh; after NOW_HOLD_MS without speech, the topic from the view row (when there is one).
+const NOW_HOLD_MS = 8000;
+let lastLineAt = 0;
+function drawNow() {
+  const topic = v2.view.topic;
+  if (!topic || (lastLineAt && Date.now() - lastLineAt <= NOW_HOLD_MS)) return;
+  if (lastBox._topic === topic && lastBox.classList.contains("topic")) return;
+  lastBox._topic = topic;
+  lastBox.classList.remove("me", "partial", "fresh");
+  lastBox.classList.add("topic");
+  lastTxt.replaceChildren();
+  mixed(lastTxt, topic.slice(-220));
+  lastWho.textContent = tr("v2.now.topic");
+  lastBox._line = null;
+  lastBox.style.display = "flex";
+}
+setInterval(drawNow, 2000);
 function showLast(text, ch, partial, who) {
   if (!SHOW_LAST || !text) {
     lastBox.style.display = "none";
+    lastBox.classList.remove("topic");
+    drawNow();
     return;
   }
+  lastLineAt = Date.now();
+  lastBox.classList.remove("topic");
   const clean = String(text).replace(/\s+/g, " ").trim();
   if (ch === "me" && clean.split(" ").length < 3 && lastBox.style.display === "flex") return;
   lastBox.classList.toggle("partial", !!partial);
@@ -723,6 +780,7 @@ window.wingman.onSpeaker((s) => {
   if (lastBox._line && lastBox._line.ch === "them" && lastBox._line.spk === s.spk) lastWho.textContent = whoLabel(lastBox._line); // the strip on screen follows at once
 });
 window.wingman.onRewind(showRewind);
+window.wingman.onRecap(() => v2.toggleRecap());
 const caps = new Map(); // value -> chip, newest first (same order as main.cjs: chip N = Ctrl+Opt+N)
 const numberChips = () =>
   [...capBox.children].forEach((el, i) => {
@@ -826,6 +884,7 @@ window.wingman.onConfig((c) => {
   document.documentElement.style.setProperty("--say-pt", c.fontPt + "px");
   if (c.liveTextPt) document.documentElement.style.setProperty("--live-pt", c.liveTextPt + "px");
   setLayout(c.layout || LAYOUT);
+  applyLook(c.theme, c.textSize);
   drawKeys();
   refreshState();
 });
@@ -866,6 +925,7 @@ function setLanguage(lang) {
   if (changed) {
     refreshState();
     drawHealth();
+    v2.redraw();
   }
 }
 setLanguage(LANG);
@@ -881,6 +941,10 @@ function wipe() {
   for (const v of tipEls.values()) v.remove();
   tipEls.clear();
   lastBox.style.display = "none";
+  lastBox.classList.remove("topic");
+  lastLineAt = 0;
+  lastFrame = null;
+  v2.reset();
   clearCards();
   for (const v of sides.values()) v.remove();
   sides.clear();

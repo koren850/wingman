@@ -17,10 +17,11 @@
     <div id="wrap">
       <div id="top">
         <img src="../../brand/png/mark-night-512.png" alt="" /><span class="name">Wingman</span><span id="dot"></span><span id="state">Starting…</span
-        ><span id="hdot" class="ok" role="img"></span><span id="hlabel"></span>
+        ><span id="hdot" class="ok" role="img"></span><span id="hlabel"></span><span id="aipill"></span>
         <div id="ask"></div>
       </div>
       <div id="health"></div>
+      <div id="aibar" role="status"></div>
       <div id="frame" dir="rtl">
         <span class="fl" data-i18n="frame.label">Call:</span><span class="ft"></span><span id="chip"></span>
         <div id="cl"></div>
@@ -32,6 +33,11 @@
       <div id="last" dir="rtl"><span class="who">Other side</span><span class="txt" dir="rtl"></span></div>
       <div id="stage">
         <div id="main">
+          <div id="hero" aria-live="off"></div>
+          <div id="watch">
+            <div id="chips"></div>
+            <div id="wlist"></div>
+          </div>
           <div id="cards"></div>
           <button id="morebtn" type="button"></button>
           <div id="morebox"></div>
@@ -47,7 +53,9 @@
           <img src="../../brand/png/mark-night-512.png" alt="" />
           <div id="emptyT">Starting the call…</div>
           <small id="emptyS"></small>
+          <div id="idle"></div>
         </div>
+        <div id="recap" role="dialog"></div>
         <div id="rewind">
           <div id="rnew"></div>
           <div id="rcontent"></div>
@@ -60,6 +68,8 @@
     <script src="../dashboard/bidi.js"></script>
     <script src="strings.js"></script>
     <script src="text.js"></script>
+    <script src="v2.js"></script>
+    <script src="v2view.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -23,10 +23,27 @@ const EVENTS = [
   ["clear", "onClear", false],
   ["ask", "onAsk", true],
   ["pause", "onPause", false],
+  ["recap", "onRecap", false], // Catch me up sheet (hotkey is wired by main.cjs in wave 2)
 ];
+
+/** Card controls back to main on the "act" channel: { kind: "rate", cardId, rating } and { kind: "event", cardId, name }. Same rule as cleanAct in v2.js (a sandboxed preload cannot require it); anything else is dropped. */
+const RATINGS = ["useful", "not_useful", "none"];
+const ACT_EVENTS = ["pin", "unpin", "dismiss"];
+function cleanAct(kind, payload) {
+  const p = payload && typeof payload === "object" ? payload : {};
+  const cardId = typeof p.cardId === "string" ? p.cardId.slice(0, 200) : "";
+  if (!cardId) return null;
+  if (kind === "rate" && RATINGS.includes(p.rating)) return { kind, cardId, rating: p.rating };
+  if (kind === "event" && ACT_EVENTS.includes(p.name)) return { kind, cardId, name: p.name };
+  return null;
+}
 
 const api = {
   copy: (text) => ipcRenderer.send("copy", String(text)),
+  act: (kind, payload) => {
+    const m = cleanAct(kind, payload);
+    if (m) ipcRenderer.send("act", m);
+  },
 };
 for (const [channel, name, hasPayload] of EVENTS) {
   // The block body returns nothing on purpose: returning ipcRenderer.on() would hand the page the ipcRenderer proxy.
