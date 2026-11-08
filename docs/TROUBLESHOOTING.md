@@ -2,7 +2,7 @@
 
 For anyone whose Wingman does not install, does not hear, or does not show answers. Find your problem, then follow the steps. Run `./install.sh --check` any time to see what is present and what is missing. It changes nothing. For a quick offline check of the engine itself, run `pnpm demo` in `app/` (no keys needed): if it prints cards, the engine works and the problem is audio, permissions, keys or the app.
 
-The bars in the answer window are written in Hebrew unless you set `ui.language: en`. The descriptions below say what each bar means.
+The Wingman window follows your system language (English or Hebrew). The bars in the answer window follow the setting `ui.language`: `auto` shows Hebrew unless the speech language is English, and `en` or `he` force one. The descriptions below say what each bar means.
 
 ## No sound from the other side
 
@@ -143,7 +143,17 @@ cd app
 pnpm demo
 ```
 
-It should print a few cards (and, with `pnpm demo --he`, a summary), then `Demo done`. If it does, the engine is fine. Then check audio permission, keys (`pnpm keys status`) and the Readiness check (`pnpm run doctor --offline` for the free part). If `pnpm demo` fails, open an issue with the last lines of its output.
+Run `pnpm` from inside `app/`, so corepack uses the pinned pnpm version. A global pnpm of another version prints a notice; it is harmless.
+
+It takes 1 to 2 minutes, prints cards and a call summary, then `Demo done`. If it does, the engine is fine. Then check audio permission, keys (`pnpm keys status`) and the Readiness check (`pnpm run doctor --offline` for the free part; without keys it ends NOT READY, because missing keys count as errors). If `pnpm demo` fails, open an issue with the last lines of its output.
+
+## A bar says "AI paused"
+
+Live reading, the default help engine, could not use the AI: the spend cap (per call or per hour) was reached, the model is not answering, or there is no internet. Prepared cards, sums and the buy-time line still work. The bar goes away by itself when the AI works again (for the hourly cap: when the spend of the last hour is below the cap). To change the cap: the **Money** group in Settings. To see why the model fails: the call's events file (`events.jsonl`, rows `llm.error` and `ai.paused`).
+
+## A context file or web address is refused
+
+Wingman reads pasted text, `.txt`, `.md`, `.docx`, `.eml`, `.pdf` and `.ics` files, https web addresses, a calendar link and your next calendar event. The full list and its limits are in the [User guide](USER-GUIDE.md#meeting-context-what-you-can-add). A `.pdf` needs `pdftotext` (`brew install poppler`). Web addresses inside your network and plain http are refused. If a file will not read, paste its text instead.
 
 ## Reporting a bug
 
@@ -160,7 +170,3 @@ Read the file before you share it. Attach it to the issue. Do not paste transcri
 - Open an issue with the file from `pnpm diagnose`. Describe what you did and what you saw. **Do not paste transcripts, keys or client data.** See [SECURITY.md](../SECURITY.md) for anything security-related.
 
 Next: [User guide](USER-GUIDE.md) · [Development](DEVELOPMENT.md) · [Privacy and security](PRIVACY-AND-SECURITY.md)
-
-## A bar says "AI paused"
-
-The New help engine could not use the AI: the spend cap (per call or per hour) was reached, the model is not answering, or there is no internet. Prepared cards, sums and the buy-time line still work. The bar goes away by itself when the AI works again (for the hourly cap: when the spend of the last hour is below the cap). To change the cap: Settings, Money. To see why the model fails: the call's events file (`events.jsonl`, rows `llm.error` and `ai.paused`).

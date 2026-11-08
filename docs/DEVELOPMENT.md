@@ -17,8 +17,9 @@ For code work only (no Electron download, no app):
 cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
-pnpm test                               # all tests (about 1,800, about 5 to 10 minutes)
-pnpm demo                               # the offline demo call, no keys (about 90 seconds)
+pnpm test:unit                          # the quick unit tests, no keys
+pnpm test                               # unit plus end-to-end tests (about 1,900 in all)
+pnpm demo                               # the offline demo call, no keys (1 to 2 minutes)
 pnpm eval                               # detector, bank and guard quality numbers, no keys
 ```
 
@@ -28,7 +29,7 @@ Needs macOS 14.2 or newer, Node 24 or newer, pnpm 11 (through `corepack enable`;
 
 ## Try it from the code, with no keys
 
-This is the walk-through for someone who has cloned the repository and wants to see the engine run before installing the app. Nothing is sent anywhere. Commands were run on macOS (Apple silicon, Node 24, pnpm 11) and the output is trimmed. The demo is SCRIPTED: speech and AI are fixtures, so it shows plumbing, not model judgement.
+This is the walk-through for someone who has cloned the repository and wants to see the engine run before installing the app. Nothing is sent anywhere. Commands were run on macOS (Apple silicon, Node 24, pnpm 11) and the output is trimmed. Run `pnpm` from inside `app/`, so corepack uses the pinned version; a global pnpm of another version (for example 12) prints a notice, which is harmless. The demo is SCRIPTED: speech and AI are fixtures, so it shows plumbing, not model judgement.
 
 
 ### 1. Get the code
@@ -75,17 +76,17 @@ pnpm demo          # an English call
 pnpm demo --he     # the same story in Hebrew
 ```
 
-The demo plays a scripted call through the real engine. The speech and the AI are scripted, so it needs no keys, no network and no microphone. It takes about a minute and a half, because it plays the call at call speed. The call is invented: a client called Dana (from a made-up shop) asks about a slow site, backups and a price. The default call is in English; `--he` plays a Hebrew call. Wingman handles both, and calls that mix them.
+The demo plays a scripted call through the real engine. The speech and the AI are scripted, so it needs no keys, no network and no microphone. It takes 1 to 2 minutes (about 100 seconds on a Mac with Apple silicon), because it plays the call at call speed. The call is invented: a client called Dana (from a made-up shop) asks about a slow site, backups and a price. The default call is in English; `--he` plays a Hebrew call. Wingman handles both, and calls that mix them.
 
-You see the cards as they would appear in the answer window. This is a trimmed copy of the real output:
+You see the cards as they would appear in the answer window. This is a trimmed copy of the real output (the call id and the temporary paths change on every run, and a few status lines are left out):
 
 ```text
-Wingman · call 01M6VSSNZZQHB9VDE16GRS1FX9 · file .../silence.wav · 41 prepared cards
+Wingman · call 01M6XVRRTAQZD198466JH82638 · file .../silence.wav · 41 prepared cards
 
 [🗂 fact] Acme Stores Ltd
    • acmestores.com · wordpress 6.9 · PHP 8.3
 
-[🧭 call] Client · Slow site and backups · 0/5
+Looks like a call with Acme Stores Ltd. Press y to confirm (adds it to the AI notes).
 
 [📗 prepared] A slow site is usually heavy images, missing cache, heavy plugins or a weak server. We check the cause first and then fix it.
    • Common causes: images, plugins, server
@@ -97,7 +98,7 @@ Wingman · call 01M6VSSNZZQHB9VDE16GRS1FX9 · file .../silence.wav · 41 prepare
    • Keep a copy off the server
    • Frequency depends on the plan
 
-[💡 tip] Ask where the backups are stored today and who is responsible for them.
+[📋 domain] acmestores.com
 
 [📗 prepared] The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
    • Depends on scope and requirements
@@ -105,10 +106,12 @@ Wingman · call 01M6VSSNZZQHB9VDE16GRS1FX9 · file .../silence.wav · 41 prepare
    • Come back after checking
 
 [📋 phone] 054-1234567
+
 [📋 email] dana@acmestores.com
 
-Speed: 4 questions · first card p50 0.3s / p95 0.3s · Prepared cards 3 (p50 0.3s)
-Cost: AI $0.000 of $2 · STT $0.00 · total $0.00 (estimate from settings budget.prices)
+Speed: 11 questions · first card p50 0.3s / p95 0.3s · Prepared cards 3 (p50 0.3s) · Haiku first tag p50 -
+Cost: AI $0.001 of $2 · STT $0.00 · total $0.00 (estimate from settings budget.prices)
+Prompt cache: 77% of AI input tokens were cache hits
 
 📋 Call summary
   • The client called because her site loads slowly
@@ -117,30 +120,27 @@ Cost: AI $0.000 of $2 · STT $0.00 · total $0.00 (estimate from settings budget
   Next steps:
     - Me: Find out why the site is slow
     - Client: Send access to the site (this week)
+  Open questions: 1
+  Email draft: ready (2 sentences replaced with [fill in]) · calls/<id>/summary.json · $0.0000
+
+Demo done. It ran in a temporary folder, now deleted.
 ```
 
 The Hebrew call (`pnpm demo --he`) prints the same kinds of lines in Hebrew. Trimmed:
 
 ```text
-Wingman · call 01M6V9ST8H6K7V8ETV1W7RJESV · file .../silence.wav · 41 prepared cards
+Wingman · call 01M6XVVVQJKPT2E9TM9XWQGD9R · file .../silence.wav · 41 prepared cards
 
 [🗂 fact] אקמה סטורז בע"מ
    • acmestores.co.il · wordpress 6.9 · PHP 8.3
 
-[🧭 call] לקוח · אתר איטי וגיבויים · 0/5
-
-[📗 prepared] אתר איטי בדרך כלל נובע מתמונות כבדות, חוסר ב-cache, תוספים כבדים או שרת חלש. נבדוק מה הגורם ואז נטפל.
-   • הגורמים הנפוצים: תמונות, תוספים, שרת
-   • בודקים מהירות לפני ואחרי שינוי
-
-[📗 prepared] המחיר תלוי בהיקף ובדרישות. אצטרך לבדוק את הפרטים ואחזור עם מחיר מסודר.
-   • תלוי בהיקף ובדרישות
-   • לא נותנים מספר בלי פרטים
+[📋 domain] acmestores.co.il
 
 [📋 phone] 054-1234567
+
 [📋 email] dana@acmestores.co.il
 
-Speed: 4 questions · first card p50 0.3s / p95 0.3s · Prepared cards 4 (p50 0.3s)
+Speed: 7 questions · first card p50 - / p95 - · Prepared cards 0 (p50 -) · Haiku first tag p50 -
 Cost: AI $0.000 of $2 · STT $0.00 (estimate from settings budget.prices)
 
 📋 סיכום השיחה
@@ -150,7 +150,13 @@ Cost: AI $0.000 of $2 · STT $0.00 (estimate from settings budget.prices)
   צעדים הבאים:
     - אני: לבדוק את סיבת האיטיות
     - לקוח: לשלוח גישה לאתר (השבוע)
+  שאלות פתוחות: 1
+  טיוטת מייל: מוכנה (2 משפטים הוחלפו ב-[להשלים])
+
+Demo done. It ran in a temporary folder, now deleted.
 ```
+
+The Hebrew demo shows no Prepared card today (`Prepared cards 0`). The English call is the one that shows the answer bank at work.
 
 How to read it:
 
@@ -158,10 +164,9 @@ How to read it:
 |---|---|
 | `📗 prepared` | A card from your answer pack, picked by keywords. Local, instant. |
 | `🗂 fact` | A fact about a known client, from a local snapshot. |
-| `🧭 call` | About the call: what kind of call, the topic, and a checklist (`0/5` done). |
-| `📋 phone`, `📋 email` | Captured from what the other side said. In the app you copy them with a hotkey. |
+| `📋 phone`, `📋 email`, `📋 domain` | Captured from what the other side said. In the app you copy them with a hotkey. |
 | `Speed` | How long after the question the first card appeared. The demo timing is scripted, so it is not a speed test. |
-| `Cost` | The demo uses no real AI, so it costs nothing. The `$2` is the default cap for one call (`budget.maxUsdPerCall`). |
+| `Cost` | The demo uses no real AI, so it costs next to nothing. The `$2` is the default cap for one call (`budget.maxUsdPerCall`). |
 
 Look at the price question. The client asks "how much" and Wingman shows a safe line, never a number. That is the main idea of the project: the answer is something you can say, and it never promises a price, a date or a result. [EXAMPLES.md](EXAMPLES.md#c-what-the-guards-do) shows what the guards block and why.
 
@@ -173,9 +178,9 @@ The demo writes to a temporary folder and deletes it at the end. It also ignores
 pnpm eval
 ```
 
-This plays the 32 invented golden dev meetings through the real engine with scripted AI replies, grades the cards, runs four bad-model controls that must score low, and then prints the old word-list checks under a boxed "LEGACY SMOKE, in-sample" header. No keys, no network. It fails when a number is worse than `app/qa/eval-baseline.json`. `pnpm eval:ship` adds the absolute ship thresholds from `app/qa/ship.json`, one pass or FAIL line each. Everything it prints is **scripted**; see [Release gates](#release-gates-pnpm-eval-budgets-held-out-snapshots).
+This plays the 32 invented golden dev meetings through the real engine with scripted AI replies, grades the cards, runs four bad-model controls that must score low, and then prints the old word-list checks under a boxed "LEGACY SMOKE, in-sample" header. No keys, no network. It fails when a number is worse than `app/qa/eval-baseline.json`. `pnpm eval:ship` adds the absolute ship thresholds from `app/qa/ship.json`, one pass or FAIL line each. **It fails today, on purpose:** the ship lines need a recorded run, and none exists yet (see [Release gates](#release-gates-pnpm-eval-budgets-held-out-snapshots)). A failing `eval:ship` is not a broken checkout. Everything it prints is **scripted**; see [Release gates](#release-gates-pnpm-eval-budgets-held-out-snapshots).
 
-You can also run the unit tests with `pnpm test:unit`.
+You can also run the unit tests with `pnpm test:unit` (the quick option).
 
 ## Get your API keys
 
@@ -211,8 +216,8 @@ What `pnpm install` does in `app/`:
 | Script | What it does |
 |---|---|
 | `pnpm demo` | The offline demo: a scripted, invented English call (`--he` for Hebrew) through the real engine. No keys, no network. |
-| `pnpm eval` | The release gate, offline: the golden dev meetings through the v2 engine (recall, precision, time to card, cost), four bad-model controls, cost and latency per role against `qa/budgets.json` (+20 percent fails), the memory eval and the rubric judge. The old word-list numbers come last as a smoke test. Fails if one drops below `qa/eval-baseline.json`. `--final` reads the held-out splits once, `--cassette <file>` plays a recording of the real model. See "Release gates" below. |
-| `pnpm eval:memory` | Memory-quality eval (`qa/memory-eval.ts`): precision and recall of the final call memory on 12 labelled calls, with a null and a copy-all control. Offline with the policy fake; `WINGMAN_LLM_MODE=replay` reads a cassette. |
+| `pnpm eval` | The release gate, offline: the golden dev meetings through the Live reading engine (`moments.engine: v2`; recall, precision, time to card, cost), four bad-model controls, cost and latency per role against `qa/budgets.json` (+20 percent fails), the memory eval and the rubric judge. The old word-list numbers come last as a smoke test. Fails if one drops below `qa/eval-baseline.json`. `--final` reads the held-out splits once, `--cassette <file>` plays a recording of the real model. See "Release gates" below. |
+| `pnpm eval:memory` | Memory-quality eval (`qa/memory-eval.ts`): precision and recall of the final call memory on 24 labelled calls, with a null and a copy-all control. Offline with the policy fake; `WINGMAN_LLM_MODE=replay` reads a cassette. |
 | `pnpm check` | Type check, lint, format check, unit tests and `pnpm eval`. |
 | `pnpm start` | The call engine (`src/run.ts`) in the terminal. Flags: `--file x.wav` (replay a stereo WAV, left = me, right = them), `--no-ai`, `--discard`, `--profile`, `--set key=value`. |
 | `pnpm call` | Starts a call and opens the answer window. Ctrl+C stops and saves. |
@@ -239,13 +244,13 @@ What `pnpm install` does in `app/`:
 
 ## Tests
 
-- Unit tests are `src/*.test.ts` (`pnpm test:unit`, about 40 s); end-to-end tests that start the engine as a subprocess are `src/e2e/*.test.ts` (`pnpm test:e2e`, about 4 min). `pnpm test` runs both with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards-table.test.ts` (use the file you need).
+- Unit tests are `src/*.test.ts` (`pnpm test:unit`, about 1,770 tests; several minutes on a quiet Mac, and 18 minutes when the machine was busy); end-to-end tests that start the engine as a subprocess are `src/e2e/*.test.ts` (`pnpm test:e2e`). About 1,900 tests in all (unit plus end-to-end); a full `pnpm test` can take about half an hour on a busy machine, so use `pnpm test:unit` while you work. `pnpm test` runs both with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards-table.test.ts` (use the file you need).
 - Do not start a second `pnpm test` while one is running; they share ports and files.
 - Test names say what they protect. Bug fixes should come with a regression test.
 - The "repo guard" test fails if a tracked source, data or config file contains a word from your private word list. Set it with `WINGMAN_DENYLIST="word1,word2" pnpm test`, or one word per line in the git-ignored `app/data/private/denylist.txt`. With no list it skips. How and why: [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
 - Tests redirect user data with `WINGMAN_DATA_DIR`, `WINGMAN_CALLS_DIR` and friends, so they never touch your real calls.
 - Some `WINGMAN_*` variables are test hooks and are not part of the product (for example `WINGMAN_DASHBOARD_EVAL`, which runs a script inside the dashboard page, `WINGMAN_KEYS_FILE` and `WINGMAN_PACK_DIR`). They only matter to someone who controls the environment a program is started from, which already means they run code as you.
-- CI (`.github/workflows/ci.yml`) runs on Node 24 on macOS and Linux (both must pass) and on Windows (experimental, may fail): `WINGMAN_SKIP_APP=1 pnpm install --frozen-lockfile`, the type check, unit tests, end-to-end tests and `pnpm eval`. Lint, the format check and coverage run on macOS only. There is no private word list in CI, so the repo guard skips there. A separate macOS job runs `install.sh --check` and `--dry-run`.
+- CI (`.github/workflows/ci.yml`) runs on Node 24 on macOS and Linux (both must pass) and on Windows (experimental, may fail). Every system runs `pnpm install --frozen-lockfile` (with `WINGMAN_SKIP_APP=1`), the type check and the unit tests. **Windows stops there.** macOS and Linux also run the end-to-end tests and `pnpm eval`. Lint, the format check and coverage run on macOS only. There is no private word list in CI, so the repo guard skips there. A separate macOS job runs `install.sh --check` and `--dry-run`.
 - There is an offline end-to-end test (`src/e2e/scripted-call.test.ts`) that runs a whole call with scripted speech and a scripted AI (`src/providers/scripted.ts`).
 - `src/e2e/chaos.test.ts` is a repeatable chaos test (about 45 s, offline): one scripted live call with AI timeouts, a mic drop, a 20 s speech-to-text outage and a sleep/wake, then it checks the health and ladder events and that the call recovers. Run it alone with `pnpm exec tsx --import ./src/test-setup.ts --test src/e2e/chaos.test.ts` from `app/`.
 
@@ -254,20 +259,20 @@ What `pnpm install` does in `app/`:
 New model-driven features are tested with these tools, all in `app/src/testkit/` and `app/src/providers/cassette.ts`. None of them calls a real API.
 
 - **Policy fake model** (`testkit/policy-model.ts`). The test declares what the model says; the fake never decides by itself. `pm.reply({ role: "moment", lastLine: "l3" }, text, { ms })`, and `garbage()`, `truncate(n)`, `hang()`, `refuse()`, `error(529)`, `slow(ms)`, `injection(text)`. A rule can match the role (`moment`, `memory`, `ask`, `digest`, `compact`, `wrapup`), the last transcript line (its `[id]` or its text) and any text in the system block. The first rule that matches wins. A call with no matching rule fails loudly. `pm.assertPrompt(...)` checks what the model received (a memory block, a token limit). `setUsage()` sets the tokens it reports, for cost tests. `pm.serve(golden.script)` serves the scripted replies of a golden meeting. A package that adds a role calls `registerRole(role, marker)` (in `testkit/prompt.ts`) with a phrase from its system prompt.
-- **Cassettes** (`providers/cassette.ts`). `WINGMAN_LLM_MODE=live|record|replay`, default `live`. In `replay` every call must be in the cassette (`WINGMAN_CASSETTE`, default `data/cassettes/default.cassette.json`) and no key or network is used. A miss shows a diff against the nearest entry. `record` needs a key and is for the owner only; it is never run in CI. Each entry says if it was `recorded` or `authored`.
+- **Cassettes** (`providers/cassette.ts`). `WINGMAN_LLM_MODE=live|record|replay`, default `live`. In `replay` every call must be in the cassette (`WINGMAN_CASSETTE`, default `data/cassettes/default.cassette.json`) and no key or network is used. A miss shows a diff against the nearest entry. `record` needs a key and is for the maintainer only; it is never run in CI. The folder `data/cassettes/` does not exist in a fresh checkout; the recording commands and the morning run create it. Each entry says if it was `recorded` or `authored`.
 - **Prompt snapshots** (`testkit/prompt-snapshot.ts`). `assertPromptSnapshot("moment", { system, user })` compares the prompt with `data/snapshots/prompts/moment.txt`. After an intended change run once with `WINGMAN_UPDATE_SNAPSHOTS=1` and review the diff of the file.
 - **Virtual clock** (`testkit/vclock.ts`). `withVClock(async (vc) => { await vc.advance(90_000); })` fakes `Date.now`, `new Date()`, `performance.now`, `setTimeout`, `setInterval` and `setImmediate`. 90 seconds of meeting run in a few milliseconds. New code can read time through `wallNow()` and `monoNow()` in `clock.ts`.
 - **Golden helpers** (`e2e/helpers.ts`). `replayOnVClock` plays `Golden.lines` in this process. `runGolden` plays them into the real engine (`src/run.ts`) with scripted speech and the policy fake (profile `e2e-policy`) and returns the card timeline: id, kind, text, and ms after the line. The engine is one process per call and keeps its real clock, so `runGolden` runs in real time (use `speed` to compress the gaps between lines).
-- `legacyScripted` (also exported as `scriptedAnswer`) is the old keyword fake. It stays until the v2 engine is in; do not use it in new tests.
+- `legacyScripted` (also exported as `scriptedAnswer`) is the old keyword fake. It stays for the legacy engine; do not use it in new tests.
 
 ## v2 gate tests (`app/src/e2e/v2-*.test.ts`)
 
-Six files prove the v2 engine as a whole. They use no network and no key. Run one with `./node_modules/.bin/tsx --import ./src/test-setup.ts --test src/e2e/v2-<name>.test.ts`; all six together take about two minutes.
+Six files prove the Live reading engine (setting `v2`) as a whole. They use no network and no key. Run one with `./node_modules/.bin/tsx --import ./src/test-setup.ts --test src/e2e/v2-<name>.test.ts`; all six together take about two minutes.
 
 | File | What it proves |
 |---|---|
 | `v2-latency` | Time to the first card on the virtual clock: a model answer (p50 1.5 s, p95 2.5 s), a bank hit (0.6 s, 1.9 s), the stall line by 1.8 s, a late observer card (more than 6 s) dropped, a hung memory updater adds no delay. |
-| `v2-cost` | Price per call and per role from `usage.jsonl`, replayed over the golden dev meetings, against the PLAN table. Fails at +20 percent per role. Also dollars per hour (gate: $0.25) and a what-if for the cache layout. |
+| `v2-cost` | Price per call and per role from `usage.jsonl`, replayed over the golden dev meetings, against the per-role budget table. Fails at +20 percent per role. Also dollars per hour (gate: $0.25) and a what-if for the cache layout. |
 | `v2-golden` | The golden dev meetings through the real engine modules with the memory loop on, graded by `qa/grade-golden.ts`, with the null control, the noise control and the noisy-transcript delta. |
 | `v2-resilience` | The failure matrix: model down, slow, 429 storm, truncated and garbage replies, STT down, both down, corrupt `session.json`, a real SIGKILL during a save, clock jump, no brief, a 5 MB brief. Each case: no empty screen, a bar when something is wrong, no crash. |
 | `v2-soak` | A 3-hour call on the virtual clock with faults (disk full for the memory, a corrupt `session.json`, a 5-minute model outage, a clock jump). Calls per hour, cost per hour and memory size stay bounded. |
@@ -275,7 +280,7 @@ Six files prove the v2 engine as a whole. They use no network and no key. Run on
 
 How they work: `v2-kit.ts` wraps the policy fake so that every call reports the usage of its real prompt, with a simulated prompt cache (a marked prefix is cached from 1024 tokens, read at the cache-read price, written at the cache-write price). `v2-worker.ts` plays one golden meeting in a child process, because the engine is one call per process. Scripted replies prove plumbing, timing, budgets and state logic. They do not prove model judgement or Hebrew quality; that needs a recorded run (`pnpm cassette:record`).
 
-## Round 3 gate tests (`app/src/e2e/r3-gates-*.test.ts`)
+## Gate tests (`app/src/e2e/r3-gates-*.test.ts`)
 
 Five end-to-end files that run the real engine modules on the virtual clock with fake streams and the policy fake model. No network, no key, no audio. Each file holds one engine, so run it alone (`tsx --import ./src/test-setup.ts --test src/e2e/r3-gates-soak.test.ts`). All numbers they print are **scripted**. `r3-gates-kit.ts` has the shared fake stream and provider (an open that can be a black hole).
 
@@ -295,7 +300,7 @@ Every number is marked **scripted** (the replies in the golden files; they prove
 
 | Command | What it does |
 |---|---|
-| `pnpm eval` | Dev meetings, v2 engine, scripted. Metric table against `qa/eval-baseline.json` (`v2`), the four controls, the per-role budgets, the memory eval, the rubric judge. About 30 s on a quiet machine. |
+| `pnpm eval` | Dev meetings, Live reading engine, scripted. Metric table against `qa/eval-baseline.json` (`v2`), the four controls, the per-role budgets, the memory eval, the rubric judge. About 30 s on a quiet machine. |
 | `pnpm eval --update` | Rewrites the baseline and `qa/budgets.json` (`scripted`). Read the diff first. No baseline value is zero (a metric that is truly zero is stored at a small floor). |
 | `pnpm eval --final` | The held-out splits `test` and `test-b`, each played on its own, printed next to the dev baseline. Prints only and enforces only the hard limits. Read it once. Never tune after it. |
 | `pnpm eval --cassette data/cassettes/dev.cassette.json` | Dev played against the recording. Marked RECORDED; compared with the `v2Recorded` baseline; the model judge reads `dev.judge.cassette.json` if it exists. `--update` writes the first recorded baseline and the `recorded` budgets. |
@@ -306,9 +311,9 @@ Budgets (`qa/budgets.json`): per role, USD per call and USD per hour; per card p
 
 Fault soak: `src/e2e/r2-soak.test.ts` runs an 80 minute call on the virtual clock with a hung audio respawn, a display unplug (injected screen), a dead STT socket, a slow model and a 529 storm, and a probe question inside each fault. A second case stops a real v2 process with a stray error. `WINGMAN_E2E_ENGINE=v2` plays the older child-process e2e files (`reliability-r2`, `chaos`, `engine-reliability`) on the v2 engine instead of the pinned classic one.
 
-## Recording a cassette (owner, by hand)
+## Recording a cassette (maintainer, by hand)
 
-Recording calls the real model and costs money. An agent never runs it, CI refuses it. It needs `ANTHROPIC_API_KEY` in the environment of that one command (nothing reads a key file). Order: dev, then test-b, then test.
+Recording calls the real model and costs money. An agent never runs it, CI refuses it. It needs `ANTHROPIC_API_KEY` in the environment of that one command (nothing reads a key file). To keep the key out of your shell history, run `read -s ANTHROPIC_API_KEY; export ANTHROPIC_API_KEY` once in that terminal. Order: dev, then test-b, then test.
 
 ```bash
 cd app
@@ -323,7 +328,7 @@ The command prints a one-page estimate first and refuses when it is over the cap
 
 Held-out cassettes (`test`, `test-b`) must be recorded and replayed once, after the dev numbers are final. Do not edit a prompt after you have looked at them.
 
-## The morning run (owner, by hand)
+## The morning run (maintainer, by hand)
 
 One command records everything the quality numbers need, with one cap for the whole run. An agent never runs it and CI refuses it. It needs `ANTHROPIC_API_KEY` in the environment of that one command.
 
@@ -343,8 +348,8 @@ It writes `qa/recorded-baseline.json` (the `v2Recorded` section, with the casset
 
 ## Judgement set, memory eval and replay
 
-- `pnpm eval:judge` scores the moment role on 120 invented cases in `data/judge-set` (60 English, 60 Hebrew; noisy speech-to-text, mixed languages, lines with no question mark). A case holds the call memory, the last 6 lines and the right verdict (SKIP or one card kind, with an accepted second verdict and the words a card must contain). It prints precision, recall and F1 per kind. Controls: a model that always says SKIP and one that always answers must stay under the limits in `qa/judge-set.ts`. Floors apply to a recorded run only: `pnpm eval:judge --mode model --cassette data/cassettes/judge-set.cassette.json`. Record: `pnpm eval:judge --record --cap 1` (owner).
-- `pnpm eval:memory` scores the call memory on 24 invented calls in `data/memory-eval` (10 English, 9 Hebrew, 5 mixed; noisy speech-to-text; two voices on the user's side; one long call whose early promise must survive a compaction). It prints precision, recall and F1 for promises, open questions, numbers (with the owner), decisions and objections. The null and copy-all controls stay. Floors (`RECORDED_FLOORS`) apply to a recorded run only. Record: `pnpm eval:memory --record --cap 1` (owner).
+- `pnpm eval:judge` scores the moment role on 120 invented cases in `data/judge-set` (60 English, 60 Hebrew; noisy speech-to-text, mixed languages, lines with no question mark). A case holds the call memory, the last 6 lines and the right verdict (SKIP or one card kind, with an accepted second verdict and the words a card must contain). It prints precision, recall and F1 per kind. Controls: a model that always says SKIP and one that always answers must stay under the limits in `qa/judge-set.ts`. Floors apply to a recorded run only: `pnpm eval:judge --mode model --cassette data/cassettes/judge-set.cassette.json`. Record: `pnpm eval:judge --record --cap 1` (maintainer).
+- `pnpm eval:memory` scores the call memory on 24 invented calls in `data/memory-eval` (10 English, 9 Hebrew, 5 mixed; noisy speech-to-text; two voices on the user's side; one long call whose early promise must survive a compaction). It prints precision, recall and F1 for promises, open questions, numbers (with who said them), decisions and objections. The null and copy-all controls stay. Floors (`RECORDED_FLOORS`) apply to a recorded run only. Record: `pnpm eval:memory --record --cap 1` (maintainer).
 - `pnpm replay <call-folder> [--prompt rules.txt] [--cassette file]` runs the final lines of a real call (`events.jsonl`) through the moment role and prints which cards are kept, new or gone against `cards.jsonl`. Without a cassette the policy fake repeats the original call, so the diff is empty: that checks the tool. A prompt is judged only through a recorded cassette. `--to-case` writes every card you rated "not useful" (`pnpm tag`) as a judgement case; emails and phone numbers are masked and a case with a word from the no-real-names list is not written. Read the files before you copy them into `data/judge-set`.
 
 ## QA harness

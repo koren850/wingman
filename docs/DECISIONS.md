@@ -264,7 +264,7 @@ Date: 2026-11-03
 
 **Context.** Cards are read aloud, so they must sound like you and never make you say something you cannot stand behind.
 
-**Decision.** `house-style.md` (in the pack) is the tone and rule file, and it is part of the AI prompt. Cards are short (25 words at most), spoken Hebrew, gender-neutral where possible. Never: prices, dates, timelines or SLAs, promises or guarantees, blaming the client, unexplained jargon, client-specific facts not said by the owner.
+**Decision.** `house-style.md` (in the pack) is the tone and rule file, and it is part of the AI prompt. Cards are short (25 words at most), spoken Hebrew, gender-neutral where possible. Never: prices, dates, timelines or SLAs, promises or guarantees, blaming the client, unexplained jargon, client-specific facts the user did not give.
 
 **Why.** These are the mistakes that cost a business money or trust.
 
@@ -320,7 +320,7 @@ Date: 2026-11-03
 
 **Context.** In a live test the user asked Wingman a math question out loud and it worked, but the feature was an accident of the design. The wish: "it is a meeting assistant, not a sales tool".
 
-**Decision.** Wingman can answer questions the user asks it ("For you" cards): out loud when it is clearly for Wingman (`assist.answerMe: always`), only after **Ctrl+Opt+A** (`hotkey`), or never. Local cues decide first; a tiny classifier call decides only when unsure. It stays quiet when you ask the other person ("what is your budget?"). It never answers yes or no on the owner's behalf, and a For-you card is never shown within a few seconds after a card for the other side.
+**Decision.** Wingman can answer questions the user asks it ("For you" cards): out loud when it is clearly for Wingman (`assist.answerMe: always`), only after **Ctrl+Opt+A** (`hotkey`), or never. Local cues decide first; a tiny classifier call decides only when unsure. It stays quiet when you ask the other person ("what is your budget?"). It never answers yes or no on your behalf, and a For-you card is never shown within a few seconds after a card for the other side.
 
 **Why.** Dual use of one tool in one call, without cards fighting for the same space.
 
@@ -412,7 +412,7 @@ Date: 2026-11-03
 
 **Alternatives.** Fail hard and stop the call.
 
-**Consequences.** More states to test. Rung 1 keeps the model on while it is only slow, so a slow model costs some cards, not all of them (changed in round 8; the first version dropped to bank plus stall at once).
+**Consequences.** More states to test. Rung 1 keeps the model on while it is only slow, so a slow model costs some cards, not all of them (the first version dropped to bank plus stall at once).
 
 ## ADR 25: An Electron menu-bar app
 
@@ -722,15 +722,15 @@ Date: 2026-11-09
 
 Date: 2026-11-08
 
-**Context.** A prepared meeting lived 6 hours after its time, was marked used when the call went live, and lost its files then. A crash after Start lost the whole brief. The window was English only, and the words "Plan" and "Prepared meeting" were mixed.
+**Context.** A prepared meeting lived 6 hours after its time, was marked used when the call went live, and lost its files then. A crash after Start lost the whole brief. The window had one language, and the words "Plan" and "Prepared meeting" were mixed.
 
-**Decision.** (1) A meeting has no expiry and is never used up. `markLive` records that a call went live; `confirmUsed` records that the call saved its first memory (until the session memory exists, the end of a clean call). Nothing is deleted at either step, so the same meeting starts the next call. Only the owner deleting it, or 180 days with no touch (housekeeping), removes it. The single-Plan `latest.yaml` and its files are read without being changed and retired by `confirmContext()` once the call is live. (2) One optional "Meeting context" box: pasted text, files (.txt, .md, .pdf with pdftotext, .ics), a few small fields behind "More". Long text is cut into chunks of about 500 tokens when it is added. (3) The main window has one catalog per language (`dashboard/strings.en.js`, `strings.he.js`), `dir` follows the language, and every error is one row in `dashboard/errors.js` with a next step and a button.
+**Decision.** (1) A meeting has no expiry and is never used up. `markLive` records that a call went live; `confirmUsed` records that the call saved its first memory (until the session memory exists, the end of a clean call). Nothing is deleted at either step, so the same meeting starts the next call. Only you deleting it, or 180 days with no touch (housekeeping), removes it. The single-Plan `latest.yaml` and its files are read without being changed and retired by `confirmContext()` once the call is live. (2) One optional "Meeting context" box: pasted text, files (.txt, .md, .pdf with pdftotext, .ics), a few small fields behind "More". Long text is cut into chunks of about 500 tokens when it is added. (3) The main window has one catalog per language (`dashboard/strings.en.js`, `strings.he.js`), `dir` follows the language, and every error is one row in `dashboard/errors.js` with a next step and a button.
 
 **Why.** Losing a brief to a crash is the worst case for a tool used just before a call. Reuse is how people really work (weekly calls). Plain words and one error table make the window easier to read and to test.
 
 **Alternatives.** Keep the 6 hour rule and only stop deleting files (the list still empties). Translate the window with a library (a dependency for about 450 strings).
 
-**Consequences.** The meeting list can grow, so the limit is 50 and housekeeping is 180 days. Calls, Settings and Setup details are still English-first; a missing Hebrew key shows English. The digest ("Prepare") and the live memory feed "What Wingman knows" in wave 2; until then it shows a sample or the saved details.
+**Consequences.** The meeting list can grow, so the limit is 50 and housekeeping is 180 days. A missing Hebrew key shows English. The digest ("Prepare") and the live memory feed "What Wingman knows" (later ADRs 51 and 52).
 
 ## ADR 47: The moment engine runs behind a switch, with the old path as its fallback
 
@@ -830,13 +830,13 @@ Date: 2026-11-08
 
 **Alternatives.** Keep the plan table as the only budget (too loose). Call the real model in CI (cost, flakiness, keys in CI). Tune prompts on the scripted dev replies (no signal).
 
-**Consequences.** After the first recording the owner runs `pnpm eval --cassette ... --update` once to create the recorded baseline and budgets. A prompt change then changes the cassette keys: the replay reports misses, and the dev meetings must be recorded again before the next comparison. The recorded section may be rewritten only from a cassette that was made with the current prompts.
+**Consequences.** After the first recording, the maintainer runs `pnpm eval --cassette ... --update` once to create the recorded baseline and budgets. A prompt change then changes the cassette keys: the replay reports misses, and the dev meetings must be recorded again before the next comparison. The recorded section may be rewritten only from a cassette that was made with the current prompts.
 
 ## ADR 54: The card is shown whole, labels are never taken from the line, and old cards fade by rule
 
 Date: 2026-11-08
 
-**Context.** The round 3 review of the answer window (score 72 of 100) found five problems. The hero line could end in the middle of a sentence. Chips used the first three words of the line when the model sent no label ("What is the"). Each chip had two dots. The transcript row was louder than the card. An answer from six minutes ago looked almost as live as a new one.
+**Context.** A review of the answer window (score 72 of 100) found five problems. The hero line could end in the middle of a sentence. Chips used the first three words of the line when the model sent no label ("What is the"). Each chip had two dots. The transcript row was louder than the card. An answer from six minutes ago looked almost as live as a new one.
 
 **Decision.** (1) The model never cuts the line. The hero shows the whole line; over 14 words, or when the engine marks `fit: false`, it clamps to 3 lines with a More button. (2) A chip shows the model's label, else the kind word. Facts show "label: value". There is one kind mark (a glyph), one bold dot for unseen, and an age. (3) The transcript is one line at about 60 percent size. (4) After 3 minutes a card fades, its age turns amber and an "about:" line says what it answered. After 6 minutes an answer or a prompt is only a chip. Checks, facts and pinned cards do not collapse, because a check that is not handled must not disappear. (5) Open, Promises, Cover and Earlier cards are one Context button with a count; Catch me up is the only primary button. (6) Controls show on hover, focus, or after one minute. "Fewer like this" writes a `fewer` rating and dismisses the card. (7) A screen reader hears a Check and the first card after 90 seconds of quiet. (8) The key hints hide after the first 3 cards of the app's life.
 
@@ -844,7 +844,7 @@ Date: 2026-11-08
 
 **Alternatives.** Cut with an ellipsis (rejected: it hides the end of the sentence). Collapse checks too (rejected: an open check is the most important card). Keep two dots (rejected: no one could tell them apart). Make the window focusable so Tab always works (rejected: a focusable window can take the focus from the call; the global keys stay the main path).
 
-**Consequences.** The fade is by text opacity of 0.6 with a text colour chosen per theme (white or black), not by element opacity, because element opacity of 0.6 cannot reach 4.5:1 for amber text on a light card. The in-page keys work only when the user gives the window focus; a "focus the answer window" hotkey is left for a later round. Old screenshots in `docs/ux/` show the earlier layout and are not regenerated here.
+**Consequences.** The fade is by text opacity of 0.6 with a text colour chosen per theme (white or black), not by element opacity, because element opacity of 0.6 cannot reach 4.5:1 for amber text on a light card. The in-page keys work only when the user gives the window focus; a "focus the answer window" hotkey is left for later. Old screenshots in `docs/ux/` show the earlier layout and are not regenerated here.
 
 ## ADR 55: One morning command, a judgement set apart from the meetings, and stale is not a miss
 
@@ -852,26 +852,26 @@ Date: 2026-11-09
 
 **Context.** Every quality number so far came from scripted model replies. The recording steps existed but were separate commands, each with its own cap, and a changed prompt looked like a pile of cassette misses. The golden meetings measure the whole engine over time; nothing measured the judgement of one moment alone.
 
-**Decision.** (1) `scripts/morning.ts` is the only command the owner needs: one cap for all steps, a printed estimate first, a yes before each held-out split, and it refuses without a key, in CI and over the cap. (2) A judgement set of 120 invented cases (60 English, 60 Hebrew) scores the moment role per verdict kind, with two bad models as controls and floors for recorded runs only. The verdict comes from the model reading the lines, not from word lists. (3) The memory eval has 24 calls and an objections class; F1 per class is printed. (4) Cassette entries carry a hash of the prompt and of the input. A miss with an entry of the same input and another prompt or model is a `CassetteStale`. (5) The recorded cost per role is compared with the simulated cost and fails above 15 percent. (6) `pnpm replay` shows what another prompt does to a real call, and turns "not useful" ratings into judgement cases after a no-real-names check.
+**Decision.** (1) `scripts/morning.ts` is the only command the maintainer needs: one cap for all steps, a printed estimate first, a yes before each held-out split, and it refuses without a key, in CI and over the cap. (2) A judgement set of 120 invented cases (60 English, 60 Hebrew) scores the moment role per verdict kind, with two bad models as controls and floors for recorded runs only. The verdict comes from the model reading the lines, not from word lists. (3) The memory eval has 24 calls and an objections class; F1 per class is printed. (4) Cassette entries carry a hash of the prompt and of the input. A miss with an entry of the same input and another prompt or model is a `CassetteStale`. (5) The recorded cost per role is compared with the simulated cost and fails above 15 percent. (6) `pnpm replay` shows what another prompt does to a real call, and turns "not useful" ratings into judgement cases after a no-real-names check.
 
-**Why.** One command with one cap is hard to run wrongly while tired. A set of one-call cases shows which kind of card a prompt change breaks. A stale report tells the owner to record again instead of looking for a bug. The 15 percent check catches budgets that were set from modelled usage.
+**Why.** One command with one cap is hard to run wrongly while tired. A set of one-call cases shows which kind of card a prompt change breaks. A stale report tells the maintainer to record again instead of looking for a bug. The 15 percent check catches budgets that were set from modelled usage.
 
 **Alternatives.** Keep separate commands (a cap per command adds up). Grade the judgement on the golden meetings only (a prompt change moves too many things at once). Fail the replay on any prompt change (hides which entries are only old).
 
-**Consequences.** The floors for the judgement set and the memory eval are provisional; the owner moves them after the first recorded run and the report says by how much. The held-out size in the estimate is assumed from the file count because reading a split is a one-time act. `test-c` is skipped until that split exists.
+**Consequences.** The floors for the judgement set and the memory eval are provisional; the maintainer moves them after the first recorded run and the report says by how much. The held-out size in the estimate is assumed from the file count because reading a split is a one-time act. `test-c` is skipped until that split exists.
 
 
 ## ADR 56: Live reading is the default; word lists are a hint and the offline floor
 
 Date: 2026-11-09
 
-**Context.** The first gate asked "is this line a grammatical question?" with hand-written word lists for Hebrew and English. It missed objections, numbers and promises, it fired on questions that need no help, and each new language needed a new file. The owner doubted that lists were the right design. The problem Wingman solves is different: "is a short private nudge useful now, given the whole call so far?"
+**Context.** The first gate asked "is this line a grammatical question?" with hand-written word lists for Hebrew and English. It missed objections, numbers and promises, it fired on questions that need no help, and each new language needed a new file. Hand-written lists were doubted as the right design. The problem Wingman solves is different: "is a short private nudge useful now, given the whole call so far?"
 
 **Decision.** (1) The model decides meaning ("is help useful now"). Code does plumbing, safety, timing, budgets and fallbacks. (2) `moments.engine` is `v2` by default and is shown as **Live reading (default)**. `legacy` is shown as **Classic (rollback)** and only in Settings, Advanced. (3) The old detector and `lang/*` lists are a frozen hint and a tiebreak. They never stop a model call on a line that passes the structural filter. No word is added to them. (4) With the AI paused or down, a language-neutral **floor** runs: the "?" from speech-to-text, digits and money, a stall-tier bank card, a bank score, your name, and the shape of a short sentence. It uses no word list. (5) Follow-up openers moved to `lang/`; the hosting topic logic sits behind a profile hook, so the core has no vertical words. (6) Tests of the old lists carry the header "hint tests, in-sample, not product truth".
 
 **Why.** The lists cannot be right in every language, and a check of "is it a question" is not the product. A model that reads the memory and the last lines can tell a question, an objection and a promise apart in any language it speaks. The floor keeps the call useful when the model is not there.
 
-**Alternatives.** Keep the lists and add more words (rejected: it never ends, and it does not fix recall on implied requests). Remove the lists at once (rejected: the offline path needs something). Embeddings for the floor and the bank (not now: it needs a dependency or a call; a better local word-plus-3-gram score was built instead and embeddings stay a decision for the owner).
+**Alternatives.** Keep the lists and add more words (rejected: it never ends, and it does not fix recall on implied requests). Remove the lists at once (rejected: the offline path needs something). Embeddings for the floor and the bank (not now: it needs a dependency or a call; a better local word-plus-3-gram score was built instead and embeddings stay an open decision).
 
 **Consequences.** Scripted, in-sample, golden dev with the AI paused: the floor alone finds 63.1 percent of answer moments, and 88.1 percent with the hint (the same as the old detector alone, with fewer cards in quiet stretches: 44 against 57 of 172 lines). Replayed through the engine, 60 of 68 answer moments got a card with no model call. These are tuning-set numbers. The quality of live reading itself has no recorded number yet (ADR 62).
 
@@ -883,7 +883,7 @@ Date: 2026-11-09
 
 **Decision.** (1) The moment reply has two more lines: `CONF: high | low` and `ABOUT` (at most 8 words). A `low` confidence or a VALUE of 1 is shown as a chip and never takes the hero seat. A Check card keeps its exemption from the per-minute cap. (2) `LABEL` is always asked for. If it is missing, the label is the bank card title, then the memory topic, then nothing. The first words of the line are never a label. (3) Fact cards carry the value itself. (4) The same words again inside 20 seconds are a repeat. (5) A "fewer like this" rating raises that kind's bar at once for the rest of the call. (6) `learn.json` keeps counts per kind: only after at least 3 negative ratings on at least 2 different calls does the bar rise by 1 (never more), and it falls back after 5 calls without a negative. It stores counts, no text, with mode 600, and a corrupt file starts empty. It never goes below the mode's own bar.
 
-**Why.** A card Wingman is unsure about is still worth a glance as a chip; as a hero it costs attention. Learning from the owner's ratings makes the noise fall for this user without a model call, and the slow rule (3 and 2) stops one bad call from changing the product.
+**Why.** A card Wingman is unsure about is still worth a glance as a chip; as a hero it costs attention. Learning from your ratings makes the noise fall for this user without a model call, and the slow rule (3 and 2) stops one bad call from changing the product.
 
 **Alternatives.** Raise all thresholds (rejected: it cut recall without removing the noise). Learn from the first rating (rejected: too jumpy). Store the text of rejected cards (rejected: privacy).
 
@@ -915,7 +915,7 @@ Date: 2026-11-09
 
 **Alternatives.** Match voices by what they say (rejected: a guess presented as a fact). Never rebase (the bug).
 
-**Consequences.** Under a reconnect storm a long call can show more speaker numbers than people. The 3-hour soak test (`r3-gates-soak`) moves the epoch 23 times in an 8-minute storm and checks the list stays bounded. The e2e `r3-gates-speakers` runs the real channel, wiring, ingest and book on a faked reconnect and a faked switch. Scripted fakes, not a recorded reconnect.
+**Consequences.** Under a reconnect storm a long call can show more speaker numbers than people. The 3-hour soak test (`gates-soak`) moves the epoch 23 times in an 8-minute storm and checks the list stays bounded. The e2e `gates-speakers` runs the real channel, wiring, ingest and book on a faked reconnect and a faked switch. Scripted fakes, not a recorded reconnect.
 
 ## ADR 60: Early start on a stable partial, off until the latency is recorded
 
@@ -929,7 +929,7 @@ Date: 2026-11-09
 
 **Alternatives.** Always on (rejected: unmeasured). Start on any partial (rejected: many aborted calls).
 
-**Consequences.** Scripted, virtual clock: with a speech-to-text lag of 700 ms and a model delay of 800 ms, the card came 500 ms earlier after the end of speech (median 1500 to 1000 ms), with the same cards and no extra call. On the 10 golden dev meetings with 1 final in 12 revised, early start made 6 extra direct calls on 92 (6.5 percent). The lag and the revision rate are assumptions. The owner turns it on after the recorded latency run (ADR 62).
+**Consequences.** Scripted, virtual clock: with a speech-to-text lag of 700 ms and a model delay of 800 ms, the card came 500 ms earlier after the end of speech (median 1500 to 1000 ms), with the same cards and no extra call. On the 10 golden dev meetings with 1 final in 12 revised, early start made 6 extra direct calls on 92 (6.5 percent). The lag and the revision rate are assumptions. It can be turned on after the recorded latency run (ADR 62).
 
 ## ADR 61: Ship thresholds are absolute, and the final read uses a split nobody tuned on
 
@@ -941,9 +941,9 @@ Date: 2026-11-09
 
 **Why.** An absolute line is a promise that a person can read. Controls prove that the grader cannot be fooled. A split that was not used for tuning is the only honest estimate left.
 
-**Alternatives.** Raise the baseline each round (rejected: no ceiling). One shared held-out set (rejected: it is used up after the first look).
+**Alternatives.** Raise the baseline after each release candidate (rejected: no ceiling). One shared held-out set (rejected: it is used up after the first look).
 
-**Consequences.** **`test-c` is not truly blind.** The builder who wrote it had no independent author and had read the schema, the README and the other splits; it has been read twice (the builder's check, then the round 3 final read). It must be replaced by a split written by a person or a separate agent who sees only the schema and the README, and locked, before it counts for release. Every ship line is still scripted, so a scripted pass is not a release pass (ADR 62). On dev, 8 of 14 scored lines pass and 6 fail; on `test-c`, 8 pass and 6 fail.
+**Consequences.** **`test-c` is not truly blind.** Its author was not independent and had read the schema, the README and the other splits; it has been read twice. It must be replaced by a split written by a person or a separate agent who sees only the schema and the README, and locked, before it counts for release. Every ship line is still scripted, so a scripted pass is not a release pass (ADR 62). On dev, 8 of 14 scored lines pass and 6 fail; on `test-c`, 8 pass and 6 fail.
 
 ## ADR 62: Scripted is not recorded: every number is labelled, and release needs the recorded run
 
@@ -951,7 +951,7 @@ Date: 2026-11-09
 
 **Context.** Every quality number so far came from fixture replies of the model. Such a number proves the plumbing, the timing and the grader. It says nothing about whether the model's judgement is good, and a reader can easily take one for the other.
 
-**Decision.** (1) Every number in the docs, the README and the reports is labelled **scripted** or **recorded**, and says which set it came from and whether that set was used for tuning. (2) The public repo stays delayed. The release gate needs: the recorded run made by the morning command (ADR 55) passes the ship thresholds of ADR 61, the memory and judgement floors hold, the cost check is within 15 percent, and the owner has rated a real low-risk call with `pnpm tag`. (3) The morning command (`pnpm morning --cap 5`, one page in [MORNING-KIT.md](MORNING-KIT.md)) is the only route to a recorded number. An agent never runs it, and CI refuses it.
+**Decision.** (1) Every number in the docs, the README and the reports is labelled **scripted** or **recorded**, and says which set it came from and whether that set was used for tuning. (2) The public repo stays delayed. The release gate needs: the recorded run made by the morning command (ADR 55) passes the ship thresholds of ADR 61, the memory and judgement floors hold, the cost check is within 15 percent, and a maintainer has rated a real low-risk call with `pnpm tag`. (3) The morning command (`pnpm morning --cap 5`, one page in [MORNING-KIT.md](MORNING-KIT.md)) is the only route to a recorded number. An agent never runs it, and CI refuses it.
 
 **Why.** A reader who sees "recall 85%" should know in one word what kind of 85 it is. A release gate that a fixture can pass is no gate.
 
@@ -971,7 +971,7 @@ Date: 2026-11-09
 
 **Alternatives.** Keep both and sync them (rejected: this is the bug source).
 
-**Consequences.** Shipped in round 3. The details of the budgets and the compaction check are in ADR 66.
+**Consequences.** Shipped. The details of the budgets and the compaction check are in ADR 66.
 
 ## ADR 64: Modes are visible, lockable and writable by the user
 
@@ -985,7 +985,7 @@ Date: 2026-11-09
 
 **Alternatives.** A free-form prompt override (rejected: it could weaken the guards). More built-in kinds (rejected: never enough).
 
-**Consequences.** The overlay shows the kind as a read-only pill. The format is in [PACK-FORMAT.md](PACK-FORMAT.md#custom-modes). Shipped in round 3. The pill is read-only in the overlay and a picker is in the dashboard.
+**Consequences.** The overlay shows the kind as a read-only pill. The format is in [PACK-FORMAT.md](PACK-FORMAT.md#custom-modes). The pill is read-only in the overlay and a picker is in the dashboard.
 
 ## ADR 65: Web lookup is opt-in, with a source and a cap (replaces ADR 36)
 
@@ -993,13 +993,13 @@ Date: 2026-11-09
 
 **Context.** ADR 36 left web lookup out because it needs a search provider, a spend cap and a guard against invented numbers. The URL safety rules for context inputs now exist (https only, private addresses refused, size and time caps).
 
-**Decision (if built).** Lookup is off by default (`lookup.enabled: false`). It is reached by `wingman lookup "<term>"` and an Ask-tab toggle, not by a live card, this round. It reads a page with the same safety rules as context inputs, shows one line, the source address and the sentence it came from, and only text found in the fetched page. The number guard applies. A spend cap per call (`lookup.maxUsdPerCall`) stops it.
+**Decision (if built).** Lookup is off by default (`lookup.enabled: false`). It is reached by `wingman lookup "<term>"` and an Ask-tab toggle, not by a live card. It reads a page with the same safety rules as context inputs, shows one line, the source address and the sentence it came from, and only text found in the fetched page. The number guard applies. A spend cap per call (`lookup.maxUsdPerCall`) stops it.
 
 **Why.** Wingman should know only what it is told, plus a sourced fact when the user asks. A fact with no source on a live call is a risk.
 
-**Alternatives.** Live lookup cards (next round). Screen context (not this round: it needs a privacy design first).
+**Alternatives.** Live lookup cards (later). Screen context (not now: it needs a privacy design first).
 
-**Consequences.** Shipped in round 3 (off by default).
+**Consequences.** Shipped (off by default).
 
 ## ADR 66: Measured token budgets, name matching and a compaction check (what shipped for ADRs 63 and 64)
 
@@ -1019,9 +1019,9 @@ Date: 2026-11-08
 
 Date: 2026-11-09
 
-**Context.** The final review of round 12 found two bugs that show only in long or messy calls. (1) After sleep, a Wi-Fi change or a NAT timeout, a speech socket can look open for minutes. Audio goes out, nothing comes back, no disconnect event fires, and the call has no transcript and no cards. (2) The call transcript drops lines from its middle on a very long call. The memory loop and the must-cover check read it by array index, so after the first drop they read nothing new for the rest of the call.
+**Context.** The final review found two bugs that show only in long or messy calls. (1) After sleep, a Wi-Fi change or a NAT timeout, a speech socket can look open for minutes. Audio goes out, nothing comes back, no disconnect event fires, and the call has no transcript and no cards. (2) The call transcript drops lines from its middle on a very long call. The memory loop and the must-cover check read it by array index, so after the first drop they read nothing new for the rest of the call.
 
-**Decision.** (1) A speech stream may say `rxLiveness` and keep `lastRxAt` (any message from the service). Deepgram does; the others do not yet, because it is not known that they answer during silence. `SttChannel` checks every 5 s: if audio was sent in the last 3 s and the stream has heard nothing for 20 s, it emits a network error and a `disconnected` event, and opens a fresh socket with `reopen()`. The speaker book is rebased on the `reconnected` event as for any reopen. If the reopen fails, `exhausted` starts the engine's retry loop. (2) `CappedTranscript` has `absLength` and `lineAt(abs)`. A reader keeps a call-wide cursor and skips lines that were dropped. The same round fixed two smaller bugs in the same area: `open()` always starts at the primary provider, and a fallback taken at open arms the failback timer; the tray controller finishes a call or a doctor run only after the last stdout lines are read (up to 300 ms after exit), and Stop and delete is accepted after a plain Stop.
+**Decision.** (1) A speech stream may say `rxLiveness` and keep `lastRxAt` (any message from the service). Deepgram does; the others do not yet, because it is not known that they answer during silence. `SttChannel` checks every 5 s: if audio was sent in the last 3 s and the stream has heard nothing for 20 s, it emits a network error and a `disconnected` event, and opens a fresh socket with `reopen()`. The speaker book is rebased on the `reconnected` event as for any reopen. If the reopen fails, `exhausted` starts the engine's retry loop. (2) `CappedTranscript` has `absLength` and `lineAt(abs)`. A reader keeps a call-wide cursor and skips lines that were dropped. The same change fixed two smaller bugs in the same area: `open()` always starts at the primary provider, and a fallback taken at open arms the failback timer; the tray controller finishes a call or a doctor run only after the last stdout lines are read (up to 300 ms after exit), and Stop and delete is accepted after a plain Stop.
 
 **Why.** A socket that is open but silent for 20 s while we send audio is not healthy, whatever its state says. Up to 20 s of audio can be lost; that is better than a call with no transcript. A cursor that survives a drop is simpler than a queue.
 

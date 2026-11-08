@@ -2,7 +2,7 @@
 
 For people who have installed Wingman and use it on calls. It covers everyday use after it is installed: what Wingman does, the first run, the windows, the review step before a call, call kinds and modes, updating, where your files live, profile and pack, practice and prep mode, group call mode, words used in Wingman and the command line. For install and requirements see the [README](../README.md); for a first walk-through see [Getting started](GETTING-STARTED.md); for every setting and hotkey see [app/README.md](../app/README.md).
 
-Contents: [What Wingman does](#what-wingman-does) · [First run](#first-run) · [Tour of the windows](#tour-of-the-windows) · [Before a call: What Wingman knows](#before-a-call-what-wingman-knows) · [Call kinds and modes](#call-kinds-and-modes) · [The menu-bar menu](#the-menu-bar-menu) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Group call mode](#group-call-mode) · [Words used in Wingman](#words-used-in-wingman) · [Command line](#command-line)
+Contents: [What Wingman does](#what-wingman-does) · [First run](#first-run) · [Tour of the windows](#tour-of-the-windows) · [Before a call: What Wingman knows](#before-a-call-what-wingman-knows) · [Meeting context](#meeting-context-what-you-can-add) · [Call kinds and modes](#call-kinds-and-modes) · [The menu-bar menu](#the-menu-bar-menu) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Group call mode](#group-call-mode) · [Words used in Wingman](#words-used-in-wingman) · [Command line](#command-line)
 
 ## What Wingman does
 
@@ -22,9 +22,7 @@ Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup wi
 
 Then it says "You're ready". Press **Quick call**, or **Start** on a saved meeting. The way to your first real card is three steps on screen: Connect (keys), Allow (microphone and system audio, then quit and open Wingman once) and Try it (a free practice call).
 
-**Meeting context (optional).** Choose **Add meeting context** to give Wingman background before a call: paste an invite, an email or notes, or drop a .txt, .md, .pdf or .ics file. Under **More details** you can add who is joining, the goal and what you must cover. **Prepare** shows what Wingman understood; you can fix or remove any line. A saved meeting stays until you delete it and can start many calls. The window language is under Settings, Window language (English, Hebrew, or the system language).
-
-The Wingman window itself is in English only. The setting `ui.language` (Settings, Audio and screens) sets the language of the labels in the answer window: `auto` shows Hebrew unless the speech language is English; `he` and `en` force one.
+**Meeting context (optional).** Choose **Add meeting context** to give Wingman background before a call: paste an invite, an email or notes, or add a file, a web address or your next calendar event (the full list is under [Meeting context](#meeting-context-what-you-can-add)). Under **More details** you can add who is joining, the goal and what you must cover. **Prepare** shows what Wingman understood; you can fix or remove any line. A saved meeting stays until you delete it and can start many calls. **Two language settings.** The Wingman window follows your system language (English or Hebrew). Change it under Settings, Basics, Window language: Same as the system, English or Hebrew. The answer window has its own setting, `ui.language` (Answer window language): `auto` shows Hebrew unless the speech language is English; `he` and `en` force one. The text of a card keeps the language of the call.
 
 Below the three steps is **Make it yours (optional)**. Nothing in it is needed to start, and each item can be skipped:
 
@@ -70,7 +68,13 @@ This is the window you read during a call. Put it on the second screen. With liv
 
 If you switch the help engine to Classic, or the AI is down, the window shows the older layout: what they said, one big answer (**Prepared** in green when it comes from your own answer pack, **AI, unverified** with a dashed border when the AI wrote it), a small "buy time" line, a **More** button with the extra panel (numbered chips for phone numbers, emails and domains, your checklist, the client card and the AI notes), and the key bar. In **Settings, Answer window layout** you can switch between **Focus** (default) and **Full**, which shows everything at once. The rest of this guide applies to both windows.
 
-#### Cards, chips and keys (answer window v3)
+#### For you cards
+
+A **For you** card answers a question you ask Wingman: say it out loud (Ctrl+Opt+A, or by voice when `assist.answerMe` is `always`) or type it. A sum is worked out in code, never by the AI. The card is marked **For you**, and the other side's question stays above it.
+
+<img src="ux/for-you-card.png" alt="A For you card in Hebrew: the user's question about CDN and DNS, the answer in large text with two short points, and a For you math line, 36 + 42 = 78" width="560">
+
+#### Cards, chips and keys
 
 - **The card is the biggest thing on screen.** What they said is one small line above it. The card shows its line in full. A long line shows three lines and a **More** button; More opens the rest. A card never ends in a cut sentence.
 - **A card Wingman is unsure about** becomes a chip, not a card. Wingman shows a card only when it is useful enough; the bar is higher for kinds of cards you rated down.
@@ -103,15 +107,16 @@ If you switch the help engine to Classic, or the AI is down, the window shows th
 <img src="ux/calls-page.png" alt="The Calls page with the next call to review, the card usefulness meter and a table of calls" width="640">
 
 1. **Next up**: the call that most needs you. **Review** opens it.
-2. **Card usefulness**: how many useful cards you get per hour. It needs a few rated calls before it shows a result.
+2. **Card usefulness**: a meter of useful cards per hour, built from the calls you rated. It shows a dash until you have rated a few calls, and it names how many more it needs for a final result.
 3. **Search transcripts**: find a word in all your calls.
-4. **To do** column: **3 to rate** means three cards wait for a rating. **Summary** opens the written summary.
+4. **To do** column: **3 to rate** means three cards wait for a rating. **Follow-up ready** opens the written summary and email draft.
+5. **Useful per h**: the useful cards per hour of that call. It stays empty until you rate its cards. A call is marked **Real call** or **Practice**.
 
 ### One call: Summary
 
 <img src="ux/call-detail-followup.png" alt="A finished call opening on the Summary tab: big Copy follow-up email and Copy summary buttons, the summary, next steps, decisions and the email draft" width="640">
 
-1. **Live** or **Practice** shows what kind of call it was. **Delete call** removes it.
+1. **Real call** or **Practice** shows what kind of call it was. **Delete call** removes it.
 2. **Tabs**: **Summary**, **Rate** (mark each card useful or not), **Transcript**, **Missed questions** (questions with no card) and **Details**.
 3. **Next steps**: tick them off when done. **Me** is for you, **Client** is for the other side.
 4. **Follow-up email**: a draft written by the AI. Read it, then press **Copy follow-up email** (big button at the top; **Copy summary** is next to it). Placeholders such as `[fill in: ...]` are highlighted. The ended banner has an **Open summary** button, and a finished call opens on this tab. Rating cards (**Rate**) is optional. Wingman never sends anything.
@@ -138,6 +143,18 @@ The **Starter answers** item offers starter packs, so you do not begin with an e
 If a meeting has context (pasted text, a file, a calendar event), Wingman shows **What Wingman knows** once, before the call starts. It lists who is joining, the kind of call, and the facts, each with the line it came from. Untick a line to leave it out, or edit it. A warning appears if two facts disagree, for example the same item with two different numbers. **Start without review** skips the step in one click. A meeting with no context goes straight to the call; that is a normal state, because Wingman learns from the call itself. The tray menu and the command line start a call without this step, because they have no window.
 
 During the call the same lists grow in the live view (**So far**, **What Wingman knows**). You can fix or remove a line there too.
+
+## Meeting context: what you can add
+
+The Meeting context box takes any of these, in any mix:
+
+- Pasted text, such as an invite, an email or notes.
+- A file: `.txt`, `.md`, `.docx`, `.eml`, `.pdf` or `.ics`. A `.pdf` needs `pdftotext` (`brew install poppler`). A `.docx` needs the `unzip` tool, which macOS and Linux have.
+- A web address (https only).
+- A calendar link: the private `.ics` address from your calendar settings, set under Settings, "My calendar address".
+- Your next calendar event ("Use my next calendar event"). Wingman shows it and uses it only after you say yes.
+
+Everything is read on your Mac and treated as untrusted text. By default nothing else is sent anywhere. Three opt-in features contact the hosts you give them: a web address as context, a calendar `.ics` link, and web lookup (off by default).
 
 ## Call kinds and modes
 
@@ -171,7 +188,7 @@ Nothing about you is stored in this repository.
 | `~/.config/wingman/` | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
 | macOS Keychain, service `wingman` | Your API keys. |
 
-If you used an older version that kept calls in the repo folder (`calls/` and `data/private/` inside the repo folder, `stage0/`), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
+If you used an older version that kept calls in the repo folder (`calls/` and `data/private/` inside the repo folder), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
 
 ## Profile and pack
 
@@ -243,7 +260,7 @@ The window uses plain words. Some older docs, file names and settings keep the i
 - **Ask the call**: type `ask what did they say about the deadline?` or run `wingman ask "..."`. Wingman looks in what it learned in the call, then in the transcript, then uses general knowledge. If the call does not say, it says so. It never invents a number.
 - **Follow-up**: `wingman followup` prints a draft message for the other side from the saved call. Prices, dates and promises show as `[fill in]` for you to complete.
 - **Pre-meeting digest**: `wingman digest` reads pasted notes and files and finds people, agenda, facts and likely questions. This is optional. With no AI, the raw text is kept as background.
-- **Meeting context box**: one box for everything Wingman should know before a call. Paste text, drop a file (.txt, .md, .docx, .eml, .pdf, .ics), type a web address, or press "Use my next calendar event". Below the box, "Wingman understood: ..." says what it took from it, and "What Wingman knows" lists each fact with where it came from. You can remove any fact.
+- **Meeting context box**: one box for everything Wingman should know before a call (what you can add: [Meeting context](#meeting-context-what-you-can-add)). Below the box, "Wingman understood: ..." says what it took from it, and "What Wingman knows" lists each fact with where it came from. You can remove any fact.
 - **Web addresses and calendar**: only public https pages are read (8 seconds, 1 MB). Addresses inside your network are refused. For the calendar, paste the private .ics address from your calendar settings into Settings, "My calendar address". Wingman picks the meeting nearest to now, shows it, and uses it only after you say yes. A `.docx` file needs the `unzip` tool, which macOS and Linux have.
 - **Last time**: when a person on the call was on an earlier call, the new call starts with up to 5 short notes (open promises first, then the last topic). The first time that person is named, one Fact card may show a note. This is local and uses no AI call. Turn it off with "Remember people from earlier calls".
 - When the AI is offline, answers come from your notes and are labelled "AI offline: from notes".
@@ -263,7 +280,7 @@ After `./install.sh` you can type `wingman ...` from any folder.
 A prepared meeting for a client call, then a start (these talk to the running app, so open Wingman first):
 
 ```bash
-wingman plan new --title "Hosting move" --at "2026-11-03 14:30" --who "Dana, Levi Studio" --kind client \
+wingman plan new --title "Hosting move" --at "2026-11-03 14:30" --who "Dana, Levy Studio" --kind client \
   --topic "hosting move" --goal "agree migration date" --must "price" --must "downtime window"
 wingman plan list                  # shows the id of each meeting
 wingman start --plan <id>          # or: wingman start --quick
