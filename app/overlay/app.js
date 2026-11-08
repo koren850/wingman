@@ -984,6 +984,7 @@ function drawKeys() {
   }
   const keys = document.getElementById("keys");
   keys.replaceChildren();
+  keys.dir = "ltr"; // key caps read left to right in every language: the chord "Ctrl + Opt +" leads and the key follows it
   const hide = hintsHidden() && !keysOpen;
   if (hide) items = [];
   if (common.length && !hide) {
@@ -998,10 +999,12 @@ function drawKeys() {
   }
   for (const [, p, text] of items) {
     const it = span("it");
-    it.dir = UIDIR;
+    it.dir = "ltr";
     const kb = document.createElement("kbd");
     kb.textContent = p.slice(common.length).join("+");
-    it.append(kb, span("", text));
+    const label = span("", text);
+    label.dir = "auto";
+    it.append(kb, label);
     keys.append(it);
   }
   if (focus || hide) {

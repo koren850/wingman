@@ -221,7 +221,8 @@ const SCENARIOS = {
   "v2-idle-empty": () => ({ rows: [], lines: [], frame: { kind: "client", topic: "", checklist: [] } }),
   "v2-dim": (T) => ({ rows: [view(T), answer(T), { type: "card", id: "a1", closes: "answered", at: now }], lines: lines(T) }),
   "v2-topic": (T) => ({ rows: [view(T), answer(T), { type: "card", id: "a1", closes: "topic", at: now }], lines: [] }),
-  "v2-offline": (T) => ({ rows: [view(T, { ai: "offline" }), ...legacy(T)], lines: lines(T) }),
+  // AI offline: only prepared (local) cards. A card marked "AI, unverified" next to the "AI offline" bar would contradict it.
+  "v2-offline": (T) => ({ rows: [view(T, { ai: "offline" }), legacy(T)[0]], lines: lines(T) }),
   "v2-aipaused": (T) => ({ rows: [view(T, { ai: "paused" }), answer(T)], lines: lines(T) }),
   "v2-legacy": (T) => ({ rows: legacy(T), lines: lines(T) }),
   // the kind of call as a read-only pill: a guess (auto) and a locked kind; no pill when the engine sent no kind

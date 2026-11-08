@@ -247,7 +247,7 @@ const S = {
     id: "efact-c1",
     badge: "fact",
     say: "Levy Electronics",
-    facts: ["WooCommerce site, monthly maintenance $320", "Contact: Dana Levy, dana@example-shop.com"],
+    facts: ["WooCommerce site, monthly maintenance $320", "Contact: Dana Levi, dana@example-shop.com"],
   });
   const erem = side({
     id: "ereminder-1",

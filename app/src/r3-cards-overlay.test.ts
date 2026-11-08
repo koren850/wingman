@@ -472,7 +472,9 @@ for (const lang of ["en", "he"] as const) {
     assert.equal(by(rs, "v2-answer").probe.moreBtn, strings.t(lang, "v2.more"), "the answer has detail lines");
     const of = by(rs, "v2-overflow").probe;
     assert.equal(of.heroClamped, true, "an 80 word line is clamped to 3 lines");
-    assert.equal(of.heroCut, true, "and the rest is hidden until More");
+    assert.equal(of.heroCut, false, "it is cut at a sentence end, so the clamp hides nothing");
+    assert.match(of.hero, /[.!?]$/, "the collapsed line ends at a sentence end: " + of.hero);
+    assert.ok(of.hero.length < by(rs, "v2-long").probe.hero.length * 2 + 2, "and the rest waits behind More");
     assert.equal(of.moreBtn, strings.t(lang, "v2.more"));
     const opened = by(rs, "v2-fitfalse-open").probe;
     assert.equal(opened.heroClamped, false);

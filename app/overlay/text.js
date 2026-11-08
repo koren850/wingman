@@ -138,7 +138,33 @@
     return (c.updated && c.age < 800) || (c.age < 2500 && !/[.!?…:;)"\u201d\u05f4]$/.test(String(c.text || "").trim()));
   }
 
-  const api = { segments, healthText, isLatin, healthLevel, isWriting };
+  /**
+   * The text split after each sentence end (. ! ? … or the Hebrew punctuation mark), spaces kept at the join.
+   * A full stop inside a number ("3.9") or between letters ("e.g.x") is not an end: it needs a space or the end of the text after it.
+   */
+  function sentences(text) {
+    const t = String(text ?? "").trim();
+    if (!t) return [];
+    return t
+      .match(/.+?(?:[.!?…\u05c3]+["'\u201d)]*(?=\s|$)|$)/gsu)
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }
+
+  /**
+   * The longest run of whole sentences from the start of the text that passes fits(candidate). "" when not even the first sentence fits.
+   * Used for a collapsed card: it ends at a sentence end, never mid-sentence.
+   */
+  function sentencePrefix(text, fits) {
+    const parts = sentences(text);
+    for (let n = parts.length - 1; n >= 1; n--) {
+      const cand = parts.slice(0, n).join(" ");
+      if (fits(cand)) return cand;
+    }
+    return "";
+  }
+
+  const api = { segments, healthText, isLatin, healthLevel, isWriting, sentences, sentencePrefix };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WingmanText = api;
 })(typeof window !== "undefined" ? window : globalThis);

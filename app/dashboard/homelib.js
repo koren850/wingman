@@ -167,11 +167,65 @@
     );
   }
   /**
+   * Hebrew wording for the readiness lines the first run shows (keys, microphone, system audio, ffmpeg, screens). The check itself writes English
+   * (src/doctor.ts is not changed for this), so the window matches the line by its shape and says it in Hebrew. A line with no match stays as the
+   * check wrote it (a known gap: the rare lines, such as a battery or disk warning).
+   */
+  const PROVIDER_HE = {
+    DEEPGRAM_API_KEY: "Deepgram",
+    ANTHROPIC_API_KEY: "Anthropic",
+    OPENAI_API_KEY: "OpenAI",
+    GOOGLE_GENERATIVE_AI_API_KEY: "Google",
+    MISTRAL_API_KEY: "Mistral",
+    GROQ_API_KEY: "Groq",
+    SONIOX_API_KEY: "Soniox",
+    GLADIA_API_KEY: "Gladia",
+  };
+  const HE_LINES = [
+    [
+      /^(\w+_API_KEY) missing \((.*?)\); that fallback cannot work/,
+      (m) => `חסר מפתח ${PROVIDER_HE[m[1]] || "של ספק"} (${/STT|speech/i.test(m[2]) ? "תמלול" : "תשובות"}, גיבוי). הגיבוי לא יעבוד`,
+    ],
+    [/^(\w+_API_KEY) missing \((.*?)\)/, (m) => `חסר מפתח ${PROVIDER_HE[m[1]] || "של ספק"} (${/STT|speech/i.test(m[2]) ? "תמלול הדיבור" : "תשובות ה-AI"})`],
+    [/^Wingman → Settings → Keys: paste the key/, () => "Wingman ← הגדרות ← מפתחות: הדבק את המפתח (הוא נשמר ב-Keychain של macOS)"],
+    [/^no sound from the microphone/, () => "אין קול מהמיקרופון: נראה שהוא חסום"],
+    [
+      /^System Settings → Privacy & Security → Microphone/,
+      () => "הגדרות המערכת ← פרטיות ואבטחה ← מיקרופון: אפשר ל-Wingman, ואז הפעל את Wingman מחדש (או בחר התקן אחר בהגדרות)",
+    ],
+    [/^mic is quiet/, () => "המיקרופון שקט: הוא עובד, אבל הקול היה חלש"],
+    [/^speak normally during the check/, () => "דבר כרגיל במהלך הבדיקה, או התקרב למיקרופון"],
+    [/^mic: /, () => "שגיאת מיקרופון: לא ניתן לפתוח את ההתקן"],
+    [/^audio\.system\.source is off/, () => "שמע המערכת כבוי: אי אפשר לשמוע את הצד השני (רק התמלול שלך)"],
+    [/^ffmpeg not found/, () => "ffmpeg לא נמצא"],
+    [/^install ffmpeg/, () => "התקן את ffmpeg (brew install ffmpeg) והרץ שוב את הבדיקה"],
+    [/^macOS ([\d.]+): system audio tap needs/, (m) => `macOS ${m[1]}: הקלטת שמע המערכת דורשת גרסה 14.2 ומעלה`],
+    [/^only one (display|screen)/, () => "יש מסך אחד בלבד: חלון התשובות לא ייפתח (כדי שלא יופיע במסך משותף)"],
+    [/^connect a second screen/, () => "חבר מסך שני לפני השיחה"],
+    [/^settings invalid/, () => "ההגדרות לא תקינות"],
+    [/^fix the setting above/, () => "תקן את ההגדרה שמוצגת ואז הרץ שוב את בדיקת המוכנות"],
+    [/^Bluetooth mic drops/, () => "מיקרופון Bluetooth יורד לאיכות שמע נמוכה"],
+    [/^use the Mac microphone/, () => "השתמש במיקרופון של ה-Mac או באוזניות עם חוט"],
+    [/^leftover ffmpeg/, () => "נשאר תהליך ffmpeg או audiotee ישן"],
+    [/^quit Wingman from the menu bar/, () => "צא מ-Wingman מסרגל התפריטים ופתח אותו שוב"],
+  ];
+  /** A readiness line (text or fix) in the window language: Hebrew for the lines above, otherwise the plain English of niceFix. */
+  function issueText(t, lang) {
+    const raw = String(t || "");
+    if (lang === "he") {
+      for (const [re, say] of HE_LINES) {
+        const m = re.exec(raw);
+        if (m) return say(m);
+      }
+    }
+    return niceFix(raw);
+  }
+  /**
    * Can the person press Start now? { ready, disabled, why, code, raw }. `missing` = names of providers with no key. `doctor` = the last readiness result.
    * A key problem or a failed readiness check disables Start and gives the reason (plain words, from the first failing line) and a code for the Fix it button.
    * "Not checked yet" and "busy" never block. why is a catalog key when it needs no data; otherwise raw holds the plain text of the first problem.
    */
-  function startState(doctor, missing) {
+  function startState(doctor, missing, lang) {
     const miss = Array.isArray(missing) ? missing : [];
     if (miss.length)
       return { ready: false, disabled: true, why: "start.why.keys", code: "key-" + (/anthropic/i.test(miss[0]) ? "anthropic" : "deepgram"), raw: "" };
@@ -183,7 +237,7 @@
       disabled: true,
       why: "start.why.check",
       code: "",
-      raw: niceFix(first.text || ""),
+      raw: issueText(first.text || "", lang),
       rawSource: String(first.text || "") + " " + String(first.fix || ""),
     };
   }
@@ -215,6 +269,7 @@
     askStatus,
     canSkipSummary,
     niceFix,
+    issueText,
     plainText,
     startState,
     keySym,

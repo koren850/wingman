@@ -327,6 +327,35 @@ test("page scripts: loaded in the order of index.html in a bare context, the lib
   assert.equal(win.WingmanHome.startState(null, ["Deepgram"]).code, "key-deepgram");
 });
 
+test("first-run readiness lines read in Hebrew (keys, microphone, system audio, ffmpeg, screens); English and unknown lines stay as written", () => {
+  const lines: Array<[string, string]> = [
+    ["DEEPGRAM_API_KEY missing (STT primary deepgram)", "חסר מפתח Deepgram"],
+    ["ANTHROPIC_API_KEY missing (LLM reflex anthropic:claude-haiku)", "חסר מפתח Anthropic"],
+    ["Wingman → Settings → Keys: paste the key (it is stored in the macOS Keychain)", "הדבק את המפתח"],
+    ["no sound from the microphone: it looks blocked", "אין קול מהמיקרופון"],
+    ["System Settings → Privacy & Security → Microphone: allow Wingman, then restart Wingman (or choose another device in Settings)", "מיקרופון"],
+    ["audio.system.source is off: the client cannot be heard (transcript-only)", "שמע המערכת כבוי"],
+    ["ffmpeg not found", "ffmpeg"],
+    ["only one display: the overlay would refuse to open", "מסך אחד"],
+  ];
+  for (const [raw, want] of lines) {
+    const out = HL.issueText(raw, "he");
+    assert.ok(HEB.test(out) && out.includes(want), raw + " -> " + out);
+    assert.ok(
+      !/[A-Za-z]{4,} [a-z]{3,} [a-z]{3,}/.test(out.replace(/Wingman|Deepgram|Anthropic|ffmpeg|brew install ffmpeg|Keychain|macOS/g, "")),
+      "no English sentence left: " + out,
+    );
+    assert.equal(HL.issueText(raw, "en"), HL.niceFix(raw), "English is unchanged");
+  }
+  assert.equal(HL.issueText("battery 12% and not charging", "he"), "battery 12% and not charging", "a line with no Hebrew wording stays as the check wrote it");
+  const st = HL.startState(
+    { ok: false, failing: [{ text: "no sound from the microphone: it looks blocked", fix: "" }], warnings: [], at: 1, verdict: "NOT READY" },
+    [],
+    "he",
+  );
+  assert.ok(HEB.test(st.raw), "the reason under Start is Hebrew too");
+});
+
 // ---- window snapshots (Electron, hidden window): opt-in, because they start the Electron runtime ----
 const SNAP = process.env.WINGMAN_DASH_SNAP === "1" && process.platform === "darwin" && existsSync(join(DASH, "..", "node_modules", ".bin", "electron"));
 test(

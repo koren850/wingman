@@ -177,6 +177,8 @@ async function one(spec) {
       flash: hero ? hero.classList.contains("flash") : false,
       slides: all("#chips .chip.slide").length,
       keyHints: all("#keys kbd").length,
+      keysDir: (document.getElementById("keys") || {}).dir || "",
+      firstKeyText: ((document.querySelector("#keys .it") || {}).textContent || "").replace(/\\s+/g, ""),
       ctlOpacity: hero ? getComputedStyle(hero.querySelector(".hctl")).opacity : "",
       active: document.activeElement ? { cls: document.activeElement.className, fk: document.activeElement.dataset.fk || "", outline: getComputedStyle(document.activeElement).outlineStyle, outlineW: getComputedStyle(document.activeElement).outlineWidth } : null,
       heroFont: hero ? parseFloat(getComputedStyle(hero.querySelector(".hsay")).fontSize) : 0,

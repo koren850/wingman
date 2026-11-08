@@ -50,6 +50,14 @@
   const isAdvanced = (i) => !!i && (i.advanced === true || ALWAYS_ADVANCED.includes(i.key));
   /** The keys of `order` (the normal page) that are allowed there: advanced entries and the "@mic" pseudo row handling stay with the caller. */
   const normalKeys = (items, order) => order.filter((k) => k.startsWith("@") || !isAdvanced((items || []).find((x) => x.key === k)));
+  /**
+   * True when the entry is kept out of the Settings page altogether. The Classic engine is a rollback for support, not a choice: its row shows
+   * only when a settings file already set it, so the person can switch back. Everyone else sees one engine (live reading) and no row.
+   * The value still works from the settings file, `--set moments.engine=legacy` and the tests.
+   */
+  const isHidden = (i) => !!i && i.key === "moments.engine" && i.value !== "legacy";
+  /** The catalog rows the page may show: hidden entries taken out. */
+  const visibleItems = (items) => (items || []).filter((i) => !isHidden(i));
   const fold = (s) =>
     String(s == null ? "" : s)
       .toLowerCase()
@@ -61,6 +69,7 @@
    * (labelOf(item) and helpOf(item) give the text in the window language). An empty query matches nothing.
    */
   function search(items, query, labelOf, helpOf) {
+    items = visibleItems(items);
     const words = fold(query).split(" ").filter(Boolean);
     if (!words.length) return [];
     return (items || []).filter((i) => {
@@ -68,7 +77,7 @@
       return words.every((w) => hay.includes(w));
     });
   }
-  const api = { MAIN_ORDER, ALWAYS_ADVANCED, TABS, TAB_IDS, tabOf, tabKeys, tabFromFocus, isAdvanced, normalKeys, search, fold };
+  const api = { MAIN_ORDER, ALWAYS_ADVANCED, TABS, TAB_IDS, tabOf, tabKeys, tabFromFocus, isAdvanced, isHidden, visibleItems, normalKeys, search, fold };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WingmanSettings = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -32,7 +32,13 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, "SF Hebrew", "Arial Hebrew", "Helvetica Neue", sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "SF Hebrew",
+    "Arial Hebrew",
+    "Helvetica Neue",
+    sans-serif;
   -webkit-app-region: drag;
   -webkit-font-smoothing: antialiased;
 }
@@ -1564,6 +1570,8 @@ body.paused #watch {
 }
 #wlist ul {
   margin: 2px 0 0;
+  padding-inline-start: 0; /* bullets sit inside the text column, so the section headings and the rows share one left edge with the heading above */
+  list-style-position: inside;
   font-size: max(12px, calc(16px * var(--ui)));
   line-height: 1.3;
 }

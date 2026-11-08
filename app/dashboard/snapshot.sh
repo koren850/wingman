@@ -43,7 +43,7 @@ $spec
 EOF2
   data="$(mktemp -d)"; node "$HERE/snapshot-fixtures.cjs" "$data" "$lang" >/dev/null || exit 1
   fakeEnv=""; [ "$fake" != "-" ] && fakeEnv="$fake"
-  WINGMAN_DATA_DIR="$data" WINGMAN_USER_SETTINGS="$data/settings.yaml" WINGMAN_DASHBOARD_SNAPSHOT="$OUT/$name.png" WINGMAN_DASHBOARD_LANG="$lang" \
+  WINGMAN_DATA_DIR="$data" WINGMAN_USER_SETTINGS="$data/settings.yaml" WINGMAN_PACK_DIR="${WINGMAN_PACK_DIR:-$data/pack}" WINGMAN_DASHBOARD_SNAPSHOT="$OUT/$name.png" WINGMAN_DASHBOARD_LANG="$lang" \
     WINGMAN_DASHBOARD_THEME="$theme" WINGMAN_DASHBOARD_VIEW="$view" WINGMAN_DASHBOARD_FAKE_CALL="$fakeEnv" WINGMAN_DASHBOARD_FAKE_DOCTOR="${WINGMAN_SNAP_DOCTOR:-ready}" WINGMAN_DASHBOARD_KNOWS="$([ -n "$knows" ] && [ "$knows" != "-" ] && [ "$knows" != saw ] && echo "$knows")" WINGMAN_DASHBOARD_OPEN="$([ -n "$open1" ] && [ "$open1" != "-" ] && echo "$open1:$open2$([ "$knows" = saw ] && echo ":saw")")" \
     WINGMAN_DASHBOARD_FOCUS="$([ "$focus" != "-" ] && echo "$focus")" WINGMAN_DASHBOARD_EVAL="${WINGMAN_SNAP_EVAL:-$HERE/clipcheck.js}" WINGMAN_DASHBOARD_SIZE="${WINGMAN_DASHBOARD_SIZE:-1100x900}" \
     "$HERE/../node_modules/.bin/electron" "$HERE/../tray/main.cjs" >/dev/null 2>&1

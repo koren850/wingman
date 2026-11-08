@@ -545,3 +545,73 @@ test("review: fitBounds survives bad input and tiny screens; the hotkey note tex
   assert.match(note, /Ctrl\+Opt\+D/);
   assert.match(note, /Dismiss/);
 });
+
+// ---- pre-release polish: idle copy, offline frame, sentence cut, one time unit, key bar, context panel ----
+const TX = require("../overlay/text.js");
+const FX = require("../overlay/fixtures-v2.cjs");
+
+test("idle copy is about cards, not only questions (en and he)", () => {
+  assert.equal(strings.t("en", "state.listening.sub"), "Listening. Cards appear when something needs your attention.");
+  assert.match(strings.t("he", "state.listening.sub"), /כרטיסים יופיעו/);
+  for (const l of ["en", "he"]) assert.doesNotMatch(strings.t(l, "state.listening.sub"), /Nobody|אף אחד/);
+});
+
+test("time units: one style, a number, a space, then the unit (s, min); no glued '23s'", () => {
+  assert.equal(strings.t("en", "age.seconds", { n: 23 }), "23 s ago");
+  assert.equal(strings.t("en", "age.minutes", { n: 2 }), "2 min ago");
+  assert.equal(strings.t("en", "ask.seconds", { n: 20 }), "20 s");
+  assert.equal(strings.t("en", "v2.age.s", { n: 50 }), "50 s");
+  assert.equal(strings.t("en", "v2.age.min", { n: 2 }), "2 min");
+  for (const k of ["age.seconds", "age.minutes", "ask.seconds", "v2.age.s", "v2.age.min"]) assert.doesNotMatch(strings.t("en", k, { n: 7 }), /\d[a-z]/i, k);
+  for (const k of ["age.seconds", "age.minutes", "ask.seconds", "v2.age.s", "v2.age.min"]) assert.doesNotMatch(strings.t("he", k, { n: 7 }), /\d[a-z]|sec/i, k);
+});
+
+test("sentences: split at . ! ? and the Hebrew mark; a number like 3.9 is not an end", () => {
+  assert.deepEqual(TX.sentences("It costs 3.9 today. Setup takes two days! Is that fine?"), ["It costs 3.9 today.", "Setup takes two days!", "Is that fine?"]);
+  assert.deepEqual(TX.sentences("  "), []);
+  assert.deepEqual(TX.sentences("no end mark"), ["no end mark"]);
+  assert.deepEqual(TX.sentences("כן, אפשר. זה לוקח יומיים."), ["כן, אפשר.", "זה לוקח יומיים."]);
+});
+
+test("sentencePrefix: the longest run of whole sentences that fits; empty when the first one alone does not", () => {
+  const t = "One is short. Two is a bit longer. Three is the longest of them all.";
+  assert.equal(
+    TX.sentencePrefix(t, (c: string) => c.length <= 40),
+    "One is short. Two is a bit longer.",
+  );
+  assert.equal(
+    TX.sentencePrefix(t, (c: string) => c.length <= 14),
+    "One is short.",
+  );
+  assert.equal(
+    TX.sentencePrefix(t, (c: string) => c.length <= 5),
+    "",
+  );
+  assert.equal(
+    TX.sentencePrefix("Only one sentence here.", () => false),
+    "",
+  );
+});
+
+test("the offline fixture shows prepared cards only: no 'AI unverified' card beside the 'AI offline' bar", () => {
+  const T = FX.TXT ? FX.TXT.en : null;
+  const sc = FX.SCENARIOS["v2-offline"];
+  assert.ok(sc && T, "scenario and text are exported");
+  const rows = sc(T).rows;
+  assert.ok(rows.some((r: { type: string; ai?: string }) => r.type === "view" && r.ai === "offline"));
+  assert.ok(!rows.some((r: { badge?: string }) => r.badge === "ai"), "no AI-badged card while the AI is offline");
+  assert.ok(rows.some((r: { badge?: string }) => r.badge === "bank"));
+});
+
+test("page: a long collapsed card ends at a sentence end; Hebrew key bar reads left to right; context headings line up", { ...SNAP, timeout: 200_000 }, () => {
+  for (const lang of ["en", "he"] as const) {
+    const rs = snap(lang, ["v2-long", "v2-answer", "v2-context"]);
+    const long = by(rs, "v2-long").probe;
+    assert.match(long.hero, /[.!?]$/, lang + ": the collapsed card does not end mid-sentence: " + long.hero);
+    assert.equal((long as Probe & { heroCut: boolean }).heroCut, false, lang + ": nothing is cut by the line clamp");
+    for (const r of rs) assert.deepEqual(r.issues, [], lang + " " + r.spec);
+    const p = by(rs, "v2-answer").probe as Probe & { keysDir: string; firstKeyText: string };
+    assert.equal(p.keysDir, "ltr", lang + ": key caps read left to right");
+    assert.match(p.firstKeyText, /^Ctrl\+Opt\+/, lang + ": the chord leads the row");
+  }
+});

@@ -184,6 +184,7 @@ function create(ctx) {
       title: "Wingman",
       // Snapshot mode (tests/docs): render hidden, save a PNG, quit. Never steals focus from the user's screen.
       show: !SNAP,
+      ...(SNAP && SIZE ? { enableLargerThanScreen: true } : {}), // a tall picture for the docs is not cut at the screen edge
       paintWhenInitiallyHidden: true,
       icon: BRAND_ICON,
       webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
@@ -349,7 +350,10 @@ function create(ctx) {
   handle("live:get", (id) => {
     if (typeof id !== "string" || id.length > 60) throw new Error("bad id");
     if (fake) {
-      const f = fake.running && fake.callId === id ? liveFixture.build(fake.liveAt || fake.startedAt, id) : null;
+      const f =
+        fake.running && fake.callId === id
+          ? liveFixture.build(fake.liveAt || fake.startedAt, id, SNAP && process.env.WINGMAN_DASHBOARD_LANG === "en" ? "en" : "he")
+          : null;
       return f || { callId: "", reset: true, lines: [], cards: [] };
     }
     return live.snapshot(id);
@@ -561,6 +565,8 @@ function create(ctx) {
       const kind = process.env.WINGMAN_DASHBOARD_KNOWS || "";
       if (mode === "live" && /^(golden|golden-paused|golden-offline|empty)$/.test(kind))
         return { ok: true, ...require("./snapshot-fixtures.cjs").knowsFixture(kind, L) };
+      // docs: the small fixture as a live model with no "Sample" badge, for the pictures in docs/ux (never shown as sample data)
+      if (mode === "live" && kind === "docs") return { ok: true, model: { ...K.fixture("live", L), source: "memory" }, ai: "ok" };
       if (mode === "before" && kind === "conflict") return { ok: true, model: K.fixtureConflict(L), ai: "ok" };
       return { ok: true, model: K.fixture(mode, L), ai: "ok" };
     }

@@ -122,7 +122,12 @@ test("Settings: advanced entries stay off the normal page; the engine setting is
   // search: by label, by a word of the help text, in any case, and an advanced setting too
   const q = items.find((i) => i.key === "cards.quiet");
   assert.ok(SS.search(items, q.label.toUpperCase()).some((i: any) => i.key === "cards.quiet"));
-  assert.ok(SS.search(items, "help engine").some((i: any) => i.key === "moments.engine"));
+  assert.ok(!SS.search(items, "help engine").some((i: any) => i.key === "moments.engine"), "the engine row is hidden unless the file already chose Classic");
+  const classic = items.map((i) => (i.key === "moments.engine" ? { ...i, value: "legacy" } : i));
+  assert.ok(
+    SS.search(classic, "help engine").some((i: any) => i.key === "moments.engine"),
+    "...then it shows, so the person can switch back",
+  );
   assert.deepEqual(SS.search(items, "   "), []);
   assert.deepEqual(SS.search(items, "zzzzqqqq"), []);
   const he1 = SS.search(items, "שקט", (i: any) => (i.key === "cards.quiet" ? "מצב שקט" : i.label));
@@ -187,4 +192,21 @@ test("edge cases: a call with no date does not nag; odd input to fixOf and searc
   assert.equal(SS.search([{ key: "a.b", label: "A (b)" }], "(b)").length, 1);
   assert.equal(SS.isAdvanced(null), false);
   assert.ok(SS.normalKeys([], SS.MAIN_ORDER).includes("cards.quiet"), "an unknown key is not hidden");
+});
+
+test("Settings: the Classic engine option is not offered; the row shows only when the file already chose Classic", () => {
+  const items: any[] = catalog.items ?? catalog.ITEMS ?? catalog.CATALOG ?? Object.values(catalog).find((v) => Array.isArray(v));
+  const engine = items.find((i) => i.key === "moments.engine");
+  assert.equal(SS.isHidden({ ...engine, value: "v2" }), true);
+  assert.equal(SS.isHidden({ ...engine }), true);
+  assert.equal(SS.isHidden({ ...engine, value: "legacy" }), false);
+  assert.equal(SS.isHidden(items.find((i) => i.key === "cards.quiet")), false);
+  assert.ok(!SS.visibleItems(items.map((i) => (i.key === "moments.engine" ? { ...i, value: "v2" } : i))).some((i: any) => i.key === "moments.engine"));
+  assert.ok(SS.visibleItems(items).length === items.length - 1);
+  // the value itself still works: the catalog still accepts it, so --set and the settings file keep working
+  assert.ok(engine.options.some((o: string[]) => o[0] === "legacy"));
+  assert.ok(
+    !/question detector/i.test(readFileSync(join(ROOT, "dashboard", "strings.en.js"), "utf8")),
+    "no 'Question detector (old)' wording is left in the window strings",
+  );
 });

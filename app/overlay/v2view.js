@@ -273,14 +273,18 @@ function createV2View(deps) {
     top.append(ctl(e, cd));
     el.append(top);
     const say = div("hsay" + (isExp ? "" : " clamp"), "auto");
-    mixed(say, e.head);
-    if (e.kind === "prompt") {
-      // a prompt is something to say: it reads as speech, "Ask: ..."
-      const k = document.createElement("bdi");
-      k.className = "lk hask";
-      k.textContent = tr("v2.ask");
-      say.prepend(k, document.createTextNode(" "));
-    }
+    const fillSay = (text) => {
+      say.replaceChildren();
+      mixed(say, text);
+      if (e.kind === "prompt") {
+        // a prompt is something to say: it reads as speech, "Ask: ..."
+        const k = document.createElement("bdi");
+        k.className = "lk hask";
+        k.textContent = tr("v2.ask");
+        say.prepend(k, document.createTextNode(" "));
+      }
+    };
+    fillSay(e.head);
     el.append(say);
     if (isExp && e.detail.length) {
       const ul = document.createElement("ul");
@@ -307,7 +311,16 @@ function createV2View(deps) {
     el.append(menuRow(e, cd));
     heroBox.append(el);
     // More: shown when there is detail, or when the line does not fit in 3 lines (it is never cut without this button)
-    const over = !isExp && say.scrollHeight > say.clientHeight + 1;
+    let over = !isExp && say.scrollHeight > say.clientHeight + 1;
+    if (over) {
+      // a collapsed card ends at a sentence end: drop whole sentences from the end until it fits; More shows the rest
+      const kept = WingmanText.sentencePrefix(e.head, (cand) => {
+        fillSay(cand);
+        return say.scrollHeight <= say.clientHeight + 1;
+      });
+      fillSay(kept || e.head);
+      over = true;
+    }
     if (e.detail.length || over || (isExp && e.long)) {
       const mb = withFk(
         button("b more", isExp ? tr("v2.less") : tr("v2.more"), () => toggleExpand(e.id)),

@@ -685,7 +685,7 @@ function advancedBlock(r) {
   const body = h("div", { class: "advbody advmain" });
   if (r && r.ok) {
     for (const g of r.groups) {
-      const rows = r.items.filter((i) => i.group === g.id && (!i.main || window.WingmanSettings.isAdvanced(i)));
+      const rows = window.WingmanSettings.visibleItems(r.items).filter((i) => i.group === g.id && (!i.main || window.WingmanSettings.isAdvanced(i)));
       if (!rows.length) continue;
       const list = h("div", { class: "setlist" }, rows.map(settingRow));
       if (g.id === "tune") {

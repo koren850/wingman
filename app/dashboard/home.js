@@ -414,7 +414,7 @@ const stepHead = (n, id, title, why, ...rest) =>
   );
 
 /** Can the person press Start now? Keys and the last readiness check decide (homelib startState). Checking never blocks. */
-const startNow = () => HL.startState(checking() ? null : doc(), keysMissing());
+const startNow = () => HL.startState(checking() ? null : doc(), keysMissing(), WingmanI18n.lang);
 /** The line under Start when it is disabled: the reason in plain words, the Fix it button, and (for a failed check only) a way to start anyway. */
 function startWhy(ss, t) {
   if (!ss.disabled) return null;
@@ -1111,7 +1111,7 @@ const keysMissing = () =>
 // setupCard() (the guided setup) is in setup.js.
 
 /* ---------- Readiness check (doctor) ---------- */
-const niceFix = HL.niceFix,
+const niceFix = (t) => HL.issueText(t, WingmanI18n.lang),
   keyRelated = HL.keyRelated; // doctor text says Settings → Keys and Wingman, not keys.env and the terminal
 /** One list style for readiness problems (card, Start warning). Only the status icon is red or amber; the words stay neutral. */
 /** The one button under a readiness problem: from the errors table (keys, permissions, ...), or the Keys link for a key problem. */
