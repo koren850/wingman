@@ -30,51 +30,51 @@
     },
     "metrics": {
       "card.recall": {
-        "value": 0.83219,
+        "value": 0.84932,
         "n": 292
       },
       "card.precision": {
-        "value": 0.70845,
-        "n": 343
+        "value": 0.70455,
+        "n": 352
       },
       "recall.answer": {
-        "value": 0.95588,
+        "value": 1,
         "n": 68
       },
       "recall.prompt": {
-        "value": 0.78302,
+        "value": 0.77358,
         "n": 106
       },
       "recall.check": {
-        "value": 0.7907,
+        "value": 0.81395,
         "n": 86
       },
       "recall.fact": {
-        "value": 0.84375,
+        "value": 0.875,
         "n": 32
       },
       "precision.answer": {
-        "value": 0.6701,
-        "n": 97
+        "value": 0.68,
+        "n": 100
       },
       "precision.prompt": {
-        "value": 0.7757,
-        "n": 107
+        "value": 0.75926,
+        "n": 108
       },
       "precision.check": {
-        "value": 0.67327,
-        "n": 101
+        "value": 0.67961,
+        "n": 103
       },
       "precision.fact": {
-        "value": 0.71053,
-        "n": 38
+        "value": 0.68293,
+        "n": 41
       },
       "direct.recall": {
-        "value": 0.94643,
+        "value": 1,
         "n": 56
       },
       "noq.recall": {
-        "value": 0.83784,
+        "value": 0.87838,
         "n": 74
       },
       "recall.en": {
@@ -82,60 +82,60 @@
         "n": 146
       },
       "recall.he": {
-        "value": 0.81507,
+        "value": 0.84932,
         "n": 146
       },
       "ttc.p50": {
         "value": 1500,
-        "n": 243
+        "n": 248
       },
       "ttc.p95": {
-        "value": 2200,
-        "n": 243
+        "value": 4000,
+        "n": 248
       },
       "silent.cpm": {
-        "value": 0.04467,
+        "value": 0.0536,
         "n": 112
       },
       "wrong.card": {
-        "value": 0.03571,
-        "n": 252
+        "value": 0.02745,
+        "n": 255
       },
       "dup.rate": {
-        "value": 0.05814,
-        "n": 344
+        "value": 0.07649,
+        "n": 353
       },
       "wrong.lang": {
-        "value": 0.00585,
-        "n": 342
+        "value": 0.0057,
+        "n": 351
       },
       "guard.rate": {
         "value": 0.005,
-        "n": 166
+        "n": 170
       },
       "memory.pass": {
         "value": 0.9,
         "n": 20
       },
       "rubric.pass": {
-        "value": 0.77907,
-        "n": 344
+        "value": 0.7762,
+        "n": 353
       },
       "noisy.delta": {
-        "value": 0.05063,
+        "value": 0.02532,
         "n": 79
       },
       "cost.perHour": {
-        "value": 0.03645,
-        "n": 1088
+        "value": 0.03233,
+        "n": 1234
       },
       "calls.perHour": {
-        "value": 286.88444,
-        "n": 1088
+        "value": 325.3818,
+        "n": 1234
       },
       "cards.perHour": {
-        "value": 90.70611,
-        "n": 344
+        "value": 93.07924,
+        "n": 353
       }
     }
   }
