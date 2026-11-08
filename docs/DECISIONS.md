@@ -48,6 +48,30 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [40](#adr-40-a-self-contained-unsigned-app-bundle) | A self-contained, unsigned app bundle |
 | [41](#adr-41-setup-is-three-steps-and-practice-comes-first) | Setup is three steps, and practice comes first |
 | [42](#adr-42-pack-drafts-from-notes-pass-the-guards-and-never-touch-the-live-pack) | Pack drafts from notes pass the guards and never touch the live pack |
+| [43](#adr-43-model-tests-use-a-fake-that-obeys-and-cassettes-at-the-model-seam) | Model tests use a fake that obeys, and cassettes at the model seam |
+| [44](#adr-44-the-model-decides-the-moment-code-keeps-the-plumbing) | The model decides the moment; code keeps the plumbing |
+| [45](#adr-45-a-failing-model-or-network-never-leaves-an-empty-screen-and-every-wait-has-a-limit) | A failing model or network never leaves an empty screen, and every wait has a limit |
+| [46](#adr-46-a-meeting-does-not-expire-and-is-not-used-up-the-window-has-two-languages) | A meeting does not expire and is not used up; the window has two languages |
+| [47](#adr-47-the-moment-engine-runs-behind-a-switch-with-the-old-path-as-its-fallback) | The moment engine runs behind a switch, with the old path as its fallback |
+| [48](#adr-48-ask-the-call-answers-from-memory-first-the-model-decides-who-a-question-is-for) | Ask the call answers from memory first; the model decides who a question is for |
+| [49](#adr-49-the-v2-engine-is-proven-by-gate-tests-on-the-virtual-clock-and-prompts-are-snapshots) | The v2 engine is proven by gate tests on the virtual clock, and prompts are snapshots |
+| [50](#adr-50-reliability-rules-for-restarts-stray-errors-startup-and-failback) | Reliability rules for restarts, stray errors, startup and failback |
+| [51](#adr-51-wake-hints-without-word-lists-a-final-memory-pass-and-a-cache-layout-that-follows-how-often-a-block-changes) | Wake hints without word lists, a final memory pass, and a cache layout that follows how often a block changes |
+| [52](#adr-52-context-sources-are-read-locally-and-treated-as-untrusted-people-are-remembered-from-saved-calls) | Context sources are read locally and treated as untrusted; people are remembered from saved calls |
+| [53](#adr-53-every-number-is-scripted-or-recorded-and-budgets-are-calibrated-per-role) | Every number is scripted or recorded, and budgets are calibrated per role |
+| [54](#adr-54-the-card-is-shown-whole-labels-are-never-taken-from-the-line-and-old-cards-fade-by-rule) | The card is shown whole, labels are never taken from the line, and old cards fade by rule |
+| [55](#adr-55-one-morning-command-a-judgement-set-apart-from-the-meetings-and-stale-is-not-a-miss) | One morning command, a judgement set apart from the meetings, and stale is not a miss |
+| [56](#adr-56-live-reading-is-the-default-word-lists-are-a-hint-and-the-offline-floor) | Live reading is the default; word lists are a hint and the offline floor |
+| [57](#adr-57-precision-first-doubtful-cards-become-chips-labels-are-required-and-wingman-learns-from-ratings) | Precision first: doubtful cards become chips, labels are required, and Wingman learns from ratings |
+| [58](#adr-58-a-card-is-short-by-construction-not-cut-afterwards) | A card is short by construction, not cut afterwards |
+| [59](#adr-59-speaker-numbers-belong-to-one-connection-an-epoch) | Speaker numbers belong to one connection (an epoch) |
+| [60](#adr-60-early-start-on-a-stable-partial-off-until-the-latency-is-recorded) | Early start on a stable partial, off until the latency is recorded |
+| [61](#adr-61-ship-thresholds-are-absolute-and-the-final-read-uses-a-split-nobody-tuned-on) | Ship thresholds are absolute, and the final read uses a split nobody tuned on |
+| [62](#adr-62-scripted-is-not-recorded-every-number-is-labelled-and-release-needs-the-recorded-run) | Scripted is not recorded: every number is labelled, and release needs the recorded run |
+| [63](#adr-63-one-memory-the-call-frame-is-retired) | One memory: the call frame is retired |
+| [64](#adr-64-modes-are-visible-lockable-and-writable-by-the-user) | Modes are visible, lockable and writable by the user |
+| [65](#adr-65-web-lookup-is-opt-in-with-a-source-and-a-cap-replaces-adr-36) | Web lookup is opt-in, with a source and a cap (replaces ADR 36) |
+| [66](#adr-66-measured-token-budgets-name-matching-and-a-compaction-check-what-shipped-for-adrs-63-and-64) | Measured token budgets, name matching and a compaction check |
 
 ---
 
@@ -551,6 +575,8 @@ Date: 2026-11-03
 
 ## ADR 36: Web lookup is not built
 
+Superseded in part by [ADR 65](#adr-65-web-lookup-is-opt-in-with-a-source-and-a-cap-replaces-adr-36): lookup now exists, off by default.
+
 Date: 2026-11-03
 
 **Context.** "Give relevant data live" could mean searching the web during a call.
@@ -717,6 +743,8 @@ Date: 2026-11-09
 
 **Alternatives.** A new path next to the old one (two ways to show a bank card, more bugs). Replacing the old path at once (no fallback).
 
+**Update (ADR 56).** The default is now `v2`, shown as Live reading; `legacy` is Classic, the rollback. The rest of this entry stands.
+
 **Consequences.** `question.ts` has two model calls for one question, chosen per turn. The observer is not fast: a card comes about 1 to 3 s after the sentence. The interview mode needs its own moment prompt before it can use `v2`.
 
 ## ADR 48: Ask the call answers from memory first; the model decides who a question is for
@@ -831,7 +859,148 @@ Date: 2026-11-09
 
 **Consequences.** The floors for the judgement set and the memory eval are provisional; the owner moves them after the first recorded run and the report says by how much. The held-out size in the estimate is assumed from the file count because reading a split is a one-time act. `test-c` is skipped until that split exists.
 
-## ADR 56: One call memory, a user-chosen mode that the model cannot change, and measured token budgets
+
+## ADR 56: Live reading is the default; word lists are a hint and the offline floor
+
+Date: 2026-11-09
+
+**Context.** The first gate asked "is this line a grammatical question?" with hand-written word lists for Hebrew and English. It missed objections, numbers and promises, it fired on questions that need no help, and each new language needed a new file. The owner doubted that lists were the right design. The problem Wingman solves is different: "is a short private nudge useful now, given the whole call so far?"
+
+**Decision.** (1) The model decides meaning ("is help useful now"). Code does plumbing, safety, timing, budgets and fallbacks. (2) `moments.engine` is `v2` by default and is shown as **Live reading (default)**. `legacy` is shown as **Classic (rollback)** and only in Settings, Advanced. (3) The old detector and `lang/*` lists are a frozen hint and a tiebreak. They never stop a model call on a line that passes the structural filter. No word is added to them. (4) With the AI paused or down, a language-neutral **floor** runs: the "?" from speech-to-text, digits and money, a stall-tier bank card, a bank score, your name, and the shape of a short sentence. It uses no word list. (5) Follow-up openers moved to `lang/`; the hosting topic logic sits behind a profile hook, so the core has no vertical words. (6) Tests of the old lists carry the header "hint tests, in-sample, not product truth".
+
+**Why.** The lists cannot be right in every language, and a check of "is it a question" is not the product. A model that reads the memory and the last lines can tell a question, an objection and a promise apart in any language it speaks. The floor keeps the call useful when the model is not there.
+
+**Alternatives.** Keep the lists and add more words (rejected: it never ends, and it does not fix recall on implied requests). Remove the lists at once (rejected: the offline path needs something). Embeddings for the floor and the bank (not now: it needs a dependency or a call; a better local word-plus-3-gram score was built instead and embeddings stay a decision for the owner).
+
+**Consequences.** Scripted, in-sample, golden dev with the AI paused: the floor alone finds 63.1 percent of answer moments, and 88.1 percent with the hint (the same as the old detector alone, with fewer cards in quiet stretches: 44 against 57 of 172 lines). Replayed through the engine, 60 of 68 answer moments got a card with no model call. These are tuning-set numbers. The quality of live reading itself has no recorded number yet (ADR 62).
+
+## ADR 57: Precision first: doubtful cards become chips, labels are required, and Wingman learns from ratings
+
+Date: 2026-11-09
+
+**Context.** Even with scripted replies about one card in three was noise: precision 0.68 to 0.70, 7.6 percent duplicates, 93 cards an hour. A tool that must not distract loses trust faster from noise than from a missed card.
+
+**Decision.** (1) The moment reply has two more lines: `CONF: high | low` and `ABOUT` (at most 8 words). A `low` confidence or a VALUE of 1 is shown as a chip and never takes the hero seat. A Check card keeps its exemption from the per-minute cap. (2) `LABEL` is always asked for. If it is missing, the label is the bank card title, then the memory topic, then nothing. The first words of the line are never a label. (3) Fact cards carry the value itself. (4) The same words again inside 20 seconds are a repeat. (5) A "fewer like this" rating raises that kind's bar at once for the rest of the call. (6) `learn.json` keeps counts per kind: only after at least 3 negative ratings on at least 2 different calls does the bar rise by 1 (never more), and it falls back after 5 calls without a negative. It stores counts, no text, with mode 600, and a corrupt file starts empty. It never goes below the mode's own bar.
+
+**Why.** A card Wingman is unsure about is still worth a glance as a chip; as a hero it costs attention. Learning from the owner's ratings makes the noise fall for this user without a model call, and the slow rule (3 and 2) stops one bad call from changing the product.
+
+**Alternatives.** Raise all thresholds (rejected: it cut recall without removing the noise). Learn from the first rating (rejected: too jumpy). Store the text of rejected cards (rejected: privacy).
+
+**Consequences.** Scripted dev run, before and after: precision 70.5 to 79.9 percent (answer 68.0 to 71.6, check 68.0 to 100, fact 68.3 to 71.1), duplicates 7.6 to 1.0 percent, recall 84.9 to 84.6. The constants were tuned on `dev` only, so these are in-sample. Cost: about 83 more prompt tokens per moment call, under 0.01 USD an hour. The ship thresholds of ADR 61 are not met yet for answer, prompt and fact precision.
+
+## ADR 58: A card is short by construction, not cut afterwards
+
+Date: 2026-11-09
+
+**Context.** A line cut in the middle of a sentence can mislead the one person who only reads that line, and a chip label made from the first words says nothing.
+
+**Decision.** (1) The prompt asks for a SAY of at most 12 words. The parser accepts up to 14. Longer than 14: an observer or open-loop card gets one retry with a short "shorter" instruction (a few percent of observer calls); a direct card is not retried, because of latency. (2) With no retry, the text is cut at the last clause end (comma, colon, dash, full stop, or just before "and" or "but"; Hebrew by punctuation only), the row gets `fit: false`, and the rest goes to `more`. The text is never cut with an ellipsis. (3) A reply over 40 words or 400 characters is garbage and becomes SKIP. (4) The overlay shows the whole line, or three lines with a More button when `fit` is false (ADR 54).
+
+**Why.** The shape of a card is a contract between the prompt, the parser and the window. Doing it by construction means no layer needs to hide a problem from another.
+
+**Alternatives.** Cut with an ellipsis in the overlay (rejected). Retry every long reply (rejected: it adds latency on the path that must be fast).
+
+**Consequences.** A fuzz test (15 fixed and 300 random replies, final and streaming) always gives a valid moment or SKIP with at most 14 words. The extra retry call is booked in usage and logged as `moment.retry`.
+
+## ADR 59: Speaker numbers belong to one connection (an epoch)
+
+Date: 2026-11-09
+
+**Context.** The speech service numbers the voices on the other side from 0 again on every new connection. After a reconnect, a provider switch or a failback, "speaker 0" was read as the same person as before. Cards and the summary then gave one person's words to another person.
+
+**Decision.** The speaker book keys a raw id by `(epoch, raw)`. The engine calls `rebase("them")` on every reconnect, switch, failback and reopen. After a rebase the same raw id is a new voice and takes a new number. A new voice joins an earlier person only when it introduces itself, or the user names it, with the same name (case-insensitive). A burst of reconnects with no voice in between counts once. One line in the status says that voices may be relabelled. The API used by `ingest.ts` did not change.
+
+**Why.** A wrong label is worse than a new label: a new number can be merged by a name, but a wrong merge cannot be undone.
+
+**Alternatives.** Match voices by what they say (rejected: a guess presented as a fact). Never rebase (the bug).
+
+**Consequences.** Under a reconnect storm a long call can show more speaker numbers than people. The 3-hour soak test (`r3-gates-soak`) moves the epoch 23 times in an 8-minute storm and checks the list stays bounded. The e2e `r3-gates-speakers` runs the real channel, wiring, ingest and book on a faked reconnect and a faked switch. Scripted fakes, not a recorded reconnect.
+
+## ADR 60: Early start on a stable partial, off until the latency is recorded
+
+Date: 2026-11-09
+
+**Context.** A direct question waits for the final text from speech-to-text, about half a second after the speaker stops. A partial result of the same words is often stable earlier.
+
+**Decision.** `moments.earlyStart` (default `false`, advanced). When on, a partial of the other side that does not change for 300 ms and ends in a "?", or that follows a 600 ms pause, starts the direct path before the final. One early start per utterance. A final with the same text is deduped (no second call). A final with other text, or that is no longer a question, aborts the early turn and runs normally. Several marked questions wait for the final.
+
+**Why.** It can save 0.4 to 0.8 s, but only if the partials of real audio are stable. That is a fact about real audio and cannot be measured with fixtures.
+
+**Alternatives.** Always on (rejected: unmeasured). Start on any partial (rejected: many aborted calls).
+
+**Consequences.** Scripted, virtual clock: with a speech-to-text lag of 700 ms and a model delay of 800 ms, the card came 500 ms earlier after the end of speech (median 1500 to 1000 ms), with the same cards and no extra call. On the 10 golden dev meetings with 1 final in 12 revised, early start made 6 extra direct calls on 92 (6.5 percent). The lag and the revision rate are assumptions. The owner turns it on after the recorded latency run (ADR 62).
+
+## ADR 61: Ship thresholds are absolute, and the final read uses a split nobody tuned on
+
+Date: 2026-11-09
+
+**Context.** The regression baseline only says "not worse than last time", so a baseline can drift down in small steps. The held-out splits `test` and `test-b` had been read more than once.
+
+**Decision.** (1) `qa/ship.json` holds absolute lines, separate from the baseline: precision of all, answer, prompt, check and fact cards at least 0.80; recall at least 0.80; recall without a "?" and no question word at least 0.85; duplicates at most 3 percent; at most 0.02 cards a minute in silent stretches; at most 40 cards an hour; English and Hebrew within 5 points on recall and on precision; wrong-language rate 0; cost at most 0.25 USD an hour; memory F1 per class at least 0.75 and direct first card p95 at most 2.5 s (these two are `recordedOnly`). `pnpm eval --ship` prints pass or FAIL per line, and `n/a (scripted)` for a recorded-only line on scripted replies. Four bad models (null, noise, shuffled, always-answer) must fail the gate, or the run fails. (2) `test-c` is a third split behind its own lock; only `--final --ship` reads it, and it decides. (3) A lint rule or a behaviour test replaces a source-text grep wherever one can.
+
+**Why.** An absolute line is a promise that a person can read. Controls prove that the grader cannot be fooled. A split that was not used for tuning is the only honest estimate left.
+
+**Alternatives.** Raise the baseline each round (rejected: no ceiling). One shared held-out set (rejected: it is used up after the first look).
+
+**Consequences.** **`test-c` is not truly blind.** The builder who wrote it had no independent author and had read the schema, the README and the other splits; it has been read twice (the builder's check, then the round 3 final read). It must be replaced by a split written by a person or a separate agent who sees only the schema and the README, and locked, before it counts for release. Every ship line is still scripted, so a scripted pass is not a release pass (ADR 62). On dev, 8 of 14 scored lines pass and 6 fail; on `test-c`, 8 pass and 6 fail.
+
+## ADR 62: Scripted is not recorded: every number is labelled, and release needs the recorded run
+
+Date: 2026-11-09
+
+**Context.** Every quality number so far came from fixture replies of the model. Such a number proves the plumbing, the timing and the grader. It says nothing about whether the model's judgement is good, and a reader can easily take one for the other.
+
+**Decision.** (1) Every number in the docs, the README and the reports is labelled **scripted** or **recorded**, and says which set it came from and whether that set was used for tuning. (2) The public repo stays delayed. The release gate needs: the recorded run made by the morning command (ADR 55) passes the ship thresholds of ADR 61, the memory and judgement floors hold, the cost check is within 15 percent, and the owner has rated a real low-risk call with `pnpm tag`. (3) The morning command (`pnpm morning --cap 5`, one page in [MORNING-KIT.md](MORNING-KIT.md)) is the only route to a recorded number. An agent never runs it, and CI refuses it.
+
+**Why.** A reader who sees "recall 85%" should know in one word what kind of 85 it is. A release gate that a fixture can pass is no gate.
+
+**Alternatives.** Let tests call the real model (rejected: cost, flakiness and secrets). Say "preliminary" in one place only (rejected: the label travels badly).
+
+**Consequences.** Scores stay provisional. Moments, context, features and verification cannot go above the mid 80s without the recorded run. The README table says scripted on every row.
+
+## ADR 63: One memory: the call frame is retired
+
+Date: 2026-11-09
+
+**Context.** Wingman had two memories of a call: the Frame (kind, topic, goal, people, checklist, one extra model call a minute) and the SessionMemory (topic, numbers, promises, open questions, roster). Two memories are two sets of bugs and two models of the same call.
+
+**Decision.** SessionMemory is the only memory. The Frame loses its own model call, its own list of kinds and its module-level kind. The kind list lives in `session/types.ts`. The paused-AI and Classic ask paths read the SessionMemory plus a plain local tail of the transcript, not the last 12 lines. After each compaction a local check that every open question, open promise and unhandled objection survived, or was resolved; if one was lost it is kept and logged as `compact.lost`. `claims.ts`, `entities.ts` and `brief.ts` are used only by interview mode and the Classic path and say so in a header.
+
+**Why.** One source of truth for what the call is about. The old second call is also a cost.
+
+**Alternatives.** Keep both and sync them (rejected: this is the bug source).
+
+**Consequences.** Shipped in round 3. The details of the budgets and the compaction check are in ADR 66.
+
+## ADR 64: Modes are visible, lockable and writable by the user
+
+Date: 2026-11-09
+
+**Context.** The kind of call changes how much Wingman says, but it was a hidden guess made after about 20 words, and nobody could correct it or add their own.
+
+**Decision.** (1) The kind is shown, as a guess, wherever the call is shown, and a picker lets the user choose "auto" or a kind. A chosen kind is **locked**: a later guess or a model patch cannot change it. (2) A prepared meeting stores its mode. (3) The control socket has a `mode` command. (4) The user can write up to 6 modes in `modes.yaml` in the pack: an id, a label, up to 600 characters of instructions, and optionally a minimum value and a cards-per-minute number. The text is the user's but is treated as untrusted: escaped, capped, control characters removed. It cannot turn off the guards. A bad entry is skipped.
+
+**Why.** A visible guess can be corrected; a hidden one cannot. A user who runs renewals or demos knows better than any built-in list.
+
+**Alternatives.** A free-form prompt override (rejected: it could weaken the guards). More built-in kinds (rejected: never enough).
+
+**Consequences.** The overlay shows the kind as a read-only pill. The format is in [PACK-FORMAT.md](PACK-FORMAT.md#custom-modes). Shipped in round 3. The pill is read-only in the overlay and a picker is in the dashboard.
+
+## ADR 65: Web lookup is opt-in, with a source and a cap (replaces ADR 36)
+
+Date: 2026-11-09
+
+**Context.** ADR 36 left web lookup out because it needs a search provider, a spend cap and a guard against invented numbers. The URL safety rules for context inputs now exist (https only, private addresses refused, size and time caps).
+
+**Decision (if built).** Lookup is off by default (`lookup.enabled: false`). It is reached by `wingman lookup "<term>"` and an Ask-tab toggle, not by a live card, this round. It reads a page with the same safety rules as context inputs, shows one line, the source address and the sentence it came from, and only text found in the fetched page. The number guard applies. A spend cap per call (`lookup.maxUsdPerCall`) stops it.
+
+**Why.** Wingman should know only what it is told, plus a sourced fact when the user asks. A fact with no source on a live call is a risk.
+
+**Alternatives.** Live lookup cards (next round). Screen context (not this round: it needs a privacy design first).
+
+**Consequences.** Shipped in round 3 (off by default).
+
+## ADR 66: Measured token budgets, name matching and a compaction check (what shipped for ADRs 63 and 64)
 
 Date: 2026-11-08
 

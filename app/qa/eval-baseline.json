@@ -30,12 +30,12 @@
     },
     "metrics": {
       "card.recall": {
-        "value": 0.84932,
+        "value": 0.84589,
         "n": 292
       },
       "card.precision": {
-        "value": 0.70455,
-        "n": 352
+        "value": 0.79677,
+        "n": 310
       },
       "recall.answer": {
         "value": 1,
@@ -50,24 +50,24 @@
         "n": 86
       },
       "recall.fact": {
-        "value": 0.875,
+        "value": 0.84375,
         "n": 32
       },
       "precision.answer": {
-        "value": 0.68,
-        "n": 100
+        "value": 0.70833,
+        "n": 96
       },
       "precision.prompt": {
-        "value": 0.75926,
-        "n": 108
+        "value": 0.77358,
+        "n": 106
       },
       "precision.check": {
-        "value": 0.67961,
-        "n": 103
+        "value": 1,
+        "n": 70
       },
       "precision.fact": {
-        "value": 0.68293,
-        "n": 41
+        "value": 0.71053,
+        "n": 38
       },
       "direct.recall": {
         "value": 1,
@@ -82,60 +82,60 @@
         "n": 146
       },
       "recall.he": {
-        "value": 0.84932,
+        "value": 0.84247,
         "n": 146
       },
       "ttc.p50": {
         "value": 1500,
-        "n": 248
+        "n": 247
       },
       "ttc.p95": {
         "value": 4000,
-        "n": 248
+        "n": 247
       },
       "silent.cpm": {
-        "value": 0.0536,
+        "value": 0.01787,
         "n": 112
       },
       "wrong.card": {
-        "value": 0.02745,
-        "n": 255
+        "value": 0.005,
+        "n": 248
       },
       "dup.rate": {
-        "value": 0.07649,
-        "n": 353
+        "value": 0.00965,
+        "n": 311
       },
       "wrong.lang": {
-        "value": 0.0057,
-        "n": 351
+        "value": 0.00643,
+        "n": 311
       },
       "guard.rate": {
         "value": 0.005,
-        "n": 170
+        "n": 164
       },
       "memory.pass": {
         "value": 0.9,
         "n": 20
       },
       "rubric.pass": {
-        "value": 0.7762,
-        "n": 353
+        "value": 0.86817,
+        "n": 311
       },
       "noisy.delta": {
         "value": 0.02532,
         "n": 79
       },
       "cost.perHour": {
-        "value": 0.03233,
-        "n": 1234
+        "value": 0.03231,
+        "n": 1233
       },
       "calls.perHour": {
-        "value": 325.3818,
-        "n": 1234
+        "value": 325.11812,
+        "n": 1233
       },
       "cards.perHour": {
-        "value": 93.07924,
-        "n": 353
+        "value": 82.00465,
+        "n": 311
       }
     }
   }

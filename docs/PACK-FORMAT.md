@@ -22,6 +22,7 @@ The easy way: open the app, **Setup guide, Starter answers**, pick a starter and
 | `house-style.md` | Tone and never-say rules, sent to the AI | No, but write it |
 | `keyterms.txt` | Words that help speech to text hear your terms | No |
 | `topics.txt` | Words that mean "this call is about my own work" | No |
+| `modes.yaml` | Your own call modes (up to 6), see [Custom modes](#custom-modes) | No |
 
 ## bank.yaml
 
@@ -39,7 +40,7 @@ A list of cards. Each card:
 |---|---|
 | `id` | Required. Unique. Short, lower case, with dashes. |
 | `title` | A short name. Shown to the AI and in lists. |
-| `triggers` | Required (can be empty for a card only the AI picks). Words or phrases. The card is chosen when the other side says one. |
+| `triggers` | The field must be there (it can be empty, for a card only the AI picks). Words or phrases. **They are hints, not the only way in:** Wingman also scores the question against each card's `title`, `triggers` and `say` text (word match and 3-letter pieces, so a paraphrase can find a card). An exact trigger is fast and wins ties. Add triggers for the words people really say; a good title and `say` line already help. |
 | `say` | Required. What you can say out loud. One or two short sentences. |
 | `facts` | A few short bullets shown under the answer. |
 | `alts` | Optional. Other ways to say it. Used by stall cards, in turn, to avoid sounding canned. |
@@ -104,24 +105,30 @@ wordpress
 
 Whole-word matching works for Hebrew too.
 
-## modes.yaml (optional)
+## Custom modes
 
-Your own call modes. A mode adds a few lines of instructions to the help Wingman gives, and can set how many cards it shows. There is no example file in the example pack, so nobody gets a mode they did not write.
+A **mode** tells Wingman how to behave for one kind of call: how much to say, and what to look for. The built-in kinds are client, support, vendor, team, consult, personal, interview and other. If none fits, write your own in `modes.yaml` in your pack folder. This file is read at the start of a call. A missing or broken file means no custom modes, and a bad entry is skipped, never fatal.
 
 ```yaml
-- id: weekly-sales
-  label: Weekly sales review
-  instructions: Watch the pipeline numbers. Note who owns each deal and the date they promised.
-  minValue: 2
-  maxPerMinute: 2
+- id: renewal
+  label: Renewal call
+  instructions: >
+    This is a renewal call. Watch for price pressure, a competitor name and any
+    date the customer gives for a decision. Prefer Check and Prompt cards.
+  minValue: 3        # optional, 1 to 3: the least value a card needs to show
+  maxPerMinute: 2    # optional, 1 to 6: cards a minute before a card becomes a chip
 ```
 
-- At most 6 modes. Extra entries are ignored.
-- `id`: lower case letters, digits and `-`, up to 24 characters. The names of the built-in kinds (`client`, `support`, `vendor`, `team`, `consult`, `personal`, `interview`, `other`, `auto`) cannot be used.
-- `label` is up to 40 characters. `instructions` is up to 600 characters. Angle brackets and `&` are escaped, so the text cannot close a tag in the prompt.
-- `minValue` (1 to 3) is the least value a card needs. `maxPerMinute` (1 to 6) is how many cards show in a minute before the rest become chips. Both are optional.
-- Your text cannot change the safety rules: the prompt says so, and the rules above it stay.
-- Choose a mode in a live call with `mode <id>` through the control socket (or `mode auto` to let Wingman guess again). A prepared meeting keeps the mode you chose for it. An unknown id is refused.
+| Field | Rule |
+|---|---|
+| `id` | Required. Lower case letters, digits and dashes, up to 24 characters. It may not be a built-in kind (or `auto`), and each id appears once. |
+| `label` | The name in the mode picker. Up to 40 characters. Defaults to the id. |
+| `instructions` | Required. Up to 600 characters. Plain English or Hebrew. It is added to the moment prompt as text from you: angle brackets and ampersands are escaped, control characters are removed. It cannot switch off the guards. |
+| `minValue`, `maxPerMinute` | Optional whole numbers in the range shown above. |
+
+At most 6 modes are used. A mode never lets a price, date or promise through: the guards run after every mode. A prepared meeting stores its mode. A locked mode is not changed by Wingman's later guess about the kind of call.
+
+Choose a mode in a live call with `mode <id>` through the control socket, or `mode auto` to let Wingman guess again. An unknown id is refused. There is no example file in the example pack, so nobody gets a mode they did not write.
 
 ## Cards for a practice meeting
 
@@ -172,4 +179,4 @@ A bad card stops with an error such as `bad bank card: {"id":"x"}` or `duplicate
 
 Run the Readiness check (**Home, Run readiness check**, or `pnpm run doctor` in `app/`; add `--offline` for the free part). It shows how many cards loaded, whether the ids are unique, how many keyterms were found, and which files fell back to the example pack.
 
-Next: [Examples](EXAMPLES.md) · [User guide](USER-GUIDE.md) · [Getting started, Part 3](GETTING-STARTED.md#part-3-make-your-own-pack)
+Next: [Examples](EXAMPLES.md) · [User guide](USER-GUIDE.md) · [Getting started, Part 4](GETTING-STARTED.md#part-4-make-your-own-pack)

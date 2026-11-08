@@ -17,7 +17,7 @@ For code work only (no Electron download, no app):
 cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
-pnpm test                               # all tests (750+, about 5 minutes)
+pnpm test                               # all tests (about 1,800, about 5 to 10 minutes)
 pnpm demo                               # the offline demo call, no keys (about 90 seconds)
 pnpm eval                               # detector, bank and guard quality numbers, no keys
 ```
@@ -25,6 +25,157 @@ pnpm eval                               # detector, bank and guard quality numbe
 Before you open a pull request, `pnpm check` runs the type check, lint, format check, unit tests and `pnpm eval` in one go.
 
 Needs macOS 14.2 or newer, Node 24 or newer, pnpm 11 (through `corepack enable`; the version is pinned in `package.json`) and `ffmpeg`. Poppler (`pdftotext`) is optional, for PDF attachments. Keys are not needed for unit tests: they use mocks and fake keys, and the real Keychain runner refuses to run under the test runner. For live work, add keys with `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never commit keys.
+
+## Try it from the code, with no keys
+
+This is the walk-through for someone who has cloned the repository and wants to see the engine run before installing the app. Nothing is sent anywhere. Commands were run on macOS (Apple silicon, Node 24, pnpm 11) and the output is trimmed. The demo is SCRIPTED: speech and AI are fixtures, so it shows plumbing, not model judgement.
+
+
+### 1. Get the code
+
+```bash
+git clone https://github.com/koren850/wingman.git
+cd wingman
+```
+
+### 2. Check your Mac
+
+```bash
+./install.sh --check
+```
+
+This only reports. It changes nothing. On a ready Mac you see:
+
+```text
+== Checking this Mac (nothing is changed)
+  ok    macOS 27.2 (14.2 or newer needed for system audio)
+  ok    CPU: Apple silicon (arm64)
+  ok    Node 24.21.0
+  ok    pnpm 11.22.0
+  ok    ffmpeg (/opt/homebrew/bin/ffmpeg)
+  warn  pdftotext not found: optional, only needed to attach PDFs to a meeting.  brew install poppler
+  ok    git
+```
+
+A `MISSING` line tells you what to install. The `pdftotext` warning is fine: you only need it to attach PDF files to a meeting. Node is never installed for you. See [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old) if Node is too old.
+
+### 3. Install the dependencies
+
+For the full app (menu-bar app and answer window), run `./install.sh` and answer its questions. For this part you only need the code, so you can skip the Electron download:
+
+```bash
+cd app
+WINGMAN_SKIP_APP=1 pnpm install
+```
+
+### 4. Run the demo
+
+```bash
+pnpm demo          # an English call
+pnpm demo --he     # the same story in Hebrew
+```
+
+The demo plays a scripted call through the real engine. The speech and the AI are scripted, so it needs no keys, no network and no microphone. It takes about a minute and a half, because it plays the call at call speed. The call is invented: a client called Dana (from a made-up shop) asks about a slow site, backups and a price. The default call is in English; `--he` plays a Hebrew call. Wingman handles both, and calls that mix them.
+
+You see the cards as they would appear in the answer window. This is a trimmed copy of the real output:
+
+```text
+Wingman · call 01M6VSSNZZQHB9VDE16GRS1FX9 · file .../silence.wav · 41 prepared cards
+
+[🗂 fact] Acme Stores Ltd
+   • acmestores.com · wordpress 6.9 · PHP 8.3
+
+[🧭 call] Client · Slow site and backups · 0/5
+
+[📗 prepared] A slow site is usually heavy images, missing cache, heavy plugins or a weak server. We check the cause first and then fix it.
+   • Common causes: images, plugins, server
+   • Measure before and after
+   • Not always the server
+
+[📗 prepared] Yes, we can work with automatic backups of the files and the database, and restore from them if something goes wrong.
+   • Files and database
+   • Keep a copy off the server
+   • Frequency depends on the plan
+
+[💡 tip] Ask where the backups are stored today and who is responsible for them.
+
+[📗 prepared] The price depends on the scope and the requirements. I need to look at the details and I will come back with a clear quote.
+   • Depends on scope and requirements
+   • No number without details
+   • Come back after checking
+
+[📋 phone] 054-1234567
+[📋 email] dana@acmestores.com
+
+Speed: 4 questions · first card p50 0.3s / p95 0.3s · Prepared cards 3 (p50 0.3s)
+Cost: AI $0.000 of $2 · STT $0.00 · total $0.00 (estimate from settings budget.prices)
+
+📋 Call summary
+  • The client called because her site loads slowly
+  • She asked about backups for the site
+  • She left a phone number and an email for the reply
+  Next steps:
+    - Me: Find out why the site is slow
+    - Client: Send access to the site (this week)
+```
+
+The Hebrew call (`pnpm demo --he`) prints the same kinds of lines in Hebrew. Trimmed:
+
+```text
+Wingman · call 01M6V9ST8H6K7V8ETV1W7RJESV · file .../silence.wav · 41 prepared cards
+
+[🗂 fact] אקמה סטורז בע"מ
+   • acmestores.co.il · wordpress 6.9 · PHP 8.3
+
+[🧭 call] לקוח · אתר איטי וגיבויים · 0/5
+
+[📗 prepared] אתר איטי בדרך כלל נובע מתמונות כבדות, חוסר ב-cache, תוספים כבדים או שרת חלש. נבדוק מה הגורם ואז נטפל.
+   • הגורמים הנפוצים: תמונות, תוספים, שרת
+   • בודקים מהירות לפני ואחרי שינוי
+
+[📗 prepared] המחיר תלוי בהיקף ובדרישות. אצטרך לבדוק את הפרטים ואחזור עם מחיר מסודר.
+   • תלוי בהיקף ובדרישות
+   • לא נותנים מספר בלי פרטים
+
+[📋 phone] 054-1234567
+[📋 email] dana@acmestores.co.il
+
+Speed: 4 questions · first card p50 0.3s / p95 0.3s · Prepared cards 4 (p50 0.3s)
+Cost: AI $0.000 of $2 · STT $0.00 (estimate from settings budget.prices)
+
+📋 סיכום השיחה
+  • הלקוחה פנתה בגלל אתר שנטען לאט
+  • שאלה על גיבויים לאתר
+  • השאירה טלפון ומייל לחזרה
+  צעדים הבאים:
+    - אני: לבדוק את סיבת האיטיות
+    - לקוח: לשלוח גישה לאתר (השבוע)
+```
+
+How to read it:
+
+| Label | Meaning |
+|---|---|
+| `📗 prepared` | A card from your answer pack, picked by keywords. Local, instant. |
+| `🗂 fact` | A fact about a known client, from a local snapshot. |
+| `🧭 call` | About the call: what kind of call, the topic, and a checklist (`0/5` done). |
+| `📋 phone`, `📋 email` | Captured from what the other side said. In the app you copy them with a hotkey. |
+| `Speed` | How long after the question the first card appeared. The demo timing is scripted, so it is not a speed test. |
+| `Cost` | The demo uses no real AI, so it costs nothing. The `$2` is the default cap for one call (`budget.maxUsdPerCall`). |
+
+Look at the price question. The client asks "how much" and Wingman shows a safe line, never a number. That is the main idea of the project: the answer is something you can say, and it never promises a price, a date or a result. [EXAMPLES.md](EXAMPLES.md#c-what-the-guards-do) shows what the guards block and why.
+
+The demo writes to a temporary folder and deletes it at the end. It also ignores your own settings file, so it looks the same on every machine.
+
+### 5. Run the checks
+
+```bash
+pnpm eval
+```
+
+This plays the 32 invented golden dev meetings through the real engine with scripted AI replies, grades the cards, runs four bad-model controls that must score low, and then prints the old word-list checks under a boxed "LEGACY SMOKE, in-sample" header. No keys, no network. It fails when a number is worse than `app/qa/eval-baseline.json`. `pnpm eval:ship` adds the absolute ship thresholds from `app/qa/ship.json`, one pass or FAIL line each. Everything it prints is **scripted**; see [Release gates](#release-gates-pnpm-eval-budgets-held-out-snapshots).
+
+You can also run the unit tests with `pnpm test:unit`.
 
 ## Get your API keys
 
@@ -123,6 +274,20 @@ Six files prove the v2 engine as a whole. They use no network and no key. Run on
 | `v2-prompts` | Prompt snapshots for moment, observer, memory, compact and wrap-up, the block layout, and a check that the memory reaches the moment and observer prompts. |
 
 How they work: `v2-kit.ts` wraps the policy fake so that every call reports the usage of its real prompt, with a simulated prompt cache (a marked prefix is cached from 1024 tokens, read at the cache-read price, written at the cache-write price). `v2-worker.ts` plays one golden meeting in a child process, because the engine is one call per process. Scripted replies prove plumbing, timing, budgets and state logic. They do not prove model judgement or Hebrew quality; that needs a recorded run (`pnpm cassette:record`).
+
+## Round 3 gate tests (`app/src/e2e/r3-gates-*.test.ts`)
+
+Five end-to-end files that run the real engine modules on the virtual clock with fake streams and the policy fake model. No network, no key, no audio. Each file holds one engine, so run it alone (`tsx --import ./src/test-setup.ts --test src/e2e/r3-gates-soak.test.ts`). All numbers they print are **scripted**. `r3-gates-kit.ts` has the shared fake stream and provider (an open that can be a black hole).
+
+| File | What it proves |
+|---|---|
+| `r3-gates-speakers` | The same raw speaker id before and after a faked reconnect or provider switch is a different person; an introduction with the same name joins the earlier person; a burst of reconnects with no voice between counts once. Real `SttChannel`, `engine/stt.ts` wiring, ingest and speaker book. |
+| `r3-gates-ring` | 100 ms chunks sent from the first moment arrive in order, once, after an open that was a black hole for 1.5 s; after an open that never answers (8 s timeout, then the engine's retry), the newest 2 s are kept in order and every older chunk is counted as dropped. |
+| `r3-gates-early-start` | With `moments.earlyStart` on, over 12 questions the card comes earlier after the end of speech (median gain 500 ms), the cards are the same, and no extra model call is made. The speech-to-text lag (700 ms) and the model delay (800 ms) are assumptions. |
+| `r3-gates-floor` | Golden dev meetings replayed with the AI marked down: no model call, no error, 60 of 68 answer moments get a card, p95 of the card time is within the budget, quiet stretches stay mostly quiet. Dev is the tuning set, so it is in-sample. |
+| `r3-gates-soak` | 180 virtual minutes with a reconnect storm (8 minutes), a dead socket and provider switch, a slow model, a 529 storm, a dialog nobody answers (the menu-bar controller keeps reading engine lines) and a quit while the engine is wedged (a fake child gets a synchronous SIGKILL to its group). Eight probe questions each get a card inside the budget and the screen is never empty after the first card. State, timers and cost stay bounded ($0.13 an hour scripted). |
+
+A note on the virtual clock: a large jump of the test clock can raise the "computer slept" bar in these runs. The tests do not assert on that bar.
 
 ## Release gates (`pnpm eval`, budgets, held-out, snapshots)
 

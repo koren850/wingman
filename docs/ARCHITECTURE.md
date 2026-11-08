@@ -132,7 +132,7 @@ The bank (`bank.ts`, `bank-score.ts`) matches in this order: exact trigger, then
 
 ### Moment engine in the live call (`moments.engine: v2`)
 
-The setting `moments.engine` picks the path for a call. `legacy` (the default for now) runs the old gate and reflex call unchanged. `v2` is off in a practice interview and with `--no-ai`.
+The setting `moments.engine` picks the path for a call. `v2` (the default, shown as Live reading) lets the model decide; `legacy` (Classic, the rollback) runs the old gate and reflex call unchanged. `v2` is off in a practice interview and with `--no-ai`.
 
 For every final line from the other side (`engine/ingest.ts`): intake drops noise, the frozen detector gives a hint (`strong`, `weak`, `none`), and `rules.ts momentRoute` picks the route.
 
@@ -154,6 +154,17 @@ Cost: usage rows carry the roles `moment` and `observer` and the context record 
 Degrade (rung names are unchanged): a slow model means only strong hints call the model and the observer is off. A model that is down, a cap that is hit or no network means the old detector, bank, calc and stall line, plus one calm bar "AI paused" with the reason. The call memory stays as it was.
 
 Tests: `src/moments-engine.test.ts` runs the real engine modules in the test process on the virtual clock and the policy fake (`testkit/engine-inproc.ts`). `src/moments-golden.test.ts` plays the dev golden meetings with their scripted replies and checks cost per role. `src/e2e/moments-v2.test.ts` runs the real process.
+
+### Round 3 changes in the engine (round 12)
+
+- **Floor and hint.** With the AI paused, `moments/floor.ts` decides from language-neutral signals (the speech-to-text "?", digits and money, a stall-tier card, a bank score, your name, the shape of a short sentence). The old detector is a tiebreak hint only ([ADR 56](DECISIONS.md#adr-56-live-reading-is-the-default-word-lists-are-a-hint-and-the-offline-floor)).
+- **Precision.** The scheduler turns a `conf: low` or VALUE 1 card into a chip. `moments/learn.ts` keeps per-kind counts in `learn.json` and raises a bar by 1 after 3 negative ratings on 2 calls. `parse.ts` cuts at a clause end and sets `fit: false` ([ADR 57](DECISIONS.md#adr-57-precision-first-doubtful-cards-become-chips-labels-are-required-and-wingman-learns-from-ratings), [58](DECISIONS.md#adr-58-a-card-is-short-by-construction-not-cut-afterwards)).
+- **Speech channels.** `speakers.ts` keys raw ids by `(epoch, raw)`, and `engine/stt.ts` rebases on reconnect, switch, failback and reopen ([ADR 59](DECISIONS.md#adr-59-speaker-numbers-belong-to-one-connection-an-epoch)). `SttChannel.send` rings audio whenever the socket is not open, also before the first open. Soniox flushes pending finals on reopen.
+- **Early start.** `engine/ingest.ts` can start the direct path on a stable partial (`moments.earlyStart`, off; [ADR 60](DECISIONS.md#adr-60-early-start-on-a-stable-partial-off-until-the-latency-is-recorded)).
+- **Shutdown and audio start.** One last-resort deadline counted from the start of shutdown (`engine/shutdown-deadline.ts`), a mic watch that starts after the mic does (`engine/mic-watch.ts`), parallel source starts with an 8 s timeout (`engine/start-sources.ts`), per-call maps and the transcript capped (`engine/capped.ts`).
+- **Menu-bar app.** All dialogs are async. On quit, an engine asked to stop more than 3 s ago and still alive gets a synchronous SIGKILL to its process group.
+- **Evidence.** `qa/ship.json` and `pnpm eval --ship` (absolute lines), the split `test-c`, `pnpm morning` and the recorded baseline ([ADR 61](DECISIONS.md#adr-61-ship-thresholds-are-absolute-and-the-final-read-uses-a-split-nobody-tuned-on), [62](DECISIONS.md#adr-62-scripted-is-not-recorded-every-number-is-labelled-and-release-needs-the-recorded-run), [Morning kit](MORNING-KIT.md)).
+- **Second wave (shipped).** One memory: the Frame row above loses its own model call and the paused-AI ask path reads the SessionMemory plus a local tail ([ADR 63](DECISIONS.md#adr-63-one-memory-the-call-frame-is-retired)); modes can be locked and written by the user ([ADR 64](DECISIONS.md#adr-64-modes-are-visible-lockable-and-writable-by-the-user)).
 
 ### Call memory, wake hints and the prompt cache (round 12)
 
@@ -283,7 +294,7 @@ Caps: `budget.maxUsdPerCall` (default $2) drops AI to bank-only when reached; `b
 
 | Layer | What | Run |
 |---|---|---|
-| Unit tests | 750+ tests in 80+ files in `app/src/*.test.ts` and `app/src/e2e/*.test.ts` (node's test runner through tsx, run one file at a time): detector, bank, guards, calc, split, echo, settings, keys (mocked `security`), CLI, control socket, controller (fake child), dashboard security, overlay logic, health ladder, supervised audio, sleep and disk handling, survived errors, install and migration, setup, profile and pack, flow, interview mode, summary, frame, tips, a repo guard (no private words in tracked files, when you set a list), and an offline end-to-end call with scripted speech and scripted AI. CI runs the type check and the unit tests on macOS, Linux and Windows (Windows is experimental), the end-to-end tests and `pnpm eval` on macOS and Linux, and lint and the format check on macOS. | `pnpm test`, `pnpm eval` |
+| Unit tests | about 1,800 tests in 170+ files in `app/src/*.test.ts` and `app/src/e2e/*.test.ts` (node's test runner through tsx, run one file at a time): detector, bank, guards, calc, split, echo, settings, keys (mocked `security`), CLI, control socket, controller (fake child), dashboard security, overlay logic, health ladder, supervised audio, sleep and disk handling, survived errors, install and migration, setup, profile and pack, flow, interview mode, summary, frame, tips, a repo guard (no private words in tracked files, when you set a list), and an offline end-to-end call with scripted speech and scripted AI. CI runs the type check and the unit tests on macOS, Linux and Windows (Windows is experimental), the end-to-end tests and `pnpm eval` on macOS and Linux, and lint and the format check on macOS. | `pnpm test`, `pnpm eval` |
 | Test kit | A policy fake model (the test says what the model replies, fails, hangs or injects), a cassette layer (`WINGMAN_LLM_MODE=replay` answers from a file, no key), prompt snapshots, a virtual clock and golden-meeting helpers. See [DEVELOPMENT.md](DEVELOPMENT.md#test-kit-model-tests-without-a-key). | `pnpm test:unit` |
 | Corpora | Detector precision/recall on `data/questions.tsv`; bank accuracy on 40 held-out utterances. | `pnpm detector`, `pnpm banktest` |
 | STT gate | Scores Deepgram on your recording of 40 Hebrew sentences with English tech terms (term recall, endpoint-to-final lag). | `pnpm gate` |

@@ -5,7 +5,7 @@
     "basis": "scripted",
     "source": "scripted replies, policy fake, dev",
     "hours": 3.792468,
-    "perHour": 0.032327,
+    "perHour": 0.032309,
     "roles": {
       "ask": {
         "calls": 14,
@@ -29,13 +29,13 @@
       },
       "moment": {
         "calls": 163,
-        "usdPerCall": 7.4e-5,
-        "usdPerHour": 0.00316
+        "usdPerCall": 0.000069,
+        "usdPerHour": 0.002963
       },
       "observer": {
-        "calls": 468,
-        "usdPerCall": 8.8e-5,
-        "usdPerHour": 0.010847
+        "calls": 467,
+        "usdPerCall": 0.00009,
+        "usdPerHour": 0.011026
       }
     },
     "paths": {
@@ -45,12 +45,12 @@
         "p95": 1500
       },
       "observer": {
-        "n": 177,
+        "n": 176,
         "p50": 1500,
         "p95": 4000
       }
     },
-    "cacheReadShare": 0.584362
+    "cacheReadShare": 0.593876
   },
   "oneShot": {
     "digest": 0.000131,

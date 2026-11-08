@@ -8,7 +8,7 @@ Contents: [A. A full pack](#a-a-full-pack) · [B. An English pack](#b-an-english
 
 A pack is five files in one folder. This one is for "Maple Studio", an invented studio that builds and looks after websites. It is in [`docs/examples/studio-pack/`](examples/studio-pack/). It is smaller than the shipped example pack (`app/data/example-pack/`, 41 cards), so you can read all of it.
 
-To try it without touching your own setup, point `WINGMAN_PACK_DIR` at a copy (see [Getting started, Part 3](GETTING-STARTED.md#3-check-that-it-loads-and-matches)).
+To try it without touching your own setup, point `WINGMAN_PACK_DIR` at a copy (see [Getting started, Part 4](GETTING-STARTED.md#3-check-that-it-loads-and-matches)).
 
 ### `bank.yaml`: the answer cards
 
@@ -196,7 +196,7 @@ These are sentences from the test file, run through the same `guard()` function:
 | `Redis 7.2 supports client-side caching` | passed | Version numbers are not prices or dates. |
 | `יש לנו 30 אתרים` ("we have 30 sites") | passed | A count is not a price. |
 
-The balance matters. A missed price is spoken to a client. A false block only costs a stall line. The test set has 76 sentences that must be blocked and 53 that must pass, and `pnpm eval` shows the current numbers (see [Getting started](GETTING-STARTED.md#5-run-the-checks)). Real errors go to the `known misses` list instead of being hidden.
+The balance matters. A missed price is spoken to a client. A false block only costs a stall line. The test set has 76 sentences that must be blocked and 53 that must pass, and `pnpm eval` shows the current numbers (see [Development](DEVELOPMENT.md#5-run-the-checks)). Real errors go to the `known misses` list instead of being hidden.
 
 A shorter table of what is blocked and what is not:
 
