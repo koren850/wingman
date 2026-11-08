@@ -306,11 +306,11 @@ function create(ctx) {
   );
   handle("calls:search", (q) => data.searchCalls(CALLS, q));
   handle("calls:setTag", (id, cardId, useful) => data.setTag(CALLS, id, cardId, useful));
-  handle("calls:delete", (id) => {
+  handle("calls:delete", async (id) => {
     data.callDir(CALLS, id); // validates before the dialog
     const refusal = data.deleteRefusal(controller.getState(), id); // the running call has its own path: Stop and delete
     if (refusal) throw new Error(refusal);
-    const r = dialog.showMessageBoxSync(win, {
+    const { response: r } = await dialog.showMessageBox(win, {
       type: "warning",
       buttons: ["Cancel", "Delete"],
       defaultId: 0,
@@ -357,7 +357,7 @@ function create(ctx) {
     if (typeof v !== "string" || !/^m[0-9a-z]{6,12}$/.test(v)) throw new Error("bad meeting id");
     return v;
   };
-  handle("call:cmd", (name, arg) => {
+  handle("call:cmd", async (name, arg) => {
     if (typeof name !== "string") throw new Error("bad command");
     if (fake || SNAP) return { ok: false, error: "preview" }; // snapshot/preview states never touch a call
     switch (name) {
@@ -403,7 +403,7 @@ function create(ctx) {
       case "skipSummary":
         return { ok: controller.skipSummary() }; // fixed command "skip-summary" to the running call
       case "stopDelete": {
-        const done = lib.confirmStopDelete({ dialog, win, stopDelete: () => controller.stopDelete() }); // the same confirmation as the tray
+        const done = await lib.confirmStopDelete({ dialog, win, stopDelete: () => controller.stopDelete() }); // the same confirmation as the tray
         return { ok: done, cancelled: !done };
       }
       default:
@@ -556,12 +556,12 @@ function create(ctx) {
     controller.refreshPlans();
     return { ok: true, plan: meetingOut(r.meeting), warning: r.warning || "" };
   });
-  handle("plans:delete", (id) => {
+  handle("plans:delete", async (id) => {
     if (typeof id !== "string" || !/^m[0-9a-z]{6,12}$/.test(id)) throw new Error("bad meeting id");
     if (fake || SNAP) return { ok: false, error: "preview" };
     const m = plans.get(id);
     if (!m) return { ok: false, error: "No such prepared meeting." };
-    const r = dialog.showMessageBoxSync(win, {
+    const { response: r } = await dialog.showMessageBox(win, {
       type: "warning",
       buttons: ["Cancel", "Delete"],
       defaultId: 0,

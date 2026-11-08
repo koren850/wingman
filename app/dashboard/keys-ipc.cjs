@@ -90,7 +90,7 @@ function register(o) {
     if (!st.inKeychain)
       return { ok: false, message: st.inFile ? "That key is in keys.env, not in the Keychain. Delete the line there." : "Nothing to remove." };
     const win = o.getWin();
-    const r = o.dialog.showMessageBoxSync(win, {
+    const { response: r } = await o.dialog.showMessageBox(win, {
       type: "warning",
       buttons: ["Cancel", "Remove"],
       defaultId: 0,

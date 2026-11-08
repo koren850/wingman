@@ -77,6 +77,33 @@ export class CallLog {
       }
     }
   }
+  /** Rows that could not be written as plain JSON (a circular object, a BigInt). They are saved in a safe form when possible, and counted. */
+  bad = 0;
+  /** One row as a JSON line. A row JSON cannot hold is saved with BigInt as text and cycles cut, and counted in `bad`; if even that fails the row is dropped. */
+  private encode(stream: string, full: Record<string, unknown>): string | undefined {
+    try {
+      return JSON.stringify(full) + "\n";
+    } catch (e) {
+      this.bad++;
+      const why = e instanceof Error ? e.message.slice(0, 120) : "unserializable";
+      try {
+        const seen = new WeakSet<object>();
+        const safe = JSON.stringify(full, (_k, v) => {
+          if (typeof v === "bigint") return v.toString();
+          if (v && typeof v === "object") {
+            if (seen.has(v)) return "[circular]";
+            seen.add(v);
+          }
+          return v;
+        });
+        if (this.bad <= 3 && stream !== "events") this.write("events", { type: "log.bad", stream, error: why, saved: true, count: this.bad });
+        return safe + "\n";
+      } catch {
+        if (this.bad <= 3 && stream !== "events") this.write("events", { type: "log.bad", stream, error: why, saved: false, count: this.bad });
+        return undefined;
+      }
+    }
+  }
   /** Appends one JSON line (with a `t` epoch-ms timestamp) to <stream>.jsonl. Never throws. */
   write(stream: "events" | "transcript" | "cards" | "latency" | "usage" | "live", row: Record<string, unknown>) {
     const full: Record<string, unknown> = { t: Date.now(), ...row };
@@ -88,7 +115,8 @@ export class CallLog {
         /* the pipe is best effort */
       }
     }
-    const line = JSON.stringify(full) + "\n";
+    const line = this.encode(stream, full);
+    if (line === undefined) return;
     // Rows that failed earlier go first, so the file keeps its order when the folder or the space comes back.
     while (this.unsaved.length && !this.tryAppend(this.unsaved[0].stream, this.unsaved[0].line)) {
       this.unsavedBytes -= this.unsaved.shift()!.line.length;

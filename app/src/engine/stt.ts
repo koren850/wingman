@@ -7,7 +7,7 @@ import { describe, type ProviderError } from "../providers/errors.ts";
 import { isPermanentSttError } from "../health.ts";
 import { SttRetryRegistry } from "./stt-retry.ts";
 import { health, chHe, healthClear, safe, errBrief } from "./out.ts";
-import { log, sup, S, keyterms, PHONE, keys, NO_KEY, phone, UI_LANG } from "./boot.ts";
+import { log, sup, S, keyterms, PHONE, keys, NO_KEY, phone, UI_LANG, speakers } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { st, chans } from "./state.ts";
 import { tickHealth } from "./degrade.ts";
@@ -15,6 +15,14 @@ import { onResult } from "./ingest.ts";
 
 /** Channels that moved to the fallback STT provider (the ladder treats this as degraded). */
 export const sttSwitchedCh = new Set<Channel>();
+
+/** A new STT connection numbers its voices from 0 again: the speaker book must not read its raw ids as the old ones. One log line per rebase that took effect. */
+function rebaseSpeakers(ch: string, why: string) {
+  if (speakers.rebase(ch)) {
+    log.write("events", { type: "speakers.rebase", ch, why, epoch: speakers.rebases });
+    console.log(`voices may be relabelled after the ${why} (${ch})`);
+  }
+}
 
 /** One STT channel (own socket, provider chain with fallback and circuit breaker). Keys come from memory, not env. */
 function makeChannel(ch: Channel): SttChannel {
@@ -146,6 +154,7 @@ export function wireChannels() {
     s.on(
       "reconnected",
       safe(`reconnected ${ch}`, () => {
+        rebaseSpeakers(ch, "reconnect");
         healthClear(`stt-${ch}`);
         if (ch === "them") sup.set({ themSttDown: false });
         log.write("events", { type: "stt.reconnected", ch });
@@ -155,6 +164,7 @@ export function wireChannels() {
       "switched",
       safe(`switched ${ch}`, (d: { from: string; to: string; kind: string; reason: string }) => {
         sttSwitchedCh.add(ch);
+        rebaseSpeakers(ch, "provider switch");
         healthClear(`stt-${ch}`);
         if (ch === "them") sup.set({ themSttDown: false });
         log.write("events", { type: "stt.switch", ch, ...d });
@@ -166,6 +176,7 @@ export function wireChannels() {
       "failback",
       safe(`failback ${ch}`, (d: { from: string; to: string }) => {
         sttSwitchedCh.delete(ch);
+        rebaseSpeakers(ch, "failback");
         healthClear(`stt-switch-${ch}`);
         log.write("events", { type: "stt.failback", ch, ...d });
         tickHealth();

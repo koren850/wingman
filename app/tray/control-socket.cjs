@@ -122,10 +122,13 @@ function createControlServer(o) {
   const refused = (error) => err("refused", error);
   const need = (cond, error) => (cond ? null : refused(error));
   const done = (ok, error) => (ok ? { ok: true, state: view() } : refused(error));
-  /** Rate limit start/practice (never stop): checked AFTER the state checks, so a refused command does not use up the budget. */
+  /** Rate limit start/practice (never stop): checked AFTER the state checks. The budget is used only when the command is accepted: a start the app refuses costs nothing. */
   const paced = (fn) => {
     const m = limited();
-    return m ? err("rate_limited", m) : fn();
+    if (m) return err("rate_limited", m);
+    const r = fn();
+    if (r && r.ok) stamps.push(now());
+    return r;
   };
   /** The state fields the CLI may see. Whitelisted by hand so no call content (transcript, cards) can leak onto the socket. */
   const view = () => {
@@ -360,13 +363,12 @@ function createControlServer(o) {
     }, // name kept for older CLIs: the prepared meetings changed on disk
   };
 
-  /** Sliding 60 s window over start-type commands (start, practice). Returns "" and records the stamp if allowed, else a message. */
+  /** Sliding 60 s window over start-type commands (start, practice). Returns "" if one more is allowed, else a message. It records nothing: paced() does that for accepted starts. */
   function limited() {
     const t = now();
     while (stamps.length && t - stamps[0] > 60_000) stamps.shift();
     if (stamps.length && t - stamps[stamps.length - 1] < RATE.minGapMs) return `Too fast: wait ${Math.ceil(RATE.minGapMs / 1000)} s between start commands.`;
     if (stamps.length >= RATE.perMinute) return `Too many start commands (limit ${RATE.perMinute} per minute).`;
-    stamps.push(t);
     return "";
   }
 
@@ -423,6 +425,7 @@ function createControlServer(o) {
       buf += d;
       if (buf.length > MAX_LINE * 2) {
         got = true;
+        clearTimeout(timer);
         sock.end(JSON.stringify(err("too_large", "Request too large.")) + "\n");
         return;
       }
@@ -477,9 +480,9 @@ function createControlServer(o) {
       }
       server = net.createServer(onConnection);
       server.on("error", reject);
-      const prev = onPipe ? 0 : process.umask(0o177); // the socket is created 600 from the start, no window where others could connect
+      // No process-wide umask change (it would give any file the tray creates meanwhile mode 600). The run folder is 700 and owned by us, so nobody else can reach
+      // the socket before this chmod.
       server.listen(sockPath, () => {
-        if (!onPipe) process.umask(prev);
         if (!onPipe)
           try {
             fs.chmodSync(sockPath, 0o600);
@@ -487,13 +490,6 @@ function createControlServer(o) {
             /* best effort */
           }
         resolve(sockPath);
-      });
-      server.once("error", () => {
-        try {
-          if (!onPipe) process.umask(prev);
-        } catch {
-          /* done */
-        }
       });
     });
   }

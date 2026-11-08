@@ -152,7 +152,7 @@ const startKey = lib.createStartKey({
   },
   log: logLine,
 });
-const confirmDelete = () => lib.confirmStopDelete({ dialog, stopDelete: () => ctl.stopDelete() });
+const confirmDelete = () => void lib.confirmStopDelete({ dialog, stopDelete: () => ctl.stopDelete() }).catch(() => {});
 let quitting = false;
 /** Quit with a confirmation when a call runs. `quitting` stops a second quit click while the first is still stopping the call. */
 function quitApp() {

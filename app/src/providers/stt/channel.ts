@@ -39,7 +39,6 @@ export class SttChannel extends EventEmitter {
   private ringDropped = 0; // chunks that fell off the ring (counted in `dropped`)
   private flushedBytes = 0; // total bytes ever replayed from the ring
   private flushEndSec = 0; // flushed audio occupies [0, flushEndSec] of the current connection's audio clock
-  private everOpened = false;
   private deadTimer?: NodeJS.Timeout;
   private deadFor?: SttStreamLike; // the stream the dead timer is armed for
   private opening = false; // the first open() is running: failure events of its stream belong to open(), not to switchNext()
@@ -56,6 +55,14 @@ export class SttChannel extends EventEmitter {
   }
   get dropped() {
     return this.droppedOld + this.ringDropped + (this.stream?.dropped ?? 0);
+  }
+  /** ms of audio waiting in the ring right now (the socket is not open) */
+  get ringedMs() {
+    return this.ringBytes / 32;
+  }
+  /** chunks that fell off the ring because it was full (the oldest go first) */
+  get ringDroppedChunks() {
+    return this.ringDropped;
   }
   /** ms of audio replayed from the ring after a reconnect / provider switch */
   get flushedMs() {
@@ -84,7 +91,7 @@ export class SttChannel extends EventEmitter {
     let last: ProviderError | undefined;
     for (; this.idx < this.o.chain.length; this.idx++) {
       try {
-        await this.openCurrent();
+        await this.openCurrent(this.idx);
         return;
       } catch (e) {
         last = classifySttError(this.provider, e);
@@ -98,13 +105,14 @@ export class SttChannel extends EventEmitter {
     throw last!;
   }
 
-  private async openCurrent() {
-    const p = this.o.chain[this.idx],
+  /** Open chain[idx]. `this.idx` (the provider the bookkeeping credits) moves to idx only once the new stream is current. */
+  private async openCurrent(idx = this.idx) {
+    const p = this.o.chain[idx],
       key = this.o.keyOf(p.id);
     if (!key) throw classifySttError(p.id, Object.assign(new Error("API key missing"), { statusCode: 401 }));
     if (this.closed) return;
     const s = p.create({ ...this.o.base, apiKey: key, channel: this.o.channel, baseUrl: this.o.baseUrls?.[p.id] ?? this.o.base.baseUrl });
-    this.wire(s);
+    this.wire(s, p.id);
     const limit = this.o.openTimeoutMs ?? STT_OPEN_TIMEOUT_MS;
     let timer: NodeJS.Timeout | undefined;
     try {
@@ -125,8 +133,8 @@ export class SttChannel extends EventEmitter {
       void Promise.resolve(s.close()).catch(() => {});
       return;
     }
+    this.idx = idx;
     this.stream = s;
-    this.everOpened = true;
     this.flushRing(s);
   }
 
@@ -164,7 +172,7 @@ export class SttChannel extends EventEmitter {
     }
   }
 
-  private wire(s: SttStreamLike) {
+  private wire(s: SttStreamLike, providerId: string) {
     // Events from a stream that is no longer the current one (an old stream closing after a switch) are ignored, so a stale
     // disconnect cannot trigger a second failover.
     s.on("result", (r: SttResult) => {
@@ -186,14 +194,14 @@ export class SttChannel extends EventEmitter {
     s.on("disconnected", (d) => {
       if (s !== this.stream) return;
       this.emit("disconnected", d);
-      const err = d.error ?? classifySttError(this.provider, d);
+      const err = d.error ?? classifySttError(providerId, d);
       this.onFailure(err, s, "disconnected");
       this.armDeadTimer(s, err);
     });
     // `info.terminal`: the stream gave up reconnecting on its own, so nothing will heal it without us.
     s.on("error", (e, info?: { terminal?: boolean }) => {
       if (s !== this.stream && this.stream) return;
-      const err = classifySttError(this.provider, e);
+      const err = classifySttError(providerId, e);
       this.emit("stt_error", err);
       this.onFailure(err, s, "error", !!info?.terminal);
     });
@@ -242,11 +250,9 @@ export class SttChannel extends EventEmitter {
       const old = this.stream,
         from = this.provider;
       for (let i = this.idx + 1; i < this.o.chain.length; i++) {
-        const prevIdx = this.idx;
-        this.idx = i;
         try {
           this.stream = undefined;
-          await this.openCurrent();
+          await this.openCurrent(i);
           if (this.closed) {
             // close() ran while the fallback was opening: do not leave that new socket (and the old one) running.
             void (this.stream as SttStreamLike | undefined)?.close().catch(() => {});
@@ -262,7 +268,6 @@ export class SttChannel extends EventEmitter {
           return;
         } catch (e) {
           this.emit("stt_error", classifySttError(this.o.chain[i].id, e));
-          this.idx = prevIdx;
           this.stream = old;
         }
       }
@@ -284,11 +289,10 @@ export class SttChannel extends EventEmitter {
     if (this.closed || this.switching || this.idx === 0) return;
     this.switching = true;
     const old = this.stream,
-      prevIdx = this.idx,
       from = this.provider;
     try {
-      this.idx = 0; // the old stream stays current until the primary is open, so its events and audio are not disturbed
-      await this.openCurrent();
+      // The old stream (and its provider index) stays current until the primary is open, so its audio seconds, errors and events are not disturbed.
+      await this.openCurrent(0);
       if (this.closed) {
         void old?.close().catch(() => {});
         return;
@@ -301,7 +305,6 @@ export class SttChannel extends EventEmitter {
       void old?.close().catch(() => {});
       this.emit("failback", { from, to: this.provider });
     } catch {
-      this.idx = prevIdx;
       this.switching = false;
       this.armFailback(); // still down: look again later
     } finally {
@@ -329,8 +332,8 @@ export class SttChannel extends EventEmitter {
 
   /** Returns false when the chunk was not sent live (buffered in the ring or dropped). Never throws. */
   send(pcm: Buffer): boolean {
-    const ringing = (this.o.ringMs ?? 0) > 0 && this.everOpened;
-    if (ringing && !this.stream?.isOpen) {
+    // Ring whenever the channel is not open, also before the first open succeeds (a slow first connect must not lose the opening seconds).
+    if ((this.o.ringMs ?? 0) > 0 && !this.closed && !this.stream?.isOpen) {
       this.buffer(pcm);
       return false;
     }

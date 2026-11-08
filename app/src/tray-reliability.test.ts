@@ -126,9 +126,9 @@ test("tray/main.cjs has no English menu label left outside the text table", () =
 test("the quit confirmation takes its texts from the caller", async () => {
   let shown: any;
   const dialog = {
-    showMessageBoxSync: (o: any) => {
+    showMessageBox: async (o: any) => {
       shown = o;
-      return 0;
+      return { response: 0 };
     },
   };
   const r = await lib.requestQuit({

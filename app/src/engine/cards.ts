@@ -7,6 +7,7 @@ import { log, tipGate, S, bank, interview, PROMPT_V, schedCfg } from "./boot.ts"
 import { capDecision, CardScheduler, CheckBook, kindOfBadge, type CardV2Extra, type CardRow, type OfferMeta, type Offered } from "./cards-v2.ts";
 import type { ScheduledMoment } from "../moments/scheduler.ts";
 import type { CtxRecord } from "../context/record.ts";
+import { capSize, capTail } from "./capped.ts";
 
 /** Card kinds. "info"/"warn"/"tip" are system cards; "me" is an answer for the user's own question. */
 type Badge = "bank" | "ai" | "stall" | "info" | "warn" | "tip" | "me" | "careful" | "fix";
@@ -39,7 +40,10 @@ export function emitSide(row: Record<string, unknown>) {
 }
 /** Model that answers a turn (set when the request goes out, updated when the fallback takes over). Model cards log it with the prompt id. */
 const turnModel = new Map<string, string>();
-export const noteModel = (turnId: string, model: string) => void turnModel.set(turnId, model);
+export const noteModel = (turnId: string, model: string) => {
+  turnModel.set(turnId, model);
+  capSize(turnModel);
+};
 /** What the model call of a turn saw (CtxRecord from buildContext). Rows of that turn carry it as `ctx`. */
 const turnCtx = new Map<string, CtxRecord>();
 export const noteCtx = (turnId: string, ctx: CtxRecord) => {
@@ -98,8 +102,10 @@ export function emitCard(c: Card) {
       reason = cap.reason;
       if (cap.counted) shownTimes.push({ id: c.id, t: now });
       decided.set(c.id, { hidden, reason });
+      capSize(decided);
       if (!turnsWithCard.has(c.turnId)) {
         turnsWithCard.add(c.turnId);
+        capSize(turnsWithCard);
         if (now - lastCardAt < S.cards.lockoutMs) log.write("events", { type: "lockout_would_apply", turnId: c.turnId });
         lastCardAt = now;
       }
@@ -137,6 +143,7 @@ export function emitCard(c: Card) {
 const latRows: Record<string, number | string>[] = [];
 export function recordLatency(lat: Record<string, number | string>) {
   latRows.push(lat);
+  capTail(latRows);
   log.write("latency", lat);
 }
 

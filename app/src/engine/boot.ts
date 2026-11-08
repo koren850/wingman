@@ -14,6 +14,7 @@ import { getProfile, checkProfile, userName, hebrewAddressRule } from "../profil
 import { loadBank, stallCard, type BankCard } from "../bank.ts";
 import { MeGate } from "../assist.ts";
 import { parseClaim, type Claim } from "../claims.ts";
+import { CappedTranscript } from "./capped.ts";
 import { SpeakerBook, lineLabel, attendeeNames, type SpeakerInfo } from "../speakers.ts";
 import { FlowTracker } from "../flow.ts";
 import { buildPrefix } from "../reflex.ts";
@@ -158,7 +159,7 @@ export const breakers = new Map(
 );
 export const downUntil = new Map<string, number>(); // model -> epoch ms until which it is skipped (provider spend cap: 6 h; Infinity = failed to load at start)
 
-export const transcript: (TimedLine & { ch: Channel; who?: SpeakerInfo })[] = [];
+export const transcript = new CappedTranscript<TimedLine & { ch: Channel; who?: SpeakerInfo }>(); // bounded by words (head and tail kept): an all-day call keeps memory flat
 export const speakers = new SpeakerBook(); // the other side's voices (stt.speakers), numbered per call
 export const lineOf = (l: { ch: Channel; text: string; who?: SpeakerInfo }) => `${lineLabel(l.ch, speakers.current(l.who))}: ${l.text}`; // the voice's name NOW, so a rename also fixes its earlier lines
 export const flowOn = S.flow.enabled && S.stt.speakers;

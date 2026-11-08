@@ -32,6 +32,8 @@ export class SonioxStream extends WsStream {
     return { Authorization: `Bearer ${this.opts.apiKey}` };
   }
   protected onOpen(ws: WebSocket) {
+    // An utterance cut off by a dropped socket: hand its final tokens on (not speech-final, no wall anchor) before the new connection starts clean.
+    this.flushFinals(false, true);
     this.finals = [];
     const lang = this.opts.language;
     ws.send(
@@ -73,7 +75,7 @@ export class SonioxStream extends WsStream {
     if (interim.length) this.emitResult(this.finals.map((f) => f.text).join("") + interim.join(""), false, false);
     if (m.finished) this.flushFinals(true);
   }
-  private flushFinals(speechFinal: boolean) {
+  private flushFinals(speechFinal: boolean, noWall = false) {
     if (!this.finals.length) return;
     const f = this.finals;
     this.finals = [];
@@ -85,9 +87,10 @@ export class SonioxStream extends WsStream {
       true,
       speechFinal,
       f,
+      noWall,
     );
   }
-  private emitResult(text: string, isFinal: boolean, speechFinal: boolean, toks: typeof this.finals = []) {
+  private emitResult(text: string, isFinal: boolean, speechFinal: boolean, toks: typeof this.finals = [], noWall = false) {
     const words: Word[] = toks.map((t) => ({ word: t.text.trim(), start: t.start, end: t.end, speaker: t.speaker, confidence: t.conf }));
     const arrivedAt = Date.now(),
       last = words.at(-1);
@@ -100,7 +103,7 @@ export class SonioxStream extends WsStream {
       words,
       arrivedAt,
       confidence: confs.length ? confs.reduce((a, b) => a + b, 0) / confs.length : undefined,
-      speechEndWall: last ? speechEndWall(arrivedAt, this.connBytes / 32000, last.end) : undefined,
+      speechEndWall: last && !noWall ? speechEndWall(arrivedAt, this.connBytes / 32000, last.end) : undefined,
     };
     this.emit("result", r);
   }

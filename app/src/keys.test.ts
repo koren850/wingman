@@ -58,7 +58,7 @@ function host(opts: { file: string; fetch?: typeof fetch; confirm?: number; env?
   ipc.register({
     handle: (n: string, fn: any) => handlers.set(n, fn),
     getWin: () => ({}),
-    dialog: { showMessageBoxSync: () => opts.confirm ?? 1 },
+    dialog: { showMessageBox: async () => ({ response: opts.confirm ?? 1 }) },
     keysFile: async () => opts.file,
     fake: "",
     run: m.run,

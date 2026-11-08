@@ -6,12 +6,17 @@ import { backendFor } from "../audio-platform.ts";
 import { resolveEchoMode, type EchoMode } from "../echo.ts";
 import { readAudioDevices, listInputDevices, bluetoothInUse } from "../devices.ts";
 import { stopConsentTimer } from "./consent.ts";
-import { startTapWatchdog, noteMicFrame, micBack, stopMicWatch } from "./watchdogs.ts";
+import { startTapWatchdog, stopTapWatchdog, noteMicFrame, micBack, stopMicWatch, micStarted } from "./watchdogs.ts";
+import { startSources } from "./start-sources.ts";
+import { eventError } from "../errtext.ts";
 import { stops, shutdown } from "./shutdown.ts";
 import { sup, log, PHONE, gate, phone, S, ECHO, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { chans, st } from "./state.ts";
 import { safe, healthClear, health } from "./out.ts";
+
+/** One audio start gets this long before the call goes on without it (the source keeps retrying in the background). Under the 10 s hard shutdown timer. */
+export const SOURCE_START_TIMEOUT_MS = 8000;
 
 /** Mic + system audio, restarted after a sleep gap. */
 export const liveSources: SupervisedSource[] = [];
@@ -199,23 +204,33 @@ export async function startLiveSources() {
     console.log("audio.system.source is off: no audio from the other side, so only your own questions get answers (Ctrl+Opt+A).");
     sup.set({ themDead: true });
   }
-  await sys?.start(); // neither start() can fail the call: a source that will not start is retried in the background
-  await mic.start();
+  // Neither start() can fail the call: a source that will not start is retried in the background. The stoppers are registered before the starts are
+  // awaited (a Stop during a slow start finds them), and each start has a timeout (a hung audiotee start must not hang the engine).
   const stoppers = [
+    async () => {
+      stopMicWatch();
+      stopConsentTimer();
+      stopTapWatchdog();
+    },
     async () => {
       await sys?.stop();
     },
     () => mic.stop(),
-    async () => {
-      stopMicWatch();
-      stopConsentTimer();
-    },
   ];
-  stops.push(...stoppers);
-  // Stop came while the sources were starting (about a second after launch): shutdown ran with an empty `stops`, so close the mic and the tap here.
-  if (st.call.shuttingDown) {
-    for (const s of stoppers) await s().catch(() => {});
-    return;
-  }
+  const go = await startSources({
+    sys,
+    mic,
+    stoppers,
+    stops,
+    isStopping: () => st.call.shuttingDown,
+    timeoutMs: SOURCE_START_TIMEOUT_MS,
+    onTimeout: (name) => {
+      log.write("events", { type: "audio.start.timeout", source: name, ms: SOURCE_START_TIMEOUT_MS });
+      console.log(`${name}: start is slow (over ${SOURCE_START_TIMEOUT_MS / 1000} s); the source keeps trying in the background`);
+    },
+    onError: (name, e) => log.write("events", { type: "audio.start.error", source: name, error: eventError(e) }),
+    onMicStarted: micStarted,
+  });
+  if (!go) return;
   startTapWatchdog(sys, deadFrameMs);
 }

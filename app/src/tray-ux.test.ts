@@ -288,29 +288,29 @@ test("the menu-bar app never uses the answer window's keys (C/P/R/K/L and 1-3)",
 });
 
 // ---- tray: confirmations ----
-test("Stop and delete: Cancel (default), Escape and closing do nothing; only the second button deletes", () => {
-  const run = (answer: number) => {
+test("Stop and delete: Cancel (default), Escape and closing do nothing; only the second button deletes", async () => {
+  const run = async (answer: number) => {
     const seen: any[] = [];
     let deleted = 0;
-    const ok = lib.confirmStopDelete({
+    const ok = await lib.confirmStopDelete({
       dialog: {
-        showMessageBoxSync: (o: any) => {
+        showMessageBox: async (o: any) => {
           seen.push(o);
-          return answer;
+          return { response: answer };
         },
       },
       stopDelete: () => deleted++,
     });
     return { ok, deleted, opt: seen[0] };
   };
-  const c = run(0);
+  const c = await run(0);
   assert.equal(c.deleted, 0);
   assert.equal(c.ok, false);
   assert.equal(c.opt.defaultId, 0, "Cancel is the default");
   assert.equal(c.opt.cancelId, 0, "Escape cancels");
   assert.deepEqual(c.opt.buttons, ["Cancel", "Stop and delete"]);
-  assert.equal(run(-1).deleted, 0);
-  const d = run(1);
+  assert.equal((await run(-1)).deleted, 0);
+  const d = await run(1);
   assert.equal(d.deleted, 1);
   assert.equal(d.ok, true);
 });
@@ -324,9 +324,9 @@ test("Quit: nothing running quits at once; during a call it asks, Keep is the de
       o: {
         isRunning: () => running,
         dialog: {
-          showMessageBoxSync: (d: any) => {
+          showMessageBox: async (d: any) => {
             ev.push("dialog " + d.defaultId + d.cancelId);
-            return answer;
+            return { response: answer };
           },
         },
         stop: () => {

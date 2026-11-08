@@ -42,6 +42,8 @@ import { uncovered, liveNotes } from "./side.ts";
 import { sttSeconds } from "./degrade.ts";
 import { pending, meTimers, acceptLate } from "./ingest.ts";
 import { meTimers2 } from "./me.ts";
+import { killAudioChildren } from "../audio.ts";
+import { HARD_EXIT_MS, SUMMARY_BUDGET_MS, lastResortDelayMs } from "./shutdown-deadline.ts";
 
 /** The per-call usage summary row: money, tokens, cache hit %, and the model and prompt ids behind it. */
 const summaryRow = () => ({
@@ -170,6 +172,10 @@ function writeSttUsage() {
       bySeconds: sttSeconds(),
       usd: cost.sttUsd,
       dropped: { me: chans.me?.dropped, them: chans.them?.dropped },
+      ring: {
+        me: { flushedMs: chans.me?.flushedMs, droppedChunks: chans.me?.ringDroppedChunks },
+        them: { flushedMs: chans.them?.flushedMs, droppedChunks: chans.them?.ringDroppedChunks },
+      },
     });
   } catch {
     /* best effort */
@@ -180,7 +186,7 @@ function writeSttUsage() {
  *  Order: abort jobs and timers -> stop audio -> close STT -> write usage + endedAt (phase "ended") -> final frame look -> summary
  *  -> ask about deletion (terminal only) -> process.exit. call.json gets phase "ended" as soon as the call files are written (before the summary);
  *  the tray follows the {ev:"stopphase"} lines for progress. Watchdogs: 10 s force-exit if closing audio/sockets hangs (the mic must not stay open),
- *  16 s last-resort exit overall. The tray's own SIGINT (12 s) / SIGKILL (20 s) escalation comes after those. */
+ *  16 s last-resort exit overall, counted from the start of shutdown (shutdown-deadline.ts). The tray's own SIGINT (12 s) / SIGKILL (20 s) escalation comes after those. */
 export async function shutdown() {
   if (st.call.shuttingDown) return;
   // shuttingDown stops everything that would start something new (cards, questions, notes). `closing` lets the STT finals that are still on their
@@ -191,15 +197,20 @@ export async function shutdown() {
   notesAbort.abort();
   void flushMemory(); // session.json is on disk before anything slow starts (also on the crash path: crash() calls shutdown())
   status("stopphase", { phase: "saving" }); // the app shows: saving, then summary, then done (tray/lib.cjs STOP_PHASES)
-  const shutdownDeadline = Date.now() + 12_000;
+  const startedAt = Date.now();
+  const shutdownDeadline = startedAt + SUMMARY_BUDGET_MS;
   // The call record first: endedAt and phase "ended" need no audio state, so the hard exit below can never leave call.json at phase "live".
   markEnded();
   const hard = setTimeout(() => {
     console.error("shutdown stuck: forcing exit");
     writeSttUsage(); // the numbers exist even when closing the audio or sockets hung
     markEnded();
+    killAudioChildren(); // an ffmpeg that ignores SIGINT must not keep the mic open after we are gone
     process.exit(1);
-  }, 10_000); // a hung audio/socket close must not keep the mic open
+  }, HARD_EXIT_MS); // a hung audio/socket close must not keep the mic open
+  // Last resort, armed now and counted from the start of shutdown (not from when the channels happened to close), so it always lands before the tray's SIGKILL.
+  const lastResort = setTimeout(() => process.exit(st.call.crashed ? 1 : 0), lastResortDelayMs(startedAt, Date.now()));
+  lastResort.unref();
   for (const [t, r] of [...meTimers]) {
     clearTimeout(t);
     acceptLate(r, true);
@@ -223,7 +234,6 @@ export async function shutdown() {
   await Promise.all([chans.me?.close(), chans.them?.close()].filter(Boolean)).catch(() => {});
   st.call.closing = false;
   clearTimeout(hard);
-  setTimeout(() => process.exit(st.call.crashed ? 1 : 0), 16_000).unref(); // last resort, before the tray's SIGKILL at 20 s (files are already written)
   // Budget: the tray sends SIGINT at 12 s and SIGKILL at 20 s after Stop, so the final frame + summary share ~12 s from the start of shutdown.
   // The call files (usage, endedAt) are written FIRST; the frame look and the summary are best effort on top of that.
   const left = () => shutdownDeadline - Date.now();

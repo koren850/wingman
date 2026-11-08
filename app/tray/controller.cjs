@@ -18,6 +18,7 @@ const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "a
  * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, recap, confirmClient, note, ask, speaker,
  *   stop, stopDelete, stopNoSummary, skipSummary, briefSaved, briefCleared, boot, refreshPlans, runDoctor, shutdown, logLine.
  */
+const QUIT_GRACE_MS = 3000; // quit: a call asked to stop longer ago than this and still alive is killed at once
 const MAX_LINE = 1024 * 1024; // longest stdout line the controller keeps while waiting for its newline
 
 function createController(o) {
@@ -41,6 +42,8 @@ function createController(o) {
   };
   const appEnv = () => (process.versions.electron ? { WINGMAN_APP: "1" } : {}); // doctor/engine word permission hints for the installed app, not a terminal
   const notify = o.notify || (() => {});
+  const clock = o.now || Date.now;
+  let stopSentAt = 0; // when the "stop" command last went to the engine (0 = never)
   let doctorProc;
   const DOCTOR_TIMEOUT_MS = o.doctorTimeoutMs || 90_000;
   let child,
@@ -124,6 +127,7 @@ function createController(o) {
       return false;
     }
     child = c;
+    stopSentAt = 0; // a new call: an earlier Stop must not make a quit kill this one at once
     c.on("error", spawnFailed);
     c.stdin.on("error", () => {
       /* the call already ended */
@@ -274,6 +278,7 @@ function createController(o) {
     if (!child || state.phase === "stopping") return false;
     const c = child;
     send(del ? "stop-delete" : noSummary ? "stop-no-summary" : "stop");
+    stopSentAt = clock();
     if (del) set({ ev: "stopdelete" });
     else if (noSummary) set({ ev: "summaryskip" });
     set({ ev: "stopping" });
@@ -421,13 +426,25 @@ function createController(o) {
         p.on("error", fin);
         p.on("exit", fin);
       }),
-    /** App is quitting: ask the call to stop, force it off a bit later. */
+    /** App is quitting. The timers below would never run (the app exits right after), so nothing may depend on them:
+     *  a call that was already asked to stop more than QUIT_GRACE_MS ago and is still alive is wedged, and its whole process group gets SIGKILL now,
+     *  synchronously (it is detached and would otherwise outlive the app with the mic open). A lingering call.ts (already saved) is killed at once.
+     *  A call that was not asked yet gets the stop command; it also stops by itself when its control pipe closes with the app. */
     shutdown: () => {
       if (doctorProc) killGroup(doctorProc, "SIGKILL");
-      dropLingering();
+      if (lingering) {
+        const l = lingering;
+        lingering = undefined;
+        killGroup(l, "SIGKILL");
+      }
       if (!child) return;
-      send("stop");
       const c = child;
+      if (stopSentAt && clock() - stopSentAt > QUIT_GRACE_MS) {
+        killGroup(c, "SIGKILL");
+        return;
+      }
+      send("stop");
+      if (!stopSentAt) stopSentAt = clock();
       st(() => killGroup(c, "SIGKILL"), 8000);
     },
     /** Appends a timestamped line to the controller log (no-op without `logPath`). */

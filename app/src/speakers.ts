@@ -21,19 +21,52 @@ export function dominantSpeaker(words: Word[]): number | undefined {
 
 export type SpeakerInfo = { spk: number; name?: string };
 
-/** Call-local speaker numbers (1, 2, 3... in order of first appearance) and optional names. */
+/**
+ * Call-local speaker numbers (1, 2, 3... in order of first appearance) and optional names.
+ *
+ * A provider numbers voices from 0 again on every new connection, so raw ids only mean something inside one connection (an "epoch").
+ * The engine calls `rebase("them")` on every reconnect, provider switch, failback and reopen. After that, the same raw id is a new voice and takes a
+ * new number. It joins an existing person only when it is introduced (or named) with the same name as that person.
+ */
 export class SpeakerBook {
-  private nums = new Map<number, number>();
+  private nums = new Map<string, number>(); // `${epoch}:${raw}` -> speaker number
+  private epochOf = new Map<number, number>(); // speaker number -> epoch it first appeared in
+  private alias = new Map<number, number>(); // a number merged into another person by a matching name
   private names = new Map<number, string>();
   private manual = new Set<number>(); // named by the user: an introduction never overrides it
+  private epoch = 0;
+  private used = false; // a voice was numbered in the current epoch (so a rebase burst counts once)
+  private next = 1;
+  /** Bumped by every rebase that took effect (for a status note). */
+  rebases = 0;
+  private canon(spk: number): number {
+    let n = spk;
+    for (let i = 0; i < 8 && this.alias.has(n); i++) n = this.alias.get(n)!;
+    return n;
+  }
+  /** A new connection starts: raw ids from now on are new voices. Only the other side ("them") has a book; other channels are ignored. */
+  rebase(channel: string = "them"): boolean {
+    if (channel !== "them" || !this.used) return false;
+    this.epoch++;
+    this.used = false;
+    this.rebases++;
+    return true;
+  }
   /** The call-local number for a raw provider id (a new id gets the next number). */
   number(raw: number): number {
-    let n = this.nums.get(raw);
+    const key = `${this.epoch}:${raw}`;
+    let n = this.nums.get(key);
     if (n === undefined) {
-      n = this.nums.size + 1;
-      this.nums.set(raw, n);
+      n = this.next++;
+      this.nums.set(key, n);
+      this.epochOf.set(n, this.epoch);
     }
-    return n;
+    this.used = true;
+    return this.canon(n);
+  }
+  /** The person a number stands for (a number merged by name resolves to the first one). */
+  resolve(spk: number): number {
+    return this.canon(spk);
   }
   /** Speaker info for a final's words, or undefined when the words carry no speaker. */
   of(words: Word[]): SpeakerInfo | undefined {
@@ -46,32 +79,47 @@ export class SpeakerBook {
   /** Like of(), but for interim (partial) words: a raw id that has no number yet gives undefined and takes none, so a transient diarization id never uses up a Speaker number. */
   peek(words: Word[]): SpeakerInfo | undefined {
     const raw = dominantSpeaker(words);
-    const spk = raw === undefined ? undefined : this.nums.get(raw);
-    if (spk === undefined) return undefined;
+    const n = raw === undefined ? undefined : this.nums.get(`${this.epoch}:${raw}`);
+    if (n === undefined) return undefined;
+    const spk = this.canon(n);
     const name = this.names.get(spk);
     return name ? { spk, name } : { spk };
   }
-  /** Name call-local speaker `spk` (empty name clears it). */
+  /** Name call-local speaker `spk` (empty name clears it). A voice from a newer connection that gets the name of an earlier person is that person. */
   setName(spk: number, name: string, byUser = false) {
+    spk = this.canon(spk);
     const n = name.trim().slice(0, 40);
-    if (n) this.names.set(spk, n);
-    else this.names.delete(spk);
+    if (n) {
+      const key = n.toLocaleLowerCase();
+      for (const [other, nm] of this.names) {
+        if (other === spk || nm.toLocaleLowerCase() !== key) continue;
+        if ((this.epochOf.get(other) ?? 0) >= (this.epochOf.get(spk) ?? 0)) continue; // only a newer connection joins an older person
+        this.alias.set(spk, other);
+        if (byUser) this.manual.add(other);
+        this.names.delete(spk);
+        this.manual.delete(spk);
+        return;
+      }
+      this.names.set(spk, n);
+    } else this.names.delete(spk);
     if (byUser) this.manual.add(spk);
   }
   name(spk: number): string | undefined {
-    return this.names.get(spk);
+    return this.names.get(this.canon(spk));
   }
   /** A line's speaker info with the CURRENT name: a voice renamed (or introduced) later also relabels its earlier lines for the models and the summary. */
   current(w: SpeakerInfo | undefined): SpeakerInfo | undefined {
     if (!w) return undefined;
-    const name = this.names.get(w.spk);
-    return name ? { spk: w.spk, name } : { spk: w.spk };
+    const spk = this.canon(w.spk);
+    const name = this.names.get(spk);
+    return name ? { spk, name } : { spk };
   }
   isManual(spk: number): boolean {
-    return this.manual.has(spk);
+    return this.manual.has(this.canon(spk));
   }
+  /** People heard on this call (numbers merged by name count once). */
   get count(): number {
-    return this.nums.size;
+    return this.next - 1 - this.alias.size;
   }
 }
 

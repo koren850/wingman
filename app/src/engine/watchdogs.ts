@@ -5,56 +5,41 @@ import { health, healthClear, safe } from "./out.ts";
 import { log, sup, S, fileArg, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { st, mono } from "./state.ts";
+import { MicWatch } from "./mic-watch.ts";
 
 const MIC_LONG_SILENT_MS = 5 * 60_000;
-let micPeakAfterStart = 0,
-  micPeakWin = 0,
-  micSilentShown = false,
-  micWatch: NodeJS.Timeout | undefined;
+const micWatch = new MicWatch({
+  intervalMs: S.audio.watchdog.micSilentMs,
+  micPeak: S.audio.watchdog.micPeak,
+  longSilentMs: MIC_LONG_SILENT_MS,
+  shuttingDown: () => st.call.shuttingDown,
+  onNever: () => health("mic", "red", ht(UI_LANG, "mic.never")),
+  onLong: () => health("mic", "amber", ht(UI_LANG, "mic.long")),
+  onHeard: () => healthClear("mic"),
+});
 
 /** One mic frame: tracks the peak levels the mic watchdog reads, and clears the bar when the mic is heard again. */
 export function noteMicFrame(pk: number) {
-  micPeakAfterStart = Math.max(micPeakAfterStart, pk);
-  micPeakWin = Math.max(micPeakWin, pk);
-  if (micSilentShown && pk >= S.audio.watchdog.micPeak) {
-    micSilentShown = false;
-    healthClear("mic");
-  }
+  micWatch.frame(pk);
 }
 /** The mic source came back: the next silence may raise its bar again. */
 export function micBack() {
-  micSilentShown = false;
+  micWatch.back();
 }
 export function stopMicWatch() {
-  clearInterval(micWatch);
+  micWatch.stop();
 }
 
-// Mic watchdog. Silence is normal while the user listens (a quiet Bluetooth mic raised "mic not picking up" about 20 times).
-// Red only when the mic was NEVER heard since listening started (permission, wrong device). Once it was heard, only a long silence
-// (micLongSilentMs) gives one calm amber line, cleared as soon as the mic is heard again.
+// Mic watchdog (see mic-watch.ts). It runs once the user is listening AND the mic source has started: `startMicWatch` is the first half (consent),
+// `micStarted` the second (after mic.start()).
 export function startMicWatch() {
-  if (!fileArg) {
-    micPeakWin = 0;
-    let silentSince = Date.now();
-    micWatch = setInterval(() => {
-      if (st.call.shuttingDown) return;
-      const now = Date.now();
-      if (micPeakWin >= S.audio.watchdog.micPeak) silentSince = now;
-      if (micPeakAfterStart < S.audio.watchdog.micPeak) {
-        if (!micSilentShown) {
-          micSilentShown = true;
-          health("mic", "red", ht(UI_LANG, "mic.never"));
-        }
-      } else if (now - silentSince >= MIC_LONG_SILENT_MS && !micSilentShown) {
-        micSilentShown = true;
-        health("mic", "amber", ht(UI_LANG, "mic.long"));
-      }
-      micPeakWin = 0;
-    }, S.audio.watchdog.micSilentMs);
-    micWatch.unref();
-  }
+  if (!fileArg) micWatch.consent();
+}
+export function micStarted() {
+  if (!fileArg) micWatch.micStarted();
 }
 
+let tapTimer: NodeJS.Timeout | undefined;
 /** Watches the system-audio tap (see the comment inside for the two cases it tells apart). */
 export function startTapWatchdog(sys: SupervisedSource | undefined, deadFrameMs: number) {
   const W = S.audio.watchdog;
@@ -89,7 +74,7 @@ export function startTapWatchdog(sys: SupervisedSource | undefined, deadFrameMs:
   );
   const ONLY_YOU_MS = Math.max(W.silentThemMs, 45_000);
   let lastOnlyYouAt = 0;
-  setInterval(
+  tapTimer = setInterval(
     safe("sys watchdog tick", () => {
       if (!sys || !st.call.consented || st.call.shuttingDown) return;
       if (mono() - st.voice.lastSysFrame > deadFrameMs) {
@@ -120,5 +105,11 @@ export function startTapWatchdog(sys: SupervisedSource | undefined, deadFrameMs:
       });
     }),
     2000,
-  ).unref();
+  );
+  tapTimer.unref();
+}
+/** Stops the tap watchdog (shutdown, tests). */
+export function stopTapWatchdog() {
+  clearInterval(tapTimer);
+  tapTimer = undefined;
 }

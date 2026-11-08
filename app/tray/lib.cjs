@@ -443,8 +443,9 @@ function createStartKey(o) {
   };
 }
 
-/** Native confirmation before a call is erased. Cancel is the default and the Escape action. Returns true when the call was stopped and deleted. */
-function confirmStopDelete(o) {
+/** Native confirmation before a call is erased. Cancel is the default and the Escape action. Resolves true when the call was stopped and deleted.
+ *  Async on purpose: a sync dialog blocks the main process, which also reads the engine's output (a full pipe would stall the call). */
+async function confirmStopDelete(o) {
   const args = [
     {
       type: "warning",
@@ -456,8 +457,8 @@ function confirmStopDelete(o) {
     },
   ];
   if (o.win) args.unshift(o.win); // the dashboard passes its window so the dialog sits on it
-  const r = o.dialog.showMessageBoxSync(...args);
-  if (r !== 1) return false;
+  const r = await o.dialog.showMessageBox(...args);
+  if (!r || r.response !== 1) return false;
   o.stopDelete();
   return true;
 }
@@ -614,7 +615,7 @@ async function requestQuit(o) {
     return "quit";
   }
   const x = o.text || {}; // texts in the interface language (tray/menu-text.cjs); English when not given
-  const r = o.dialog.showMessageBoxSync({
+  const r = await o.dialog.showMessageBox({
     type: "warning",
     buttons: [x.keep || "Keep the call running", x.stop || "Stop the call and quit"],
     defaultId: 0,
@@ -622,7 +623,7 @@ async function requestQuit(o) {
     message: x.message || "A call is running.",
     detail: x.detail || "Quitting stops the call first: it is saved and the summary is written (up to 20 seconds), then Wingman closes.",
   });
-  if (r !== 1) return "kept";
+  if (!r || r.response !== 1) return "kept";
   o.stop();
   await o.whenStopped();
   o.quit();

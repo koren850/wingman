@@ -80,6 +80,34 @@ export function pcmAligner(): (b: Buffer) => Buffer | null {
   };
 }
 
+// Audio children that are alive right now. A hard exit (the 10 s shutdown guard, the last-resort timer, a crash) must not leave an ffmpeg holding the mic:
+// the exit hook kills them with SIGKILL, synchronously.
+const liveChildren = new Set<ChildProcess>();
+let exitHook = false;
+function trackChild(p: ChildProcess) {
+  liveChildren.add(p);
+  p.once("exit", () => liveChildren.delete(p));
+  if (!exitHook) {
+    exitHook = true;
+    process.once("exit", killAudioChildren);
+  }
+}
+/** SIGKILL every audio child still alive. Synchronous, safe to call twice. Returns how many were signalled. */
+export function killAudioChildren(): number {
+  let n = 0;
+  for (const p of liveChildren) {
+    try {
+      if (p.exitCode === null && p.signalCode === null && p.kill("SIGKILL")) n++;
+    } catch {
+      /* already gone */
+    }
+  }
+  liveChildren.clear();
+  return n;
+}
+/** How many audio children are alive (tests). */
+export const liveAudioChildren = () => liveChildren.size;
+
 /** Microphone (or any avfoundation input) via an ffmpeg child. Emits "pcm", "log" (ffmpeg stderr) and "error" (spawn failure or unexpected exit). */
 export class MicSource extends EventEmitter implements Source {
   private p?: ChildProcess;
@@ -91,11 +119,13 @@ export class MicSource extends EventEmitter implements Source {
     this.device = avDevice(device);
   }
   async start() {
+    if (this.stopping) return; // stop() came first: never spawn after it
     // ":default" = default input device; list devices with: ffmpeg -f avfoundation -list_devices true -i ""
     // Set audio.mic.device (or WINGMAN_MIC) to ":1" (index) or a name. Avoid AirPods for the first calls.
     this.p = spawn("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "avfoundation", "-i", this.device, "-ac", "1", "-ar", "16000", "-f", "s16le", "-"], {
       env: childEnv(),
     });
+    trackChild(this.p);
     const align = pcmAligner();
     this.p.stdout!.on("data", (b: Buffer) => {
       const whole = align(b);

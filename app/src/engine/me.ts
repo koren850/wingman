@@ -10,6 +10,7 @@ import { frameText } from "../frame.ts";
 import { log, cost, breakers, S, tracker, contextNotes, lineOf, transcript, prefix, registry, noAi, meGate, sup, PROMPT_V } from "./boot.ts";
 import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.ts";
 import { emitCard, noteModel } from "./cards.ts";
+import { capTail } from "./capped.ts";
 import { st } from "./state.ts";
 import { askTheCall } from "./askcall.ts";
 import { countReflexFailure, noteReflexOk } from "./question.ts";
@@ -195,6 +196,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
       {
         const total = now - speechEnd;
         st.me.lat.push({ total, source });
+        capTail(st.me.lat);
         log.write("events", {
           type: "me.latency",
           turnId,

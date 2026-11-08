@@ -25,6 +25,7 @@ export function nameSpeaker(spk: number, name: string, source: "intro" | "user")
     .trim()
     .slice(0, 40);
   speakers.setName(spk, clean, source === "user");
+  spk = speakers.resolve(spk); // a voice from a new connection that gives an earlier person's name is that person
   log.write("cards", { type: "speaker", spk, name: clean, source });
   log.write("events", { type: "speaker.name", spk, source, named: !!clean });
   console.log(`\n[🗣 speaker ${spk}] ${clean || "(cleared)"} (${source})`);
