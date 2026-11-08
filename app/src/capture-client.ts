@@ -11,7 +11,7 @@ import type { AudioSource } from "./audio-platform.ts";
 export type CaptureChannel = "mic" | "system";
 /** Why a capture failed: permission = blocked by the system; no-device = nothing to record; busy = another app holds the device. */
 export type CaptureCode = "permission" | "no-device" | "busy" | "unsupported" | "failed";
-const CODES: readonly string[] = ["permission", "no-device", "busy", "unsupported", "failed"];
+const CODES: Record<CaptureCode, true> = { permission: true, "no-device": true, busy: true, unsupported: true, failed: true };
 
 export class CaptureError extends Error {
   constructor(
@@ -22,7 +22,7 @@ export class CaptureError extends Error {
     this.name = "CaptureError";
   }
 }
-const asCode = (c: unknown): CaptureCode => (typeof c === "string" && CODES.includes(c) ? (c as CaptureCode) : "failed");
+const asCode = (c: unknown): CaptureCode => (typeof c === "string" && Object.hasOwn(CODES, c) ? (c as CaptureCode) : "failed");
 
 type Reply = {
   id?: number;

@@ -385,7 +385,7 @@ test("repo guard: no tracked source, data or config file contains a word from th
 });
 
 /** Markdown files anywhere in the repo (root, docs/, app/, brand/) plus LICENSE, as paths relative to the REPO root (this test runs with cwd app/). */
-const REPO_URL = /https:\/\/github\.com\/koren850\/wingman(?:\.git|\/actions\/workflows\/ci\.yml(?:\/badge\.svg)?)?(?![\w/.-])/g;
+const REPO_URL = /https:\/\/github\.com\/koren850\/wingman(?:\.git|\/actions\/workflows\/ci\.yml(?:\/badge\.svg)?|\/releases\/latest)?(?![\w/.-])/g;
 /** The README credits the maintainer by public GitHub handle once, as a profile link. */
 const PROFILE_LINK = "[koren850](https://github.com/koren850)";
 function trackedDocs(): string[] {
