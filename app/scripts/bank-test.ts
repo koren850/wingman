@@ -1,7 +1,7 @@
 // Bank top-1 accuracy on held-out utterances (NOT copied from the card triggers). pnpm banktest
 // Gate: at least 75% right and at most 5% wrong-card (a wrong card is worse than none). Exit code 1 if missed.
 // right = expected card id; wrong = a different card; miss = no card (expected "-" means no card is correct).
-import { loadBank, matchBank } from "../src/bank.ts";
+import { loadBank, matchBank, matchBankSmart } from "../src/bank.ts";
 import { BANK_CASES as CASES } from "../src/bank-cases.ts";
 
 const bank = loadBank();
@@ -10,7 +10,8 @@ let right = 0,
   miss = 0;
 const lines: string[] = [];
 for (const [text, want] of CASES) {
-  const got = matchBank(text, bank)?.card.id ?? "-";
+  const exact = matchBank(text, bank)?.card.id ?? "-";
+  const got = exact !== "-" ? exact : (matchBankSmart(text, bank, "he").hit?.card.id ?? "-"); // trigger first, then the 3-gram scorer
   if (got === want) right++;
   else if (got === "-") {
     miss++;

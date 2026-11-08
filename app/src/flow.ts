@@ -5,6 +5,7 @@ import { generateText } from "ai";
 import { ModelRegistry, generateOnce, providerOptionsFor, temperatureFor } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { nameRegex, userName } from "./profile.ts";
+import { YOU_FLOW } from "./lang/address.ts";
 import { callLanguage, type CallLang } from "./calllang.ts";
 
 /** One transcript line fed to the tracker: channel, optional speaker number and name, text, and wall-clock time in ms. */
@@ -14,8 +15,6 @@ export type FlowEvent =
   | { type: "internal"; who: string[] } // their discussion started (or the people in it changed)
   | { type: "open" } // it ended: the user spoke, or only one voice is left
   | { type: "addressed"; who: string; text: string }; // someone turned to the user
-
-const TO_YOU = /(^|[\s,])(לך|אתה|תוכל|מה דעתך|what do you think|can you|could you|you)(?![\p{L}])/iu;
 
 /** Tuning in ms: `windowMs` lines considered, `quietMeMs` how long the user must be silent, `minLines` in the window, `youWindowMs` how long "you" counts after a discussion. */
 export type FlowOptions = { windowMs: number; quietMeMs: number; minLines: number; youWindowMs: number };
@@ -59,7 +58,7 @@ export class FlowTracker {
     const wasInternal = this.internal;
     const recentlyInternal = wasInternal || (this.internalEndedAt > 0 && l.at - this.internalEndedAt < this.o.youWindowMs);
     // Addressed: the user's name always; "you" only right after their own discussion (inside it, "you" is one of them).
-    if (nameRegex().test(l.text) || (recentlyInternal && !wasInternal && TO_YOU.test(l.text))) {
+    if (nameRegex().test(l.text) || (recentlyInternal && !wasInternal && YOU_FLOW.test(l.text))) {
       out.push({ type: "addressed", who: l.who ?? "", text: l.text.slice(0, 200) });
       return [...out, ...this.end(l.at)];
     }

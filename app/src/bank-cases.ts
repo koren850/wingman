@@ -39,6 +39,30 @@ export const BANK_CASES: [string, string][] = [
   ["אפשר לשדרג את גרסת PHP", "php-version"],
   ["אני רוצה לבדוק שינוי ב staging לפני שעולים", "staging"],
   ["אנחנו צריכים עמוד נחיתה חדש לקמפיין", "add-page"],
+  ["לא מגיעות אלי הודעות מטופס יצירת הקשר", "forms-not-arriving"],
   ["מה כלול במסלול תחזוקה אצלכם", "maintenance-plan"],
   ["יש אצלכם אימות דו שלבי לניהול", "two-factor"],
+];
+
+// Paraphrases with no trigger in common with the card. The scorer must put the right card in its top 3 (the model then picks or says SKIP).
+// Used by bank-paraphrase.test.ts. Invented sentences, not copied from card text.
+export const BANK_PARAPHRASE_CASES: [string, string][] = [
+  ["הדף הראשי לוקח נצח להיטען", "site-slow"],
+  ["העמוד הראשי נפתח אחרי המון זמן", "site-slow"],
+  ["למה הכל כל כך כבד באתר בימים האחרונים", "site-slow"],
+  ["הלידים מהאתר לא נכנסים לתיבת הדואר", "forms-not-arriving"],
+  ["אנשים משאירים פרטים באתר ולא מקבלים כלום במייל", "forms-not-arriving"],
+  ["הטופס באתר לא נשלח אלי למייל", "forms-not-arriving"],
+  ["לא מגיעות אלי הודעות מטופס יצירת הקשר", "forms-not-arriving"],
+];
+// Sentences that no bank card answers. The scorer must not turn them into a card.
+export const BANK_NEGATIVE_CASES: string[] = [
+  "טוב אז נדבר מחר בבוקר",
+  "אני אחזור אליך עם הצעה בשבוע הבא",
+  "המשפחה שלי גרה בנמל-גל כבר הרבה שנים",
+  "התקציב של הרבעון הבא עדיין לא סגור",
+  "we should schedule the next meeting for tuesday",
+  "how was your weekend",
+  "מה דעתך על הרעיון של הלקוח",
+  "תודה רבה על הזמן שלך היום",
 ];

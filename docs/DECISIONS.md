@@ -663,3 +663,16 @@ Date: 2026-11-08
 
 **Consequences.** The engine is one process per call with a real clock, so engine-level tests run in real time; the virtual clock is for in-process code. A cassette can go stale when a prompt changes; the miss diff shows why.
 
+## ADR 44: The model decides the moment; code keeps the plumbing
+
+Date: 2026-11-08
+
+**Context.** The question gate is a set of hand-written word lists per language. It misses objections, numbers and implied questions, it fires on questions that need no help, and each language needs a new file.
+
+**Decision.** The moment engine asks the model "is a short private note useful now?" and parses a fixed reply. Code does intake noise filtering, timing, caps, novelty, feedback and fallbacks. The old detector stays as a frozen hint and as the offline gate; no new words go into it. The bank gets a language-neutral 3-gram scorer, and the turn language is passed as an argument instead of a module global.
+
+**Why.** Meaning is a model job; budgets and safety are code jobs. A structural filter works in every language without a list.
+
+**Alternatives.** Keep growing the word lists. Use embeddings for the bank (a download and a native dependency).
+
+**Consequences.** The pieces exist and are tested, but the engine is not wired to them yet. The legacy `getTurnLang` and `setTurnLang` stay until the wiring package removes the last caller.

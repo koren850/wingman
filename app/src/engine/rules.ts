@@ -1,15 +1,7 @@
 // Small decisions the engine modules share, kept free of call state (no imports from boot.ts) so tests can call them directly.
-import { addressesYou } from "../detector.ts";
 
-/** Second-person forms that detector.addressesYou does not cover: feminine and "opinion" forms ("מה דעתך", "תוכלי", "את חושבת"), English contractions and texting forms.
- *  Plural forms (אתם, לכם) are left out on purpose: inside their own discussion two of them say "אתם" to each other. */
-const MORE_YOU =
-  /(^|[\s,.?!"'])(דעתך|לדעתך|בעיניך|ניסיונך|מניסיונך|תוכלי|תגיד|תגידי|ספרי|תספרי|תארי|תסבירי|עבדת|את\s+(?:יכולה|חושבת|מכירה|יודעת|רוצה|מוכנה|עובדת|רואה|שומעת|מסכימה|הייתי?)|u|ya|you'?(?:re|ll|ve|d)|yourself)(?![\p{L}])/iu;
-
-/** Is this line aimed at the user ("you", their name, Hebrew masculine/feminine forms)? Used by flow mode, which holds questions the others ask each other. */
-export function addressesUser(text: string): boolean {
-  return addressesYou(text) || MORE_YOU.test(text);
-}
+/** Is this line aimed at the user ("you", their name, Hebrew masculine/feminine forms)? Used by flow mode, which holds questions the others ask each other. The patterns are in lang/address.ts. */
+export { addressesUser } from "../lang/address.ts";
 
 /** How many of the AI notes written so far go back to the notes model each round (it only needs the recent ones to avoid repeating itself). */
 export const NOTES_EXISTING_MAX = 40;

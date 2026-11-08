@@ -116,6 +116,19 @@ The app listens on `~/.config/wingman/run/control.sock` (directory mode 700, soc
 
 The capybara logo with a yuzu on its head, icons and the build script. `scripts/make-app.sh` copies the Electron runtime to `app/.app/Wingman.app`, renames it, turns off three Electron fuses (`scripts/set-fuses.cjs`) and adds a launcher that loads this repo's code, so the Dock and notifications say "Wingman". `install.sh` at the repo root checks the machine, installs, builds the app and can copy it to `/Applications` (see [DEVELOPMENT.md](DEVELOPMENT.md#install-update-uninstall)). **Packaged app.** `pnpm dist` (`scripts/package-app.cjs`, `electron-builder.cjs`) bundles the engine with esbuild into `src/*.mjs` and builds a self-contained `Wingman.app` and `.dmg` that needs no Node, pnpm or checkout. The app starts its own executable for each tool (`Wingman --wingman-tool <name>`, `Wingman --wingman-overlay`; allow-list in `shared/bin.cjs`, `tray/app-entry.cjs`). There is no asar, because the engine starts child processes and the audiotee binary from the app folder; the `RunAsNode` fuse stays off. Builds are ad hoc signed, not notarised; the release workflow has not run yet. The `wingman` command line is still a dev-checkout feature. See [DEVELOPMENT.md](DEVELOPMENT.md#building-the-app-dmg) and [ADR 40](DECISIONS.md#adr-40-a-self-contained-unsigned-app-bundle).
 
+## Moment core (round 12, not wired into the engine yet)
+
+`app/src/moments/` holds the decision pieces for the new "moment" engine. They are pure: no globals, no network, a clock is passed in.
+
+- `parse.ts` reads the model reply. Line 1 is the verdict (`SKIP`, `ANS`, `BANK <id>`, `STALL`, `REPLY`, `CHECK`, `TERM`, `PROMPT`, `NOTE`), then `VALUE`, `AIM`, `SAY` (14 words at most), `WHY`, `MORE`, `REF`. The verdict is known as soon as line 1 ends. Anything wrong becomes `SKIP` plus an `error.survived` row. It never throws.
+- `intake.ts` drops only structural noise (under 2 tokens, echo, a repeat within 3 s, very low confidence). It never drops a line with a digit or a currency sign, or a line of 2+ tokens ending in `?`. It also gives `TurnFeatures`. It has no word lists.
+- `hint.ts` wraps the old detector as `strong | weak | none`. It is frozen. It only sets how fast the model is asked, and it is the offline gate.
+- `observer.ts` decides when to call the model: strong hint at once, weak hint after 0.7 s quiet, 12 new words, topic change, user ask. At most 6 calls a minute; held lines go into the next window.
+- `scheduler.ts` decides `show | chip | drop` from VALUE, AIM, novelty, rank, topic lifetime, a per-minute cap (price and guarantee stalls and checks are exempt), feedback and the turn id.
+- `prompt.ts` is the moment instruction text. The call language, roster and top 3 bank candidates are data.
+
+The bank (`bank.ts`, `bank-score.ts`) matches in this order: exact trigger, then a local BM25 over character 3-grams of title, triggers and say line, else the top 3 cards go to the model. The language of a turn is passed as an argument.
+
 ## Processes and data flow
 
 The process diagram is at the top of this document ([Process diagram](#process-diagram)).

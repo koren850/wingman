@@ -12,6 +12,7 @@ First public release. Nothing is published yet; the date is set on the day it is
 
 ### Added
 
+- **Moment engine core (not wired yet).** Pure modules in `app/src/moments/`: a tag-first reply parser, a structural intake filter, a frozen question hint, a card scheduler, an observer pacing window and the moment prompt. The bank gets a local 3-gram scorer, so a paraphrase of a card finds it without a model call, and it no longer keeps a global turn language.
 - **Live call loop.** Two audio channels (microphone for you, system audio for the other side through a Core Audio tap) go to two Deepgram Nova-3 streams, so the speaker is always known. A reconnect buffer replays the last two seconds after a dropped connection.
 - **Answer cards in about a second.** A question detector that handles English, Hebrew and mixed speech feeds a local answer bank ("Prepared" cards, no AI call) and a Claude Haiku step that skips, stalls, picks a bank card or writes a short answer. AI cards are labelled "not verified".
 - **Guards in code.** Deterministic filters for prices, dates and promises turn a risky AI line into a "Buy time" line. House-style never-say rules. Practice mode adds a salary guard and an unclaimed-term guard.

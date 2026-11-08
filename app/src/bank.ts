@@ -7,6 +7,9 @@ import YAML from "yaml";
 import { containsPhrase, phraseWordIndex } from "./normalize.ts";
 import { packPath } from "./pack.ts";
 import { looksArithmetic } from "./calc.ts";
+import { scoreBank, topCandidates, type Candidate } from "./bank-score.ts";
+
+export { topCandidates, type Candidate } from "./bank-score.ts";
 
 export type BankCard = {
   id: string;
@@ -149,7 +152,7 @@ function beats(a: BankHit, aTier: boolean, b: BankHit, bTier: boolean): boolean 
 }
 
 /** The stall line, rotating through the card's `alts` so repeated stalls do not look canned. */
-export function stallSay(card: BankCard, n: number, lang: "he" | "en" = turnLang): string {
+export function stallSay(card: BankCard, n: number, lang: "he" | "en" = legacyLang.value): string {
   const en = lang === "en" && card.en;
   const all = en ? [en.say, ...(en.alts ?? [])] : [card.say, ...(card.alts ?? [])];
   return all[Math.abs(n) % all.length];
@@ -161,17 +164,19 @@ export function questionLang(s: string): "he" | "en" | undefined {
   return (s.match(/[A-Za-z]/g) ?? []).length >= 3 ? "en" : undefined;
 }
 /**
- * Language of the question being handled. matchBankFor() sets it from the other side's text (English-only = "en", anything with
- * Hebrew = "he"; unclear or very short text keeps the last value), and stallSay() / localizeCard() read it, so run.ts needs no change.
- * A cheap hack that assumes one question is handled at a time; run.ts should eventually pass the language explicitly.
+ * Legacy fallback for callers that do not pass a language (run.ts engine code from before the moment engine). matchBankFor() without a `lang`
+ * sets it from the other side's text and stallSay() / localizeCard() read it when they get no `lang` either. It is NOT used when a caller passes `lang`:
+ * the moment engine passes the language of each turn, so two turns in different languages never touch each other. Remove with the legacy engine.
  */
-let turnLang: "he" | "en" = "he";
-export const getTurnLang = () => turnLang;
+const legacyLang: { value: "he" | "en" } = { value: "he" };
+/** @deprecated Pass `lang` explicitly (matchBankFor, localizeCard, stallSay). Kept for the legacy engine and its tests. */
+export const getTurnLang = () => legacyLang.value;
+/** @deprecated Pass `lang` explicitly. */
 export const setTurnLang = (l: "he" | "en") => {
-  turnLang = l;
+  legacyLang.value = l;
 };
 /** The card as it should be shown for the current question: English text for an English question, undefined when the card has no English version. */
-export function localizeCard(card: BankCard, lang: "he" | "en" = turnLang): BankCard | undefined {
+export function localizeCard(card: BankCard, lang: "he" | "en" = legacyLang.value): BankCard | undefined {
   if (lang !== "en") return card;
   return card.en ? { ...card, say: card.en.say, facts: card.en.facts ?? [], alts: card.en.alts } : undefined;
 }
@@ -222,32 +227,61 @@ export function priceOffTopic(text: string): "arithmetic" | "general" | undefine
   return undefined;
 }
 
-/** matchBank, except that stall-price is dropped when the question is arithmetic or clearly not about a price for the owner's services. */
-export function matchBankFor(text: string, bank: BankCard[]): BankHit | undefined {
-  const l = questionLang(text);
-  if (l && text.trim().split(/\s+/).length >= 3) turnLang = l;
+/**
+ * matchBank, except that stall-price is dropped when the question is arithmetic or clearly not about a price for the owner's services.
+ * `lang` is the language of this turn. Without it the old behaviour stays: the language comes from the text and is remembered for stallSay / localizeCard.
+ */
+export function matchBankFor(text: string, bank: BankCard[], lang?: "he" | "en"): BankHit | undefined {
+  let turn: "he" | "en";
+  if (lang) turn = lang;
+  else {
+    const l = questionLang(text);
+    if (l && text.trim().split(/\s+/).length >= 3) legacyLang.value = l;
+    turn = legacyLang.value;
+  }
   // The same question is matched 3-5 times while it is handled: remember the last few answers (per bank, per language).
   if (forCache.bank !== bank || forCache.len !== bank.length) {
     forCache.bank = bank;
     forCache.len = bank.length;
     forCache.hits.clear();
   }
-  const key = `${turnLang}|${text}`;
+  const key = `${turn}|${text}`;
   if (forCache.hits.has(key)) return forCache.hits.get(key);
-  const out = matchBankForUncached(text, bank);
+  const out = matchBankForUncached(text, bank, turn);
   if (forCache.hits.size >= 16) forCache.hits.delete(forCache.hits.keys().next().value!);
   forCache.hits.set(key, out);
   return out;
 }
 const forCache: { bank?: BankCard[]; len: number; hits: Map<string, BankHit | undefined> } = { len: 0, hits: new Map() };
-function matchBankForUncached(text: string, bank: BankCard[]): BankHit | undefined {
+function matchBankForUncached(text: string, bank: BankCard[], turn: "he" | "en"): BankHit | undefined {
   let hit = matchBank(text, bank);
   if (hit?.card.id === "stall-price" && priceOffTopic(text))
     hit = matchBank(
       text,
       bank.filter((c) => c.id !== "stall-price"),
     );
-  if (!hit || turnLang !== "en") return hit;
+  if (!hit || turn !== "en") return hit;
   const card = localizeCard(hit.card, "en");
   return card ? { ...hit, card } : undefined; // English question and no English card: the model answers (in English) instead of a Hebrew card
+}
+
+/** How a question was matched: an exact trigger, the 3-gram scorer, or not at all (then `candidates` are the best cards to offer the model). */
+export type SmartMatch = { hit?: BankHit; via: "trigger" | "scorer" | "none"; candidates: Candidate[] };
+
+/**
+ * Matching order for the moment engine: (1) exact trigger (matchBankFor, same result as before), (2) the local 3-gram scorer when it is confident,
+ * (3) otherwise no hit and the top `n` cards (default 3) for the model prompt. `lang` is the language of this turn (no global is read or written).
+ * In an English turn, cards with no English version are left out of the hit and of the candidates.
+ */
+export function matchBankSmart(text: string, bank: BankCard[], lang: "he" | "en" = questionLang(text) ?? "he", n = 3): SmartMatch {
+  const exact = matchBankFor(text, bank, lang);
+  if (exact) return { hit: exact, via: "trigger", candidates: [] };
+  const sc = scoreBank(text, bank, STALL_TIER);
+  if (sc) {
+    const card = lang === "en" ? localizeCard(sc.card, "en") : sc.card;
+    if (card) return { hit: { card, score: sc.coverage, matched: [] }, via: "scorer", candidates: [] };
+  }
+  // Rank on the whole bank (its index is cached per bank array), then drop cards with no English text in an English turn.
+  const all = topCandidates(text, lang === "en" ? bank.length : n, bank);
+  return { via: "none", candidates: (lang === "en" ? all.filter((c) => c.card.en) : all).slice(0, n) };
 }

@@ -10,6 +10,9 @@ import { tokens, tokenVariants, containsPhrase, normalize } from "./normalize.ts
 import { nameRegex, nameWords } from "./profile.ts";
 import { evalMath } from "./calc.ts";
 import { LANGUAGES, he, en, EN_SYNTAX } from "./lang/index.ts";
+import { addressesYou, headAimedAtYou } from "./lang/address.ts";
+
+export { addressesYou };
 
 /** Fewer tokens than this is never a question unless it carries a "?" ("מחיר?"). */
 export const MIN_WORDS = 2;
@@ -232,13 +235,7 @@ export function detect(text: string, ctx: DetectCtx = {}): Detection {
 // "Important cards only" (cards.focus): is this detected line a clear question to the user? The weak cue "head" (a question word
 // at the start; 124 of 225 detections in a real 70-minute call, mostly statements) counts only when the line speaks to the user.
 const STRONG = /^(question-mark|request|stall-bank|confirm-tail|multi|math|clause-head|about)/; // clause-head / about: real questions whose "?" STT dropped
-const TO_YOU = /(^|[\s,])(לכם|לך|אתם|אתה|תוכל|תוכלו|אפשר|you|your)(?![\p{L}])/iu;
-/** Second person aimed at the user (Hebrew masculine/neutral forms, English you/your): "עבדת פעם עם", "ספר לי", "what's your". */
-const YOU2 = /(^|[\s,.?!"'])(אתה|לך|שלך|אותך|עליך|ממך|איתך|ספר|תספר|תאר|תסביר|עבדת|היית|ניסית|יצא לך|you|your|yourself)(?![\p{L}])/iu;
-export function addressesYou(text: string): boolean {
-  return YOU2.test(text) || nameRegex().test(text);
-}
 /** A clear question for the user: a strong detector reason, a question head aimed at "you", or the user addressed by name (profile.ts nameRegex). */
 export function isClearQuestion(text: string, reason: string): boolean {
-  return STRONG.test(reason) || (/^head/.test(reason) && TO_YOU.test(text)) || nameRegex().test(text);
+  return STRONG.test(reason) || (/^head/.test(reason) && headAimedAtYou(text)) || nameRegex().test(text);
 }
