@@ -1,5 +1,5 @@
 // Platform seam for audio capture. The engine asks an AudioBackend for a microphone source and a system-audio source and does not care how
-// they are made. macOS is the only real backend. win32 and linux are stubs with a clear error and a TODO list, so adding a platform means
+// they are made. macOS is the only real backend; other platforms run the same processes for now (see backendFor). Adding a platform means
 // implementing two classes (see AudioSource) and registering one backend in `backends` below.
 //
 // Contract of an AudioSource (checked by audio-platform.test.ts for the file source):
@@ -47,9 +47,13 @@ export function unsupportedBackend(platform: NodeJS.Platform): AudioBackend {
   return { platform, createMic: () => fail("Microphone"), createSystem: () => fail("System audio") };
 }
 
-/** The backend for a platform. Unknown platforms get the stub. */
+/**
+ * The backend for a platform. Until a native Windows or Linux backend exists, every platform runs the same ffmpeg/AudioTee processes as
+ * macOS: they fail to start where the tools are missing (reported as "audio down"), and the end-to-end tests run them with fake binaries on
+ * Linux and Windows CI. `unsupportedBackend` is the place to start a native port.
+ */
 export function backendFor(platform: NodeJS.Platform = process.platform): AudioBackend {
-  return platform === "darwin" ? macBackend : unsupportedBackend(platform);
+  return platform === "darwin" ? macBackend : { ...macBackend, platform };
 }
 
 /**

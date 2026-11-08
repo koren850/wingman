@@ -76,15 +76,16 @@ test("audio source contract: a SupervisedSource around the file source keeps it"
   }
 });
 
-test("audio backends: macOS builds both sources, other platforms fail with a clear error", () => {
+test("audio backends: macOS builds both sources; other platforms use the same processes until a native backend exists", () => {
   assert.equal(backendFor("darwin"), macBackend);
   if (process.platform === "darwin")
     for (const s of [macBackend.createMic(":default"), macBackend.createSystem("audiotee", "")]) assert.equal(typeof s.start, "function"); // AudioTee loads its macOS binary here
   for (const p of ["win32", "linux"] as const) {
     const b = backendFor(p);
     assert.equal(b.platform, p);
-    assert.throws(() => b.createMic(":default"), new RegExp(`not implemented on ${p}`));
-    assert.throws(() => b.createSystem("audiotee", ""), /System audio capture is not implemented/);
+    assert.equal(b.createMic, macBackend.createMic);
+    assert.equal(b.createSystem, macBackend.createSystem);
   }
+  assert.throws(() => unsupportedBackend("win32").createMic(":default"), /not implemented on win32/);
   assert.throws(() => unsupportedBackend("freebsd").createMic(""), /freebsd/);
 });
