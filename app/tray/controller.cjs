@@ -46,6 +46,7 @@ function createController(o) {
   let stopSentAt = 0; // when the "stop" command last went to the engine (0 = never)
   let doctorProc;
   const DOCTOR_TIMEOUT_MS = o.doctorTimeoutMs || 90_000;
+  const STDOUT_DRAIN_MS = 300; // how long a finished child may still be delivering its last stdout lines
   let child,
     lingering,
     state = lib.initialState();
@@ -179,8 +180,22 @@ function createController(o) {
       change();
     });
     c.on("exit", (code, signal) => {
-      finish(c, code, signal);
-      if (lingering === c) lingering = undefined; // (after finish: an exited process is not lingering)
+      const end = () => {
+        finish(c, code, signal);
+        if (lingering === c) lingering = undefined; // (after finish: an exited process is not lingering)
+      };
+      // Node can report "exit" before the last stdout bytes (the "ended" line) are read. Wait for the pipe to end, but not for long:
+      // a child process of the call may keep the pipe open. A stream without `readable` (a test double) is not waited for.
+      if (!c.stdout || c.stdout.readable !== true || typeof c.stdout.once !== "function") return end();
+      let fired = false;
+      const once = () => {
+        if (fired) return;
+        fired = true;
+        end();
+      };
+      c.stdout.once("end", once);
+      c.stdout.once("close", once);
+      st(once, STDOUT_DRAIN_MS);
     });
     change();
     return true;
@@ -237,8 +252,10 @@ function createController(o) {
         /* a temp folder left behind is harmless */
       }
     };
-    if (ok && child) child.once("exit", drop);
-    else drop();
+    if (ok && child) {
+      child.once("exit", drop);
+      child.once("error", drop); // a spawn that fails (no exit event) must not leave the folder behind
+    } else drop();
     if (ok)
       notify(
         "Practice call",
@@ -280,7 +297,15 @@ function createController(o) {
   }
   /** Asks the call to stop (and optionally delete or skip the summary), then escalates: SIGINT at 12 s, SIGKILL at 20 s if it is still the same child. */
   function stop(del = false, noSummary = false) {
-    if (!child || state.phase === "stopping") return false;
+    if (!child) return false;
+    if (state.phase === "stopping") {
+      // A plain Stop was pressed and the user now wants the call deleted: the engine takes that until the summary is written.
+      if (!del) return false;
+      send("stop-delete");
+      set({ ev: "stopdelete" });
+      change();
+      return true;
+    }
     const c = child;
     send(del ? "stop-delete" : noSummary ? "stop-no-summary" : "stop");
     stopSentAt = clock();
@@ -431,7 +456,13 @@ function createController(o) {
           fin();
         }, DOCTOR_TIMEOUT_MS);
         p.on("error", fin);
-        p.on("exit", fin);
+        // Same as the call: the verdict line can still be in the pipe when "exit" arrives. Give it a moment to drain.
+        p.on("exit", () => {
+          if (!p.stdout || p.stdout.readable !== true || typeof p.stdout.once !== "function") return fin();
+          p.stdout.once("end", fin);
+          p.stdout.once("close", fin);
+          st(fin, STDOUT_DRAIN_MS);
+        });
       }),
     /** App is quitting. The timers below would never run (the app exits right after), so nothing may depend on them:
      *  a call that was already asked to stop more than QUIT_GRACE_MS ago and is still alive is wedged, and its whole process group gets SIGKILL now,

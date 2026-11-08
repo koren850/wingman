@@ -72,6 +72,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [64](#adr-64-modes-are-visible-lockable-and-writable-by-the-user) | Modes are visible, lockable and writable by the user |
 | [65](#adr-65-web-lookup-is-opt-in-with-a-source-and-a-cap-replaces-adr-36) | Web lookup is opt-in, with a source and a cap (replaces ADR 36) |
 | [66](#adr-66-measured-token-budgets-name-matching-and-a-compaction-check-what-shipped-for-adrs-63-and-64) | Measured token budgets, name matching and a compaction check |
+| [67](#adr-67-a-socket-that-hears-nothing-is-dead-and-readers-use-call-wide-indexes) | A socket that hears nothing is dead; readers use call-wide indexes |
 
 ---
 
@@ -1013,3 +1014,17 @@ Date: 2026-11-08
 **Alternatives.** Keep the frame as an optional second opinion (two memories again). A model call to match names (cost on every new word). Raise the cache by padding block A (a write cost for text nobody needs). Turn the tail cache on (the simulator shows less than 10 percent for every role, and a loss for some).
 
 **Consequences.** The legacy engine has no call frame and no frame tips. Numbers in the calibration are the old defaults until someone runs `scripts/calibrate-tokens.ts` on real calls; no saving is claimed. The simulated cache is a model of the documented rules, not a bill.
+
+## ADR 67: A socket that hears nothing is dead, and readers use call-wide indexes
+
+Date: 2026-11-09
+
+**Context.** The final review of round 12 found two bugs that show only in long or messy calls. (1) After sleep, a Wi-Fi change or a NAT timeout, a speech socket can look open for minutes. Audio goes out, nothing comes back, no disconnect event fires, and the call has no transcript and no cards. (2) The call transcript drops lines from its middle on a very long call. The memory loop and the must-cover check read it by array index, so after the first drop they read nothing new for the rest of the call.
+
+**Decision.** (1) A speech stream may say `rxLiveness` and keep `lastRxAt` (any message from the service). Deepgram does; the others do not yet, because it is not known that they answer during silence. `SttChannel` checks every 5 s: if audio was sent in the last 3 s and the stream has heard nothing for 20 s, it emits a network error and a `disconnected` event, and opens a fresh socket with `reopen()`. The speaker book is rebased on the `reconnected` event as for any reopen. If the reopen fails, `exhausted` starts the engine's retry loop. (2) `CappedTranscript` has `absLength` and `lineAt(abs)`. A reader keeps a call-wide cursor and skips lines that were dropped. The same round fixed two smaller bugs in the same area: `open()` always starts at the primary provider, and a fallback taken at open arms the failback timer; the tray controller finishes a call or a doctor run only after the last stdout lines are read (up to 300 ms after exit), and Stop and delete is accepted after a plain Stop.
+
+**Why.** A socket that is open but silent for 20 s while we send audio is not healthy, whatever its state says. Up to 20 s of audio can be lost; that is better than a call with no transcript. A cursor that survives a drop is simpler than a queue.
+
+**Alternatives.** Use the socket's ping and pong (the providers' servers do not all answer them). Reopen on every wake without looking (drops in-flight finals, and a healthy socket would be replaced). A queue that ingest pushes to (a second copy of every line).
+
+**Consequences.** Tested with fake streams and the virtual clock only. Whether Deepgram answers every few seconds during real silence is not measured; if it does not, the check would reopen healthy sockets during a long silence while audio is sent, and the limit must be raised or the check made smarter. The idle auto-stop still counts only transcribed text, not audio level.

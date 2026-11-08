@@ -49,30 +49,26 @@ All pictures use invented data. The client, the numbers and the answers are made
 
 ### The answer window
 
-This is the window you read during a call. Put it on the second screen. By default it uses the **Focus** layout: what they said, one big answer, one small line for the answer before it, and a **More** button. In **Settings, Answer window layout** you can switch to **Full**, which shows everything at once.
+This is the window you read during a call. Put it on the second screen. With live reading (the default) it shows one card at a time, large, and keeps the others as small chips.
 
-**Help engine (Settings, Advanced).** *Live reading (default)* lets the AI read the whole call and decide when a card helps: a question, an objection, a number that does not fit, a term you may not know, a point you planned to cover. Most lines get no card. A prepared card or a sum shows first; an AI card replaces it only if it is better. If you say a number that does not match your notes, you get a Check card. Live reading keeps a short memory of the call. The scripted cost model puts this part at about 3 US cents an hour; that is a model of the usage, not a measurement with the real AI. Settings, Money, has a soft cap per hour. *Classic (rollback)* shows a card when the other side asks a question. Use it only if live reading misbehaves. Practice interviews keep Classic. A change takes effect on the next call. If the AI is paused or down, Wingman falls back to prepared answers and a language-neutral check (a "?" from speech-to-text, digits, your name, the shape of the sentence); no AI is called. Measured offline, scripted: 60 of 68 answer moments in the 32 dev meetings still got a card.
+<img src="ux/answer-window-live.png" alt="The answer window with live reading: a transcript strip, one big Check card, four chips, a Context button, Catch me up and the key bar" width="560">
 
-<img src="ux/answer-window-en-ui.png" alt="The answer window in the Focus layout: the other side's last line, one big AI answer, a buy-time line, a More button and the key bar" width="520">
+1. **Header.** **Listening** means Wingman hears the call (it says **Paused** when you pause it). The dot next to it is the health dot: green means everything works, amber means something is weaker than usual (for example a weak microphone), red means something does not work. Point at it to read the reason. The pill at the end is the kind of call, for example **Client (auto)**. "(auto)" means Wingman is guessing.
+2. **What was said.** The last line of the other side and your own last line, small, so you can see what the card is about.
+3. **The card.** One big card with its line in full. The mark and the word say what it is: **Answer**, **Check**, **Prompt** or **Fact**. A line under it says why ("Because: ...") and what it is about ("about: ..."). Check the answer before you say it.
+4. **Chips.** The cards that wait. Each chip has its label, its kind mark and its age. A bold dot means you have not seen it yet.
+5. **Context** and **Catch me up.** Context opens the open questions, the promises, the topics you wanted to cover and the earlier cards. Catch me up writes a short recap of the call so far.
+6. **Key bar.** Ctrl+Opt+A asks Wingman, L opens More, P pauses. Press **?** to see all keys.
 
-1. **Listening** (top): Wingman hears the call. It says **Paused** when you pause it. Next to it are two small dots: the first shows the call state, the last one is the health dot. Green means everything works, amber means something is degraded (for example a weak microphone), red means something is not working. Hover over it to read the reason.
-2. **Other side**: the last thing the other person said.
-3. **AI · unverified** (dashed border): the one big answer, written by the AI. Check it before you say it. A line starting "Answering:" shows which question it answers.
-4. **Prepared** (green, not shown here): an answer from your own answer pack. You wrote it, so you can trust it more.
-5. **Buy time**: the small line under the big card. It is the answer before this one. Here it is a safe line to say while you check a number. Wingman uses it instead of inventing a price or a date.
-6. **More: 8** (Ctrl+Opt+L): opens the extra panel, shown next. It closes by itself after a while.
-7. **Key bar** (bottom): Ctrl+Opt+A asks the AI, L opens More, P pauses. Press **?** to see all of them (R shows what they said, C clears, 1-3 copy a detail).
-8. **Writing...**: while an AI answer is still arriving, its label says so. Wait until it stops before you read it out.
+#### More on a card
 
-#### The More panel
+<img src="ux/answer-window-more.png" alt="The answer window with a card opened by More: three short points and a price from the brief" width="560">
 
-<img src="ux/answer-window-more.png" alt="The answer window with the More panel open: numbered chips for a phone number, an email and a domain, a checklist, a client card and AI notes" width="520">
+**More** opens the rest of the card: short points, a number from your notes, and the reason. **Less** closes it. Cards are short on purpose: the line you can say comes first.
 
-1. **Numbered chips** (Phone, Email, Domain): details heard in the call. Press Ctrl+Opt and the number to copy one.
-2. **You have not talked about:** your checklist of topics still open.
-3. **Levy Electronics** is the client card. **AI notes** are points the AI noticed.
+#### The classic window
 
-In the Full layout all of this is on screen all the time.
+If you switch the help engine to Classic, or the AI is down, the window shows the older layout: what they said, one big answer (**Prepared** in green when it comes from your own answer pack, **AI, unverified** with a dashed border when the AI wrote it), a small "buy time" line, a **More** button with the extra panel (numbered chips for phone numbers, emails and domains, your checklist, the client card and the AI notes), and the key bar. In **Settings, Answer window layout** you can switch between **Focus** (default) and **Full**, which shows everything at once. The rest of this guide applies to both windows.
 
 #### Cards, chips and keys (answer window v3)
 

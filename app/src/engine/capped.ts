@@ -29,6 +29,8 @@ export class CappedTranscript<T extends { text: string }> extends Array<T> {
   maxWords = 40_000;
   headWords = 4_000;
   omitted = 0;
+  /** How many head lines stay for good (set by the first compaction). Call-wide indexes below this are plain indexes. */
+  private headLen = 0;
   private total = 0;
   push(...items: T[]): number {
     for (const it of items) {
@@ -41,6 +43,16 @@ export class CappedTranscript<T extends { text: string }> extends Array<T> {
   get wordTotal() {
     return this.total;
   }
+  /** Lines pushed so far, dropped ones included. A reader keeps a call-wide cursor and stops when it reaches this. */
+  get absLength() {
+    return this.length + this.omitted;
+  }
+  /** The line at a call-wide index (counting dropped lines). Undefined when that line was dropped. */
+  lineAt(abs: number): T | undefined {
+    if (this.omitted === 0 || abs < this.headLen) return this[abs];
+    const i = abs - this.omitted;
+    return i < this.headLen ? undefined : this[i];
+  }
   private compact() {
     // Down to 90 percent of the cap, so this runs once per ~10 percent of growth, not at every push.
     const target = Math.floor(this.maxWords * 0.9);
@@ -52,6 +64,7 @@ export class CappedTranscript<T extends { text: string }> extends Array<T> {
     while (cut < this.length - 1 && this.total - drop > target) drop += words(this[cut++].text);
     if (cut <= head) return;
     this.splice(head, cut - head);
+    this.headLen = head;
     this.omitted += cut - head;
     this.total -= drop;
   }

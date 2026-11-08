@@ -300,8 +300,10 @@ function startV2Timer() {
 }
 /** New transcript lines (both sides) into the loop. The loop reads the shared transcript by index, so ingest.ts needs no hook. */
 function pullLines(l: MemoryLoop) {
-  for (; pulled < transcript.length; pulled++) {
-    const t = transcript[pulled];
+  // `pulled` is a call-wide index: the transcript drops middle lines on a long call, so read it with lineAt, not by array index.
+  for (; pulled < transcript.absLength; pulled++) {
+    const t = transcript.lineAt(pulled);
+    if (!t) continue;
     // The other side's voices are named by the speaker book. A voice on the "me" side (a mic source that tells two people apart) gets its own label
     // ("Voice 2"); the first voice has no label, so a call with one person on the user's side reads as before.
     const name = t.ch === "me" ? (t.who && t.who.spk > 1 ? `Voice ${t.who.spk}` : undefined) : t.who ? speakers.name(t.who.spk) : undefined;

@@ -43,6 +43,8 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
   private opens = 0;
   private closing = false;
   dropped = 0; // chunks dropped because the socket was not open
+  readonly rxLiveness = true; // Deepgram answers (empty results, metadata) while audio flows: a long silence from it means a dead socket
+  lastRxAt = 0;
   private keepAlive?: NodeJS.Timeout;
   keytermsDropped = false; // true when the open had to be retried without keyterms
   // Stall guard: on language=multi Deepgram sometimes never sends speech_final / a final after an utterance
@@ -121,9 +123,14 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
       // reconnectAttempts left at the SDK default (30)
     } as never)) as unknown as DgSocket;
     this.conn = conn;
-    conn.on<DgMessage>("message", (m) => this.onMessage(m));
+    this.lastRxAt = performance.now();
+    conn.on<DgMessage>("message", (m) => {
+      this.lastRxAt = performance.now(); // any message counts: results, metadata, speech events
+      this.onMessage(m);
+    });
     conn.on("error", (e: unknown) => this.emit("error", classifySttError("deepgram", e)));
     conn.on("open", () => {
+      this.lastRxAt = performance.now();
       this.connBytes = 0;
       this.opens++;
       if (this.opens > 1) this.emit("reconnected", { channel: this.opts.channel, opens: this.opens });

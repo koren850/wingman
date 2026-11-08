@@ -21,6 +21,10 @@ export type ChannelOpts = {
   deadAfterMs?: number; // a socket that stays disconnected this long is treated as dead (default 45 s)
   /** After a switch to a fallback for a transient reason, try the primary again after this long (default 60 s, 0 = never). */
   failbackAfterMs?: number;
+  /** A stream that opts in (`rxLiveness`) and sends audio but hears nothing back for this long is dead: reopen it (default 20 s, 0 = off). */
+  rxSilenceMs?: number;
+  /** How often that is checked (default 5 s). */
+  rxCheckMs?: number;
   now?: () => number;
 };
 
@@ -43,6 +47,10 @@ export class SttChannel extends EventEmitter {
   private deadFor?: SttStreamLike; // the stream the dead timer is armed for
   private opening = false; // the first open() is running: failure events of its stream belong to open(), not to switchNext()
   private failbackTimer?: NodeJS.Timeout;
+  private liveTimer?: NodeJS.Timeout;
+  private reviving = false;
+  private lastSendAt = 0;
+  private streamSince = 0;
   constructor(private o: ChannelOpts) {
     super();
   }
@@ -77,6 +85,10 @@ export class SttChannel extends EventEmitter {
   private now() {
     return (this.o.now ?? Date.now)();
   }
+  /** Time for the receive check. Monotonic, so a wall-clock jump (sleep, a clock change) is not mistaken for a silent socket. */
+  private mono() {
+    return (this.o.now ?? (() => performance.now()))();
+  }
 
   /** Open the first provider in the chain that works; a switchProvider failure moves on, others throw. */
   async open(): Promise<void> {
@@ -89,9 +101,12 @@ export class SttChannel extends EventEmitter {
   }
   private async openChain(): Promise<void> {
     let last: ProviderError | undefined;
+    this.idx = 0; // every open starts at the primary: a retry after "all failed" must try it again, not only the last provider
     for (; this.idx < this.o.chain.length; this.idx++) {
       try {
         await this.openCurrent(this.idx);
+        // Opened on a fallback because the primary failed for a reason that can pass: look at the primary again later.
+        if (this.idx > 0 && last && !(last.switchProvider && !last.retryable)) this.armFailback();
         return;
       } catch (e) {
         last = classifySttError(this.provider, e);
@@ -135,7 +150,42 @@ export class SttChannel extends EventEmitter {
     }
     this.idx = idx;
     this.stream = s;
+    this.streamSince = this.mono();
+    this.startLiveness();
     this.flushRing(s);
+  }
+
+  /** Receive liveness. After sleep, a Wi-Fi change or a NAT timeout the socket can look open for minutes while nothing arrives.
+   *  If audio keeps flowing out and the service has said nothing for `rxSilenceMs`, open a fresh socket (the speaker book is rebased on "reconnected"). */
+  private startLiveness() {
+    const every = this.o.rxCheckMs ?? 5000;
+    if (this.liveTimer || this.closed || !(this.o.rxSilenceMs ?? 20_000) || !every) return;
+    this.liveTimer = setInterval(() => this.checkRx(), every);
+    this.liveTimer.unref?.();
+  }
+  private checkRx() {
+    const s = this.stream,
+      limit = this.o.rxSilenceMs ?? 20_000;
+    if (this.closed || this.switching || this.opening || this.reviving || !s || !s.rxLiveness || !s.isOpen) return;
+    const t = this.mono();
+    if (t - this.lastSendAt > 3000) return; // no audio going out (paused): silence from the service is normal
+    if (t - Math.max(s.lastRxAt ?? 0, this.streamSince) < limit) return;
+    void this.revive(limit);
+  }
+  private async revive(limit: number) {
+    this.reviving = true;
+    const prov = this.provider,
+      err = new ProviderError("network", prov, `no answer from ${prov} for ${Math.round(limit / 1000)} s while audio was sent`);
+    try {
+      this.emit("stt_error", err);
+      this.emit("disconnected", { channel: this.o.channel, error: err });
+      await this.reopen();
+    } catch (e) {
+      this.streamSince = this.mono(); // do not fire again at once: the engine's own retry loop takes over now
+      if (!this.closed) this.emit("exhausted", e instanceof ProviderError ? e : classifySttError(prov, e));
+    } finally {
+      this.reviving = false;
+    }
   }
 
   /** Replay buffered audio, oldest first, right after a (re)open. Each connection re-anchors its audio clock at open,
@@ -342,11 +392,15 @@ export class SttChannel extends EventEmitter {
       return false;
     }
     if (this.ring.length) this.flushRing(this.stream); // reopened without a 'reconnected' event: keep order
-    return this.stream.send(pcm);
+    const ok = this.stream.send(pcm);
+    if (ok) this.lastSendAt = this.mono();
+    return ok;
   }
   async close() {
     this.closed = true;
     clearTimeout(this.failbackTimer);
+    clearInterval(this.liveTimer);
+    this.liveTimer = undefined;
     this.clearDead();
     await this.stream?.close();
   }

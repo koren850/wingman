@@ -53,6 +53,11 @@ export interface SttStreamLike extends EventEmitter {
   readonly isOpen: boolean;
   readonly audioSeconds: number; // for cost
   dropped: number;
+  /** Only streams whose service answers while audio flows (even with empty results) set `rxLiveness`. The channel then treats a long
+   *  stretch with audio sent and no message back as a dead socket (a half-open connection after sleep or a network change). */
+  readonly rxLiveness?: boolean;
+  /** Monotonic ms (`performance.now()`) of the last message from the service (any kind). */
+  readonly lastRxAt?: number;
 }
 
 /** An STT adapter: capabilities plus a factory for streams. */

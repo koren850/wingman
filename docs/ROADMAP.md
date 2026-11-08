@@ -51,6 +51,7 @@ Everything above ran on scripted replies, synthetic voices and hidden-window sna
 - A real call rated with `pnpm tag`: useful cards an hour, and how many cards you would have rather not seen.
 - Latency with real partials: whether early start is stable enough to turn on, and the real first-card time of the direct path.
 - Speaker numbers after a real reconnect (so far a fake stream), and the ring after a real slow first connect.
+- The receive check for a dead speech socket (ADR 67): whether Deepgram answers every few seconds in real silence, and a real sleep and wake. So far only fake streams. The idle auto-stop counts transcribed text, not audio level.
 - The review step ("What Wingman knows") on a real call: its edits are applied by memory id, and a renamed id would drop an edit silently.
 - The pre-start review is not shown for a call started from the tray menu or the command line (they have no window).
 - About 300 strings in the setup card, Settings and the Calls view are English only.

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/ux/hero.gif" alt="The Wingman answer window during a call (earlier layout, invented example): a client asks about a CDN, a migration and a price, and one big answer card appears" width="560">
+  <img src="docs/ux/answer-window-live.png" alt="The Wingman answer window during a call (invented example): a Check card warns that the user made a promise, with chips for waiting cards, a Context button and a Catch me up button" width="560">
 </p>
 
 Wingman is a live agent for client, support and team meetings. Before a meeting you can give it context: an invite, an email, notes. That is optional. During the meeting it builds context by itself, like a Claude session that listens: who is on the call, what was decided, which numbers were said, what you promised. From what happens, it shows short cards on a second screen. A card can answer a question, warn that a number does not match your notes, or remind you of a topic you wanted to cover. After the call it writes a summary and a follow-up email draft.

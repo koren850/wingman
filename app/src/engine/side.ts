@@ -116,7 +116,10 @@ let saidLines = 0;
 const coveredItems = new Set<string>();
 /** Must-cover items of the brief that no transcript line has touched yet. */
 export function uncovered(): string[] {
-  for (; saidLines < transcript.length; saidLines++) said.add(transcript[saidLines].text);
+  for (; saidLines < transcript.absLength; saidLines++) {
+    const t = transcript.lineAt(saidLines);
+    if (t) said.add(t.text);
+  }
   return (brief?.mustCover ?? []).filter((i) => {
     if (coveredItems.has(i)) return false;
     if (!said.covers(i)) return true;
