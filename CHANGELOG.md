@@ -14,6 +14,7 @@ Highlights: a live agent for meetings that builds context as the call goes and s
 
 ### Added
 
+- **No ffmpeg for users.** The app records the microphone itself in a hidden window and hands 16 kHz audio to the engine over a private local socket. On Windows the other side's audio is captured with Electron's loopback audio. macOS system audio is still the bundled AudioTee. ffmpeg stays only as a developer fallback (`WINGMAN_MIC_ENGINE=ffmpeg`, terminal runs, file replay). A blocked microphone or a microphone used by another program now shows its own bar, in English and Hebrew.
 - **Live call loop.** Two audio channels (microphone for you, system audio for the other side through a Core Audio tap) go to two Deepgram Nova-3 streams, so the speaker is always known. A reconnect buffer replays the last two seconds after a dropped connection, and speaker numbers restart with each connection so one person never gets another person's label.
 - **Live reading.** The default engine. The AI reads the call as it grows and decides when a card helps: answers, replies, checks, terms, prompts and notes. A strong question asks the model at once; other lines wait in an observer window. Classic (the older question gate) is kept as a fallback in the advanced settings.
 - **Call memory.** A small model keeps a short memory of the call (topic, people, numbers, promises, open questions) and every model call reads it. A new call can start with "Last time" facts about people you met before. The memory is checked on a long call, after a name the speech-to-text garbles, and at Stop.

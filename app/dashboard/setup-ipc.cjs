@@ -194,6 +194,21 @@ function register(o) {
       return { ok: false, error: "Could not open the browser." };
     }
   });
+  /** The microphones for the list: the app's own capture window when there is one (no ffmpeg), else the engine tool (ffmpeg, macOS only). */
+  const listMics = async () => {
+    if (o.listMics) {
+      try {
+        const r = await o.listMics();
+        return { ok: true, devices: r.devices, defaultInput: r.defaultName };
+      } catch (e) {
+        return {
+          ok: false,
+          message: e && e.code === "permission" ? "Microphone access is off. Allow Wingman in the system privacy settings." : "Could not read the microphones.",
+        };
+      }
+    }
+    return o.child(["src/mics-cli.ts"]);
+  };
   o.handle("setup:mics", async () =>
     o.preview
       ? {
@@ -205,7 +220,7 @@ function register(o) {
           defaultInput: "MacBook Pro Microphone",
           preview: true,
         }
-      : done(await o.child(["src/mics-cli.ts"])),
+      : done(await listMics()),
   );
   o.handle("setup:setMic", async (v) => {
     const dev = cleanMic(v);
@@ -214,7 +229,7 @@ function register(o) {
     let saved = dev;
     if (dev && /^:\d{1,2}$/.test(dev)) {
       try {
-        const list = await o.child(["src/mics-cli.ts"]);
+        const list = await listMics();
         saved = withMicName(dev, list && list.ok ? list.devices : []);
       } catch {
         saved = dev; // the list is only a help: the index alone still works as before

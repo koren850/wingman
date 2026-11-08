@@ -36,16 +36,16 @@ function gateMic(b: Buffer): Buffer {
 }
 
 /** Supervisor events -> log + health bars. The bar appears at the first failure and goes when frames flow again. */
-const wireSource = (src: SupervisedSource, name: "mic" | "sys", id: string, downText: string, onDown: () => void, onUp: () => void) => {
+const wireSource = (src: SupervisedSource, name: "mic" | "sys", id: string, downText: (code?: string) => string, onDown: () => void, onUp: () => void) => {
   let shown = false;
   src.on(
     "down",
-    safe(`${name} down`, (d: { reason: string; n: number; delayMs: number }) => {
+    safe(`${name} down`, (d: { reason: string; n: number; delayMs: number; code?: string }) => {
       log.write("events", { type: "audio.down", src: name, reason: d.reason, n: d.n, retryInMs: d.delayMs });
       console.error(`${name} audio down (${d.reason}); retry ${d.n} in ${Math.round(d.delayMs / 1000)} s`);
       if (!shown) {
         shown = true;
-        health(id, "red", downText, d.reason);
+        health(id, "red", downText(d.code), d.reason);
         onDown();
       }
     }),
@@ -139,6 +139,14 @@ export async function startLiveSources() {
     name: "mic",
     stallMs: 10_000,
     make: async (failures) => {
+      if (backend.resolvesDevices) {
+        // The app backend finds the saved microphone by its name in the capture window (no ffmpeg list); it says when the name is gone.
+        return backend.createMic(micDevice, (name) => {
+          if (!name) return healthClear("mic-device");
+          log.write("events", { type: "audio.mic.gone", name });
+          health("mic-device", "amber", ht(UI_LANG, "mic.gone", { name }));
+        });
+      }
       const devs = failures ? await readAudioDevices() : []; // asked only after a failure; system_profiler takes ~0.3 s
       // A saved name is checked against what is plugged in at every start: indexes move when a headset or a USB mic connects.
       const want = parseMicSetting(micDevice).name ? await resolveMic(micDevice) : { device: avDevice(micDevice) };
@@ -180,7 +188,14 @@ export async function startLiveSources() {
     }),
   );
   // Supervisor events -> log + health bars. The bar appears at the first failure and goes when frames flow again.
-  wireSource(mic, "mic", "mic", ht(UI_LANG, "mic.down"), () => {}, micBack);
+  wireSource(
+    mic,
+    "mic",
+    "mic",
+    (code) => ht(UI_LANG, code === "permission" ? "mic.denied" : code === "busy" ? "mic.busy" : "mic.down"),
+    () => {},
+    micBack,
+  );
   if (sys) {
     sys.on(
       "pcm",
@@ -193,7 +208,7 @@ export async function startLiveSources() {
       sys,
       "sys",
       "sys",
-      ht(UI_LANG, "sys.down"),
+      (code) => ht(UI_LANG, code === "permission" ? "sys.denied" : "sys.down"),
       () => sup.set({ themDead: true }),
       () => sup.set({ themDead: false }),
     );

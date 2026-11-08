@@ -29,6 +29,8 @@ require("../shared/permissions.cjs").install(app); // no browser permission is e
 const windowHost = require("../dashboard/window.cjs");
 const { createControlServer } = require("./control-socket.cjs");
 const { createPlanStore } = require("./plans.cjs");
+const { createCaptureHost } = require("./capture-host.cjs");
+const { createCaptureBridge } = require("./capture-bridge.cjs");
 const { tt } = require("./menu-text.cjs");
 const { pt } = require("./prompt-text.js");
 
@@ -50,6 +52,8 @@ let plans,
   host,
   ctl,
   controlServer,
+  captureHost, // records the microphone (and Windows system audio) in a hidden window: no ffmpeg needed
+  captureBridge, // serves it to the engine process
   allowQuit = false; // true once the user confirmed quitting (or no call runs): before-quit lets the quit through
 let uiLanguage = () => "he"; // replaced in whenReady: the interface language (ui.language) for the menu
 
@@ -325,7 +329,22 @@ app.whenReady().then(() => {
     }
     return uiLang;
   };
+  // Audio capture inside the app (never in snapshot mode). The engine finds the bridge through WINGMAN_CAPTURE_ENDPOINT / _TOKEN (controller appEnv).
+  if (!SNAPSHOT) {
+    captureHost = createCaptureHost({
+      BrowserWindow,
+      session: require("electron").session,
+      ipcMain,
+      desktopCapturer: require("electron").desktopCapturer,
+      systemPreferences,
+      grantSession: require("../shared/permissions.cjs").grantSession,
+      dir: path.join(__dirname, "capture"),
+    });
+    captureBridge = createCaptureBridge({ host: captureHost, log: logLine });
+    captureBridge.listen().catch((e) => logLine("ERR capture bridge " + e.message)); // without it the engine falls back to ffmpeg
+  }
   ctl = createController({
+    captureEnv: () => (captureBridge ? captureBridge.env() : {}),
     uiLanguage,
     // Snapshot mode can never start anything: the spawn function itself refuses.
     spawn: SNAPSHOT
@@ -340,7 +359,20 @@ app.whenReady().then(() => {
     notify: (t, b) => notify(t, b, /summary ready/i.test(t) ? { view: "call", id: ctl.getState().callId, tab: "followup" } : undefined),
     onChange,
   });
-  host = windowHost.create({ app, BrowserWindow, ipcMain, dialog, screen, clipboard, nativeTheme, shell, systemPreferences, controller: ctl, plans });
+  host = windowHost.create({
+    listMics: captureHost ? () => captureHost.devices() : undefined,
+    app,
+    BrowserWindow,
+    ipcMain,
+    dialog,
+    screen,
+    clipboard,
+    nativeTheme,
+    shell,
+    systemPreferences,
+    controller: ctl,
+    plans,
+  });
   ctl.refreshPlans();
   uiLanguage();
   // Local control channel for the `wingman` CLI: owner-only Unix socket, fixed command list (tray/control-socket.cjs). Never in snapshot mode.
@@ -385,6 +417,8 @@ app.on("window-all-closed", (e) => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   controlServer && controlServer.stop();
+  captureBridge && void captureBridge.close();
+  captureHost && captureHost.destroy();
 });
 app.on("before-quit", (e) => {
   // Cmd+Q and the Dock menu quit without the menu item: while a call runs they get the same confirmation (and the call is stopped and saved first).

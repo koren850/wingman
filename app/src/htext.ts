@@ -78,6 +78,18 @@ const M = {
     "המיקרופון נפל. מנסה להתחבר מחדש לבד (אם האוזניות נותקו, עובר למיקרופון המק). אם זה נמשך: חבר מיקרופון או בחר אחר ב-Settings",
     "The microphone dropped. Reconnecting by itself (if the headset was unplugged, switching to the Mac microphone). If it continues: plug in a microphone or pick another in Settings",
   ),
+  "mic.denied": m(
+    "אין הרשאה למיקרופון. אפשר ל-Wingman להשתמש במיקרופון בהגדרות הפרטיות של המערכת (Microphone), ואז התחל שיחה מחדש",
+    "Wingman is not allowed to use the microphone. Allow it in the system privacy settings (Microphone), then start the call again",
+  ),
+  "mic.busy": m(
+    "המיקרופון תפוס על ידי תוכנה אחרת. סגור אותה או בחר מיקרופון אחר ב-Settings. מנסה שוב לבד",
+    "Another program is using the microphone. Close it or pick another microphone in Settings. Trying again by itself",
+  ),
+  "sys.denied": m(
+    "אין גישה לשמע של המערכת. בדוק שהשמע של המחשב פועל, ואז הרץ בדיקת מוכנות",
+    "Wingman cannot capture the computer's sound. Check that sound output works, then run the readiness check",
+  ),
   "sys.down": m(
     "לא שומעים את הצד השני. מנסה להתחבר מחדש לבד. אם זה נמשך: בדוק את הרשאת הקלטת המסך/שמע המערכת והרץ בדיקת מוכנות",
     "Cannot hear the other side. Reconnecting by itself. If it continues: check the screen and system audio recording permission and run the readiness check",

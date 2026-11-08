@@ -21,7 +21,7 @@ Before a meeting you can give it context (an invite, an email, notes). That is o
 
 You need:
 
-- macOS 14.2 or newer, Node 24 or newer (the installer does not install it), `ffmpeg` for the microphone (the installer offers `brew install ffmpeg`), pnpm 11 (comes with corepack; run pnpm from `app/` so it uses the pinned version).
+- macOS 14.2 or newer, Node 24 or newer (the installer does not install it), `ffmpeg` only if you run from a terminal (the app records the microphone itself and does not need it), pnpm 11 (comes with corepack; run pnpm from `app/` so it uses the pinned version).
 - A second screen. With one screen the answer window stays closed, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it).
 - For live calls, a Deepgram key and an Anthropic key. The practice call needs no keys.
 
@@ -33,7 +33,7 @@ cd wingman
 ./install.sh                               # checks the Mac, installs, builds Wingman.app
 ```
 
-The installer never uses sudo. It asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg`. It is safe to run again. `./install.sh --dry-run` shows every step; `--uninstall` removes it. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`). A `MISSING` line from `--check` tells you what to install; see [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old) if Node is too old.
+The installer never uses sudo. It asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg` (only needed for terminal runs). It is safe to run again. `./install.sh --dry-run` shows every step; `--uninstall` removes it. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`). A `MISSING` line from `--check` tells you what to install; see [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old) if Node is too old.
 
 **First launch.** The app is ad-hoc signed, not notarised, so macOS may refuse to open it the first time. Right-click `Wingman.app` and choose **Open**, then confirm. Or open it once, then go to **System Settings, Privacy & Security** and click **Open Anyway**.
 
@@ -47,7 +47,7 @@ xcode-select --install                                  # git; finish the dialog
 eval "$(/opt/homebrew/bin/brew shellenv)"               # Apple silicon: brew on PATH for this shell
 brew install node@24 && brew link --overwrite node@24   # Node 24 (or: nvm install 24)
 corepack enable                                         # gives you pnpm; ./install.sh also does this
-brew install ffmpeg                                     # microphone capture and file replay
+brew install ffmpeg                                     # developer file replay and terminal runs (the app does not need it)
 brew install poppler                                    # optional: read PDF files as context
 ```
 

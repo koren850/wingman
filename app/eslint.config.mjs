@@ -123,8 +123,8 @@ export default tseslint.config(
   // Browser pages load several classic scripts that share one global scope (h, $, api, state ... are defined in one file and used in
   // the next), so cross-file names and top-level functions cannot be checked per file.
   {
-    files: ["dashboard/**/*.js", "overlay/**/*.js"],
-    languageOptions: { sourceType: "script", globals: { ...globals.browser, module: "readonly", require: "readonly" } },
+    files: ["dashboard/**/*.js", "overlay/**/*.js", "tray/capture/*.js"],
+    languageOptions: { sourceType: "script", globals: { ...globals.browser, ...globals.audioWorklet, module: "readonly", require: "readonly" } },
     rules: {
       "no-undef": "off",
       "@typescript-eslint/no-unused-vars": ["error", { vars: "local", args: "none", caughtErrors: "none" }],

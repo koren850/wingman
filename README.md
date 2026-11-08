@@ -37,7 +37,7 @@ A **moment** is a point in the call where a short, private nudge would help: a q
 
 ## Quick start
 
-Needs macOS 14.2 or newer, Node 24, a second screen for the answer window, and (for live calls) a Deepgram key and an Anthropic key.
+Needs macOS 14.2 or newer (Node 24 only to build from source; the app itself needs no Node, no ffmpeg and no Homebrew), a second screen for the answer window, and (for live calls) a Deepgram key and an Anthropic key.
 
 ```bash
 git clone https://github.com/koren850/wingman.git
@@ -85,7 +85,7 @@ Audio goes to Deepgram to be transcribed. Call text goes to Anthropic for cards 
 
 ## Platforms
 
-macOS 14.2 or newer is supported. The engine and the offline demo also run on Linux (CI); Windows passes the unit tests but has no audio capture yet. Help wanted.
+macOS 14.2 or newer is supported. The engine and the offline demo also run on Linux (CI); Windows records the microphone and the system audio inside the app (Electron loopback); this path is tested with fakes only and has not run on a real Windows machine yet. Help wanted.
 
 ## Languages
 

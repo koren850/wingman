@@ -862,7 +862,7 @@ function create(ctx) {
   });
 
   // ---- guided setup and "About you": profile, permissions, microphone, screens, pack. All logic in setup-ipc.cjs. ----
-  require("./setup-ipc.cjs").register({ handle, child, root: ROOT, systemPreferences, shell, screen, preview: !!(fake || SNAP) });
+  require("./setup-ipc.cjs").register({ handle, child, listMics: ctx.listMics, root: ROOT, systemPreferences, shell, screen, preview: !!(fake || SNAP) });
 
   return {
     open,

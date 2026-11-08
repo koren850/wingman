@@ -4,7 +4,7 @@
 #   ./install.sh              check the machine, install dependencies, build Wingman.app, offer /Applications and the `wingman` command
 #   ./install.sh --check      only report what is present and what is missing (changes nothing)
 #   ./install.sh --dry-run    show every step that would run, change nothing
-#   ./install.sh --yes        accept the default answer to every offer (copy to /Applications, `wingman` link, brew install ffmpeg);
+#   ./install.sh --yes        accept the default answer to every offer (copy to /Applications, `wingman` link);
 #                         without a terminal and without --yes every offer is declined
 #   ./install.sh --offline    pass --offline to pnpm (uses only the local package cache)
 #   ./install.sh --update     git pull (fast-forward only), pnpm install --frozen-lockfile, rebuild the app   (also: wingman update)
@@ -188,18 +188,8 @@ else
   else bad "corepack not found. Install pnpm yourself: npm install -g pnpm@$PNPM_WANT"; FAILED=1; fi
 fi
 
-# ffmpeg (required: microphone), pdftotext (optional)
-# The app started from Finder only sees /opt/homebrew/bin, /usr/local/bin, /usr/bin and /bin (scripts/make-app.sh sets that PATH), so an ffmpeg
-# that only your shell finds (MacPorts, mise, nix...) does not count.
-APP_FFMPEG=""; for d in /opt/homebrew/bin /usr/local/bin /usr/bin /bin; do [ -x "$d/ffmpeg" ] && { APP_FFMPEG="$d/ffmpeg"; break; }; done
-if [ -n "$APP_FFMPEG" ]; then ok "ffmpeg ($APP_FFMPEG)"; else
-  if command -v ffmpeg >/dev/null 2>&1; then warn "ffmpeg is at $(command -v ffmpeg), but Wingman.app does not look there (it only sees /opt/homebrew/bin and /usr/local/bin). Installing it with Homebrew gives the app one it can find."; fi
-  bad "ffmpeg (needed for the microphone)"
-  if command -v brew >/dev/null 2>&1; then
-    if ask "Install it now with: brew install ffmpeg ?" y; then run brew install ffmpeg || { warn "brew install ffmpeg failed; install it yourself later"; NO_FFMPEG=1; }
-    else say "  later:  brew install ffmpeg"; NO_FFMPEG=1; fi
-  else say "  install Homebrew (https://brew.sh) and run: brew install ffmpeg"; NO_FFMPEG=1; fi
-fi
+# ffmpeg is optional: the app records the microphone itself. Only terminal runs and file replay use it. pdftotext is optional too.
+if command -v ffmpeg >/dev/null 2>&1; then ok "ffmpeg (optional: only for terminal runs and file replay)"; else say "  ffmpeg not found: fine. The app records the microphone itself. Only terminal runs need it:  brew install ffmpeg"; fi
 if command -v pdftotext >/dev/null 2>&1 || [ -x /opt/homebrew/bin/pdftotext ] || [ -x /usr/local/bin/pdftotext ]; then ok "pdftotext (PDF attachments to meetings work)"; else warn "pdftotext not found: optional, only needed to attach PDFs to a meeting.  brew install poppler"; fi
 command -v git >/dev/null 2>&1 && ok "git" || warn "git not found: needed only for 'wingman update'"
 
@@ -250,7 +240,6 @@ fi
 case ":$PATH:" in *":$BIN_DIR:"*) ;; *) [ -L "$LINK" ] && warn "$BIN_DIR is not on your PATH. Add this line to ~/.zshrc, then open a new Terminal:   export PATH=\"$BIN_DIR:\$PATH\"" ;; esac
 
 step "Done"
-[ "$NO_FFMPEG" = 1 ] && warn "ffmpeg is still missing: the microphone will not work until you run  brew install ffmpeg"
 if [ "$INSTALLED_APP" = 1 ]; then say "Next: open Wingman from Spotlight or Launchpad. The first window walks you through your API keys,"; else say "Next: run  open \"$APP_OUT\"  to start Wingman. The first window walks you through your API keys,"; fi
 say "your name, the microphone and the permissions. You need a Deepgram key and an Anthropic key (both paid, about \$1.50 an hour of call in total)."
 say "Without the app: app/scripts/wingman.sh --open-window   (or  pnpm dashboard  inside app)."

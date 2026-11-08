@@ -40,7 +40,8 @@ function createController(o) {
       /* calls/ may not exist yet */
     }
   };
-  const appEnv = () => (process.versions.electron ? { WINGMAN_APP: "1" } : {}); // doctor/engine word permission hints for the installed app, not a terminal
+  // doctor/engine word permission hints for the installed app, not a terminal; captureEnv() = where the app's audio capture listens (tray/capture-bridge.cjs)
+  const appEnv = () => (process.versions.electron ? { WINGMAN_APP: "1", ...(o.captureEnv ? o.captureEnv() : {}) } : {});
   const notify = o.notify || (() => {});
   const clock = o.now || Date.now;
   let stopSentAt = 0; // when the "stop" command last went to the engine (0 = never)

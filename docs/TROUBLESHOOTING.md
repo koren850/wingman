@@ -45,7 +45,8 @@ Then open Wingman and allow the question.
 Signs: a red bar that says the microphone is not picking up, ten seconds after listening starts (`audio.watchdog.micSilentMs`), or the wrong mic is picked.
 
 1. Open **Settings, Setup guide, Choose your microphone** and choose the right one.
-2. List the devices: `ffmpeg -f avfoundation -list_devices true -i ""`. Then set `audio.mic.device` (for example `":1"`), or run with `WINGMAN_MIC=":1"`.
+2. If the right microphone is not in the list, plug it in and open the list again. A microphone that another program holds (a video call app in exclusive mode) shows a bar that says so. Developer runs from a terminal still use ffmpeg: list the devices with `ffmpeg -f avfoundation -list_devices true -i ""` and set `audio.mic.device` (for example `":1"`).
+   - If the bar says Wingman is not allowed to use the microphone: on macOS open System Settings, Privacy & Security, Microphone and switch Wingman on; on Windows open Settings, Privacy & security, Microphone and switch on "Let desktop apps access your microphone". Then start the call again.
 3. Avoid AirPods and other Bluetooth headsets. They drop to phone quality when the mic is in use. Wingman warns you. Use the built-in mic or wired headphones.
 4. The setup window saves the microphone with its name (`audio.mic.device` is then like `":2|External USB Microphone"`). When a headset connects, the numbers can move; Wingman looks the name up again at every start and uses the right number. If the name is not found, it uses the default microphone and shows an amber bar. Choose the microphone again in Settings to fix it.
 5. If the device disappears during a call (headphones switched off), Wingman restarts that audio source by itself and falls back to the default mic after a couple of tries. A red or amber bar shows while it recovers.

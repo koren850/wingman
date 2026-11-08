@@ -1028,3 +1028,17 @@ Date: 2026-11-09
 **Alternatives.** Use the socket's ping and pong (the providers' servers do not all answer them). Reopen on every wake without looking (drops in-flight finals, and a healthy socket would be replaced). A queue that ingest pushes to (a second copy of every line).
 
 **Consequences.** Tested with fake streams and the virtual clock only. Whether Deepgram answers every few seconds during real silence is not measured; if it does not, the check would reopen healthy sockets during a long silence while audio is sent, and the limit must be raised or the check made smarter. The idle auto-stop still counts only transcribed text, not audio level.
+
+## ADR 68: The app records audio, so users need no ffmpeg
+
+Date: 2026-11-08
+
+**Context.** The microphone was read by an `ffmpeg` child process (avfoundation), so every user had to install Homebrew and ffmpeg, and Windows had no capture at all. The goal for v0.0.1 is: download the app, paste two keys, and it works on macOS and Windows.
+
+**Decision.** The Wingman app records audio in a hidden Electron window. The microphone uses `getUserMedia` with echo cancellation, noise suppression and gain control off (the engine has its own echo gate). On Windows the system audio uses `getDisplayMedia` with `audio: 'loopback'`, answered by `session.setDisplayMediaRequestHandler`; the video track that Electron requires is stopped at once. An AudioWorklet cuts the stream into 100 ms chunks of 16 kHz mono signed 16-bit PCM. The main process sends them to the engine process over a private local socket (a folder with mode 700 on macOS, a per-user named pipe on Windows), with a random token in the environment of the engine and a small fixed list of commands (`tray/capture-bridge.cjs`, `shared/capture-wire.cjs`). The engine sees each channel as an `AudioSource` (`BridgeSource` in `src/capture-client.ts`), so the supervisor, the watchdogs and the echo gate did not change. The saved microphone is found by its name; if it is gone the default one is used and an amber bar says so. The macOS microphone permission is asked from the main process; Windows reports a blocked privacy switch the same way. macOS system audio stays AudioTee, which is bundled.
+
+**Why.** Chromium already reads every microphone on both systems and Electron already ships it. This removes Homebrew, ffmpeg and a native module from the user's side, and one code path serves two systems.
+
+**Alternatives.** A native module for WASAPI and Core Audio (a build step per platform, harder to sign). Bundling an ffmpeg binary (about 70 MB per platform, and device names still differ per system). Capturing in the engine process with a Node library (the engine is not a Chromium process, so there is none that works without native code).
+
+**Consequences.** The hidden window needs "media" permission; it is granted to its own session only (`grantSession` in `shared/permissions.cjs`), every other window still says no. A terminal run has no app, so it uses the ffmpeg backend as before; `WINGMAN_MIC_ENGINE=ffmpeg` forces that under the app too. Windows loopback captures everything that plays on the default output, including music, and Wingman's own sound (it plays none). The capture page was checked with Chromium's fake audio device (`scripts/capture-selftest.cjs`); real microphones, real loopback and the Windows build were not tried.

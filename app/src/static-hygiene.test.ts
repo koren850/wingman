@@ -189,13 +189,13 @@ test("installer scripts: syntax, flags, no sudo, and the launcher shows both dia
 });
 
 // Why static: Shell scripts, the setup page and the IPC table are wired by text (no Electron or macOS in a unit test); the check keeps the wiring and the no-sudo rule from drifting.
-test("install.sh rebuilds a stale app, checks ffmpeg where the app looks, and installs to /Applications by rename", BASH, () => {
+test("install.sh rebuilds a stale app, treats ffmpeg as optional, and installs to /Applications by rename", BASH, () => {
   const inst = read("../install.sh"),
     mk = read("scripts/make-app.sh");
   assert.match(inst, /make-app\.sh --stale/);
   assert.doesNotMatch(inst, /\[ ! -x "\$APP_OUT\/Contents\/MacOS\/Wingman" \] \|\| \[ "\$\{UPDATING/);
-  assert.doesNotMatch(inst, /if command -v ffmpeg >\/dev\/null 2>&1 \|\|/, "an ffmpeg only the shell sees is not enough");
-  assert.match(inst, /for d in \/opt\/homebrew\/bin \/usr\/local\/bin \/usr\/bin \/bin/);
+  assert.doesNotMatch(inst, /brew install ffmpeg \?/, "the installer no longer offers to install ffmpeg: the app records the microphone itself");
+  assert.doesNotMatch(inst, /bad "ffmpeg/, "a missing ffmpeg is not a failure");
   assert.match(inst, /mv "\$1\.new" "\$1"/);
   assert.match(mk, /mv "\$OUT" "\$FINAL"/);
   assert.doesNotMatch(mk, /^rm -rf "\$OUT"; mkdir/m);

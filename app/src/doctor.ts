@@ -7,7 +7,8 @@ import { execFile, execFileSync, spawn } from "node:child_process";
 import { readFileSync, statSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { loadKeysWithSources, KEYS_FILE, KEY_VARS, CALLS, type KeyName } from "./env.ts";
-import { SystemSource, MicSource, peakOf } from "./audio.ts";
+import { peakOf } from "./audio.ts";
+import { backendFor, type AudioSource } from "./audio-platform.ts";
 import { loadBank } from "./bank.ts";
 import { readPack, packPath, packMixedIn, packDirs, EXAMPLE_PACK } from "./pack.ts";
 import { checkProfile, profileFile } from "./profile.ts";
@@ -162,7 +163,10 @@ if (sw) {
   const [a, b] = sw.split(".").map(Number);
   a > 14 || (a === 14 && b >= 2) ? ok(`macOS ${sw}`) : bad(`macOS ${sw}: system audio tap needs 14.2+`);
 }
-run("ffmpeg", ["-version"]) ? ok("ffmpeg present") : bad("ffmpeg not found", "install ffmpeg (brew install ffmpeg), then run the readiness check again");
+// Under the app the microphone is recorded by the app itself: no ffmpeg. A terminal run still uses ffmpeg for the microphone.
+const appCapture = !!process.env.WINGMAN_CAPTURE_ENDPOINT && process.env.WINGMAN_MIC_ENGINE !== "ffmpeg";
+if (appCapture) ok("audio is recorded by the Wingman app (no ffmpeg needed)");
+else run("ffmpeg", ["-version"]) ? ok("ffmpeg present") : bad("ffmpeg not found", "install ffmpeg (brew install ffmpeg), then run the readiness check again");
 const batt = run("pmset", ["-g", "batt"]);
 if (batt) {
   const pct = Number(batt.match(/(\d+)%/)?.[1]);
@@ -305,18 +309,29 @@ if (offline) {
 
 section("Microphone (speak normally for 5 seconds)");
 {
-  const mic = new MicSource(S.audio.mic.device);
+  const mic: AudioSource = backendFor().createMic(S.audio.mic.device);
   let peak = 0,
     chunks = 0;
-  console.log(`  device: ${mic.device} (audio.mic.device; avoid AirPods for the first calls)`);
-  if (/airpods|bluetooth/i.test(mic.device)) warn("Bluetooth mic drops to low-quality audio", "use the Mac microphone or a wired headset");
+  const micName = S.audio.mic.device.split("|")[1] || S.audio.mic.device;
+  console.log(`  device: ${micName} (audio.mic.device; avoid AirPods for the first calls)`);
+  if (/airpods|bluetooth/i.test(micName)) warn("Bluetooth mic drops to low-quality audio", "use the Mac microphone or a wired headset");
   mic.on("pcm", (b: Buffer) => {
     chunks++;
     peak = Math.max(peak, peakOf(b));
   });
   mic.on("error", (e: Error) => bad(`mic: ${e.message}`));
-  await mic.start();
-  await sleep(5000);
+  try {
+    await mic.start();
+    await sleep(5000);
+  } catch (e) {
+    const code = (e as { code?: string }).code;
+    bad(
+      `mic: ${(e as Error).message}`,
+      code === "permission"
+        ? "allow Wingman to use the microphone in the system privacy settings, then run the readiness check again"
+        : "check the microphone and the choice in Settings",
+    );
+  }
   await mic.stop();
   const v = micVerdict(chunks, peak);
   if (v === "fail")
@@ -339,7 +354,7 @@ if (!IS_APP && process.env.TERM_PROGRAM && process.env.TERM_PROGRAM !== "Apple_T
 section(`System audio source: ${S.audio.system.source}`);
 if (S.audio.system.source === "off") warn("audio.system.source is off: the client cannot be heard (transcript-only)");
 else {
-  const sys: SystemSource | MicSource = S.audio.system.source === "audiotee" ? new SystemSource() : new MicSource(S.audio.system.device);
+  const sys: AudioSource = backendFor().createSystem(S.audio.system.source === "device" ? "device" : "audiotee", S.audio.system.device);
   let err = "",
     peak = 0;
   sys.on("error", (e: Error) => {
@@ -351,13 +366,19 @@ else {
   try {
     await sys.start();
     // Play a system sound and a Hebrew phrase so the system-audio tap has something to hear; the sleeps give the tap time to see it.
-    spawn("afplay", ["/System/Library/Sounds/Glass.aiff"]);
-    await sleep(400);
-    spawn("say", ["-v", "Carmit", "בדיקת שמע"]);
-    await sleep(2600);
+    if (process.platform === "darwin") {
+      spawn("afplay", ["/System/Library/Sounds/Glass.aiff"]);
+      await sleep(400);
+      spawn("say", ["-v", "Carmit", "בדיקת שמע"]);
+      await sleep(2600);
+    } else {
+      // No built-in sound player to call on Windows: the check listens for a few seconds, so play any sound (a video, music) while it runs.
+      console.log("  play any sound on this computer now (3 seconds)");
+      await sleep(3000);
+    }
     await sys.stop();
     peak > 0.01
-      ? ok(`client audio hears the Mac (peak ${peak.toFixed(2)})`)
+      ? ok(`client audio hears this computer (peak ${peak.toFixed(2)})`)
       : bad(
           "client audio is silent",
           S.audio.system.source === "audiotee"

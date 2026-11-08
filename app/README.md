@@ -14,7 +14,7 @@ Launched from the app or the terminal. Audio goes to Deepgram (and text to Anthr
 3. Permissions: allow **Microphone** and **System Audio Recording** for Wingman. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it.
    When you run from a terminal instead of the app, the permission belongs to the terminal. Use Terminal.app. In iTerm/Warp/IDE terminals add the app by hand under Privacy & Security > Screen & System Audio Recording > System Audio Recording Only.
 4. `pnpm run doctor` (the app calls it "Readiness check") checks keys, mic, system audio, Deepgram and Haiku (incl. prompt cache).
-5. Set `audio.mic.device` (or `WINGMAN_MIC`) if the default mic is wrong (the setup has a microphone picker; or list devices with `ffmpeg -f avfoundation -list_devices true -i ""`, then e.g. `WINGMAN_MIC=":1"`). Avoid AirPods for the first call.
+5. Set `audio.mic.device` (or `WINGMAN_MIC`) if the default mic is wrong (the setup has a microphone picker, which lists what the app sees; from a terminal, list devices with `ffmpeg -f avfoundation -list_devices true -i ""`, then e.g. `WINGMAN_MIC=":1"`). Avoid AirPods for the first call.
 
 Working on the code without the app? `cd app && WINGMAN_SKIP_APP=1 pnpm install` skips the Electron download.
 
@@ -217,7 +217,7 @@ llm:
 ```
 Model strings are `provider:model`. Only Anthropic is installed. For others run `pnpm add @ai-sdk/openai` (or `@ai-sdk/google`, `@ai-sdk/mistral`, `@ai-sdk/groq`) and add the key to `keys.env`; if the package is missing Wingman says exactly which command to run. Prompt caching, effort and thinking options are sent only to Anthropic models. A fallback is never tried after the answer has started, and never after a timeout. Measure the Hebrew quality of any fallback model before relying on it. Check the whole setup with `pnpm run doctor`.
 
-**Audio**: `audio.system.source: audiotee | device | off`. `device` captures an avfoundation input through ffmpeg, for example BlackHole (`audio.system.device: "BlackHole 2ch"`). `audio.mic.device: ":1"` picks the mic (list with `ffmpeg -f avfoundation -list_devices true -i ""`).
+**Audio**: `audio.system.source: audiotee | device | off`. `device` captures an avfoundation input through ffmpeg, for example BlackHole (`audio.system.device: "BlackHole 2ch"`). `audio.mic.device` picks the mic: the setup picker saves it as `":1|Name"` and the app finds it by name. The app records the microphone itself (no ffmpeg); on Windows it also records the system audio (Electron loopback). `ffmpeg` is a fallback for terminal runs (`WINGMAN_MIC_ENGINE=ffmpeg` forces it) and file replay; list its devices with `ffmpeg -f avfoundation -list_devices true -i ""`.
 
 **Cautious first call**: `pnpm call --profile first-client-call` (Prepared + Buy time cards only, 2 new cards a minute).
 

@@ -180,7 +180,7 @@ export type SupervisedOpts = {
 };
 
 /**
- * Keeps one audio source alive for the whole call. Events: "pcm", "log", "down" ({reason,n}), "up" ({after}: frames flow again after a "down"),
+ * Keeps one audio source alive for the whole call. Events: "pcm", "log", "down" ({reason,n,delayMs,code}; code = the failing source's error code, e.g. "permission"), "up" ({after}: frames flow again after a "down"),
  * "retry" ({n,delayMs,attempt}), "restart" ({reason}). start() never rejects: a source that cannot start counts as down and is retried
  * (backoff 1, 2, 4 s, then every 10 s) until stop(). `restart(reason)` forces a fresh source (after sleep/wake).
  */
@@ -262,11 +262,11 @@ export class SupervisedSource extends EventEmitter implements Source {
         if (gen === this.gen) this.emit("log", m);
       });
       src.on("error", (e: Error) => {
-        if (gen === this.gen) this.fail(e?.message ?? String(e));
+        if (gen === this.gen) this.fail(e?.message ?? String(e), false, false, (e as { code?: string })?.code);
       });
       await src.start();
     } catch (e) {
-      if (gen === this.gen) this.fail((e as Error)?.message ?? String(e));
+      if (gen === this.gen) this.fail((e as Error)?.message ?? String(e), false, false, (e as { code?: string })?.code);
     }
   }
   private onFrame(b: Buffer) {
@@ -290,7 +290,7 @@ export class SupervisedSource extends EventEmitter implements Source {
     if (since > this.o.stallMs) this.fail(`no audio for ${Math.round(since / 1000)} s`);
   }
   /** `quiet` = a planned restart (wake): no "down" event and no failure count, so no red bar. If the new source stays silent, the stall check fails it for real. */
-  private fail(reason: string, immediate = false, quiet = false) {
+  private fail(reason: string, immediate = false, quiet = false, code?: string) {
     if (this.stopped) return;
     this.watching = false;
     clearTimeout(this.timer);
@@ -311,7 +311,7 @@ export class SupervisedSource extends EventEmitter implements Source {
     }
     const n = this.failures++;
     const delayMs = immediate ? 0 : (this.o.backoff ?? AUDIO_BACKOFF_MS)(n);
-    this.emit("down", { reason, n: n + 1, delayMs });
+    this.emit("down", { reason, n: n + 1, delayMs, code });
     this.timer = setTimeout(() => {
       this.emit("retry", { n: n + 1, delayMs, attempt: this.attempt });
       void this.spawn();
