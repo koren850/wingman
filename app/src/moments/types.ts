@@ -29,6 +29,8 @@ export type Moment = {
   more: string[];
   /** A memory id (q12, c3). */
   ref?: string;
+  /** 2 to 4 words, the topic of the card in the language of the call ("PHP version"). Optional: the overlay derives one when it is missing. */
+  label?: string;
 };
 
 /** A row for the call log when the parser had to fall back to SKIP. Same family as the other error.survived rows. */
@@ -61,6 +63,10 @@ export const LIMITS = {
   moreLines: 3,
   moreChars: 120,
   refChars: 16,
+  /** A LABEL longer than labelMaxWords (or one that reads as a sentence) is cut to labelCutWords. */
+  labelMaxWords: 5,
+  labelCutWords: 4,
+  labelChars: 40,
   /** The parser looks at no more than this many characters of a reply. */
   inputChars: 4000,
   /** What a row in the log keeps of a bad reply. */

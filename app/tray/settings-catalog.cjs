@@ -106,13 +106,14 @@ const ITEMS = [
   },
   {
     key: "moments.engine",
+    advanced: true,
     group: "answers",
     label: "Help engine",
     kind: "select",
-    help: "New: the AI reads the whole call and decides when a card helps, also for objections, numbers and promises. Classic: the older question gate. Takes effect on the next call.",
+    help: "Live reading (default): the AI reads the whole call and decides when a card helps, also for objections, numbers and promises. Classic (rollback): the older question gate. Use it only if live reading misbehaves. Takes effect on the next call.",
     options: [
-      ["legacy", "Classic"],
-      ["v2", "New (live reading)"],
+      ["v2", "Live reading (default)"],
+      ["legacy", "Classic (rollback)"],
     ],
   },
   {
@@ -120,7 +121,7 @@ const ITEMS = [
     group: "answers",
     label: "Keep a memory of the call",
     kind: "bool",
-    help: "Wingman keeps a short memory of the call (topic, numbers, promises, open questions) that every AI call reads. It is saved with the call. Used by the New help engine.",
+    help: "Wingman keeps a short memory of the call (topic, numbers, promises, open questions) that every AI call reads. It is saved with the call. Used by live reading.",
   },
   {
     key: "reflex.stall",

@@ -59,7 +59,7 @@ reflex:
 
 # ---- Moment engine (round 12): the model decides when help is useful; the old word-list gate is only a hint ----
 moments:
-  engine: legacy # legacy = the old question gate and reflex answers, unchanged | v2 = every kept line can get a card; the model decides (hint, observer window, memory)
+  engine: v2 # v2 = every kept line can get a card; the model decides (speed hint, observer window, memory) | legacy = the old question gate and reflex answers (rollback, and the path when the AI is down)
   observerPerMinute: 6 # at most this many observer calls a minute (lines without a clear question). 0 = observer off
   windowSeconds: 40 # how much of the call the observer sees as lead-in, in seconds
   minValue: { default: 2, STALL: 1, CHECK: 1 } # least VALUE (0-3) the model must give for a card to show. A number sets every kind; a map sets single kinds (SKIP ANS BANK STALL REPLY CHECK TERM PROMPT NOTE)

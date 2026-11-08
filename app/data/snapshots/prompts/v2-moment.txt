@@ -118,6 +118,7 @@ After line 1 write these lines (not for SKIP, except WHY):
   VALUE: 0 to 3        how much this helps (3 = the user needs it now; 2 = clearly useful; 1 = marginal)
   AIM: me | other | all | unclear      who must act on it. If only the other side can act, use other
   SAY: at most 14 words. What the user can say, or the point to see. Never a long text
+  LABEL: 2 to 4 words, the topic of the card, in the language of the call (optional). A topic, not a sentence: "PHP version", "Backups"
   WHY: one short line, why now
   MORE: up to 3 short lines (optional), one per line starting with "- "
   REF: a memory id such as q12 or c3 (optional)
@@ -134,8 +135,8 @@ Rules:
 User: Dan
 </call_facts>
 <bank_candidates>
-- forms-not-arriving: טפסים לא מגיעים | כשטפסים לא מגיעים, לרוב הבעיה בשליחת המייל מהשרת. בדרך כלל פותרים את זה עם הגדרת SMTP ובדיקה שהמייל לא נתקע בספאם.
-- two-factor: אימות דו-שלבי | אימות דו-שלבי אומר שמעבר לסיסמה צריך גם קוד מהטלפון. זה אחד הדברים הכי פשוטים ויעילים להגנה על
+- accessibility: נגישות האתר | במדינות רבות יש תקנות נגישות לאתרים של עסקים שנותנים שירות לציבור. כדאי לבדוק מול יועץ נגישות אם זה חל, ותוסף לבדו בדרך 
+- design-change: שינוי עיצוב באתר | אפשר לשנות עיצוב,
 ## messages
 user: <call_transcript>
 me: Hi Maya, thanks for making time. I saw Josh is on the line too.
@@ -155,10 +156,5 @@ me: Okay, so around thirteen hundred products at launch.
 them: Right. And I would like to know if you can connect to our inventory system.
 me: I would have to look at how your inventory system exposes its data before I say yes.
 them: Fair enough. Josh, do you remember who the vendor of the inventory system is?
-them: It is an old on-premise system from a vendor that closed. I will find the manual.
-me: While Josh looks, let me ask about the delivery slots. How do you want them to work?
-them: Customers choose a two hour window and each store has a limit per window.
-me: That is a good model. We can build the limits per store.
-them: Also, I would like to know what a typical go-live checklist looks like.
 </call_transcript>
-<trigger>Also, I would like to know what a typical go-live checklist looks like.</trigger>
+<trigger>Fair enough. Josh, do you remember who the vendor of the inventory system is?</trigger>

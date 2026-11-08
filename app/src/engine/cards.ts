@@ -2,9 +2,9 @@
 import { matchBankFor } from "../bank.ts";
 import { isClearQuestion } from "../detector.ts";
 import { sanitize } from "../guards.ts";
-import { st } from "./state.ts";
-import { log, tipGate, S, bank, interview, PROMPT_V } from "./boot.ts";
-import { capDecision, CardScheduler, kindOfBadge, type CardV2Extra, type CardRow, type OfferMeta, type Offered } from "./cards-v2.ts";
+import { st, callKind } from "./state.ts";
+import { log, tipGate, S, bank, interview, PROMPT_V, schedCfg } from "./boot.ts";
+import { capDecision, CardScheduler, CheckBook, kindOfBadge, type CardV2Extra, type CardRow, type OfferMeta, type Offered } from "./cards-v2.ts";
 import type { ScheduledMoment } from "../moments/scheduler.ts";
 import type { CtxRecord } from "../context/record.ts";
 
@@ -61,6 +61,11 @@ export function focusWorthy(text: string, reason: string): boolean {
   return isClearQuestion(text, reason) || !!matchBankFor(text, bank)?.card.id.startsWith("stall-");
 }
 export function emitCard(c: Card) {
+  // Checks: at most 3 open, one card per ref, closing rows for the oldest. The closing rows go out first.
+  const adm = checkBook.admit(c, Date.now());
+  if (adm.merged) log.write("events", { type: "check.merged", id: c.id, into: adm.merged, ref: c.ref });
+  for (const x of adm.closes) emitCard(x);
+  c = adm.row;
   c.say = sanitize(c.say);
   c.facts = c.facts.map(sanitize);
   const special = (c.health || c.badge === "info" || c.badge === "tip") && !c.scheduled; // a scheduled v2 prompt/fact row uses these badges for old readers but is a real card: quiet mode hides it
@@ -175,12 +180,24 @@ export function speedSummary(): string {
 }
 
 // ---------------------------------------------------------------- card pipeline v2
-/** The scheduler of this call (rank, per-minute cap, topic lifetime, hero, feedback). Config comes from the moments.* settings once the moment engine lands. */
-export const cardSched = new CardScheduler();
+/** The open check cards of the call: at most 3, merged by ref, closed with the topic or after 5 minutes. emitCard() is the only way in. */
+export const checkBook = new CheckBook();
+/** The scheduler of this call (rank, per-minute cap, topic lifetime, hero, feedback). It works on st.m.sched, the same state the direct and observer paths in moments.ts use,
+ *  so the three kinds of card share one per-minute count, one hero and one feedback boost. Config: the moments.* settings. */
+export const cardSched = new CardScheduler(
+  schedCfg,
+  0,
+  {
+    get: () => st.m.sched,
+    set: (s) => void (st.m.sched = s),
+  },
+  checkBook,
+);
 /** The scheduler's verdict on one moment, then the rows: the card (shown or chip) and the rows that close the cards it replaces. A dropped moment is only logged (with its reason). */
 export function emitMoment(m: ScheduledMoment, meta: OfferMeta & { now?: number; offline?: boolean }): Offered {
   const now = meta.now ?? Date.now();
   cardSched.tick(now, meta.memV, meta.offline ?? false);
+  cardSched.state = { ...cardSched.state, kind: callKind() };
   const o = cardSched.offer(m, meta);
   if (o.action === "drop") {
     log.write("events", { type: "moment.dropped", tag: m.tag, value: m.value, reason: o.why, why: m.why, rank: o.decision.rank });

@@ -2,6 +2,8 @@
 // recordFeedback() return the next state. No clock of its own (the state carries `now`), no globals. The model says what helps; this file
 // says whether it is shown (a full card), kept as a small chip, or dropped, so a busy call never turns into a wall of cards.
 import type { Moment, MomentMeta, MomentTag } from "./types.ts";
+import { modeProfile } from "./modes.ts";
+import type { MemoryKind } from "../session/types.ts";
 
 export type ScheduledMoment = Moment & MomentMeta;
 export type Action = "show" | "chip" | "drop";
@@ -71,6 +73,8 @@ export type SchedulerState = {
   memVer: number;
   /** Model down or slow: only a strong hint may show a bank or stall card. */
   offline?: boolean;
+  /** The kind of call; modeProfile(kind) can lower or raise the minimum VALUE and the per-minute cap for it. */
+  kind?: MemoryKind;
   shown: readonly ShownRecord[];
   hero?: { id: string; rank: number; at: number };
   /** Raised minimum VALUE per tag, from feedback. */
@@ -105,7 +109,8 @@ export function rankOf(m: ScheduledMoment, now: number): number {
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
 export function thresholdFor(tag: MomentTag, state: SchedulerState, cfg: SchedulerConfig = DEFAULT_SCHEDULER): number {
-  const base = cfg.minValue[tag] ?? cfg.minValue.default;
+  const prof = modeProfile(state.kind).minValue;
+  const base = prof ? (prof[tag] ?? prof.default ?? cfg.minValue[tag] ?? cfg.minValue.default) : (cfg.minValue[tag] ?? cfg.minValue.default);
   return Math.min(3, Math.max(base, state.boost[tag] ?? 0));
 }
 
@@ -131,7 +136,8 @@ export function decide(m: ScheduledMoment, state: SchedulerState, cfg: Scheduler
 
   const exempt = isExempt(m);
   const recent = state.shown.filter((r) => state.now - r.at < 60_000 && !r.exempt).length;
-  if (!exempt && recent >= cfg.maxPerMinute) return d("chip", "per-minute-cap");
+  const cap = cfg.maxPerMinute >= 99 ? cfg.maxPerMinute : (modeProfile(state.kind).maxPerMinute ?? cfg.maxPerMinute); // 99 = the direct path, never capped
+  if (!exempt && recent >= cap) return d("chip", "per-minute-cap");
 
   const hero = state.hero;
   if (hero && state.now - hero.at < cfg.topicLifetimeMs) {

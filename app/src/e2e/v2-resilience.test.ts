@@ -75,7 +75,7 @@ for (const [name, act] of MODEL_FAILS) {
     await e.reset();
     e.pm.on({ role: ["moment", "observer"] }, act() as never);
     for (let i = 0; i < 3; i++) {
-      const at = e.say("them", `${Q} (${i})`);
+      const at = e.say("them", Q.replace("?", ` (${i})?`));
       await e.vc.advance(1800);
       noEmptyScreen(name, { at });
       await e.vc.advance(700);
@@ -92,7 +92,7 @@ test("matrix: model down, then back: the bar clears and the next question gets a
   await e.reset();
   e.pm.on({ role: "moment" }, error(503), { times: 3 }); // three failures open the breaker; the probe after the cool-down finds the model well again
   for (let i = 0; i < 3; i++) {
-    e.say("them", `${Q} (${i})`);
+    e.say("them", Q.replace("?", ` (${i})?`));
     await e.vc.advance(2500);
   }
   assert.ok(bars().length >= 1, "bar while down");

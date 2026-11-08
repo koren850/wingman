@@ -29,11 +29,14 @@ async function runCall(o: {
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * (o.wavSeconds ?? 5)), 2);
   writeFileSync(script, JSON.stringify(o.script));
   const control = !!o.stdin || !!o.onStatus;
-  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", o.profile ?? "e2e", "--file", wav, "--no-brief", ...(o.args ?? [])]), {
-    cwd: ROOT,
-    stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: "300", ...(control ? { WINGMAN_CONTROL: "1" } : {}), ...o.env },
-  });
+  const p = spawn(
+    ...tsx([join(ROOT, "src", "run.ts"), "--profile", o.profile ?? "e2e", "--file", wav, "--no-brief", "--set", "moments.engine=legacy", ...(o.args ?? [])]),
+    {
+      cwd: ROOT,
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: "300", ...(control ? { WINGMAN_CONTROL: "1" } : {}), ...o.env },
+    },
+  );
   const send = (line: string) => {
     try {
       p.stdin.write(line + "\n");

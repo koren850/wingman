@@ -36,7 +36,13 @@ export type CardV2Extra = {
   ctx?: CtxRecord | { memV: number; tokens: number; parts: Record<string, number> };
   pinned?: boolean;
   chip?: boolean;
+  /** 2 to 4 words, the topic of the card (from the LABEL line). When it is missing the overlay derives the first 3 words. */
+  label?: string;
+  /** Where a fact comes from: the prepared brief, this call, the user's own words, the notes, or an earlier call. */
+  src?: CardSrc;
 };
+export type CardSrc = "brief" | "call" | "you" | "notes" | "past";
+export const CARD_SRCS: readonly CardSrc[] = ["brief", "call", "you", "notes", "past"];
 
 export const KIND_OF_TAG: Record<MomentTag, CardKind | undefined> = {
   SKIP: undefined,
@@ -110,6 +116,8 @@ export type OfferMeta = {
   facts?: string[];
   ctx?: CtxRecord;
   memV: number;
+  /** Where the fact comes from (a card from the notes or a past call says so). */
+  src?: CardSrc;
   /** Everything the card may quote numbers from: the rendered memory, the raw tail and the prepared cards. */
   allowed?: string;
   /** The prepared stall line, used when a guard rejects the model's text. */
@@ -129,15 +137,29 @@ export function guardAnswer(text: string, allowed: string | undefined): GuardRes
 
 /** The scheduler, the open cards and the feedback state of one call. Pure: `now` is passed in. */
 export class CardScheduler {
-  state: SchedulerState;
+  private own: SchedulerState;
   private seq = 0;
   private readonly open = new Map<string, { row: CardRow; tag: MomentTag; shownAt: number }>();
-  private tagsRead = 0;
+  /** Tag of every card that was shown, from any path (open-loop prompts here, direct and observer cards through know()). Feedback finds its tag here. */
+  private readonly known = new Map<string, MomentTag>();
+  /** The last rating applied per card. tags.jsonl keeps one row per card and is rewritten on every rating, so this makes a replay of the file harmless. */
+  private readonly rated = new Map<string, "useful" | "not-useful">();
+  /** `store`: where the scheduler state lives. The engine passes its one shared state (st.m.sched), so direct, observer and open-loop cards share one per-minute count, one hero and one feedback boost. */
   constructor(
     private readonly cfg: SchedulerConfig = DEFAULT_SCHEDULER,
     now = 0,
+    private readonly store?: { get(): SchedulerState; set(s: SchedulerState): void },
+    /** Closing of checks (cap, merge, topic, time) lives in a CheckBook the engine shares with its card exit. */
+    readonly checks: CheckBook = new CheckBook(),
   ) {
-    this.state = newSchedulerState(now);
+    this.own = newSchedulerState(now);
+  }
+  get state(): SchedulerState {
+    return this.store ? this.store.get() : this.own;
+  }
+  set state(s: SchedulerState) {
+    if (this.store) this.store.set(s);
+    else this.own = s;
   }
 
   /** Time, memory version and model health for the next decision. */
@@ -181,6 +203,8 @@ export class CardScheduler {
       ...(m.why ? { why: clip(m.why, 120) } : {}),
       ...(m.more.length && !guarded ? { more: m.more.map((x) => clip(x, 120)).filter(Boolean) } : {}),
       ...(m.ref ? { ref: m.ref } : {}),
+      ...(m.label ? { label: clip(m.label, 40) } : {}),
+      ...(meta.src ? { src: meta.src } : {}),
       ctx: meta.ctx ?? { memV: meta.memV, tokens: 0, parts: {} },
       ...(kind === "prompt" ? { tipType: "ask" } : {}),
       ...(isExempt(m) || prepared ? { priority: true } : {}),
@@ -196,6 +220,7 @@ export class CardScheduler {
       this.state = recordShown(this.state, m, id, decision);
     }
     this.open.set(id, { row, tag: m.tag, shownAt: this.state.now });
+    this.know(id, m.tag);
     return { action: decision.action, decision, row, closes, guarded };
   }
 
@@ -210,7 +235,7 @@ export class CardScheduler {
 
   /** Cards older than the topic lifetime close with "time" (not a pinned one, not a check: a check stays until it is dealt with). */
   expire(now: number): CardRow[] {
-    const out: CardRow[] = [];
+    const out: CardRow[] = this.checks.expire(now);
     for (const [id, o] of this.open) {
       if (o.row.closes || o.row.pinned || o.row.kind === "check") continue;
       if (now - o.shownAt >= this.cfg.topicLifetimeMs) {
@@ -225,7 +250,7 @@ export class CardScheduler {
   /** Memory items that were resolved: the cards that point at them (`ref`) close with "answered". */
   resolved(refs: Iterable<string>): CardRow[] {
     const set = new Set(refs);
-    const out: CardRow[] = [];
+    const out: CardRow[] = this.checks.resolved(set, this.state.now);
     for (const [id, o] of this.open) {
       if (o.row.ref && set.has(o.row.ref) && !o.row.closes) {
         const c = this.close(id, "answered");
@@ -237,6 +262,7 @@ export class CardScheduler {
 
   /** The user dismissed or pinned a card in the overlay (the engine learns it from tags or events). */
   dismissed(id: string): CardRow | undefined {
+    this.checks.dismissed(id);
     return this.close(id, "dismissed");
   }
   pin(id: string, on: boolean): void {
@@ -244,21 +270,40 @@ export class CardScheduler {
     if (o) o.row = { ...o.row, pinned: on };
   }
 
-  /** New rows of tags.jsonl (the whole file text each time; rows already seen are skipped). Three "not useful" in a row for one tag raise its minimum VALUE. */
-  feedback(tagsText: string): number {
-    const rows = parseTags(tagsText);
+  /** For tests: forget the open cards, the known tags and the ratings (a new call). */
+  reset(): void {
+    this.open.clear();
+    this.known.clear();
+    this.rated.clear();
+    this.checks.reset();
+  }
+  /** A card was shown by some other path (direct or observer): remember its tag so a rating on it reaches the scheduler. */
+  know(id: string, tag: MomentTag): void {
+    this.known.set(id, tag);
+    if (this.known.size > 500) this.known.delete(this.known.keys().next().value as string);
+  }
+  tagOf(id: string): MomentTag | undefined {
+    return this.known.get(id) ?? this.open.get(id)?.tag;
+  }
+  /** Ratings of the user. Three "not useful" in a row for one kind raise that kind's minimum VALUE for every path. A rating already applied is skipped; a changed one counts again.
+   *  Rows may be the whole tags.jsonl or only the new ones. Returns how many were applied. */
+  applyFeedback(rows: readonly { id: string; rating: "useful" | "not-useful" }[]): number {
     let n = 0;
-    for (; this.tagsRead < rows.length; this.tagsRead++) {
-      const r = rows[this.tagsRead];
-      const o = this.open.get(r.id);
-      if (!o) continue;
-      this.state = recordFeedback(this.state, o.tag, r.rating, this.cfg);
+    for (const r of rows) {
+      const tag = this.tagOf(r.id);
+      if (!tag || this.rated.get(r.id) === r.rating) continue;
+      this.rated.set(r.id, r.rating);
+      this.state = recordFeedback(this.state, tag, r.rating, this.cfg);
       n++;
     }
     return n;
   }
+  /** The text of tags.jsonl (the whole file each time). */
+  feedback(tagsText: string): number {
+    return this.applyFeedback(parseTags(tagsText));
+  }
   get openCards(): number {
-    return [...this.open.values()].filter((o) => !o.row.closes).length;
+    return [...this.open.values()].filter((o) => !o.row.closes).length + this.checks.open;
   }
   tagBoost(): Readonly<Partial<Record<MomentTag, number>>> {
     return this.state.boost;
@@ -267,16 +312,23 @@ export class CardScheduler {
 
 /** tags.jsonl rows: {cardId, rating: "useful"|"not_useful"|"none"} (PLAN) or the older {id, useful: "y"|"n"}. Junk lines and "none" are skipped. */
 export function parseTags(text: string): { id: string; rating: "useful" | "not-useful" }[] {
-  const out: { id: string; rating: "useful" | "not-useful" }[] = [];
+  const objs: unknown[] = [];
   for (const line of String(text ?? "").split("\n")) {
     if (!line.trim()) continue;
-    let r: Record<string, unknown>;
     try {
-      r = JSON.parse(line) as Record<string, unknown>;
+      objs.push(JSON.parse(line));
     } catch {
       continue;
     }
-    if (!r || typeof r !== "object") continue;
+  }
+  return normalizeTagRows(objs);
+}
+/** The same for rows that are already objects (what the engine gets from the reader of tags.jsonl). Rows with no card id or an unknown rating are skipped. */
+export function normalizeTagRows(rows: readonly unknown[]): { id: string; rating: "useful" | "not-useful" }[] {
+  const out: { id: string; rating: "useful" | "not-useful" }[] = [];
+  for (const row of rows ?? []) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
     const id = typeof r.cardId === "string" ? r.cardId : typeof r.id === "string" ? r.id : "";
     if (!id) continue;
     const v = typeof r.rating === "string" ? r.rating : typeof r.useful === "string" ? r.useful : "";
@@ -284,6 +336,81 @@ export function parseTags(text: string): { id: string; rating: "useful" | "not-u
     else if (v === "not_useful" || v === "not-useful" || v === "n") out.push({ id, rating: "not-useful" });
   }
   return out;
+}
+
+// ---------------------------------------------------------------- checks
+/** At most this many checks are open at once. A new one closes the oldest. */
+export const MAX_OPEN_CHECKS = 3;
+/** A check that nobody dealt with closes after this long. */
+export const CHECK_LIFETIME_MS = 300_000;
+type BookRow = { id: string; badge: string; at: number; kind?: CardKind; ref?: string; closes?: CardCloses; withdraw?: boolean };
+export const isCheckRow = (r: { kind?: string; badge: string }) => r.kind === "check" || r.badge === "careful" || r.badge === "fix";
+
+/** The open check cards of a call (every path: model checks, over-promise checks, open-loop checks). Rules: at most 3 open (a new one closes the oldest), a check with the
+ *  same `ref` as an open one is merged into it (same card id, newest text), and checks close with the topic, when the memory resolves their item, and after 5 minutes. */
+export class CheckBook {
+  private readonly rows = new Map<string, { row: BookRow; shownAt: number }>();
+  reset(): void {
+    this.rows.clear();
+  }
+  /** Number of open checks. */
+  get open(): number {
+    return this.rows.size;
+  }
+  /** A row on its way to the screen. Returns the row to write (its id may be an open check's id) and the closing rows to write first. Rows that are not checks pass through. */
+  admit<R extends BookRow>(row: R, now: number): { row: R; closes: R[]; merged?: string } {
+    if (!isCheckRow(row)) return { row, closes: [] };
+    if (row.closes || row.withdraw) {
+      this.rows.delete(row.id);
+      return { row, closes: [] };
+    }
+    const same = this.rows.get(row.id);
+    if (same) {
+      same.row = row;
+      return { row, closes: [] };
+    }
+    if (row.ref) {
+      for (const [id, o] of this.rows)
+        if (o.row.ref === row.ref) {
+          const merged = { ...row, id };
+          this.rows.set(id, { row: merged, shownAt: now });
+          return { row: merged, closes: [], merged: id };
+        }
+    }
+    const closes: R[] = [];
+    while (this.rows.size >= MAX_OPEN_CHECKS) {
+      const [oldId, old] = [...this.rows].sort((a, b) => a[1].shownAt - b[1].shownAt)[0];
+      this.rows.delete(oldId);
+      closes.push({ ...(old.row as R), closes: "time", at: now });
+    }
+    this.rows.set(row.id, { row, shownAt: now });
+    return { row, closes };
+  }
+  private closeWhere<R extends BookRow>(pred: (o: { row: BookRow; shownAt: number }) => boolean, why: CardCloses, now: number): R[] {
+    const out: R[] = [];
+    for (const [id, o] of [...this.rows]) {
+      if (!pred(o)) continue;
+      this.rows.delete(id);
+      out.push({ ...(o.row as R), closes: why, at: now });
+    }
+    return out;
+  }
+  /** The topic changed: every open check closes. */
+  closeAll<R extends BookRow = CardRow>(why: CardCloses, now: number): R[] {
+    return this.closeWhere<R>(() => true, why, now);
+  }
+  /** Checks older than 5 minutes. */
+  expire<R extends BookRow = CardRow>(now: number): R[] {
+    return this.closeWhere<R>((o) => now - o.shownAt >= CHECK_LIFETIME_MS, "time", now);
+  }
+  /** The memory item a check points at was resolved. */
+  resolved<R extends BookRow = CardRow>(refs: ReadonlySet<string>, now: number): R[] {
+    return this.closeWhere<R>((o) => !!o.row.ref && refs.has(o.row.ref), "answered", now);
+  }
+  /** The user dismissed this card in the overlay. */
+  dismissed(id: string): void {
+    this.rows.delete(id);
+  }
 }
 
 // ---------------------------------------------------------------- the schema test

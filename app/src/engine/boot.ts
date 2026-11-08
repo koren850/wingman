@@ -34,6 +34,7 @@ import { loadAttachments, confirmAttachments, backgroundBlock } from "../attachm
 import { factsActive } from "./rules.ts";
 import { Intake } from "../moments/intake.ts";
 import { MOMENT_RULES } from "../moments/prompt.ts";
+import { modeInstructions } from "../moments/modes.ts";
 import { Observer } from "../moments/observer.ts";
 import { DEFAULT_SCHEDULER, minValueFrom, type SchedulerConfig } from "../moments/scheduler.ts";
 import { withSettings, DEFAULT_BUDGETS } from "../context/budget.ts";
@@ -113,7 +114,7 @@ export const background = backgroundBlock(attachFiles);
 export const prefix = buildPrefix(houseStyle, bank, "", background, interview);
 /** Short id of the system prompt text sent to the model (first 8 hex of its sha256). Logged on model cards and usage rows so a bad card can be reproduced. */
 export const PROMPT_V = createHash("sha256")
-  .update(momentsV2 ? prefix + MOMENT_RULES : prefix)
+  .update(momentsV2 ? prefix + MOMENT_RULES + modeInstructions(interview ? "interview" : undefined) : prefix)
   .digest("hex")
   .slice(0, 8);
 export let log: CallLog;
@@ -189,7 +190,10 @@ export const ORPHAN_IDLE_MIN = 5;
 
 // ---- Moment engine (moments.engine = v2). Built always (cheap); used only when momentsV2 is true. ----
 export const intake = new Intake();
-export const observer = new Observer(() => Date.now(), { perMinute: S.moments.observerPerMinute, contextMs: S.moments.windowSeconds * 1000 });
+export const observer = new Observer(() => Date.now(), {
+  perMinute: S.moments.observerPerMinute,
+  contextMs: S.moments.windowSeconds * 1000,
+});
 export const schedCfg: SchedulerConfig = {
   ...DEFAULT_SCHEDULER,
   minValue: minValueFrom(S.moments.minValue),

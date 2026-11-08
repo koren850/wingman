@@ -1,5 +1,5 @@
 // Tag-first parser for the moment reply (PLAN.md 3.2). Line 1 is the verdict (TAG), then labelled lines in any order:
-//   VALUE: 0..3   AIM: me|other|all|unclear   SAY: <= 14 words   WHY: one line   MORE: up to 3 short lines   REF: memory id
+//   VALUE: 0..3   AIM: me|other|all|unclear   SAY: <= 14 words   LABEL: 2-4 word topic (optional)   WHY: one line   MORE: up to 3 short lines   REF: memory id
 // Rules: the verdict can be read as soon as line 1 is complete (parseMomentStream, MomentStream); anything that is not a clean moment
 // (unknown tag, missing field, over-long say-line, garbage, a tag word inside the text) becomes SKIP plus an error.survived row.
 // Nothing here throws and nothing returns raw model text beyond the capped fields. Text from the model is data: it is never used as an instruction.
@@ -12,7 +12,7 @@ export type ParsedMoment = {
   /** Known once line 1 is complete (or the reply is final). */
   tag?: TagInfo;
   /** Fields read so far (streaming view). `say` may still grow while `sayComplete` is false. */
-  fields: Partial<Pick<Moment, "value" | "aim" | "say" | "why" | "more" | "ref">>;
+  fields: Partial<Pick<Moment, "value" | "aim" | "say" | "why" | "more" | "ref" | "label">>;
   sayComplete: boolean;
   /** Only when `final`: the validated moment, always valid, SKIP when anything was wrong. */
   moment?: Moment;
@@ -20,7 +20,7 @@ export type ParsedMoment = {
 };
 
 const TAG_RE = new RegExp(`^(?:TAG\\s*[:=]\\s*)?(${MOMENT_TAGS.join("|")})(?![A-Za-z0-9])\\s*[:\\-–]?\\s*(.*)$`, "i");
-const FIELD_RE = /^(VALUE|AIM|SAY|WHY|MORE|REF)\s*[:=]\s*(.*)$/i;
+const FIELD_RE = /^(VALUE|AIM|SAY|LABEL|WHY|MORE|REF)\s*[:=]\s*(.*)$/i;
 const CONTROL_WORD = /(^|[^A-Za-z])(SKIP|STALL|BANK|ANS|REPLY|CHECK|PROMPT)(?![A-Za-z])/;
 const STALL_KINDS: readonly StallKind[] = ["price", "guarantee", "timeline", "other"];
 /** Characters that never belong in a card: C0/C1 controls (not newline), bidi overrides, zero-width marks. */
@@ -40,6 +40,29 @@ const strip = (s: string) =>
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n).trimEnd() : s);
 const sample = (s: string) => s.replace(JUNK, "").replace(/\s+/g, " ").trim().slice(0, LIMITS.sampleChars);
+
+/** A topic label of 2 to 4 words. Over 5 words, or a sentence (ends with . ! ? or has a sentence break inside), is cut to the first 4 words. Empty when nothing usable is left. */
+export function cleanLabel(raw: string): string {
+  let t = strip(raw).replace(/^[-–—:;,.\s]+/, "");
+  const sentence = /[.!?…]\s*$/.test(t) || /[.!?…]\s+\S/.test(t);
+  let w = t.split(/\s+/).filter(Boolean);
+  if (sentence)
+    w = t
+      .split(/[.!?…]+\s+/)[0]
+      .split(/\s+/)
+      .filter(Boolean); // the first sentence only
+  if (w.length > LIMITS.labelMaxWords || sentence) w = w.slice(0, LIMITS.labelCutWords);
+  t = w
+    .join(" ")
+    .replace(/[\s.!?…:;,\-–—]+$/, "")
+    .trim();
+  if (t.length > LIMITS.labelChars)
+    t = t
+      .slice(0, LIMITS.labelChars)
+      .replace(/\s+\S*$/, "")
+      .trim();
+  return CONTROL_WORD.test(t) ? "" : t; // a label is a topic, never a verdict word
+}
 
 const needsSay = (t: MomentTag) => t !== "SKIP" && t !== "BANK" && t !== "STALL";
 
@@ -143,6 +166,10 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
     const a = f.AIM.toLowerCase().match(/[a-z]+/)?.[0];
     if ((AIMS as readonly string[]).includes(a ?? "")) out.fields.aim = a as Aim;
   }
+  if ("LABEL" in f && lines.some((l) => /^[\s>#]*LABEL\s*[:=]/i.test(l))) {
+    const l = cleanLabel(f.LABEL);
+    if (l) out.fields.label = l;
+  }
   if ("WHY" in f) out.fields.why = cut(strip(f.WHY), LIMITS.whyChars);
   if (more.length)
     out.fields.more = more
@@ -183,6 +210,7 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
     why: out.fields.why ?? "",
     more: out.fields.more ?? [],
     ...(out.fields.ref ? { ref: out.fields.ref } : {}),
+    ...(out.fields.label ? { label: out.fields.label } : {}),
   };
   return out;
 }

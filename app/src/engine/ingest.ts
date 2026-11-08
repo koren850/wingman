@@ -8,6 +8,7 @@ import { introName } from "../speakers.ts";
 import type { SttResult, Channel, Word } from "../providers/stt/types.ts";
 import { joinSplit, isBareQuestionTail, type PrevUtterance } from "../split.ts";
 import { splitMergedQuestions } from "../multiq.ts";
+import { splitAtQuestionMarks } from "../moments/split.ts";
 import { isAgencyTopic } from "../frame.ts";
 import { S, log, flow, flowOn, transcript, lineOf, notesOn, speakers, attendees, echo, ECHO, sup, bank, interview, UI_LANG } from "./boot.ts";
 import { voiceName, flowEvents } from "./flowmode.ts";
@@ -20,8 +21,8 @@ import { LangWatch } from "../langwatch.ts";
 import { ht } from "../htext.ts";
 import { onQuestion, openScope, MAX_PARTS } from "./question.ts";
 import { handleMe } from "./me.ts";
-import { v2Active } from "./degrade.ts";
-import { keepLine, noteLine, routeThem } from "./moments.ts";
+import { v2Active, currentPause } from "./degrade.ts";
+import { keepFeatures, noteLine, noteMeLine, routeThem, speedOf } from "./moments.ts";
 import type { HintLevel } from "../moments/types.ts";
 
 // Buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer, stt.flushFallbackMs,
@@ -45,7 +46,10 @@ function flushCore(ch: Channel) {
   const joined: SttResult = { ...p.last, text: p.texts.join(" "), words: p.words, speechFinal: true };
   if (st.call.shuttingDown) return;
   if (ch === "me") {
-    if (v2Active() && keepLine("me", joined.text, joined.speechEndWall ?? Date.now())) checkOwnLine(joined.text); // the user's own numbers against the notes and the memory
+    if (v2Active() && keepFeatures("me", joined.text, joined.speechEndWall ?? Date.now())) {
+      checkOwnLine(joined.text); // the user's own numbers against the notes and the memory
+      noteMeLine({ text: joined.text, at: joined.speechEndWall ?? Date.now() }); // the question to the user got its answer; a coaching mode reads long answers
+    }
     handleMe(joined);
     return;
   }
@@ -53,6 +57,9 @@ function flushCore(ch: Channel) {
   const now = Date.now();
   if (isAgencyTopic(joined.text)) st.turn.lastAgencyTopicAt = now; // any customer line about sites / hosting keeps short follow-ups on topic
   const endWall = joined.speechEndWall ?? now;
+  // Live reading (the default): the model decides what a line means. No question detector runs; the speed hint reads the shape of the line only.
+  // The detector below runs for the legacy engine and while the AI is paused (no model can read the line, so the old rules decide what may show).
+  if (v2Active() && !currentPause()) return flushNeutral(joined, p.spk, endWall);
   const w = joined.words;
   const startWall = w.length && joined.speechEndWall ? endWall - Math.max(0, (w[w.length - 1].end - w[0].start) * 1000) : now;
   const detectText = (t: string) => {
@@ -102,7 +109,7 @@ function flushCore(ch: Channel) {
   let toDirect = false;
   if (v2Active()) {
     const level: HintLevel = d.isQuestion ? (isClearQuestion(joined.text, d.reason) ? "strong" : "weak") : "none";
-    if (!keepLine("them", joined.text, endWall, p.spk !== undefined ? `s${p.spk}` : undefined)) return;
+    if (!keepFeatures("them", joined.text, endWall, p.spk !== undefined ? `s${p.spk}` : undefined)) return;
     const r = routeThem(level);
     if (r.route !== "direct" && r.route !== "local") {
       log.write("events", { type: "moment.route", route: r.route, why: r.why, hint: level, text: joined.text.slice(0, 80) });
@@ -130,6 +137,35 @@ function flushCore(ch: Channel) {
     // v2: a strong line the old filters skipped (a question between others, "if ..." talk) still reaches the model, through the observer.
     if (toDirect && !started) noteLine({ text: joined.text, at: endWall, hint: "weak", hasFigure: /[\p{Nd}\p{Sc}]/u.test(joined.text) });
   }
+}
+
+/** A finished line from the other side on the live-reading engine: intake, the language-neutral speed hint, then the direct path (fast) or the observer window (normal). */
+function flushNeutral(joined: SttResult, spk: number | undefined, endWall: number) {
+  const f = keepFeatures("them", joined.text, endWall, spk !== undefined ? `s${spk}` : undefined);
+  if (!f) return;
+  const sp = speedOf(f, joined.text);
+  const fast = sp.speed === "fast";
+  lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: endWall, question: fast, spk };
+  const r = routeThem(fast ? "strong" : "none");
+  if (r.route !== "direct") {
+    log.write("events", { type: "moment.route", route: r.route, why: r.why, speed: sp.speed, text: joined.text.slice(0, 80) });
+    if (r.route === "observer") noteLine({ text: joined.text, at: endWall, hint: "none", features: f, addressed: sp.ctx.addressed });
+    return;
+  }
+  const reason = sp.reason === "question-mark" ? "question-mark" : "speed-hint"; // a "?" from the speech-to-text is a clear question; the other shapes are not
+  log.write("events", { type: "detect", text: joined.text, isQuestion: true, reason, via: "speed-hint", speed: sp.speed });
+  // Several marked questions in one final: one question (and one card) per piece, on one cancel scope.
+  const parts = splitAtQuestionMarks(joined.text, MAX_PARTS);
+  if (parts.length > 1 && sup.caps.detect) {
+    log.write("events", { type: "split.multi", text: joined.text, parts });
+    const scope = openScope(true);
+    for (const part of parts) onQuestion({ ...joined, text: part }, "question-mark", scope);
+    noteLine({ text: joined.text, at: endWall, hint: "none", features: f, asked: true });
+    return;
+  }
+  const started = sup.caps.detect ? onQuestion(joined, reason) : false;
+  // Started: the observer only keeps the line for the "question, then 2 s of silence" look. Not started (the old filters skipped it): the observer reads it.
+  noteLine({ text: joined.text, at: endWall, hint: started ? "none" : "weak", features: f, ...(started ? { asked: true } : {}) });
 }
 
 // Words while they are spoken: interim STT text goes to live.jsonl (at most 4 rows a second per channel) for the answer window's

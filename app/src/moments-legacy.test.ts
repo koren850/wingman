@@ -1,4 +1,4 @@
-// moments.engine = legacy (the default): the old question gate and reflex call run exactly as before; the moment engine does nothing.
+// moments.engine = legacy (the rollback setting): the old question gate and reflex call run exactly as before; the moment engine does nothing.
 import "./test-setup.ts";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";

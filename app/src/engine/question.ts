@@ -417,6 +417,16 @@ function askModel(t: Turn, usable: string[]): Promise<void> {
 // older question (turn id) cannot show anything. A failed call, a cut-off reply or garbage never leaves a direct question with an empty screen
 // when stall lines are on: the stall timer, showStallOrError.
 function askMoment(t: Turn, usable: string[]): Promise<void> {
+  st.m.directBusy++; // the silence look in moments.ts waits for a direct call that is still on its way
+  const done = () => void (st.m.directBusy = Math.max(0, st.m.directBusy - 1));
+  try {
+    return askMomentCall(t, usable).finally(done);
+  } catch (e) {
+    done();
+    throw e;
+  }
+}
+function askMomentCall(t: Turn, usable: string[]): Promise<void> {
   ensureSeeded();
   const num = (t.scope.mid ??= ++st.m.seq);
   st.m.direct = num;
@@ -480,6 +490,7 @@ function onMomentPartial(t: Turn, p: ParsedMoment, final: boolean) {
     why: f.why ?? "",
     more: f.more ?? [],
     ...(f.ref ? { ref: f.ref } : {}),
+    ...(f.label ? { label: f.label } : {}),
   });
 }
 
@@ -618,7 +629,13 @@ function onMomentDone(t: Turn, d: MomentDone) {
   }
   if (t.mcard && t.mshown) {
     // WHY and MORE come after the say-line: the same card id, updated.
-    const fin = { ...t.mshown, why: d.moment.why, more: d.moment.more, ref: d.moment.ref ?? t.mshown.ref };
+    const fin = {
+      ...t.mshown,
+      why: d.moment.why,
+      more: d.moment.more,
+      ref: d.moment.ref ?? t.mshown.ref,
+      ...((d.moment.label ?? t.mshown.label) ? { label: d.moment.label ?? t.mshown.label } : {}),
+    };
     const up = {
       ...momentCard(fin, { id: t.mcard.id, turnId: t.id, question: t.r.text, ctx: t.ctxRec, dim: t.mcard.dim, done: true }),
       say: t.mcard.say,

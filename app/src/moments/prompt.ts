@@ -2,6 +2,8 @@
 // stays in the prompt cache; the per-call part (user, roster, bank candidates) is data and is sanitised. No word lists here: the model
 // decides what a question, an objection or a number means, in the language of the call.
 import { LIMITS } from "./types.ts";
+import { modeInstructions } from "./modes.ts";
+import type { MemoryKind } from "../session/types.ts";
 
 export type RosterEntry = { name: string; side: "me" | "them"; role?: string };
 export type BankCandidate = { id: string; title: string; say?: string };
@@ -11,6 +13,8 @@ export type MomentPromptOptions = {
   roster?: readonly RosterEntry[];
   /** Top bank candidates from the local scorer (matchBankSmart). At most 3 are used. */
   bankCandidates?: readonly BankCandidate[];
+  /** The kind of call; a kind with its own mode (practice interview) adds coaching instructions after the rules. */
+  kind?: MemoryKind;
 };
 
 export const MOMENT_RULES = `You are Wingman, a private voice that helps the user during a live call. You see the call so far and the newest lines. Decide if a short private note would help the user RIGHT NOW. Silence is the normal answer: most lines need no help. A wrong or late card costs more than a missed one.
@@ -29,6 +33,7 @@ After line 1 write these lines (not for SKIP, except WHY):
   VALUE: 0 to 3        how much this helps (3 = the user needs it now; 2 = clearly useful; 1 = marginal)
   AIM: me | other | all | unclear      who must act on it. If only the other side can act, use other
   SAY: at most ${LIMITS.sayWords} words. What the user can say, or the point to see. Never a long text
+  LABEL: 2 to 4 words, the topic of the card, in the language of the call (optional). A topic, not a sentence: "PHP version", "Backups"
   WHY: one short line, why now
   MORE: up to ${LIMITS.moreLines} short lines (optional), one per line starting with "- "
   REF: a memory id such as q12 or c3 (optional)
@@ -69,7 +74,8 @@ export function momentData(o: MomentPromptOptions): string {
   return parts.join("\n");
 }
 
-/** The whole moment instruction text: the static rules, then the call data. */
+/** The whole moment instruction text: the static rules, the instructions of the call's mode (if it has one), then the call data. */
 export function buildMomentPrompt(o: MomentPromptOptions): string {
-  return `${MOMENT_RULES}\n\n${momentData(o)}`;
+  const mode = modeInstructions(o.kind);
+  return `${MOMENT_RULES}\n\n${mode ? `${mode}\n\n` : ""}${momentData(o)}`;
 }

@@ -15,7 +15,7 @@ test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, 
   const tmp = mkdtempSync(join(tmpdir(), "wingman-e2e-"));
   const wav = join(tmp, "silence.wav");
   await writeWav(wav, Buffer.alloc(16000 * 2 * 2 * 14), 2); // 14 s of stereo silence: the file clock ends the call
-  const r = spawnSync(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief"]), {
+  const r = spawnSync(...tsx([join(ROOT, "src", "run.ts"), "--profile", "e2e", "--file", wav, "--no-brief", "--set", "moments.engine=legacy"]), {
     cwd: ROOT,
     encoding: "utf8",
     timeout: 50_000,

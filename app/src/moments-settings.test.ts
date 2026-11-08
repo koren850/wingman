@@ -16,9 +16,9 @@ const load = (yaml?: string) => {
   return loadSettings({ env: {}, userFile });
 };
 
-test("defaults: the old engine stays the default; every key of PLAN 3.5 has its documented default", () => {
+test("defaults: live reading (v2) is the default; every key of PLAN 3.5 has its documented default", () => {
   const { settings: s } = load();
-  assert.equal(s.moments.engine, "legacy");
+  assert.equal(s.moments.engine, "v2");
   assert.equal(s.moments.observerPerMinute, 6);
   assert.equal(s.moments.windowSeconds, 40);
   assert.deepEqual(s.moments.minValue, { default: 2, STALL: 1, CHECK: 1 });

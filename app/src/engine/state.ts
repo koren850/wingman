@@ -3,9 +3,9 @@
 import { performance } from "node:perf_hooks";
 import type { SttChannel } from "../providers/stt/channel.ts";
 import type { EchoMode } from "../echo.ts";
-import { emptyMemory, type SessionMemory } from "../session/types.ts";
+import { emptyMemory, type MemoryKind, type SessionMemory } from "../session/types.ts";
 import { newSchedulerState } from "../moments/scheduler.ts";
-import { ECHO, PHONE, S } from "./boot.ts";
+import { ECHO, PHONE, S, interview } from "./boot.ts";
 
 /** Monotonic ms (does not jump with the wall clock; on macOS it also stands still while the Mac sleeps). Idle time and frame freshness use it. */
 export const mono = () => performance.now();
@@ -39,6 +39,8 @@ export const st = {
   m: {
     seq: 0,
     direct: 0,
+    /** Direct moment calls that have not finished yet. */
+    directBusy: 0,
     obs: 0,
     sched: newSchedulerState(),
     mem: emptyMemory() as SessionMemory,
@@ -73,3 +75,6 @@ export const st = {
     dropped: 0,
   },
 };
+
+/** The kind of call for the moment prompt and the scheduler: a practice interview (the plan says so), else what the call memory learned. */
+export const callKind = (): MemoryKind => (interview ? "interview" : st.m.mem.kind);

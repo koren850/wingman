@@ -24,6 +24,8 @@ export type TurnFeatures = {
   hasDigits: boolean;
   hasCurrency: boolean;
   endsWithQuestion: boolean;
+  /** The line ends with a full stop (the speech-to-text read it as a finished statement). No word lists: punctuation only. */
+  endsWithStop: boolean;
   side: Side;
   speaker?: string;
   /** Milliseconds since the previous kept or dropped line from any side, or undefined for the first line. */
@@ -56,6 +58,7 @@ const LATIN = /[A-Za-zÀ-ɏ]/u;
 const LETTER = /\p{L}/u;
 const DIGIT = /\p{Nd}/u;
 const CURRENCY = /\p{Sc}/u; // symbols only ($ € ₪ £): no currency words
+const END_STOP = /[.。…]["')\]\s\u200e\u200f]*$/u;
 const END_Q = /[?؟]["')\]\s\u200e\u200f]*$/u;
 
 export function features(line: IntakeLine, prevAt?: number): TurnFeatures {
@@ -88,6 +91,7 @@ export function features(line: IntakeLine, prevAt?: number): TurnFeatures {
     hasDigits: DIGIT.test(text),
     hasCurrency: CURRENCY.test(text),
     endsWithQuestion: END_Q.test(text.trim()),
+    endsWithStop: END_STOP.test(text.trim()),
     side: line.side,
     ...(line.speaker ? { speaker: line.speaker } : {}),
     ...(prevAt !== undefined ? { gapMs: Math.max(0, line.at - prevAt) } : {}),

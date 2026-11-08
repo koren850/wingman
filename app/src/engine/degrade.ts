@@ -24,7 +24,6 @@ import {
   PHONE,
   keyterms,
   momentsV2,
-  interview,
 } from "./boot.ts";
 import { sttSwitchedCh, sttRetryLoop } from "./stt.ts";
 import { st, mono, chans } from "./state.ts";
@@ -60,8 +59,8 @@ export function clearAiBar(model: string) {
   if (aiBars.delete(model)) healthClear(`ai-${model}`);
 }
 
-/** The v2 moment engine drives this call: the setting is v2, there is an AI, and it is not a practice interview (that mode keeps its own coaching prompt). */
-export const v2Active = () => momentsV2 && !interview;
+/** The v2 moment engine (live reading) drives this call: the setting is v2 and there is an AI. A practice interview is included: it has its own coaching mode (moments/modes.ts). */
+export const v2Active = () => momentsV2;
 /** Why the AI is paused right now, or undefined: the spend cap (per call or per hour), no usable model, or no network (the last failures were network errors). */
 export function currentPause() {
   return pausedReason({ noAi, usable: usableModels().length, llmAllowed: sup.caps.llm, costPaused: cost.paused(), lastFailKind: st.m.lastFailKind });

@@ -40,7 +40,7 @@ export const callDir = (calls: string) => {
   return d.length ? join(calls, d[0]) : "";
 };
 export function runEngine(args: string[], env: Record<string, string>, profile = "e2e") {
-  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", profile, "--no-brief", ...args]), {
+  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", profile, "--no-brief", "--set", "moments.engine=legacy", ...args]), {
     cwd: ROOT,
     env: { ...process.env, WINGMAN_CALL_APP: "none", ...env },
   });
