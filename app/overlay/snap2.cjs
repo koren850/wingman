@@ -125,6 +125,10 @@ async function one(spec) {
   }
   await sleep(250);
   const animations = await wc.executeJavaScript("document.getAnimations().filter((a) => a.playState === 'running').length");
+  // the hero's CSS animation name: still set after a short pulse ends, so a slow machine that samples late sees it too
+  const heroAnim = await wc.executeJavaScript(
+    "(() => { const h = document.querySelector('#hero .hcard'); return h ? getComputedStyle(h).animationName : 'none'; })()",
+  );
   const live = await wc.executeJavaScript("document.getElementById('live').textContent");
   // a few facts about the page for the tests: what is on screen and where
   const probe = await wc.executeJavaScript(`(() => {
@@ -217,6 +221,7 @@ async function one(spec) {
     lang: LANG,
     ipc,
     animations,
+    heroAnim,
     live,
     probe,
     focusable: win.isFocusable(),

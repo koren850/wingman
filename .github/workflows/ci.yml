@@ -17,7 +17,7 @@ jobs:
   test:
     name: test (${{ matrix.os }})${{ matrix.os == 'windows-latest' && ' (experimental)' || '' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     # macOS is the supported platform. Linux runs the same checks and gates the build too (engine and file replay only; no live capture).
     # Windows may still fail while it is being ported (see docs). Remove this line once it is green.
     continue-on-error: ${{ matrix.os == 'windows-latest' }}

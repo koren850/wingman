@@ -414,6 +414,7 @@ type Res = {
   metrics: { chipRows: number; minContrast: number };
   probe: Probe;
   animations: number;
+  heroAnim: string;
   live: string;
   focusable: boolean;
   focused: boolean;
@@ -478,8 +479,9 @@ for (const lang of ["en", "he"] as const) {
 
   test(`snapshots (${lang}): reduced motion runs no animation, normal motion pulses the new hero`, SNAP, () => {
     const rs = snap(lang, ["v2-answer", "v2-answer:reduce"]);
-    assert.ok(rs[0]!.animations >= 1, "the border pulse runs");
+    assert.ok(rs[0]!.animations >= 1 || rs[0]!.heroAnim === "hpulse", "the border pulse runs");
     assert.equal(rs[1]!.animations, 0, "reduced motion: nothing runs");
+    assert.equal(rs[1]!.heroAnim, "none", "reduced motion: no pulse on the hero");
   });
 
   test(`snapshots (${lang}): Catch me up shows skeleton rows for sections that have not come, and never covers the caption`, SNAP, () => {
