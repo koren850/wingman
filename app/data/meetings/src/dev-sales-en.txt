@@ -1,0 +1,72 @@
+id: dev-sales-en
+split: dev
+lang: en
+type: sales
+variant: clean
+user: Dan
+context: Prep note. Prospect: Northwind Foods, a grocery chain with 14 stores. Contact: Maya Stern, head of e-commerce. They want an online store with delivery slots. The intake form says budget $5,000. They hope to launch before the holiday season. Our standard store build takes 6 weeks and needs the product list first.
+roster: Maya Stern | them | head of e-commerce
+roster: Josh | them | operations
+agenda: scope of the online store
+agenda: budget and timeline
+brief: Intake form budget is $5,000
+brief: Standard store build takes 6 weeks
+likely: Can you connect to our inventory system?
+likely: Who hosts the store after launch?
+---
+me: Hi Maya, thanks for making time. I saw Josh is on the line too.
+them@Maya: Hi Dan. Yes, Josh runs operations, so he will join for the delivery questions.
+me: Great. Let me start with what you have in mind for the store.
+them@Maya: We are a grocery chain with fourteen stores and we want customers to order online and pick a delivery slot.
+me: Okay, that is clear. Tell me a bit about how orders reach the stores today.
+them@Maya: Today it is all phone calls and a shared spreadsheet, which is a mess honestly. ## m: prompt || phone || pain-point || Ask how many orders per day come by phone. || Pain point is manual orders; size it. 
+them@Maya: So the first thing I need to know is how long it takes to build something like this. ## m: answer || scope;product list || implied,direct || It depends on scope; the product list is the first step. || Implied question about timeline; avoid a date.
+me: It depends on the scope and mostly on how fast we get your product list.
+them@Maya: Understood. Our target is to be live before the holiday season, so we are tight.
+me: Good to know. What is the rough budget you set for this?
+them@Maya: The head office approved around $12,000 for the whole project. ## m: check || 5,000;12,000 || number-conflict || Brief says $5,000; she now says $12,000. || Budget conflicts with the intake form.
+me: That helps, thank you. Tell me how many products you plan to list.
+them@Maya: About four thousand SKUs, but only a third are available online at launch. ## m: fact || SKU || jargon || SKU means one sellable item, such as one size of one product. || Jargon term explained.
+me: Okay, so around thirteen hundred products at launch.
+them@Maya: Right. And I would like to know if you can connect to our inventory system. ## m: answer || inventory || direct,implied || I need to see how your inventory system exposes data first. || Direct ask; do not promise an integration.
+me: I would have to look at how your inventory system exposes its data before I say yes.
+them@Maya: Fair enough. Josh, do you remember who the vendor of the inventory system is? ## quiet
+them@Josh: It is an old on-premise system from a vendor that closed. I will find the manual. ## quiet
+.. 25
+me: While Josh looks, let me ask about the delivery slots. How do you want them to work?
+them@Maya: Customers choose a two hour window and each store has a limit per window.
+me: That is a good model. We can build the limits per store.
+them@Maya: Also, I would like to know what a typical go-live checklist looks like. ## m: answer || test orders || implied || Typically payments, delivery slots, product import, test orders, then backups. || Implied question; no dates needed.
+them@Maya: Also, honestly, we got another quote from a bigger agency and it is much cheaper than I expected. ## m: prompt || quote;scope || objection || Ask what their quote includes; compare scope, not only price. || Price objection; reframe on scope.
+me: I would like to see what is included in that quote before we compare.
+them@Maya: Sure, I can forward it. Their price is nearly half of what you would charge, and that worries my boss. ## m: prompt || scope;support || objection || Offer a short call to compare scope and support side by side. || Second objection; boss worry.
+me: Let us compare line by line, then your boss can decide with the full picture.
+them@Maya: Okay. Ilan, my boss, makes the final call on this. ## m: prompt || Ilan || decision-maker || Ask if Ilan can join the next call. || New decision maker named.
+me: Understood. Would Ilan join the next call?
+them@Maya: Maybe. And just to be sure, will you also handle hosting and maintenance after launch? ## m: answer || hosting;maintenance || direct || Yes, we offer hosting and a maintenance plan; I will outline both. || Direct question about post-launch.
+me: Yes, we have a hosting and maintenance plan, and I will outline it in the proposal.
+.. 20
+them@Maya: Did you see the football game last night? I could not sleep after that finish. ## quiet
+me: I did, what a finish. My neighbours were shouting at the screen. ## quiet
+them@Josh: I saw the second half only. The coffee this morning is not enough for me. ## quiet
+me: Same here, I am on my third cup. ## quiet
+them@Maya: Okay, back to work. Josh, can you send me the delivery zone file? ## quiet
+them@Josh: Sure, I will send it to you after the call. ## quiet
+them@Maya: Dan, can you send me a sample proposal as well? ## quiet
+me: Of course, I will include a sample with the proposal.
+them@Maya: By the way, we also run a loyalty app. Maybe we can talk about it later. ## m: prompt || loyalty || topic-shift || Loyalty app is a new topic; park it and finish the store scope. || Topic shift away from the store.
+me: Let us park the loyalty app and finish the store first.
+.. 30
+them@Maya: One more thing, do you take card payments and how does the store handle card data? ## m: fact || PCI || jargon || PCI rules cover card data; a payment provider usually keeps you compliant. || Compliance term for payments.
+me: We use a payment provider so card data never touches your server.
+them@Maya: Good. Regarding timing, we actually need to launch in four weeks. ## m: check || 6 weeks || number-conflict || Standard build takes 6 weeks; she wants it in 4. || Timeline conflicts with the brief.
+me: Four weeks is tight. It depends on getting your product list early.
+them@Maya: I will send the full product list by Wednesday, I promise. ## mem: q:Josh>Do you handle pickup lockers / c:Maya>send the full product list>Wednesday / n:launch target=4 weeks / n:budget=$12,000 / f:Standard build takes 6 weeks
+me: Perfect. Then I will send you the proposal by Friday. ## m: check || Friday;Wednesday || promise || Friday depends on her list on Wednesday; say so out loud. || Your promise is tied to hers.
+them@Josh: Dan, one more thing from me. Do you also handle pickup lockers at the stores?
+me: Let me come back to that one in a moment. First, Josh, can you send me the inventory manual? ## m: prompt || lockers || unanswered || Josh's question about pickup lockers is still open. || Open loop: you said you would come back to it.
+them@Josh: I found the manual, I will email it today. ## chk: product list;Wednesday;inventory;lockers ## ask: What did Maya promise and by when? || Maya promised the full product list by Wednesday. You promised the proposal by Friday.
+me: Great. To summarise, you send the product list by Wednesday and I send the proposal by Friday.
+them@Maya: Yes. And please include a line about the maintenance plan.
+me: Will do. Thanks both, speak soon.
+them@Maya: Thanks Dan, bye.

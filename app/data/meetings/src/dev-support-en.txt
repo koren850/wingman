@@ -1,0 +1,74 @@
+id: dev-support-en
+split: dev
+lang: en
+type: support
+variant: clean
+user: Dan
+context: Ticket 4821. Customer: Orchard Bakery, contact Lena Brook. Problem: checkout shows error 500 since the update on Tuesday. The payment plugin PayFlow was updated from 3.9 to 4.2. Site runs PHP 8.1. A backup runs every night at 3 AM. The hosting plan includes 3 support hours per month. Failed orders in the log so far: 5.
+roster: Lena Brook | them | bakery owner
+roster: Tom | them | Lena's assistant
+agenda: find the cause of the checkout error
+agenda: protect the orders
+brief: Checkout error started after Tuesday update
+brief: PayFlow plugin updated from 3.9 to 4.2
+brief: Nightly backup at 3 AM
+brief: 5 failed orders in the log
+likely: Is my data safe?
+likely: Will this cost extra?
+---
+me: Hi Lena, this is Dan from support. I have your ticket in front of me.
+them@Lena: Thank you for calling back so fast. Our checkout is broken and it is the busiest week of the year for us.
+me: I understand. Let me ask a few questions and look at the logs while we talk.
+them@Lena: Sure. Tom is next to me, he saw it first.
+me: Tom, what did you see when you tried to pay on the site?
+them@Tom: A white page with an error 500 right after clicking pay.
+me: Okay, thanks. Lena, when did the problem begin?
+them@Lena: It began on Monday, right after the update. ## m: check || Tuesday || number-conflict || The ticket says the update was on Tuesday, not Monday. || Date conflicts with the ticket.
+me: My ticket says the update ran on Tuesday, let me check that.
+them@Lena: Oh, maybe Tuesday then. It was a crazy week. First of all, is my data safe? ## m: answer || backup || direct || Your data is safe; the nightly backup can restore it. || Direct reassurance question.
+me: Your data is safe. There is a nightly backup, and we can restore from it if needed.
+them@Lena: Good. And I need to know what is causing this, because last time you said it was fixed and it was not. ## m: prompt || test order || objection || Acknowledge it, and offer to confirm the fix with a test order together. || Trust objection from a past failure.
+me: You are right to be careful. This time we will confirm the fix together with a test order.
+them@Lena: Okay. So what is the cause? ## m: answer || plugin;error log || implied,direct || Likely the payment plugin update; I am reading the error log now. || Direct request for the cause; label as likely.
+me: It looks like the payment plugin update. I am reading the error log to confirm.
+.. 25
+me: I see the PayFlow plugin went from version 3.9 to 4.2 on the update day.
+them@Lena: Is that bad? What is a plugin version anyway, and why does it matter for PHP? ## m: fact || PHP || jargon || PHP is the language the site runs on; plugins must support its version. || Jargon about PHP and plugin versions.
+me: The site runs PHP 8.1, and the new plugin version may not fully support it.
+them@Lena: We had three orders fail since this morning, I think. ## m: check || 5 || number-conflict || The log shows 5 failed orders, not three. || Her count conflicts with the log.
+me: The log shows five failed orders so far. I will list them for you.
+them@Tom: Lena, did you call the delivery guy about tomorrow? ## quiet
+them@Lena: Not yet, Tom, please do that now. ## quiet
+.. 20
+me: While Tom calls, I will roll the plugin back to version 3.9 on a copy of the site first.
+them@Lena: Do you think it will be fixed in an hour? ## m: check || log || promise || Do not promise a time before the log test is finished. || Over-promise risk on timing.
+me: I cannot promise an hour yet. Let me finish the test on the copy.
+them@Lena: Fine. Do I need to pay extra for this work? ## m: answer || support hours || direct || This is covered by your support hours; I will confirm the total after. || Direct cost question; no prices.
+me: This falls under your support hours, and I will confirm the hours used at the end.
+them@Lena: Another thing. Our emails to customers also stopped working since yesterday. ## m: prompt || email || topic-shift || Email is a separate problem; log it and finish the checkout first. || Topic shift to a second issue.
+me: Let me note the email problem and finish the checkout first.
+them@Lena: Okay. By the way, I will send you a screenshot of the error in ten minutes. ## mem: c:Lena>send a screenshot of the error>ten minutes / q:Lena>Will I lose orders / n:failed orders=5 / f:payment plugin updated from 3.9 to 4.2 / topic:checkout error 500
+me: Great, thank you. I will tell you as soon as the copy test is done.
+them@Lena: I also need to tell my customers something. What should I post on our page? ## m: prompt || notice || implied || Offer a short notice she can post: checkout is being fixed. || Implied request for customer wording.
+me: I can write a short notice for you to post while we fix it.
+them@Lena: And our site runs PHP 7.4, right? Tom said so last month. ## m: check || 8.1 || number-conflict || The ticket says PHP 8.1, not 7.4. || Version conflicts with the ticket.
+me: The ticket says PHP 8.1, so that matches the cause we are looking at.
+me: I will update you every half hour until it is solved. ## m: check || half-hour || promise || The half-hour update is your promise; set a reminder to keep it. || New commitment from the user.
+.. 20
+them@Lena: And one more question, will we lose the orders that failed? ## m: answer || orders || direct || The failed orders are in the log, so you can contact those customers. || Direct worry about lost orders.
+me: The failed orders are saved in the log, and I can send you the list to contact them.
+them@Lena: Please do. Dan, can you send me the log file? ## quiet
+me: I will send it with the summary.
+them@Tom: Lena, the delivery guy says tomorrow morning is fine. ## quiet
+them@Lena: Great. Thanks Tom. ## quiet
+me: The copy is ready. I am rolling back the plugin now.
+.. 30
+them@Lena: Dan, is it working? What happens if the rollback fails? ## m: prompt || backup || backup-plan || Mention the nightly backup as the safety net before you continue. || Fallback plan for a failed rollback.
+me: If the rollback fails, we restore from last night's backup, so nothing is lost.
+them@Lena: I tried a test order on the copy link you sent and it went through. ## mem: d:Rolled back PayFlow to 3.9 on the copy / c:Dan>apply the rollback to the live site and test together
+me: Perfect. Then I will apply the same rollback on the live site and we test together.
+them@Lena: Please. And tell me what we do about the new version later. ## m: prompt || plugin || next-step || Suggest waiting for a plugin version that supports PHP 8.1. || Next step after the fix.
+me: We should wait for a plugin release that works with PHP 8.1 before updating again.
+them@Lena: Sounds right. Call me when it is live. ## chk: PayFlow;rollback;screenshot;5 ## ask: How many orders failed and why? || Five orders failed in the log. The likely cause is the PayFlow update from 3.9 to 4.2.
+me: I will call you as soon as it is live. Thanks Lena.
+them@Lena: Thank you Dan.

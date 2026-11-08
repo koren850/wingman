@@ -1,0 +1,715 @@
+{
+ "id": "dev-pricing-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "pricing",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from the owner.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6440,
+   "side": "me",
+   "text": "Hi Omar, thanks for joining. Dana is on the line too, I think."
+  },
+  {
+   "id": "l2",
+   "t": 12879,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Hi Dan. Yes, Dana from finance is here, she wants to hear the numbers."
+  },
+  {
+   "id": "l3",
+   "t": 20877,
+   "side": "me",
+   "text": "Good. I sent the renewal quote last week. I would like to walk through it with you."
+  },
+  {
+   "id": "l4",
+   "t": 28534,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "I read it. Honestly I was surprised. Why did the price go up this year?"
+  },
+  {
+   "id": "l5",
+   "t": 34730,
+   "side": "me",
+   "text": "The new quote adds monitoring and security updates, which you did not have before."
+  },
+  {
+   "id": "l6",
+   "t": 40965,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Okay, but last year we paid $1,500, so this is a big jump."
+  },
+  {
+   "id": "l7",
+   "t": 47619,
+   "side": "me",
+   "text": "Let me double check my records, I have $1,800 for the current plan."
+  },
+  {
+   "id": "l8",
+   "t": 57732,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Maybe that included the extra domain. Anyway, the real problem is another company offered the same thing for thirty percent less."
+  },
+  {
+   "id": "l9",
+   "t": 62204,
+   "side": "me",
+   "text": "That is useful. What exactly does their offer include?"
+  },
+  {
+   "id": "l10",
+   "t": 70515,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Hosting, backups and email support. I do not see monitoring in it, but the price is clearly lower."
+  },
+  {
+   "id": "l11",
+   "t": 78105,
+   "side": "me",
+   "text": "So they do not include monitoring or the support hours we have in the plan."
+  },
+  {
+   "id": "l12",
+   "t": 81194,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Possibly. Can you match their price?"
+  },
+  {
+   "id": "l13",
+   "t": 89262,
+   "side": "me",
+   "text": "I cannot decide on a discount during the call. I will review options and come back to you."
+  },
+  {
+   "id": "l14",
+   "t": 95849,
+   "side": "them",
+   "speaker": "Dana",
+   "text": "Dan, quick one from me. What does the SLA say about response time?"
+  },
+  {
+   "id": "l15",
+   "t": 103615,
+   "side": "me",
+   "text": "The SLA is part of the contract, and I will send you the response times."
+  },
+  {
+   "id": "l16",
+   "t": 111060,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "And I would like to know how fast you react when the site is down at night."
+  },
+  {
+   "id": "l17",
+   "t": 117784,
+   "side": "me",
+   "text": "The night response is covered in the SLA as well. I will include it."
+  },
+  {
+   "id": "l18",
+   "t": 127207,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Our CEO also says maintenance should be free after the first year. That is how the other company sells it."
+  },
+  {
+   "id": "l19",
+   "t": 133649,
+   "side": "me",
+   "text": "Maintenance includes updates, security fixes and the support hours, so free is hard for us."
+  },
+  {
+   "id": "l20",
+   "t": 140130,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Then we would like something between the two. Do you have a smaller option?"
+  },
+  {
+   "id": "l21",
+   "t": 145130,
+   "side": "me",
+   "text": "I can prepare a short comparison of the plans."
+  },
+  {
+   "id": "l22",
+   "t": 153589,
+   "side": "them",
+   "speaker": "Dana",
+   "text": "And will the invoice show monitoring as a separate line? I need it for the budget file."
+  },
+  {
+   "id": "l23",
+   "t": 160587,
+   "side": "me",
+   "text": "I can split it into lines, yes. I will check how it looks in the invoice."
+  },
+  {
+   "id": "l24",
+   "t": 219964,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Also, what uptime did we have this year?"
+  },
+  {
+   "id": "l25",
+   "t": 225140,
+   "side": "me",
+   "text": "It was 99.95 this year, so no real downtime."
+  },
+  {
+   "id": "l26",
+   "t": 231495,
+   "side": "them",
+   "speaker": "Dana",
+   "text": "And the plan has five hours of support per month, right?"
+  },
+  {
+   "id": "l27",
+   "t": 238289,
+   "side": "me",
+   "text": "It is three hours per month in the current plan, but we can discuss more."
+  },
+  {
+   "id": "l28",
+   "t": 246262,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Hmm. Another question. How long do you keep the backups, and can we restore a single file?"
+  },
+  {
+   "id": "l29",
+   "t": 253514,
+   "side": "me",
+   "text": "Good question. Let me come back to the backups after we finish the price."
+  },
+  {
+   "id": "l30",
+   "t": 258165,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Fine. Dana, can you pull last month's invoice for me?"
+  },
+  {
+   "id": "l31",
+   "t": 261335,
+   "side": "them",
+   "speaker": "Dana",
+   "text": "Sure, give me a minute."
+  },
+  {
+   "id": "l32",
+   "t": 299104,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Did you see the traffic on the highway this morning? I was stuck for forty minutes."
+  },
+  {
+   "id": "l33",
+   "t": 304632,
+   "side": "me",
+   "text": "I heard, there was an accident near the interchange."
+  },
+  {
+   "id": "l34",
+   "t": 310219,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Yes, and then the coffee machine at the office was broken too."
+  },
+  {
+   "id": "l35",
+   "t": 313565,
+   "side": "me",
+   "text": "Rough start to the day."
+  },
+  {
+   "id": "l36",
+   "t": 318850,
+   "side": "them",
+   "speaker": "Dana",
+   "text": "Dan, can you send me the plan comparison file?"
+  },
+  {
+   "id": "l37",
+   "t": 322674,
+   "side": "me",
+   "text": "Sure, I will send it after the call."
+  },
+  {
+   "id": "l38",
+   "t": 330717,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Okay, back to the renewal. If we sign this month, will you keep the price for two years?"
+  },
+  {
+   "id": "l39",
+   "t": 337279,
+   "side": "me",
+   "text": "I would like to offer that, but I need to check it first."
+  },
+  {
+   "id": "l40",
+   "t": 344260,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "I will talk to our CFO and get back to you by Thursday."
+  },
+  {
+   "id": "l41",
+   "t": 350540,
+   "side": "me",
+   "text": "Perfect. And I will send you the options and the SLA after this call."
+  },
+  {
+   "id": "l42",
+   "t": 356859,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Also, who signs on your side if we want changes to the contract?"
+  },
+  {
+   "id": "l43",
+   "t": 363597,
+   "side": "me",
+   "text": "The owner signs any contract change. I will bring your request to him."
+  },
+  {
+   "id": "l44",
+   "t": 369254,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Good. I also want a written summary of everything today, with the dates."
+  },
+  {
+   "id": "l45",
+   "t": 373810,
+   "side": "me",
+   "text": "Yes, I will write a short summary for you."
+  },
+  {
+   "id": "l46",
+   "t": 382205,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "By the way, we are planning a new warehouse portal next year. Maybe you can help with that."
+  },
+  {
+   "id": "l47",
+   "t": 390259,
+   "side": "me",
+   "text": "That sounds interesting. Let us finish the renewal and then I would like to hear more."
+  },
+  {
+   "id": "l48",
+   "t": 394192,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Sure. So what is next from your side?"
+  },
+  {
+   "id": "l49",
+   "t": 400064,
+   "side": "me",
+   "text": "I will send the options, the SLA and the answer on backups."
+  },
+  {
+   "id": "l50",
+   "t": 404075,
+   "side": "them",
+   "speaker": "Dana",
+   "text": "Please add the invoice copy too."
+  },
+  {
+   "id": "l51",
+   "t": 408125,
+   "side": "me",
+   "text": "Of course. Thank you both."
+  },
+  {
+   "id": "l52",
+   "t": 410334,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Thanks Dan, bye."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "answer",
+   "mustMention": [
+    "monitoring"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "1,800"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "competitor",
+    "support"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l12",
+   "kind": "answer",
+   "mustMention": [
+    "options"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m5",
+   "afterLine": "l14",
+   "kind": "fact",
+   "mustMention": [
+    "SLA"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l16",
+   "kind": "answer",
+   "mustMention": [
+    "SLA"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l18",
+   "kind": "prompt",
+   "mustMention": [
+    "maintenance",
+    "smaller plan"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l20",
+   "kind": "answer",
+   "mustMention": [
+    "plans"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l24",
+   "kind": "answer",
+   "mustMention": [
+    "99.95"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m10",
+   "afterLine": "l26",
+   "kind": "check",
+   "mustMention": [
+    "3 support hours"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l28",
+   "kind": "prompt",
+   "mustMention": [
+    "backups"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l38",
+   "kind": "check",
+   "mustMention": [
+    "owner approval"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l42",
+   "kind": "answer",
+   "mustMention": [
+    "owner"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m14",
+   "afterLine": "l44",
+   "kind": "check",
+   "mustMention": [
+    "summary"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m15",
+   "afterLine": "l46",
+   "kind": "prompt",
+   "mustMention": [
+    "warehouse portal"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m16",
+   "afterLine": "l48",
+   "kind": "prompt",
+   "mustMention": [
+    "backups"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l30",
+   "toLine": "l36"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l50",
+   "mustContain": [
+    "CFO",
+    "Thursday",
+    "backups",
+    "1,500"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Omar Katz\",\"side\":\"them\",\"role\":\"operations manager\"},{\"name\":\"Dana\",\"side\":\"them\",\"role\":\"finance\"}],\"agenda\":[\"why the renewal price changed\",\"renewal decision\"],\"facts\":[{\"text\":\"Current plan is $1,800 per year with 3 support hours per month\",\"src\":\"brief\"},{\"text\":\"Renewal quote is $2,100 and adds monitoring and security updates\",\"src\":\"brief\"},{\"text\":\"Any discount needs owner approval\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can you match the competitor?\",\"What changed in the plan?\"],\"chunks\":[\"Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from the owner.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The increase covers the added monitoring and security updates.\nWHY: Direct question about the price change.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Your records show $1,800 for the current year, not $1,500.\nWHY: Price stated by customer conflicts with the brief.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask what the competitor includes, such as support hours and monitoring.\nWHY: Price objection with a competitor.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I cannot decide that on the call; I will review options.\nWHY: Direct ask for a discount; needs owner approval.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: SLA is the written promise of response time and uptime.\nWHY: Term explained for the finance side.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: Night response times are written in the SLA; I will send them.\nWHY: Implied question about the night response.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Explain what maintenance covers; offer a smaller plan if needed.\nWHY: Second objection about free maintenance.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I can outline two plans and show the differences.\nWHY: Implied request for a smaller option; no prices.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Uptime was 99.95, so almost no downtime.\nWHY: Direct fact from the brief.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The plan includes 3 support hours per month, not five.\nWHY: Support hours conflict with the plan.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask about retention needs, then give a clear answer on backups.\nWHY: Question not yet answered.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l30",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l33",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l35",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l38",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: A price lock needs owner approval; do not promise it on the call.\nWHY: Possible over-promise on price.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l40",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Omar\",\"what\":\"talk to the CFO and get back\",\"due\":\"Thursday\",\"at\":344260,\"status\":\"open\"},{\"who\":\"Dan\",\"what\":\"review discount options\",\"at\":344260,\"status\":\"open\"}],\"numbers\":[{\"what\":\"last year price\",\"value\":\"$1,500\",\"at\":344260},{\"what\":\"renewal quote\",\"value\":\"$2,100\",\"at\":344260}],\"openQuestions\":[{\"asker\":\"Omar\",\"text\":\"How long do you keep the backups\",\"at\":344260,\"status\":\"open\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l42",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The owner signs contract changes; I can take your request to him.\nWHY: Direct question about who approves.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l44",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: A written summary is a new promise; add it to your list.\nWHY: New commitment from the user.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l46",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: New topic: a warehouse portal. Note it as a separate opportunity.\nWHY: Topic shift to a new project.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l48",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The backups question is still open; answer it before you close.\nWHY: Open loop before the end of the call.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l50",
+   "reply": "Omar said they paid $1,500 last year. Your records show $1,800 for the current plan.",
+   "ms": 1200,
+   "q": "What did Omar say about last year's price?"
+  }
+ ]
+}

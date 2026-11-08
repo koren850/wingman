@@ -1,0 +1,617 @@
+{
+ "id": "test-pricing-en",
+ "split": "test",
+ "lang": "en",
+ "type": "pricing",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Prep note. Client: Lantern Books, contact Mia Ford. Project: redesign of their online bookshop. My quote: $6,400 fixed price, 4 weeks, 50 percent deposit, balance on delivery. Includes design, build, content import and 2 review rounds. Extra pages are a change request, priced separately. Any discount above 5 percent needs approval from the studio owner. Payment terms are net 14.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5300,
+   "side": "me",
+   "text": "hi mia thanks for calling ken is with you right"
+  },
+  {
+   "id": "l2",
+   "t": 11359,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "yes ken is here he handles our invoices so he will listen in"
+  },
+  {
+   "id": "l3",
+   "t": 18597,
+   "side": "me",
+   "text": "great i sent the quote on monday i would like to hear your first impressions"
+  },
+  {
+   "id": "l4",
+   "t": 29294,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "so i liked the design samples but the coat is higher than what i remember i thought it was five thousand nine hundred"
+  },
+  {
+   "id": "l5",
+   "t": 35870,
+   "side": "me",
+   "text": "the quote i sent is sixty four hundred let me look at the file again"
+  },
+  {
+   "id": "l6",
+   "t": 42485,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "ok maybe i mixed it up anyway can you do it for five thousand"
+  },
+  {
+   "id": "l7",
+   "t": 50659,
+   "side": "me",
+   "text": "i cannot agree to a number during the call but i can look at changing the scoop"
+  },
+  {
+   "id": "l8",
+   "t": 55452,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "what is included in the price exactly"
+  },
+  {
+   "id": "l9",
+   "t": 60304,
+   "side": "me",
+   "text": "design the build the content import and two review rounds"
+  },
+  {
+   "id": "l10",
+   "t": 66715,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "and i need to know what happens if we need extra pages later"
+  },
+  {
+   "id": "l11",
+   "t": 73165,
+   "side": "me",
+   "text": "extra pages are handled as a change request priced on their own"
+  },
+  {
+   "id": "l12",
+   "t": 78534,
+   "side": "them",
+   "speaker": "Ken",
+   "text": "also we heard a freelancer can do the same in three weeks"
+  },
+  {
+   "id": "l13",
+   "t": 82422,
+   "side": "me",
+   "text": "what is included in their three weeks"
+  },
+  {
+   "id": "l14",
+   "t": 86349,
+   "side": "them",
+   "speaker": "Ken",
+   "text": "not sure maybe only the design"
+  },
+  {
+   "id": "l15",
+   "t": 91835,
+   "side": "me",
+   "text": "ok let us compare it line by line then"
+  },
+  {
+   "id": "l16",
+   "t": 120100,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "what are the payment terms again"
+  },
+  {
+   "id": "l17",
+   "t": 125684,
+   "side": "me",
+   "text": "it is net fourteen so fourteen days after the in voice"
+  },
+  {
+   "id": "l18",
+   "t": 130547,
+   "side": "them",
+   "speaker": "Ken",
+   "text": "i read thirty percent deposit in the pdf"
+  },
+  {
+   "id": "l19",
+   "t": 135849,
+   "side": "me",
+   "text": "it is fifty percent as the deposit and the rest on delivery"
+  },
+  {
+   "id": "l20",
+   "t": 141190,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "ken can you send me the old invoice from last year"
+  },
+  {
+   "id": "l21",
+   "t": 143910,
+   "side": "them",
+   "speaker": "Ken",
+   "text": "sure one second"
+  },
+  {
+   "id": "l22",
+   "t": 230329,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "sorry the kids are screaming in the next room"
+  },
+  {
+   "id": "l23",
+   "t": 235047,
+   "side": "me",
+   "text": "no worries i have a dog that does the same"
+  },
+  {
+   "id": "l24",
+   "t": 240564,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "i have a book fair next month and it is crazy"
+  },
+  {
+   "id": "l25",
+   "t": 243080,
+   "side": "me",
+   "text": "sounds busy"
+  },
+  {
+   "id": "l26",
+   "t": 253235,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "actually that is a good point we would want the new site live before the book fair can you do that"
+  },
+  {
+   "id": "l27",
+   "t": 258889,
+   "side": "me",
+   "text": "i would need to know the exact date of the fair first"
+  },
+  {
+   "id": "l28",
+   "t": 264582,
+   "side": "them",
+   "speaker": "Ken",
+   "text": "and if we are not happy do you offer a refund"
+  },
+  {
+   "id": "l29",
+   "t": 269174,
+   "side": "me",
+   "text": "let me come back to that one"
+  },
+  {
+   "id": "l30",
+   "t": 273445,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "can you also add a blog to the design"
+  },
+  {
+   "id": "l31",
+   "t": 279655,
+   "side": "me",
+   "text": "a blog would be a change request let me price it after approval"
+  },
+  {
+   "id": "l32",
+   "t": 335524,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "also do you do a retainer after launch like monthly support"
+  },
+  {
+   "id": "l33",
+   "t": 341432,
+   "side": "me",
+   "text": "yes we can do a monthly plan after the launch"
+  },
+  {
+   "id": "l34",
+   "t": 344359,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "and can you start sooner"
+  },
+  {
+   "id": "l35",
+   "t": 349225,
+   "side": "me",
+   "text": "the start depends on the deposit and the approval"
+  },
+  {
+   "id": "l36",
+   "t": 355650,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "if i give you the green light will you do unlimited revisions"
+  },
+  {
+   "id": "l37",
+   "t": 359854,
+   "side": "me",
+   "text": "i can offer a little more but not unlimited"
+  },
+  {
+   "id": "l38",
+   "t": 364857,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "ok i will get our board to approve by wednesday"
+  },
+  {
+   "id": "l39",
+   "t": 371039,
+   "side": "me",
+   "text": "good then i will hold the start slot for you until friday"
+  },
+  {
+   "id": "l40",
+   "t": 374600,
+   "side": "them",
+   "speaker": "Ken",
+   "text": "and the refund question"
+  },
+  {
+   "id": "l41",
+   "t": 378980,
+   "side": "me",
+   "text": "right the refund we can discuss in the contract"
+  },
+  {
+   "id": "l42",
+   "t": 382259,
+   "side": "them",
+   "speaker": "Mia",
+   "text": "ok thanks dan talk soon"
+  },
+  {
+   "id": "l43",
+   "t": 385197,
+   "side": "me",
+   "text": "thank you both"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "6,400"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "scope"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "two review rounds"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "answer",
+   "mustMention": [
+    "change request"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "three weeks",
+    "included"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l16",
+   "kind": "fact",
+   "mustMention": [
+    "net 14"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l18",
+   "kind": "check",
+   "mustMention": [
+    "50 percent"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l26",
+   "kind": "prompt",
+   "mustMention": [
+    "fair"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l28",
+   "kind": "prompt",
+   "mustMention": [
+    "refund"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l30",
+   "kind": "prompt",
+   "mustMention": [
+    "change request"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "scope-creep"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l32",
+   "kind": "fact",
+   "mustMention": [
+    "retainer"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l34",
+   "kind": "answer",
+   "mustMention": [
+    "deposit"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l36",
+   "kind": "check",
+   "mustMention": [
+    "2 review rounds"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l39",
+   "kind": "check",
+   "mustMention": [
+    "Friday",
+    "Wednesday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l20",
+   "toLine": "l25"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l42",
+   "mustContain": [
+    "Wednesday",
+    "refund",
+    "5,900",
+    "5,000"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Mia Ford\",\"side\":\"them\",\"role\":\"owner of Lantern Books\"},{\"name\":\"Ken\",\"side\":\"them\",\"role\":\"Mia's assistant\"}],\"agenda\":[\"price and scope\",\"payment terms\",\"start\"],\"facts\":[{\"text\":\"Quote is $6,400 fixed price for 4 weeks\",\"src\":\"brief\"},{\"text\":\"50 percent deposit\",\"src\":\"brief\"},{\"text\":\"Includes design, build, content import and 2 review rounds\",\"src\":\"brief\"},{\"text\":\"Discount above 5 percent needs owner approval\",\"src\":\"brief\"}],\"likelyQuestions\":[\"What is included in the price?\"],\"chunks\":[\"Prep note. Client: Lantern Books, contact Mia Ford. Project: redesign of their online bookshop. My quote: $6,400 fixed price, 4 weeks, 50 percent deposit, balance on delivery. Includes design, build, content import and 2 review rounds. Extra pages are a change request, priced separately. Any discount above 5 percent needs approval from the studio owner. Payment terms are net 14.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Your quote says $6,400, not $5,900.\nWHY: The remembered price conflicts with the quote.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I cannot agree to a price on the call; I can adjust scope instead.\nWHY: Direct ask for a discount; a figure needs approval.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Design, build, content import and two review rounds.\nWHY: Direct question; the list is in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: Extra pages are handled as a change request, priced separately.\nWHY: Implied question without a question mark.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask what is included in the three weeks before comparing the time.\nWHY: Timeline objection with a competitor.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Net 14 means payment is due 14 days after the invoice.\nWHY: Payment term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The quote says a 50 percent deposit, not thirty.\nWHY: Deposit conflicts with the quote.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l23",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l25",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The book fair is a new deadline; ask the fair date before committing.\nWHY: A new deadline appears in passing.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: A refund question was raised and dropped; decide what you can say.\nWHY: Question left without an answer.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l30",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: A blog is a change request; offer a quote after the design is approved.\nWHY: New request outside the quote.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: A retainer is a fixed monthly fee for ongoing support.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The start depends on the deposit; I will confirm after approval.\nWHY: Question about start; no date promised.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The notes say 2 review rounds; unlimited would be a bigger promise.\nWHY: Over-promise risk on revisions.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l38",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Mia\",\"what\":\"get board approval\",\"due\":\"Wednesday\",\"at\":364857,\"status\":\"open\"}],\"openQuestions\":[{\"asker\":\"Ken\",\"text\":\"refund if unhappy\",\"at\":364857,\"status\":\"open\"}],\"numbers\":[{\"what\":\"remembered price\",\"value\":\"5,900\",\"at\":364857},{\"what\":\"deposit asked\",\"value\":\"30 percent\",\"at\":364857},{\"what\":\"budget ask\",\"value\":\"5,000\",\"at\":364857}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l39",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Holding a slot until Friday depends on her Wednesday approval; say so.\nWHY: Your promise is tied to hers.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l42",
+   "reply": "Mia remembered $5,900 and a 30 percent deposit. The quote says $6,400 and a 50 percent deposit.",
+   "ms": 1200,
+   "q": "What deposit and price did Mia mention?"
+  }
+ ]
+}

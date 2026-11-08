@@ -1,0 +1,63 @@
+id: dev-kickoff-en
+split: dev
+lang: en
+type: kickoff
+variant: clean
+user: Dan
+context: Kickoff notes. Client: Bright Smile Clinic. Contacts: Dr. Nina Hale (owner), Sara (office manager). Project: a new website with online booking. Scope: 5 pages, booking form connected to the CalDesk calendar, no mobile app. Timeline: 8 weeks. Budget: $18,000. Client sends content by the end of week 2. Changes after design approval need a change request. Dan is the project manager.
+roster: Nina Hale | them | clinic owner
+roster: Sara | them | office manager
+agenda: scope and roles
+agenda: timeline and risks
+agenda: how we work together
+brief: Scope is 5 pages and online booking with CalDesk
+brief: Timeline is 8 weeks
+brief: Budget is $18,000
+brief: Client sends content by the end of week 2
+brief: Changes after design approval need a change request
+likely: Who is our contact on your side?
+likely: What happens if we want changes later?
+---
+me: Welcome everyone, and thank you for joining the kickoff. Nina, Sara, great to see you.
+them@Nina: Thank you Dan. We are excited. Sara will be involved in the daily details.
+me: Let us start with roles. I will be your project manager for the whole project.
+them@Nina: Good. Who is our contact on your side if you are on vacation? ## m: answer || backup || direct || I am your project manager; I will name a backup contact. || Direct question about the contact; do not invent a name.
+me: I will name a backup before I take any time off.
+them@Sara: Let me ask about scope. I thought we have ten pages, not five. ## m: check || 5 pages || number-conflict || The scope says 5 pages, not ten. || Page count conflicts with the scope.
+me: Our scope document says five pages. We can discuss more as a change.
+them@Nina: Okay. And what happens if we want to change something after we approve the design? ## m: answer || change request || implied,direct || Changes after approval go through a change request. || Direct question; the process is in the notes.
+me: After approval, changes go through a change request so we can check the effect.
+them@Nina: Fine. We would also like a mobile app for patients, can we add it? ## m: prompt || mobile app;phase || scope-creep || A mobile app is out of scope; offer it as a later phase. || Scope creep request.
+me: The mobile app is not in this scope. We can plan it as a second phase.
+.. 25
+them@Sara: What is the budget again? I have it as twenty five thousand. ## m: check || 18,000 || number-conflict || The budget in your notes is $18,000, not 25,000. || Budget conflicts with the notes.
+me: The agreed budget is $18,000 for this scope.
+.. 48
+them@Nina: OK. Eight weeks feels long to me. A competitor told us five weeks. ## m: prompt || scope;five weeks || objection || Ask what the five weeks include and compare scope, not only time. || Timeline objection from a competitor.
+me: What did they include in those five weeks?
+them@Nina: Not sure. We can ask them. ## quiet
+them@Sara: Nina, did you call the photographer about the clinic photos? ## quiet
+them@Nina: Not yet, I will do it tomorrow. ## quiet
+.. 30
+me: We will also need the clinic photos and texts. We call that content, and it comes from you.
+them@Sara: We will send everything by the end of next week, I promise. ## mem: c:Sara>send all content>end of next week / c:Dan>name a backup contact / n:budget=$18,000 / n:pages=5
+me: Great. That is week two in the plan, which is what we need. Then I will send you a kickoff summary today. ## m: check || summary || promise || You promised a kickoff summary today; add it to your list. || Your own commitment.
+them@Nina: Who signs off on the design on our side? I do, or should Sara do it? ## m: prompt || design approval || unanswered || Design approval owner is still open; propose one person. || Open decision on who approves.
+me: Let me come back to that when we reach the design stage.
+them@Sara: Another thing. The CalDesk system sometimes responds slowly. Will that affect the booking? ## m: prompt || CalDesk || risk || Add the CalDesk speed as a risk with an owner. || A project risk to track.
+me: Good point, we will add it to the risk list.
+them@Nina: Also, do we get a staging site where we can test before launch? What is that exactly? ## m: fact || staging || jargon || Staging is a private copy of the site for testing before launch. || Term explained.
+.. 48
+me: Yes, a private test copy of the site, before launch.
+them@Sara: And then the UAT before the launch, I read about that. ## m: fact || UAT || jargon || UAT is user acceptance testing: your team checks the site before launch. || Term explained.
+me: Right, your team checks the site and confirms it works for you.
+them@Nina: How often will we meet during the project? ## m: answer || weekly || direct || A weekly status call; I will propose a time. || Direct question; no time given.
+me: A weekly status call. I will send a proposal for the time.
+them@Nina: By the way, we had a hard month with staff. Two hygienists left. ## m: prompt || staffing || topic-shift || The staffing talk is off topic; acknowledge it and return to the plan. || Topic shift away from the project.
+me: Sorry to hear that. Let us make sure the booking helps your team, then. Back to the plan.
+them@Sara: Dan, can you send me the contract copy again? ## quiet
+me: Sure, I will send it after the call.
+me: To close, I still need to know who signs off on the design. ## m: prompt || sign off || unanswered || The design sign-off question is still open; ask for one name now. || Open loop before the end.
+them@Nina: Sara will approve the design, and I will approve the final launch.
+me: Perfect. Thank you both. ## chk: content;backup;18,000;CalDesk ## ask: What did Sara promise? || Sara promised to send all the content by the end of next week, which is week two.
+them@Nina: Thank you Dan.

@@ -1,0 +1,680 @@
+{
+ "id": "test-vendor-he",
+ "split": "test",
+ "lang": "he",
+ "type": "vendor",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "הערות הכנה. דן בוחר שער תשלומים לחנות של לקוח. הספק: פייסטורם, נציגה ליאור כהן. דרישות: עמלה של עד 1.5 אחוז לעסקה, העברת כספים לחשבון תוך יום עסקים אחד, חוזה של עד 12 חודשים, תמיכה בעברית. נפח צפוי: 400 עסקאות בחודש. הבעלים של הלקוח חייב לאשר כל חוזה. הצעה שהתקבלה בכתב: עמלה 1.9 אחוז והעברה תוך יומיים.",
+ "profile": {
+  "userName": "דן"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4860,
+   "side": "me",
+   "text": "שלום ליאור תודה שהקדשת זמן ואורן גם איתנו"
+  },
+  {
+   "id": "l2",
+   "t": 10179,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "שלום דן כן אורן יענה על כל מה שקשור לאינטגרציה"
+  },
+  {
+   "id": "l3",
+   "t": 14657,
+   "side": "me",
+   "text": "מעולה אני אתחיל בקצרה במה שאני מחפש"
+  },
+  {
+   "id": "l4",
+   "t": 20814,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "סבבה רק קודם תגיד לי כמה עסקאות יש לכם בחודש"
+  },
+  {
+   "id": "l5",
+   "t": 23790,
+   "side": "me",
+   "text": "בערך ארבע מאות עסקאות בחודש"
+  },
+  {
+   "id": "l6",
+   "t": 28025,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "טוב העמלה אצלנו היא אחוז ותשעים לעסקה"
+  },
+  {
+   "id": "l7",
+   "t": 33519,
+   "side": "me",
+   "text": "אני צריך עד אחוז וחצי זה מה שהתקציב מאפשר"
+  },
+  {
+   "id": "l8",
+   "t": 38172,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אפשר להוריד אם תחתמו לשלוש שנים"
+  },
+  {
+   "id": "l9",
+   "t": 43004,
+   "side": "me",
+   "text": "שלוש שנים זה ארוך לי מה עם שנה אחת"
+  },
+  {
+   "id": "l10",
+   "t": 46575,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "נבדוק אבל בדרך כלל לא"
+  },
+  {
+   "id": "l11",
+   "t": 51825,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "לגבי ההעברות הכסף מגיע לחשבון תוך שלושה ימים"
+  },
+  {
+   "id": "l12",
+   "t": 55154,
+   "side": "me",
+   "text": "אני צריך תוך יום עסקים אחד"
+  },
+  {
+   "id": "l13",
+   "t": 57642,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "אפשר בחבילה פרימיום"
+  },
+  {
+   "id": "l14",
+   "t": 85549,
+   "side": "me",
+   "text": "ומה כלול בפרימיום"
+  },
+  {
+   "id": "l15",
+   "t": 89295,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "העברה מהירה ותמיכה בטלפון"
+  },
+  {
+   "id": "l16",
+   "t": 91540,
+   "side": "me",
+   "text": "וכמה זה מוסיף"
+  },
+  {
+   "id": "l17",
+   "t": 131044,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אשלח לך את זה בכתב"
+  },
+  {
+   "id": "l18",
+   "t": 136647,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אורן תבדוק אם יש לנו תמיכה בעברית בממשק התשלום"
+  },
+  {
+   "id": "l19",
+   "t": 139069,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "יש אני בודק רגע"
+  },
+  {
+   "id": "l20",
+   "t": 175270,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "אתה צריך גם תקן פי סי איי אם אתה שומר פרטי כרטיס"
+  },
+  {
+   "id": "l21",
+   "t": 179370,
+   "side": "me",
+   "text": "אנחנו לא שומרים פרטי כרטיס אצלנו"
+  },
+  {
+   "id": "l22",
+   "t": 183049,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "מעולה זה מפשט הרבה"
+  },
+  {
+   "id": "l23",
+   "t": 187747,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "ומה לגבי צארג בקים יש לכם ניסיון עם זה"
+  },
+  {
+   "id": "l24",
+   "t": 191604,
+   "side": "me",
+   "text": "אשמח לדעת איך אתם מטפלים בזה"
+  },
+  {
+   "id": "l25",
+   "t": 196300,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "החוזה הסטנדרטי שלנו הוא לעשרים וארבעה חודשים"
+  },
+  {
+   "id": "l26",
+   "t": 200155,
+   "side": "me",
+   "text": "אני צריך עד שנה"
+  },
+  {
+   "id": "l27",
+   "t": 203349,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "ומי חותם אצלכם על החוזה"
+  },
+  {
+   "id": "l28",
+   "t": 207802,
+   "side": "me",
+   "text": "הבעלים של הלקוח צריך לאשר כל חוזה"
+  },
+  {
+   "id": "l29",
+   "t": 212674,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "אני רוצה להבין איך תתחברו לחנות עצמה"
+  },
+  {
+   "id": "l30",
+   "t": 216045,
+   "side": "me",
+   "text": "נשתמש בתיעוד שלכם ואבדוק עם הצוות"
+  },
+  {
+   "id": "l31",
+   "t": 281095,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "ואיך אתם מתחברים היום ל אי פי איי שלנו"
+  },
+  {
+   "id": "l32",
+   "t": 284464,
+   "side": "me",
+   "text": "אנחנו נשתמש בדוקומנטציה שלכם"
+  },
+  {
+   "id": "l33",
+   "t": 325092,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "דרך אגב ראית את המשחק אתמול"
+  },
+  {
+   "id": "l34",
+   "t": 327379,
+   "side": "me",
+   "text": "לא הצלחתי לראות"
+  },
+  {
+   "id": "l35",
+   "t": 330505,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "לא חבל היה מדהים"
+  },
+  {
+   "id": "l36",
+   "t": 333630,
+   "side": "me",
+   "text": "ניראה אותו בהקלטה"
+  },
+  {
+   "id": "l37",
+   "t": 339034,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "חזרה לעניין אתה יכול לשלוח לי את פרטי החברה של הלקוח"
+  },
+  {
+   "id": "l38",
+   "t": 341077,
+   "side": "me",
+   "text": "כן אשלח"
+  },
+  {
+   "id": "l39",
+   "t": 345639,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אתם תומכים גם בתשלומים בביט ובאפל פיי"
+  },
+  {
+   "id": "l40",
+   "t": 351040,
+   "side": "me",
+   "text": "אני צריך לוודא אם הלקוח רוצה את זה"
+  },
+  {
+   "id": "l41",
+   "t": 356200,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "עוד דבר אני יכולה לתת לך תקופת ניסיון של חודשיים"
+  },
+  {
+   "id": "l42",
+   "t": 360519,
+   "side": "me",
+   "text": "זה טוב אשמח לראות את התנאים בכתב"
+  },
+  {
+   "id": "l43",
+   "t": 365257,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אני אשלח הצעה מעודכנת עד יום חמישי"
+  },
+  {
+   "id": "l44",
+   "t": 369334,
+   "side": "me",
+   "text": "מצוין ואני אחזור אליך עם תשובה בסוף השבוע"
+  },
+  {
+   "id": "l45",
+   "t": 373830,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "ומה לגבי אפל פיי ביט שאלת אותי קודם"
+  },
+  {
+   "id": "l46",
+   "t": 378325,
+   "side": "me",
+   "text": "נכון אני עדיין צריך תשובה על זה"
+  },
+  {
+   "id": "l47",
+   "t": 381139,
+   "side": "them",
+   "speaker": "אורן",
+   "text": "אבדוק ואחזור"
+  },
+  {
+   "id": "l48",
+   "t": 383292,
+   "side": "me",
+   "text": "תודה רבה לשניכם"
+  },
+  {
+   "id": "l49",
+   "t": 385444,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "תודה דן"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "answer",
+   "mustMention": [
+    "400"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "1.5"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "חוזה קצר",
+    "יציאה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l11",
+   "kind": "check",
+   "mustMention": [
+    "יום עסקים אחד"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l20",
+   "kind": "fact",
+   "mustMention": [
+    "PCI"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l23",
+   "kind": "fact",
+   "mustMention": [
+    "צארג'בק"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l25",
+   "kind": "check",
+   "mustMention": [
+    "12 חודשים"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l27",
+   "kind": "answer",
+   "mustMention": [
+    "בעלים"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m9",
+   "afterLine": "l29",
+   "kind": "answer",
+   "mustMention": [
+    "תיעוד",
+    "API"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l31",
+   "kind": "fact",
+   "mustMention": [
+    "API"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l39",
+   "kind": "answer",
+   "mustMention": [
+    "ביט",
+    "אפל פיי"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m12",
+   "afterLine": "l41",
+   "kind": "prompt",
+   "mustMention": [
+    "ניסיון"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "trial"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l44",
+   "kind": "check",
+   "mustMention": [
+    "בעלים",
+    "חמישי"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l45",
+   "kind": "prompt",
+   "mustMention": [
+    "אפל פיי"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l13",
+   "toLine": "l13"
+  },
+  {
+   "fromLine": "l17",
+   "toLine": "l19"
+  },
+  {
+   "fromLine": "l33",
+   "toLine": "l37"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l48",
+   "mustContain": [
+    "חמישי",
+    "1.9",
+    "אפל פיי"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"ליאור כהן\",\"side\":\"them\",\"role\":\"נציגת מכירות\"},{\"name\":\"אורן\",\"side\":\"them\",\"role\":\"מהנדס אינטגרציה\"}],\"agenda\":[\"עמלות והעברת כספים\",\"חוזה ואינטגרציה\"],\"facts\":[{\"text\":\"דרישה: עמלה עד 1.5 אחוז\",\"src\":\"brief\"},{\"text\":\"דרישה: העברה תוך יום עסקים אחד\",\"src\":\"brief\"},{\"text\":\"דרישה: חוזה עד 12 חודשים\",\"src\":\"brief\"},{\"text\":\"נפח 400 עסקאות בחודש\",\"src\":\"brief\"},{\"text\":\"הבעלים חייב לאשר כל חוזה\",\"src\":\"brief\"}],\"likelyQuestions\":[\"כמה עסקאות יש לכם בחודש?\"],\"chunks\":[\"הערות הכנה. דן בוחר שער תשלומים לחנות של לקוח. הספק: פייסטורם, נציגה ליאור כהן. דרישות: עמלה של עד 1.5 אחוז לעסקה, העברת כספים לחשבון תוך יום עסקים אחד, חוזה של עד 12 חודשים, תמיכה בעברית. נפח צפוי: 400 עסקאות בחודש. הבעלים של הלקוח חייב לאשר כל חוזה. הצעה שהתקבלה בכתב: עמלה 1.9 אחוז והעברה תוך יומיים.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: בערך 400 עסקאות בחודש.\nWHY: שאלה ישירה; המספר בבריף.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: הדרישה שלך היא עמלה עד 1.5 אחוז; היא אומרת 1.9.\nWHY: העמלה מעל הדרישה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: לבקש חוזה קצר או סעיף יציאה במקום התחייבות ארוכה.\nWHY: נעילה ארוכה בחוזה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: אתה צריך העברה תוך יום עסקים אחד; הוא אומר שלושה ימים.\nWHY: זמן ההעברה מעל הדרישה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: PCI הוא תקן אבטחה לנתוני כרטיס; ספק שער בדרך כלל מכסה אותו.\nWHY: מונח הוסבר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l23",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: צארג'בק הוא החזר כסף שהלקוח מבקש מחברת האשראי.\nWHY: מונח הוסבר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l25",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: אתה צריך חוזה עד 12 חודשים; הוא מציע 24.\nWHY: אורך החוזה מעל הדרישה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l27",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: הבעלים של הלקוח חייב לאשר כל חוזה; אני לא חותם לבד.\nWHY: שאלה על מי חותם.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l29",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: נשתמש בתיעוד של הספק ובחיבור API; אבדוק עם הצוות.\nWHY: שאלה משתמעת על האינטגרציה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: API הוא ממשק שמאפשר לשתי מערכות לדבר אחת עם השנייה.\nWHY: מונח הוסבר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l33",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l35",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l37",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l39",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: אצל הספק צריך לאשר תמיכה בביט ובאפל פיי; אבקש בכתב.\nWHY: שאלה מצד הספק; לא להבטיח.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l41",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: לקבל את תקופת הניסיון בכתב, כולל תנאי יציאה.\nWHY: הצעת ניסיון שכדאי לתעד.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l43",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"ליאור\",\"what\":\"לשלוח הצעה מעודכנת\",\"due\":\"יום חמישי\",\"at\":365257,\"status\":\"open\"}],\"numbers\":[{\"what\":\"עמלה מוצעת\",\"value\":\"1.9 אחוז\",\"at\":365257},{\"what\":\"העברה\",\"value\":\"שלושה ימים\",\"at\":365257},{\"what\":\"חוזה מוצע\",\"value\":\"שלוש שנים\",\"at\":365257}],\"openQuestions\":[{\"asker\":\"דן\",\"text\":\"אפל פיי וביט\",\"at\":365257,\"status\":\"open\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l44",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: הבעלים חייב לאשר חוזה; תשובה בסוף השבוע תלויה בהצעה שתגיע ביום חמישי.\nWHY: ההבטחה שלך תלויה באישור ובהצעה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l45",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: שאלת התמיכה באפל פיי ובביט עדיין פתוחה.\nWHY: חוב פתוח לספק.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l48",
+   "reply": "ליאור הציעה עמלה של 1.9 אחוז. הדרישה שלך היא עד 1.5 אחוז.",
+   "ms": 1200,
+   "q": "מה העמלה שליאור הציעה לעומת הדרישה?"
+  }
+ ]
+}

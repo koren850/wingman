@@ -1,0 +1,60 @@
+id: dev-interview-en
+split: dev
+lang: en
+type: interview
+variant: clean
+user: Dan
+context: Practice interview for a backend developer role at Orbit Pay (invented company). My notes: 5 years of experience with Python and Node, no Go. Led a payment service migration that cut cloud cost by 40 percent, leading a team of 4. Production incident story: a payment outage, found the cause in 20 minutes, wrote a postmortem. Reason for leaving: limited growth path to a lead role. Weakness: delegating, now using written handoffs. Do not state a salary number. Questions I want to ask: on-call, team growth plan, how success is measured.
+roster: Gil Navon | them | engineering manager
+roster: Yael | them | recruiter
+agenda: experience and motivation
+agenda: technical questions
+agenda: my questions
+brief: 5 years of experience, Python and Node, no Go
+brief: Migration cut cloud cost by 40 percent, team of 4
+brief: Do not state a salary number
+likely: Why are you leaving your job?
+likely: What is your biggest weakness?
+---
+me: Hi Gil, thank you for the time. I am happy to be here.
+them@Gil: Welcome Dan. I have your CV. I see eight years of experience, is that right? ## m: check || 5 years || number-conflict || Your notes say 5 years of experience, not eight. || Interviewer number conflicts with your record.
+me: It is five years, mostly with Python and Node.
+them@Gil: Got it. Why are you leaving your current job? ## m: answer || growth || direct || A limited growth path to a lead role; keep it positive. || Direct motivation question.
+me: I want more growth. At my current company there is no clear path to a lead role.
+them@Gil: Makes sense. Tell me about a time you handled a production incident. ## m: answer || postmortem || direct || Use the payment outage story: cause found fast, postmortem written. || Behavioral question; story in the notes.
+me: We had a payment outage. I found the cause in twenty minutes and then wrote a postmortem.
+them@Gil: Good. I would like to hear about your leadership experience as well. ## m: answer || team of four || implied || I led a payment migration with a team of four. || Implied question; the facts are in the notes.
+me: I led the payment service migration with a team of four people.
+.. 43
+them@Gil: And the results? ## m: answer || 40 percent || direct || It cut cloud cost by 40 percent. || Direct follow-up with a number from the notes.
+me: It cut our cloud cost by forty percent.
+them@Gil: Impressive. Our stack is mostly Go, and you have no Go experience. That worries me. ## m: prompt || learn || objection || Acknowledge it; point to similar languages and how fast you learn. || Skill gap objection.
+me: I understand. I learned Node in a few months, and I can learn Go the same way.
+.. 25
+them@Gil: Let me ask a design question. How would you design a rate limiter for an API? ## m: answer || token bucket || direct || Start with requirements, then a token bucket per client in a shared cache. || Technical question; keep it simple.
+me: I would clarify requirements first, then use a token bucket per client in a shared cache.
+them@Gil: And how do you make a payment request idempotent? ## m: fact || idempotent || jargon || Idempotent means repeating the same request gives the same result. || Term explained.
+me: With an idempotency key stored with the result, so a retry returns the same response.
+them@Gil: Good. What are your salary expectations? ## m: answer || range || direct || Ask about the budget range first; do not name a number. || Salary question; practice rule says no figure.
+.. 43
+me: I would like to hear the range for the role first.
+them@Gil: Fair. Yael, can you bring us some water? ## quiet
+them@Yael: Sure, one minute. ## quiet
+them@Gil: Thanks. By the way, the weather is terrible today. ## quiet
+me: It really is. ## quiet
+.. 30
+them@Gil: What is your biggest weakness? ## m: answer || handoffs || direct || I used to hold on to tasks; now I use written handoffs. || Weakness question; answer is in the notes.
+me: I used to hold on to tasks, so now I use written handoffs when I delegate.
+them@Gil: Fine. We recently raised funding and we plan to double the team. ## m: prompt || team plan || topic-shift || Ask how the funding changes the team plan and the on-call load. || Topic shift to company news.
+me: Congratulations. How does that change the team plan?
+.. 43
+them@Gil: We will hire in stages. Can you send me your portfolio link? ## quiet
+me: Yes, I will send my portfolio.
+them@Gil: I will give you an answer within a week. ## mem: c:Gil>give an answer>within a week / c:Dan>send the portfolio link / n:experience=5 years / f:Orbit Pay raised funding and plans to double the team
+me: Thank you. Can I ask about on-call? ## m: prompt || on-call || unanswered || Your on-call question is still open; ask it again clearly. || Open question to the interviewer.
+them@Gil: We can come back to that. Do you have other questions for us? ## m: answer || on-call;success || direct || Ask about on-call, the growth plan, and how success is measured. || Prepared questions from the notes.
+me: Yes. What does on-call look like, and how do you measure success in the first six months?
+them@Gil: On-call is one week in six, and success is measured by delivery and quality.
+me: That helps. I will also send my portfolio today. ## m: check || portfolio || promise || You promised the portfolio; add it to your list. || Your own commitment.
+them@Gil: Thank you Dan. ## chk: Gil;portfolio;5 years;funding ## ask: What did Gil say about the next step? || Gil said he will give an answer within a week. You promised to send your portfolio.
+me: Thank you, Gil.

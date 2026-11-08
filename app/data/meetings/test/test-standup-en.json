@@ -1,0 +1,593 @@
+{
+ "id": "test-standup-en",
+ "split": "test",
+ "lang": "en",
+ "type": "standup",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Data team sprint 22. Dan leads. Team: Hana (data engineer), Eli (analyst), Zoe (data scientist). The nightly pipeline must finish by 6 AM; this week it failed 3 times. Dashboard v2 launch is planned for the 14th. The cloud budget alert is at $2,000 per month; last month cost was $1,700. Dan owns the contact with the data vendor DataPipe; the credentials request is pending. Dan has the reviews for the churn model waiting.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4160,
+   "side": "me",
+   "text": "morning everyone quick round hana you first"
+  },
+  {
+   "id": "l2",
+   "t": 11359,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "morning so the nightly pipeline failed again last night that is now four times this week"
+  },
+  {
+   "id": "l3",
+   "t": 16317,
+   "side": "me",
+   "text": "my notes say three can you check the log"
+  },
+  {
+   "id": "l4",
+   "t": 26254,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "oh maybe three the fourth was a manual run anyway the cause looks like a bad join on the orders table"
+  },
+  {
+   "id": "l5",
+   "t": 31690,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "i also need the credentials from data pipe to test the fix"
+  },
+  {
+   "id": "l6",
+   "t": 36025,
+   "side": "me",
+   "text": "i own that contact i will chase it"
+  },
+  {
+   "id": "l7",
+   "t": 47239,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "my turn i am waiting for the new dashboard numbers and i am not sure which version of the churn metric is the final one"
+  },
+  {
+   "id": "l8",
+   "t": 53552,
+   "side": "me",
+   "text": "i will confirm in the channel which churn metric is final"
+  },
+  {
+   "id": "l9",
+   "t": 57644,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "thanks also can you review my query today"
+  },
+  {
+   "id": "l10",
+   "t": 61775,
+   "side": "me",
+   "text": "yes i will review it after standup"
+  },
+  {
+   "id": "l11",
+   "t": 68605,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "the security scan came back with one critical finding on the upload service"
+  },
+  {
+   "id": "l12",
+   "t": 70934,
+   "side": "me",
+   "text": "who owns that ticket"
+  },
+  {
+   "id": "l13",
+   "t": 138622,
+   "side": "them",
+   "speaker": "Zoe",
+   "text": "so the churn model accuracy is at ninety two percent but i think we can get more"
+  },
+  {
+   "id": "l14",
+   "t": 176029,
+   "side": "me",
+   "text": "nice zoe"
+  },
+  {
+   "id": "l15",
+   "t": 183795,
+   "side": "them",
+   "speaker": "Zoe",
+   "text": "also we cannot launch the dashboard on the fourteenth because the metric is not validated"
+  },
+  {
+   "id": "l16",
+   "t": 187060,
+   "side": "me",
+   "text": "what is missing for the validation"
+  },
+  {
+   "id": "l17",
+   "t": 191884,
+   "side": "them",
+   "speaker": "Zoe",
+   "text": "a week with the finance team to compare numbers"
+  },
+  {
+   "id": "l18",
+   "t": 221747,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "coffee anyone i am going to the kitchen"
+  },
+  {
+   "id": "l19",
+   "t": 223249,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "yes please"
+  },
+  {
+   "id": "l20",
+   "t": 225550,
+   "side": "them",
+   "speaker": "Zoe",
+   "text": "not for me"
+  },
+  {
+   "id": "l21",
+   "t": 228650,
+   "side": "me",
+   "text": "two sugars for me"
+  },
+  {
+   "id": "l22",
+   "t": 233689,
+   "side": "them",
+   "speaker": "Zoe",
+   "text": "dan can you send me the finance contact"
+  },
+  {
+   "id": "l23",
+   "t": 237267,
+   "side": "me",
+   "text": "sure i will send it after standup"
+  },
+  {
+   "id": "l24",
+   "t": 243924,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "by the way what is a canary release i saw it in the notes"
+  },
+  {
+   "id": "l25",
+   "t": 250240,
+   "side": "me",
+   "text": "it means we give the new version to a few users first"
+  },
+  {
+   "id": "l26",
+   "t": 256595,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "also the cloud costs are higher this month nearly two thousand"
+  },
+  {
+   "id": "l27",
+   "t": 297249,
+   "side": "me",
+   "text": "last month was seventeen hundred so we are close to the alert"
+  },
+  {
+   "id": "l28",
+   "t": 301802,
+   "side": "them",
+   "speaker": "Zoe",
+   "text": "dan who gets the pipeline alert at night"
+  },
+  {
+   "id": "l29",
+   "t": 307914,
+   "side": "me",
+   "text": "let me sort that out in a minute first anything else"
+  },
+  {
+   "id": "l30",
+   "t": 313705,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "random thing i am thinking about changing the team lunch day to thursday"
+  },
+  {
+   "id": "l31",
+   "t": 316875,
+   "side": "me",
+   "text": "lets talk lunch after standup"
+  },
+  {
+   "id": "l32",
+   "t": 362364,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "i will send the fix for the join by tomorrow"
+  },
+  {
+   "id": "l33",
+   "t": 367892,
+   "side": "me",
+   "text": "and i will send the updated launch plan today"
+  },
+  {
+   "id": "l34",
+   "t": 371199,
+   "side": "them",
+   "speaker": "Zoe",
+   "text": "so who takes the alert tonight"
+  },
+  {
+   "id": "l35",
+   "t": 375305,
+   "side": "me",
+   "text": "hana tonight and i am the backup"
+  },
+  {
+   "id": "l36",
+   "t": 378690,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "and the launch date"
+  },
+  {
+   "id": "l37",
+   "t": 382134,
+   "side": "me",
+   "text": "we decide after the validation with finance"
+  },
+  {
+   "id": "l38",
+   "t": 384097,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "sounds good"
+  },
+  {
+   "id": "l39",
+   "t": 386479,
+   "side": "me",
+   "text": "thanks all"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "3 times"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l5",
+   "kind": "prompt",
+   "mustMention": [
+    "DataPipe"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "blocker"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l7",
+   "kind": "answer",
+   "mustMention": [
+    "churn"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l9",
+   "kind": "answer",
+   "mustMention": [
+    "reviews"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m5",
+   "afterLine": "l11",
+   "kind": "prompt",
+   "mustMention": [
+    "critical"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "blocker"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l15",
+   "kind": "check",
+   "mustMention": [
+    "14th"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l16",
+   "kind": "prompt",
+   "mustMention": [
+    "validation"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l24",
+   "kind": "fact",
+   "mustMention": [
+    "canary"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l26",
+   "kind": "check",
+   "mustMention": [
+    "1,700"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l28",
+   "kind": "answer",
+   "mustMention": [
+    "alert"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m11",
+   "afterLine": "l30",
+   "kind": "prompt",
+   "mustMention": [
+    "lunch"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l33",
+   "kind": "check",
+   "mustMention": [
+    "launch plan"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l34",
+   "kind": "prompt",
+   "mustMention": [
+    "alert",
+    "rota"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l36",
+   "kind": "answer",
+   "mustMention": [
+    "validation"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l13",
+   "toLine": "l13"
+  },
+  {
+   "fromLine": "l18",
+   "toLine": "l22"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l38",
+   "mustContain": [
+    "DataPipe",
+    "alert",
+    "3",
+    "1,700"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Hana\",\"side\":\"them\",\"role\":\"data engineer\"},{\"name\":\"Eli\",\"side\":\"them\",\"role\":\"analyst\"},{\"name\":\"Zoe\",\"side\":\"them\",\"role\":\"data scientist\"}],\"agenda\":[\"pipeline failures\",\"dashboard launch\"],\"facts\":[{\"text\":\"Nightly pipeline failed 3 times this week\",\"src\":\"brief\"},{\"text\":\"Dashboard v2 launch planned for the 14th\",\"src\":\"brief\"},{\"text\":\"Cloud alert at $2,000 per month; last month $1,700\",\"src\":\"brief\"},{\"text\":\"DataPipe credentials request pending\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Who owns the pipeline alert?\"],\"chunks\":[\"Data team sprint 22. Dan leads. Team: Hana (data engineer), Eli (analyst), Zoe (data scientist). The nightly pipeline must finish by 6 AM; this week it failed 3 times. Dashboard v2 launch is planned for the 14th. The cloud budget alert is at $2,000 per month; last month cost was $1,700. Dan owns the contact with the data vendor DataPipe; the credentials request is pending. Dan has the reviews for the churn model waiting.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The notes say the pipeline failed 3 times this week, not four.\nWHY: Failure count conflicts with the notes.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: You own the DataPipe contact; offer to chase the credentials today.\nWHY: Blocker is yours to unblock.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: The final churn metric is Zoe's validated one; I will confirm in the channel.\nWHY: Implied question; do not invent a version.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Yes, after this standup; I have the churn model reviews waiting.\nWHY: Direct request.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask for the ticket and the owner of the critical finding.\nWHY: A critical finding needs an owner.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The plan says launch on the 14th; she says it is not possible.\nWHY: Launch date conflicts with the plan.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask what validation still needs and how long it takes.\nWHY: Objection to the launch date.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: A canary release sends a new version to a small group first.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Last month cost $1,700 and the alert is at $2,000.\nWHY: Cost statement against the notes.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Nobody owns the night alert yet; I will set the rota after standup.\nWHY: Direct question; no names invented.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l30",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Lunch day is off topic; park it for after standup.\nWHY: Topic shift away from the sprint.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l32",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Hana\",\"what\":\"send the fix for the bad join\",\"due\":\"tomorrow\",\"at\":362364,\"status\":\"open\"},{\"who\":\"Dan\",\"what\":\"chase the DataPipe credentials\",\"at\":362364,\"status\":\"open\"}],\"openQuestions\":[{\"asker\":\"Zoe\",\"text\":\"Who gets the pipeline alert at night\",\"at\":362364,\"status\":\"open\"}],\"numbers\":[{\"what\":\"pipeline failures\",\"value\":\"3\",\"at\":362364},{\"what\":\"cloud cost last month\",\"value\":\"$1,700\",\"at\":362364}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l33",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: You promised the launch plan today; add it to your list.\nWHY: Your own commitment.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The night alert owner is still open; set the rota before you close.\nWHY: Open loop from earlier.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Decide after validation with finance; I will confirm the date today.\nWHY: Direct question; no date promised.",
+   "ms": 900
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l38",
+   "reply": "The notes say it failed 3 times this week. Hana said four, but one run was manual.",
+   "ms": 1200,
+   "q": "How many times did the pipeline fail?"
+  }
+ ]
+}

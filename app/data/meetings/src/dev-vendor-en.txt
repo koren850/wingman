@@ -1,0 +1,70 @@
+id: dev-vendor-en
+split: dev
+lang: en
+type: vendor
+variant: clean
+user: Dan
+context: Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. The owner must approve any contract.
+roster: Sam Reed | them | sales rep
+roster: Priya | them | solutions engineer
+agenda: uptime and backups
+agenda: price and contract length
+brief: Need uptime of at least 99.95
+brief: Budget is $400 per month
+brief: Backups kept 30 days
+brief: Owner must approve any contract
+likely: What traffic do you expect?
+likely: Are you talking to other vendors?
+---
+me: Hi Sam, thanks for the call. Priya is joining as well, I see.
+them@Sam: Hi Dan. Yes, Priya is our solutions engineer, she will answer the technical questions.
+me: Great. I will start with what we need, and then you tell me what you can offer.
+them@Sam: Sounds good. First, tell me what traffic you expect on the site. ## m: answer || 40,000 || direct || About 40,000 visits per month, on one server today. || Direct question; the number is in the brief.
+me: We expect about 40,000 visits a month at the moment.
+them@Sam: And please describe your current setup, so I know where you are coming from. ## m: answer || 2 CPUs;nightly || implied,direct || One virtual server with 2 CPUs and nightly backups. || Request for the current setup, from the brief.
+me: It is a single virtual server with two CPUs and nightly backups.
+them@Sam: Understood. Our standard plan has a 99.9 uptime guarantee and it fits that size well. ## m: check || 99.95 || number-conflict || You need at least 99.95; their plan says 99.9. || Offer is below the requirement.
+me: We need at least 99.95. What does your guarantee cover?
+them@Priya: For 99.95 you need our business tier. The SLA credits are different there. ## m: fact || SLA || jargon || SLA credits are refunds the vendor pays when it misses uptime. || Term explained.
+me: And how long do you keep backups, and can I restore a single site?
+them@Sam: We keep backups, yes. Let me tell you about our data centers first, we have three in Europe.
+me: Good, but I still need the backup retention number.
+them@Sam: Our support is open 24 hours by phone and chat, with a fast response. ## m: prompt || writing || claim || Ask for the support response time in writing in the SLA. || Vendor claim without a number.
+me: Please put the exact response time in writing in the SLA.
+them@Sam: Of course. What would you like to know about the migration itself? ## m: prompt || downtime || implied || Ask how long the cutover takes and whether there is downtime. || Chance to ask a key migration question.
+me: How long is the cutover, and is there downtime?
+them@Priya: Usually under an hour, and we do it at night.
+.. 30
+them@Sam: I will have Priya send that. Now, the price for the business tier is $520 per month. ## m: check || 400 || number-conflict || The quote is $520 and your budget is $400. || Price above budget.
+me: That is above our budget of $400. Is there room on the price?
+them@Sam: Maybe, if you sign for a year. We do not do month to month on that tier. ## m: prompt || exit clause;trial || objection || Ask for a trial period or an exit clause before any annual deal. || Contract lock-in objection.
+me: A full year is hard for me without a trial. Can we start with three months?
+.. 25
+them@Priya: We could look at a trial with a smaller plan first. I will check with Sam. ## quiet
+them@Sam: Priya, can you check if the Frankfurt data center has space? ## quiet
+.. 22
+them@Priya: Yes, there is space. I just looked. ## quiet
+me: Okay, thanks.
+them@Sam: Also, are you talking to other vendors? Just so I know how to position this. ## m: answer || options || direct || Yes, I am comparing a few options; I prefer not to name them. || Direct question about competitors.
+me: Yes, I am comparing a few options, but I will not name them.
+them@Sam: Fair. What about a CDN? We have a great add-on and I can show you a demo. ## m: prompt || CDN || topic-shift || The CDN is an extra; park it and return to uptime and backups. || Upsell shifts the topic.
+me: Let us park the CDN for now and finish uptime and backups.
+them@Sam: Of course. Migration is free, by the way, with a small setup fee of $300. ## m: check || free;300 || number-conflict || He says migration is free and also charges a $300 setup fee. || Two statements conflict.
+me: Which is it, free migration or a $300 setup fee?
+them@Sam: The setup fee is waived for annual customers. Sorry for the confusion.
+.. 30
+them@Sam: Did you see the match on Sunday? We were at the stadium. ## quiet
+me: I only watched the highlights. ## quiet
+them@Sam: It was amazing. The weather held up too. ## quiet
+me: Lucky you. ## quiet
+them@Priya: Dan, do you need the migration checklist file? ## quiet
+me: Yes please, send it with the SLA.
+them@Priya: And what RPO do you need for the database? ## m: fact || RPO || jargon || RPO is how much data you can afford to lose, measured in time. || Technical term from the engineer.
+me: A day is acceptable, nightly backups are fine for now.
+them@Sam: I will send the SLA and a migration plan by Tuesday. ## mem: c:Sam>send the SLA and a migration plan>Tuesday / q:Dan>backup retention days / n:business tier=$520 per month / n:setup fee=$300 / n:uptime offered=99.9
+me: Good. I can give you an answer by the twentieth. ## m: check || twentieth;owner || promise || The owner must approve the contract; the twentieth may be too early. || Your promise needs owner approval first.
+them@Sam: Great. Do you also need DDoS protection? It is included in the business tier. ## m: fact || DDoS || jargon || DDoS protection filters floods of fake traffic that can take a site down. || Term explained.
+me: Probably yes. Before we finish, what was the answer on backup retention? ## m: prompt || retention || unanswered || You asked about backup retention twice; they still did not answer. || Open question to the vendor.
+them@Priya: Thirty days by default, and ninety days is available as an add-on.
+me: Thirty days works. Thank you both.
+them@Sam: Thank you Dan, talk soon. ## chk: SLA;Tuesday;retention;520 ## ask: What did Sam offer for uptime and price? || Sam offered 99.9 uptime on the standard plan and $520 per month for the business tier.

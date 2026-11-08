@@ -1,0 +1,636 @@
+{
+ "id": "dev-standup-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "standup",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Sprint 14 notes. Dan leads the team. Team: Noa (frontend), Ben (backend), Rita (QA). Release is planned for Thursday. Open bugs at the start of the week: 9. Latest design file: v7. API p95 latency target: 500 ms. Dan owns the contact with the payment provider; the API key request is pending since Monday. Dan has 2 pull request reviews waiting.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6060,
+   "side": "me",
+   "text": "Good morning everyone. Let us do a quick round. Noa, you start."
+  },
+  {
+   "id": "l2",
+   "t": 16679,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "Morning. Yesterday I worked on the login screen, and today I will finish the error states. I will have the login screen done by tomorrow."
+  },
+  {
+   "id": "l3",
+   "t": 19737,
+   "side": "me",
+   "text": "Great. Anything blocking you?"
+  },
+  {
+   "id": "l4",
+   "t": 27014,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "I am not sure which design file is the latest. I have v5 open."
+  },
+  {
+   "id": "l5",
+   "t": 32830,
+   "side": "me",
+   "text": "It is the newest one, I will post the link in the channel."
+  },
+  {
+   "id": "l6",
+   "t": 37545,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "Thanks. Dan, can you review my pull request today?"
+  },
+  {
+   "id": "l7",
+   "t": 41919,
+   "side": "me",
+   "text": "Yes, I will review it after planning."
+  },
+  {
+   "id": "l8",
+   "t": 51272,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "My turn. I finished the orders endpoint, but I am blocked on the API key from the payment provider."
+  },
+  {
+   "id": "l9",
+   "t": 55744,
+   "side": "me",
+   "text": "I own that contact, I will chase it today."
+  },
+  {
+   "id": "l10",
+   "t": 62915,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "Also, the load test shows a p95 latency of 800 ms on the orders endpoint."
+  },
+  {
+   "id": "l11",
+   "t": 69365,
+   "side": "me",
+   "text": "That is above our target. Is it the database or the code?"
+  },
+  {
+   "id": "l12",
+   "t": 75874,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "Probably a slow query. And honestly we cannot ship Thursday without a full load test."
+  },
+  {
+   "id": "l13",
+   "t": 82422,
+   "side": "me",
+   "text": "What does the load test need from us, and how long does it run?"
+  },
+  {
+   "id": "l14",
+   "t": 108249,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "Also the release will have to move to Friday, I think."
+  },
+  {
+   "id": "l15",
+   "t": 144355,
+   "side": "me",
+   "text": "Let us decide that after we hear Rita."
+  },
+  {
+   "id": "l16",
+   "t": 149520,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Hi. I have twelve open bugs now and three are blockers."
+  },
+  {
+   "id": "l17",
+   "t": 152444,
+   "side": "me",
+   "text": "Which three are blockers?"
+  },
+  {
+   "id": "l18",
+   "t": 159207,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Checkout rounding, the login redirect, and a flaky test in the nightly run."
+  },
+  {
+   "id": "l19",
+   "t": 163749,
+   "side": "me",
+   "text": "Okay. Please put the three in the channel with owners."
+  },
+  {
+   "id": "l20",
+   "t": 169090,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Sure. Also, for the demo on Wednesday, who prepares the slides?"
+  },
+  {
+   "id": "l21",
+   "t": 172950,
+   "side": "me",
+   "text": "I will take the demo slides."
+  },
+  {
+   "id": "l22",
+   "t": 182549,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "Can we also fix the date format on the invoice page? It shows the month first for our European users."
+  },
+  {
+   "id": "l23",
+   "t": 186887,
+   "side": "me",
+   "text": "Good point, let us add it to the backlog."
+  },
+  {
+   "id": "l24",
+   "t": 237404,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Sure. Who is on call this weekend? Nobody wrote it down."
+  },
+  {
+   "id": "l25",
+   "t": 244480,
+   "side": "me",
+   "text": "Let me sort that out in a moment. First, Ben and Noa, anything else?"
+  },
+  {
+   "id": "l26",
+   "t": 250075,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "Ben, did you merge the branch for the cart?"
+  },
+  {
+   "id": "l27",
+   "t": 254209,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "Not yet, I will do it after standup."
+  },
+  {
+   "id": "l28",
+   "t": 284142,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "Who wants coffee after this? I am going downstairs."
+  },
+  {
+   "id": "l29",
+   "t": 318594,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "Yes please, a double."
+  },
+  {
+   "id": "l30",
+   "t": 321345,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "I brought my own today."
+  },
+  {
+   "id": "l31",
+   "t": 326035,
+   "side": "me",
+   "text": "Lunch is on me on Friday if we ship."
+  },
+  {
+   "id": "l32",
+   "t": 331144,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Dan, can you send me the test plan link?"
+  },
+  {
+   "id": "l33",
+   "t": 336672,
+   "side": "me",
+   "text": "Sure, I will post it with the design link."
+  },
+  {
+   "id": "l34",
+   "t": 344159,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "By the way, I am planning two weeks of vacation in August, can we talk about it?"
+  },
+  {
+   "id": "l35",
+   "t": 350545,
+   "side": "me",
+   "text": "Let us talk about vacation after standup so we finish the sprint round."
+  },
+  {
+   "id": "l36",
+   "t": 356590,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "One more thing. I will send the updated API doc today."
+  },
+  {
+   "id": "l37",
+   "t": 360794,
+   "side": "me",
+   "text": "And I will send the updated sprint plan today."
+  },
+  {
+   "id": "l38",
+   "t": 365417,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "Wait, we did not decide about the on call."
+  },
+  {
+   "id": "l39",
+   "t": 371599,
+   "side": "me",
+   "text": "Right. Ben takes Saturday, Noa takes Sunday, and I am the backup."
+  },
+  {
+   "id": "l40",
+   "t": 376300,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "And the release day? Thursday or Friday?"
+  },
+  {
+   "id": "l41",
+   "t": 379920,
+   "side": "me",
+   "text": "We decide after the load test result."
+  },
+  {
+   "id": "l42",
+   "t": 382439,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "Fine with me."
+  },
+  {
+   "id": "l43",
+   "t": 385757,
+   "side": "me",
+   "text": "Thanks all. Talk tomorrow."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "answer",
+   "mustMention": [
+    "v7"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "reviews"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "vendor"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "blocker"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "check",
+   "mustMention": [
+    "500"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "load test"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l14",
+   "kind": "check",
+   "mustMention": [
+    "Thursday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l16",
+   "kind": "check",
+   "mustMention": [
+    "9"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l18",
+   "kind": "fact",
+   "mustMention": [
+    "flaky"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l20",
+   "kind": "answer",
+   "mustMention": [
+    "demo"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m10",
+   "afterLine": "l22",
+   "kind": "prompt",
+   "mustMention": [
+    "backlog"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "scope-creep"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l24",
+   "kind": "answer",
+   "mustMention": [
+    "rota"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m12",
+   "afterLine": "l34",
+   "kind": "prompt",
+   "mustMention": [
+    "vacation"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l37",
+   "kind": "check",
+   "mustMention": [
+    "sprint plan"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l38",
+   "kind": "prompt",
+   "mustMention": [
+    "rota"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m15",
+   "afterLine": "l40",
+   "kind": "answer",
+   "mustMention": [
+    "load test"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l26",
+   "toLine": "l32"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l42",
+   "mustContain": [
+    "API key",
+    "API doc",
+    "on call",
+    "800"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Noa\",\"side\":\"them\",\"role\":\"frontend developer\"},{\"name\":\"Ben\",\"side\":\"them\",\"role\":\"backend developer\"},{\"name\":\"Rita\",\"side\":\"them\",\"role\":\"QA\"}],\"agenda\":[\"progress and blockers\",\"release plan\"],\"facts\":[{\"text\":\"Release planned for Thursday\",\"src\":\"brief\"},{\"text\":\"9 open bugs at the start of the week\",\"src\":\"brief\"},{\"text\":\"API p95 target is 500 ms\",\"src\":\"brief\"},{\"text\":\"Payment provider API key request pending since Monday\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Who is on call this weekend?\"],\"chunks\":[\"Sprint 14 notes. Dan leads the team. Team: Noa (frontend), Ben (backend), Rita (QA). Release is planned for Thursday. Open bugs at the start of the week: 9. Latest design file: v7. API p95 latency target: 500 ms. Dan owns the contact with the payment provider; the API key request is pending since Monday. Dan has 2 pull request reviews waiting.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: The latest design file is v7.\nWHY: Implied question; the answer is in the sprint notes.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Yes, after planning; I have two reviews waiting.\nWHY: Direct request; no time promise.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: You own the vendor contact; offer to chase the key today.\nWHY: Blocker is yours to unblock.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The target is 500 ms p95; this is 800.\nWHY: Metric conflicts with the target.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask what the minimum load test needs and how long it takes.\nWHY: Objection to the release plan.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The plan says Thursday; he now says Friday.\nWHY: Date change against the plan.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The sprint notes say 9 open bugs; she says twelve.\nWHY: Count differs from the notes.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: A flaky test passes and fails at random without code changes.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Not assigned yet; I can prepare the demo slides.\nWHY: Direct question about an unowned task.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: New request: add it to the backlog, not this sprint.\nWHY: Scope creep in the sprint.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Nobody is assigned yet; I will set the rota after standup.\nWHY: Direct question; no names invented.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l27",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l29",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l30",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Vacation planning is off topic; park it for after standup.\nWHY: Topic shift away from the sprint.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l36",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Noa\",\"what\":\"finish the login screen\",\"due\":\"tomorrow\",\"at\":356590,\"status\":\"open\"},{\"who\":\"Ben\",\"what\":\"send the updated API doc\",\"due\":\"today\",\"at\":356590,\"status\":\"open\"},{\"who\":\"Dan\",\"what\":\"chase the payment API key\",\"due\":\"today\",\"at\":356590,\"status\":\"open\"}],\"openQuestions\":[{\"asker\":\"Rita\",\"text\":\"Who is on call this weekend\",\"at\":356590,\"status\":\"open\"}],\"numbers\":[{\"what\":\"p95 latency\",\"value\":\"800 ms\",\"at\":356590},{\"what\":\"open bugs\",\"value\":\"12\",\"at\":356590}],\"decisions\":[{\"text\":\"Release decision after the load test\",\"at\":356590}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l37",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: You promised the sprint plan today; add it to your list.\nWHY: Your own commitment.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l38",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The on-call rota is still open; set it before you close.\nWHY: Open loop from earlier.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l40",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Decide after the load test result; I will confirm today.\nWHY: Direct question; no date promised.",
+   "ms": 900
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l42",
+   "reply": "Ben is blocked on the API key from the payment provider. You said you would chase it today.",
+   "ms": 1200,
+   "q": "What is blocking Ben?"
+  }
+ ]
+}

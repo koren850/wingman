@@ -1,0 +1,64 @@
+id: dev-one2one-en
+split: dev
+lang: en
+type: one2one
+variant: clean
+user: Dan
+context: Prep note for my one-to-one with my manager Rina Cole. My goals: ask for a raise, ask to lead the migration project. My achievements this quarter: 4 of 5 goals delivered, page load time cut by 40 percent, mentored one new colleague. Workload: two projects and about 50 hour weeks. Promotion cycle starts in March. The migration project starts in April. Things I want to hear: what promotion needs, when the budget decision is made.
+roster: Rina Cole | them | my manager
+agenda: quarter review
+agenda: raise and promotion
+agenda: migration project
+brief: 4 of 5 goals delivered this quarter
+brief: Page load time cut by 40 percent
+brief: Two projects and about 50 hour weeks
+brief: Promotion cycle starts in March
+likely: What do you want from the next year?
+---
+me: Hi Rina, thanks for making time. How was your week?
+them@Rina: Busy but good. Thanks for the notes you sent before. Let us start with how you feel about the quarter.
+me: I feel good about it overall. I delivered most of my goals.
+them@Rina: I looked at the tracker and I count three of five goals done. ## m: check || 4 of 5 || number-conflict || Your notes say 4 of 5 goals; she counts three. || Her count conflicts with your record.
+me: I have four of five, I think the tracker missed the search goal.
+them@Rina: Possibly. I will check it again. What did you ship that you are proud of? ## m: answer || 40 percent;page load || direct || I cut page load time by 40 percent and mentored a new colleague. || Direct question; facts in the notes.
+me: I cut the page load time by forty percent, and I mentored a new colleague.
+them@Rina: Nice. How is your workload right now? You looked tired in the last meeting. ## m: answer || two projects;50 hour || direct || Two projects at once and about 50 hour weeks; I want to fix that. || Direct question about workload.
+me: It is heavy. I have two projects at once and my weeks are around fifty hours.
+them@Rina: That is more than I knew. We should fix that. ## mem: n:goals delivered=4 of 5 / n:hours per week=50 / f:Dan cut page load time by 40 percent
+me: Thank you. That brings me to something I wanted to ask. I would like to talk about a raise.
+them@Rina: I understand. Honestly, this is not the right time, we are in a budget freeze until next quarter. ## m: prompt || freeze || objection || Ask what a raise would need and when the freeze ends, not only no. || Timing objection from the manager.
+me: I get that. What would I need to show, and when does the freeze end?
+them@Rina: I cannot give a date. The decision is made by the finance team in a calibration meeting. ## m: fact || calibration || jargon || A calibration meeting compares ratings across teams to keep them fair. || Term explained.
+me: Okay. And what would the promotion require from me?
+them@Rina: That is a bigger conversation. Let me think about how to answer it properly.
+them@Rina: Let me ask you something else. What do you need from me to be more effective? ## m: answer || priorities || implied,direct || I need clear priorities between the two projects and fewer meetings. || Direct question about support needed.
+me: I need clear priorities between the two projects and fewer meetings.
+them@Rina: That is fair. Also, we need one extra person on the on-call rotation. Would you take one extra week a month? ## m: prompt || on-call || objection || Ask how it fits the workload before you agree to more on-call. || Request that adds to the workload.
+me: Before I agree, I want to see how that fits with my current workload.
+them@Rina: Fair. The migration project would start in May, by the way. ## m: check || April || number-conflict || Your notes say the migration starts in April; she says May. || Start month conflicts with the notes.
+me: I had April in my notes, can we confirm the month?
+.. 51
+them@Rina: I will confirm it. Also, I wonder whether you plan to stay with us for the long term. ## m: answer || grow || implied || Yes, I want to grow here; the migration role matters to me. || Implied question about commitment.
+me: Yes, I want to grow here, and the migration role matters to me.
+.. 40
+.. 25
+them@Rina: Separate topic. One of your teammates told me there is tension between you and Omar. ## m: prompt || Omar || topic-shift || New topic: tension with Omar. Ask for specifics before you respond. || Topic shift to a team conflict.
+me: I would like to hear what exactly was said before I respond.
+them@Rina: I do not want to name names. Just try to talk to him this week. ## m: prompt || Omar || next-step || Agree to talk to Omar and ask for support if it does not help. || Concrete ask from the manager.
+me: Okay, I will talk to him.
+them@Rina: Sorry, one moment, my phone is ringing. Let me silence it. ## quiet
+them@Rina: Okay. The new coffee machine is finally installed, did you try it? ## quiet
+me: Not yet, but I heard it is much better. ## quiet
+them@Rina: It is. The old one was terrible. ## quiet
+me: Agreed. ## quiet
+them@Rina: Dan, can you send me the tracker export? ## quiet
+me: Sure, I will send it after our meeting.
+them@Rina: Now, what do you want from the next year? ## m: answer || migration;promotion || implied,direct || I want to lead the migration project and work toward promotion. || Direct question; goals in the notes.
+me: I want to lead the migration project and work toward a promotion.
+them@Rina: I like the migration idea. I will talk to HR about it by Friday. ## mem: c:Rina>talk to HR about the migration lead role>Friday / c:Dan>send the tracker export>after meeting / c:Dan>talk to Omar>this week / q:Dan>What would promotion require
+me: Thank you. And I will write a summary of my achievements by Monday. ## m: check || Monday || promise || You promised an achievement summary by Monday; add it to your list. || Your own commitment.
+them@Rina: Good. That will help me argue for you.
+me: Before we finish, I still do not know what the promotion needs. Could we come back to that? ## m: prompt || promotion || unanswered || The promotion question is still open; ask for a time to continue. || Open loop; ask for a time to continue.
+them@Rina: Fair. Let us set a slot next week to go through the criteria.
+me: Great. Thank you, Rina.
+them@Rina: Thank you Dan. ## chk: HR;Friday;tracker;50 ## ask: What did Rina agree to do? || Rina will talk to HR about the migration lead role by Friday.

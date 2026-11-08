@@ -1,0 +1,573 @@
+{
+ "id": "test-interview-en",
+ "split": "test",
+ "lang": "en",
+ "type": "interview",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Practice interview for a product manager role at Lumen Health (invented). My notes: 4 years as a product manager in a mobile health app. Launched a medication reminder feature that raised weekly active users by 25 percent. Worked with a team of 6 engineers and 2 designers. Reason for leaving: the company is shrinking. Weakness: I say yes too often, now I use a priority list. Do not state a salary number. Questions I want to ask: how the team measures success, what the roadmap focus is, how decisions are made.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 3780,
+   "side": "me",
+   "text": "hi noa thanks for having me"
+  },
+  {
+   "id": "l2",
+   "t": 11739,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "welcome dan i see on your cv you have seven years as a product manager is that right"
+  },
+  {
+   "id": "l3",
+   "t": 16697,
+   "side": "me",
+   "text": "it is four years in a mobile health app"
+  },
+  {
+   "id": "l4",
+   "t": 22834,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "okay tell me about a feature you launched and what changed"
+  },
+  {
+   "id": "l5",
+   "t": 29030,
+   "side": "me",
+   "text": "i launched a medication reminder it raised weekly active users by twenty five percent"
+  },
+  {
+   "id": "l6",
+   "t": 32605,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "nice who did you work with"
+  },
+  {
+   "id": "l7",
+   "t": 36219,
+   "side": "me",
+   "text": "six engineers and two designers"
+  },
+  {
+   "id": "l8",
+   "t": 40632,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "why are you leaving your company"
+  },
+  {
+   "id": "l9",
+   "t": 47004,
+   "side": "me",
+   "text": "the company is shrinking and i want to grow in a bigger product team"
+  },
+  {
+   "id": "l10",
+   "t": 54935,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "our product is regulated and some of the roadmap is slow how do you feel about that"
+  },
+  {
+   "id": "l11",
+   "t": 61385,
+   "side": "me",
+   "text": "i can plan within the rules and still ship in small steps"
+  },
+  {
+   "id": "l12",
+   "t": 90614,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "how would you decide which feature to build first"
+  },
+  {
+   "id": "l13",
+   "t": 136022,
+   "side": "me",
+   "text": "i would compare impact and effort and then check the risk"
+  },
+  {
+   "id": "l14",
+   "t": 141849,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "and what is an okr and how do you use it"
+  },
+  {
+   "id": "l15",
+   "t": 149235,
+   "side": "me",
+   "text": "it is a goal with measurable results i use it to align the team"
+  },
+  {
+   "id": "l16",
+   "t": 154020,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "tell me about a time you disagreed with an engineer"
+  },
+  {
+   "id": "l17",
+   "t": 161124,
+   "side": "me",
+   "text": "i showed the data listened to his concern and we agreed on a small test"
+  },
+  {
+   "id": "l18",
+   "t": 225987,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "sam can you bring a water for dan"
+  },
+  {
+   "id": "l19",
+   "t": 227109,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "sure"
+  },
+  {
+   "id": "l20",
+   "t": 233210,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "by the way the new building is great do you know the area"
+  },
+  {
+   "id": "l21",
+   "t": 236690,
+   "side": "me",
+   "text": "i do it is nice"
+  },
+  {
+   "id": "l22",
+   "t": 270589,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "what are your salary expectations"
+  },
+  {
+   "id": "l23",
+   "t": 275687,
+   "side": "me",
+   "text": "i would like to hear the range for the role first"
+  },
+  {
+   "id": "l24",
+   "t": 278924,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "what is your biggest weakness"
+  },
+  {
+   "id": "l25",
+   "t": 325620,
+   "side": "me",
+   "text": "i used to say yes to everything now i keep a priority list"
+  },
+  {
+   "id": "l26",
+   "t": 331595,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "we are also launching a new clinic app next year"
+  },
+  {
+   "id": "l27",
+   "t": 337629,
+   "side": "me",
+   "text": "how does that fit into the roadmap and where would this role sit"
+  },
+  {
+   "id": "l28",
+   "t": 344082,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "we will see can you send us a case study from your portfolio"
+  },
+  {
+   "id": "l29",
+   "t": 347914,
+   "side": "me",
+   "text": "yes i will send one"
+  },
+  {
+   "id": "l30",
+   "t": 352565,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "and we will give you an answer within two weeks"
+  },
+  {
+   "id": "l31",
+   "t": 356875,
+   "side": "me",
+   "text": "can i ask how the team measures success"
+  },
+  {
+   "id": "l32",
+   "t": 362744,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "we can talk about it later do you have other questions"
+  },
+  {
+   "id": "l33",
+   "t": 370552,
+   "side": "me",
+   "text": "yes how is success measured what is the roadmap focus and how are decisions made"
+  },
+  {
+   "id": "l34",
+   "t": 376519,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "success is activation and retention and the roadmap focuses on the clinic app"
+  },
+  {
+   "id": "l35",
+   "t": 381005,
+   "side": "me",
+   "text": "great i will send the case study today"
+  },
+  {
+   "id": "l36",
+   "t": 384010,
+   "side": "them",
+   "speaker": "Noa",
+   "text": "thank you dan"
+  },
+  {
+   "id": "l37",
+   "t": 385934,
+   "side": "me",
+   "text": "thank you noa"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "4 years"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "answer",
+   "mustMention": [
+    "reminder",
+    "25 percent"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "six engineers",
+    "two designers"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "shrinking"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m5",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "regulat"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l12",
+   "kind": "answer",
+   "mustMention": [
+    "impact",
+    "effort"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m7",
+   "afterLine": "l14",
+   "kind": "fact",
+   "mustMention": [
+    "OKR"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l16",
+   "kind": "answer",
+   "mustMention": [
+    "data"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m9",
+   "afterLine": "l22",
+   "kind": "answer",
+   "mustMention": [
+    "range"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m10",
+   "afterLine": "l24",
+   "kind": "answer",
+   "mustMention": [
+    "priority list"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m11",
+   "afterLine": "l26",
+   "kind": "prompt",
+   "mustMention": [
+    "clinic app"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l31",
+   "kind": "prompt",
+   "mustMention": [
+    "success"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l32",
+   "kind": "answer",
+   "mustMention": [
+    "success",
+    "roadmap"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m14",
+   "afterLine": "l35",
+   "kind": "check",
+   "mustMention": [
+    "case study"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l18",
+   "toLine": "l21"
+  },
+  {
+   "fromLine": "l28",
+   "toLine": "l28"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l36",
+   "mustContain": [
+    "case study",
+    "experience",
+    "clinic"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Noa Peretz\",\"side\":\"them\",\"role\":\"head of product\"},{\"name\":\"Sam\",\"side\":\"them\",\"role\":\"recruiter\"}],\"agenda\":[\"background and impact\",\"product cases\",\"my questions\"],\"facts\":[{\"text\":\"4 years as a product manager\",\"src\":\"brief\"},{\"text\":\"Reminder feature raised weekly active users by 25 percent\",\"src\":\"brief\"},{\"text\":\"Team of 6 engineers and 2 designers\",\"src\":\"brief\"},{\"text\":\"Do not state a salary number\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Why are you leaving your current company?\"],\"chunks\":[\"Practice interview for a product manager role at Lumen Health (invented). My notes: 4 years as a product manager in a mobile health app. Launched a medication reminder feature that raised weekly active users by 25 percent. Worked with a team of 6 engineers and 2 designers. Reason for leaving: the company is shrinking. Weakness: I say yes too often, now I use a priority list. Do not state a salary number. Questions I want to ask: how the team measures success, what the roadmap focus is, how decisions are made.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Your notes say 4 years as a product manager, not seven.\nWHY: Interviewer number conflicts with your record.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The medication reminder feature raised weekly active users by 25 percent.\nWHY: Behavioral question; facts in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I worked with six engineers and two designers.\nWHY: Follow-up; facts in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The company is shrinking; keep it factual and forward looking.\nWHY: Direct motivation question.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Acknowledge the pace; show how you plan within regulatory limits.\nWHY: Concern about slow roadmap.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Start with impact and effort, then check risk and customer need.\nWHY: Product case; keep the framework short.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: OKR means objectives and key results: a goal and measures of progress.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Pick a real example: show the data, listen, agree on a small test.\nWHY: Behavioral question; no story in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Ask for the role's range first; do not name a number.\nWHY: Salary question; practice rule says no figure.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I say yes too often; now I use a priority list.\nWHY: Weakness question; answer is in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask how the clinic app fits the roadmap and where this role sits.\nWHY: Topic shift to company plans.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l30",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Noa\",\"what\":\"give an answer\",\"due\":\"within two weeks\",\"at\":352565,\"status\":\"open\"},{\"who\":\"Dan\",\"what\":\"send a case study\",\"at\":352565,\"status\":\"open\"}],\"numbers\":[{\"what\":\"experience\",\"value\":\"4 years\",\"at\":352565}],\"facts\":[{\"text\":\"Lumen Health launches a clinic app next year\",\"at\":352565,\"src\":\"call\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Your question about how success is measured is still open; ask it again.\nWHY: Open question to the interviewer.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Ask how success is measured, the roadmap focus, and how decisions are made.\nWHY: Prepared questions from the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l35",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: You promised a case study; add it to your list.\nWHY: Your own commitment.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l36",
+   "reply": "Noa said she will give an answer within two weeks. You promised to send a case study.",
+   "ms": 1200,
+   "q": "What did Noa say about the next step?"
+  }
+ ]
+}

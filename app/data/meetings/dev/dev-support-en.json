@@ -1,0 +1,700 @@
+{
+ "id": "dev-support-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "support",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Ticket 4821. Customer: Orchard Bakery, contact Lena Brook. Problem: checkout shows error 500 since the update on Tuesday. The payment plugin PayFlow was updated from 3.9 to 4.2. Site runs PHP 8.1. A backup runs every night at 3 AM. The hosting plan includes 3 support hours per month. Failed orders in the log so far: 5.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 7200,
+   "side": "me",
+   "text": "Hi Lena, this is Dan from support. I have your ticket in front of me."
+  },
+  {
+   "id": "l2",
+   "t": 16679,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Thank you for calling back so fast. Our checkout is broken and it is the busiest week of the year for us."
+  },
+  {
+   "id": "l3",
+   "t": 24297,
+   "side": "me",
+   "text": "I understand. Let me ask a few questions and look at the logs while we talk."
+  },
+  {
+   "id": "l4",
+   "t": 30054,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Sure. Tom is next to me, he saw it first."
+  },
+  {
+   "id": "l5",
+   "t": 35870,
+   "side": "me",
+   "text": "Tom, what did you see when you tried to pay on the site?"
+  },
+  {
+   "id": "l6",
+   "t": 41345,
+   "side": "them",
+   "speaker": "Tom",
+   "text": "A white page with an error 500 right after clicking pay."
+  },
+  {
+   "id": "l7",
+   "t": 46099,
+   "side": "me",
+   "text": "Okay, thanks. Lena, when did the problem begin?"
+  },
+  {
+   "id": "l8",
+   "t": 51272,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "It began on Monday, right after the update."
+  },
+  {
+   "id": "l9",
+   "t": 56884,
+   "side": "me",
+   "text": "My ticket says the update ran on Tuesday, let me check that."
+  },
+  {
+   "id": "l10",
+   "t": 64435,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Oh, maybe Tuesday then. It was a crazy week. First of all, is my data safe?"
+  },
+  {
+   "id": "l11",
+   "t": 72785,
+   "side": "me",
+   "text": "Your data is safe. There is a nightly backup, and we can restore from it if needed."
+  },
+  {
+   "id": "l12",
+   "t": 81954,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Good. And I need to know what is causing this, because last time you said it was fixed and it was not."
+  },
+  {
+   "id": "l13",
+   "t": 90022,
+   "side": "me",
+   "text": "You are right to be careful. This time we will confirm the fix together with a test order."
+  },
+  {
+   "id": "l14",
+   "t": 93949,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Okay. So what is the cause?"
+  },
+  {
+   "id": "l15",
+   "t": 101715,
+   "side": "me",
+   "text": "It looks like the payment plugin update. I am reading the error log to confirm."
+  },
+  {
+   "id": "l16",
+   "t": 133400,
+   "side": "me",
+   "text": "I see the PayFlow plugin went from version 3.9 to 4.2 on the update day."
+  },
+  {
+   "id": "l17",
+   "t": 140884,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Is that bad? What is a plugin version anyway, and why does it matter for PHP?"
+  },
+  {
+   "id": "l18",
+   "t": 148407,
+   "side": "me",
+   "text": "The site runs PHP 8.1, and the new plugin version may not fully support it."
+  },
+  {
+   "id": "l19",
+   "t": 152949,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "We had three orders fail since this morning, I think."
+  },
+  {
+   "id": "l20",
+   "t": 159430,
+   "side": "me",
+   "text": "The log shows five failed orders so far. I will list them for you."
+  },
+  {
+   "id": "l21",
+   "t": 164430,
+   "side": "them",
+   "speaker": "Tom",
+   "text": "Lena, did you call the delivery guy about tomorrow?"
+  },
+  {
+   "id": "l22",
+   "t": 169089,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Not yet, Tom, please do that now."
+  },
+  {
+   "id": "l23",
+   "t": 197227,
+   "side": "me",
+   "text": "While Tom calls, I will roll the plugin back to version 3.9 on a copy of the site first."
+  },
+  {
+   "id": "l24",
+   "t": 202364,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Do you think it will be fixed in an hour?"
+  },
+  {
+   "id": "l25",
+   "t": 209440,
+   "side": "me",
+   "text": "I cannot promise an hour yet. Let me finish the test on the copy."
+  },
+  {
+   "id": "l26",
+   "t": 215415,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Fine. Do I need to pay extra for this work?"
+  },
+  {
+   "id": "l27",
+   "t": 222589,
+   "side": "me",
+   "text": "This falls under your support hours, and I will confirm the hours used at the end."
+  },
+  {
+   "id": "l28",
+   "t": 228282,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Another thing. Our emails to customers also stopped working since yesterday."
+  },
+  {
+   "id": "l29",
+   "t": 234394,
+   "side": "me",
+   "text": "Let me note the email problem and finish the checkout first."
+  },
+  {
+   "id": "l30",
+   "t": 241325,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Okay. By the way, I will send you a screenshot of the error in ten minutes."
+  },
+  {
+   "id": "l31",
+   "t": 248295,
+   "side": "me",
+   "text": "Great, thank you. I will tell you as soon as the copy test is done."
+  },
+  {
+   "id": "l32",
+   "t": 255684,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "I also need to tell my customers something. What should I post on our page?"
+  },
+  {
+   "id": "l33",
+   "t": 263112,
+   "side": "me",
+   "text": "I can write a short notice for you to post while we fix it."
+  },
+  {
+   "id": "l34",
+   "t": 268699,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "And our site runs PHP 7.4, right? Tom said so last month."
+  },
+  {
+   "id": "l35",
+   "t": 275465,
+   "side": "me",
+   "text": "The ticket says PHP 8.1, so that matches the cause we are looking at."
+  },
+  {
+   "id": "l36",
+   "t": 281510,
+   "side": "me",
+   "text": "I will update you every half hour until it is solved."
+  },
+  {
+   "id": "l37",
+   "t": 306474,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "And one more question, will we lose the orders that failed?"
+  },
+  {
+   "id": "l38",
+   "t": 314517,
+   "side": "me",
+   "text": "The failed orders are saved in the log, and I can send you the list to contact them."
+  },
+  {
+   "id": "l39",
+   "t": 319939,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Please do. Dan, can you send me the log file?"
+  },
+  {
+   "id": "l40",
+   "t": 324640,
+   "side": "me",
+   "text": "I will send it with the summary."
+  },
+  {
+   "id": "l41",
+   "t": 329020,
+   "side": "them",
+   "speaker": "Tom",
+   "text": "Lena, the delivery guy says tomorrow morning is fine."
+  },
+  {
+   "id": "l42",
+   "t": 331539,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Great. Thanks Tom."
+  },
+  {
+   "id": "l43",
+   "t": 337517,
+   "side": "me",
+   "text": "The copy is ready. I am rolling back the plugin now."
+  },
+  {
+   "id": "l44",
+   "t": 372034,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Dan, is it working? What happens if the rollback fails?"
+  },
+  {
+   "id": "l45",
+   "t": 378490,
+   "side": "me",
+   "text": "If the rollback fails, we restore from last night's backup, so nothing is lost."
+  },
+  {
+   "id": "l46",
+   "t": 385745,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "I tried a test order on the copy link you sent and it went through."
+  },
+  {
+   "id": "l47",
+   "t": 393799,
+   "side": "me",
+   "text": "Perfect. Then I will apply the same rollback on the live site and we test together."
+  },
+  {
+   "id": "l48",
+   "t": 399252,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Please. And tell me what we do about the new version later."
+  },
+  {
+   "id": "l49",
+   "t": 406264,
+   "side": "me",
+   "text": "We should wait for a plugin release that works with PHP 8.1 before updating again."
+  },
+  {
+   "id": "l50",
+   "t": 411035,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Sounds right. Call me when it is live."
+  },
+  {
+   "id": "l51",
+   "t": 417745,
+   "side": "me",
+   "text": "I will call you as soon as it is live. Thanks Lena."
+  },
+  {
+   "id": "l52",
+   "t": 419954,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "Thank you Dan."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l8",
+   "kind": "check",
+   "mustMention": [
+    "Tuesday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l10",
+   "kind": "answer",
+   "mustMention": [
+    "backup"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m3",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "test order"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l14",
+   "kind": "answer",
+   "mustMention": [
+    "plugin",
+    "error log"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l17",
+   "kind": "fact",
+   "mustMention": [
+    "PHP"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l19",
+   "kind": "check",
+   "mustMention": [
+    "5"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l24",
+   "kind": "check",
+   "mustMention": [
+    "log"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l26",
+   "kind": "answer",
+   "mustMention": [
+    "support hours"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m9",
+   "afterLine": "l28",
+   "kind": "prompt",
+   "mustMention": [
+    "email"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l32",
+   "kind": "prompt",
+   "mustMention": [
+    "notice"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l34",
+   "kind": "check",
+   "mustMention": [
+    "8.1"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l36",
+   "kind": "check",
+   "mustMention": [
+    "half-hour"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l37",
+   "kind": "answer",
+   "mustMention": [
+    "orders"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m14",
+   "afterLine": "l44",
+   "kind": "prompt",
+   "mustMention": [
+    "backup"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "backup-plan"
+   ]
+  },
+  {
+   "id": "m15",
+   "afterLine": "l48",
+   "kind": "prompt",
+   "mustMention": [
+    "plugin"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "next-step"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l21",
+   "toLine": "l22"
+  },
+  {
+   "fromLine": "l39",
+   "toLine": "l39"
+  },
+  {
+   "fromLine": "l41",
+   "toLine": "l42"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l50",
+   "mustContain": [
+    "PayFlow",
+    "rollback",
+    "screenshot",
+    "5"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Lena Brook\",\"side\":\"them\",\"role\":\"bakery owner\"},{\"name\":\"Tom\",\"side\":\"them\",\"role\":\"Lena's assistant\"}],\"agenda\":[\"find the cause of the checkout error\",\"protect the orders\"],\"facts\":[{\"text\":\"Checkout error started after Tuesday update\",\"src\":\"brief\"},{\"text\":\"PayFlow plugin updated from 3.9 to 4.2\",\"src\":\"brief\"},{\"text\":\"Nightly backup at 3 AM\",\"src\":\"brief\"},{\"text\":\"5 failed orders in the log\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Is my data safe?\",\"Will this cost extra?\"],\"chunks\":[\"Ticket 4821. Customer: Orchard Bakery, contact Lena Brook. Problem: checkout shows error 500 since the update on Tuesday. The payment plugin PayFlow was updated from 3.9 to 4.2. Site runs PHP 8.1. A backup runs every night at 3 AM. The hosting plan includes 3 support hours per month. Failed orders in the log so far: 5.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The ticket says the update was on Tuesday, not Monday.\nWHY: Date conflicts with the ticket.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Your data is safe; the nightly backup can restore it.\nWHY: Direct reassurance question.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Acknowledge it, and offer to confirm the fix with a test order together.\nWHY: Trust objection from a past failure.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Likely the payment plugin update; I am reading the error log now.\nWHY: Direct request for the cause; label as likely.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: PHP is the language the site runs on; plugins must support its version.\nWHY: Jargon about PHP and plugin versions.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The log shows 5 failed orders, not three.\nWHY: Her count conflicts with the log.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Do not promise a time before the log test is finished.\nWHY: Over-promise risk on timing.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: This is covered by your support hours; I will confirm the total after.\nWHY: Direct cost question; no prices.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Email is a separate problem; log it and finish the checkout first.\nWHY: Topic shift to a second issue.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l30",
+   "reply": "{\"topic\":\"checkout error 500\",\"add\":{\"commitments\":[{\"who\":\"Lena\",\"what\":\"send a screenshot of the error\",\"due\":\"ten minutes\",\"at\":241325,\"status\":\"open\"}],\"openQuestions\":[{\"asker\":\"Lena\",\"text\":\"Will I lose orders\",\"at\":241325,\"status\":\"open\"}],\"numbers\":[{\"what\":\"failed orders\",\"value\":\"5\",\"at\":241325}],\"facts\":[{\"text\":\"payment plugin updated from 3.9 to 4.2\",\"at\":241325,\"src\":\"call\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Offer a short notice she can post: checkout is being fixed.\nWHY: Implied request for customer wording.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The ticket says PHP 8.1, not 7.4.\nWHY: Version conflicts with the ticket.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The half-hour update is your promise; set a reminder to keep it.\nWHY: New commitment from the user.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l37",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The failed orders are in the log, so you can contact those customers.\nWHY: Direct worry about lost orders.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l39",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l41",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l42",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l44",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Mention the nightly backup as the safety net before you continue.\nWHY: Fallback plan for a failed rollback.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l46",
+   "reply": "{\"add\":{\"decisions\":[{\"text\":\"Rolled back PayFlow to 3.9 on the copy\",\"at\":385745}],\"commitments\":[{\"who\":\"Dan\",\"what\":\"apply the rollback to the live site and test together\",\"at\":385745,\"status\":\"open\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l48",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Suggest waiting for a plugin version that supports PHP 8.1.\nWHY: Next step after the fix.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l50",
+   "reply": "Five orders failed in the log. The likely cause is the PayFlow update from 3.9 to 4.2.",
+   "ms": 1200,
+   "q": "How many orders failed and why?"
+  }
+ ]
+}

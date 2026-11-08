@@ -1,0 +1,66 @@
+id: dev-standup-en
+split: dev
+lang: en
+type: standup
+variant: clean
+user: Dan
+context: Sprint 14 notes. Dan leads the team. Team: Noa (frontend), Ben (backend), Rita (QA). Release is planned for Thursday. Open bugs at the start of the week: 9. Latest design file: v7. API p95 latency target: 500 ms. Dan owns the contact with the payment provider; the API key request is pending since Monday. Dan has 2 pull request reviews waiting.
+roster: Noa | them | frontend developer
+roster: Ben | them | backend developer
+roster: Rita | them | QA
+agenda: progress and blockers
+agenda: release plan
+brief: Release planned for Thursday
+brief: 9 open bugs at the start of the week
+brief: API p95 target is 500 ms
+brief: Payment provider API key request pending since Monday
+likely: Who is on call this weekend?
+---
+me: Good morning everyone. Let us do a quick round. Noa, you start.
+them@Noa: Morning. Yesterday I worked on the login screen, and today I will finish the error states. I will have the login screen done by tomorrow.
+me: Great. Anything blocking you?
+them@Noa: I am not sure which design file is the latest. I have v5 open. ## m: answer || v7 || implied || The latest design file is v7. || Implied question; the answer is in the sprint notes.
+me: It is the newest one, I will post the link in the channel.
+them@Noa: Thanks. Dan, can you review my pull request today? ## m: answer || reviews || direct || Yes, after planning; I have two reviews waiting. || Direct request; no time promise.
+me: Yes, I will review it after planning.
+them@Ben: My turn. I finished the orders endpoint, but I am blocked on the API key from the payment provider. ## m: prompt || vendor || blocker || You own the vendor contact; offer to chase the key today. || Blocker is yours to unblock.
+me: I own that contact, I will chase it today.
+them@Ben: Also, the load test shows a p95 latency of 800 ms on the orders endpoint. ## m: check || 500 || number-conflict || The target is 500 ms p95; this is 800. || Metric conflicts with the target.
+me: That is above our target. Is it the database or the code?
+them@Ben: Probably a slow query. And honestly we cannot ship Thursday without a full load test. ## m: prompt || load test || objection || Ask what the minimum load test needs and how long it takes. || Objection to the release plan.
+me: What does the load test need from us, and how long does it run?
+.. 20
+them@Ben: Also the release will have to move to Friday, I think. ## m: check || Thursday || number-conflict || The plan says Thursday; he now says Friday. || Date change against the plan.
+.. 31
+me: Let us decide that after we hear Rita.
+them@Rita: Hi. I have twelve open bugs now and three are blockers. ## m: check || 9 || number-conflict || The sprint notes say 9 open bugs; she says twelve. || Count differs from the notes.
+me: Which three are blockers?
+them@Rita: Checkout rounding, the login redirect, and a flaky test in the nightly run. ## m: fact || flaky || jargon || A flaky test passes and fails at random without code changes. || Term explained.
+me: Okay. Please put the three in the channel with owners.
+them@Rita: Sure. Also, for the demo on Wednesday, who prepares the slides? ## m: answer || demo || direct || Not assigned yet; I can prepare the demo slides. || Direct question about an unowned task.
+me: I will take the demo slides.
+them@Noa: Can we also fix the date format on the invoice page? It shows the month first for our European users. ## m: prompt || backlog || scope-creep || New request: add it to the backlog, not this sprint. || Scope creep in the sprint.
+me: Good point, let us add it to the backlog.
+.. 45
+them@Rita: Sure. Who is on call this weekend? Nobody wrote it down. ## m: answer || rota || direct || Nobody is assigned yet; I will set the rota after standup. || Direct question; no names invented.
+me: Let me sort that out in a moment. First, Ben and Noa, anything else?
+them@Noa: Ben, did you merge the branch for the cart? ## quiet
+them@Ben: Not yet, I will do it after standup. ## quiet
+.. 25
+them@Noa: Who wants coffee after this? I am going downstairs. ## quiet
+.. 31
+them@Ben: Yes please, a double. ## quiet
+them@Rita: I brought my own today. ## quiet
+me: Lunch is on me on Friday if we ship. ## quiet
+them@Rita: Dan, can you send me the test plan link? ## quiet
+me: Sure, I will post it with the design link.
+them@Rita: By the way, I am planning two weeks of vacation in August, can we talk about it? ## m: prompt || vacation || topic-shift || Vacation planning is off topic; park it for after standup. || Topic shift away from the sprint.
+me: Let us talk about vacation after standup so we finish the sprint round.
+them@Ben: One more thing. I will send the updated API doc today. ## mem: c:Noa>finish the login screen>tomorrow / c:Ben>send the updated API doc>today / c:Dan>chase the payment API key>today / q:Rita>Who is on call this weekend / n:p95 latency=800 ms / n:open bugs=12 / d:Release decision after the load test
+me: And I will send the updated sprint plan today. ## m: check || sprint plan || promise || You promised the sprint plan today; add it to your list. || Your own commitment.
+them@Noa: Wait, we did not decide about the on call. ## m: prompt || rota || unanswered || The on-call rota is still open; set it before you close. || Open loop from earlier.
+me: Right. Ben takes Saturday, Noa takes Sunday, and I am the backup.
+them@Rita: And the release day? Thursday or Friday? ## m: answer || load test || direct || Decide after the load test result; I will confirm today. || Direct question; no date promised.
+me: We decide after the load test result.
+them@Ben: Fine with me. ## chk: API key;API doc;on call;800 ## ask: What is blocking Ben? || Ben is blocked on the API key from the payment provider. You said you would chase it today.
+me: Thanks all. Talk tomorrow.

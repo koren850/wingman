@@ -1,0 +1,662 @@
+{
+ "id": "test-one2one-mixed",
+ "split": "test",
+ "lang": "mixed",
+ "type": "one2one",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Prep for my one-to-one with Lior Adler, a developer in my team. I am his manager. Topics: his last review was good, missed 2 deadlines this quarter (the tracker shows 2), remote work policy is 3 office days per week, his request to attend a conference in March, his interest in moving to the data team. Promotion cycle starts in March. I can approve up to one conference per year; budget approval for travel needs the director. Do not promise a transfer date.",
+ "profile": {
+  "userName": "דן",
+  "aliases": [
+   "Dan"
+  ]
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4440,
+   "side": "me",
+   "text": "היי ליאור תודה שבאת איך אתה מרגיש"
+  },
+  {
+   "id": "l2",
+   "t": 9339,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "היי דן בסדר גמור קצת עייף השבוע היה עמוס"
+  },
+  {
+   "id": "l3",
+   "t": 15077,
+   "side": "me",
+   "text": "אני מבין בוא נתחיל עם הרבעון איך אתה רואה אותו"
+  },
+  {
+   "id": "l4",
+   "t": 20814,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אני חושב שהיה טוב הגשתי את רוב הדברים בזמן"
+  },
+  {
+   "id": "l5",
+   "t": 24210,
+   "side": "me",
+   "text": "לפי המעקב היו שני דדליינים שפספסנו"
+  },
+  {
+   "id": "l6",
+   "t": 30125,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "נכון אחד היה בגלל התלות בצוות של בן והשני באמת באשמתי"
+  },
+  {
+   "id": "l7",
+   "t": 34779,
+   "side": "me",
+   "text": "תודה על הכנות אני מעריך את זה"
+  },
+  {
+   "id": "l8",
+   "t": 43632,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "ודרך אגב אני רוצה לדבר על העבודה מהבית אני מרגיש שארבעה ימים במשרד זה יותר מדי"
+  },
+  {
+   "id": "l9",
+   "t": 47624,
+   "side": "me",
+   "text": "המדיניות היא שלושה ימים בשבוע לא ארבעה"
+  },
+  {
+   "id": "l10",
+   "t": 53295,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אה בסדר חשבתי שהשתנה אולי אפשר שבועיים בחודש מהבית לגמרי"
+  },
+  {
+   "id": "l11",
+   "t": 58545,
+   "side": "me",
+   "text": "לא אוכל להבטיח אבדוק אם אפשר חריג זמני"
+  },
+  {
+   "id": "l12",
+   "t": 88134,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "בנוסף אני רוצה לנסוע לכנס בברלין במרץ אפשר לאשר"
+  },
+  {
+   "id": "l13",
+   "t": 93562,
+   "side": "me",
+   "text": "אפשר כנס אחד בשנה אבל נסיעה צריכה אישור של הדירקטור"
+  },
+  {
+   "id": "l14",
+   "t": 97309,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "יופי אני אכין הצדקה עסקית"
+  },
+  {
+   "id": "l15",
+   "t": 103155,
+   "side": "me",
+   "text": "מעולה תכין שתי שורות על מה תלמד ואני אעביר"
+  },
+  {
+   "id": "l16",
+   "t": 138340,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אני גם מרגיש שאני לא מקבל מספיק משוב בין הרבעונים"
+  },
+  {
+   "id": "l17",
+   "t": 142264,
+   "side": "me",
+   "text": "אפשר לקבוע משוב קצר כל שבועיים"
+  },
+  {
+   "id": "l18",
+   "t": 148707,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "מה הדעה שלך על ה סי איי סי די החדש שבנינו"
+  },
+  {
+   "id": "l19",
+   "t": 151969,
+   "side": "me",
+   "text": "זה כלי טוב שחוסך זמן לצוות"
+  },
+  {
+   "id": "l20",
+   "t": 158170,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אני חושב שאני מקבל משימות יותר קשות משאר הצוות זה לא הוגן"
+  },
+  {
+   "id": "l21",
+   "t": 162690,
+   "side": "me",
+   "text": "תן לי דוגמאות ואבדוק את חלוקת העבודה"
+  },
+  {
+   "id": "l22",
+   "t": 168049,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אתה יכול לאשר לי יומיים חופש בשבוע הבא"
+  },
+  {
+   "id": "l23",
+   "t": 171487,
+   "side": "me",
+   "text": "אבדוק את לוח הפרויקטים ואחזור אליך"
+  },
+  {
+   "id": "l24",
+   "t": 234504,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "סליחה רגע שוקי מתקשר"
+  },
+  {
+   "id": "l25",
+   "t": 237100,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "חזרתי סליחה"
+  },
+  {
+   "id": "l26",
+   "t": 240115,
+   "side": "me",
+   "text": "אין בעיה"
+  },
+  {
+   "id": "l27",
+   "t": 244989,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אוקיי אז הנושא הבא אני מתעניין בצוות ה דאטה"
+  },
+  {
+   "id": "l28",
+   "t": 250702,
+   "side": "me",
+   "text": "אני תומך בעניין שלך אבל אני לא יכול להבטיח מועד"
+  },
+  {
+   "id": "l29",
+   "t": 254734,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "ומה צריך כדי שזה יקרה"
+  },
+  {
+   "id": "l30",
+   "t": 259365,
+   "side": "me",
+   "text": "בוא נחזור לזה בהמשך נדבר גם עם מנהל הדאטה"
+  },
+  {
+   "id": "l31",
+   "t": 324835,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אתה יכול לשלוח לי את הקובץ של נהלי העבודה מהבית"
+  },
+  {
+   "id": "l32",
+   "t": 328204,
+   "side": "me",
+   "text": "כן אשלח אחרי השיחה"
+  },
+  {
+   "id": "l33",
+   "t": 332412,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "ראית את המשחק של אתמול"
+  },
+  {
+   "id": "l34",
+   "t": 335539,
+   "side": "me",
+   "text": "לא אבל שמעתי שהיה טוב"
+  },
+  {
+   "id": "l35",
+   "t": 340345,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אני לא מבין איך הם הפסידו בדקה האחרונה"
+  },
+  {
+   "id": "l36",
+   "t": 343050,
+   "side": "me",
+   "text": "זה כדורגל"
+  },
+  {
+   "id": "l37",
+   "t": 347614,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אגב שמעתי שיש שינוי בתהליך הפרישה למילואים של החברה"
+  },
+  {
+   "id": "l38",
+   "t": 351337,
+   "side": "me",
+   "text": "אבדוק עם משאבי אנוש ואעדכן אותך"
+  },
+  {
+   "id": "l39",
+   "t": 357999,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "ועוד דבר מה זה בעצם ה פי איי פי שאתה מדבר עליו"
+  },
+  {
+   "id": "l40",
+   "t": 363820,
+   "side": "me",
+   "text": "זו תוכנית שיפור ביצועים אבל זה לא קשור אליך"
+  },
+  {
+   "id": "l41",
+   "t": 368140,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "אני אכין את הצדקה לכנס עד יום שלישי"
+  },
+  {
+   "id": "l42",
+   "t": 372879,
+   "side": "me",
+   "text": "ואני אעביר את זה לדירקטור עד סוף השבוע"
+  },
+  {
+   "id": "l43",
+   "t": 375097,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "מעולה"
+  },
+  {
+   "id": "l44",
+   "t": 381694,
+   "side": "me",
+   "text": "לפני שנסיים נחזור לשאלה שלך על הדאטה מה שצריך זה לדבר עם מנהל הדאטה"
+  },
+  {
+   "id": "l45",
+   "t": 383670,
+   "side": "them",
+   "speaker": "ליאור",
+   "text": "תודה דן"
+  },
+  {
+   "id": "l46",
+   "t": 386065,
+   "side": "me",
+   "text": "תודה ליאור"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "2"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "check",
+   "mustMention": [
+    "3"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "מדיניות",
+    "חריג"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l12",
+   "kind": "answer",
+   "mustMention": [
+    "כנס",
+    "דירקטור"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l16",
+   "kind": "prompt",
+   "mustMention": [
+    "משוב"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "feedback"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l18",
+   "kind": "fact",
+   "mustMention": [
+    "CI/CD"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l20",
+   "kind": "prompt",
+   "mustMention": [
+    "דוגמאות"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l22",
+   "kind": "answer",
+   "mustMention": [
+    "לוח"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l27",
+   "kind": "answer",
+   "mustMention": [
+    "דאטה",
+    "מועד"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l29",
+   "kind": "prompt",
+   "mustMention": [
+    "נדרש למעבר"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l37",
+   "kind": "prompt",
+   "mustMention": [
+    "מילואים"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l39",
+   "kind": "fact",
+   "mustMention": [
+    "PIP"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l42",
+   "kind": "check",
+   "mustMention": [
+    "דירקטור"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l44",
+   "kind": "prompt",
+   "mustMention": [
+    "מנהל הדאטה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l24",
+   "toLine": "l26"
+  },
+  {
+   "fromLine": "l31",
+   "toLine": "l31"
+  },
+  {
+   "fromLine": "l33",
+   "toLine": "l36"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l45",
+   "mustContain": [
+    "דירקטור",
+    "דאטה",
+    "שלישי",
+    "2"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Lior Adler\",\"side\":\"them\",\"role\":\"developer in my team\"}],\"agenda\":[\"feedback on the quarter\",\"remote work and conference\",\"career interest\"],\"facts\":[{\"text\":\"Lior missed 2 deadlines this quarter\",\"src\":\"brief\"},{\"text\":\"Remote policy is 3 office days per week\",\"src\":\"brief\"},{\"text\":\"One conference per year; travel needs director approval\",\"src\":\"brief\"},{\"text\":\"Do not promise a transfer date\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can I move to the data team?\"],\"chunks\":[\"Prep for my one-to-one with Lior Adler, a developer in my team. I am his manager. Topics: his last review was good, missed 2 deadlines this quarter (the tracker shows 2), remote work policy is 3 office days per week, his request to attend a conference in March, his interest in moving to the data team. Promotion cycle starts in March. I can approve up to one conference per year; budget approval for travel needs the director. Do not promise a transfer date.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: לפי המעקב הוא פספס 2 דדליינים ברבעון הזה.\nWHY: הערכה עצמית מול הרישום.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: המדיניות היא 3 ימי משרד בשבוע, לא ארבעה.\nWHY: מספר הימים סותר את המדיניות.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: לא להבטיח; להסביר את המדיניות ולבדוק אם חריג זמני אפשרי.\nWHY: בקשה לחריגה ממדיניות.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: אפשר כנס אחד בשנה; הנסיעה צריכה אישור של הדירקטור.\nWHY: שאלה ישירה בלי סימן שאלה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: להציע משוב קצר כל שבועיים ולרשום את זה כמשימה.\nWHY: בקשת משוב בין הרבעונים.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: CI/CD הוא תהליך אוטומטי לבדיקה ולפרסום של קוד.\nWHY: מונח הוסבר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: לבקש דוגמאות ולבדוק את חלוקת המשימות בצוות.\nWHY: טענה על חוסר הוגנות.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: אפשר לאשר חופש לפי לוח הפרויקטים; אבדוק אותו.\nWHY: בקשה ישירה בלי סימן שאלה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l25",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l27",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: אני תומך בעניין בצוות הדאטה, אבל לא יכול להבטיח מועד מעבר.\nWHY: ליאור שואל על מעבר; לא להבטיח מועד.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l29",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: עדיין לא ענית מה נדרש למעבר; הצג צעדים ברורים.\nWHY: השאלה נשארת פתוחה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l33",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l35",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l37",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: נושא חדש: מדיניות מילואים. לרשום ולבדוק עם משאבי אנוש.\nWHY: סטייה לנושא מדיניות אחר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l39",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: PIP הוא תוכנית שיפור ביצועים.\nWHY: מונח הוסבר.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l41",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"ליאור\",\"what\":\"להכין הצדקה עסקית לכנס\",\"due\":\"יום שלישי\",\"at\":368140,\"status\":\"open\"},{\"who\":\"דן\",\"what\":\"להעביר את בקשת הכנס לדירקטור\",\"at\":368140,\"status\":\"open\"},{\"who\":\"דן\",\"what\":\"לבדוק חריג עבודה מהבית\",\"at\":368140,\"status\":\"open\"}],\"openQuestions\":[{\"asker\":\"ליאור\",\"text\":\"מה צריך כדי לעבור לדאטה\",\"at\":368140,\"status\":\"open\"}],\"numbers\":[{\"what\":\"דדליינים שפוספסו\",\"value\":\"2\",\"at\":368140}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l42",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: אישור הדירקטור הוא לא בידיים שלך; להיזהר מהבטחת הצלחה.\nWHY: הבטחה שתלויה באחרים.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l44",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: לקבוע שיחה עם מנהל הדאטה ולסגור את שאלת המעבר.\nWHY: סגירת השאלה הפתוחה לפני הסיום.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l45",
+   "reply": "ליאור ביקש כנס בברלין. אמרת שתעביר את הבקשה לדירקטור ושתבדוק חריג לעבודה מהבית.",
+   "ms": 1200,
+   "q": "מה ליאור ביקש ומה אתה אמרת שתעשה?"
+  }
+ ]
+}

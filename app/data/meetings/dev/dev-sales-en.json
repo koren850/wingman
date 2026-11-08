@@ -1,0 +1,727 @@
+{
+ "id": "dev-sales-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "sales",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Prep note. Prospect: Northwind Foods, a grocery chain with 14 stores. Contact: Maya Stern, head of e-commerce. They want an online store with delivery slots. The intake form says budget $5,000. They hope to launch before the holiday season. Our standard store build takes 6 weeks and needs the product list first.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6820,
+   "side": "me",
+   "text": "Hi Maya, thanks for making time. I saw Josh is on the line too."
+  },
+  {
+   "id": "l2",
+   "t": 13259,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Hi Dan. Yes, Josh runs operations, so he will join for the delivery questions."
+  },
+  {
+   "id": "l3",
+   "t": 19737,
+   "side": "me",
+   "text": "Great. Let me start with what you have in mind for the store."
+  },
+  {
+   "id": "l4",
+   "t": 29294,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "We are a grocery chain with fourteen stores and we want customers to order online and pick a delivery slot."
+  },
+  {
+   "id": "l5",
+   "t": 35870,
+   "side": "me",
+   "text": "Okay, that is clear. Tell me a bit about how orders reach the stores today."
+  },
+  {
+   "id": "l6",
+   "t": 42865,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Today it is all phone calls and a shared spreadsheet, which is a mess honestly."
+  },
+  {
+   "id": "l7",
+   "t": 51419,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "So the first thing I need to know is how long it takes to build something like this."
+  },
+  {
+   "id": "l8",
+   "t": 59252,
+   "side": "me",
+   "text": "It depends on the scope and mostly on how fast we get your product list."
+  },
+  {
+   "id": "l9",
+   "t": 66004,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Understood. Our target is to be live before the holiday season, so we are tight."
+  },
+  {
+   "id": "l10",
+   "t": 72035,
+   "side": "me",
+   "text": "Good to know. What is the rough budget you set for this?"
+  },
+  {
+   "id": "l11",
+   "t": 77725,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "The head office approved around $12,000 for the whole project."
+  },
+  {
+   "id": "l12",
+   "t": 83474,
+   "side": "me",
+   "text": "That helps, thank you. Tell me how many products you plan to list."
+  },
+  {
+   "id": "l13",
+   "t": 89642,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "About four thousand SKUs, but only a third are available online at launch."
+  },
+  {
+   "id": "l14",
+   "t": 94329,
+   "side": "me",
+   "text": "Okay, so around thirteen hundred products at launch."
+  },
+  {
+   "id": "l15",
+   "t": 102095,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Right. And I would like to know if you can connect to our inventory system."
+  },
+  {
+   "id": "l16",
+   "t": 109540,
+   "side": "me",
+   "text": "I would have to look at how your inventory system exposes its data before I say yes."
+  },
+  {
+   "id": "l17",
+   "t": 116264,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Fair enough. Josh, do you remember who the vendor of the inventory system is?"
+  },
+  {
+   "id": "l18",
+   "t": 124167,
+   "side": "them",
+   "speaker": "Josh",
+   "text": "It is an old on-premise system from a vendor that closed. I will find the manual."
+  },
+  {
+   "id": "l19",
+   "t": 156369,
+   "side": "me",
+   "text": "While Josh looks, let me ask about the delivery slots. How do you want them to work?"
+  },
+  {
+   "id": "l20",
+   "t": 162850,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Customers choose a two hour window and each store has a limit per window."
+  },
+  {
+   "id": "l21",
+   "t": 168990,
+   "side": "me",
+   "text": "That is a good model. We can build the limits per store."
+  },
+  {
+   "id": "l22",
+   "t": 175929,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Also, I would like to know what a typical go-live checklist looks like."
+  },
+  {
+   "id": "l23",
+   "t": 183687,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Also, honestly, we got another quote from a bigger agency and it is much cheaper than I expected."
+  },
+  {
+   "id": "l24",
+   "t": 190344,
+   "side": "me",
+   "text": "I would like to see what is included in that quote before we compare."
+  },
+  {
+   "id": "l25",
+   "t": 199700,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Sure, I can forward it. Their price is nearly half of what you would charge, and that worries my boss."
+  },
+  {
+   "id": "l26",
+   "t": 207575,
+   "side": "me",
+   "text": "Let us compare line by line, then your boss can decide with the full picture."
+  },
+  {
+   "id": "l27",
+   "t": 212469,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Okay. Ilan, my boss, makes the final call on this."
+  },
+  {
+   "id": "l28",
+   "t": 216642,
+   "side": "me",
+   "text": "Understood. Would Ilan join the next call?"
+  },
+  {
+   "id": "l29",
+   "t": 224274,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Maybe. And just to be sure, will you also handle hosting and maintenance after launch?"
+  },
+  {
+   "id": "l30",
+   "t": 231205,
+   "side": "me",
+   "text": "Yes, we have a hosting and maintenance plan, and I will outline it in the proposal."
+  },
+  {
+   "id": "l31",
+   "t": 258175,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Did you see the football game last night? I could not sleep after that finish."
+  },
+  {
+   "id": "l32",
+   "t": 264424,
+   "side": "me",
+   "text": "I did, what a finish. My neighbours were shouting at the screen."
+  },
+  {
+   "id": "l33",
+   "t": 272232,
+   "side": "them",
+   "speaker": "Josh",
+   "text": "I saw the second half only. The coffee this morning is not enough for me."
+  },
+  {
+   "id": "l34",
+   "t": 276299,
+   "side": "me",
+   "text": "Same here, I am on my third cup."
+  },
+  {
+   "id": "l35",
+   "t": 282685,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Okay, back to work. Josh, can you send me the delivery zone file?"
+  },
+  {
+   "id": "l36",
+   "t": 288350,
+   "side": "them",
+   "speaker": "Josh",
+   "text": "Sure, I will send it to you after the call."
+  },
+  {
+   "id": "l37",
+   "t": 292934,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Dan, can you send me a sample proposal as well?"
+  },
+  {
+   "id": "l38",
+   "t": 297937,
+   "side": "me",
+   "text": "Of course, I will include a sample with the proposal."
+  },
+  {
+   "id": "l39",
+   "t": 305639,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "By the way, we also run a loyalty app. Maybe we can talk about it later."
+  },
+  {
+   "id": "l40",
+   "t": 311860,
+   "side": "me",
+   "text": "Let us park the loyalty app and finish the store first."
+  },
+  {
+   "id": "l41",
+   "t": 348900,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "One more thing, do you take card payments and how does the store handle card data?"
+  },
+  {
+   "id": "l42",
+   "t": 354839,
+   "side": "me",
+   "text": "We use a payment provider so card data never touches your server."
+  },
+  {
+   "id": "l43",
+   "t": 360817,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Good. Regarding timing, we actually need to launch in four weeks."
+  },
+  {
+   "id": "l44",
+   "t": 366094,
+   "side": "me",
+   "text": "Four weeks is tight. It depends on getting your product list early."
+  },
+  {
+   "id": "l45",
+   "t": 371410,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "I will send the full product list by Wednesday, I promise."
+  },
+  {
+   "id": "l46",
+   "t": 376765,
+   "side": "me",
+   "text": "Perfect. Then I will send you the proposal by Friday."
+  },
+  {
+   "id": "l47",
+   "t": 384439,
+   "side": "them",
+   "speaker": "Josh",
+   "text": "Dan, one more thing from me. Do you also handle pickup lockers at the stores?"
+  },
+  {
+   "id": "l48",
+   "t": 392552,
+   "side": "me",
+   "text": "Let me come back to that one in a moment. First, Josh, can you send me the inventory manual?"
+  },
+  {
+   "id": "l49",
+   "t": 397284,
+   "side": "them",
+   "speaker": "Josh",
+   "text": "I found the manual, I will email it today."
+  },
+  {
+   "id": "l50",
+   "t": 405475,
+   "side": "me",
+   "text": "Great. To summarise, you send the product list by Wednesday and I send the proposal by Friday."
+  },
+  {
+   "id": "l51",
+   "t": 411425,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Yes. And please include a line about the maintenance plan."
+  },
+  {
+   "id": "l52",
+   "t": 414774,
+   "side": "me",
+   "text": "Will do. Thanks both, speak soon."
+  },
+  {
+   "id": "l53",
+   "t": 417402,
+   "side": "them",
+   "speaker": "Maya",
+   "text": "Thanks Dan, bye."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l6",
+   "kind": "prompt",
+   "mustMention": [
+    "phone"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "pain-point"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l7",
+   "kind": "answer",
+   "mustMention": [
+    "scope",
+    "product list"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l11",
+   "kind": "check",
+   "mustMention": [
+    "5,000",
+    "12,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l13",
+   "kind": "fact",
+   "mustMention": [
+    "SKU"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l15",
+   "kind": "answer",
+   "mustMention": [
+    "inventory"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l22",
+   "kind": "answer",
+   "mustMention": [
+    "test orders"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l23",
+   "kind": "prompt",
+   "mustMention": [
+    "quote",
+    "scope"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l25",
+   "kind": "prompt",
+   "mustMention": [
+    "scope",
+    "support"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l27",
+   "kind": "prompt",
+   "mustMention": [
+    "Ilan"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "decision-maker"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l29",
+   "kind": "answer",
+   "mustMention": [
+    "hosting",
+    "maintenance"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m11",
+   "afterLine": "l39",
+   "kind": "prompt",
+   "mustMention": [
+    "loyalty"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l41",
+   "kind": "fact",
+   "mustMention": [
+    "PCI"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l43",
+   "kind": "check",
+   "mustMention": [
+    "6 weeks"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l46",
+   "kind": "check",
+   "mustMention": [
+    "Friday",
+    "Wednesday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m15",
+   "afterLine": "l48",
+   "kind": "prompt",
+   "mustMention": [
+    "lockers"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l17",
+   "toLine": "l18"
+  },
+  {
+   "fromLine": "l31",
+   "toLine": "l37"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l49",
+   "mustContain": [
+    "product list",
+    "Wednesday",
+    "inventory",
+    "lockers"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Maya Stern\",\"side\":\"them\",\"role\":\"head of e-commerce\"},{\"name\":\"Josh\",\"side\":\"them\",\"role\":\"operations\"}],\"agenda\":[\"scope of the online store\",\"budget and timeline\"],\"facts\":[{\"text\":\"Intake form budget is $5,000\",\"src\":\"brief\"},{\"text\":\"Standard store build takes 6 weeks\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can you connect to our inventory system?\",\"Who hosts the store after launch?\"],\"chunks\":[\"Prep note. Prospect: Northwind Foods, a grocery chain with 14 stores. Contact: Maya Stern, head of e-commerce. They want an online store with delivery slots. The intake form says budget $5,000. They hope to launch before the holiday season. Our standard store build takes 6 weeks and needs the product list first.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask how many orders per day come by phone.\nWHY: Pain point is manual orders; size it.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: It depends on scope; the product list is the first step.\nWHY: Implied question about timeline; avoid a date.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Brief says $5,000; she now says $12,000.\nWHY: Budget conflicts with the intake form.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: SKU means one sellable item, such as one size of one product.\nWHY: Jargon term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I need to see how your inventory system exposes data first.\nWHY: Direct ask; do not promise an integration.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: Typically payments, delivery slots, product import, test orders, then backups.\nWHY: Implied question; no dates needed.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l23",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask what their quote includes; compare scope, not only price.\nWHY: Price objection; reframe on scope.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l25",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Offer a short call to compare scope and support side by side.\nWHY: Second objection; boss worry.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l27",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask if Ilan can join the next call.\nWHY: New decision maker named.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l29",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Yes, we offer hosting and a maintenance plan; I will outline both.\nWHY: Direct question about post-launch.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l33",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l35",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l37",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l39",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Loyalty app is a new topic; park it and finish the store scope.\nWHY: Topic shift away from the store.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l41",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: PCI rules cover card data; a payment provider usually keeps you compliant.\nWHY: Compliance term for payments.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l43",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Standard build takes 6 weeks; she wants it in 4.\nWHY: Timeline conflicts with the brief.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l45",
+   "reply": "{\"add\":{\"openQuestions\":[{\"asker\":\"Josh\",\"text\":\"Do you handle pickup lockers\",\"at\":371410,\"status\":\"open\"}],\"commitments\":[{\"who\":\"Maya\",\"what\":\"send the full product list\",\"due\":\"Wednesday\",\"at\":371410,\"status\":\"open\"}],\"numbers\":[{\"what\":\"launch target\",\"value\":\"4 weeks\",\"at\":371410},{\"what\":\"budget\",\"value\":\"$12,000\",\"at\":371410}],\"facts\":[{\"text\":\"Standard build takes 6 weeks\",\"at\":371410,\"src\":\"call\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l46",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Friday depends on her list on Wednesday; say so out loud.\nWHY: Your promise is tied to hers.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l48",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Josh's question about pickup lockers is still open.\nWHY: Open loop: you said you would come back to it.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l49",
+   "reply": "Maya promised the full product list by Wednesday. You promised the proposal by Friday.",
+   "ms": 1200,
+   "q": "What did Maya promise and by when?"
+  }
+ ]
+}

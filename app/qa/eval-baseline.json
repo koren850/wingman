@@ -12,5 +12,97 @@
     "guards.falsePositives": 0,
     "salary.blocked": 100,
     "salary.falsePositives": 0
+  },
+  "golden": {
+    "engine": "legacy",
+    "split": "dev",
+    "meetings": 16,
+    "moments": 236,
+    "metrics": {
+      "card.recall": {
+        "value": 0,
+        "n": 236
+      },
+      "card.precision": {
+        "value": 0,
+        "n": 28
+      },
+      "recall.answer": {
+        "value": 0,
+        "n": 76
+      },
+      "recall.prompt": {
+        "value": 0,
+        "n": 80
+      },
+      "recall.check": {
+        "value": 0,
+        "n": 56
+      },
+      "recall.fact": {
+        "value": 0,
+        "n": 24
+      },
+      "precision.answer": {
+        "value": 0,
+        "n": 28
+      },
+      "precision.prompt": {
+        "value": 1,
+        "n": 0
+      },
+      "precision.check": {
+        "value": 1,
+        "n": 0
+      },
+      "precision.fact": {
+        "value": 1,
+        "n": 0
+      },
+      "direct.recall": {
+        "value": 0,
+        "n": 66
+      },
+      "ttc.p50": {
+        "value": 0,
+        "n": 0
+      },
+      "ttc.p95": {
+        "value": 0,
+        "n": 0
+      },
+      "silent.cpm": {
+        "value": 0.126,
+        "n": 16
+      },
+      "wrong.card": {
+        "value": 1,
+        "n": 8
+      },
+      "dup.rate": {
+        "value": 0.1071,
+        "n": 28
+      },
+      "wrong.lang": {
+        "value": 0,
+        "n": 28
+      },
+      "gate.recall": {
+        "value": 0.9211,
+        "n": 76
+      },
+      "gate.quietFp": {
+        "value": 0.561,
+        "n": 82
+      },
+      "memory.pass": {
+        "value": 0,
+        "n": 16
+      },
+      "guard.breaches": {
+        "value": 0,
+        "n": 28
+      }
+    }
   }
 }

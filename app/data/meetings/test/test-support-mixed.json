@@ -1,0 +1,626 @@
+{
+ "id": "test-support-mixed",
+ "split": "test",
+ "lang": "mixed",
+ "type": "support",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Ticket 5107. Customer: Studio Maple, a candle shop, contact Yoni Segal. Problem: newsletter emails land in spam. Findings so far: SPF record missing, DKIM not set, DMARC is set to none. Mail provider is MailBee. Bounce rate in the last 7 days is 12 percent. Support hours in the plan are 3 per month. DNS changes can take up to 24 hours to spread. The DNS is managed at the customer's domain registrar.",
+ "profile": {
+  "userName": "דן",
+  "aliases": [
+   "Dan"
+  ]
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6540,
+   "side": "me",
+   "text": "היי יוני כאן דן מהתמיכה אני רואה את הפנייה שלך על המיילים"
+  },
+  {
+   "id": "l2",
+   "t": 12699,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "היי דן תודה שחזרת המיילים של הניוזלטר פשוט נוחתים בספאם אצל כולם"
+  },
+  {
+   "id": "l3",
+   "t": 18437,
+   "side": "me",
+   "text": "הבנתי אני אסתכל על ההגדרות של הדומיין בזמן שאנחנו מדברים"
+  },
+  {
+   "id": "l4",
+   "t": 26694,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "אני קצת בלחץ יש לנו מבצע חנוכה בשבוע הבא וכל הלקוחות צריכים לקבל את המייל"
+  },
+  {
+   "id": "l5",
+   "t": 29670,
+   "side": "me",
+   "text": "בוא נתחיל מלבדוק את הרשומות"
+  },
+  {
+   "id": "l6",
+   "t": 33905,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "אבל זה קרה בגלל משהו שאתם עשיתם"
+  },
+  {
+   "id": "l7",
+   "t": 40659,
+   "side": "me",
+   "text": "אני לא יודע עדיין אבל אני רואה שחסר ספף ברשומות של הדומיין"
+  },
+  {
+   "id": "l8",
+   "t": 46572,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "מה זה בכלל ספף ודי קי אם ודי מארק"
+  },
+  {
+   "id": "l9",
+   "t": 51404,
+   "side": "me",
+   "text": "אלה רשומות שמוכיחות לשרתים שהמייל באמת יצא מהדומיין שלך"
+  },
+  {
+   "id": "l10",
+   "t": 57495,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "אוקיי ומה אחוז ההחזרות אצלנו אני חושב שזה בערך שניים אחוז"
+  },
+  {
+   "id": "l11",
+   "t": 63165,
+   "side": "me",
+   "text": "ביומן אני רואה שתים עשרה אחוז בשבעת הימים האחרונים"
+  },
+  {
+   "id": "l12",
+   "t": 66074,
+   "side": "them",
+   "speaker": "שיר",
+   "text": "יוני ההזמנה של השעווה הגיעה"
+  },
+  {
+   "id": "l13",
+   "t": 68982,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "מעולה שיר תכניסי לאחסון"
+  },
+  {
+   "id": "l14",
+   "t": 92309,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "אז מה צריך לעשות"
+  },
+  {
+   "id": "l15",
+   "t": 139835,
+   "side": "me",
+   "text": "צריך להוסיף רשומות ספף ודי קי אם בדי אן אס אצל הרשם שלך"
+  },
+  {
+   "id": "l16",
+   "t": 145020,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "כבר פעם אמרתם לי שסידרתם את זה וזה לא עבד"
+  },
+  {
+   "id": "l17",
+   "t": 150204,
+   "side": "me",
+   "text": "את צודק אז הפעם נשלח מייל בדיקה ונבדוק יחד"
+  },
+  {
+   "id": "l18",
+   "t": 156227,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "אני אשלח לך גישה לניהול הדי אן אס עד הערב"
+  },
+  {
+   "id": "l19",
+   "t": 159069,
+   "side": "me",
+   "text": "מעולה ואז זה יסתדר היום"
+  },
+  {
+   "id": "l20",
+   "t": 164010,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "מה עם לקוחות שכבר סימנו אותנו כספאם זו בעיה"
+  },
+  {
+   "id": "l21",
+   "t": 167270,
+   "side": "me",
+   "text": "נחזור לזה אחרי הרשומות"
+  },
+  {
+   "id": "l22",
+   "t": 170949,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "וכמה זה יעלה לי"
+  },
+  {
+   "id": "l23",
+   "t": 173967,
+   "side": "me",
+   "text": "זה נכלל בשעות התמיכה שלך"
+  },
+  {
+   "id": "l24",
+   "t": 178244,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "אני חושב שיש לנו חמש שעות בחבילה"
+  },
+  {
+   "id": "l25",
+   "t": 182520,
+   "side": "me",
+   "text": "בחבילה שלך יש שלוש שעות בחודש"
+  },
+  {
+   "id": "l26",
+   "t": 218055,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "שיר תבדקי לי בבקשה אם יש חשבונית מהספק"
+  },
+  {
+   "id": "l27",
+   "t": 220409,
+   "side": "them",
+   "speaker": "שיר",
+   "text": "אוקי אני מחפשת"
+  },
+  {
+   "id": "l28",
+   "t": 224862,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "דן תשלח לי את הקובץ עם הרשומות"
+  },
+  {
+   "id": "l29",
+   "t": 228054,
+   "side": "me",
+   "text": "אשלח אחרי השיחה"
+  },
+  {
+   "id": "l30",
+   "t": 272685,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "אגב אני רוצה גם באנר חדש באתר למבצע חנוכה"
+  },
+  {
+   "id": "l31",
+   "t": 276895,
+   "side": "me",
+   "text": "נרשום את זה ונסיים קודם את המייל"
+  },
+  {
+   "id": "l32",
+   "t": 281104,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "ואיך אני יודע שזה באמת עובד"
+  },
+  {
+   "id": "l33",
+   "t": 286152,
+   "side": "me",
+   "text": "נשלח מייל בדיקה ונסתכל על הכותרות שלו"
+  },
+  {
+   "id": "l34",
+   "t": 290119,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "וכמה זמן זה לוקח עד שהשינוי נכנס"
+  },
+  {
+   "id": "l35",
+   "t": 294505,
+   "side": "me",
+   "text": "זה תלוי בטי טי אל של הרשומה"
+  },
+  {
+   "id": "l36",
+   "t": 297210,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "ומה לגבי"
+  },
+  {
+   "id": "l37",
+   "t": 300094,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "הלקוחות שכבר סימנו אותנו כספאם"
+  },
+  {
+   "id": "l38",
+   "t": 303817,
+   "side": "me",
+   "text": "זה נפתר לאט ככל שהמוניטין משתפר"
+  },
+  {
+   "id": "l39",
+   "t": 307959,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "אולי עדיף להחליף ספק מיילים בכלל"
+  },
+  {
+   "id": "l40",
+   "t": 312520,
+   "side": "me",
+   "text": "נתקן קודם את הרשומות ואז נחליט"
+  },
+  {
+   "id": "l41",
+   "t": 315580,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "ומי עושה את השינוי ברשם"
+  },
+  {
+   "id": "l42",
+   "t": 319059,
+   "side": "me",
+   "text": "אדריך אותך צעד אחר צעד"
+  },
+  {
+   "id": "l43",
+   "t": 382957,
+   "side": "them",
+   "speaker": "יוני",
+   "text": "בסדר תודה דן תעדכן אותי"
+  },
+  {
+   "id": "l44",
+   "t": 385774,
+   "side": "me",
+   "text": "אעדכן אותך ברגע שהרשומות בפנים"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "SPF"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "fact",
+   "mustMention": [
+    "DKIM"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l10",
+   "kind": "check",
+   "mustMention": [
+    "12"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l14",
+   "kind": "answer",
+   "mustMention": [
+    "DNS"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l16",
+   "kind": "prompt",
+   "mustMention": [
+    "מייל בדיקה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l19",
+   "kind": "check",
+   "mustMention": [
+    "24"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l22",
+   "kind": "answer",
+   "mustMention": [
+    "שעות התמיכה"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m8",
+   "afterLine": "l24",
+   "kind": "check",
+   "mustMention": [
+    "3"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l30",
+   "kind": "prompt",
+   "mustMention": [
+    "באנר"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l32",
+   "kind": "answer",
+   "mustMention": [
+    "מייל בדיקה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l34",
+   "kind": "fact",
+   "mustMention": [
+    "TTL"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l37",
+   "kind": "prompt",
+   "mustMention": [
+    "ספאם"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l39",
+   "kind": "prompt",
+   "mustMention": [
+    "MailBee"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l41",
+   "kind": "answer",
+   "mustMention": [
+    "רשם"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l12",
+   "toLine": "l13"
+  },
+  {
+   "fromLine": "l26",
+   "toLine": "l28"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l43",
+   "mustContain": [
+    "DNS",
+    "12",
+    "SPF"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Yoni Segal\",\"side\":\"them\",\"role\":\"owner of Studio Maple\"},{\"name\":\"Shir\",\"side\":\"them\",\"role\":\"Yoni's employee\"}],\"agenda\":[\"why newsletters go to spam\",\"fix and verification\"],\"facts\":[{\"text\":\"SPF missing, DKIM not set, DMARC set to none\",\"src\":\"brief\"},{\"text\":\"Bounce rate 12 percent in 7 days\",\"src\":\"brief\"},{\"text\":\"Support plan has 3 hours per month\",\"src\":\"brief\"},{\"text\":\"DNS changes can take up to 24 hours\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Is this because of something you did?\"],\"chunks\":[\"Ticket 5107. Customer: Studio Maple, a candle shop, contact Yoni Segal. Problem: newsletter emails land in spam. Findings so far: SPF record missing, DKIM not set, DMARC is set to none. Mail provider is MailBee. Bounce rate in the last 7 days is 12 percent. Support hours in the plan are 3 per month. DNS changes can take up to 24 hours to spread. The DNS is managed at the customer's domain registrar.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: אני בודק את הרשומות; כרגע חסרה רשומת SPF.\nWHY: שאלה ישירה בלי סימן שאלה; להישאר עובדתי.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: SPF ו-DKIM הן רשומות שמוכיחות שהמייל באמת נשלח מהדומיין שלך.\nWHY: ראשי תיבות מוסברים.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: ביומן ההחזרות הן 12 אחוז, לא 2.\nWHY: האחוז שהוא אומר סותר את היומן.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: להוסיף SPF ו-DKIM ב-DNS אצל רשם הדומיין, ולהגדיר DMARC.\nWHY: שאלה משתמעת; הצעד הראשון.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: להכיר בזה ולהציע מייל בדיקה לאימות יחד.\nWHY: התנגדות אמון בגלל טיפול קודם.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l18",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"יוני\",\"what\":\"לשלוח גישה לניהול ה-DNS\",\"due\":\"עד הערב\",\"at\":156227,\"status\":\"open\"}],\"openQuestions\":[{\"asker\":\"יוני\",\"text\":\"האם לקוחות שסימנו ספאם הם בעיה\",\"at\":156227,\"status\":\"open\"}],\"numbers\":[{\"what\":\"אחוז החזרות\",\"value\":\"12 אחוז\",\"at\":156227}],\"facts\":[{\"text\":\"חסרה רשומת SPF ו-DKIM לא מוגדר\",\"at\":156227,\"src\":\"call\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: שינויי DNS יכולים לקחת עד 24 שעות; לא להבטיח היום.\nWHY: הבטחת יתר על זמן.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: זה נכלל בשעות התמיכה שלך; אאשר בסוף כמה נוצלו.\nWHY: שאלה ישירה על עלות; בלי מחירים.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: בחבילה יש 3 שעות תמיכה בחודש, לא חמש.\nWHY: שעות התמיכה סותרות את החבילה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l27",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l30",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: באנר חדש הוא בקשה נפרדת; לרשום ולסיים קודם את בעיית המייל.\nWHY: סטייה לבקשה אחרת.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: נשלח מייל בדיקה ונבדוק את הכותרות כדי לראות שהאימות עבר.\nWHY: שאלה משתמעת על אימות.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: TTL הוא כמה זמן שרתים שומרים תשובת DNS לפני שהם בודקים שוב.\nWHY: מונח הוסבר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l37",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: שאלה על לקוחות שסימנו ספאם עדיין פתוחה.\nWHY: חוב פתוח שפוצל לשתי שורות.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l39",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: לא להחליף ספק לפני שמתקנים את הרשומות; MailBee תומך ב-SPF.\nWHY: רעיון להחליף ספק.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l41",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: השינוי נעשה אצל רשם הדומיין שלך; אדריך אותך בצעדים.\nWHY: שאלה בלי סימן שאלה.",
+   "ms": 900
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l43",
+   "reply": "אחוז ההחזרות הוא 12 אחוז. חסרה רשומת SPF ו-DKIM לא מוגדר.",
+   "ms": 1200,
+   "q": "מה אחוז ההחזרות ומה חסר ברשומות?"
+  }
+ ]
+}

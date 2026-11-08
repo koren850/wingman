@@ -1,0 +1,570 @@
+{
+ "id": "dev-interview-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "interview",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Practice interview for a backend developer role at Orbit Pay (invented company). My notes: 5 years of experience with Python and Node, no Go. Led a payment service migration that cut cloud cost by 40 percent, leading a team of 4. Production incident story: a payment outage, found the cause in 20 minutes, wrote a postmortem. Reason for leaving: limited growth path to a lead role. Weakness: delegating, now using written handoffs. Do not state a salary number. Questions I want to ask: on-call, team growth plan, how success is measured.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6440,
+   "side": "me",
+   "text": "Hi Gil, thank you for the time. I am happy to be here."
+  },
+  {
+   "id": "l2",
+   "t": 13259,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Welcome Dan. I have your CV. I see eight years of experience, is that right?"
+  },
+  {
+   "id": "l3",
+   "t": 18217,
+   "side": "me",
+   "text": "It is five years, mostly with Python and Node."
+  },
+  {
+   "id": "l4",
+   "t": 23594,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Got it. Why are you leaving your current job?"
+  },
+  {
+   "id": "l5",
+   "t": 30930,
+   "side": "me",
+   "text": "I want more growth. At my current company there is no clear path to a lead role."
+  },
+  {
+   "id": "l6",
+   "t": 36785,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Makes sense. Tell me about a time you handled a production incident."
+  },
+  {
+   "id": "l7",
+   "t": 44959,
+   "side": "me",
+   "text": "We had a payment outage. I found the cause in twenty minutes and then wrote a postmortem."
+  },
+  {
+   "id": "l8",
+   "t": 51652,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Good. I would like to hear about your leadership experience as well."
+  },
+  {
+   "id": "l9",
+   "t": 57264,
+   "side": "me",
+   "text": "I led the payment service migration with a team of four people."
+  },
+  {
+   "id": "l10",
+   "t": 102875,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "And the results?"
+  },
+  {
+   "id": "l11",
+   "t": 107805,
+   "side": "me",
+   "text": "It cut our cloud cost by forty percent."
+  },
+  {
+   "id": "l12",
+   "t": 114314,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Impressive. Our stack is mostly Go, and you have no Go experience. That worries me."
+  },
+  {
+   "id": "l13",
+   "t": 122002,
+   "side": "me",
+   "text": "I understand. I learned Node in a few months, and I can learn Go the same way."
+  },
+  {
+   "id": "l14",
+   "t": 154729,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Let me ask a design question. How would you design a rate limiter for an API?"
+  },
+  {
+   "id": "l15",
+   "t": 162875,
+   "side": "me",
+   "text": "I would clarify requirements first, then use a token bucket per client in a shared cache."
+  },
+  {
+   "id": "l16",
+   "t": 167280,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "And how do you make a payment request idempotent?"
+  },
+  {
+   "id": "l17",
+   "t": 174384,
+   "side": "me",
+   "text": "With an idempotency key stored with the result, so a retry returns the same response."
+  },
+  {
+   "id": "l18",
+   "t": 178487,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Good. What are your salary expectations?"
+  },
+  {
+   "id": "l19",
+   "t": 226409,
+   "side": "me",
+   "text": "I would like to hear the range for the role first."
+  },
+  {
+   "id": "l20",
+   "t": 230610,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Fair. Yael, can you bring us some water?"
+  },
+  {
+   "id": "l21",
+   "t": 233330,
+   "side": "them",
+   "speaker": "Yael",
+   "text": "Sure, one minute."
+  },
+  {
+   "id": "l22",
+   "t": 238749,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Thanks. By the way, the weather is terrible today."
+  },
+  {
+   "id": "l23",
+   "t": 240807,
+   "side": "me",
+   "text": "It really is."
+  },
+  {
+   "id": "l24",
+   "t": 274044,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "What is your biggest weakness?"
+  },
+  {
+   "id": "l25",
+   "t": 281880,
+   "side": "me",
+   "text": "I used to hold on to tasks, so now I use written handoffs when I delegate."
+  },
+  {
+   "id": "l26",
+   "t": 288615,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Fine. We recently raised funding and we plan to double the team."
+  },
+  {
+   "id": "l27",
+   "t": 292749,
+   "side": "me",
+   "text": "Congratulations. How does that change the team plan?"
+  },
+  {
+   "id": "l28",
+   "t": 341822,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "We will hire in stages. Can you send me your portfolio link?"
+  },
+  {
+   "id": "l29",
+   "t": 346034,
+   "side": "me",
+   "text": "Yes, I will send my portfolio."
+  },
+  {
+   "id": "l30",
+   "t": 350305,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "I will give you an answer within a week."
+  },
+  {
+   "id": "l31",
+   "t": 354235,
+   "side": "me",
+   "text": "Thank you. Can I ask about on-call?"
+  },
+  {
+   "id": "l32",
+   "t": 360864,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "We can come back to that. Do you have other questions for us?"
+  },
+  {
+   "id": "l33",
+   "t": 369432,
+   "side": "me",
+   "text": "Yes. What does on-call look like, and how do you measure success in the first six months?"
+  },
+  {
+   "id": "l34",
+   "t": 375779,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "On-call is one week in six, and success is measured by delivery and quality."
+  },
+  {
+   "id": "l35",
+   "t": 380645,
+   "side": "me",
+   "text": "That helps. I will also send my portfolio today."
+  },
+  {
+   "id": "l36",
+   "t": 383650,
+   "side": "them",
+   "speaker": "Gil",
+   "text": "Thank you Dan."
+  },
+  {
+   "id": "l37",
+   "t": 385574,
+   "side": "me",
+   "text": "Thank you, Gil."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "5 years"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "answer",
+   "mustMention": [
+    "growth"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "postmortem"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m4",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "team of four"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l10",
+   "kind": "answer",
+   "mustMention": [
+    "40 percent"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m6",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "learn"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l14",
+   "kind": "answer",
+   "mustMention": [
+    "token bucket"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m8",
+   "afterLine": "l16",
+   "kind": "fact",
+   "mustMention": [
+    "idempotent"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l18",
+   "kind": "answer",
+   "mustMention": [
+    "range"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m10",
+   "afterLine": "l24",
+   "kind": "answer",
+   "mustMention": [
+    "handoffs"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m11",
+   "afterLine": "l26",
+   "kind": "prompt",
+   "mustMention": [
+    "team plan"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l31",
+   "kind": "prompt",
+   "mustMention": [
+    "on-call"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l32",
+   "kind": "answer",
+   "mustMention": [
+    "on-call",
+    "success"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m14",
+   "afterLine": "l35",
+   "kind": "check",
+   "mustMention": [
+    "portfolio"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l20",
+   "toLine": "l23"
+  },
+  {
+   "fromLine": "l28",
+   "toLine": "l28"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l36",
+   "mustContain": [
+    "Gil",
+    "portfolio",
+    "5 years",
+    "funding"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Gil Navon\",\"side\":\"them\",\"role\":\"engineering manager\"},{\"name\":\"Yael\",\"side\":\"them\",\"role\":\"recruiter\"}],\"agenda\":[\"experience and motivation\",\"technical questions\",\"my questions\"],\"facts\":[{\"text\":\"5 years of experience, Python and Node, no Go\",\"src\":\"brief\"},{\"text\":\"Migration cut cloud cost by 40 percent, team of 4\",\"src\":\"brief\"},{\"text\":\"Do not state a salary number\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Why are you leaving your job?\",\"What is your biggest weakness?\"],\"chunks\":[\"Practice interview for a backend developer role at Orbit Pay (invented company). My notes: 5 years of experience with Python and Node, no Go. Led a payment service migration that cut cloud cost by 40 percent, leading a team of 4. Production incident story: a payment outage, found the cause in 20 minutes, wrote a postmortem. Reason for leaving: limited growth path to a lead role. Weakness: delegating, now using written handoffs. Do not state a salary number. Questions I want to ask: on-call, team growth plan, how success is measured.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Your notes say 5 years of experience, not eight.\nWHY: Interviewer number conflicts with your record.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: A limited growth path to a lead role; keep it positive.\nWHY: Direct motivation question.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Use the payment outage story: cause found fast, postmortem written.\nWHY: Behavioral question; story in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: I led a payment migration with a team of four.\nWHY: Implied question; the facts are in the notes.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: It cut cloud cost by 40 percent.\nWHY: Direct follow-up with a number from the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Acknowledge it; point to similar languages and how fast you learn.\nWHY: Skill gap objection.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Start with requirements, then a token bucket per client in a shared cache.\nWHY: Technical question; keep it simple.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Idempotent means repeating the same request gives the same result.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Ask about the budget range first; do not name a number.\nWHY: Salary question; practice rule says no figure.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l23",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I used to hold on to tasks; now I use written handoffs.\nWHY: Weakness question; answer is in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask how the funding changes the team plan and the on-call load.\nWHY: Topic shift to company news.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l30",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Gil\",\"what\":\"give an answer\",\"due\":\"within a week\",\"at\":350305,\"status\":\"open\"},{\"who\":\"Dan\",\"what\":\"send the portfolio link\",\"at\":350305,\"status\":\"open\"}],\"numbers\":[{\"what\":\"experience\",\"value\":\"5 years\",\"at\":350305}],\"facts\":[{\"text\":\"Orbit Pay raised funding and plans to double the team\",\"at\":350305,\"src\":\"call\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Your on-call question is still open; ask it again clearly.\nWHY: Open question to the interviewer.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Ask about on-call, the growth plan, and how success is measured.\nWHY: Prepared questions from the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l35",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: You promised the portfolio; add it to your list.\nWHY: Your own commitment.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l36",
+   "reply": "Gil said he will give an answer within a week. You promised to send your portfolio.",
+   "ms": 1200,
+   "q": "What did Gil say about the next step?"
+  }
+ ]
+}

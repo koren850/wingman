@@ -1,0 +1,62 @@
+id: test-standup-en
+split: test
+lang: en
+type: standup
+variant: noisy
+user: Dan
+context: Data team sprint 22. Dan leads. Team: Hana (data engineer), Eli (analyst), Zoe (data scientist). The nightly pipeline must finish by 6 AM; this week it failed 3 times. Dashboard v2 launch is planned for the 14th. The cloud budget alert is at $2,000 per month; last month cost was $1,700. Dan owns the contact with the data vendor DataPipe; the credentials request is pending. Dan has the reviews for the churn model waiting.
+roster: Hana | them | data engineer
+roster: Eli | them | analyst
+roster: Zoe | them | data scientist
+agenda: pipeline failures
+agenda: dashboard launch
+brief: Nightly pipeline failed 3 times this week
+brief: Dashboard v2 launch planned for the 14th
+brief: Cloud alert at $2,000 per month; last month $1,700
+brief: DataPipe credentials request pending
+likely: Who owns the pipeline alert?
+---
+me: morning everyone quick round hana you first
+them@Hana: morning so the nightly pipeline failed again last night that is now four times this week ## m: check || 3 times || number-conflict || The notes say the pipeline failed 3 times this week, not four. || Failure count conflicts with the notes.
+me: my notes say three can you check the log
+them@Hana: oh maybe three the fourth was a manual run anyway the cause looks like a bad join on the orders table
+them@Hana: i also need the credentials from data pipe to test the fix ## m: prompt || DataPipe || blocker || You own the DataPipe contact; offer to chase the credentials today. || Blocker is yours to unblock.
+me: i own that contact i will chase it
+them@Eli: my turn i am waiting for the new dashboard numbers and i am not sure which version of the churn metric is the final one ## m: answer || churn || implied || The final churn metric is Zoe's validated one; I will confirm in the channel. || Implied question; do not invent a version.
+me: i will confirm in the channel which churn metric is final
+them@Eli: thanks also can you review my query today ## m: answer || reviews || direct || Yes, after this standup; I have the churn model reviews waiting. || Direct request.
+me: yes i will review it after standup
+them@Hana: the security scan came back with one critical finding on the upload service ## m: prompt || critical || blocker || Ask for the ticket and the owner of the critical finding. || A critical finding needs an owner.
+me: who owns that ticket
+.. 60
+them@Zoe: so the churn model accuracy is at ninety two percent but i think we can get more ## quiet
+.. 35
+me: nice zoe
+them@Zoe: also we cannot launch the dashboard on the fourteenth because the metric is not validated ## m: check || 14th || number-conflict || The plan says launch on the 14th; she says it is not possible. || Launch date conflicts with the plan.
+me: what is missing for the validation ## m: prompt || validation || objection || Ask what validation still needs and how long it takes. || Objection to the launch date.
+them@Zoe: a week with the finance team to compare numbers
+.. 25
+them@Hana: coffee anyone i am going to the kitchen ## quiet
+them@Eli: yes please ## quiet
+them@Zoe: not for me ## quiet
+me: two sugars for me ## quiet
+them@Zoe: dan can you send me the finance contact ## quiet
+me: sure i will send it after standup
+them@Eli: by the way what is a canary release i saw it in the notes ## m: fact || canary || jargon || A canary release sends a new version to a small group first. || Term explained.
+me: it means we give the new version to a few users first
+them@Hana: also the cloud costs are higher this month nearly two thousand ## m: check || 1,700 || number-conflict || Last month cost $1,700 and the alert is at $2,000. || Cost statement against the notes.
+.. 35
+me: last month was seventeen hundred so we are close to the alert
+them@Zoe: dan who gets the pipeline alert at night ## m: answer || alert || direct || Nobody owns the night alert yet; I will set the rota after standup. || Direct question; no names invented.
+me: let me sort that out in a minute first anything else
+them@Eli: random thing i am thinking about changing the team lunch day to thursday ## m: prompt || lunch || topic-shift || Lunch day is off topic; park it for after standup. || Topic shift away from the sprint.
+me: lets talk lunch after standup
+.. 40
+them@Hana: i will send the fix for the join by tomorrow ## mem: c:Hana>send the fix for the bad join>tomorrow / c:Dan>chase the DataPipe credentials / q:Zoe>Who gets the pipeline alert at night / n:pipeline failures=3 / n:cloud cost last month=$1,700
+me: and i will send the updated launch plan today ## m: check || launch plan || promise || You promised the launch plan today; add it to your list. || Your own commitment.
+them@Zoe: so who takes the alert tonight ## m: prompt || alert;rota || unanswered || The night alert owner is still open; set the rota before you close. || Open loop from earlier.
+me: hana tonight and i am the backup
+them@Eli: and the launch date ## m: answer || validation || direct || Decide after validation with finance; I will confirm the date today. || Direct question; no date promised.
+me: we decide after the validation with finance
+them@Hana: sounds good ## chk: DataPipe;alert;3;1,700 ## ask: How many times did the pipeline fail? || The notes say it failed 3 times this week. Hana said four, but one run was manual.
+me: thanks all

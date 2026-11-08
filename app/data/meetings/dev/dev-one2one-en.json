@@ -1,0 +1,632 @@
+{
+ "id": "dev-one2one-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "one2one",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Prep note for my one-to-one with my manager Rina Cole. My goals: ask for a raise, ask to lead the migration project. My achievements this quarter: 4 of 5 goals delivered, page load time cut by 40 percent, mentored one new colleague. Workload: two projects and about 50 hour weeks. Promotion cycle starts in March. The migration project starts in April. Things I want to hear: what promotion needs, when the budget decision is made.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5300,
+   "side": "me",
+   "text": "Hi Rina, thanks for making time. How was your week?"
+  },
+  {
+   "id": "l2",
+   "t": 14019,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Busy but good. Thanks for the notes you sent before. Let us start with how you feel about the quarter."
+  },
+  {
+   "id": "l3",
+   "t": 20117,
+   "side": "me",
+   "text": "I feel good about it overall. I delivered most of my goals."
+  },
+  {
+   "id": "l4",
+   "t": 27014,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "I looked at the tracker and I count three of five goals done."
+  },
+  {
+   "id": "l5",
+   "t": 32830,
+   "side": "me",
+   "text": "I have four of five, I think the tracker missed the search goal."
+  },
+  {
+   "id": "l6",
+   "t": 39825,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Possibly. I will check it again. What did you ship that you are proud of?"
+  },
+  {
+   "id": "l7",
+   "t": 47239,
+   "side": "me",
+   "text": "I cut the page load time by forty percent, and I mentored a new colleague."
+  },
+  {
+   "id": "l8",
+   "t": 54692,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Nice. How is your workload right now? You looked tired in the last meeting."
+  },
+  {
+   "id": "l9",
+   "t": 61824,
+   "side": "me",
+   "text": "It is heavy. I have two projects at once and my weeks are around fifty hours."
+  },
+  {
+   "id": "l10",
+   "t": 67095,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "That is more than I knew. We should fix that."
+  },
+  {
+   "id": "l11",
+   "t": 76205,
+   "side": "me",
+   "text": "Thank you. That brings me to something I wanted to ask. I would like to talk about a raise."
+  },
+  {
+   "id": "l12",
+   "t": 83854,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "I understand. Honestly, this is not the right time, we are in a budget freeze until next quarter."
+  },
+  {
+   "id": "l13",
+   "t": 90782,
+   "side": "me",
+   "text": "I get that. What would I need to show, and when does the freeze end?"
+  },
+  {
+   "id": "l14",
+   "t": 98889,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "I cannot give a date. The decision is made by the finance team in a calibration meeting."
+  },
+  {
+   "id": "l15",
+   "t": 104375,
+   "side": "me",
+   "text": "Okay. And what would the promotion require from me?"
+  },
+  {
+   "id": "l16",
+   "t": 110680,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "That is a bigger conversation. Let me think about how to answer it properly."
+  },
+  {
+   "id": "l17",
+   "t": 118164,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Let me ask you something else. What do you need from me to be more effective?"
+  },
+  {
+   "id": "l18",
+   "t": 124167,
+   "side": "me",
+   "text": "I need clear priorities between the two projects and fewer meetings."
+  },
+  {
+   "id": "l19",
+   "t": 132889,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "That is fair. Also, we need one extra person on the on-call rotation. Would you take one extra week a month?"
+  },
+  {
+   "id": "l20",
+   "t": 139370,
+   "side": "me",
+   "text": "Before I agree, I want to see how that fits with my current workload."
+  },
+  {
+   "id": "l21",
+   "t": 145130,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Fair. The migration project would start in May, by the way."
+  },
+  {
+   "id": "l22",
+   "t": 151309,
+   "side": "me",
+   "text": "I had April in my notes, can we confirm the month?"
+  },
+  {
+   "id": "l23",
+   "t": 210067,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "I will confirm it. Also, I wonder whether you plan to stay with us for the long term."
+  },
+  {
+   "id": "l24",
+   "t": 216344,
+   "side": "me",
+   "text": "Yes, I want to grow here, and the migration role matters to me."
+  },
+  {
+   "id": "l25",
+   "t": 288800,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Separate topic. One of your teammates told me there is tension between you and Omar."
+  },
+  {
+   "id": "l26",
+   "t": 295535,
+   "side": "me",
+   "text": "I would like to hear what exactly was said before I respond."
+  },
+  {
+   "id": "l27",
+   "t": 302329,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "I do not want to name names. Just try to talk to him this week."
+  },
+  {
+   "id": "l28",
+   "t": 306122,
+   "side": "me",
+   "text": "Okay, I will talk to him."
+  },
+  {
+   "id": "l29",
+   "t": 312234,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Sorry, one moment, my phone is ringing. Let me silence it."
+  },
+  {
+   "id": "l30",
+   "t": 317645,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Okay. The new coffee machine is finally installed, did you try it?"
+  },
+  {
+   "id": "l31",
+   "t": 322335,
+   "side": "me",
+   "text": "Not yet, but I heard it is much better."
+  },
+  {
+   "id": "l32",
+   "t": 326684,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "It is. The old one was terrible."
+  },
+  {
+   "id": "l33",
+   "t": 329172,
+   "side": "me",
+   "text": "Agreed."
+  },
+  {
+   "id": "l34",
+   "t": 333239,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Dan, can you send me the tracker export?"
+  },
+  {
+   "id": "l35",
+   "t": 337725,
+   "side": "me",
+   "text": "Sure, I will send it after our meeting."
+  },
+  {
+   "id": "l36",
+   "t": 343010,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Now, what do you want from the next year?"
+  },
+  {
+   "id": "l37",
+   "t": 348354,
+   "side": "me",
+   "text": "I want to lead the migration project and work toward a promotion."
+  },
+  {
+   "id": "l38",
+   "t": 354877,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "I like the migration idea. I will talk to HR about it by Friday."
+  },
+  {
+   "id": "l39",
+   "t": 361439,
+   "side": "me",
+   "text": "Thank you. And I will write a summary of my achievements by Monday."
+  },
+  {
+   "id": "l40",
+   "t": 366520,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Good. That will help me argue for you."
+  },
+  {
+   "id": "l41",
+   "t": 374320,
+   "side": "me",
+   "text": "Before we finish, I still do not know what the promotion needs. Could we come back to that?"
+  },
+  {
+   "id": "l42",
+   "t": 380639,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Fair. Let us set a slot next week to go through the criteria."
+  },
+  {
+   "id": "l43",
+   "t": 383957,
+   "side": "me",
+   "text": "Great. Thank you, Rina."
+  },
+  {
+   "id": "l44",
+   "t": 385814,
+   "side": "them",
+   "speaker": "Rina",
+   "text": "Thank you Dan."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "4 of 5"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "40 percent",
+    "page load"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "two projects",
+    "50 hour"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m4",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "freeze"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l14",
+   "kind": "fact",
+   "mustMention": [
+    "calibration"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l17",
+   "kind": "answer",
+   "mustMention": [
+    "priorities"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l19",
+   "kind": "prompt",
+   "mustMention": [
+    "on-call"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l21",
+   "kind": "check",
+   "mustMention": [
+    "April"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l23",
+   "kind": "answer",
+   "mustMention": [
+    "grow"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l25",
+   "kind": "prompt",
+   "mustMention": [
+    "Omar"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l27",
+   "kind": "prompt",
+   "mustMention": [
+    "Omar"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "next-step"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l36",
+   "kind": "answer",
+   "mustMention": [
+    "migration",
+    "promotion"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l39",
+   "kind": "check",
+   "mustMention": [
+    "Monday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l41",
+   "kind": "prompt",
+   "mustMention": [
+    "promotion"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l29",
+   "toLine": "l34"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l44",
+   "mustContain": [
+    "HR",
+    "Friday",
+    "tracker",
+    "50"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Rina Cole\",\"side\":\"them\",\"role\":\"my manager\"}],\"agenda\":[\"quarter review\",\"raise and promotion\",\"migration project\"],\"facts\":[{\"text\":\"4 of 5 goals delivered this quarter\",\"src\":\"brief\"},{\"text\":\"Page load time cut by 40 percent\",\"src\":\"brief\"},{\"text\":\"Two projects and about 50 hour weeks\",\"src\":\"brief\"},{\"text\":\"Promotion cycle starts in March\",\"src\":\"brief\"}],\"likelyQuestions\":[\"What do you want from the next year?\"],\"chunks\":[\"Prep note for my one-to-one with my manager Rina Cole. My goals: ask for a raise, ask to lead the migration project. My achievements this quarter: 4 of 5 goals delivered, page load time cut by 40 percent, mentored one new colleague. Workload: two projects and about 50 hour weeks. Promotion cycle starts in March. The migration project starts in April. Things I want to hear: what promotion needs, when the budget decision is made.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Your notes say 4 of 5 goals; she counts three.\nWHY: Her count conflicts with your record.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I cut page load time by 40 percent and mentored a new colleague.\nWHY: Direct question; facts in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Two projects at once and about 50 hour weeks; I want to fix that.\nWHY: Direct question about workload.",
+   "ms": 900
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l10",
+   "reply": "{\"add\":{\"numbers\":[{\"what\":\"goals delivered\",\"value\":\"4 of 5\",\"at\":67095},{\"what\":\"hours per week\",\"value\":\"50\",\"at\":67095}],\"facts\":[{\"text\":\"Dan cut page load time by 40 percent\",\"at\":67095,\"src\":\"call\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask what a raise would need and when the freeze ends, not only no.\nWHY: Timing objection from the manager.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: A calibration meeting compares ratings across teams to keep them fair.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I need clear priorities between the two projects and fewer meetings.\nWHY: Direct question about support needed.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask how it fits the workload before you agree to more on-call.\nWHY: Request that adds to the workload.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Your notes say the migration starts in April; she says May.\nWHY: Start month conflicts with the notes.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l23",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: Yes, I want to grow here; the migration role matters to me.\nWHY: Implied question about commitment.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l25",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: New topic: tension with Omar. Ask for specifics before you respond.\nWHY: Topic shift to a team conflict.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l27",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Agree to talk to Omar and ask for support if it does not help.\nWHY: Concrete ask from the manager.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l29",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l30",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l33",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I want to lead the migration project and work toward promotion.\nWHY: Direct question; goals in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l38",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Rina\",\"what\":\"talk to HR about the migration lead role\",\"due\":\"Friday\",\"at\":354877,\"status\":\"open\"},{\"who\":\"Dan\",\"what\":\"send the tracker export\",\"due\":\"after meeting\",\"at\":354877,\"status\":\"open\"},{\"who\":\"Dan\",\"what\":\"talk to Omar\",\"due\":\"this week\",\"at\":354877,\"status\":\"open\"}],\"openQuestions\":[{\"asker\":\"Dan\",\"text\":\"What would promotion require\",\"at\":354877,\"status\":\"open\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l39",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: You promised an achievement summary by Monday; add it to your list.\nWHY: Your own commitment.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l41",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The promotion question is still open; ask for a time to continue.\nWHY: Open loop; ask for a time to continue.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l44",
+   "reply": "Rina will talk to HR about the migration lead role by Friday.",
+   "ms": 1200,
+   "q": "What did Rina agree to do?"
+  }
+ ]
+}

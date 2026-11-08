@@ -1,0 +1,585 @@
+{
+ "id": "dev-kickoff-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "kickoff",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Kickoff notes. Client: Bright Smile Clinic. Contacts: Dr. Nina Hale (owner), Sara (office manager). Project: a new website with online booking. Scope: 5 pages, booking form connected to the CalDesk calendar, no mobile app. Timeline: 8 weeks. Budget: $18,000. Client sends content by the end of week 2. Changes after design approval need a change request. Dan is the project manager.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 7200,
+   "side": "me",
+   "text": "Welcome everyone, and thank you for joining the kickoff. Nina, Sara, great to see you."
+  },
+  {
+   "id": "l2",
+   "t": 13639,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Thank you Dan. We are excited. Sara will be involved in the daily details."
+  },
+  {
+   "id": "l3",
+   "t": 20877,
+   "side": "me",
+   "text": "Let us start with roles. I will be your project manager for the whole project."
+  },
+  {
+   "id": "l4",
+   "t": 27774,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Good. Who is our contact on your side if you are on vacation?"
+  },
+  {
+   "id": "l5",
+   "t": 32830,
+   "side": "me",
+   "text": "I will name a backup before I take any time off."
+  },
+  {
+   "id": "l6",
+   "t": 39065,
+   "side": "them",
+   "speaker": "Sara",
+   "text": "Let me ask about scope. I thought we have ten pages, not five."
+  },
+  {
+   "id": "l7",
+   "t": 45719,
+   "side": "me",
+   "text": "Our scope document says five pages. We can discuss more as a change."
+  },
+  {
+   "id": "l8",
+   "t": 53552,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Okay. And what happens if we want to change something after we approve the design?"
+  },
+  {
+   "id": "l9",
+   "t": 59924,
+   "side": "me",
+   "text": "After approval, changes go through a change request so we can check the effect."
+  },
+  {
+   "id": "l10",
+   "t": 66715,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Fine. We would also like a mobile app for patients, can we add it?"
+  },
+  {
+   "id": "l11",
+   "t": 74685,
+   "side": "me",
+   "text": "The mobile app is not in this scope. We can plan it as a second phase."
+  },
+  {
+   "id": "l12",
+   "t": 105054,
+   "side": "them",
+   "speaker": "Sara",
+   "text": "What is the budget again? I have it as twenty five thousand."
+  },
+  {
+   "id": "l13",
+   "t": 109322,
+   "side": "me",
+   "text": "The agreed budget is $18,000 for this scope."
+  },
+  {
+   "id": "l14",
+   "t": 163909,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "OK. Eight weeks feels long to me. A competitor told us five weeks."
+  },
+  {
+   "id": "l15",
+   "t": 169015,
+   "side": "me",
+   "text": "What did they include in those five weeks?"
+  },
+  {
+   "id": "l16",
+   "t": 172280,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Not sure. We can ask them."
+  },
+  {
+   "id": "l17",
+   "t": 177484,
+   "side": "them",
+   "speaker": "Sara",
+   "text": "Nina, did you call the photographer about the clinic photos?"
+  },
+  {
+   "id": "l18",
+   "t": 181967,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Not yet, I will do it tomorrow."
+  },
+  {
+   "id": "l19",
+   "t": 219549,
+   "side": "me",
+   "text": "We will also need the clinic photos and texts. We call that content, and it comes from you."
+  },
+  {
+   "id": "l20",
+   "t": 225270,
+   "side": "them",
+   "speaker": "Sara",
+   "text": "We will send everything by the end of next week, I promise."
+  },
+  {
+   "id": "l21",
+   "t": 235210,
+   "side": "me",
+   "text": "Great. That is week two in the plan, which is what we need. Then I will send you a kickoff summary today."
+  },
+  {
+   "id": "l22",
+   "t": 243289,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Who signs off on the design on our side? I do, or should Sara do it?"
+  },
+  {
+   "id": "l23",
+   "t": 248767,
+   "side": "me",
+   "text": "Let me come back to that when we reach the design stage."
+  },
+  {
+   "id": "l24",
+   "t": 255044,
+   "side": "them",
+   "speaker": "Sara",
+   "text": "Another thing. The CalDesk system sometimes responds slowly. Will that affect the booking?"
+  },
+  {
+   "id": "l25",
+   "t": 260600,
+   "side": "me",
+   "text": "Good point, we will add it to the risk list."
+  },
+  {
+   "id": "l26",
+   "t": 269235,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Also, do we get a staging site where we can test before launch? What is that exactly?"
+  },
+  {
+   "id": "l27",
+   "t": 322129,
+   "side": "me",
+   "text": "Yes, a private test copy of the site, before launch."
+  },
+  {
+   "id": "l28",
+   "t": 327822,
+   "side": "them",
+   "speaker": "Sara",
+   "text": "And then the UAT before the launch, I read about that."
+  },
+  {
+   "id": "l29",
+   "t": 334314,
+   "side": "me",
+   "text": "Right, your team checks the site and confirms it works for you."
+  },
+  {
+   "id": "l30",
+   "t": 338205,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "How often will we meet during the project?"
+  },
+  {
+   "id": "l31",
+   "t": 344035,
+   "side": "me",
+   "text": "A weekly status call. I will send a proposal for the time."
+  },
+  {
+   "id": "l32",
+   "t": 350664,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "By the way, we had a hard month with staff. Two hygienists left."
+  },
+  {
+   "id": "l33",
+   "t": 359612,
+   "side": "me",
+   "text": "Sorry to hear that. Let us make sure the booking helps your team, then. Back to the plan."
+  },
+  {
+   "id": "l34",
+   "t": 364059,
+   "side": "them",
+   "speaker": "Sara",
+   "text": "Dan, can you send me the contract copy again?"
+  },
+  {
+   "id": "l35",
+   "t": 368545,
+   "side": "me",
+   "text": "Sure, I will send it after the call."
+  },
+  {
+   "id": "l36",
+   "t": 375350,
+   "side": "me",
+   "text": "To close, I still need to know who signs off on the design."
+  },
+  {
+   "id": "l37",
+   "t": 380694,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Sara will approve the design, and I will approve the final launch."
+  },
+  {
+   "id": "l38",
+   "t": 383417,
+   "side": "me",
+   "text": "Perfect. Thank you both."
+  },
+  {
+   "id": "l39",
+   "t": 386179,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Thank you Dan."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "answer",
+   "mustMention": [
+    "backup"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "5 pages"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "change request"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "mobile app",
+    "phase"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "scope-creep"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "check",
+   "mustMention": [
+    "18,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l14",
+   "kind": "prompt",
+   "mustMention": [
+    "scope",
+    "five weeks"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l21",
+   "kind": "check",
+   "mustMention": [
+    "summary"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l22",
+   "kind": "prompt",
+   "mustMention": [
+    "design approval"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l24",
+   "kind": "prompt",
+   "mustMention": [
+    "CalDesk"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "risk"
+   ]
+  },
+  {
+   "id": "m10",
+   "afterLine": "l26",
+   "kind": "fact",
+   "mustMention": [
+    "staging"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l28",
+   "kind": "fact",
+   "mustMention": [
+    "UAT"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l30",
+   "kind": "answer",
+   "mustMention": [
+    "weekly"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m13",
+   "afterLine": "l32",
+   "kind": "prompt",
+   "mustMention": [
+    "staffing"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l36",
+   "kind": "prompt",
+   "mustMention": [
+    "sign off"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l16",
+   "toLine": "l18"
+  },
+  {
+   "fromLine": "l34",
+   "toLine": "l34"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l38",
+   "mustContain": [
+    "content",
+    "backup",
+    "18,000",
+    "CalDesk"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Nina Hale\",\"side\":\"them\",\"role\":\"clinic owner\"},{\"name\":\"Sara\",\"side\":\"them\",\"role\":\"office manager\"}],\"agenda\":[\"scope and roles\",\"timeline and risks\",\"how we work together\"],\"facts\":[{\"text\":\"Scope is 5 pages and online booking with CalDesk\",\"src\":\"brief\"},{\"text\":\"Timeline is 8 weeks\",\"src\":\"brief\"},{\"text\":\"Budget is $18,000\",\"src\":\"brief\"},{\"text\":\"Client sends content by the end of week 2\",\"src\":\"brief\"},{\"text\":\"Changes after design approval need a change request\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Who is our contact on your side?\",\"What happens if we want changes later?\"],\"chunks\":[\"Kickoff notes. Client: Bright Smile Clinic. Contacts: Dr. Nina Hale (owner), Sara (office manager). Project: a new website with online booking. Scope: 5 pages, booking form connected to the CalDesk calendar, no mobile app. Timeline: 8 weeks. Budget: $18,000. Client sends content by the end of week 2. Changes after design approval need a change request. Dan is the project manager.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: I am your project manager; I will name a backup contact.\nWHY: Direct question about the contact; do not invent a name.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The scope says 5 pages, not ten.\nWHY: Page count conflicts with the scope.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Changes after approval go through a change request.\nWHY: Direct question; the process is in the notes.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: A mobile app is out of scope; offer it as a later phase.\nWHY: Scope creep request.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The budget in your notes is $18,000, not 25,000.\nWHY: Budget conflicts with the notes.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask what the five weeks include and compare scope, not only time.\nWHY: Timeline objection from a competitor.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l20",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Sara\",\"what\":\"send all content\",\"due\":\"end of next week\",\"at\":225270,\"status\":\"open\"},{\"who\":\"Dan\",\"what\":\"name a backup contact\",\"at\":225270,\"status\":\"open\"}],\"numbers\":[{\"what\":\"budget\",\"value\":\"$18,000\",\"at\":225270},{\"what\":\"pages\",\"value\":\"5\",\"at\":225270}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: You promised a kickoff summary today; add it to your list.\nWHY: Your own commitment.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Design approval owner is still open; propose one person.\nWHY: Open decision on who approves.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Add the CalDesk speed as a risk with an owner.\nWHY: A project risk to track.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Staging is a private copy of the site for testing before launch.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l28",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: UAT is user acceptance testing: your team checks the site before launch.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l30",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: A weekly status call; I will propose a time.\nWHY: Direct question; no time given.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l32",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The staffing talk is off topic; acknowledge it and return to the plan.\nWHY: Topic shift away from the project.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The design sign-off question is still open; ask for one name now.\nWHY: Open loop before the end.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l38",
+   "reply": "Sara promised to send all the content by the end of next week, which is week two.",
+   "ms": 1200,
+   "q": "What did Sara promise?"
+  }
+ ]
+}

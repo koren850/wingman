@@ -1,0 +1,72 @@
+id: dev-pricing-en
+split: dev
+lang: en
+type: pricing
+variant: clean
+user: Dan
+context: Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from the owner.
+roster: Omar Katz | them | operations manager
+roster: Dana | them | finance
+agenda: why the renewal price changed
+agenda: renewal decision
+brief: Current plan is $1,800 per year with 3 support hours per month
+brief: Renewal quote is $2,100 and adds monitoring and security updates
+brief: Any discount needs owner approval
+likely: Can you match the competitor?
+likely: What changed in the plan?
+---
+me: Hi Omar, thanks for joining. Dana is on the line too, I think.
+them@Omar: Hi Dan. Yes, Dana from finance is here, she wants to hear the numbers.
+me: Good. I sent the renewal quote last week. I would like to walk through it with you.
+them@Omar: I read it. Honestly I was surprised. Why did the price go up this year? ## m: answer || monitoring || direct || The increase covers the added monitoring and security updates. || Direct question about the price change.
+me: The new quote adds monitoring and security updates, which you did not have before.
+them@Omar: Okay, but last year we paid $1,500, so this is a big jump. ## m: check || 1,800 || number-conflict || Your records show $1,800 for the current year, not $1,500. || Price stated by customer conflicts with the brief.
+me: Let me double check my records, I have $1,800 for the current plan.
+them@Omar: Maybe that included the extra domain. Anyway, the real problem is another company offered the same thing for thirty percent less. ## m: prompt || competitor;support || objection || Ask what the competitor includes, such as support hours and monitoring. || Price objection with a competitor.
+me: That is useful. What exactly does their offer include?
+them@Omar: Hosting, backups and email support. I do not see monitoring in it, but the price is clearly lower.
+me: So they do not include monitoring or the support hours we have in the plan.
+them@Omar: Possibly. Can you match their price? ## m: answer || options || direct || I cannot decide that on the call; I will review options. || Direct ask for a discount; needs owner approval.
+me: I cannot decide on a discount during the call. I will review options and come back to you.
+them@Dana: Dan, quick one from me. What does the SLA say about response time? ## m: fact || SLA || jargon || SLA is the written promise of response time and uptime. || Term explained for the finance side.
+me: The SLA is part of the contract, and I will send you the response times.
+them@Omar: And I would like to know how fast you react when the site is down at night. ## m: answer || SLA || implied || Night response times are written in the SLA; I will send them. || Implied question about the night response.
+me: The night response is covered in the SLA as well. I will include it.
+them@Omar: Our CEO also says maintenance should be free after the first year. That is how the other company sells it. ## m: prompt || maintenance;smaller plan || objection || Explain what maintenance covers; offer a smaller plan if needed. || Second objection about free maintenance.
+me: Maintenance includes updates, security fixes and the support hours, so free is hard for us.
+them@Omar: Then we would like something between the two. Do you have a smaller option? ## m: answer || plans || implied,direct || I can outline two plans and show the differences. || Implied request for a smaller option; no prices.
+me: I can prepare a short comparison of the plans.
+them@Dana: And will the invoice show monitoring as a separate line? I need it for the budget file.
+me: I can split it into lines, yes. I will check how it looks in the invoice.
+.. 30
+.. 25
+them@Omar: Also, what uptime did we have this year? ## m: answer || 99.95 || direct || Uptime was 99.95, so almost no downtime. || Direct fact from the brief.
+me: It was 99.95 this year, so no real downtime.
+them@Dana: And the plan has five hours of support per month, right? ## m: check || 3 support hours || number-conflict || The plan includes 3 support hours per month, not five. || Support hours conflict with the plan.
+me: It is three hours per month in the current plan, but we can discuss more.
+them@Omar: Hmm. Another question. How long do you keep the backups, and can we restore a single file? ## m: prompt || backups || unanswered || Ask about retention needs, then give a clear answer on backups. || Question not yet answered.
+me: Good question. Let me come back to the backups after we finish the price.
+them@Omar: Fine. Dana, can you pull last month's invoice for me? ## quiet
+them@Dana: Sure, give me a minute. ## quiet
+.. 30
+them@Omar: Did you see the traffic on the highway this morning? I was stuck for forty minutes. ## quiet
+me: I heard, there was an accident near the interchange. ## quiet
+them@Omar: Yes, and then the coffee machine at the office was broken too. ## quiet
+me: Rough start to the day. ## quiet
+them@Dana: Dan, can you send me the plan comparison file? ## quiet
+me: Sure, I will send it after the call.
+them@Omar: Okay, back to the renewal. If we sign this month, will you keep the price for two years? ## m: check || owner approval || promise || A price lock needs owner approval; do not promise it on the call. || Possible over-promise on price.
+me: I would like to offer that, but I need to check it first.
+them@Omar: I will talk to our CFO and get back to you by Thursday. ## mem: c:Omar>talk to the CFO and get back>Thursday / c:Dan>review discount options / n:last year price=$1,500 / n:renewal quote=$2,100 / q:Omar>How long do you keep the backups
+me: Perfect. And I will send you the options and the SLA after this call.
+them@Omar: Also, who signs on your side if we want changes to the contract? ## m: answer || owner || direct || The owner signs contract changes; I can take your request to him. || Direct question about who approves.
+me: The owner signs any contract change. I will bring your request to him.
+them@Omar: Good. I also want a written summary of everything today, with the dates. ## m: check || summary || promise || A written summary is a new promise; add it to your list. || New commitment from the user.
+me: Yes, I will write a short summary for you.
+them@Omar: By the way, we are planning a new warehouse portal next year. Maybe you can help with that. ## m: prompt || warehouse portal || topic-shift || New topic: a warehouse portal. Note it as a separate opportunity. || Topic shift to a new project.
+me: That sounds interesting. Let us finish the renewal and then I would like to hear more.
+them@Omar: Sure. So what is next from your side? ## m: prompt || backups || unanswered || The backups question is still open; answer it before you close. || Open loop before the end of the call.
+me: I will send the options, the SLA and the answer on backups.
+them@Dana: Please add the invoice copy too. ## chk: CFO;Thursday;backups;1,500 ## ask: What did Omar say about last year's price? || Omar said they paid $1,500 last year. Your records show $1,800 for the current plan.
+me: Of course. Thank you both.
+them@Omar: Thanks Dan, bye.

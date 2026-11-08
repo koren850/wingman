@@ -1,0 +1,685 @@
+{
+ "id": "dev-vendor-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "vendor",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. The owner must approve any contract.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6440,
+   "side": "me",
+   "text": "Hi Sam, thanks for the call. Priya is joining as well, I see."
+  },
+  {
+   "id": "l2",
+   "t": 12879,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Hi Dan. Yes, Priya is our solutions engineer, she will answer the technical questions."
+  },
+  {
+   "id": "l3",
+   "t": 20877,
+   "side": "me",
+   "text": "Great. I will start with what we need, and then you tell me what you can offer."
+  },
+  {
+   "id": "l4",
+   "t": 27394,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Sounds good. First, tell me what traffic you expect on the site."
+  },
+  {
+   "id": "l5",
+   "t": 32070,
+   "side": "me",
+   "text": "We expect about 40,000 visits a month at the moment."
+  },
+  {
+   "id": "l6",
+   "t": 38685,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "And please describe your current setup, so I know where you are coming from."
+  },
+  {
+   "id": "l7",
+   "t": 44959,
+   "side": "me",
+   "text": "It is a single virtual server with two CPUs and nightly backups."
+  },
+  {
+   "id": "l8",
+   "t": 52792,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Understood. Our standard plan has a 99.9 uptime guarantee and it fits that size well."
+  },
+  {
+   "id": "l9",
+   "t": 57644,
+   "side": "me",
+   "text": "We need at least 99.95. What does your guarantee cover?"
+  },
+  {
+   "id": "l10",
+   "t": 64055,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "For 99.95 you need our business tier. The SLA credits are different there."
+  },
+  {
+   "id": "l11",
+   "t": 71265,
+   "side": "me",
+   "text": "And how long do you keep backups, and can I restore a single site?"
+  },
+  {
+   "id": "l12",
+   "t": 78914,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "We keep backups, yes. Let me tell you about our data centers first, we have three in Europe."
+  },
+  {
+   "id": "l13",
+   "t": 83562,
+   "side": "me",
+   "text": "Good, but I still need the backup retention number."
+  },
+  {
+   "id": "l14",
+   "t": 90529,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Our support is open 24 hours by phone and chat, with a fast response."
+  },
+  {
+   "id": "l15",
+   "t": 96775,
+   "side": "me",
+   "text": "Please put the exact response time in writing in the SLA."
+  },
+  {
+   "id": "l16",
+   "t": 102320,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Of course. What would you like to know about the migration itself?"
+  },
+  {
+   "id": "l17",
+   "t": 107144,
+   "side": "me",
+   "text": "How long is the cutover, and is there downtime?"
+  },
+  {
+   "id": "l18",
+   "t": 112767,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Usually under an hour, and we do it at night."
+  },
+  {
+   "id": "l19",
+   "t": 149969,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "I will have Priya send that. Now, the price for the business tier is $520 per month."
+  },
+  {
+   "id": "l20",
+   "t": 156070,
+   "side": "me",
+   "text": "That is above our budget of $400. Is there room on the price?"
+  },
+  {
+   "id": "l21",
+   "t": 164110,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Maybe, if you sign for a year. We do not do month to month on that tier."
+  },
+  {
+   "id": "l22",
+   "t": 172189,
+   "side": "me",
+   "text": "A full year is hard for me without a trial. Can we start with three months?"
+  },
+  {
+   "id": "l23",
+   "t": 204187,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "We could look at a trial with a smaller plan first. I will check with Sam."
+  },
+  {
+   "id": "l24",
+   "t": 209704,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Priya, can you check if the Frankfurt data center has space?"
+  },
+  {
+   "id": "l25",
+   "t": 236120,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Yes, there is space. I just looked."
+  },
+  {
+   "id": "l26",
+   "t": 239055,
+   "side": "me",
+   "text": "Okay, thanks."
+  },
+  {
+   "id": "l27",
+   "t": 245849,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Also, are you talking to other vendors? Just so I know how to position this."
+  },
+  {
+   "id": "l28",
+   "t": 252302,
+   "side": "me",
+   "text": "Yes, I am comparing a few options, but I will not name them."
+  },
+  {
+   "id": "l29",
+   "t": 260694,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Fair. What about a CDN? We have a great add-on and I can show you a demo."
+  },
+  {
+   "id": "l30",
+   "t": 266105,
+   "side": "me",
+   "text": "Let us park the CDN for now and finish uptime and backups."
+  },
+  {
+   "id": "l31",
+   "t": 273075,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Of course. Migration is free, by the way, with a small setup fee of $300."
+  },
+  {
+   "id": "l32",
+   "t": 278564,
+   "side": "me",
+   "text": "Which is it, free migration or a $300 setup fee?"
+  },
+  {
+   "id": "l33",
+   "t": 285232,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "The setup fee is waived for annual customers. Sorry for the confusion."
+  },
+  {
+   "id": "l34",
+   "t": 320819,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Did you see the match on Sunday? We were at the stadium."
+  },
+  {
+   "id": "l35",
+   "t": 324165,
+   "side": "me",
+   "text": "I only watched the highlights."
+  },
+  {
+   "id": "l36",
+   "t": 329070,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "It was amazing. The weather held up too."
+  },
+  {
+   "id": "l37",
+   "t": 330614,
+   "side": "me",
+   "text": "Lucky you."
+  },
+  {
+   "id": "l38",
+   "t": 334857,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Dan, do you need the migration checklist file?"
+  },
+  {
+   "id": "l39",
+   "t": 339139,
+   "side": "me",
+   "text": "Yes please, send it with the SLA."
+  },
+  {
+   "id": "l40",
+   "t": 344600,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "And what RPO do you need for the database?"
+  },
+  {
+   "id": "l41",
+   "t": 349360,
+   "side": "me",
+   "text": "A day is acceptable, nightly backups are fine for now."
+  },
+  {
+   "id": "l42",
+   "t": 354919,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "I will send the SLA and a migration plan by Tuesday."
+  },
+  {
+   "id": "l43",
+   "t": 360517,
+   "side": "me",
+   "text": "Good. I can give you an answer by the twentieth."
+  },
+  {
+   "id": "l44",
+   "t": 366554,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Great. Do you also need DDoS protection? It is included in the business tier."
+  },
+  {
+   "id": "l45",
+   "t": 372250,
+   "side": "me",
+   "text": "Probably yes. Before we finish, what was the answer on backup retention?"
+  },
+  {
+   "id": "l46",
+   "t": 378365,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Thirty days by default, and ninety days is available as an add-on."
+  },
+  {
+   "id": "l47",
+   "t": 382619,
+   "side": "me",
+   "text": "Thirty days works. Thank you both."
+  },
+  {
+   "id": "l48",
+   "t": 385412,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Thank you Dan, talk soon."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "answer",
+   "mustMention": [
+    "40,000"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "2 CPUs",
+    "nightly"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "check",
+   "mustMention": [
+    "99.95"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "fact",
+   "mustMention": [
+    "SLA"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l14",
+   "kind": "prompt",
+   "mustMention": [
+    "writing"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "claim"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l16",
+   "kind": "prompt",
+   "mustMention": [
+    "downtime"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "implied"
+   ]
+  },
+  {
+   "id": "m7",
+   "afterLine": "l19",
+   "kind": "check",
+   "mustMention": [
+    "400"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m8",
+   "afterLine": "l21",
+   "kind": "prompt",
+   "mustMention": [
+    "exit clause",
+    "trial"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "objection"
+   ]
+  },
+  {
+   "id": "m9",
+   "afterLine": "l27",
+   "kind": "answer",
+   "mustMention": [
+    "options"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m10",
+   "afterLine": "l29",
+   "kind": "prompt",
+   "mustMention": [
+    "CDN"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "topic-shift"
+   ]
+  },
+  {
+   "id": "m11",
+   "afterLine": "l31",
+   "kind": "check",
+   "mustMention": [
+    "free",
+    "300"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m12",
+   "afterLine": "l40",
+   "kind": "fact",
+   "mustMention": [
+    "RPO"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m13",
+   "afterLine": "l43",
+   "kind": "check",
+   "mustMention": [
+    "twentieth",
+    "owner"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "promise"
+   ]
+  },
+  {
+   "id": "m14",
+   "afterLine": "l44",
+   "kind": "fact",
+   "mustMention": [
+    "DDoS"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m15",
+   "afterLine": "l45",
+   "kind": "prompt",
+   "mustMention": [
+    "retention"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "unanswered"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l23",
+   "toLine": "l25"
+  },
+  {
+   "fromLine": "l34",
+   "toLine": "l38"
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l48",
+   "mustContain": [
+    "SLA",
+    "Tuesday",
+    "retention",
+    "520"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Sam Reed\",\"side\":\"them\",\"role\":\"sales rep\"},{\"name\":\"Priya\",\"side\":\"them\",\"role\":\"solutions engineer\"}],\"agenda\":[\"uptime and backups\",\"price and contract length\"],\"facts\":[{\"text\":\"Need uptime of at least 99.95\",\"src\":\"brief\"},{\"text\":\"Budget is $400 per month\",\"src\":\"brief\"},{\"text\":\"Backups kept 30 days\",\"src\":\"brief\"},{\"text\":\"Owner must approve any contract\",\"src\":\"brief\"}],\"likelyQuestions\":[\"What traffic do you expect?\",\"Are you talking to other vendors?\"],\"chunks\":[\"Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. The owner must approve any contract.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: About 40,000 visits per month, on one server today.\nWHY: Direct question; the number is in the brief.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: One virtual server with 2 CPUs and nightly backups.\nWHY: Request for the current setup, from the brief.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: You need at least 99.95; their plan says 99.9.\nWHY: Offer is below the requirement.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: SLA credits are refunds the vendor pays when it misses uptime.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask for the support response time in writing in the SLA.\nWHY: Vendor claim without a number.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask how long the cutover takes and whether there is downtime.\nWHY: Chance to ask a key migration question.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The quote is $520 and your budget is $400.\nWHY: Price above budget.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask for a trial period or an exit clause before any annual deal.\nWHY: Contract lock-in objection.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l23",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l25",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l27",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Yes, I am comparing a few options; I prefer not to name them.\nWHY: Direct question about competitors.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l29",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The CDN is an extra; park it and return to uptime and backups.\nWHY: Upsell shifts the topic.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l31",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: He says migration is free and also charges a $300 setup fee.\nWHY: Two statements conflict.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l34",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l35",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l36",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l37",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l38",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l40",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: RPO is how much data you can afford to lose, measured in time.\nWHY: Technical term from the engineer.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l42",
+   "reply": "{\"add\":{\"commitments\":[{\"who\":\"Sam\",\"what\":\"send the SLA and a migration plan\",\"due\":\"Tuesday\",\"at\":354919,\"status\":\"open\"}],\"openQuestions\":[{\"asker\":\"Dan\",\"text\":\"backup retention days\",\"at\":354919,\"status\":\"open\"}],\"numbers\":[{\"what\":\"business tier\",\"value\":\"$520 per month\",\"at\":354919},{\"what\":\"setup fee\",\"value\":\"$300\",\"at\":354919},{\"what\":\"uptime offered\",\"value\":\"99.9\",\"at\":354919}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l43",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The owner must approve the contract; the twentieth may be too early.\nWHY: Your promise needs owner approval first.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l44",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: DDoS protection filters floods of fake traffic that can take a site down.\nWHY: Term explained.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l45",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: You asked about backup retention twice; they still did not answer.\nWHY: Open question to the vendor.",
+   "ms": 1500
+  },
+  {
+   "role": "ask",
+   "whenLastLine": "l48",
+   "reply": "Sam offered 99.9 uptime on the standard plan and $520 per month for the business tier.",
+   "ms": 1200,
+   "q": "What did Sam offer for uptime and price?"
+  }
+ ]
+}
