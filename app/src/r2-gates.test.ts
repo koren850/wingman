@@ -204,7 +204,7 @@ test(
     const out = only.stdout;
     assert.match(out, /Basis: SCRIPTED model replies/);
     assert.match(out, /Budgets per role \(scripted; fail at \+20 percent/);
-    assert.match(out, /Memory eval \(12 invented calls/);
+    assert.match(out, /Memory eval \(24 invented calls/);
     assert.match(out, /controls are under their limits/);
     assert.match(out, /Model judge: needs a recorded run/);
     assert.match(out, /Cost per hour: \$/);

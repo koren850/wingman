@@ -29,7 +29,7 @@ test(
     const run = await runGolden(meeting, { policy: pm, tailSeconds: 6, args: ["--set", "moments.engine=v2", "--set", "reflex.stall=true"] });
     try {
       assert.equal(run.code, 0, run.out);
-      assert.match(run.out, /Help engine: New/);
+      assert.match(run.out, /Help engine: Live reading/);
       const cards = run.cards;
       const ans = cards.find((c) => /Postgres/.test(c.text));
       const rep = cards.find((c) => /compared us/.test(c.text));

@@ -57,7 +57,7 @@ reflex:
   allowAns: true # false = Prepared + Buy time only (a model ANS answer becomes a stall line). Use false for a first client call
   stall: false # true = show the generic "I'll check and get back to you" line when no answer is ready (in review, almost none were useful). Price / timeline / guarantee cards still show.
 
-# ---- Moment engine (round 12): the model decides when help is useful; the old word-list gate is only a hint ----
+# ---- Moment engine: the model decides when help is useful; the old word-list gate is only a hint ----
 moments:
   engine: v2 # v2 = every kept line can get a card; the model decides (speed hint, observer window, memory) | legacy = the old question gate and reflex answers (rollback, and the path when the AI is down)
   observerPerMinute: 6 # at most this many observer calls a minute (lines without a clear question). 0 = observer off
@@ -66,7 +66,7 @@ moments:
   earlyStart: false # true = a question from the other side starts the direct call when its speech-to-text partial is stable (300 ms with a "?", 600 ms pause without), before the final arrives. Faster by about half a second; costs a few extra calls when the final differs
   checkPromises: true # check numbers you say (digits, money signs, time units) against your notes and what was said in the call, and show a Check card on a mismatch. No model call
 
-# ---- Call memory (round 12) ----
+# ---- Call memory ----
 memory:
   enabled: true # keep a short memory of the call (topic, numbers, promises, open questions) that every model call reads
   model: "anthropic:claude-haiku-5-5" # updates the memory. Must have a price in budget.prices.llm
@@ -224,7 +224,7 @@ budget:
   maxMinutesPerCall: 90 # warn at warnAt of this (a long real meeting is never cut)
   idleStopMin: 15 # stop the call when nobody spoke for this many minutes (a session left running). 0 = off
   warnUsdPerCall: 3 # amber warning when the whole call (AI + speech to text) has cost more than this. Only a warning: speech to text is never stopped. A 90 minute call costs about 2.4 USD
-  maxLlmUsdPerHour: 0.4 # soft cap on AI spend in any 60 minutes (typical use is about 0.09). Near it the cheapest jobs stop first: compaction at 60%, observer at 80%, memory at 90%; a direct question stops last, at 100% (AI paused). 0 = no hourly cap
+  maxLlmUsdPerHour: 0.4 # soft cap on AI spend in any 60 minutes (typical use is about 0.05 to 0.20, an estimate). Near it the cheapest jobs stop first: compaction at 60%, observer at 80%, memory at 90%; a direct question stops last, at 100% (AI paused). 0 = no hourly cap
   maxUsdPerMonth: null # null = no monthly cap (used by the readiness check, from usage.jsonl)
   # Price table. ESTIMATES: check your provider's pricing page and edit. A model missing here costs $0 and is flagged.
   prices:

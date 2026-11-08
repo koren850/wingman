@@ -2,7 +2,7 @@
 //   all (default)   the two controls and the fake run. Offline, free. Exits 1 when a control is over its limit or the fake run is under its floor.
 //   model           replays the moment role's recorded answers from --cassette (default data/cassettes/judge-set.cassette.json). No key, no network.
 //                   Recorded runs are held to JUDGE_FLOORS. A call the cassette has no answer for counts as wrong; one recorded with an older prompt is reported as stale.
-//   --record        OWNER ONLY: calls the real model once per case and writes the cassette. Needs ANTHROPIC_API_KEY in the environment and --cap <usd>.
+//   --record        MANUAL ONLY: calls the real model once per case and writes the cassette. Needs ANTHROPIC_API_KEY in the environment and --cap <usd>.
 //                   About 120 calls, a cent or two. Refuses in CI. Prints the estimate first. Used by `pnpm morning`.
 // What a case is and how it is scored: qa/judge-set.ts.
 import "../src/test-setup.ts";
@@ -36,7 +36,7 @@ import type { ModelRegistry } from "../src/providers/llm.ts";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const JUDGE_CASSETTE = join(ROOT, "data", "cassettes", "judge-set.cassette.json");
 export type Deps = {
-  /** "mock" records the policy fake (tests); "real" records the provider (the owner's run). */
+  /** "mock" records the policy fake (tests); "real" records the provider (a real run). */
   transport: "mock" | "real";
   log: (line: string) => void;
   /** Cases to use (tests pass a few). Default: the whole set. */
@@ -128,7 +128,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
       if (m === "model") {
         const file = get("--cassette") ?? JUDGE_CASSETTE;
         if (!existsSync(file))
-          return (log(`eval-judge: no cassette at ${file}. Record it with: pnpm eval:judge --record --cap 1 (owner only), or pass --cassette <file>.`), 2);
+          return (log(`eval-judge: no cassette at ${file}. Record it with: pnpm eval:judge --record --cap 1 (run it by hand), or pass --cassette <file>.`), 2);
         const cassette = new Cassette(file);
         registry = { resolve: async (ref, role) => wrapCassette({ mode: "replay", cassette, ref, role, timing: "instant" }) };
       }

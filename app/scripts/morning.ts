@@ -1,4 +1,4 @@
-// The morning run: one command that records everything the quality numbers need, once, with a cost cap.  OWNER ONLY. Never run by an agent, never in CI.
+// The morning run: one command that records everything the quality numbers need, once, with a cost cap.  MANUAL ONLY. Never run by an agent, never in CI.
 //   ANTHROPIC_API_KEY=... pnpm morning --cap 5 [--estimate] [--only dev,judge] [--skip test-c] [--allow-partial]
 // It prints a one-page cost estimate first. Then, in this order, and stopping a step when the one cap for the whole run is used up:
 //   1. dev          the moment role on the dev meetings (and the model judge)            -> data/cassettes/dev.cassette.json
@@ -184,7 +184,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
   const get = (f: string) => (argv.includes(f) ? argv[argv.indexOf(f) + 1] : undefined);
   // 1. the refusals come before anything is read or started
   if ((env.CI && env.CI !== "false" && env.CI !== "0") || env.GITHUB_ACTIONS)
-    return err("refusing to run in CI. It calls the real model and costs money; the owner runs it by hand.");
+    return err("refusing to run in CI. It calls the real model and costs money; run it by hand.");
   const cap = Number(get("--cap"));
   if (!Number.isFinite(cap) || cap <= 0) return err("--cap <usd> is required and must be above 0 (one cap for the whole run, about 3 to 5 USD)");
   const names = (f: string) => (get(f) ?? "").split(",").filter(Boolean);

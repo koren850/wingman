@@ -61,8 +61,8 @@ function printBanner() {
   if (S.moments.engine === "v2")
     console.log(
       v2Active()
-        ? "Help engine: New (the AI reads the call and decides when a card helps; observer up to " + S.moments.observerPerMinute + " calls a minute)."
-        : `Help engine: Classic (the New engine is off ${interview ? "in a practice interview" : "with --no-ai"}).`,
+        ? "Help engine: Live reading (the AI reads the call and decides when a card helps; observer up to " + S.moments.observerPerMinute + " calls a minute)."
+        : `Help engine: Classic (Live reading is off ${interview ? "in a practice interview" : "with --no-ai"}).`,
     );
   console.log(
     `Cards also go to ${log.dir}/cards.jsonl (run "pnpm overlay" for the second-screen window). Keys: Enter = start listening (when waiting) · q = Quiet mode · a = ask Wingman · n = add a note for the AI · y = confirm the proposed client · Ctrl+C = stop.`,

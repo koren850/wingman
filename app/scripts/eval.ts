@@ -354,7 +354,7 @@ async function runV2(): Promise<{ failed: number; baseline?: V2Baseline; section
   return { failed, baseline: updating ? baseline : undefined, section: updating ? p.section : undefined };
 }
 
-/** Memory quality on the 12 invented calls, offline: null and copy-all must stay low, the fake run above its floor. The model mode is `pnpm eval:memory --live`. */
+/** Memory quality on the invented calls in data/memory-eval, offline: null and copy-all must stay low, the fake run above its floor. The model mode is `pnpm eval:memory --live`. */
 async function memoryBlock(): Promise<number> {
   const fail: string[] = [];
   const out: MemoryEvalResult[] = [];
@@ -368,7 +368,7 @@ async function memoryBlock(): Promise<number> {
   const f = out[2];
   const pc = (x: number) => `${(x * 100).toFixed(0)}%`;
   console.log(
-    `\nMemory eval (12 invented calls, scripted fake updater, plumbing and scorer only): precision ${pc(f.overall.precision)}, recall ${pc(f.overall.recall)}, F1 ${pc(f.overall.f1)}; null control F1 ${pc(out[0].overall.f1)}, copy-all control precision ${pc(out[1].overall.precision)}.`,
+    `\nMemory eval (${f.cases.length} invented calls, scripted fake updater, plumbing and scorer only): precision ${pc(f.overall.precision)}, recall ${pc(f.overall.recall)}, F1 ${pc(f.overall.f1)}; null control F1 ${pc(out[0].overall.f1)}, copy-all control precision ${pc(out[1].overall.precision)}.`,
   );
   for (const m of fail) console.log(`  FAIL ${m}`);
   if (!fail.length) console.log("  controls are under their limits");

@@ -1,4 +1,4 @@
-// Records real model replies for a golden suite into a cassette, so the next run can replay them offline.  OWNER ONLY. Never run by an agent, never in CI.
+// Records real model replies for a golden suite into a cassette, so the next run can replay them offline.  MANUAL ONLY. Never run by an agent, never in CI.
 //   pnpm tsx scripts/cassette-record.ts --suite dev --cap 5            record the dev meetings, stop when the booked cost passes 5 USD
 //   pnpm tsx scripts/cassette-record.ts --suite test-b --cap 5 --final held-out suites (test, test-b, test-c) need --final (the same rule as pnpm eval --final)
 //   options: --out <file>  cassette file (default data/cassettes/<suite>.cassette.json)
@@ -7,7 +7,7 @@
 //            --allow-partial  start even when the estimate is above the cap (the run stops at the cap)
 //            --judge       after the meetings, record a model-judge verdict for every card the real model made, into <suite>.judge.cassette.json
 //                          (about 0.0004 USD a card, counted in the estimate and the cap). Then: pnpm eval --cassette <engine cassette> prints the verdicts.
-// Morning kit (owner): docs/DEVELOPMENT.md, section "Recording a cassette". Dev first, then test-b, then test with --final, each with its own cap.
+// Morning kit: docs/DEVELOPMENT.md, section "Recording a cassette". Dev first, then test-b, then test with --final, each with its own cap.
 // What it does: prints a cost estimate first, then plays each meeting through the real engine modules with every model call going through the cassette
 // recorder (src/providers/cassette.ts) to the real provider. It needs ANTHROPIC_API_KEY in the environment (the key is never read from a file here).
 // It refuses without a key and in CI. The tests use a mock transport (the policy fake) and never reach the network.
@@ -28,7 +28,7 @@ export const SUITES = ["dev", "test", "test-b", "test-c"] as const;
 export type Suite = (typeof SUITES)[number];
 
 export type Deps = {
-  /** "mock" records the policy fake (tests); "real" records the provider (the owner's run). */
+  /** "mock" records the policy fake (tests); "real" records the provider (a real run). */
   transport: "mock" | "real";
   log: (line: string) => void;
   /** Where the baseline for the estimate lives. */
@@ -106,8 +106,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
   const a = parseArgs(argv);
   if (typeof a === "string") return err(a);
   // 1. the refusals come before anything else is read or started
-  if (env.CI && env.CI !== "false" && env.CI !== "0")
-    return err("refusing to record in CI. Recording calls the real model and costs money; the owner runs it by hand.");
+  if (env.CI && env.CI !== "false" && env.CI !== "0") return err("refusing to record in CI. Recording calls the real model and costs money; run it by hand.");
   if (env.GITHUB_ACTIONS) return err("refusing to record in CI (GITHUB_ACTIONS is set).");
   if (deps.transport === "real" && !env.ANTHROPIC_API_KEY)
     return err("no ANTHROPIC_API_KEY in the environment. Set it for this one command; nothing reads the key from a file.");
@@ -211,7 +210,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
 }
 
 const mockJudgeTransport: JudgeTransport = async () => ({ text: "VERDICT: good\nREASON: mock judge", ms: 1 });
-/** The real judge: one short call per card on the judge model. Only the owner's command gets here (a key in the environment, never in CI). */
+/** The real judge: one short call per card on the judge model. Only the manual command gets here (a key in the environment, never in CI). */
 function realJudgeTransport(apiKey: string): JudgeTransport {
   return async ({ model, system, user }) => {
     const { ModelRegistry } = await import("../src/providers/llm.ts");

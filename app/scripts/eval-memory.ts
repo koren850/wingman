@@ -3,7 +3,7 @@
 //   model          the real updater. With WINGMAN_LLM_MODE=replay, or --cassette <file> (default data/cassettes/memory.cassette.json), it reads the recorded answers: no key,
 //                  no network. Without either it needs --live and a key: 24 calls, about 4 to 12 updater runs each, about 0.03 USD in total.
 //                  Recorded runs are held to RECORDED_FLOORS (F1 per class and per language); the fake and the controls are not.
-//   --record       OWNER ONLY: plays the 24 calls through the real updater and writes the cassette, then scores it from the cassette. Needs ANTHROPIC_API_KEY in the
+//   --record       MANUAL ONLY: plays the 24 calls through the real updater and writes the cassette, then scores it from the cassette. Needs ANTHROPIC_API_KEY in the
 //                  environment and --cap <usd>. Refuses in CI. Prints an estimate first. Used by `pnpm morning`.
 // What is measured and how: qa/memory-eval.ts.
 import "../src/test-setup.ts";
@@ -113,7 +113,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
     if (m === "model") {
       if (record || argv.includes("--cassette") || (!argv.includes("--live") && llmMode() !== "replay" && existsSync(cassetteFile))) {
         if (!existsSync(cassetteFile))
-          return (log(`eval-memory: no cassette at ${cassetteFile}. Record it with: pnpm eval:memory --record --cap 1 (owner only).`), 2);
+          return (log(`eval-memory: no cassette at ${cassetteFile}. Record it with: pnpm eval:memory --record --cap 1 (run it by hand).`), 2);
         const c = cassette ?? new Cassette(cassetteFile);
         registry = { resolve: async (ref, role) => wrapCassette({ mode: "replay", cassette: c, ref, role, timing: "instant" }) };
         if (record && deps.report && deps.report.calls < cases.length) evalCases = cases.slice(0, deps.report.calls); // a run stopped at the cap is scored on what it recorded

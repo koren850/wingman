@@ -3,7 +3,7 @@
 //     <call-dir>   a folder with events.jsonl (the "stt" final lines) and, next to it, cards.jsonl (the cards the call showed) and tags.jsonl (your ratings).
 //     --prompt     a text file that replaces the fixed rules of the moment role (MOMENT_RULES). Without it the current rules are used.
 //     --cassette   read the model's answers from a cassette (no key, no network). Without it the policy fake answers: it repeats what the original call showed,
-//                  so the diff must be empty. That is a check of this tool, not of any prompt. A prompt is judged only through a cassette the owner recorded.
+//                  so the diff must be empty. That is a check of this tool, not of any prompt. A prompt is judged only through a recorded cassette.
 //     --to-case    write every card you rated "not useful" (tags.jsonl) as a judgement-set case (data/judge-set format, expected verdict SKIP) into --out
 //                  (default qa/out/cases). Emails and phone numbers are masked; a case with a word from the no-real-names list is NOT written. Read each file before you
 //                  copy it into data/judge-set: real names in the lines are on you.

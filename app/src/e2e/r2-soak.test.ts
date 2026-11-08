@@ -378,7 +378,7 @@ test(
       await sleep(3500);
       run.p.kill("SIGINT");
       assert.equal(await run.done, 0, run.out());
-      assert.match(run.out(), /Help engine: New/, "the child ran the v2 engine");
+      assert.match(run.out(), /Help engine: Live reading/, "the child ran the v2 engine");
       const dir = callDir(calls);
       const meta = JSON.parse(readFileSync(join(dir, "call.json"), "utf8"));
       assert.equal(meta.phase, "ended");

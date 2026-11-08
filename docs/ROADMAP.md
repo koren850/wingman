@@ -36,7 +36,7 @@ Nothing below is recorded. "In-sample" means the set was used while tuning.
 | AI paused, engine replay of the 32 dev meetings | 60 of 68 answer moments got a card, no model call | scripted, in-sample |
 | Early start (assumed 700 ms speech-to-text lag, 800 ms model) | card 500 ms earlier (median 1500 to 1000 ms after the end of speech); 6.5 percent extra direct calls | scripted, assumed |
 | Modelled AI cost, all roles | $0.032 an hour (limit $0.25) | scripted, modelled usage |
-| Memory eval (12 invented calls, scripted updater) | F1 88 percent | scripted, scorer check only |
+| Memory eval (24 invented calls, scripted updater) | F1 88 percent | scripted, scorer check only |
 | Judgement set, memory floors, cost check against real usage, direct first card p95 | not run | needs `pnpm morning` |
 
 **Why the 6 FAIL lines are not fixed by tuning.** The constants of the scheduler were tuned on `dev` already (precision went from 70.5 to 79.9 percent, duplicates from 7.6 to 1.0). More tuning on a scripted set only fits the script. The honest next number is the recorded one.
