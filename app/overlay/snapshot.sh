@@ -2,7 +2,7 @@
 # Hidden overlay snapshots (never shows a window): ./snapshot.sh <outDir> [scenario:keys ...]
 # Each spec is scenario or scenario:keys (keys = comma list of events fired in the page, e.g. rewind, pause, late). Scenarios are defined in fixtures.cjs.
 # Layout: WINGMAN_OVERLAY_LAYOUT=full (default is focus). Default set: full, empty, listening, waiting, consent, overflow, quiet(pause), full+rewind. Run from anywhere.
-# v2 window: specs named v2-* (or "v2all" for the whole v2 set) come from fixtures-v2.cjs and run through snap2.cjs. Keys there: light, dark, s, m, l.
+# v2 window: specs named v2-* (or "v2all" for the whole v2 set) come from fixtures-v2.cjs and run through snap2.cjs. Keys there: light, dark, s, m, l, fit (content-sized window: the window is set to the height the page reports), reduce (prefers-reduced-motion). v2-fit-* always run with fit.
 #   WINGMAN_OVERLAY_LANG=en|he picks the window language. Add --check to also run the clipping / contrast / min-font / dir checks (JSON line per spec, exit 1 on any issue).
 #   ./snapshot.sh /tmp/out v2-answer v2-long:light,l v2-recap        or        ./snapshot.sh /tmp/out --check v2all
 HERE="$(cd "$(dirname "$0")" && pwd)"; OUT="${1:-/tmp/wingman-overlay-snaps}"; shift

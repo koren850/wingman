@@ -12,7 +12,11 @@ const TXT = {
     answer: "Yes, through the API. About two days of work.",
     answerWhy: "They asked about the CRM link, and the brief lists the API",
     answerMore: ["Needs an admin user in Salesforce", "Zapier works too, but a direct webhook has fewer points of failure", "Price from the brief: 2,400 once"],
-    prompt: "Ask who approves the design on their side.",
+    prompt: "Who approves the design on your side?",
+    answerLabel: "CRM link",
+    checkLabel: "Launch date",
+    promptLabel: "Design approval",
+    factLabel: "Their stack",
     promptWhy: "Not covered yet, and the launch date depends on it",
     check: "You said Friday. The brief says the launch is Monday.",
     checkWhy: "You promised a date that conflicts with the plan",
@@ -34,13 +38,35 @@ const TXT = {
       asked: ["A list of redirects", "The server access details"],
     },
     demoted: ["How long do backups stay?", "Do you support Hebrew search?", "What is the SLA?"],
+    busy: [
+      { kind: "answer", say: "Yes, a direct webhook works and avoids the Zapier fees.", label: "Webhook option" },
+      { kind: "answer", say: "Backups stay for 30 days, then they are deleted.", label: "Backup retention" },
+      { kind: "check", say: "You said Friday. The brief says Monday.", label: "Launch date", ref: "date" },
+      { kind: "check", say: "You said 2,400. The brief says 2,800.", label: "Price mismatch", ref: "price" },
+      { kind: "check", say: "You said Friday again. The brief still says Monday.", label: "Launch date", ref: "date" },
+      { kind: "prompt", say: "Who approves the design on your side?", label: "Design approval" },
+      { kind: "fact", say: "Their site runs WooCommerce 8.2", label: "Their stack", src: "brief" },
+      { kind: "fact", say: "They renewed the plan in March", label: "Renewal", src: "past" },
+      {
+        kind: "answer",
+        say: "We can connect the forms straight to the CRM through the API, keep every UTM tag, and send a test lead before launch.",
+        label: "",
+      },
+      { kind: "answer", say: "Hebrew search is supported since version 3.", label: "Hebrew search" },
+      { kind: "answer", say: "The SLA is 99.9 percent per month.", label: "SLA terms" },
+    ],
+    me: "I will send the quote by Thursday, and a list of the redirects.",
   },
   he: {
     ask: "אתם יכולים לחבר את זה ל-Salesforce?",
     answer: "כן, דרך ה-API. בערך יומיים עבודה.",
     answerWhy: "שאלו על החיבור ל-CRM, וב-brief כתוב שיש API",
     answerMore: ["צריך משתמש אדמין ב-Salesforce", "גם Zapier עובד, אבל webhook ישיר פחות נשבר", "מחיר מה-brief: 2,400 ₪ חד פעמי"],
-    prompt: "תשאל מי מאשר את העיצוב אצלם.",
+    prompt: "מי מאשר את העיצוב אצלכם?",
+    answerLabel: "חיבור ל-CRM",
+    checkLabel: "תאריך השקה",
+    promptLabel: "אישור עיצוב",
+    factLabel: "הטכנולוגיה שלהם",
     promptWhy: "עוד לא כיסיתם את זה, ותאריך ההשקה תלוי בזה",
     check: "אמרת יום שישי. לפי התוכנית ההשקה ביום שני.",
     checkWhy: "התחייבת לתאריך שסותר את התוכנית",
@@ -62,6 +88,20 @@ const TXT = {
       asked: ["רשימת הפניות", "פרטי הגישה לשרת"],
     },
     demoted: ["כמה זמן נשמרים הגיבויים?", "יש תמיכה בחיפוש בעברית?", "מה ה-SLA?"],
+    busy: [
+      { kind: "answer", say: "כן, webhook ישיר עובד וחוסך את העלות של Zapier.", label: "אפשרות webhook" },
+      { kind: "answer", say: "הגיבויים נשמרים 30 יום ואז נמחקים.", label: "שמירת גיבויים" },
+      { kind: "check", say: "אמרת יום שישי. לפי התוכנית יום שני.", label: "תאריך השקה", ref: "date" },
+      { kind: "check", say: "אמרת 2,400. לפי התוכנית 2,800.", label: "פער במחיר", ref: "price" },
+      { kind: "check", say: "אמרת שוב יום שישי. התוכנית עדיין אומרת יום שני.", label: "תאריך השקה", ref: "date" },
+      { kind: "prompt", say: "מי מאשר את העיצוב אצלכם?", label: "אישור עיצוב" },
+      { kind: "fact", say: "האתר שלהם רץ על WooCommerce 8.2", label: "הטכנולוגיה שלהם", src: "brief" },
+      { kind: "fact", say: "הם חידשו את החבילה במרץ", label: "חידוש", src: "past" },
+      { kind: "answer", say: "אפשר לחבר את הטפסים ישירות ל-CRM דרך ה-API, לשמור כל תג UTM, ולשלוח ליד לדוגמה לפני ההשקה.", label: "" },
+      { kind: "answer", say: "חיפוש בעברית נתמך מגרסה 3.", label: "חיפוש בעברית" },
+      { kind: "answer", say: "ה-SLA הוא 99.9 אחוז בחודש.", label: "תנאי SLA" },
+    ],
+    me: "אני אשלח את הצעת המחיר עד יום חמישי, ורשימה של ההפניות.",
   },
 };
 
@@ -77,8 +117,21 @@ const view = (T, extra = {}) => ({
   ...extra,
 });
 const answer = (T, o = {}) =>
-  row({ id: "a1", turnId: "t1", badge: "ai", kind: "answer", value: 3, question: T.ask, say: T.answer, why: T.answerWhy, more: T.answerMore, ...o });
-const check = (T, o = {}) => row({ id: "c1", turnId: "t2", badge: "careful", kind: "check", value: 3, say: T.check, why: T.checkWhy, more: T.checkMore, ...o });
+  row({
+    id: "a1",
+    turnId: "t1",
+    badge: "ai",
+    kind: "answer",
+    value: 3,
+    question: T.ask,
+    say: T.answer,
+    label: T.answerLabel,
+    why: T.answerWhy,
+    more: T.answerMore,
+    ...o,
+  });
+const check = (T, o = {}) =>
+  row({ id: "c1", turnId: "t2", badge: "careful", kind: "check", value: 3, say: T.check, label: T.checkLabel, why: T.checkWhy, more: T.checkMore, ...o });
 const lines = (T) => [{ t: now - 2000, ch: "them", text: T.line }];
 const legacy = (T) => [
   row({ id: "l1", turnId: "q1", badge: "bank", question: T.ask, say: T.answer, facts: T.answerMore.slice(0, 2) }),
@@ -89,12 +142,15 @@ const legacy = (T) => [
 const SCENARIOS = {
   "v2-answer": (T) => ({ rows: [view(T), answer(T)], lines: lines(T) }),
   "v2-prompt": (T) => ({
-    rows: [view(T), row({ id: "p1", turnId: "t3", badge: "tip", kind: "prompt", value: 2, say: T.prompt, why: T.promptWhy })],
+    rows: [view(T), row({ id: "p1", turnId: "t3", badge: "tip", kind: "prompt", value: 2, say: T.prompt, label: T.promptLabel, why: T.promptWhy })],
     lines: lines(T),
   }),
   "v2-check": (T) => ({ rows: [view(T), check(T)], lines: lines(T) }),
-  "v2-fact": (T) => ({ rows: [view(T), row({ id: "f1", turnId: "t4", badge: "info", kind: "fact", value: 1, say: T.fact })], lines: lines(T) }),
-  "v2-more": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ click: ".hctl .b.more" }] }),
+  "v2-fact": (T) => ({
+    rows: [view(T), row({ id: "f1", turnId: "t4", badge: "info", kind: "fact", value: 1, say: T.fact, label: T.factLabel, src: "brief" })],
+    lines: lines(T),
+  }),
+  "v2-more": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ click: ".hcard" }] }),
   "v2-long": (T) => ({ rows: [view(T), answer(T, { say: T.long, more: T.longMore })], lines: lines(T) }),
   "v2-mixed": (T) => ({ rows: [view(T), answer(T, { say: T.mixed })], lines: lines(T) }),
   "v2-rtl": (T) => ({ rows: [view(T), answer(T, { question: T.ask })], lines: lines(T), forceContent: "he" }),
@@ -111,7 +167,7 @@ const SCENARIOS = {
     rows: [
       view(T),
       ...T.demoted.map((s, i) => row({ id: "w" + i, turnId: "t" + i, badge: "ai", kind: "answer", value: 1, say: s, at: now - 20000 + i * 1000 })),
-      row({ id: "f1", turnId: "t9", badge: "info", kind: "fact", value: 1, say: T.fact, at: now - 3000 }),
+      row({ id: "f1", turnId: "t9", badge: "info", kind: "fact", value: 1, say: T.fact, label: T.factLabel, src: "brief", at: now - 3000 }),
       answer(T, { at: now }),
     ],
     lines: lines(T),
@@ -121,12 +177,12 @@ const SCENARIOS = {
     lines: lines(T),
     // pin, Useful, Useful again (clears), Not useful, Copy, Dismiss: snap2.cjs records what main.cjs would receive
     steps: [
-      { click: ".hctl .b.pin" },
-      { click: ".hctl .b.up" },
-      { click: ".hctl .b.up" },
-      { click: ".hctl .b.down" },
-      { click: ".hctl .b.copy" },
-      { click: ".hctl .b.x" },
+      { click: ".hcard .b.pin" },
+      { click: ".hcard .b.up" },
+      { click: ".hcard .b.up" },
+      { click: ".hcard .b.down" },
+      { click: ".hcard .b.copy" },
+      { click: ".hcard .b.x" },
     ],
   }),
   "v2-recap": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ key: "recap" }] }),
@@ -140,6 +196,68 @@ const SCENARIOS = {
   "v2-firstrun": () => ({ rows: [], lines: [], phase: "starting" }),
   "v2-nolines": (T) => ({ rows: [view(T), answer(T)], lines: [] }),
 };
+Object.assign(SCENARIOS, {
+  // ---- round 2 scenarios ----
+  // a busy call: 11 rows (two checks about the same date merge into one), Hebrew or English labels, one row with no label, a long line
+  "v2-busy": (T) => ({
+    rows: [
+      view(T),
+      ...T.busy.map((b, i) =>
+        row({
+          id: "b" + i,
+          turnId: "t" + i,
+          badge: b.kind === "check" ? "careful" : "ai",
+          kind: b.kind,
+          value: b.kind === "answer" ? 1 + (i % 3) : 2,
+          say: b.say,
+          label: b.label,
+          ref: b.ref,
+          src: b.src,
+          why: i === 4 ? T.checkWhy : "",
+          at: now - (40 - i * 3) * 1000,
+        }),
+      ),
+    ],
+    lines: lines(T),
+    steps: [],
+  }),
+  "v2-busy-open": (T) => ({
+    rows: SCENARIOS["v2-busy"](T).rows,
+    lines: lines(T),
+    steps: [{ click: ".chip.morecards" }],
+  }),
+  // an old hero (6 minutes): faded; and a chip that was seen vs one that is new
+  "v2-aged": (T) => ({ rows: [view(T), answer(T, { at: now - 6 * 60000 })], lines: lines(T) }),
+  "v2-menu": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ click: ".hcard .b.menu" }] }),
+  "v2-both": (T) => ({
+    rows: [view(T), answer(T)],
+    lines: [...lines(T), { t: now - 800, ch: "me", text: T.me }],
+  }),
+  "v2-note": (T) => ({
+    rows: [view(T), answer(T)],
+    lines: lines(T),
+    steps: [
+      {
+        send: [
+          "note",
+          {
+            kind: "hotkey",
+            text: require("./strings.js").t(T === TXT.he ? "he" : "en", "note.keyTaken", {
+              key: "Ctrl+Opt+S",
+              name: require("./strings.js").t(T === TXT.he ? "he" : "en", "hk.pin"),
+            }),
+          },
+        ],
+      },
+    ],
+  }),
+  // dismiss the hero, then bring it back with the restore key
+  "v2-restore": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ click: ".hcard .b.x" }, { key: "restore" }] }),
+  "v2-fit-idle": (T) => ({ rows: [view(T)], lines: lines(T) }),
+  "v2-fit-empty": () => ({ rows: [], lines: [], frame: { kind: "client", topic: "", checklist: [] } }),
+  "v2-fit-answer": (T) => ({ rows: [view(T), answer(T)], lines: lines(T) }),
+  "v2-fit-recap": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ key: "recap" }] }),
+});
 // ---- live-shaped scenarios: rows from a golden meeting run (src/testkit/live-golden.ts writes the JSON; a test keeps it current) ----
 const liveSet = () => {
   try {

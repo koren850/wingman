@@ -9,6 +9,8 @@ const { callPhase, pushCapture, registerCaptureKeys, unregisterCaptureKeys } = r
 const { readNewRows, rowKey, Seen, StdinRows, Backlog, ReloadGate } = require("./resilient.cjs");
 const { createMemoryFeed } = require("./memfeed.cjs");
 const { applyAct } = require("./act.cjs");
+const { createDisplayFollow, pickDisplay: pickSafeDisplay, registerHotkeys, hotkeyNote } = require("./window.cjs");
+const STR = require("./strings.js");
 
 // A crash in this process must never raise Electron's error dialog (it could appear on a shared screen): log one line and carry on.
 const logErr = (what, e) => {
@@ -74,6 +76,7 @@ const DEFAULT_HOTKEYS = {
   useful: "Control+Alt+H", // H = helpful
   notUseful: "Control+Alt+X",
   dismiss: "Control+Alt+D",
+  restore: "Control+Alt+Z", // bring back the card that left in the last 30 seconds
 };
 CFG.hotkeys = { ...DEFAULT_HOTKEYS, ...(CFG.hotkeys && typeof CFG.hotkeys === "object" ? CFG.hotkeys : {}) };
 const THEME = ["dark", "light", "auto"].includes(process.env.WINGMAN_OVERLAY_THEME || CFG.theme) ? process.env.WINGMAN_OVERLAY_THEME || CFG.theme : "dark";
@@ -82,9 +85,31 @@ const TEXT_SIZE = ["s", "m", "l"].includes(process.env.WINGMAN_OVERLAY_SIZE || C
 const LANGUAGE = (process.env.WINGMAN_OVERLAY_LANG || CFG.language) === "en" ? "en" : "he";
 // Layout: "focus" (default) or "full". WINGMAN_OVERLAY_LAYOUT overrides it (snapshots).
 const LAYOUT = (process.env.WINGMAN_OVERLAY_LAYOUT || CFG.layout) === "full" ? "full" : "focus";
+const tn = (key, vars) => STR.t(LANGUAGE, key, vars);
+const DATA = require("../shared/paths.cjs").dataDir();
+/** The note for the tray and the window: a taken hotkey, a lost display. kind "" clears it. The tray reads overlay-note.json in the data folder. */
+function setNote(kind, text) {
+  if (SNAP) return;
+  const file = path.join(DATA, "overlay-note.json");
+  try {
+    if (!text) fs.rmSync(file, { force: true });
+    else {
+      fs.mkdirSync(DATA, { recursive: true, mode: 0o700 });
+      fs.writeFileSync(file, JSON.stringify({ t: Date.now(), kind, text }) + "\n", { mode: 0o600 });
+    }
+  } catch (e) {
+    logErr("note", e);
+  }
+  try {
+    if (win && !win.isDestroyed()) win.webContents.send("note", { kind, text });
+  } catch {
+    /* page gone */
+  }
+}
 const mem = createMemoryFeed({ send: (row) => win && !win.isDestroyed() && win.webContents.send("card", row) });
 let currentDir = "",
   memAt = 0;
+let keyNote = ""; // the note about hotkeys that did not register; shown again when the page reloads
 let win,
   timer,
   lastCapture,
@@ -129,26 +154,45 @@ if (process.env.WINGMAN_WATCH_PARENT === "1") {
 const tails = { cards: { file: undefined, offset: 0 }, transcript: { file: undefined, offset: 0 }, live: { file: undefined, offset: 0 } };
 
 // With a single display the overlay would sit on the shared screen. Refuse unless overlay.allowPrimary (WINGMAN_ALLOW_PRIMARY=1).
+// overlay/window.cjs decides (and follows the display when it is unplugged); this wrapper only prints the warnings.
+let follow;
 function pickDisplay() {
-  const all = screen.getAllDisplays();
-  const primary = screen.getPrimaryDisplay();
-  const second = all.find((d) => d.id !== primary.id);
-  if (CFG.display === "primary" && CFG.allowPrimary) return primary;
-  if (second) return second;
-  if (CFG.allowPrimary) {
+  const r = pickSafeDisplay(screen, CFG);
+  if (r.warn === "primary")
     console.error("\n!!! overlay.allowPrimary: only one display, the answer window is on the PRIMARY screen. Do NOT share this screen. !!!\n");
-    return primary;
-  }
-  console.error(
-    "\n!!! Only one display found: refusing to open the answer window (it would be visible when you share your screen).\n    Connect a second screen, or set overlay.allowPrimary: true (WINGMAN_ALLOW_PRIMARY=1) if you will not share any screen. !!!\n",
-  );
-  return null;
+  if (r.warn === "single")
+    console.error(
+      "\n!!! Only one display found: refusing to open the answer window (it would be visible when you share your screen).\n    Connect a second screen, or set overlay.allowPrimary: true (WINGMAN_ALLOW_PRIMARY=1) if you will not share any screen. !!!\n",
+    );
+  return r.display;
 }
 
 /** Builds the always-on-top, non-focusable (never steals focus from the call app) card window and registers the global hotkeys. Exits with code 3 if no safe display exists. */
 function create() {
   // Snapshot mode needs no second screen: it never shows a window.
-  const d = SNAP ? screen.getPrimaryDisplay() : pickDisplay();
+  let d;
+  if (SNAP) d = screen.getPrimaryDisplay();
+  else {
+    d = pickDisplay();
+    if (d) {
+      // a second look at the choice by the display follower (it owns the display id from now on)
+      follow = createDisplayFollow({
+        screen,
+        win: {
+          isDestroyed: () => !win || win.isDestroyed(),
+          hide: () => win.hide(),
+          showInactive: () => win.showInactive(),
+          setBounds: (b) => win.setBounds(b),
+          getBounds: () => win.getBounds(),
+          isVisible: () => win.isVisible(),
+        },
+        cfg: CFG,
+        note: (kind) => (kind ? setNote("display", tn("note.displayGone")) : keyNote ? setNote("hotkey", keyNote) : setNote("", "")), // when the display is back, a hotkey note that still holds is shown again
+        log: () => {},
+      });
+      follow.start();
+    }
+  }
   if (!d) {
     app.exit(3);
     return;
@@ -160,8 +204,8 @@ function create() {
     x: d.workArea.x + d.workArea.width - w - 20,
     y: d.workArea.y + 40,
     width: w,
-    height: SNAP ? 900 : Math.min(900, d.workArea.height - 80),
-    show: !SNAP,
+    height: SNAP ? 900 : Math.min(240, d.workArea.height - 80), // the page reports its content height right after load (the "size" channel)
+    show: false,
     paintWhenInitiallyHidden: true,
     alwaysOnTop: true,
     frame: false,
@@ -181,7 +225,7 @@ function create() {
   // Content protection is ON but UNTESTED with Zoom; the second screen is the real protection.
   // overlay.contentProtection: false (WINGMAN_SHOW_IN_CAPTURE=1) turns it off for the Zoom share test.
   if (CFG.contentProtection) win.setContentProtection(true);
-  win.loadFile(path.join(__dirname, "index.html"), { query: { lang: LANGUAGE, layout: LAYOUT, theme: THEME, size: TEXT_SIZE } }); // ?lang= and ?layout= let the page draw its first frame right (no inline script: CSP)
+  win.loadFile(path.join(__dirname, "index.html"), { query: { lang: LANGUAGE, layout: LAYOUT, theme: THEME, size: TEXT_SIZE, ...(SNAP ? {} : { fit: "1" }) } }); // ?lang= and ?layout= let the page draw its first frame right (no inline script: CSP)
   // Poll only after the page has its listeners; a reload replays the call files from the start.
   win.webContents.on("did-finish-load", () => {
     win.webContents.send("config", {
@@ -195,7 +239,9 @@ function create() {
       liveTextPt: CFG.liveTextPt,
       rewindSeconds: CFG.rewindSeconds,
       hotkeys: CFG.hotkeys,
+      fit: !SNAP,
     });
+    if (!SNAP && win && !win.isVisible() && !(follow && follow.hidden)) win.showInactive(); // shown once the page is ready, never focused
     tails.cards = { file: undefined, offset: 0 };
     tails.transcript = { file: undefined, offset: 0 };
     tails.live = { file: undefined, offset: 0 };
@@ -204,6 +250,7 @@ function create() {
     mem.reset();
     memAt = 0;
     pageReady = true;
+    if (keyNote) win.webContents.send("note", { kind: "hotkey", text: keyNote });
     replayBacklog(); // rows that only came by the pipe come back after a reload
     clearInterval(timer);
     timer = setInterval(poll, 100);
@@ -247,32 +294,41 @@ function create() {
     snapshotMode();
     return;
   }
-  const ok1 = globalShortcut.register(CFG.hotkeys.clear, () => win && win.webContents.send("clear"));
-  const ok2 = globalShortcut.register(CFG.hotkeys.pause, () => win && win.webContents.send("pause"));
-  const ok3 = globalShortcut.register(CFG.hotkeys.rewind, () => win && win.webContents.send("rewind"));
-  const ok4 = globalShortcut.register(CFG.hotkeys.copy, () => {
-    if (lastCapture) copyValue(lastCapture);
+  // Every register() result is checked: a key another app already owns shows a note in the window and in the tray note file, never silence.
+  const to = (ch, payload) => () => win && !win.isDestroyed() && win.webContents.send(ch, payload);
+  const HK = CFG.hotkeys;
+  const reg = registerHotkeys(globalShortcut, [
+    { name: "clear", accel: HK.clear, run: to("clear") },
+    { name: "pause", accel: HK.pause, run: to("pause") },
+    { name: "rewind", accel: HK.rewind, run: to("rewind") },
+    {
+      name: "copy",
+      accel: HK.copy,
+      run: () => {
+        if (lastCapture) copyValue(lastCapture);
+      },
+    },
+    { name: "checklist", accel: HK.checklist, run: to("checklist") },
+    // Card controls and Catch me up from the keyboard. Each one only tells the page; the page does what its button does.
+    { name: "more", accel: HK.more, run: to("ctl", { name: "more" }) },
+    { name: "pin", accel: HK.pin, run: to("ctl", { name: "pin" }) },
+    { name: "useful", accel: HK.useful, run: to("ctl", { name: "useful" }) },
+    { name: "notUseful", accel: HK.notUseful, run: to("ctl", { name: "notuseful" }) },
+    { name: "dismiss", accel: HK.dismiss, run: to("ctl", { name: "dismiss" }) },
+    { name: "restore", accel: HK.restore, run: to("restore") },
+    { name: "recap", accel: HK.recap, run: to("recap") },
+  ]);
+  if (reg.failed.length) {
+    console.error("Could not register some global shortcuts: " + reg.failed.map((f) => `${f.accel} (${f.name}, ${f.why})`).join(", ") + ".");
+    keyNote = hotkeyNote(reg.failed, tn);
+    setNote("hotkey", keyNote);
+  } else setNote("", "");
+  if (follow) follow.attach();
+  ipcMain.on("size", (_e, h) => {
+    if (typeof h !== "number" || !Number.isFinite(h) || !follow) return;
+    follow.fit(h);
+    if (!follow.hidden && win && !win.isDestroyed() && !win.isVisible()) win.showInactive();
   });
-  const ok5 = !CFG.hotkeys.checklist || globalShortcut.register(CFG.hotkeys.checklist, () => win && win.webContents.send("checklist"));
-  if (!ok1 || !ok2 || !ok3 || !ok4 || !ok5)
-    console.error(
-      "Could not register some global shortcuts (" +
-        Object.entries(CFG.hotkeys)
-          .map(([k, v]) => v + " = " + k)
-          .join(", ") +
-        ").",
-    );
-  // Card controls and Catch me up from the keyboard. Each one only tells the page; the page does what its button does.
-  for (const [name, evt] of [
-    ["more", "more"],
-    ["pin", "pin"],
-    ["useful", "useful"],
-    ["notUseful", "notuseful"],
-    ["dismiss", "dismiss"],
-  ]) {
-    if (CFG.hotkeys[name]) globalShortcut.register(CFG.hotkeys[name], () => win && win.webContents.send("ctl", { name: evt }));
-  }
-  if (CFG.hotkeys.recap) globalShortcut.register(CFG.hotkeys.recap, () => win && win.webContents.send("recap"));
   // Ctrl+Opt+1..3 copy chip N (newest first). Tray registers Return/N/A only, so no collision.
   captureKeys.push(...registerCaptureKeys(globalShortcut, () => capList, copyValue, Object.values(CFG.hotkeys)));
   // Click on a captured item copies it (the window never takes focus).

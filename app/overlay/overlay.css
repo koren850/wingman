@@ -1222,12 +1222,54 @@ body.paused #watch {
   min-width: 0;
   overflow: hidden;
 }
-.hcard.rise {
-  animation: rise 0.18s ease-out;
+/* one border pulse when the hero changes (reduced motion turns every animation off, see the media query above) */
+.hcard.pulse {
+  animation: hpulse 1.2s ease-out 1;
 }
+@keyframes hpulse {
+  from {
+    box-shadow: 0 0 0 4px var(--kc);
+  }
+  to {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+/* a prompt is something to say: a quiet outline, not a filled card */
 .hcard.k-prompt {
   --kc: var(--t-tip);
-  background: var(--t-stall-bg);
+  background: transparent;
+  border: 1.5px solid var(--line);
+  border-inline-start: 4px solid var(--kc);
+}
+.hcard.k-prompt .hsay {
+  font-weight: 600;
+}
+.hask {
+  color: var(--kc);
+  font-weight: 700;
+}
+.lk {
+  unicode-bidi: isolate;
+}
+/* the card gets older: the accent and the headline soften (colours only, so contrast stays above 4.5:1) */
+.hcard.age-1 .hsay {
+  color: var(--soft);
+}
+.hcard.age-2 {
+  --kc: var(--muted);
+}
+.hcard.age-2 .hsay,
+.hcard.age-3 .hsay {
+  color: var(--soft);
+}
+.hcard.age-3 {
+  --kc: var(--muted);
+}
+.hcard.age-3 .hsay {
+  color: var(--muted);
+}
+.hcard.tappable {
+  cursor: pointer;
 }
 .hcard.k-check {
   --kc: var(--t-careful);
@@ -1296,20 +1338,61 @@ body.paused #watch {
   line-height: 1.3;
   color: var(--soft);
 }
+.hwhy .lk {
+  font-weight: 700;
+}
 .hwhy {
   font-size: max(12px, calc(13px * var(--ui)));
   line-height: 1.3;
   color: var(--muted);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: normal;
+}
+.hage {
+  font-size: max(12px, calc(13px * var(--ui)));
+  color: var(--muted);
+  white-space: nowrap;
+}
+.hexp {
+  color: var(--muted);
+  font-size: max(12px, calc(13px * var(--ui)));
 }
 .hctl {
   display: flex;
   flex-wrap: nowrap;
+  gap: 4px;
+  min-width: 0;
+  margin-inline-start: auto;
+}
+.hmenu {
+  display: none;
+  flex-wrap: nowrap;
   gap: 6px;
   min-width: 0;
   margin-top: 2px;
+}
+.b.ib {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max(28px, calc(28px * var(--ui)));
+  height: max(24px, calc(24px * var(--ui)));
+  padding: 0;
+}
+.b.ib svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.b.ib[aria-pressed="true"] {
+  color: var(--text);
 }
 .b {
   flex: 0 1 auto;
@@ -1352,7 +1435,15 @@ body.paused #watch {
 }
 #chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+/* Row 1, the rail: at most three labelled chips and "+N". Row 2, the pills. Neither row wraps, so the window never shows more than two rows of chips. */
+.rail,
+.pills {
+  display: flex;
+  flex-wrap: nowrap;
   gap: 6px;
   min-width: 0;
 }
@@ -1362,8 +1453,7 @@ body.paused #watch {
   gap: 6px;
   flex: 0 1 auto;
   min-width: 0;
-  max-width: min(260px, 100%);
-  white-space: nowrap;
+  max-width: 100%;
   font: inherit;
   font-size: max(12px, calc(14px * var(--ui)));
   font-weight: 600;
@@ -1375,13 +1465,59 @@ body.paused #watch {
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
+.rail .chip {
+  border-radius: 14px;
+}
+/* a label is 2 to 4 whole words: it may use a second line, it is never cut inside a word */
 .chip .ct {
   min-width: 0;
+  line-height: 1.2;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  text-align: start;
+}
+.pills .chip {
+  display: block;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chip .gl {
+.kdot {
   flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--t-ai);
+}
+.k-prompt .kdot {
+  background: var(--t-tip);
+}
+.k-check .kdot {
+  background: var(--t-careful);
+}
+.k-fact .kdot {
+  background: var(--t-fact);
+}
+.ndot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--t-tip);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.chip.isnew {
+  border-color: var(--t-tip);
+}
+.chip .src {
+  flex: 0 0 auto;
+  font-size: max(12px, calc(12px * var(--ui)));
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 5px;
+  white-space: nowrap;
 }
 .chip.count.on {
   color: var(--text);
@@ -1403,6 +1539,29 @@ body.paused #watch {
 .chip.recapbtn {
   margin-inline-start: auto;
   color: var(--text);
+}
+.lrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  cursor: pointer;
+  text-align: start;
+}
+.lrow.fact {
+  cursor: default;
+}
+.lrow .src,
+#wlist .src {
+  font-size: max(12px, calc(12px * var(--ui)));
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 5px;
 }
 #wlist {
   display: none;
@@ -1542,6 +1701,150 @@ body.paused #watch {
 }
 #recap .rstatus.error {
   border: 1px solid var(--t-careful);
+}
+
+/* Catch me up: a section that has not arrived yet shows two grey bars */
+#recap .skel .rb {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+.sk {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--raised), var(--line), var(--raised));
+  background-size: 200% 100%;
+  animation: skel 1.4s linear infinite;
+}
+.sk.w90 {
+  width: 90%;
+}
+.sk.w60 {
+  width: 60%;
+}
+@keyframes skel {
+  to {
+    background-position: -200% 0;
+  }
+}
+/* Both sides stay in view: your own voice has its own, smaller strip under the other side's */
+#lastme {
+  display: none;
+  flex: 0 0 auto;
+  margin: -6px 0 0;
+  padding: 3px 12px;
+  border-radius: var(--r-card);
+  background: var(--card2);
+  font-size: max(13px, calc(var(--live-pt) * 0.72 * var(--ui)));
+  line-height: 1.3;
+  color: var(--soft);
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+  border-inline-start: 3px solid var(--t-me);
+}
+#lastme .who {
+  flex: 0 0 auto;
+  font-size: max(12px, calc(var(--live-pt) * 0.55));
+  font-weight: 700;
+  color: var(--t-me);
+  border-radius: var(--r-pill);
+  padding: 0 8px;
+  background: var(--raised);
+}
+#lastme .txt {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  unicode-bidi: plaintext;
+}
+#lastme.partial .txt {
+  color: var(--muted);
+}
+/* note banner: a hotkey another app owns, a screen that went away */
+#note {
+  display: none;
+  flex: 0 0 auto;
+  border-radius: var(--r-md);
+  padding: 4px 12px;
+  font-size: max(12px, calc(15px * var(--ui)));
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--advisory);
+  background: var(--warn-soft);
+  border: 1px solid var(--advisory);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+/* fold button: the window shrinks to a bar of pills and back */
+#fold {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--soft);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+}
+body.fit #fold {
+  display: inline-flex;
+}
+#ask[style*="flex"] + #fold {
+  margin-inline-start: 8px;
+}
+#fold span {
+  width: 7px;
+  height: 7px;
+  border-inline-end: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+#fold[aria-pressed="true"] span {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+/* Content-sized window (the real window; snapshots keep the fixed size). The page is as tall as its content and the window follows.
+   No vh units on the cards here: a window that shrinks must not shrink its own cards again. */
+body.fit #wrap {
+  height: auto;
+  max-height: 100vh;
+}
+body.fit #stage {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+body.fit #empty {
+  position: static;
+  inset: auto;
+  padding: 10px 20px;
+}
+body.fit .hcard,
+body.fit .hcard:has(.hmore) {
+  max-height: none;
+}
+body.fit #recap {
+  max-height: none;
+}
+body.fit.bar #empty,
+body.fit.bar #keys,
+body.fit.bar #hero,
+body.fit.bar #cards,
+body.fit.bar #morebtn {
+  display: none !important;
+}
+body.fit.bar #wrap {
+  gap: 6px;
 }
 
 /* ======== Light theme ========

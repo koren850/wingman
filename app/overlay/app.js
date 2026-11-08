@@ -12,6 +12,11 @@ const bars = new Map(); // health id -> {level, text}
 let MAX = 4;
 let LAYOUT = new URLSearchParams(location.search).get("layout") === "full" ? "full" : "focus"; // overlay.layout; ?layout= lets the first frame be right
 let SHOW_OLDER = LAYOUT === "focus" ? 1 : 2; // older answers shown next to the hero: Focus keeps one, Full two
+const FIT = new URLSearchParams(location.search).get("fit") === "1"; // the real window sizes itself to its content (see reportSize)
+let folded = false,
+  sizeRaf = 0,
+  lastSize = 0,
+  lastHero = "";
 let paused = false,
   quiet = false,
   phase = "starting",
@@ -79,7 +84,7 @@ const controls = WingmanV2.createControls(
   (text) => window.wingman.copy(text),
 );
 let lastFrame = null; // newest call frame row (kind, checklist): feeds the idle view before a view row arrives
-const v2 = createV2View({ tr, mixed, div, span, announce, controls, onChange: () => (emptyCheck(), drawNow(), refreshIdle()) });
+const v2 = createV2View({ tr, mixed, div, span, announce, controls, onChange: () => (emptyCheck(), drawNow(), refreshIdle(), heroChanged(), reportSize()) });
 // Look: theme (dark | light | auto) and text size (s | m | l). ?theme= and ?size= give the first frame; the config event (theme, textSize) changes them later.
 const DARK_MQ = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 let THEME = "dark";
@@ -479,11 +484,14 @@ function renderTip(c) {
 // ---- answer cards: built once, then only the text is updated while it streams ----
 const liveEl = document.getElementById("live");
 let liveTimer;
-function announce(label, text) {
+/** Tells screen readers (the polite live region). `now` skips the delay: a v2 hero does not stream, so it can be read at once. */
+function announce(label, text, now) {
   clearTimeout(liveTimer);
-  liveTimer = setTimeout(() => {
+  const set = () => {
     liveEl.textContent = `${label}: ${text}`;
-  }, 1500);
+  };
+  if (now) set();
+  else liveTimer = setTimeout(set, 1500);
 }
 
 /** The bold first sentence is decided once, when that sentence is complete; after that it never changes. */
@@ -709,6 +717,11 @@ let SHOW_LAST = true;
 const lastBox = document.getElementById("last"),
   lastTxt = lastBox.querySelector(".txt"),
   lastWho = lastBox.querySelector(".who");
+// The strip for your own voice sits under the other side's: both sides stay visible. It hides after ME_HOLD_MS without a new line.
+const lastMeBox = document.getElementById("lastme"),
+  lastMeTxt = lastMeBox.querySelector(".txt"),
+  lastMeWho = lastMeBox.querySelector(".who");
+const ME_HOLD_MS = 20000;
 // partial = words still being spoken (live.jsonl); the final line replaces them. A partial never re-triggers the fade-in.
 // Who said it: "Me", the name, "Speaker 2" when the voices are told apart, else "Other side". Text only (names come from the call).
 // Names given during the call (an introduction, or the user renamed a voice): they also apply to lines already received.
@@ -722,6 +735,11 @@ const whoLabel = (l) =>
 const NOW_HOLD_MS = 8000;
 let lastLineAt = 0;
 function drawNow() {
+  if (lastMeBox._at && Date.now() - lastMeBox._at > ME_HOLD_MS) {
+    lastMeBox.style.display = "none";
+    lastMeBox._at = 0;
+    reportSize();
+  }
   const topic = v2.view.topic;
   if (!topic || (lastLineAt && Date.now() - lastLineAt <= NOW_HOLD_MS)) return;
   if (lastBox._topic === topic && lastBox.classList.contains("topic")) return;
@@ -736,42 +754,47 @@ function drawNow() {
 }
 setInterval(drawNow, 2000);
 function showLast(text, ch, partial, who) {
+  const mine = ch === "me";
+  const box = mine ? lastMeBox : lastBox,
+    txt = mine ? lastMeTxt : lastTxt,
+    whoEl = mine ? lastMeWho : lastWho;
   if (!SHOW_LAST || !text) {
     lastBox.style.display = "none";
+    lastMeBox.style.display = "none";
     lastBox.classList.remove("topic");
     drawNow();
     return;
   }
   lastLineAt = Date.now();
-  lastBox.classList.remove("topic");
+  if (!mine) lastBox.classList.remove("topic");
   const clean = String(text).replace(/\s+/g, " ").trim();
-  if (ch === "me" && clean.split(" ").length < 3 && lastBox.style.display === "flex") return;
-  lastBox.classList.toggle("partial", !!partial);
-  lastTxt.replaceChildren();
-  mixed(lastTxt, clean.slice(-220));
-  lastWho.textContent = who || (ch === "me" ? tr("who.me") : tr("who.them"));
-  lastBox._line = { ch, spk: lastBox._spkNext };
-  lastBox.classList.toggle("me", ch === "me");
-  if (!partial && !lastBox._wasPartial) {
-    lastBox.classList.remove("fresh");
-    void lastBox.offsetWidth;
-    lastBox.classList.add("fresh");
+  box.classList.toggle("partial", !!partial);
+  txt.replaceChildren();
+  mixed(txt, clean.slice(-220));
+  whoEl.textContent = who || (mine ? tr("who.me") : tr("who.them"));
+  box._line = { ch, spk: box._spkNext };
+  box._at = Date.now();
+  if (!partial && !box._wasPartial) {
+    box.classList.remove("fresh");
+    void box.offsetWidth;
+    box.classList.add("fresh");
   }
-  lastBox._wasPartial = !!partial;
-  lastBox.style.display = "flex";
+  box._wasPartial = !!partial;
+  box.style.display = "flex";
+  reportSize();
 }
 window.wingman.onLine((l) => {
   if (phase === "ended") return;
   listening();
   lines.push(l);
   while (lines.length > 400) lines.shift();
-  lastBox._spkNext = l.spk;
+  (l.ch === "me" ? lastMeBox : lastBox)._spkNext = l.spk;
   showLast(l.text, l.ch, false, whoLabel(l));
 });
 window.wingman.onPartial((l) => {
   if (phase === "ended") return;
   listening();
-  lastBox._spkNext = l.spk;
+  (l.ch === "me" ? lastMeBox : lastBox)._spkNext = l.spk;
   showLast(l.text, l.ch, true, whoLabel(l));
 });
 window.wingman.onSpeaker((s) => {
@@ -782,6 +805,76 @@ window.wingman.onSpeaker((s) => {
 window.wingman.onRewind(showRewind);
 window.wingman.onRecap((p) => (p ? v2.handleRecap(p) : v2.hotkeyRecap()));
 window.wingman.onCtl((c) => v2.control(c && c.name));
+window.wingman.onRestore(() => v2.restoreLast());
+
+// ---- note banner: a taken hotkey, a lost screen. Tap to hide. ----
+const noteBox = document.getElementById("note");
+let noteTimer;
+window.wingman.onNote((n) => {
+  clearTimeout(noteTimer);
+  const text = n && typeof n.text === "string" ? n.text.slice(0, 300) : "";
+  noteBox.replaceChildren();
+  noteBox.style.display = text ? "block" : "none";
+  if (text) {
+    mixed(noteBox, text);
+    noteTimer = setTimeout(() => ((noteBox.style.display = "none"), reportSize()), 30000);
+  }
+  reportSize();
+});
+noteBox.addEventListener("click", () => ((noteBox.style.display = "none"), reportSize()));
+
+// ---- content-sized window (fit mode, the real window): the page reports its content height, main sets the window bounds ----
+// Idle (listening, nothing to show) the window folds to a thin bar: the header, the live line and the pills. The fold button does the same by hand.
+document.body.classList.toggle("fit", FIT);
+const wrapEl = document.getElementById("wrap"),
+  stageEl = document.getElementById("stage"),
+  foldBtn = document.getElementById("fold");
+const shown = (el) => el.style.display && el.style.display !== "none";
+function heroChanged() {
+  const id = v2.board.heroId;
+  if (id && id !== lastHero && folded) {
+    folded = false; // a new hero unfolds the window
+    foldBtn.setAttribute("aria-pressed", "false");
+  }
+  lastHero = id;
+}
+function barMode() {
+  if (!FIT) return false;
+  if (folded) return true;
+  const sheet = shown(document.getElementById("recap")) || shown(rewindBox) || moreOpen();
+  return phase === "listening" && !paused && !v2.hasContent() && !cards.size && !sheet;
+}
+function sheetHeight(el) {
+  return shown(el) ? Math.ceil(el.scrollHeight) + 4 : 0;
+}
+/** Measures the page and sends its height to main (once per frame at most, and only when it changed). */
+function reportSize() {
+  if (!FIT || sizeRaf) return;
+  sizeRaf = requestAnimationFrame(() => {
+    sizeRaf = 0;
+    document.body.classList.toggle("bar", barMode());
+    const need = Math.max(sheetHeight(document.getElementById("recap")), sheetHeight(rewindBox));
+    stageEl.style.minHeight = need ? need + "px" : ""; // the sheets are overlays inside the stage; the stage must be as tall as they are
+    const h = Math.ceil(wrapEl.scrollHeight);
+    if (Math.abs(h - lastSize) >= 2) {
+      lastSize = h;
+      if (window.wingman.size) window.wingman.size(h);
+    }
+  });
+}
+foldBtn.title = tr("v2.collapse");
+foldBtn.setAttribute("aria-label", tr("v2.collapse"));
+foldBtn.addEventListener("click", () => {
+  folded = !folded;
+  foldBtn.setAttribute("aria-pressed", String(folded));
+  reportSize();
+});
+if (FIT) {
+  new MutationObserver(reportSize).observe(wrapEl, { subtree: true, childList: true, attributes: true, characterData: true });
+  window.addEventListener("resize", reportSize);
+  setInterval(reportSize, 1000);
+  reportSize();
+}
 const caps = new Map(); // value -> chip, newest first (same order as main.cjs: chip N = Ctrl+Opt+N)
 const numberChips = () =>
   [...capBox.children].forEach((el, i) => {
@@ -885,7 +978,7 @@ function drawKeys() {
 window.wingman.onConfig((c) => {
   if (c.language) setLanguage(c.language);
   SHOW_LAST = c.showLastLine !== false;
-  if (!SHOW_LAST) lastBox.style.display = "none";
+  if (!SHOW_LAST) lastBox.style.display = lastMeBox.style.display = "none";
   REWIND_S = c.rewindSeconds || 30;
   MAX = c.maxCards;
   HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
@@ -949,6 +1042,8 @@ function wipe() {
   for (const v of tipEls.values()) v.remove();
   tipEls.clear();
   lastBox.style.display = "none";
+  lastMeBox.style.display = "none";
+  lastMeBox._at = 0;
   lastBox.classList.remove("topic");
   lastLineAt = 0;
   lastFrame = null;

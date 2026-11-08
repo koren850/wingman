@@ -24,6 +24,8 @@ const EVENTS = [
   ["ask", "onAsk", true],
   ["pause", "onPause", false],
   ["recap", "onRecap", true], // Catch me up: no payload = open the sheet; { phase, text, recap } = the streamed recap
+  ["restore", "onRestore", false], // bring back the card that left in the last 30 s
+  ["note", "onNote", true], // { kind, text }: a taken hotkey or a lost screen; empty text clears it
   ["ctl", "onCtl", true], // a card control pressed on the keyboard: { name: more | pin | useful | notuseful | dismiss }
 ];
 
@@ -40,6 +42,11 @@ function cleanAct(kind, payload) {
 }
 
 const api = {
+  /** The page's content height in px (content-sized window). main.cjs clamps it to the chosen display. */
+  size: (h) => {
+    const n = Number(h);
+    if (Number.isFinite(n) && n > 0 && n < 20000) ipcRenderer.send("size", Math.round(n));
+  },
   copy: (text) => ipcRenderer.send("copy", String(text)),
   act: (kind, payload) => {
     const m = cleanAct(kind, payload);

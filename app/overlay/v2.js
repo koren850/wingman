@@ -9,9 +9,18 @@
   const CLOSES = ["answered", "topic", "time", "dismissed"];
   const MAX_HEAD_WORDS = 14;
   const MAX_DETAIL = 4;
-  const DIM_MS = 4000; // a closed card stays visible this long, with its reason
+  const DIM_MS = 4000; // a closed card stays visible this long, with its reason ("answered"); see DIM_BY for the other reasons
+  /** A card that closed because you answered it can go fast. One that closed by topic or time may still be in your eyes, so it stays longer. */
+  const DIM_BY = { answered: DIM_MS, topic: 9000, time: 12000 };
   const FACT_MS = 5 * 60 * 1000; // a fact chip lives five minutes
   const MAX_CHIPS = 4; // waiting cards (not counting checks); older ones go to history
+  const MAX_RAIL = 3; // chips on the rail row; the rest sit behind "+N"
+  const MAX_CHECKS = 3; // open checks; the oldest goes to history
+  const SEEN_MS = 6000; // a rail chip is "new" until it has been on the rail this long, or was tapped
+  const UNDO_MS = 30000; // a card that left can be brought back this long
+  const LABEL_WORDS = 4;
+  const LABEL_CHARS = 28;
+  const SRC = ["brief", "call", "you", "notes", "past"];
   const MAX_HISTORY = 20;
   const RATINGS = ["useful", "not_useful", "none"];
   const EVENTS = ["pin", "unpin", "dismiss", "recap"];
@@ -30,7 +39,8 @@
 
   /** True for a card row that carries any v2 field. Health, tip, side and start rows are never v2 cards. */
   function isV2(row) {
-    if (!isObj(row) || row.health || row.badge === "tip" || row.turnId === "side" || row.turnId === "start") return false;
+    // A legacy tip has badge "tip" and no kind. The engine's v2 prompt card also has badge "tip" (for old tools) but carries kind "prompt": it is a v2 card.
+    if (!isObj(row) || row.health || (row.badge === "tip" && !KINDS.includes(row.kind)) || row.turnId === "side" || row.turnId === "start") return false;
     if (row.type && row.type !== "card") return false;
     return (
       KINDS.includes(row.kind) ||
@@ -68,6 +78,33 @@
     };
   }
 
+  /** Cuts at a word boundary: at most `words` words and `chars` characters. Never inside a word (a single word longer than `chars` stays whole). */
+  function cutWords(text, words, chars) {
+    const w = str(text).replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+    const out = [];
+    for (const x of w.slice(0, words)) {
+      if (out.length && out.join(" ").length + 1 + x.length > chars) break;
+      out.push(x);
+    }
+    return out.join(" ").replace(/[\s,;:.!?…\-–—"'()]+$/u, "");
+  }
+  /** Chip label: the model's `label` (2 to 4 words), else the first three words of the line. */
+  function labelOf(row, head) {
+    const own = cutWords(row && row.label, LABEL_WORDS, LABEL_CHARS);
+    return own || cutWords(head, 3, LABEL_CHARS);
+  }
+  /** Age of a card as a unit and a number, language free: { unit: "now" | "s" | "min", n }. Seconds step by 5 so the text does not flicker. */
+  function ageParts(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 8) return { unit: "now", n: 0 };
+    if (s < 60) return { unit: "s", n: Math.min(55, Math.round(s / 5) * 5) };
+    return { unit: "min", n: Math.floor(s / 60) };
+  }
+  /** How far a card has faded: 0 fresh (under a minute), 1, 2, 3 old (over five minutes). */
+  function freshLevel(ms) {
+    return ms < 60000 ? 0 : ms < 180000 ? 1 : ms < 300000 ? 2 : 3;
+  }
+
   /** Builds the board entry for a row. */
   function makeEntry(row, now) {
     const kind = kindOf(row);
@@ -96,6 +133,11 @@
       dimAt: 0,
       pinned: row.pinned === true,
       rating: "", // "" | useful | not_useful
+      label: labelOf(row, sp.head),
+      src: SRC.includes(row.src) ? row.src : "",
+      seen: false, // a rail chip shows a "new" dot until it was on the rail for SEEN_MS or was tapped
+      railAt: 0,
+      dimMs: DIM_MS,
       row,
     };
   }
@@ -133,10 +175,13 @@
         return null;
       }
       const e = makeEntry(row, now);
+      if (!old && e.kind === "check") this._mergeChecks(e, now);
       if (old) {
         e.at = old.at; // updates (streaming) keep their age and place
         e.pinned = old.pinned || e.pinned;
         e.rating = old.rating;
+        e.seen = old.seen;
+        e.railAt = old.railAt;
         if (old.state === "dim") Object.assign(e, { state: "dim", reason: old.reason, dimAt: old.dimAt });
       } else {
         e.rating = this.ratings.get(id) || "";
@@ -147,6 +192,18 @@
       this._trim(now);
       return e;
     }
+    /** A new check about the same thing (same ref, or the same words) replaces the older open check: one card, not two. */
+    _mergeChecks(e, now) {
+      const key = (x) => x.ref || x.head.toLowerCase().replace(/\s+/g, " ");
+      for (const o of [...this.cards.values()]) {
+        if (o.kind !== "check" || o.id === e.id || o.state !== "live" || o.pinned) continue;
+        if (key(o) && key(o) === key(e)) {
+          e.seen = o.seen;
+          this.remove(o.id, "merged", now, false);
+        }
+      }
+    }
+    /** Only the newest check can take the hero seat. Any other kind needs a higher rank, or the same rank and a newer time. */
     _place(e) {
       if (e.kind === "fact" || e.state !== "live") return;
       const hero = this.hero;
@@ -154,14 +211,22 @@
         this.heroId = e.id;
         return;
       }
+      if (e.kind === "check") {
+        const newer = [...this.cards.values()].some((c) => c.kind === "check" && c.state === "live" && c.id !== e.id && c.at > e.at);
+        if (newer) return;
+        if (hero.kind === "check" && !hero.pinned) {
+          this.heroId = e.id;
+          return;
+        }
+      }
       if (hero.pinned && e.kind !== "check") return;
       if (e.rank > hero.rank || (e.rank === hero.rank && e.at >= hero.at)) this.heroId = e.id;
     }
-    /** Best waiting card for the hero seat: not a fact, not dim; a pinned card first, then check, then value, then newest. */
+    /** Best waiting card for the hero seat: not a fact, not dim; a pinned card first, then the newest check, then rank, then newest. */
     _best() {
       /** @type {any} */
       let best = null;
-      const score = (e) => e.rank + (e.pinned ? 100 : 0);
+      const score = (e) => e.rank + (e.pinned ? 100 : 0) + (e.kind === "check" ? e.at / 1e15 : 0);
       for (const e of this.cards.values()) {
         if (e.kind === "fact" || e.state !== "live" || e.id === this.heroId) continue;
         if (!best || score(e) > score(best) || (score(e) === score(best) && e.at > best.at)) best = e;
@@ -174,11 +239,35 @@
         this.heroId = b ? b.id : "";
       }
     }
-    /** Keeps the chip cap: oldest waiting cards go to history. Checks and pinned cards stay. */
+    /** Keeps the caps: at most MAX_CHIPS waiting answers and prompts, and at most MAX_CHECKS open checks (the oldest check goes to history). Pinned cards stay. */
     _trim(now) {
       this._fill();
       const waiting = this.chips.filter((e) => e.kind !== "check" && e.kind !== "fact" && !e.pinned);
       for (const e of waiting.slice(MAX_CHIPS)) this.remove(e.id, "cap", now);
+      const checks = [...this.cards.values()].filter((e) => e.kind === "check" && e.state === "live" && !e.pinned).sort((a, b) => b.at - a.at);
+      for (const e of checks.slice(MAX_CHECKS)) this.remove(e.id, "cap", now);
+    }
+    /** The rail: the chips that fit on one row (checks first, then newest), and how many wait behind "+N". */
+    rail(max = MAX_RAIL) {
+      const all = this.chips.sort(
+        (a, b) => Number(b.kind === "check") - Number(a.kind === "check") || Number(b.kind !== "fact") - Number(a.kind !== "fact") || b.at - a.at,
+      );
+      return { shown: all.slice(0, max), more: all.slice(max) };
+    }
+    /** A chip is "seen" after it was on the rail for SEEN_MS. Returns true when a dot cleared. */
+    markSeen(now = Date.now()) {
+      const { shown, more } = this.rail();
+      let changed = false;
+      for (const e of more) e.railAt = 0;
+      for (const e of shown) {
+        if (e.seen) continue;
+        if (!e.railAt) e.railAt = now;
+        else if (now - e.railAt >= SEEN_MS) {
+          e.seen = true;
+          changed = true;
+        }
+      }
+      return changed;
     }
     /** A card that is answered, off topic or timed out dims for DIM_MS with its reason, then goes to history. A pinned card stays. */
     close(id, reason, now = Date.now()) {
@@ -189,6 +278,7 @@
       e.state = "dim";
       e.reason = CLOSES.includes(reason) ? reason : "time";
       e.dimAt = now;
+      e.dimMs = DIM_BY[e.reason] || DIM_MS;
     }
     /** Takes a card off the board; `toHistory` false drops it silently (withdrawn rows). */
     remove(id, reason, now = Date.now(), toHistory = true) {
@@ -196,7 +286,7 @@
       if (!e) return;
       this.cards.delete(e.id);
       if (toHistory && e.kind !== "fact") {
-        this.history.unshift({ id: e.id, kind: e.kind, head: e.head, reason: reason || e.reason || "", at: now });
+        this.history.unshift({ id: e.id, kind: e.kind, head: e.head, label: e.label, reason: reason || e.reason || "", at: now, entry: e });
         this.history.length = Math.min(this.history.length, MAX_HISTORY);
       }
       if (this.heroId === e.id) {
@@ -208,7 +298,7 @@
     tick(now = Date.now()) {
       let changed = false;
       for (const e of [...this.cards.values()]) {
-        if (e.state === "dim" && now - e.dimAt >= DIM_MS) {
+        if (e.state === "dim" && now - e.dimAt >= (e.dimMs || DIM_MS)) {
           this.remove(e.id, e.reason, now);
           changed = true;
         } else if (e.kind === "fact" && !e.pinned && now - e.at >= FACT_MS) {
@@ -223,7 +313,26 @@
       const e = this.cards.get(String(id));
       if (!e || e.kind === "fact") return false;
       this.heroId = e.id;
+      e.seen = true;
       return true;
+    }
+    /** Brings back the card that left last, when it left less than UNDO_MS ago. It takes the hero seat when nothing live holds it. Returns the entry or null. */
+    restoreLast(now = Date.now()) {
+      const i = this.history.findIndex((h) => h.entry && now - h.at <= UNDO_MS);
+      if (i < 0) return null;
+      const [h] = this.history.splice(i, 1);
+      const e = h.entry;
+      if (this.cards.has(e.id)) return null;
+      e.state = "live";
+      e.reason = "";
+      e.dimAt = 0;
+      e.seen = false;
+      e.railAt = 0;
+      this.cards.set(e.id, e);
+      const hero = this.hero;
+      if (!hero || hero.state === "dim" || e.kind === "check") this.heroId = e.id;
+      this._trim(now);
+      return e;
     }
     togglePin(id) {
       const e = this.cards.get(String(id));
@@ -306,6 +415,16 @@
 
   const api = {
     KINDS,
+    SRC,
+    MAX_RAIL,
+    MAX_CHECKS,
+    SEEN_MS,
+    UNDO_MS,
+    DIM_BY,
+    labelOf,
+    cutWords,
+    ageParts,
+    freshLevel,
     KIND_RANK,
     CLOSES,
     RATINGS,

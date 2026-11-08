@@ -32,7 +32,8 @@ test("kindOf and isV2: v2 fields make a v2 card; legacy rows, tips, health and s
   assert.equal(V.isV2(row({ more: ["a"] })), true);
   assert.equal(V.isV2(row({ closes: "answered" })), true);
   assert.equal(V.isV2(row({ badge: "ai", question: "q?", facts: ["f"] })), false, "a legacy row has none of the v2 fields");
-  assert.equal(V.isV2(row({ badge: "tip", kind: "prompt" })), false);
+  assert.equal(V.isV2(row({ badge: "tip", tipType: "ask" })), false, "a legacy tip has no kind");
+  assert.equal(V.isV2(row({ badge: "tip", kind: "prompt" })), true, "the engine's v2 prompt card keeps badge tip for old tools but has kind prompt");
   assert.equal(V.isV2(row({ health: true, kind: "check" })), false);
   assert.equal(V.isV2(row({ turnId: "side", kind: "fact" })), false);
   assert.equal(V.isV2({ type: "frame", kind: "client" }), false);
@@ -143,8 +144,10 @@ test("board: the chip cap drops the oldest answers to history but never a check"
   assert.equal(b.hero.id, "c1");
   assert.equal(kinds.length, V.MAX_CHIPS);
   assert.deepEqual(kinds, ["w7", "w6", "w5", "w4"]);
-  for (let i = 0; i < 6; i++) b.apply(row({ id: "k" + i, kind: "check", value: 1, at: T0 + 100 + i }), T0 + 100 + i);
-  assert.equal(b.chips.filter((e: { kind: string }) => e.kind === "check").length, 6, "all checks stay");
+  // checks are not cut by the answer cap, but open checks have their own cap (r2: V.MAX_CHECKS), and the newest one takes the hero
+  for (let i = 0; i < 6; i++) b.apply(row({ id: "k" + i, kind: "check", value: 1, say: "Check " + i, ref: "r" + i, at: T0 + 100 + i }), T0 + 100 + i);
+  assert.equal([...b.cards.values()].filter((e: { kind: string }) => e.kind === "check").length, V.MAX_CHECKS, "open checks are capped");
+  assert.equal(b.hero.id, "k5");
 });
 
 test("board: promote swaps the hero; rate toggles; updates keep their place; withdraw removes silently", () => {
@@ -477,5 +480,7 @@ test("board edge: junk rows never throw and a numeric id works", () => {
   b.close(7, "weird", T0);
   assert.equal(b.hero.reason, "time");
   b.tick(T0 + V.DIM_MS);
+  assert.equal(b.has(7), true, "a card that timed out stays longer than one you answered");
+  b.tick(T0 + V.DIM_BY.time);
   assert.equal(b.has(7), false);
 });

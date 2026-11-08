@@ -7,6 +7,9 @@
 //   contrast   text is below 4.5:1 against what is behind it
 //   min-font   visible text below 12px
 //   dir        text in a v2 zone has no dir attribute of its own (dir=auto, ltr or rtl)
+//   rows       more than two rows of chips (the rail row and the pills row)
+//   midword    a chip label, the headline or the Because line is cut (a label never is; the other two may not lose text)
+//   covers     the Catch me up sheet covers the live caption
 (function (root) {
   /** "rgb(1, 2, 3)" | "rgba(1, 2, 3, 0.5)" -> [r, g, b, a] or null. */
   function parseColor(s) {
@@ -31,7 +34,7 @@
     const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
     return (hi + 0.05) / (lo + 0.05);
   }
-  const ZONES = ["hero", "watch", "recap", "idle"];
+  const ZONES = ["hero", "watch", "recap", "idle", "note"];
 
   function run(win) {
     const w = win || window;
@@ -125,6 +128,24 @@
         }
       }
     }
+    // chips: at most two rows (rail + pills); a label or the headline is never cut inside a word
+    const chips = [...doc.querySelectorAll("#chips .chip")].filter(visible);
+    const tops = [];
+    for (const c of chips) {
+      const t = c.getBoundingClientRect().top;
+      if (!tops.some((x) => Math.abs(x - t) < 6)) tops.push(t);
+    }
+    metrics.chipRows = tops.length;
+    if (tops.length > 2) add("rows", chips[0], `${tops.length} rows of chips`);
+    for (const el of doc.querySelectorAll("#chips .ct, #hero .hsay, #hero .hwhy")) {
+      if (!visible(el)) continue;
+      const cut = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+      if (cut) add("midword", el, `text is cut: ${el.scrollWidth}x${el.scrollHeight} in ${el.clientWidth}x${el.clientHeight}`);
+    }
+    const recap = doc.getElementById("recap"),
+      cap = doc.getElementById("last");
+    if (recap && cap && visible(recap) && visible(cap) && recap.getBoundingClientRect().top < cap.getBoundingClientRect().bottom - 1)
+      add("covers", recap, "the sheet covers the live caption");
     const hero = doc.querySelector("#hero .hcard");
     if (hero) metrics.heroPct = Math.round((hero.getBoundingClientRect().height / vh) * 1000) / 10;
     return { issues, metrics };
