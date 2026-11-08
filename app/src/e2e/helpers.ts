@@ -39,11 +39,23 @@ export const callDir = (calls: string) => {
   const d = readdirSync(calls).filter((x) => x !== "latest");
   return d.length ? join(calls, d[0]) : "";
 };
+/** Runs src/run.ts as a child. The older e2e files pin the classic engine; WINGMAN_E2E_ENGINE=v2 plays the same files on the default v2 engine (round 2 gates). */
 export function runEngine(args: string[], env: Record<string, string>, profile = "e2e") {
-  const p = spawn(...tsx([join(ROOT, "src", "run.ts"), "--profile", profile, "--no-brief", "--set", "moments.engine=legacy", ...args]), {
-    cwd: ROOT,
-    env: { ...process.env, WINGMAN_CALL_APP: "none", ...env },
-  });
+  const p = spawn(
+    ...tsx([
+      join(ROOT, "src", "run.ts"),
+      "--profile",
+      profile,
+      "--no-brief",
+      "--set",
+      `moments.engine=${process.env.WINGMAN_E2E_ENGINE === "v2" ? "v2" : "legacy"}`,
+      ...args,
+    ]),
+    {
+      cwd: ROOT,
+      env: { ...process.env, WINGMAN_CALL_APP: "none", ...env },
+    },
+  );
   let out = "";
   p.stdout.on("data", (b) => (out += b));
   p.stderr.on("data", (b) => (out += b));

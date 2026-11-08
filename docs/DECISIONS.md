@@ -789,3 +789,16 @@ Date: 2026-11-08
 
 **Consequences.** Known gaps: DNS rebinding (the address is checked, then fetch resolves again); two different people with the same first name can share notes; rules such as "first Monday of the month" show the first date only.
 
+## ADR 53: Every number is scripted or recorded, and budgets are calibrated per role
+
+Date: 2026-11-08
+
+**Context.** The golden meetings carry scripted model replies, written next to the moments they must satisfy. A score from them proves plumbing, timing and the grader, not model judgement. Cost and latency were checked against a plan table that was twice as high as the measured cost, so a doubling of one role would still pass.
+
+**Decision.** (1) Each result is marked scripted or recorded, in the eval output and in the files (`scripted: true` in `qa/eval-baseline.json`, `basis` in `qa/budgets.json`). Recorded numbers come from `pnpm eval --cassette <file>`, which replays a cassette of the real model on the virtual clock and counts calls the cassette does not know. (2) Cost and latency budgets are measured per role and per card path from the golden run and stored in `qa/budgets.json`. A role or path more than 20 percent over its budget fails. The whole call stays under $0.25 an hour. (3) The held-out splits are printed one by one next to the dev baseline and are read once. (4) The judge has two parts: the rubric judge (always) and a model judge that replays recorded verdicts. (5) Prompt tuning waits for recorded numbers: tuning against scripted replies would change nothing and prove nothing.
+
+**Why.** A budget that is 2 times too loose cannot fail. A number that looks like a measurement but is a script gives false comfort. A cassette makes the real model's answers repeatable and free after the first recording.
+
+**Alternatives.** Keep the plan table as the only budget (too loose). Call the real model in CI (cost, flakiness, keys in CI). Tune prompts on the scripted dev replies (no signal).
+
+**Consequences.** After the first recording the owner runs `pnpm eval --cassette ... --update` once to create the recorded baseline and budgets. A prompt change then changes the cassette keys: the replay reports misses, and the dev meetings must be recorded again before the next comparison. The recorded section may be rewritten only from a cassette that was made with the current prompts.

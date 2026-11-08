@@ -42,6 +42,8 @@ export async function play(
     noisy?: boolean;
     concurrency?: number;
     controlsOn?: string[];
+    /** play against a recorded cassette: no controls, no noisy copy (their prompts are not in the file) */
+    replay?: string;
   } = {
     split: () => "dev",
   },
@@ -50,11 +52,15 @@ export async function play(
   const subset = o.controlsOn ?? controlSubset(meetings);
   type Job = { id: string; kind: "clean" | "noisy" | Control; opts: WorkerOptions };
   const jobs: Job[] = [];
-  const base = (g: Golden): WorkerOptions => ({ split: o.split(g), ...(o.engineControl ? { control: o.engineControl } : {}) });
+  const base = (g: Golden): WorkerOptions => ({
+    split: o.split(g),
+    ...(o.engineControl ? { control: o.engineControl } : {}),
+    ...(o.replay ? { replay: { cassette: o.replay } } : {}),
+  });
   for (const g of meetings) jobs.push({ id: g.id, kind: "clean", opts: base(g) });
-  if (o.noisy !== false)
+  if (o.noisy !== false && !o.replay)
     for (const g of meetings.filter((m) => subset.includes(m.id))) jobs.push({ id: g.id, kind: "noisy", opts: { ...base(g), noisy: true, asks: false } });
-  if (o.controls !== false)
+  if (o.controls !== false && !o.replay)
     for (const c of CONTROLS)
       for (const g of meetings.filter((m) => subset.includes(m.id))) jobs.push({ id: g.id, kind: c, opts: { split: o.split(g), control: c, asks: false } });
   const done = await pool(jobs, o.concurrency ?? Math.min(8, availableParallelism()), async (j) => ({ j, run: await runMeeting(j.id, j.opts, 180_000) }));
@@ -99,7 +105,7 @@ export function v2Metrics(meetings: Golden[], runs: MeetingRun[], noisyRuns: Mee
   const memPassed = per.reduce((s, x) => s + gradeMemory(x.golden, x.run.snapshots as never).passed, 0);
   const hours = runs.reduce((a, r) => a + r.lengthMs, 0) / 3_600_000;
   const usd = runs.reduce((a, r) => a + r.usage.reduce((s, u) => s + (u.usd ?? 0), 0), 0);
-  const calls = runs.reduce((a, r) => a + r.calls.length, 0);
+  const calls = runs.reduce((a, r) => a + (r.calls.length || r.usage.length), 0); // a replayed run has no cache simulator records, only usage rows
   // the noisy copy runs on the control subset: compare it with the clean run of the same meetings
   const nz = gradeRuns(meetings, noisyRuns);
   const same = new Set(noisyRuns.map((r) => r.id));
@@ -193,7 +199,10 @@ export function controlResults(meetings: Golden[], controls: Plan["controls"]): 
 export type V2Baseline = {
   engine: "v2";
   split: "dev";
-  scripted: true;
+  /** true: the model replies are scripted. false: replayed from a recorded cassette (the `v2Recorded` section). */
+  scripted: boolean;
+  /** recorded baselines: the cassette the numbers come from */
+  cassette?: string;
   meetings: number;
   moments: number;
   /** Lowest value a baseline keeps. A rate of exactly 0 is a gate that cannot fail, so lower-is-better metrics are stored at least at this level. */
@@ -201,12 +210,13 @@ export type V2Baseline = {
   metrics: Record<string, { value: number; n: number }>;
 };
 export const FLOOR: Record<Unit, number> = { "%": 0.005, ms: 1, "/min": 0.01, usd: 0.0001, "#": 1 };
-export function baselineOf(list: GM[], meetings: number, moments: number): V2Baseline {
+export function baselineOf(list: GM[], meetings: number, moments: number, o: { cassette?: string } = {}): V2Baseline {
   const r = (x: number) => Math.round(x * 100000) / 100000;
   return {
     engine: "v2",
     split: "dev",
-    scripted: true,
+    scripted: !o.cassette,
+    ...(o.cassette ? { cassette: o.cassette } : {}),
     meetings,
     moments,
     floor: FLOOR,

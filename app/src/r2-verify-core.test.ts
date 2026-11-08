@@ -307,6 +307,7 @@ test("cassette-record: arguments are checked (suite, cap, pace)", () => {
     only: "x",
     pace: undefined,
     allowPartial: false,
+    judge: false,
   });
 });
 test("cassette-record: refuses without a key, refuses in CI, refuses a held-out suite without --final; the estimate comes before any run", async () => {

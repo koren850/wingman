@@ -210,6 +210,8 @@ export type MeetingRun = {
   sessionFile: boolean;
   cacheRead: number;
   roleCalls: Record<string, number>;
+  /** replay only: calls the cassette had no entry for */
+  cassetteMisses?: number;
   error?: string;
 };
 export type WorkerOptions = {
@@ -228,6 +230,9 @@ export type WorkerOptions = {
   /** record every model call into a cassette. "mock" records the policy fake (tests); "real" the provider (owner only). `pace` > 0 runs the virtual clock at
    *  that many times real time; `capUsd` stops the meeting when the booked cost passes it. */
   record?: { cassette: string; transport: "mock" | "real"; pace?: number; capUsd?: number };
+  /** Play the meeting against a recorded cassette (qa/eval --cassette): every model reply comes from the file, with its recorded delay on the virtual clock.
+   *  A call the cassette does not know fails like a model error and is counted in `cassetteMisses`. */
+  replay?: { cassette: string };
   /** price the calls with the cache layout of before round 12 (A, memory for every role, rules and facts last with no marker) */
   legacyLayout?: boolean;
 };

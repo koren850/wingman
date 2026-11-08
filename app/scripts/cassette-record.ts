@@ -5,6 +5,9 @@
 //            --only <id>   record one meeting
 //            --pace <n>    virtual clock speed against real time (default 1: a 7 minute meeting takes 7 minutes; the real model answers in real time)
 //            --allow-partial  start even when the estimate is above the cap (the run stops at the cap)
+//            --judge       after the meetings, record a model-judge verdict for every card the real model made, into <suite>.judge.cassette.json
+//                          (about 0.0004 USD a card, counted in the estimate and the cap). Then: pnpm eval --cassette <engine cassette> prints the verdicts.
+// Morning kit (owner): docs/DEVELOPMENT.md, section "Recording a cassette". Dev first, then test-b, then test with --final, each with its own cap.
 // What it does: prints a cost estimate first, then plays each meeting through the real engine modules with every model call going through the cassette
 // recorder (src/providers/cassette.ts) to the real provider. It needs ANTHROPIC_API_KEY in the environment (the key is never read from a file here).
 // It refuses without a key and in CI. The tests use a mock transport (the policy fake) and never reach the network.
@@ -16,6 +19,9 @@ import { runMeeting, pool, type MeetingRun } from "../src/e2e/v2-kit.ts";
 import { v2Meetings } from "../qa/eval-v2.ts";
 import { mergeParts } from "../qa/cassette-merge.ts";
 import type { Golden } from "../qa/grade-golden.ts";
+import { ModelJudge, JUDGE_MODEL, type JudgeTransport } from "../qa/judge.ts";
+import { judgeCassettePath } from "../qa/judge-eval.ts";
+import { Cassette } from "../src/providers/cassette.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const SUITES = ["dev", "test", "test-b"] as const;
@@ -31,8 +37,14 @@ export type Deps = {
   run?: typeof runMeeting;
   /** Folder for cassettes. */
   dataDir?: string;
+  /** Asks the judge model one question. The default calls the provider with ANTHROPIC_API_KEY; the tests pass a canned one. */
+  judgeTransport?: JudgeTransport;
 };
-export type Args = { suite: Suite; cap: number; final: boolean; out?: string; only?: string; pace?: number; allowPartial: boolean };
+export type Args = { suite: Suite; cap: number; final: boolean; out?: string; only?: string; pace?: number; allowPartial: boolean; judge: boolean };
+/** USD per judged card (about 450 input tokens and 30 output tokens on the judge model, no cache). A planning number, not a measurement. */
+export const JUDGE_USD_PER_CARD = 0.0004;
+/** Cards per hour of the v2 baseline, for the estimate of the judge cost. */
+const CARDS_PER_HOUR_FALLBACK = 93;
 
 export function parseArgs(argv: string[]): Args | string {
   const get = (f: string) => (argv.includes(f) ? argv[argv.indexOf(f) + 1] : undefined);
@@ -50,28 +62,41 @@ export function parseArgs(argv: string[]): Args | string {
     only: get("--only"),
     pace,
     allowPartial: argv.includes("--allow-partial"),
+    judge: argv.includes("--judge"),
   };
 }
 
 /** Roughly what the run costs: the modelled cost per hour of the v2 baseline times the hours of the suite, times a safety factor for real prompt sizes. */
-export type Estimate = { meetings: number; hours: number; calls: number; usd: number; wallMinutes: number; basis: string };
-export function estimate(meetings: Golden[], pace: number, baselineFile = join(ROOT, "qa", "eval-baseline.json")): Estimate {
+export type Estimate = { meetings: number; hours: number; calls: number; usd: number; judgeUsd: number; wallMinutes: number; basis: string };
+export function estimate(meetings: Golden[], pace: number, baselineFile = join(ROOT, "qa", "eval-baseline.json"), judge = false, parallel = 4): Estimate {
+  const longestMin = Math.max(0, ...meetings.map((g) => (g.lines.at(-1)?.t ?? 0) / 60_000));
   const hours = meetings.reduce((a, g) => a + (g.lines.at(-1)?.t ?? 0), 0) / 3_600_000;
   let perHour = 0.06,
     callsPerHour = 300,
+    cardsPerHour = CARDS_PER_HOUR_FALLBACK,
     basis = "no baseline found: assumed $0.06 and 300 calls per hour";
   try {
     const m = (JSON.parse(readFileSync(baselineFile, "utf8")) as { v2?: { metrics: Record<string, { value: number }> } }).v2?.metrics;
     if (m?.["cost.perHour"]) {
       perHour = m["cost.perHour"].value;
       callsPerHour = m["calls.perHour"]?.value ?? callsPerHour;
+      cardsPerHour = m["cards.perHour"]?.value ?? cardsPerHour;
       basis = `qa/eval-baseline.json: $${perHour.toFixed(3)} and ${Math.round(callsPerHour)} calls per hour (modelled usage)`;
     }
   } catch {
     /* use the defaults */
   }
   const SAFETY = 2; // the baseline uses modelled token counts; real prompts and answers are larger
-  return { meetings: meetings.length, hours, calls: Math.round(hours * callsPerHour), usd: hours * perHour * SAFETY, wallMinutes: (hours * 60) / pace, basis };
+  const judgeUsd = judge ? hours * cardsPerHour * JUDGE_USD_PER_CARD * SAFETY : 0;
+  return {
+    meetings: meetings.length,
+    hours,
+    calls: Math.round(hours * callsPerHour),
+    usd: hours * perHour * SAFETY + judgeUsd,
+    judgeUsd,
+    wallMinutes: Math.max((hours * 60) / pace / parallel, longestMin / pace),
+    basis,
+  };
 }
 
 export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): Promise<number> {
@@ -90,7 +115,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
   const meetings = v2Meetings(all).filter((g) => !a.only || g.id === a.only);
   if (!meetings.length) return err(a.only ? `no meeting ${a.only} in ${a.suite}` : "no meetings to record");
   const pace = a.pace ?? (deps.transport === "real" ? 1 : 0);
-  const est = estimate(meetings, pace || 1, deps.baselineFile);
+  const est = estimate(meetings, pace || 1, deps.baselineFile, a.judge, deps.transport === "real" ? 4 : 1);
   const out = a.out ?? join(deps.dataDir ?? join(ROOT, "data", "cassettes"), `${a.suite}.cassette.json`);
 
   // 2. the one-page estimate
@@ -99,9 +124,9 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
       "Cassette recording: estimate",
       `  suite          ${a.suite}${a.only ? ` (only ${a.only})` : ""}, ${est.meetings} meetings, ${est.hours.toFixed(2)} hours of calls`,
       `  model calls    about ${est.calls}`,
-      `  cost           about $${est.usd.toFixed(2)} (cap $${a.cap.toFixed(2)})`,
+      `  cost           about $${est.usd.toFixed(2)} (cap $${a.cap.toFixed(2)})${a.judge ? `, of which the judge about $${est.judgeUsd.toFixed(2)}` : ""}`,
       `  basis          ${est.basis}, times 2 for real prompt sizes`,
-      `  wall time      about ${est.wallMinutes.toFixed(0)} minutes at pace ${pace || 1} (4 meetings at a time)`,
+      `  wall time      about ${est.wallMinutes.toFixed(0)} minutes at pace ${pace || 1} (4 meetings at a time, never less than the longest meeting)`,
       `  cassette       ${out}`,
       `  transport      ${deps.transport}`,
     ].join("\n"),
@@ -137,7 +162,58 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
     meetings.map((g) => partOf(g.id)).filter((p) => existsSync(p)),
   );
   deps.log(`Done: ${n} entries in ${out}, about $${spent.toFixed(3)} booked${stopped ? " (stopped at the cap)" : ""}.`);
+  // 4. the judge: one verdict per card the model made, read back by pnpm eval --cassette
+  if (a.judge) {
+    const jOut = judgeCassettePath(out);
+    const jc = new Cassette(jOut);
+    const judge = new ModelJudge({
+      cassette: jc,
+      transport: deps.judgeTransport ?? (deps.transport === "real" ? realJudgeTransport(env.ANTHROPIC_API_KEY!) : mockJudgeTransport),
+    });
+    let cards = 0,
+      failedCards = 0,
+      skipped = 0;
+    // Save after every meeting and when a call throws: a network error at card 80 must not throw away the verdicts already paid for.
+    try {
+      for (const g of meetings) {
+        const r = results.find((x) => x.id === g.id);
+        if (!r) continue;
+        if (spent + (cards + r.cards.length) * JUDGE_USD_PER_CARD > a.cap) {
+          skipped += r.cards.length;
+          continue;
+        }
+        for (const c of [...r.cards].sort((x, y) => x.atMs - y.atMs)) {
+          try {
+            await judge.judge(g, c);
+            cards++;
+          } catch (e) {
+            failedCards++;
+            deps.log(`Judge: a card of ${g.id} could not be judged (${e instanceof Error ? e.message : String(e)}). Its verdict is left out.`);
+          }
+        }
+        jc.save(jOut);
+      }
+    } finally {
+      jc.save(jOut);
+    }
+    deps.log(
+      `Judge: ${cards} cards judged into ${jOut}, about $${(cards * JUDGE_USD_PER_CARD).toFixed(3)}.${failedCards ? ` ${failedCards} failed.` : ""}${skipped ? ` ${skipped} cards skipped to stay under the cap.` : ""}`,
+    );
+  }
   return 0;
+}
+
+const mockJudgeTransport: JudgeTransport = async () => ({ text: "VERDICT: good\nREASON: mock judge", ms: 1 });
+/** The real judge: one short call per card on the judge model. Only the owner's command gets here (a key in the environment, never in CI). */
+function realJudgeTransport(apiKey: string): JudgeTransport {
+  return async ({ model, system, user }) => {
+    const { ModelRegistry } = await import("../src/providers/llm.ts");
+    const { generateText } = await import("ai");
+    const m = await new ModelRegistry({ anthropic: apiKey } as never).resolve(model || JUDGE_MODEL, "judge");
+    const t0 = Date.now();
+    const r = await generateText({ model: m, system, prompt: user, maxOutputTokens: 80 });
+    return { text: r.text, usage: r.usage, ms: Date.now() - t0 };
+  };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

@@ -17,10 +17,15 @@ import { CostMeter, cacheReport, formatCacheReport } from "../cost.ts";
 import { loadSettings } from "../settings.ts";
 import type { ModelRegistry } from "../providers/llm.ts";
 import type { SessionMemory } from "../session/types.ts";
+import { readBudgets, BUDGET_TOLERANCE } from "../../qa/budgets.ts";
 
-// PLAN 3.6, USD per call.
+// PLAN 3.6, USD per call. This table is the ceiling. The gate itself is qa/budgets.json (calibrated from the golden run by `pnpm eval --update`, section
+// `scripted`; `oneShot` holds the digest and the wrap-up, measured by this file). A role over its calibrated budget + 20 percent fails.
 export const TABLE: Record<string, number> = { moment: 0.00016, observer: 0.00013, memory: 0.0002, compact: 0.0006, ask: 0.0004, digest: 0.002, wrapup: 0.001 };
-const TOL = 1.2;
+const TOL = 1 + BUDGET_TOLERANCE;
+const BUDGETS = readBudgets();
+/** The calibrated budget of a role (USD per call), else the PLAN table. */
+export const budgetOf = (role: string): number => BUDGETS.scripted?.roles[role]?.usdPerCall ?? BUDGETS.oneShot?.[role] ?? TABLE[role];
 const dev = loadSplit("dev").filter((g) => g.type !== "interview");
 const S0 = loadSettings({ env: {}, userFile: "/nonexistent/x.yaml" }).settings;
 let runs: MeetingRun[] = [];
@@ -83,7 +88,7 @@ async function digestAndWrapup() {
   return out;
 }
 
-test("cost per role: the average USD per call of every role stays within the PLAN 3.6 table + 20 percent", async () => {
+test("cost per role: the average USD per call of every role stays within its calibrated budget (qa/budgets.json) + 20 percent", async () => {
   const rows = runs.flatMap((r) => r.usage);
   const byRole: Record<string, number[]> = {};
   const per: Record<string, { calls: number; avg: number }> = {};
@@ -97,13 +102,14 @@ test("cost per role: the average USD per call of every role stays within the PLA
   per.wrapup = { calls: 1, avg: once.wrapup };
   const lines = Object.entries(per).map(
     ([role, v]) =>
-      `COST ${role.padEnd(8)} ${String(v.calls).padStart(4)} calls  avg $${v.avg.toFixed(6)}  table $${TABLE[role]}  ratio ${(v.avg / TABLE[role]).toFixed(2)}`,
+      `COST ${role.padEnd(8)} ${String(v.calls).padStart(4)} calls  avg $${v.avg.toFixed(6)}  budget $${budgetOf(role)}  PLAN table $${TABLE[role]}  ratio ${(v.avg / budgetOf(role)).toFixed(2)}`,
   );
   console.log(lines.join("\n"));
   for (const [role, v] of Object.entries(per)) {
     assert.ok(v.calls >= 1, `${role}: no usage rows`);
     assert.ok(v.avg > 0, `${role}: a zero price means the usage row was not priced`);
-    assert.ok(v.avg <= TABLE[role] * TOL, `${role}: $${v.avg.toFixed(6)} per call is over the table $${TABLE[role]} + 20 percent`);
+    assert.ok(v.avg <= budgetOf(role) * TOL, `${role}: $${v.avg.toFixed(6)} per call is over its budget $${budgetOf(role)} + 20 percent`);
+    assert.ok(v.avg <= TABLE[role] * TOL, `${role}: $${v.avg.toFixed(6)} per call is over the PLAN table $${TABLE[role]} + 20 percent`);
   }
 });
 

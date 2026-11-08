@@ -60,7 +60,7 @@ What `pnpm install` does in `app/`:
 | Script | What it does |
 |---|---|
 | `pnpm demo` | The offline demo: a scripted, invented English call (`--he` for Hebrew) through the real engine. No keys, no network. |
-| `pnpm eval` | Offline quality numbers for the detector, the bank matcher and the guards. Fails if one drops below `qa/eval-baseline.json`. |
+| `pnpm eval` | The release gate, offline: the golden dev meetings through the v2 engine (recall, precision, time to card, cost), four bad-model controls, cost and latency per role against `qa/budgets.json` (+20 percent fails), the memory eval and the rubric judge. The old word-list numbers come last as a smoke test. Fails if one drops below `qa/eval-baseline.json`. `--final` reads the held-out splits once, `--cassette <file>` plays a recording of the real model. See "Release gates" below. |
 | `pnpm eval:memory` | Memory-quality eval (`qa/memory-eval.ts`): precision and recall of the final call memory on 12 labelled calls, with a null and a copy-all control. Offline with the policy fake; `WINGMAN_LLM_MODE=replay` reads a cassette. |
 | `pnpm check` | Type check, lint, format check, unit tests and `pnpm eval`. |
 | `pnpm start` | The call engine (`src/run.ts`) in the terminal. Flags: `--file x.wav` (replay a stereo WAV, left = me, right = them), `--no-ai`, `--discard`, `--profile`, `--set key=value`. |
@@ -123,6 +123,40 @@ Six files prove the v2 engine as a whole. They use no network and no key. Run on
 | `v2-prompts` | Prompt snapshots for moment, observer, memory, compact and wrap-up, the block layout, and a check that the memory reaches the moment and observer prompts. |
 
 How they work: `v2-kit.ts` wraps the policy fake so that every call reports the usage of its real prompt, with a simulated prompt cache (a marked prefix is cached from 1024 tokens, read at the cache-read price, written at the cache-write price). `v2-worker.ts` plays one golden meeting in a child process, because the engine is one call per process. Scripted replies prove plumbing, timing, budgets and state logic. They do not prove model judgement or Hebrew quality; that needs a recorded run (`pnpm cassette:record`).
+
+## Release gates (`pnpm eval`, budgets, held-out, snapshots)
+
+Every number is marked **scripted** (the replies in the golden files; they prove plumbing, timing and the grader) or **recorded** (replayed from a cassette of the real model; they measure the model). Only the recorded numbers can say the product is good.
+
+| Command | What it does |
+|---|---|
+| `pnpm eval` | Dev meetings, v2 engine, scripted. Metric table against `qa/eval-baseline.json` (`v2`), the four controls, the per-role budgets, the memory eval, the rubric judge. About 30 s on a quiet machine. |
+| `pnpm eval --update` | Rewrites the baseline and `qa/budgets.json` (`scripted`). Read the diff first. No baseline value is zero (a metric that is truly zero is stored at a small floor). |
+| `pnpm eval --final` | The held-out splits `test` and `test-b`, each played on its own, printed next to the dev baseline. Prints only and enforces only the hard limits. Read it once. Never tune after it. |
+| `pnpm eval --cassette data/cassettes/dev.cassette.json` | Dev played against the recording. Marked RECORDED; compared with the `v2Recorded` baseline; the model judge reads `dev.judge.cassette.json` if it exists. `--update` writes the first recorded baseline and the `recorded` budgets. |
+| `pnpm eval --only id1,id2` | Some dev meetings (numbers are not comparable with the baseline). |
+| `pnpm snapshots` | `scripts/snapshot-check.sh [outDir]`: hidden overlay checks in English and Hebrew (44 specs each) and the dashboard matrix (24 pictures, both languages, light and dark, narrow). Fails on clipping, contrast, font size, direction or a window that took focus. About 2 to 4 minutes. |
+
+Budgets (`qa/budgets.json`): per role, USD per call and USD per hour; per card path (direct question, observer), time to card p50 and p95; the whole call per hour (release gate $0.25). A role or path over its budget by more than 20 percent fails the eval, and `src/e2e/v2-cost.test.ts` fails the same way per call. The `oneShot` entries (digest, wrap-up) are measured by `v2-cost.test.ts`.
+
+Fault soak: `src/e2e/r2-soak.test.ts` runs an 80 minute call on the virtual clock with a hung audio respawn, a display unplug (injected screen), a dead STT socket, a slow model and a 529 storm, and a probe question inside each fault. A second case stops a real v2 process with a stray error. `WINGMAN_E2E_ENGINE=v2` plays the older child-process e2e files (`reliability-r2`, `chaos`, `engine-reliability`) on the v2 engine instead of the pinned classic one.
+
+## Recording a cassette (owner, by hand)
+
+Recording calls the real model and costs money. An agent never runs it, CI refuses it. It needs `ANTHROPIC_API_KEY` in the environment of that one command (nothing reads a key file). Order: dev, then test-b, then test.
+
+```bash
+cd app
+ANTHROPIC_API_KEY=... pnpm cassette:record --suite dev --cap 1 --judge
+ANTHROPIC_API_KEY=... pnpm cassette:record --suite test-b --final --cap 0.25 --judge
+ANTHROPIC_API_KEY=... pnpm cassette:record --suite test --final --cap 0.25 --judge
+pnpm eval --cassette data/cassettes/dev.cassette.json --update      # first recorded baseline and budgets
+pnpm eval --final --cassette data/cassettes/test.cassette.json,data/cassettes/test-b.cassette.json   # the held-out, once
+```
+
+The command prints a one-page estimate first and refuses when it is over the cap (`--allow-partial` stops at the cap instead). Estimates (modelled cost per hour of the baseline times 2 for real prompt sizes; the judge at $0.0004 a card): dev about $0.25 (+ $0.28 judge) and about one hour of wall time at 4 meetings at a time; test-b about $0.03 (+ $0.04) and about 10 minutes; test about $0.05 (+ $0.06) and about 12 minutes. Treat these as floors. Check the first meeting's booked cost before you leave it alone. The recorder plays at real time (pace 1) because the real model answers in real time.
+
+Held-out cassettes (`test`, `test-b`) must be recorded and replayed once, after the dev numbers are final. Do not edit a prompt after you have looked at them.
 
 ## QA harness
 

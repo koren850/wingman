@@ -2,12 +2,12 @@
 // meeting's own scripted replies, memory loop on its 1 s timer). Result goes to the file in V2_OUT as JSON. See v2-kit.ts (runMeeting).
 // The engine is a per-process singleton, so one process plays one meeting. No network, no keys.
 import "../test-setup.ts";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { setupEngine } from "../testkit/engine-inproc.ts";
 import { loadSplit } from "../../qa/golden-load.ts";
 import { observeModel, timelineOf, type MeetingRun, type WorkerOptions } from "./v2-kit.ts";
 import { registerRole } from "../testkit/prompt.ts";
-import { Cassette, wrapCassette } from "../providers/cassette.ts";
+import { Cassette, CassetteMiss, wrapCassette } from "../providers/cassette.ts";
 import { ModelRegistry } from "../providers/llm.ts";
 import { controlReplies } from "../../qa/controls.ts";
 
@@ -40,6 +40,30 @@ async function main() {
     const real = opts.record.transport === "real" ? new ModelRegistry({ anthropic: process.env.ANTHROPIC_API_KEY } as never) : undefined;
     e.boot.registry.resolve = (async (ref: string, role?: string) =>
       wrapCassette({ mode: "record", cassette, ref, role, inner: (real ? await real.resolve(ref, role) : await observed(ref, role)) as never })) as never;
+  }
+  let cassetteMisses = 0;
+  const replayCalls: Record<string, number> = {};
+  if (opts.replay) {
+    // Replay mode: every model reply is read from the cassette. The recorded delays run on the virtual clock. A miss is a model error for the engine.
+    // "a.json,b.json": several cassettes are merged (the held-out run plays test and test-b together)
+    const cassette = new Cassette();
+    for (const f of opts.replay.cassette.split(",")) for (const en of new Cassette(f).entries()) cassette.put(en);
+    e.boot.registry.resolve = (async (ref: string, role?: string) => {
+      const m = wrapCassette({ mode: "replay", cassette, ref, role, timing: "recorded" }) as unknown as Record<string, (c: unknown) => Promise<unknown>>;
+      for (const k of ["doGenerate", "doStream"]) {
+        const f = m[k];
+        m[k] = async (c: unknown) => {
+          replayCalls[role ?? "unknown"] = (replayCalls[role ?? "unknown"] ?? 0) + 1;
+          try {
+            return await f.call(m, c);
+          } catch (err) {
+            if (err instanceof CassetteMiss) cassetteMisses++;
+            throw err;
+          }
+        };
+      }
+      return m;
+    }) as never;
   }
   const coach = await import("../engine/coach.ts");
   const ask = await import("../engine/askcall.ts");
@@ -143,12 +167,14 @@ async function main() {
     .split("\n")
     .filter(Boolean)
     .map((l) => JSON.parse(l));
-  const usage = readFileSync(e.boot.log.dir + "/usage.jsonl", "utf8")
+  // no usage file at all: a replay against a cassette that knew none of the calls
+  const usage = (existsSync(e.boot.log.dir + "/usage.jsonl") ? readFileSync(e.boot.log.dir + "/usage.jsonl", "utf8") : "")
     .split("\n")
     .filter(Boolean)
     .map((l) => JSON.parse(l));
   const roleCalls: Record<string, number> = {};
   for (const c of obs.calls) roleCalls[c.role] = (roleCalls[c.role] ?? 0) + 1;
+  if (opts.replay) Object.assign(roleCalls, replayCalls);
   const mem = coach.memoryLoop()?.memory;
   const res: MeetingRun = {
     id,
@@ -166,6 +192,7 @@ async function main() {
     sessionFile: (await import("node:fs")).existsSync(e.boot.log.dir + "/session.json"),
     cacheRead: obs.cacheReadRatio(),
     roleCalls,
+    ...(opts.replay ? { cassetteMisses } : {}),
     ...(capped ? { error: "cost cap reached: the meeting was cut short" } : {}),
   };
   writeFileSync(out, JSON.stringify(res));

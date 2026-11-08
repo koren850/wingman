@@ -1,0 +1,59 @@
+{
+  "v": 1,
+  "tolerance": 0.2,
+  "scripted": {
+    "basis": "scripted",
+    "source": "scripted replies, policy fake, dev",
+    "hours": 3.792468,
+    "perHour": 0.032327,
+    "roles": {
+      "ask": {
+        "calls": 14,
+        "usdPerCall": 0.00035,
+        "usdPerHour": 0.001292
+      },
+      "compact": {
+        "calls": 20,
+        "usdPerCall": 0.000263,
+        "usdPerHour": 0.001384
+      },
+      "me": {
+        "calls": 90,
+        "usdPerCall": 0.000215,
+        "usdPerHour": 0.005104
+      },
+      "memory": {
+        "calls": 395,
+        "usdPerCall": 0.000101,
+        "usdPerHour": 0.01054
+      },
+      "moment": {
+        "calls": 163,
+        "usdPerCall": 7.4e-5,
+        "usdPerHour": 0.00316
+      },
+      "observer": {
+        "calls": 468,
+        "usdPerCall": 8.8e-5,
+        "usdPerHour": 0.010847
+      }
+    },
+    "paths": {
+      "direct": {
+        "n": 71,
+        "p50": 900,
+        "p95": 1500
+      },
+      "observer": {
+        "n": 177,
+        "p50": 1500,
+        "p95": 4000
+      }
+    },
+    "cacheReadShare": 0.584362
+  },
+  "oneShot": {
+    "digest": 0.000131,
+    "wrapup": 0.000223
+  }
+}
