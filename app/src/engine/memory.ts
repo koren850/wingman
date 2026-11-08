@@ -153,6 +153,9 @@ export class MemoryLoop {
   private lastNewTokenAt = -Infinity;
   private localNumbers: { what: string; value: string; who: string }[] = [];
   private readonly prompted = new Set<string>();
+  /** "Last time": the first time a person with a past fact is named, one Fact card may show it. Once per call. */
+  private pastPending: string | undefined;
+  private pastDone = false;
   private lastPromptAt = 0;
   private abort = new AbortController();
   private stopped = false;
@@ -214,10 +217,31 @@ export class MemoryLoop {
     this.unreadWords += words;
     this.lastLineAt = now;
     if (line.name) this.learnName(line.name);
+    this.checkPastMention(text);
     this.hints(line, text, words, now);
     // Interview and legacy only: claims.ts numbers (a number with its unit) go into `numbers` without a model call.
     if (this.deps.localNumbers)
       for (const s of spokenNumbers(text)) this.localNumbers.push({ what: s.unit, value: String(s.n), who: line.side === "me" ? "me" : (line.name ?? "them") });
+  }
+  /**
+   * A line names a person who has a "Last time" fact (src "past")? Remember which fact, once. The match is on name words of 3 letters or more, any script;
+   * what the line means is not judged here (the card only says what was remembered).
+   */
+  private checkPastMention(text: string): void {
+    if (this.pastDone || this.pastPending) return;
+    const heard = new Set(tokensOf(text));
+    const f = this.mem.facts.find((x) => x.src === "past" && x.who && tokensOf(x.who).some((t) => t.length >= 3 && heard.has(t)));
+    if (f) this.pastPending = f.id;
+  }
+  /** The one "Last time" fact to show now (a person with past facts was just named), or undefined. Returns it once per call. The fact must still be in the memory (the user may have removed it). */
+  firstMention(): { id: string; text: string; who: string } | undefined {
+    const id = this.pastPending;
+    if (!id || this.pastDone) return undefined;
+    this.pastPending = undefined;
+    const f = this.mem.facts.find((x) => x.id === id && x.src === "past");
+    if (!f) return undefined;
+    this.pastDone = true;
+    return { id: f.id, text: f.text, who: f.who ?? "" };
   }
   /** Wake-up hints. None of them reads a word list or a capital letter, so Hebrew and English behave alike. The updater decides what the line means. */
   private hints(line: MemInput, text: string, words: number, now: number): void {

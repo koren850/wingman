@@ -25,9 +25,22 @@ export function cleanDigest(raw: unknown): Digest | null {
     return [{ name, side: o.side === "me" ? ("me" as const) : ("them" as const), ...(role ? { role } : {}), ...(stance ? { stance } : {}) }];
   });
   const agenda = arr(r.agenda).flatMap((x) => str(typeof x === "string" ? x : (x as { text?: unknown } | null)?.text, 200) ?? []);
+  // A fact keeps the line of the pasted text it came from (digest.ts checked that it is really there). Shown next to the fact in the window.
   const facts = arr(r.facts).flatMap((x) => {
-    const t = str(typeof x === "string" ? x : (x as { text?: unknown } | null)?.text, 300);
-    return t ? [t] : [];
+    const o = (x && typeof x === "object" ? x : {}) as { text?: unknown; source?: unknown; who?: unknown };
+    const t = str(typeof x === "string" ? x : o.text, 300);
+    if (!t) return [];
+    const source = typeof x === "string" ? undefined : str(o.source, 300),
+      who = typeof x === "string" ? undefined : str(o.who, 80);
+    return [source || who ? { text: t, ...(who ? { who } : {}), ...(source ? { source } : {}) } : t];
+  });
+  // "Last time" facts (session/people.ts): plain strings and numbers only, at most 5.
+  const past = arr(r.past).flatMap((x) => {
+    const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
+    const t = str(o.text, 300),
+      who = str(o.who, 80);
+    const at = typeof o.at === "number" && Number.isFinite(o.at) ? o.at : 0;
+    return t && who ? [{ text: t, who, at, callId: str(o.callId, 60) ?? "", kind: o.kind === "promise" ? ("promise" as const) : ("topic" as const) }] : [];
   });
   const likelyQuestions = arr(r.likelyQuestions).flatMap((x) => {
     const q = str(typeof x === "string" ? x : (x as { q?: unknown } | null)?.q, 200);
@@ -43,8 +56,9 @@ export function cleanDigest(raw: unknown): Digest | null {
     facts: facts.slice(0, 30),
     likelyQuestions: likelyQuestions.slice(0, 20),
     chunks: chunks.slice(0, 40),
+    ...(past.length ? { past: past.slice(0, 5) } : {}),
   };
-  return d.roster.length || d.agenda.length || d.facts.length || d.chunks.length ? d : null;
+  return d.roster.length || d.agenda.length || d.facts.length || d.chunks.length || d.past?.length ? d : null;
 }
 
 export const digestFileNear = (briefFile: string): string => join(dirname(briefFile), DIGEST_FILE);

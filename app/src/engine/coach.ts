@@ -24,6 +24,7 @@ import {
   UI_LANG,
   speakers,
   brief,
+  briefArg,
   bank,
   noAi,
 } from "./boot.ts";
@@ -36,7 +37,9 @@ import { recentWindow, capTail, frameDue } from "./rules.ts";
 import { MemoryLoop, engineV2, makeModelRunner, memoryConfigFrom, memoryGate } from "./memory.ts";
 import { emitMemoryView, safe } from "./out.ts";
 import { loadMemory, saveMemory } from "../session/store.ts";
-import { seedFromDigest } from "../session/seed.ts";
+import { seedForCall } from "../session/callseed.ts";
+import { PEOPLE_FILE } from "../session/people.ts";
+import { CALLS, USER_DATA } from "../env.ts";
 import { renderMemory } from "../session/render.ts";
 import { isEmptyMemory, type SessionMemory } from "../session/types.ts";
 import { briefNotes } from "../brief.ts";
@@ -229,7 +232,17 @@ export function memoryLoop(): MemoryLoop | undefined {
   // A call that is resumed or restarted in its folder keeps what it learned; a new call starts from the pre-meeting brief (facts, agenda) or empty.
   let mem: SessionMemory = loadMemory(log.dir, now).mem;
   if (isEmptyMemory(mem) && brief)
-    mem = seedFromDigest({ roster: [], agenda: brief.mustCover ?? [], facts: briefNotes(brief), likelyQuestions: [], chunks: [] }, now);
+    mem = seedForCall({
+      mustCover: brief.mustCover ?? [],
+      ...(brief.who ? { who: brief.who } : {}),
+      notes: briefNotes(brief),
+      ...(briefArg ? { briefFile: briefArg } : {}),
+      now,
+      pastCalls: S.context.pastCalls,
+      callsDir: CALLS,
+      peopleFile: join(USER_DATA, PEOPLE_FILE),
+      callId: log.id,
+    });
   const run = makeModelRunner({
     registry,
     model: memCfg.model,
@@ -308,6 +321,23 @@ function v2Tick() {
   l.tick();
   const now = Date.now();
   closeCards(cardSched.expire(now));
+  // Last time: the first time a person from an earlier call is named, one Fact card says what was remembered (no model call).
+  const past = !st.call.quiet ? l.firstMention() : undefined;
+  if (past) {
+    const m: Moment & { source: "observer"; lineAt: number } = {
+      tag: "NOTE",
+      value: 2,
+      aim: "me",
+      say: past.text,
+      why: past.who,
+      more: [],
+      ref: past.id,
+      source: "observer",
+      lineAt: now,
+    };
+    emitMoment(m, { question: past.who, memV: l.memory.ver, src: "past" });
+    log.write("events", { type: "past.card", id: past.id });
+  }
   // Open loop: a question or promise nobody picked up. The code decides when; the text is the memory's own wording.
   const p = !st.call.quiet ? l.openLoopPrompt() : undefined;
   if (p) {

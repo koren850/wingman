@@ -84,6 +84,11 @@
     waitRows: rowTexts.length,
     dupWait,
     sheet: !!document.getElementById("keys-sheet"),
+    // the one-box context editor: the "Wingman understood" line, the web page and calendar controls, and the Review part of a call
+    understood: !!document.getElementById("ctx-understood") && document.getElementById("ctx-understood").offsetParent !== null,
+    sources: !!document.getElementById("ctx-url") && !!document.getElementById("ctx-cal-use"),
+    review: !!document.getElementById("rev-moments") && !!document.getElementById("rev-coaching") && !!document.getElementById("rev-export"),
+    reviewCounts: (document.getElementById("rev-moments-sum") || {}).textContent || "",
     problems: problems.slice(0, 40),
     lang: doc.lang,
     dir: doc.dir,

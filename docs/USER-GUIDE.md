@@ -200,6 +200,9 @@ The window uses plain words. Some older docs, file names and settings keep the i
 - **Ask the call**: type `ask what did they say about the deadline?` or run `wingman ask "..."`. Wingman looks in what it learned in the call, then in the transcript, then uses general knowledge. If the call does not say, it says so. It never invents a number.
 - **Follow-up**: `wingman followup` prints a draft message for the other side from the saved call. Prices, dates and promises show as `[fill in]` for you to complete.
 - **Pre-meeting digest**: `wingman digest` reads pasted notes and files and finds people, agenda, facts and likely questions. This is optional. With no AI, the raw text is kept as background.
+- **Meeting context box**: one box for everything Wingman should know before a call. Paste text, drop a file (.txt, .md, .docx, .eml, .pdf, .ics), type a web address, or press "Use my next calendar event". Below the box, "Wingman understood: ..." says what it took from it, and "What Wingman knows" lists each fact with where it came from. You can remove any fact.
+- **Web addresses and calendar**: only public https pages are read (8 seconds, 1 MB). Addresses inside your network are refused. For the calendar, paste the private .ics address from your calendar settings into Settings, "My calendar address". Wingman picks the meeting nearest to now, shows it, and uses it only after you say yes. A `.docx` file needs the `unzip` tool, which macOS and Linux have.
+- **Last time**: when a person on the call was on an earlier call, the new call starts with up to 5 short notes (open promises first, then the last topic). The first time that person is named, one Fact card may show a note. This is local and uses no AI call. Turn it off with "Remember people from earlier calls".
 - When the AI is offline, answers come from your notes and are labelled "AI offline: from notes".
 
 ## Command line

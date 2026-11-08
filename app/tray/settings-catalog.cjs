@@ -203,6 +203,23 @@ const ITEMS = [
   },
 
   {
+    key: "context.calendarUrl",
+    group: "call",
+    label: "My calendar address",
+    kind: "text",
+    maxLen: 600,
+    placeholder: "https://...ics",
+    help: "The private .ics address from your calendar settings. Plan a call then offers Use my next calendar event and asks before using the meeting. Keep it private. Empty means off.",
+  },
+  {
+    key: "context.pastCalls",
+    group: "call",
+    label: "Remember people from earlier calls",
+    kind: "bool",
+    help: "A new call can start with up to 5 notes about people you met before: what was promised and the last topic. They come from your own saved calls on this Mac. No AI call.",
+  },
+
+  {
     key: "summary.enabled",
     main: true,
     group: "after",
@@ -328,6 +345,14 @@ function toStored(item, v) {
   if (item.kind === "bool") {
     if (typeof v !== "boolean") throw new Error("expected on or off");
     return item.invert ? !v : v;
+  }
+  if (item.kind === "text") {
+    if (typeof v !== "string") throw new Error("expected text");
+    const t = v.trim().replace(/^webcals?:\/\//i, "https://"); // calendar apps hand out webcal:// addresses; they are https underneath
+    if (t.length > item.maxLen) throw new Error(`at most ${item.maxLen} characters`);
+    if (/[\u0000-\u001f\u007f\s]/.test(t)) throw new Error("no spaces or line breaks");
+    if (t && !/^https:\/\/\S+$/i.test(t)) throw new Error("must start with https://");
+    return t;
   }
   if (item.kind === "select") {
     if (typeof v !== "string" || !item.options.some((o) => o[0] === v)) throw new Error("not one of the choices");

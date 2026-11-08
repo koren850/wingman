@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const feedLib = require("./livefeed.js");
 const memLib = require("./memlib.cjs");
+const review = require("./reviewlib.js");
 const ID_RE = /^[0-9A-Z]{26}$/;
 // JSONL file -> array of parsed rows; missing file or bad lines give []/skipped, never throw.
 const read = (dir, f) => {
@@ -246,6 +247,7 @@ function readSummary(dir) {
     followUpEmail: typeof o.followUpEmail === "string" ? o.followUpEmail.slice(0, 3000) : "",
     guardReplaced: o.guard && Number.isFinite(o.guard.replaced) ? o.guard.replaced : 0,
     costUsd: Number.isFinite(o.costUsd) ? o.costUsd : 0,
+    coaching: review.cleanCoaching(o.coaching),
   };
 }
 

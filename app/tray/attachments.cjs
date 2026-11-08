@@ -1,5 +1,5 @@
 "use strict";
-// Background files for the Meeting context: .txt, .md, .ics (a calendar invite, read by shared/ics.cjs) and .pdf (only when `pdftotext` is
+// Background files for the Meeting context: .txt, .md, .docx, .eml (shared/inputs.cjs), .ics (a calendar invite, read by shared/ics.cjs) and .pdf (only when `pdftotext` is
 // already on this Mac; nothing is ever installed), plus pasted text. Only the extracted TEXT is stored (mode 600, folder 700), capped at
 // MAX_CHARS in total. Files do not expire: the plan that owns them decides how long they live (see tray/plans.cjs).
 // A text of more than CHUNK_TOKENS tokens is also split into chunks of about 500 tokens at import and the chunks are stored next to it
@@ -22,6 +22,7 @@ const MIN_USEFUL = 200; // less room than this left: refuse instead of storing a
 const NAME_RE = /^(a[0-9a-z]{6,12})__(.{1,80})\.txt$/;
 const CHUNKS_RE = /^a[0-9a-z]{6,12}\.chunks\.json$/;
 const ics = require("../shared/ics.cjs");
+const inputs = require("../shared/inputs.cjs");
 
 /** Plain, short, safe display name: no path parts, no control or bidi characters. */
 function safeName(name) {
@@ -56,7 +57,7 @@ function cleanText(t) {
 function unsupportedMessage(name) {
   const e = extOf(safeName(name));
   const what = e ? `A .${e} file` : "That file";
-  return `${what} cannot be read here. Wingman reads .txt, .md, .pdf and .ics files. Paste the text instead, or save the file as one of those.`;
+  return `${what} cannot be read here. Wingman reads .txt, .md, .docx, .eml, .pdf and .ics files. Paste the text instead, or save the file as one of those.`;
 }
 
 /**
@@ -150,7 +151,7 @@ const SECRET_DIRS = [
   "AppData/Local/Microsoft/Credentials",
   "AppData/Roaming/Wingman",
 ];
-const ALLOWED_EXT = Object.freeze(["txt", "md", "pdf", "ics"]);
+const ALLOWED_EXT = Object.freeze(["txt", "md", "docx", "eml", "pdf", "ics"]);
 const SECRET_NAME =
   /^(\.env(\..*)?|.*\.env|\.netrc|\.npmrc|\.pgpass|\.git-credentials|\.pypirc|id_(rsa|dsa|ecdsa|ed25519)(\..*)?|.*\.(pem|key|p12|pfx|keychain|keychain-db|kdbx)|keys?|credentials|secrets?|\.(bash|zsh|sh|python|node|psql|mysql)_history)$/i;
 // macOS (APFS/HFS+ default) and Windows compare paths without regard to case, so "~/.SSH" is the same folder as "~/.ssh".
@@ -349,7 +350,7 @@ function createStore(o) {
         Math.floor(Math.random() * 36 ** 3)
           .toString(36)
           .padStart(3, "0");
-    const f = path.join(dir, `${id}__${safeName(name).replace(/\.(txt|md|pdf)$/i, "")}.txt`);
+    const f = path.join(dir, `${id}__${safeName(name).replace(/\.(txt|md|pdf|docx|eml)$/i, "")}.txt`);
     fs.writeFileSync(f, body, { mode: 0o600, flag: "wx" });
     try {
       fs.chmodSync(f, 0o600);
@@ -384,6 +385,15 @@ function createStore(o) {
       const r = store(ev.title || name, plan.text);
       return r.ok ? { ...r, fields: plan.fields, events: evs.length } : r;
     }
+    if (ext === "docx" || ext === "eml") {
+      // Word text comes from the system `unzip` (no dependency); a mail file is parsed here. Both return plain, untagged text.
+      try {
+        const r = await inputs.readSource({ type: "file", name, bytes: buf });
+        return store(name, r.text);
+      } catch (e) {
+        return { ok: false, error: String((e && e.message) || "Could not read that file.") };
+      }
+    }
     if (ext === "txt" || ext === "md") {
       if (buf.includes(0)) return { ok: false, error: "That is not a text file." };
       return store(name, buf.toString("utf8"));
@@ -416,6 +426,12 @@ function createStore(o) {
     if (typeof text !== "string") return { ok: false, error: "Bad text." };
     if (text.length > 200_000) return { ok: false, error: "That is too much text to paste." };
     return store("pasted text", text);
+  }
+  /** Stores text that was read from a web page or a calendar link as an attachment named `name` (the text was cleaned by shared/inputs.cjs). */
+  function addText(name, text) {
+    if (typeof name !== "string" || typeof text !== "string") return { ok: false, error: "Bad text." };
+    if (text.length > 200_000) return { ok: false, error: "That is too much text." };
+    return store(name, text);
   }
   /** The pasted Meeting context text ("" when none). */
   function getContext() {
@@ -488,7 +504,7 @@ function createStore(o) {
     if (opts.consume) clear();
     return out;
   }
-  return { list, addFile, addPaste, remove, clear, readAll, readChunks, getContext, setContext, used, pdfAvailable: !!pdftotext };
+  return { list, addFile, addPaste, addText, remove, clear, readAll, readChunks, getContext, setContext, used, pdfAvailable: !!pdftotext };
 }
 
 module.exports = {

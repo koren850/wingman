@@ -310,7 +310,8 @@ test("static: key values can only reach memory; no logging or persistence path t
     "src/cli/status.ts",
     "src/cli/pack-cmd.ts",
     "src/cli/digest-cmd.ts",
-  ]; // cli/digest-cmd.ts: same as pack-cmd, hands the keys to the model registry; cli/status.ts: `wingman keys status`, present/missing only (asserted in cli.test.ts); cli/pack-cmd.ts: hands the keys to the model registry, nothing else
+    "src/prepare-cli.ts",
+  ]; // cli/digest-cmd.ts and prepare-cli.ts (the window's Prepare): same as pack-cmd, hands the keys to the model registry; cli/status.ts: `wingman keys status`, present/missing only (asserted in cli.test.ts); cli/pack-cmd.ts: hands the keys to the model registry, nothing else
   const walk = (d: string): string[] =>
     readdirSync(join(ROOT, d), { withFileTypes: true }).flatMap(
       (e) => (e.isDirectory() ? (e.name === "node_modules" ? [] : walk(join(d, e.name))) : [join(d, e.name).replace(/\\/g, "/")]), // forward slashes: the lists below use them

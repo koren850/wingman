@@ -5,6 +5,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 // Keys: keysSet is the only way a secret goes main-ward; nothing here ever returns one (status gives last 4 characters).
 contextBridge.exposeInMainWorld("wingman", {
   listCalls: () => ipcRenderer.invoke("calls:list"),
+  exportCall: (id, fmt) => ipcRenderer.invoke("calls:export", String(id), String(fmt)),
   getCall: (id) => ipcRenderer.invoke("calls:get", String(id)),
   searchCalls: (q) => ipcRenderer.invoke("calls:search", String(q)),
   setTag: (id, cardId, useful) => ipcRenderer.invoke("calls:setTag", String(id), String(cardId), useful === null ? null : String(useful)),
@@ -58,6 +59,10 @@ contextBridge.exposeInMainWorld("wingman", {
   attachAdd: (id, name, bytes) => ipcRenderer.invoke("attach:add", String(id || ""), String(name), bytes instanceof Uint8Array ? bytes : new Uint8Array(0)),
   attachPaste: (id, text) => ipcRenderer.invoke("attach:paste", String(id || ""), String(text)),
   attachRemove: (id, fileId) => ipcRenderer.invoke("attach:remove", String(id || ""), String(fileId)),
+  ctxUrl: (id, url) => ipcRenderer.invoke("ctx:url", String(id || ""), String(url)),
+  ctxCalPreview: () => ipcRenderer.invoke("ctx:calPreview"),
+  ctxCalUse: (id) => ipcRenderer.invoke("ctx:calUse", String(id || "")),
+  ctxCalSave: (url) => ipcRenderer.invoke("ctx:calSave", String(url)),
   runDoctor: (offline) => ipcRenderer.invoke("doctor:run", offline === true),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSetting: (key, value) => ipcRenderer.invoke("settings:set", String(key), value),

@@ -1,0 +1,13 @@
+{"type":"call.start","t":1}
+{"type":"moment.skip","turnId":"t1","source":"observer","why":"model-skip","latencyMs":900}
+{"type":"moment.skip","turnId":"t2","source":"observer","why":"model-skip","latencyMs":700}
+{"type":"moment.skip","turnId":"t3","source":"direct","why":"model-skip","latencyMs":1100}
+{"type":"moment.drop","turnId":"t4","source":"direct","why":"stale-turn","tag":"ANS"}
+{"type":"moment.drop","turnId":"t5","source":"observer","why":"guard:price","tag":"ANS"}
+{"type":"moment.dropped","tag":"NOTE","value":1,"reason":"not-novel","why":"","rank":2}
+{"type":"moment.chip","turnId":"t6","source":"direct","why":"per-minute-cap","tag":"CHECK"}
+{"type":"moment.chip","turnId":"t7","source":"observer","why":"hero-holds","tag":"NOTE"}
+{"type":"moment.invalid","turnId":"t8","source":"observer","why":"truncated"}
+{"type":"moment.route","route":"observer","why":"no-hint"}
+{"type":"moment.label","text":"not a count row"}
+{"type":"withdraw","turnId":"t4"}

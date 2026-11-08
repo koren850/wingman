@@ -342,6 +342,25 @@ function settingRow(i) {
       { id, "aria-describedby": id + "-h", disabled: saving, onchange: (e) => save(i, e.target.value) },
       i.options.map(([v, t]) => h("option", { value: v, selected: v === i.value }, SL(i, "opt", v) || t)),
     );
+  } else if (i.kind === "text") {
+    const inp = h("input", {
+      type: "text",
+      id,
+      maxlength: String(i.maxLen || 600),
+      value: i.value || "",
+      placeholder: i.placeholder || "",
+      autocomplete: "off",
+      spellcheck: "false",
+      dir: "ltr",
+      "aria-describedby": id + "-h",
+      disabled: saving,
+      class: "textin",
+    });
+    inp.addEventListener("change", () => save(i, inp.value));
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") inp.blur();
+    });
+    control = inp;
   } else {
     const inp = h("input", {
       type: "number",

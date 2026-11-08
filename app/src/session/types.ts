@@ -4,7 +4,7 @@
 export const KINDS = ["client", "support", "vendor", "team", "consult", "personal", "interview", "other"] as const;
 export type MemoryKind = (typeof KINDS)[number];
 
-export type Fact = { id: string; text: string; who?: string; at: number; src: "brief" | "call" | "user" };
+export type Fact = { id: string; text: string; who?: string; at: number; src: "brief" | "call" | "user" | "past" };
 export type NumberItem = { id: string; what: string; value: string; who?: string; at: number };
 export type Commitment = { id: string; who: string; what: string; due?: string; at: number; status: "open" | "done" };
 export type OpenQuestion = { id: string; asker: string; to?: string; text: string; at: number; status: "open" | "answered" | "dropped" };

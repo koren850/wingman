@@ -188,6 +188,11 @@ selfCheck:
 attachments:
   maxChars: 40000 # at most this many characters in total (the Plan form refuses more); 0 = ignore attachments
 
+# ---- Where context comes from (Plan a call) ----
+context:
+  calendarUrl: "" # a private calendar address (.ics) from your calendar settings; "Use my next calendar event" reads it and asks before using the meeting. Empty = off
+  pastCalls: true # a new call starts with up to 5 "Last time" facts about people you have met before (open promises, the last topic), from your own saved calls. No AI call
+
 # ---- Capture box ----
 capture:
   enabled: true # phone numbers, emails and domains spoken in the call show in the answer window (copy the newest: overlay.hotkeys.copy; chip 1-3: Ctrl+Opt+1/2/3 in the answer window)

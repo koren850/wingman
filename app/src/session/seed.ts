@@ -2,6 +2,7 @@
 // seedFromDigest puts the safe part of it into a fresh memory. The chunks stay out of the memory: they are searched (context/retrieve.ts).
 import { CAPS, enforceCaps } from "./caps.ts";
 import { cleanText } from "./patch.ts";
+import type { PastFact } from "./people.ts";
 import { emptyMemory, type MemoryKind, type SessionMemory } from "./types.ts";
 
 export type DigestChunk = { id?: string; source?: string; text: string };
@@ -13,12 +14,20 @@ export type Digest = {
   likelyQuestions: { q: string; a?: string }[];
   chunks: DigestChunk[];
   kind?: MemoryKind;
+  /** "Last time" facts about people on the roster, from earlier calls (session/people.ts). Made without a model; shown before the call, recomputed at call start. */
+  past?: PastFact[];
 };
 
 export const emptyDigest = (): Digest => ({ roster: [], agenda: [], facts: [], likelyQuestions: [], chunks: [] });
 
-/** A new memory for a call, filled from the digest. Facts get src "brief". Missing parts are fine: an empty digest gives an empty memory. */
-export function seedFromDigest(d: Digest | undefined, now = 0): SessionMemory {
+/** At most this many "Last time" facts go into a new memory. */
+export const MAX_PAST = 5;
+
+/**
+ * A new memory for a call, filled from the digest. Facts get src "brief". Missing parts are fine: an empty digest gives an empty memory.
+ * `past` (else d.past) are facts from earlier calls: src "past", at most 5, put after the brief facts.
+ */
+export function seedFromDigest(d: Digest | undefined, now = 0, past?: PastFact[]): SessionMemory {
   const m = emptyMemory(now, d?.kind ?? "other");
   if (!d) return m;
   const seq: Record<string, number> = {};
@@ -44,6 +53,15 @@ export function seedFromDigest(d: Digest | undefined, now = 0): SessionMemory {
     if (!text) continue;
     const who = typeof f === "string" ? undefined : cleanText(f.who, CAPS.short);
     m.facts.push({ id: id("f"), text, ...(who ? { who } : {}), at: now, src: "brief" });
+  }
+  const seenPast = new Set<string>();
+  for (const f of (past ?? d.past ?? []).slice(0, MAX_PAST * 2)) {
+    if (m.facts.filter((x) => x.src === "past").length >= MAX_PAST) break;
+    const text = cleanText(f?.text, CAPS.text);
+    if (!text || seenPast.has(text.toLowerCase())) continue;
+    seenPast.add(text.toLowerCase());
+    const who = cleanText(f.who, CAPS.short);
+    m.facts.push({ id: id("f"), text, ...(who ? { who } : {}), at: now, src: "past" });
   }
   m.seq = seq;
   return enforceCaps(m);

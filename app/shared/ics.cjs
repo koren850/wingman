@@ -210,6 +210,17 @@ function parseIcs(text) {
         if (cur.attendees.length < MAX_ATTENDEES) cur.attendees.push(person(p));
         break;
       case "RRULE":
+        cur.recurring = true;
+        cur.rrule = String(p.value).trim().slice(0, 300);
+        break;
+      case "EXDATE":
+        (cur.exdates || (cur.exdates = [])).push(
+          ...String(p.value)
+            .split(",")
+            .slice(0, 100)
+            .map((v) => parseDate({ value: v, params: p.params }).ms),
+        );
+        break;
       case "RDATE":
         cur.recurring = true;
         break;
@@ -265,4 +276,4 @@ function eventToPlan(ev) {
   return { fields: { title: ev.title, at: ev.allDay ? 0 : ev.startMs, who }, text: lines.join("\n").trim() };
 }
 
-module.exports = { parseIcs, pickEvent, eventToPlan, unescapeText, unfold, parseLine };
+module.exports = { parseIcsDate: (v) => parseDate({ value: v, params: {} }).ms, parseIcs, pickEvent, eventToPlan, unescapeText, unfold, parseLine };

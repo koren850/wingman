@@ -13,6 +13,9 @@ function rules(name, r) {
   if (r.lang !== (he ? "he" : "en")) out.push(`language is ${r.lang}`);
   if (/^idle-/.test(base) && r.primaries !== 1) out.push(`idle Home has ${r.primaries} primary buttons, expected 1`);
   if (/^idle-|^waiting-/.test(base) && r.dupWait > 0) out.push(`${r.dupWait} duplicate rows in Waiting for you`);
+  if (/^edit-/.test(base) && !r.understood) out.push("the Wingman understood line is not in the context editor");
+  if (/^edit-/.test(base) && !r.sources) out.push("the web page and calendar controls are not in the context editor");
+  if (/^review-/.test(base) && !r.review) out.push("the Review part of the call page did not draw");
   if (/^keys-/.test(base) && !r.sheet) out.push("the keys sheet did not open");
   if (/^golden-/.test(base) && r.sample) out.push("a Sample badge shows on real (golden) data");
   if (/^(live|golden)-/.test(base) && !r.pills) out.push("the Note / Ask pills were not found");

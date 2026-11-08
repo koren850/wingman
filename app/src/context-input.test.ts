@@ -206,14 +206,14 @@ test("import: small text is one chunk with no chunk file; Hebrew counts as more 
 test("import: an unsupported dropped file gets a clear message that names the type and the way out", async () => {
   const { st } = mk();
   for (const [name, ext] of [
-    ["notes.docx", ".docx"],
+    ["notes.doc", ".doc"],
     ["slides.pptx", ".pptx"],
     ["photo.png", ".png"],
   ]) {
     const r = await st.addFile(name, bytes("PK\u0003\u0004 not really"));
     assert.equal(r.ok, false);
     assert.match(r.error, new RegExp(`A \\${ext} file cannot be read here`));
-    assert.match(r.error, /\.txt, \.md, \.pdf and \.ics/);
+    assert.match(r.error, /\.txt, \.md, \.docx, \.eml, \.pdf and \.ics/);
     assert.match(r.error, /Paste the text instead/);
   }
   const none = await st.addFile("README", bytes("text"));

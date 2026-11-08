@@ -9,8 +9,8 @@
 // toModelText() renders the lines in the order the model reads them, so "Show what the model sees" is the same text and not a guess.
 (function (root) {
   const SECTIONS = {
-    before: ["roster", "agenda", "facts", "mustCover"],
-    live: ["soFar", "decisions", "open", "promises", "mustCover"],
+    before: ["roster", "past", "agenda", "facts", "mustCover"],
+    live: ["soFar", "past", "decisions", "open", "promises", "mustCover"],
   };
   const MAX_TEXT = 200;
   const clean = (t) =>
@@ -42,6 +42,9 @@
                 item("s2", "The current price rises 4% each year."),
                 item("s3", "She prefers to get the offer on WhatsApp."),
               ],
+          past: he
+            ? [item("f9", "בפעם הקודמת, הבטחה פתוחה שלך: לשלוח את ההצעה.", { src: "past" })]
+            : [item("f9", "Last time, you promised: send the offer.", { src: "past" })],
           decisions: he ? [item("d1", "ההעברה תהיה ביום חמישי בבוקר.")] : [item("d1", "The move will be on Thursday morning.")],
           open: he
             ? [item("q1", "האם הגיבוי היומי כלול במחיר?"), item("q2", "מי מטפל בתעודת האבטחה?")]
@@ -61,6 +64,7 @@
         roster: he
           ? [item("p1", "דנה לוי", { role: "לקוחה, בעלת סטודיו" }), item("p2", "נועם בר", { role: "טכני" })]
           : [item("p1", "Dana Levi", { role: "client, studio owner" }), item("p2", "Noam Bar", { role: "technical" })],
+        past: he ? [item("f9", "בפעם הקודמת עם דנה: העברת אחסון.", { src: "past" })] : [item("f9", "Last time with Dana: the hosting move.", { src: "past" })],
         agenda: he
           ? [item("a1", "מצב האתר היום"), item("a2", "מחיר ותנאים"), item("a3", "תאריך ההעברה")]
           : [item("a1", "Where the site is today"), item("a2", "Price and terms"), item("a3", "Move date")],
@@ -96,6 +100,7 @@
       topic: clean(p.goal || p.title || ""),
       sections: {
         roster: people.map((n, i) => item("p" + (i + 1), n)),
+        past: [],
         agenda: [],
         facts: [],
         mustCover: lines(p.mustCover).map((t, i) => item("m" + (i + 1), t, { done: false })),
@@ -118,8 +123,11 @@
       topic: clean(m.topic && m.topic.now),
       sections: {
         soFar: arr(m.facts)
-          .filter((f) => f && f.src !== "brief")
-          .map((f) => line(f.id, f.text, f.who ? { who: clean(f.who) } : undefined)),
+          .filter((f) => f && f.src !== "brief" && f.src !== "past")
+          .map((f) => line(f.id, f.text, { ...(f.who ? { who: clean(f.who) } : {}), ...(f.src === "call" || f.src === "user" ? { src: f.src } : {}) })),
+        past: arr(m.facts)
+          .filter((f) => f && f.src === "past")
+          .map((f) => line(f.id, f.text, { src: "past", ...(f.at ? { at: Number(f.at) || 0 } : {}) })),
         decisions: arr(m.decisions).map((d) => line(d.id, d.text)),
         open: arr(m.openQuestions)
           .filter((q) => q && q.status === "open")
@@ -137,6 +145,14 @@
     const g = d && typeof d === "object" ? d : {};
     const arr = (v) => (Array.isArray(v) ? v : []);
     const text = (x) => clean(typeof x === "string" ? x : x && x.text);
+    // a fact keeps the line of the pasted text it came from (the digest checked that it is really there)
+    const facts = arr(g.facts)
+      .map((x) => ({ text: text(x), source: typeof x === "object" && x ? clean(x.source) : "" }))
+      .filter((x) => x.text);
+    const past = arr(g.past)
+      .map((x) => ({ text: text(x), who: x && typeof x === "object" ? clean(x.who) : "", at: x && typeof x === "object" ? Number(x.at) || 0 : 0 }))
+      .filter((x) => x.text)
+      .slice(0, 5);
     return {
       mode: "before",
       source: "digest",
@@ -150,10 +166,8 @@
           .map(text)
           .filter(Boolean)
           .map((t, i) => item("m" + (i + 1), t)),
-        facts: arr(g.facts)
-          .map(text)
-          .filter(Boolean)
-          .map((t, i) => item("f" + (i + 1), t, { src: "brief" })),
+        facts: facts.map((x, i) => item("f" + (i + 1), x.text, { src: "brief", ...(x.source ? { source: x.source } : {}) })),
+        past: past.map((x, i) => item("f" + (facts.length + i + 1), x.text, { src: "past", ...(x.at ? { at: x.at } : {}) })),
         mustCover: [],
       },
     };
@@ -162,6 +176,7 @@
   /** Which memory list a window section writes to when the user adds a line (the same table as shared/memedit.cjs SECTION_LIST). */
   const SECTION_LIST = {
     soFar: "facts",
+    past: "facts",
     decisions: "decisions",
     open: "openQuestions",
     promises: "commitments",
@@ -209,6 +224,7 @@
   const HEAD = {
     roster: "People",
     agenda: "Agenda",
+    past: "Last time",
     facts: "Facts",
     mustCover: "Must cover",
     soFar: "So far",
@@ -235,7 +251,21 @@
     return out.join("\n");
   }
 
+  /**
+   * "Wingman understood: ..." under the context box, from the model alone (no AI, no guessing): who is on the call, the topic, and how many
+   * things to cover, facts and notes from earlier calls it holds. The page puts these parts into words (strings EN and HE).
+   * Returns { people: string[], topic, agenda, facts, past, empty }.
+   */
+  function understood(model) {
+    const s = (model && model.sections) || {};
+    const n = (k) => (Array.isArray(s[k]) ? s[k].length : 0);
+    const people = (s.roster || []).map((x) => x.text).slice(0, 6);
+    const o = { people, topic: (model && model.topic) || "", agenda: n("agenda") + n("mustCover"), facts: n("facts"), past: n("past") };
+    return { ...o, empty: !people.length && !o.topic && !o.agenda && !o.facts && !o.past };
+  }
+
   const api = {
+    understood,
     SECTIONS,
     MAX_TEXT,
     SECTION_LIST,

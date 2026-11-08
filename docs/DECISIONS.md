@@ -774,3 +774,18 @@ Date: 2026-11-08
 **Alternatives.** A name regex per language (the same list problem). A cached transcript tail (built, measured, off: the memory block before it changes every patch). One marker for everything (the memory role would pay a write for a block nobody reads).
 
 **Consequences.** Every prompt snapshot changed in order, not in text. The simulated cache assumes a 512-token minimum (the models in use). `CostMeter` prices every cache write at the 1 h rate, so the 5 minute writes of the memory block are over-estimated. The eval with the fake model tests the pipeline and the scorer only; a real score needs a recorded run.
+
+## ADR 52: Context sources are read locally and treated as untrusted; people are remembered from saved calls
+
+Date: 2026-11-08
+
+**Context.** People have context in Word files, mail, web pages and calendars, not only in pasted text. They also meet the same people again, and Wingman forgot everything between calls.
+
+**Decision.** (1) `shared/inputs.cjs` reads .docx (system `unzip -p`, refused with a clear message if missing), .eml, public https pages and a private .ics address. No npm dependency. Every result is cleaned (control and bidi characters out) and run through `untag`, so it cannot close the transcript wrapper of a prompt. (2) Web reads: https only, port 443, 8 s for the whole read including the name lookup, 1 MB cap, text types only, every resolved address and every redirect must be public. (3) Repeating calendar events are expanded for the simple rules (daily, weekly with BYDAY, monthly, yearly, INTERVAL, COUNT, UNTIL, EXDATE); other rules show the first date. The meeting is shown and used only after the user agrees. (4) `session/people.ts` indexes ended live calls by roster name in the data folder. A new call gets up to 5 facts with src `past`. No model call.
+
+**Why.** Local reading keeps files and pages out of third-party converters. A strict address check stops a page from making the app fetch things inside the user's network. A local index is cheap and works with the model down.
+
+**Alternatives.** An npm docx parser (new dependency to audit). A hosted page-to-text service (sends the user's links away). Asking the model to recall people (cost, and wrong without the saved text).
+
+**Consequences.** Known gaps: DNS rebinding (the address is checked, then fetch resolves again); two different people with the same first name can share notes; rules such as "first Monday of the month" show the first date only.
+

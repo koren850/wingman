@@ -14,11 +14,26 @@ function golden(lang) {
     return null;
   }
 }
+/** The golden memory plus one invented "Last time" fact (src past), so the panel shows that section and its source line. */
+function withPast(mem, lang) {
+  const he = lang === "he";
+  const m = JSON.parse(JSON.stringify(mem));
+  m.facts = [
+    ...(m.facts || []),
+    {
+      id: "f90",
+      text: he ? "בפעם הקודמת, הבטחה פתוחה שלך: לשלוח את הגיבוי לפני העדכון." : "Last time, you promised: send the backup before the update.",
+      at: Date.now() - 9 * 86400_000,
+      src: "past",
+    },
+  ];
+  return m;
+}
 /** The live "What Wingman knows" model and AI state for a snapshot: kind "golden" | "golden-paused" | "golden-offline" | "empty". */
 function knowsFixture(kind, lang) {
   const g = golden(lang);
   if (!g || kind === "empty") return { model: null, ai: "ok" };
-  return { model: K.fromMemory(g.mem), ai: kind === "golden-paused" ? "paused" : kind === "golden-offline" ? "offline" : "ok" };
+  return { model: K.fromMemory(withPast(g.mem, lang)), ai: kind === "golden-paused" ? "paused" : kind === "golden-offline" ? "offline" : "ok" };
 }
 /** A finished call folder from the golden run: transcript, v2 cards, the call memory (session.json), and optionally a summary. Returns the call id. */
 function writeCall(dataDir, lang, o = {}) {
@@ -42,8 +57,16 @@ function writeCall(dataDir, lang, o = {}) {
     "cards.jsonl",
     g.cards.map((c) => ({ ...c, at: t0 + c.at })),
   );
-  w("events.jsonl", [{ type: "start", t: t0 }]);
-  fs.writeFileSync(path.join(d, "session.json"), JSON.stringify(g.mem), { mode: 0o600 });
+  // moment.* rows (invented) for the Review part of the Details tab
+  w("events.jsonl", [
+    { type: "start", t: t0 },
+    { type: "moment.skip", t: t0 + 20_000, turnId: "t1", source: "observer", why: "model-skip" },
+    { type: "moment.skip", t: t0 + 40_000, turnId: "t2", source: "direct", why: "model-skip" },
+    { type: "moment.drop", t: t0 + 60_000, turnId: "t3", source: "direct", why: "stale-turn", tag: "ANS" },
+    { type: "moment.drop", t: t0 + 80_000, turnId: "t4", source: "observer", why: "guard:price", tag: "ANS" },
+    { type: "moment.chip", t: t0 + 100_000, turnId: "t5", source: "observer", why: "per-minute-cap", tag: "NOTE" },
+  ]);
+  fs.writeFileSync(path.join(d, "session.json"), JSON.stringify(withPast(g.mem, lang)), { mode: 0o600 });
   if (o.summary) {
     const he = lang === "he";
     fs.writeFileSync(
@@ -56,6 +79,7 @@ function writeCall(dataDir, lang, o = {}) {
         decisions: [he ? "החזרנו את הגרסה הקודמת על העותק." : "Rolled the plugin back on the copy."],
         nextSteps: [{ who: "אני", what: he ? "להחיל את החזרה על האתר החי." : "Apply the rollback to the live site." }],
         openQuestions: [],
+        coaching: { talkSharePct: 41, longestMonologueSec: 95, questionsAsked: 6, paceWpm: { me: 142, them: 128 }, interruptions: 2 },
         followUpEmail: he ? "שלום לנה,\nהחזרנו את התוסף לגרסה הקודמת על העותק.\nתודה, דן" : "Hi Lena,\nWe rolled the plugin back on the copy.\nThanks, Dan",
       }),
       { mode: 0o600 },

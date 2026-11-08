@@ -7,6 +7,35 @@
 
 const KN = window.WingmanKnows;
 
+/** Where a line comes from, in words: the line of the user's text it was read from, the call it was remembered from, or the part of the app that made it. "" when unknown. */
+function srcLine(x) {
+  if (x.source) return T("knows.src.quote", { text: x.source });
+  if (x.src === "past")
+    return x.at
+      ? T("knows.src.pastAt", { date: new Date(x.at).toLocaleDateString(WingmanI18n.lang === "he" ? "he-IL" : "en", { day: "numeric", month: "short" }) })
+      : T("knows.src.past");
+  return x.src === "brief" || x.src === "call" || x.src === "user" ? T("knows.src." + x.src) : "";
+}
+
+/** "Wingman understood: ..." under the context box. One line, from the model alone. model null: nothing is drawn. */
+function understoodLine(model) {
+  if (!model) return null;
+  const u = KN.understood(model);
+  const parts = [];
+  if (u.people.length) parts.push(T("ctx.u.people", { names: u.people.join(", ") }));
+  if (u.topic) parts.push(T("ctx.u.topic", { topic: u.topic }));
+  if (u.agenda) parts.push(T("ctx.u.agenda", { n: u.agenda }));
+  if (u.facts) parts.push(T("ctx.u.facts", { n: u.facts }));
+  if (u.past) parts.push(T("ctx.u.past", { n: u.past }));
+  return h(
+    "p",
+    { class: "ctx-understood", id: "ctx-understood", role: "status" },
+    h("b", {}, T("ctx.understood") + " "),
+    h("span", { dir: "auto" }, parts.length ? parts.join(" · ") + "." : T("ctx.u.nothing")),
+    parts.length ? h("span", { class: "faint" }, " " + T("ctx.u.fix")) : null,
+  );
+}
+
 /**
  * The panel. model: a knowslib model (or null for "nothing yet"). o: { id, onChange(model), emptyKey, sourceKey }.
  * Keyboard: every edit and remove button is a real button in the tab order; Enter saves an edit, Escape cancels it.
@@ -84,6 +113,7 @@ function knowsPanel(model, o = {}) {
       const label = (x.who ? x.who + ": " : "") + x.text;
       const show = () => {
         li.textContent = "";
+        const from = srcLine(x);
         li.append(
           h(
             "span",
@@ -91,6 +121,7 @@ function knowsPanel(model, o = {}) {
             x.who ? h("b", {}, x.who + ": ") : null,
             x.text,
             x.role ? h("span", { class: "faint" }, " (" + x.role + ")") : null,
+            from ? h("span", { class: "kn-src faint", dir: "auto" }, from) : null,
           ),
           h(
             "span",

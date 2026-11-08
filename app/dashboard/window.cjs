@@ -14,6 +14,7 @@ const memLib = require("./memlib.cjs");
 const prepareLib = require("./prepare.cjs");
 const liveFixture = require("./livefixture.cjs");
 const attachments = require("../tray/attachments.cjs");
+const inputs = require("../shared/inputs.cjs");
 const Plans = require("../shared/plans.js");
 
 const ROOT = path.join(__dirname, "..");
@@ -322,6 +323,19 @@ function create(ctx) {
     data.deleteCall(CALLS, id);
     return true;
   });
+  // Export of one saved call (Markdown or JSON): the user picks the file in a save dialog, a child process (src/export-cli.ts) writes it. The page never sees the text.
+  handle("calls:export", async (id, fmt) => {
+    data.callDir(CALLS, id); // validates the id
+    if (fmt !== "md" && fmt !== "json") throw new Error("bad format");
+    if (fake || SNAP) return { ok: false, error: "preview" };
+    const pick = await dialog.showSaveDialog(win, {
+      defaultPath: `wingman-call-${id}.${fmt}`,
+      filters: [fmt === "md" ? { name: "Markdown", extensions: ["md"] } : { name: "JSON", extensions: ["json"] }],
+    });
+    if (pick.canceled || !pick.filePath) return { ok: false, error: "cancelled" };
+    const r = await spawnTool(["src/export-cli.ts"], JSON.stringify({ id, fmt, out: pick.filePath }));
+    return r && r.ok ? { ok: true, path: path.basename(pick.filePath) } : { ok: false, error: r && r.reason === "no-export" ? "unavailable" : "failed" };
+  });
   handle("clipboard:write", (text) => {
     if (typeof text !== "string" || !text || text.length > 20000) throw new Error("bad text");
     clipboard.writeText(text);
@@ -610,6 +624,59 @@ function create(ctx) {
     return attState(id);
   });
 
+  // ---- more ways to give context: a web page address and the next calendar event (shared/inputs.cjs; the page can only send an address, never a path) ----
+  // A web page the user typed is read at once and kept as a background file. The calendar address is private and comes from the settings
+  // (context.calendarUrl): "cal:preview" reads it and only SHOWS the nearest meeting; nothing is stored until the user says yes ("cal:use").
+  const plain = (e) => String((e && e.message) || "That did not work.").slice(0, 300);
+  /** @type {{ text: string, label: string, fields: object, when: number, at: number } | null} */
+  let calCache = null;
+  handle("ctx:url", async (id, url) => {
+    planId(id);
+    if (typeof url !== "string" || url.length > 2000) throw new Error("bad address");
+    if (fake || SNAP) return { ok: false, error: "preview", state: attState(id) };
+    const st = plans.files(id);
+    if (!st) return { ok: false, error: "No such prepared meeting.", state: attState("") };
+    try {
+      const r = await inputs.readSource({ type: "url", url });
+      const a = st.addText(r.label, r.text);
+      controller.refreshPlans();
+      return { ok: !!a.ok, error: a.error, name: r.label, truncated: !!(a.truncated || r.truncated), chunks: a.chunks || 0, state: attState(id) };
+    } catch (e) {
+      return { ok: false, error: plain(e), state: attState(id) };
+    }
+  });
+  handle("ctx:calPreview", async () => {
+    if (fake || SNAP) return { ok: false, error: "preview" };
+    const s = await readSettings();
+    const url = ((s.items || []).find((i) => i.key === "context.calendarUrl") || {}).value || "";
+    if (!url) return { ok: false, code: "nourl", error: "No calendar address yet." };
+    try {
+      const r = await inputs.readCalendarUrl(url, {});
+      calCache = { text: r.text, label: r.label, fields: r.fields, when: r.when, at: Date.now() };
+      return { ok: true, title: r.label, when: r.when, who: r.fields.who, events: r.events };
+    } catch (e) {
+      calCache = null;
+      return { ok: false, error: plain(e) };
+    }
+  });
+  handle("ctx:calUse", (id) => {
+    planId(id);
+    if (fake || SNAP) return { ok: false, error: "preview", state: attState(id) };
+    const c = calCache;
+    calCache = null;
+    if (!c || Date.now() - c.at > 10 * 60_000) return { ok: false, error: "Look up the meeting again.", state: attState(id) };
+    const st = plans.files(id);
+    if (!st) return { ok: false, error: "No such prepared meeting.", state: attState("") };
+    const a = st.addText(c.label, c.text);
+    controller.refreshPlans();
+    return { ok: !!a.ok, error: a.error, name: c.label, fields: c.fields, state: attState(id) };
+  });
+  handle("ctx:calSave", async (url) => {
+    if (typeof url !== "string" || url.length > 700) throw new Error("bad address");
+    if (fake || SNAP) return { ok: false, message: "preview" };
+    return setSetting("context.calendarUrl", url.trim());
+  });
+
   // ---- readiness (doctor) ----
   handle("doctor:run", async (offline) => {
     if (fakeDoc) return { ...fakeDoc, at: Date.now() };
@@ -659,7 +726,7 @@ function create(ctx) {
     };
   };
   handle("settings:get", readSettings);
-  handle("settings:set", async (key, value) => {
+  const setSetting = async (key, value) => {
     const item = typeof key === "string" && catalog.BY_KEY.get(key);
     if (!item) throw new Error("unknown setting");
     let stored;
@@ -671,7 +738,8 @@ function create(ctx) {
     const r = await child(["src/settings-edit-cli.ts", "write"], JSON.stringify({ [key]: stored }));
     if (!r.ok) return { ok: false, message: String(r.message || "not saved").slice(0, 400) };
     return { ok: true, state: await readSettings() };
-  });
+  };
+  handle("settings:set", setSetting);
   handle("settings:reveal", (what) => {
     if (what !== "keys" && what !== "settings") throw new Error("bad target");
     return readSettings().then((s) => {

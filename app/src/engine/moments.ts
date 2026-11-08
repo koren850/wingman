@@ -16,6 +16,7 @@ import {
   transcript,
   speakers,
   brief,
+  briefArg,
   contextNotes,
   interview,
   registry,
@@ -45,7 +46,10 @@ import type { HintLevel, Moment, MomentMeta, MomentSource, MomentTag } from "../
 import { runMoment, type MomentDone, type MomentRole } from "../moments/run.ts";
 import type { ParsedMoment } from "../moments/parse.ts";
 import type { ObserverWindow } from "../moments/observer.ts";
-import { seedFromDigest } from "../session/seed.ts";
+import { seedForCall } from "../session/callseed.ts";
+import { PEOPLE_FILE } from "../session/people.ts";
+import { CALLS, USER_DATA } from "../env.ts";
+import { join } from "node:path";
 import { isEmptyMemory } from "../session/types.ts";
 import { guard } from "../guards.ts";
 import { leakedTag, resolveBankId, wrongLanguage } from "../reflex.ts";
@@ -84,7 +88,17 @@ export function ensureSeeded(): void {
   try {
     const facts = [...contextNotes];
     if (!facts.length && !brief?.mustCover?.length) return;
-    st.m.mem = seedFromDigest({ roster: [], agenda: brief?.mustCover ?? [], facts, likelyQuestions: [], chunks: [] }, Date.now());
+    st.m.mem = seedForCall({
+      mustCover: brief?.mustCover ?? [],
+      ...(brief?.who ? { who: brief.who } : {}),
+      notes: facts,
+      ...(briefArg ? { briefFile: briefArg } : {}),
+      now: Date.now(),
+      pastCalls: S.context.pastCalls,
+      callsDir: CALLS,
+      peopleFile: join(USER_DATA, PEOPLE_FILE),
+      callId: log.id,
+    });
   } catch (e) {
     survived("moments.seed", e);
   }

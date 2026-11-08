@@ -168,7 +168,7 @@ async function prepareContext() {
     const slot = $("ctx-prepared");
     if (slot) {
       slot.textContent = "";
-      slot.append(h("p", { class: "sub", id: "ctx-prep-done", role: "status" }, H.prepNote), knowsPanel(model, { id: "knows-before" }));
+      slot.append(h("p", { class: "sub", id: "ctx-prep-done", role: "status" }, H.prepNote), understoodLine(model), knowsPanel(model, { id: "knows-before" }));
       if (failed) slot.prepend(errorBox("digest failed", { retry: () => prepareContext() }));
     }
     announce(H.prepNote);
@@ -212,10 +212,18 @@ function editorCard() {
   const list = h("ul", { class: "att-list", "aria-label": T("ctx.files") });
   const meter = h("div", { class: "sub", id: "att-meter" });
   const msg = h("div", { class: "ctx-msg", role: "status", id: "att-msg" });
-  const file = h("input", { type: "file", id: "att-file", multiple: "", hidden: "", accept: ".txt,.md,.ics,text/plain,text/markdown,text/calendar" });
+  const file = h("input", {
+    type: "file",
+    id: "att-file",
+    multiple: "",
+    hidden: "",
+    accept: ".txt,.md,.docx,.eml,.ics,text/plain,text/markdown,text/calendar,message/rfc822",
+  });
   const setAccept = (st) => {
     file.accept =
-      st && st.pdf ? ".txt,.md,.ics,.pdf,text/plain,text/markdown,text/calendar,application/pdf" : ".txt,.md,.ics,text/plain,text/markdown,text/calendar";
+      st && st.pdf
+        ? ".txt,.md,.docx,.eml,.ics,.pdf,text/plain,text/markdown,text/calendar,message/rfc822,application/pdf"
+        : ".txt,.md,.docx,.eml,.ics,text/plain,text/markdown,text/calendar,message/rfc822";
   };
   const redraw = (st) => {
     setAccept(st);
@@ -305,6 +313,139 @@ function editorCard() {
       .then(redraw)
       .catch(() => {});
 
+  // A web page address and the next calendar event: the same box, two more ways in (main process reads them; nothing is stored for the calendar until the user says yes)
+  const urlIn = h("input", {
+    type: "text",
+    id: "ctx-url",
+    class: "ctx-url",
+    maxlength: "2000",
+    autocomplete: "off",
+    spellcheck: "false",
+    dir: "ltr",
+    placeholder: T("ctx.url.ph"),
+    "aria-describedby": "ctx-url-h",
+  });
+  const urlBtn = btn(T("ctx.url.add"), { id: "ctx-url-add", icon: "plus" });
+  const readUrl = async () => {
+    const u = urlIn.value.trim();
+    if (!u) return urlIn.focus();
+    msg.textContent = "";
+    urlBtn.disabled = true;
+    msg.append(h("p", { class: "sub", role: "status" }, T("ctx.url.reading")));
+    try {
+      const r = await api.ctxUrl(H.editId, u);
+      redraw(r.state);
+      msg.textContent = "";
+      if (!r.ok) return showMsg(r.error === "preview" ? "preview" : r.error || "bad page", { retry: readUrl });
+      urlIn.value = "";
+      msg.textContent = r.truncated ? T("ctx.cut", { name: r.name }) : T("ctx.url.added", { name: r.name });
+      announce(msg.textContent);
+    } catch (x) {
+      msg.textContent = "";
+      showMsg(String((x && x.message) || x));
+    } finally {
+      urlBtn.disabled = false;
+    }
+  };
+  urlBtn.addEventListener("click", readUrl);
+  urlIn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      readUrl();
+    }
+  });
+  const calBox = h("div", { class: "ctx-cal", id: "ctx-cal", "aria-live": "polite" });
+  const calBtn = btn(T("ctx.cal.use"), { id: "ctx-cal-use", icon: "plan" });
+  const calSay = (...kids) => {
+    calBox.textContent = "";
+    calBox.append(...kids);
+  };
+  const lookCalendar = async () => {
+    msg.textContent = "";
+    calBtn.disabled = true;
+    calSay(h("p", { class: "sub", role: "status" }, T("ctx.cal.looking")));
+    let r;
+    try {
+      r = await api.ctxCalPreview();
+    } catch (x) {
+      r = { ok: false, error: String((x && x.message) || x) };
+    }
+    calBtn.disabled = false;
+    if (r && r.code === "nourl") {
+      // No address yet: ask for it here. It is saved as the setting context.calendarUrl.
+      const inp = h("input", {
+        type: "text",
+        id: "ctx-cal-url",
+        class: "ctx-url",
+        dir: "ltr",
+        maxlength: "600",
+        spellcheck: "false",
+        placeholder: "https://…ics",
+        "aria-label": T("ctx.cal.url"),
+      });
+      const save = async () => {
+        const res = await api.ctxCalSave(inp.value.trim()).catch((x) => ({ ok: false, message: String((x && x.message) || x) }));
+        if (!res || !res.ok) return calSay(errorBox(res && res.message ? res.message : "calendar address", { paste: ta }), inp);
+        announce(T("ctx.cal.saved"));
+        lookCalendar();
+      };
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          save();
+        }
+      });
+      calSay(h("p", { class: "sub" }, T("ctx.cal.setup")), h("div", { class: "ctx-row" }, inp, btn(T("ctx.cal.save"), { id: "ctx-cal-save", onclick: save })));
+      return inp.focus();
+    }
+    if (!r || !r.ok) return calSay(errorBox(r && r.error ? r.error : "calendar address", { paste: ta }));
+    const when = new Date(r.when).toLocaleString(UI_LOCALE(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    calSay(
+      h("p", { class: "sub", dir: "auto" }, T("ctx.cal.found", { title: r.title, when }), r.who ? " " + T("ctx.cal.who", { who: r.who }) : ""),
+      h("p", { class: "sub" }, T("ctx.cal.ask")),
+      h(
+        "div",
+        { class: "ctx-row" },
+        btn(T("ctx.cal.yes"), {
+          id: "ctx-cal-yes",
+          cls: "primary",
+          icon: "check",
+          onclick: async () => {
+            const a = await api.ctxCalUse(H.editId).catch((x) => ({ ok: false, error: String((x && x.message) || x) }));
+            redraw(a.state);
+            if (!a.ok) return calSay(errorBox(a.error || "calendar address", { paste: ta }));
+            calSay();
+            prefill(a.fields);
+            msg.textContent = T("ctx.cal.added", { name: a.name });
+            announce(msg.textContent);
+          },
+        }),
+        btn(T("ctx.cal.no"), {
+          id: "ctx-cal-no",
+          onclick: () => {
+            calSay();
+            announce(T("ctx.cal.dismissed"));
+            calBtn.focus();
+          },
+        }),
+      ),
+    );
+    const yes = $("ctx-cal-yes");
+    if (yes) yes.focus();
+  };
+  calBtn.addEventListener("click", lookCalendar);
+  const sources = h(
+    "div",
+    { class: "ctx-sources", id: "ctx-sources" },
+    h("label", { for: "ctx-url", class: "ctx-label" }, T("ctx.url.label")),
+    h("div", { class: "ctx-row" }, urlIn, urlBtn),
+    h("p", { class: "help", id: "ctx-url-h" }, T("ctx.url.help")),
+    h("div", { class: "ctx-row" }, calBtn),
+    calBox,
+  );
+
   // "More": the small fields
   const f = (id, label, help, el) =>
     h("div", { class: "field" }, h("label", { for: id }, label), el, help ? h("p", { class: "help", id: id + "-h" }, help) : null);
@@ -346,8 +487,13 @@ function editorCard() {
   const prepared = h("div", { id: "ctx-prepared", class: "ctx-prepared", "aria-live": "polite" });
   const model = H.prepared || (cur ? KN.fromSaved(cur) : null);
   if (H.prepared)
-    prepared.append(h("p", { class: "sub", id: "ctx-prep-done", role: "status" }, H.prepNote || ""), knowsPanel(H.prepared, { id: "knows-before" }));
-  else if (cur && model && KN.count(model)) prepared.append(knowsPanel(model, { id: "knows-before" }));
+    prepared.append(
+      h("p", { class: "sub", id: "ctx-prep-done", role: "status" }, H.prepNote || ""),
+      understoodLine(H.prepared),
+      knowsPanel(H.prepared, { id: "knows-before" }),
+    );
+  else if (cur && model && KN.count(model)) prepared.append(understoodLine(model), knowsPanel(model, { id: "knows-before" }));
+  else prepared.append(understoodLine(model || { sections: {} }));
   // A digest saved by an earlier Prepare is shown too (not only the one made in this window session).
   if (cur && !H.prepared)
     api
@@ -355,7 +501,7 @@ function editorCard() {
       .then((r) => {
         if (r && r.ok && r.model && r.model.source === "digest" && !H.prepared && prepared.isConnected) {
           prepared.textContent = "";
-          prepared.append(knowsPanel(r.model, { id: "knows-before" }));
+          prepared.append(understoodLine(r.model), knowsPanel(r.model, { id: "knows-before" }));
         }
       })
       .catch(() => {});
@@ -365,6 +511,7 @@ function editorCard() {
     { id: "plan-form", novalidate: true },
     h("div", { class: "field" }, h("label", { for: "ctx-text", class: "ctx-label" }, T("ctx.label")), ta, count),
     drop,
+    sources,
     list,
     meter,
     msg,

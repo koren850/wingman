@@ -376,7 +376,7 @@ const state = {
   view0: "home",
   id: null,
   tab: "followup",
-  sub: "speed",
+  sub: "review",
   detail: null,
   search: "",
   hits: null,
@@ -875,10 +875,10 @@ function normTab(t, x) {
   if (!t) return { tab: null };
   const o = { tab: OLD_TABS[t] || t };
   if (t === "side") o.filter = "side";
-  if (t === "speed" || t === "cost" || t === "events") o.sub = t;
+  if (t === "speed" || t === "cost" || t === "events" || t === "review") o.sub = t;
   if (o.tab === "rate" && /^(unrated|side|rated|useful)$/.test(x || "")) o.filter = x;
   if (o.tab === "transcript" && /^\d+$/.test(x || "")) o.line = +x;
-  if (o.tab === "details" && /^(speed|cost|events)$/.test(x || "")) o.sub = x;
+  if (o.tab === "details" && /^(review|speed|cost|events)$/.test(x || "")) o.sub = x;
   if (!TABS.some((x2) => x2[0] === o.tab)) o.tab = null;
   return o;
 }
@@ -2009,6 +2009,7 @@ function tDetails(pane, d, o) {
   const content = h("div", { id: "sub-out" });
   const seg = h("div", { class: "seg subnav", role: "group", "aria-label": "Detail section" });
   const subs = [
+    ["review", T("rev.title")],
     ["speed", "Speed"],
     ["cost", "Cost"],
     ["events", "Events"],
@@ -2017,7 +2018,7 @@ function tDetails(pane, d, o) {
     state.sub = k;
     for (const b of seg.querySelectorAll("button")) b.setAttribute("aria-pressed", b.dataset.k === k ? "true" : "false");
     content.textContent = "";
-    ({ speed: subSpeed, cost: subCost, events: subEvents })[k](content, d);
+    ({ review: subReview, speed: subSpeed, cost: subCost, events: subEvents })[k](content, d);
   };
   for (const [k, t] of subs)
     seg.append(
@@ -2037,7 +2038,7 @@ function tDetails(pane, d, o) {
     );
   box.append(seg, content);
   pane.append(box);
-  draw(state.sub || "speed");
+  draw(state.sub || "review");
 }
 /** Plain names for the cost rows (the file keeps the internal role names). */
 const ROLE_NAMES = {

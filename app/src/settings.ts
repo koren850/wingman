@@ -160,6 +160,13 @@ export const schema = z.strictObject({
     timeoutMs: int(2000, 30000),
   }),
   attachments: z.strictObject({ maxChars: int(0, 40000) }),
+  context: z.strictObject({
+    calendarUrl: z
+      .string()
+      .max(600)
+      .refine((v) => v === "" || /^https:\/\/\S+$/i.test(v), { message: "must be empty or an https:// address" }),
+    pastCalls: z.boolean(),
+  }),
   health: z.strictObject({ tickMs: int(200, 10000), recoverStableMs: int(1000, 600000), slowSttMs: int(200, 10000), minSamples: int(1, 20) }),
   budget: z.strictObject({
     maxUsdPerCall: z.number().min(0),

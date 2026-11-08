@@ -2740,6 +2740,9 @@ select {
   text-align: end;
   font-variant-numeric: tabular-nums;
 }
+.textin {
+  width: min(320px, 100%);
+}
 .unit {
   color: var(--muted);
   font-size: 12px;
@@ -4310,6 +4313,44 @@ button.chip.spk-btn:focus-visible,
   overflow-wrap: anywhere;
   line-height: 20px;
 }
+.kn-item .kn-src {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+}
+.ctx-understood {
+  margin: 12px 0 0;
+  overflow-wrap: anywhere;
+}
+.ctx-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block: 4px 12px;
+}
+.ctx-sources .ctx-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ctx-sources .ctx-url {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.ctx-cal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ctx-cal:empty {
+  display: none;
+}
+.ctx-cal .ctx-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .kn-item .kn-act {
   flex: none;
   display: inline-flex;
@@ -4570,4 +4611,47 @@ button.chip.spk-btn:focus-visible,
 .langrow select {
   width: auto;
   min-width: 180px;
+}
+
+/* Call review (review.js) */
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.rev-block h2 {
+  font-size: 15px;
+  margin: 0 0 6px;
+}
+.rev-block h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 10px 0 2px;
+}
+.rev-reasons {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rev-reasons li {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  max-width: 420px;
+}
+.rev-stats {
+  display: grid;
+  grid-template-columns: minmax(160px, max-content) 1fr;
+  gap: 4px 16px;
+  margin: 4px 0 8px;
+}
+.rev-stats dt {
+  color: var(--muted);
+}
+.rev-stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
 }

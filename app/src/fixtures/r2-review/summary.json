@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "generatedAt": "2026-11-09T10:00:00.000Z",
+  "model": "anthropic:claude-haiku-5-5",
+  "summary": ["A short invented call about a hosting move."],
+  "decisions": [],
+  "nextSteps": [],
+  "openQuestions": [],
+  "followUpEmail": "",
+  "costUsd": 0.002,
+  "coaching": { "talkSharePct": 41, "longestMonologueSec": 95, "questionsAsked": 6, "paceWpm": { "me": 142, "them": 128 }, "interruptions": 2 }
+}

@@ -15,7 +15,9 @@ if [ "$1" = "--check" ]; then
     live-en-dark:en:dark:home:live:- live-he-light:he:light:home:live:- live-en-light:en:light:home:live:- live-he-dark:he:dark:home:live:- \
     golden-en-dark:en:dark:home:live:-:-:-:golden golden-he-light:he:light:home:live:-:-:-:golden \
     ended-en-light:en:light:home:ended:- ended-he-dark:he:dark:home:ended:- waiting-en-light:en:light:home:waiting:- waiting-he-light:he:light:home:waiting:- \
-    settings-en-light:en:light:settings:-:- settings-he-dark:he:dark:settings:-:- >/dev/null || exit 1
+    settings-en-light:en:light:settings:-:- settings-he-dark:he:dark:settings:-:- \
+    edit-en-light:en:light:home:-:edit edit-he-dark:he:dark:home:-:edit \
+    review-en-light:en:light:home:-:-:01SNAPGOLDENENB00000000000:details review-he-dark:he:dark:home:-:-:01SNAPGOLDENHEB00000000000:details >/dev/null || exit 1
   WINGMAN_SNAP_DOCTOR=notready sh "$0" "$OUT" error-en-light:en:light:home:-:- error-he-dark:he:dark:home:-:- >/dev/null || exit 1
   WINGMAN_DASHBOARD_SIZE=900x900 WINGMAN_SNAP_DOCTOR=ready sh "$0" "$OUT" narrow-idle-en-light:en:light:home:-:- narrow-live-en-dark:en:dark:home:live:- narrow-live-he-light:he:light:home:live:- narrow-ended-en-dark:en:dark:home:ended:- >/dev/null || exit 1
   node "$HERE/snapcheck.cjs" "$OUT"; exit $?
