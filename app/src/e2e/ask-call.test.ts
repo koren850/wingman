@@ -24,7 +24,7 @@ const MEM = applyPatch(
   {
     topic: "Warehouse move",
     add: {
-      facts: [{ text: "The Rivermouth warehouse closes for inventory on the ninth of March" }],
+      facts: [{ text: "The Dover warehouse closes for inventory on the ninth of March" }],
       commitments: [{ who: "me", what: "send the plan" }],
       openQuestions: [{ asker: "them", text: "Can the old site stay online?" }],
     },
@@ -69,11 +69,11 @@ test(
         "WHERE: Planning the warehouse move\nDECIDED: NONE\nOPEN: Can the old site stay online?\nPROMISED: send the plan\nASKED: Can the old site stay online?\n",
         { ms: 100 },
       );
-      pm.reply({ role: "ask", user: "Rivermouth" }, "SRC: call\nANSWER: The Rivermouth warehouse closes on the ninth of March.", { ms: 100 });
+      pm.reply({ role: "ask", user: "Dover" }, "SRC: call\nANSWER: The Dover warehouse closes on the ninth of March.", { ms: 100 });
     });
     try {
       r.send("recap");
-      r.send("ask when does the Rivermouth warehouse close?");
+      r.send("ask when does the Dover warehouse close?");
       const code = await r.e.done;
       assert.equal(code, 0, r.e.out());
       const ev = readRows(r.dir, "events.jsonl");
@@ -104,7 +104,7 @@ test(
 test("e2e: with the model returning 529 an ask still shows a card from the notes, never an empty screen", { timeout: 60_000 }, async () => {
   const r = await run((pm) => pm.on({ role: "ask" }, error(529)));
   try {
-    r.send("ask when does the Rivermouth warehouse close?");
+    r.send("ask when does the Dover warehouse close?");
     r.send("recap");
     await until(
       () => readRows(r.dir, "events.jsonl").some((x) => x.type === "ask.done") && readRows(r.dir, "events.jsonl").some((x) => x.type === "recap.done"),
@@ -114,7 +114,7 @@ test("e2e: with the model returning 529 an ask still shows a card from the notes
     const ev = readRows(r.dir, "events.jsonl");
     const ad = ev.find((x) => x.type === "ask.done");
     assert.equal(ad.ai, false);
-    assert.match(ad.text, /^AI offline: from notes: .*Rivermouth/);
+    assert.match(ad.text, /^AI offline: from notes: .*Dover/);
     const cards = readRows(r.dir, "cards.jsonl");
     assert.ok(cards.some((c) => c.type === "card" && /AI offline: from notes/.test(c.say)));
     const rc = ev.find((x) => x.type === "recap.done");

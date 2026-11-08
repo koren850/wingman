@@ -42,7 +42,8 @@ test("e2e: an ask by the user and a model error (529) shows a card and raises th
   const r = await run([Q("me", "what is the difference between a CDN and DNS", 4500)], { WINGMAN_LLM_FAIL: "1:529" }, { ask: true, en: true });
   const card = r.cards.find((c) => c.type === "card" && c.badge === "me" && !c.withdraw);
   assert.ok(card, "a card for the failed ask\n" + r.out);
-  assert.equal(card.say, ht("en", "ask.error"));
+  // the ask falls back to the notes when the model fails (ask and digest package); with nothing to quote it says the plain error
+  assert.ok(card.say === ht("en", "ask.error") || card.say.startsWith(ht("en", "ask.offline")), card.say);
   const bar = r.events.find((x) => x.type === "health" && x.id === "ai" && x.level === "amber");
   assert.ok(bar, "bar after the first failure of an ask");
   assert.ok(r.events.some((x) => x.type === "me.decision" && x.why === "forced-error"));

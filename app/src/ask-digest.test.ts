@@ -275,7 +275,7 @@ function longCall(): RawLine[] {
   ];
   for (let i = 0; i < 400; i++) {
     out.push({ side: i % 2 ? "me" : "them", text: `${filler[i % filler.length]} number ${i}.` });
-    if (i === 12) out.push({ side: "them", text: "The warehouse in Rivermouth closes for inventory on the ninth of March." });
+    if (i === 12) out.push({ side: "them", text: "The warehouse in Dover closes for inventory on the ninth of March." });
   }
   return out;
 }
@@ -283,37 +283,37 @@ function longCall(): RawLine[] {
 test("ask finds a fact from minute 2 in a 40-minute transcript (whole transcript under 30k tokens)", async () => {
   const lines = longCall();
   const pm = policyModel();
-  pm.reply({ role: "ask" }, "SRC: call\nANSWER: The Rivermouth warehouse closes on the ninth of March.");
+  pm.reply({ role: "ask" }, "SRC: call\nANSWER: The Dover warehouse closes on the ninth of March.");
   const m = emptyMemory(0);
-  const r = await runAsk(env(pm, { lines, memory: m }), "when does the Rivermouth warehouse close?");
+  const r = await runAsk(env(pm, { lines, memory: m }), "when does the Dover warehouse close?");
   assert.equal(r.source, "call");
   const v = pm.calls.at(-1)!.view;
-  assert.ok(v.messages.join("\n").includes("warehouse in Rivermouth closes"), "the minute-2 line is in the prompt");
+  assert.ok(v.messages.join("\n").includes("warehouse in Dover closes"), "the minute-2 line is in the prompt");
   assert.ok(v.tokens < 30_000 + 8_000);
   assert.equal(pickLines(lines, "x").whole, true);
 });
 
 test("a call over the limit sends memory plus the best search hits, and the minute-2 line is still there", async () => {
   const lines = longCall();
-  const picked = pickLines(lines, "when does the Rivermouth warehouse close?", 2000);
+  const picked = pickLines(lines, "when does the Dover warehouse close?", 2000);
   assert.equal(picked.whole, false);
-  assert.ok(picked.lines.some((l) => /Rivermouth/.test(l.text)));
+  assert.ok(picked.lines.some((l) => /Dover/.test(l.text)));
   assert.ok(picked.lines.length < lines.length / 4);
   assert.ok(picked.lines.at(-1)!.text.includes("number 399"), "the last lines are kept");
   const pm = policyModel();
   pm.reply({ role: "ask" }, "SRC: call\nANSWER: On the ninth of March.");
-  const r = await runAsk(env(pm, { lines, wholeTokens: 2000 }), "when does the Rivermouth warehouse close?");
+  const r = await runAsk(env(pm, { lines, wholeTokens: 2000 }), "when does the Dover warehouse close?");
   assert.equal(r.source, "call");
-  pm.assertPrompt({ role: "ask" }, { contains: "warehouse in Rivermouth", maxTokens: 12000 });
+  pm.assertPrompt({ role: "ask" }, { contains: "warehouse in Dover", maxTokens: 12000 });
 });
 
 test("offline search finds the minute-2 fact without a model", () => {
   const lines = longCall();
-  const hits = searchTranscript(lines, "Rivermouth warehouse inventory");
-  assert.ok(hits.some((h) => /Rivermouth/.test(h.line.text)));
-  const a = answerFromNotes(emptyMemory(0), lines, "when does the Rivermouth warehouse close?");
+  const hits = searchTranscript(lines, "Dover warehouse inventory");
+  assert.ok(hits.some((h) => /Dover/.test(h.line.text)));
+  const a = answerFromNotes(emptyMemory(0), lines, "when does the Dover warehouse close?");
   assert.equal(a.found, true);
-  assert.match(a.text, /Rivermouth/);
+  assert.match(a.text, /Dover/);
 });
 
 // ---------- follow-up ----------
