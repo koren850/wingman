@@ -1,0 +1,38 @@
+id: test-b-crosstalk-en
+split: test-b
+lang: en
+type: crosstalk
+variant: noisy
+user: Sam
+context: Handover call for a warehouse move. Sam coordinates the move. Facts: 220 pallets to move, the move happens on the weekend of 18 October, two trucks are booked, the new site opens on Monday 20 October.
+roster: Cora | them | warehouse lead
+roster: Dev | them | transport
+agenda: pallets and trucks
+agenda: dates
+brief: 220 pallets to move
+brief: Move on the weekend of 18 October
+brief: Two trucks booked
+brief: New site opens on Monday 20 October
+likely: How many trucks are booked?
+---
+them@Cora: ok so for the move we have about three hundred pallets and
+them@Dev: sorry cora the trucks were
+them@Cora: three hundred pallets and they all need to be wrapped
+them@Dev: go ahead ## m: check || 220;300 || noq,number-conflict,crosstalk || The plan has 220 pallets, she says 300. Confirm the count with the lead. || Number that conflicts with the plan, said over other talk.
+me: i have two hundred twenty in the plan i will check the list
+them@Cora: that was before the new order
+them@Dev: and the trucks
+them@Cora: sam how many trucks do we have booked ## m: answer || two trucks || direct,crosstalk || Two trucks are booked for the weekend. || Direct question inside overlap.
+me: two trucks are booked
+them@Dev: two is not enough for one weekend
+them@Cora: they did it with two last time
+.. 20
+them@Dev: honestly the drivers will not work the whole sunday ## m: prompt || drivers;truck || noq,objection,crosstalk || Drivers will not work a full day; ask for a third truck. || Objection hidden in the overlap.
+me: i can ask for a third truck or an earlier start
+them@Cora: and the keys
+them@Dev: the keys for the new site come on friday
+them@Cora: right friday so everything has to be ready before monday the twentieth ## m: check || Friday;Monday || noq,deadline,crosstalk || Keys arrive Friday, the site opens Monday; list what must be ready. || Deadline in the overlap.
+.. 20
+them@Dev: did you see the game last night ## quiet
+them@Cora: i fell asleep ## quiet
+me: i saw the first half ## quiet

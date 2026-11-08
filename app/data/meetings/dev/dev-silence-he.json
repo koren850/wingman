@@ -1,0 +1,178 @@
+{
+ "id": "dev-silence-he",
+ "split": "dev",
+ "lang": "he",
+ "type": "silence",
+ "variant": "clean",
+ "scripted": true,
+ "context": "שיחת מעקב שבועית עם עמיתה. אין שום דבר דחוף. עובדות: הדוח הושלם, הסקירה הבאה ב-5 באוגוסט, בצוות 7 אנשים.",
+ "profile": {
+  "userName": "דן"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4440,
+   "side": "me",
+   "text": "בוקר טוב הדס, איך היה סוף השבוע?"
+  },
+  {
+   "id": "l2",
+   "t": 8919,
+   "side": "them",
+   "speaker": "הדס",
+   "text": "שקט, טיילנו ליד הים ובישלנו ארוחת ערב בבית."
+  },
+  {
+   "id": "l3",
+   "t": 12557,
+   "side": "me",
+   "text": "נשמע נהדר, אצלנו ירד גשם."
+  },
+  {
+   "id": "l4",
+   "t": 17454,
+   "side": "them",
+   "speaker": "הדס",
+   "text": "הדוח הושלם ושלחתי אותו לצוות ביום שישי."
+  },
+  {
+   "id": "l5",
+   "t": 20010,
+   "side": "me",
+   "text": "טוב, תודה שסיימת אותו."
+  },
+  {
+   "id": "l6",
+   "t": 25085,
+   "side": "them",
+   "speaker": "הדס",
+   "text": "הסקירה הבאה ביום החמישי באוגוסט, אז יש לנו זמן."
+  },
+  {
+   "id": "l7",
+   "t": 28479,
+   "side": "me",
+   "text": "כן, אין לחץ השבוע."
+  },
+  {
+   "id": "l8",
+   "t": 73132,
+   "side": "them",
+   "speaker": "הדס",
+   "text": "אני חושבת ששבעתנו במקום טוב עכשיו."
+  },
+  {
+   "id": "l9",
+   "t": 76284,
+   "side": "me",
+   "text": "גם אני חושב, האווירה טובה."
+  },
+  {
+   "id": "l10",
+   "t": 81955,
+   "side": "them",
+   "speaker": "הדס",
+   "text": "ביום חמישי אקח את אחר הצהריים לביקור אצל רופא שיניים."
+  },
+  {
+   "id": "l11",
+   "t": 85945,
+   "side": "me",
+   "text": "אין בעיה, שיהיה שבוע טוב."
+  },
+  {
+   "id": "l12",
+   "t": 118854,
+   "side": "them",
+   "speaker": "הדס",
+   "text": "תודה דן, נדבר בשבוע הבא."
+  },
+  {
+   "id": "l13",
+   "t": 120922,
+   "side": "me",
+   "text": "להתראות הדס."
+  }
+ ],
+ "moments": [],
+ "silent": [
+  {
+   "fromLine": "l1",
+   "toLine": "l13"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"הדס\",\"side\":\"them\",\"role\":\"עמיתה\"}],\"agenda\":[\"מעקב שבועי\"],\"facts\":[{\"text\":\"הדוח הושלם\",\"src\":\"brief\"},{\"text\":\"הסקירה הבאה ב-5 באוגוסט\",\"src\":\"brief\"},{\"text\":\"בצוות 7 אנשים\",\"src\":\"brief\"}],\"likelyQuestions\":[\"הדוח גמור?\"],\"chunks\":[\"שיחת מעקב שבועית עם עמיתה. אין שום דבר דחוף. עובדות: הדוח הושלם, הסקירה הבאה ב-5 באוגוסט, בצוות 7 אנשים.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l1",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l3",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

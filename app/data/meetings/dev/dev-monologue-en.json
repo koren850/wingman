@@ -1,0 +1,467 @@
+{
+ "id": "dev-monologue-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "monologue",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Quarterly platform talk given by Priya Rao, head of engineering at a mid-size software company. Dan is in the audience and listens. Facts from the plan: the migration budget is $1.2 million, the target is 31 July, the old data centre closes on 30 September, the team has 14 engineers.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 11760,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Good morning everyone, thank you for joining the quarterly platform talk. I will go through where the migration stands, what went wrong, and what we do next."
+  },
+  {
+   "id": "l2",
+   "t": 23899,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Let me start with the big picture. Two years ago we ran everything on three machines in one rack, and today most services run on the new container platform."
+  },
+  {
+   "id": "l3",
+   "t": 35697,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "The first half of the year was about moving the stateless services. They were the easy part, and we moved forty of them with no customer noticing."
+  },
+  {
+   "id": "l4",
+   "t": 284494,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "The second half is about the databases, and here I have to be honest, because we are behind."
+  },
+  {
+   "id": "l5",
+   "t": 297910,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "We planned to move the orders database in April and we are now in the middle of a long dry run that shows the copy needs nine hours, not the three we assumed."
+  },
+  {
+   "id": "l6",
+   "t": 306425,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Because of that, the cutover will happen over a weekend and we will freeze orders for a short time."
+  },
+  {
+   "id": "l7",
+   "t": 533399,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Now the budget. We started with one point two million dollars and I can tell you we have spent about nine hundred thousand of it so far."
+  },
+  {
+   "id": "l8",
+   "t": 544652,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "The largest part was the licence for the storage system, and we also paid for two consultants who helped us with the network design."
+  },
+  {
+   "id": "l9",
+   "t": 795964,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "A word about observability. We moved from the old metrics tool to an open standard called OpenTelemetry, and every team now sends traces in the same format."
+  },
+  {
+   "id": "l10",
+   "t": 806175,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "This took longer than planned, because every team used its own naming for the same thing, and we had to agree on one."
+  },
+  {
+   "id": "l11",
+   "t": 1034085,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Let me talk about people. We are fourteen engineers and two of them are on leave until August, so the real number for the next two months is twelve."
+  },
+  {
+   "id": "l12",
+   "t": 1042874,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "I am asking each team lead to protect two days a week for migration work, and nothing else may take them."
+  },
+  {
+   "id": "l13",
+   "t": 1293602,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "There is a risk I want to name. The old data centre contract ends on the thirtieth of September, and there is no extension option."
+  },
+  {
+   "id": "l14",
+   "t": 1303229,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "If we miss the databases, we will pay for a month of emergency hosting, and that costs about three hundred thousand."
+  },
+  {
+   "id": "l15",
+   "t": 1528275,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Security is the other area. We replaced shared passwords with short-lived tokens, and every access to production now leaves a record."
+  },
+  {
+   "id": "l16",
+   "t": 1536860,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "One audit finding remains open, about the old backup tapes, and I will close it when the tapes are destroyed."
+  },
+  {
+   "id": "l17",
+   "t": 1787004,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Customer impact has been small. We had two incidents this quarter that came from the migration, and both lasted less than twenty minutes."
+  },
+  {
+   "id": "l18",
+   "t": 1796427,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "I want to thank the support team, because they handled every ticket during those incidents without escalating a single one."
+  },
+  {
+   "id": "l19",
+   "t": 2023189,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Now the plan for next quarter. First, finish the databases by the thirty-first of July. Second, switch off the old load balancers. Third, write the guide for new joiners."
+  },
+  {
+   "id": "l20",
+   "t": 2030810,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "I will share the slides after this session and I will keep the channel open for comments."
+  },
+  {
+   "id": "l21",
+   "t": 2283790,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Some details on cost per service. The average service now costs us nineteen percent less to run, but the databases cost more, because we pay for replicas in two regions."
+  },
+  {
+   "id": "l22",
+   "t": 2293769,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "We will review those replicas in the autumn, and if the traffic does not need them, we will drop one region."
+  },
+  {
+   "id": "l23",
+   "t": 2521847,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "A short story from the weekend dry run. At two in the morning the copy stopped, because a disk filled up, and we learned that nobody had set an alert for it."
+  },
+  {
+   "id": "l24",
+   "t": 2529644,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "We fixed it in ten minutes, but it is a good example of why the checklist matters."
+  },
+  {
+   "id": "l25",
+   "t": 2780520,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "I will now take a break from slides. Please look at the diagram on the screen, it shows the order of the cutover steps."
+  },
+  {
+   "id": "l26",
+   "t": 3003775,
+   "side": "them",
+   "speaker": "Priya",
+   "text": "Thank you all. If there is anything I missed, please send it to me in writing."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l5",
+   "kind": "check",
+   "mustMention": [
+    "nine hours",
+    "three"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l9",
+   "kind": "fact",
+   "mustMention": [
+    "OpenTelemetry"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l14",
+   "kind": "check",
+   "mustMention": [
+    "1.2 million",
+    "300"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l19",
+   "kind": "check",
+   "mustMention": [
+    "31 July",
+    "owner"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "deadline"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l1",
+   "toLine": "l4"
+  },
+  {
+   "fromLine": "l6",
+   "toLine": "l8"
+  },
+  {
+   "fromLine": "l11",
+   "toLine": "l13"
+  },
+  {
+   "fromLine": "l15",
+   "toLine": "l18"
+  },
+  {
+   "fromLine": "l20",
+   "toLine": "l26"
+  }
+ ],
+ "allowedExtra": [
+  {
+   "id": "x1",
+   "afterLine": "l10",
+   "kind": "fact",
+   "mustMention": [
+    "traces"
+   ],
+   "latestMs": 15000
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l5",
+   "mustContain": [
+    "nine hours"
+   ]
+  },
+  {
+   "atLine": "l7",
+   "mustContain": [
+    "900",
+    "1.2 million"
+   ]
+  },
+  {
+   "atLine": "l19",
+   "mustContain": [
+    "31 July"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Priya Rao\",\"side\":\"them\",\"role\":\"head of engineering\"}],\"agenda\":[\"migration progress\",\"risks\",\"next quarter\"],\"facts\":[{\"text\":\"Migration budget is $1.2 million\",\"src\":\"brief\"},{\"text\":\"Target date is 31 July\",\"src\":\"brief\"},{\"text\":\"Old data centre closes on 30 September\",\"src\":\"brief\"},{\"text\":\"Team size is 14 engineers\",\"src\":\"brief\"}],\"likelyQuestions\":[\"What is the plan for the old servers?\"],\"chunks\":[\"Quarterly platform talk given by Priya Rao, head of engineering at a mid-size software company. Dan is in the audience and listens. Facts from the plan: the migration budget is $1.2 million, the target is 31 July, the old data centre closes on 30 September, the team has 14 engineers.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l1",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l3",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: She says nine hours, not the planned three. Ask what window this needs.\nWHY: A number that changes the cutover plan.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l5",
+   "reply": "{\"add\":{\"numbers\":[{\"what\":\"orders copy time\",\"value\":\"nine hours\",\"at\":297910}],\"facts\":[{\"text\":\"orders database copy needs nine hours\",\"at\":297910,\"src\":\"call\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l7",
+   "reply": "{\"add\":{\"numbers\":[{\"what\":\"budget spent\",\"value\":\"900 thousand of 1.2 million\",\"at\":533399}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: OpenTelemetry is an open standard for traces, metrics and logs from services.\nWHY: Jargon term worth a short note.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Traces follow one request across services.\nWHY: useful extra",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Spent 900 thousand of 1.2 million; 300 thousand more would use the rest.\nWHY: Budget arithmetic that leaves no room.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Databases due 31 July; confirm an owner for each of the three items.\nWHY: A plan with a date and no owners.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l19",
+   "reply": "{\"add\":{\"decisions\":[{\"text\":\"databases finished by 31 July\",\"at\":2023189}],\"commitments\":[{\"who\":\"team leads\",\"what\":\"protect two days a week for migration\",\"at\":2023189,\"status\":\"open\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l22",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l23",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l24",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l25",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l26",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

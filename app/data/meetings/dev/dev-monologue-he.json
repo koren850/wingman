@@ -1,0 +1,411 @@
+{
+ "id": "dev-monologue-he",
+ "split": "dev",
+ "lang": "he",
+ "type": "monologue",
+ "variant": "clean",
+ "scripted": true,
+ "context": "הרצאת הדרכה של מיכל לוי, מנהלת הצלחת לקוחות בחברת תוכנה, על תהליך קליטה של לקוחות חדשים. דן יושב בקהל ומקשיב. עובדות מהתוכנית: זמן קליטה ממוצע 21 יום, היעד 14 יום, בצוות 9 אנשים, תקציב ההדרכה 80,000 שקל.",
+ "profile": {
+  "userName": "דן"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 9060,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "בוקר טוב לכולם, תודה שהגעתם להדרכה על קליטת לקוחות. אעבור על התהליך, על המדדים ועל מה שאנחנו משנים."
+  },
+  {
+   "id": "l2",
+   "t": 18579,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "נתחיל מהתמונה הגדולה. לקוח חדש חותם, ובשבועות הראשונים הוא מחליט אם המערכת תהפוך אצלו לכלי עבודה או לעוד מנוי שנשכח."
+  },
+  {
+   "id": "l3",
+   "t": 27257,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "לכן הצעד הראשון הוא שיחת פתיחה שבה אנחנו מבררים את המטרה של הלקוח, ולא רק מציגים תכונות."
+  },
+  {
+   "id": "l4",
+   "t": 276354,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "המדד המרכזי שלנו הוא זמן קליטה. כרגע הממוצע הוא עשרים ושלושה ימים, והיעד שלנו הוא ארבעה עשר."
+  },
+  {
+   "id": "l5",
+   "t": 282690,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "הסיבה העיקרית לעיכוב היא שהלקוחות מעבירים לנו את הנתונים באיחור, ולא שהמערכת איטית."
+  },
+  {
+   "id": "l6",
+   "t": 590285,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "בנינו רשימת משימות לכל לקוח חדש, והיא כוללת שמונה שלבים, מהעלאת משתמשים ועד אימון ראשון."
+  },
+  {
+   "id": "l7",
+   "t": 598299,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "כל שלב מקבל אחראי אחד, כדי שלא יהיה מצב שכולם חושבים שמישהו אחר מטפל בזה."
+  },
+  {
+   "id": "l8",
+   "t": 849252,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "עוד מילה על תקציב ההדרכה. השנה יש לנו שמונים אלף שקל, ואנחנו משתמשים בו בעיקר על חומרי לימוד ועל מדריכים חיצוניים."
+  },
+  {
+   "id": "l9",
+   "t": 856604,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "ברבעון הקרוב נקצה חלק ממנו לסרטונים קצרים, כי לקוחות מעדיפים אותם על פני מסמך ארוך."
+  },
+  {
+   "id": "l10",
+   "t": 1164375,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "אנחנו עובדים עם מדד שנקרא NPS, והוא מודד עד כמה לקוח מוכן להמליץ עלינו לחבר."
+  },
+  {
+   "id": "l11",
+   "t": 1171305,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "הציון הנוכחי שלנו הוא ארבעים ושניים, והוא עלה מעשרים ושמונה לפני שנה."
+  },
+  {
+   "id": "l12",
+   "t": 1418414,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "בצוות יש תשעה אנשים, ושניים מהם בחופשת לידה עד סוף הקיץ, כך שבפועל אנחנו שבעה."
+  },
+  {
+   "id": "l13",
+   "t": 1425942,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "אני מבקשת מכל ראש צוות להקדיש יומיים בשבוע לקליטה, ולא לקחת על עצמו משימות אחרות."
+  },
+  {
+   "id": "l14",
+   "t": 1733889,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "יש סיכון שאני רוצה לציין. אם נקלוט יותר משלושים לקוחות בחודש, הצוות לא יעמוד בעומס."
+  },
+  {
+   "id": "l15",
+   "t": 1740575,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "אני מעדיפה להאט את המכירות לשבועיים מאשר לקלוט לקוח בצורה גרועה."
+  },
+  {
+   "id": "l16",
+   "t": 1987860,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "נעבור לדוגמה. לקוח מרשת מסעדות הצטרף בחודש שעבר, והוא קיבל חמישה מפגשי הדרכה בשבועיים הראשונים."
+  },
+  {
+   "id": "l17",
+   "t": 1994724,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "הוא סיים את הקליטה בשלושה עשר ימים, וזה אחד התוצאות הטובות שהיו לנו."
+  },
+  {
+   "id": "l18",
+   "t": 2307047,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "תוכנית הרבעון הבא כוללת שלושה דברים. ראשית, לקצר את הקליטה לארבעה עשר יום עד סוף אוקטובר. שנית, להקליט את הסרטונים. שלישית, לחדש את חומרי הלימוד."
+  },
+  {
+   "id": "l19",
+   "t": 2311989,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "אשתף את המצגת אחרי ההדרכה, ואשאיר את הערוץ פתוח להערות."
+  },
+  {
+   "id": "l20",
+   "t": 2558610,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "בואו נעצור לרגע, תסתכלו על התרשים במסך, הוא מראה את סדר השלבים בקליטה."
+  },
+  {
+   "id": "l21",
+   "t": 2863970,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "תודה לכולם. אם פספסתי משהו, אפשר לשלוח לי בכתב."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "21",
+    "23"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l10",
+   "kind": "fact",
+   "mustMention": [
+    "NPS"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "jargon"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l14",
+   "kind": "prompt",
+   "mustMention": [
+    "שלושים",
+    "עומס"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "risk"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l18",
+   "kind": "check",
+   "mustMention": [
+    "אוקטובר",
+    "אחראי"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "deadline"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l1",
+   "toLine": "l3"
+  },
+  {
+   "fromLine": "l5",
+   "toLine": "l9"
+  },
+  {
+   "fromLine": "l11",
+   "toLine": "l13"
+  },
+  {
+   "fromLine": "l15",
+   "toLine": "l17"
+  },
+  {
+   "fromLine": "l19",
+   "toLine": "l21"
+  }
+ ],
+ "allowedExtra": [
+  {
+   "id": "x1",
+   "afterLine": "l10",
+   "kind": "fact",
+   "mustMention": [
+    "המלצה"
+   ],
+   "latestMs": 20000
+  }
+ ],
+ "memoryChecks": [
+  {
+   "atLine": "l4",
+   "mustContain": [
+    "23 ימים"
+   ]
+  },
+  {
+   "atLine": "l8",
+   "mustContain": [
+    "80,000"
+   ]
+  },
+  {
+   "atLine": "l18",
+   "mustContain": [
+    "אוקטובר"
+   ]
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"מיכל לוי\",\"side\":\"them\",\"role\":\"מנהלת הצלחת לקוחות\"}],\"agenda\":[\"איך נראית קליטה טובה\",\"מדדים\",\"מה משתנה ברבעון הבא\"],\"facts\":[{\"text\":\"זמן קליטה ממוצע 21 יום\",\"src\":\"brief\"},{\"text\":\"היעד הוא 14 יום\",\"src\":\"brief\"},{\"text\":\"בצוות 9 אנשים\",\"src\":\"brief\"},{\"text\":\"תקציב ההדרכה 80,000 שקל\",\"src\":\"brief\"}],\"likelyQuestions\":[\"מה הצעד הראשון ללקוח חדש?\"],\"chunks\":[\"הרצאת הדרכה של מיכל לוי, מנהלת הצלחת לקוחות בחברת תוכנה, על תהליך קליטה של לקוחות חדשים. דן יושב בקהל ומקשיב. עובדות מהתוכנית: זמן קליטה ממוצע 21 יום, היעד 14 יום, בצוות 9 אנשים, תקציב ההדרכה 80,000 שקל.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l1",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l3",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: בנתונים הממוצע הוא 21 ימים והיא אומרת 23. לאמת מול הדוח.\nWHY: מספר שסותר את הנתון שבתוכנית.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l4",
+   "reply": "{\"add\":{\"numbers\":[{\"what\":\"זמן קליטה ממוצע\",\"value\":\"23 ימים\",\"at\":276354}],\"facts\":[{\"text\":\"היעד הוא 14 ימים\",\"at\":276354,\"src\":\"call\"}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l8",
+   "reply": "{\"add\":{\"numbers\":[{\"what\":\"תקציב הדרכה\",\"value\":\"80,000 שקל\",\"at\":849252}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: NPS הוא מדד המלצה: ציון שנע בין מינוס מאה לבין מאה.\nWHY: מונח מקצועי שכדאי להסביר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: latest=15000\nWHY: useful extra",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: סף של שלושים לקוחות בחודש; לשאול מה התוכנית אם העומס עולה.\nWHY: סיכון עם מספר, בלי בעלים.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: היעד הוא סוף אוקטובר; לוודא שיש אחראי לכל אחד משלושת הדברים.\nWHY: תוכנית עם תאריך ובלי אחראים.",
+   "ms": 1500
+  },
+  {
+   "role": "memory",
+   "whenLastLine": "l18",
+   "reply": "{\"add\":{\"decisions\":[{\"text\":\"לקצר את הקליטה ל-14 יום עד סוף אוקטובר\",\"at\":2307047}]}}",
+   "ms": 700
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

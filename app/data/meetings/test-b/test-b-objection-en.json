@@ -1,0 +1,269 @@
+{
+ "id": "test-b-objection-en",
+ "split": "test-b",
+ "lang": "en",
+ "type": "noq",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Discovery call for a data audit service. Prospect: Quarry Foods, contact Anita Dole, finance director. Fixed fee $15,000, four weeks, report and one workshop included. Data stays in the client's own systems. References are available.",
+ "profile": {
+  "userName": "Sam"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4540,
+   "side": "me",
+   "text": "hello anita and joel thanks for the time"
+  },
+  {
+   "id": "l2",
+   "t": 13639,
+   "side": "them",
+   "speaker": "Anita",
+   "text": "hi sam we looked at the proposal and honestly fifteen thousand is more than we have ever paid for an audit"
+  },
+  {
+   "id": "l3",
+   "t": 19737,
+   "side": "me",
+   "text": "i hear that let me think about the framing of the scope"
+  },
+  {
+   "id": "l4",
+   "t": 28154,
+   "side": "them",
+   "speaker": "Joel",
+   "text": "our last consultant took ten weeks instead of four and left us with a report nobody read"
+  },
+  {
+   "id": "l5",
+   "t": 32830,
+   "side": "me",
+   "text": "a report that nobody reads is a waste i agree"
+  },
+  {
+   "id": "l6",
+   "t": 63305,
+   "side": "them",
+   "speaker": "Joel",
+   "text": "i am not comfortable with outsiders looking at our customer tables"
+  },
+  {
+   "id": "l7",
+   "t": 68819,
+   "side": "me",
+   "text": "the data stays in your systems so no copies leave"
+  },
+  {
+   "id": "l8",
+   "t": 75132,
+   "side": "them",
+   "speaker": "Anita",
+   "text": "the board meets in march and nothing gets approved before that"
+  },
+  {
+   "id": "l9",
+   "t": 79604,
+   "side": "me",
+   "text": "a small first step would not need the board"
+  },
+  {
+   "id": "l10",
+   "t": 105255,
+   "side": "them",
+   "speaker": "Anita",
+   "text": "a cheaper firm offered us the same thing for nine thousand"
+  },
+  {
+   "id": "l11",
+   "t": 110945,
+   "side": "me",
+   "text": "i would check that it is really the same scope"
+  },
+  {
+   "id": "l12",
+   "t": 116694,
+   "side": "them",
+   "speaker": "Joel",
+   "text": "we have a freeze on new vendors until the end of the year"
+  },
+  {
+   "id": "l13",
+   "t": 120962,
+   "side": "me",
+   "text": "then the start date is the real question"
+  },
+  {
+   "id": "l14",
+   "t": 151789,
+   "side": "them",
+   "speaker": "Anita",
+   "text": "joel is celebrating his birthday tomorrow so we are bringing cake"
+  },
+  {
+   "id": "l15",
+   "t": 155375,
+   "side": "me",
+   "text": "happy early birthday joel"
+  },
+  {
+   "id": "l16",
+   "t": 159020,
+   "side": "them",
+   "speaker": "Joel",
+   "text": "thanks i will save you a piece"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "prompt",
+   "mustMention": [
+    "fee",
+    "scope"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "ten weeks",
+    "workshop"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "answer",
+   "mustMention": [
+    "stays",
+    "systems"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "board",
+    "first step"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "cheaper",
+    "same"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "freeze",
+    "vendor"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l14",
+   "toLine": "l16"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Anita Dole\",\"side\":\"them\",\"role\":\"finance director\"},{\"name\":\"Joel\",\"side\":\"them\",\"role\":\"it manager\"}],\"agenda\":[\"scope of the audit\",\"fee and timing\"],\"facts\":[{\"text\":\"Fixed fee is $15,000\",\"src\":\"brief\"},{\"text\":\"Four weeks\",\"src\":\"brief\"},{\"text\":\"Data stays in the client systems\",\"src\":\"brief\"},{\"text\":\"Report and one workshop included\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can you start next month?\"],\"chunks\":[\"Discovery call for a data audit service. Prospect: Quarry Foods, contact Anita Dole, finance director. Fixed fee $15,000, four weeks, report and one workshop included. Data stays in the client's own systems. References are available.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Fee objection: compare the fee with the scope and the cost of bad data.\nWHY: Price objection without a question.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Past delay of ten weeks; show the four-week plan and the workshop.\nWHY: Past failure.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: Data stays in your systems; the auditor works through read-only access.\nWHY: Security concern.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Approval waits for the board; offer a small first step before then.\nWHY: Timing and authority.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Other firm is cheaper: ask if it is really the same scope and support.\nWHY: Competitor price.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Vendor freeze until year end; look for an exception or a later start.\nWHY: Policy objection.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

@@ -11,6 +11,8 @@
 //     m: kind || token;token || tag,tag || SAY || WHY     a moment: a card of this kind is expected after this line
 //          kinds answer prompt check fact; tags: direct (a question to the user), implied, objection, number-conflict, promise, jargon,
 //          topic-shift, unanswered, latest=ms, v=0..3, aim=me|all
+//          tag noq: the line (and the line before it) has no "?" and no question word; the builder refuses the file when it has
+//     x: kind || tokens || SAY || latest=ms                an allowed extra: a useful card that is not a labelled moment (leaves precision alone)
 //     quiet                                                this line is inside a silent window (a card here is a failure)
 //     mem: n:what=value / c:who>what>due / f:text / q:asker>text / o:who>text / d:text / topic:text   a scripted memory patch after this line
 //     chk: token;token                                     a memory check: the memory at this line must hold these tokens
@@ -19,7 +21,8 @@ import { readFileSync, readdirSync, writeFileSync, mkdirSync, rmSync, existsSync
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { lockHash } from "./golden-load.ts";
-import { GoldenSchema, type Golden, type Kind } from "./golden-schema.ts";
+import { GoldenSchema, HELD_OUT, SPLITS, type Golden, type Kind } from "./golden-schema.ts";
+import { noqProblems } from "./golden-noq.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const MEETINGS = join(HERE, "..", "data", "meetings");
@@ -45,6 +48,7 @@ export function parseMeeting(src: string, file: string): Golden {
   const lang = one("lang") as Golden["lang"];
   const lines: Golden["lines"] = [];
   const moments: Golden["moments"] = [];
+  const extras: NonNullable<Golden["allowedExtra"]> = [];
   const script: NonNullable<Golden["script"]> = [];
   const checks: NonNullable<Golden["memoryChecks"]> = [];
   const quiet: number[] = [];
@@ -114,6 +118,29 @@ export function parseMeeting(src: string, file: string): Golden {
           ms: direct ? 900 : 1500,
           reply: `TAG: ${TAG[kind as Kind]}\nVALUE: ${value}\nAIM: ${aim}\nSAY: ${say}\nWHY: ${why}`,
         });
+      } else if (kw === "x") {
+        const [kind, tok, say, lat] = splitFields(arg);
+        if (kind && !["answer", "prompt", "check", "fact"].includes(kind)) fail(`bad extra kind ${kind}`, lineNo);
+        const mustMention = tok
+          ? tok
+              .split(";")
+              .map((x) => x.trim())
+              .filter(Boolean)
+          : [];
+        extras.push({
+          id: `x${extras.length + 1}`,
+          afterLine: id,
+          ...(kind ? { kind: kind as Kind } : {}),
+          ...(mustMention.length ? { mustMention } : {}),
+          latestMs: Number(/latest=(\d+)/.exec(lat ?? "")?.[1] ?? 20000),
+        });
+        if (say)
+          script.push({
+            role: "moment",
+            whenLastLine: id,
+            ms: 1500,
+            reply: `TAG: ${TAG[(kind || "fact") as Kind]}\nVALUE: 2\nAIM: me\nSAY: ${say}\nWHY: useful extra`,
+          });
       } else if (kw === "mem") {
         script.push({ role: "memory", whenLastLine: id, ms: 700, reply: JSON.stringify(memPatch(arg, lines.at(-1)!.t, fail, lineNo)) });
       } else if (kw === "chk") {
@@ -169,10 +196,13 @@ export function parseMeeting(src: string, file: string): Golden {
     lines,
     moments,
     silent,
+    ...(extras.length ? { allowedExtra: extras } : {}),
     ...(checks.length ? { memoryChecks: checks } : {}),
     script,
   };
   if (g.id !== file.replace(/\.txt$/, "")) fail(`id ${g.id} does not match the file name`);
+  const noq = noqProblems(g);
+  if (noq.length) throw new Error(noq.join("\n"));
   return GoldenSchema.parse(g);
 }
 
@@ -204,7 +234,7 @@ function memPatch(arg: string, at: number, fail: (m: string, n?: number) => neve
   return patch;
 }
 
-export function buildAll(write = true): { golden: Golden[]; lock: string } {
+export function buildAll(write = true): { golden: Golden[]; lock: string; locks: Record<string, string> } {
   const src = join(MEETINGS, "src");
   const errors: string[] = [];
   const golden: Golden[] = [];
@@ -219,21 +249,24 @@ export function buildAll(write = true): { golden: Golden[]; lock: string } {
   }
   if (errors.length) throw new Error(errors.join("\n"));
   const texts = golden.map((g) => ({ g, name: `${g.id}.json`, text: JSON.stringify(g, null, 1) + "\n" }));
-  const lock = lockHash(texts.filter((x) => x.g.split === "test").map(({ name, text }) => ({ name, text })));
+  const locks = Object.fromEntries(
+    HELD_OUT.map((sp) => [sp, lockHash(texts.filter((x) => x.g.split === sp).map(({ name, text }) => ({ name, text })))]),
+  ) as Record<string, string>;
+  const lock = locks.test;
   if (write) {
-    for (const s of ["dev", "test"]) {
+    for (const s of SPLITS) {
       mkdirSync(join(MEETINGS, s), { recursive: true });
       for (const f of readdirSync(join(MEETINGS, s))) f.endsWith(".json") && rmSync(join(MEETINGS, s, f));
     }
     for (const x of texts) writeFileSync(join(MEETINGS, x.g.split, x.name), x.text);
-    writeFileSync(join(MEETINGS, "test.lock"), lock + "\n");
+    for (const sp of HELD_OUT) writeFileSync(join(MEETINGS, `${sp}.lock`), locks[sp] + "\n");
   }
-  return { golden, lock };
+  return { golden, lock, locks };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const { golden, lock } = buildAll();
+  const { golden, locks } = buildAll();
   const mom = golden.reduce((s, g) => s + g.moments.length, 0);
-  console.log(`${golden.length} meetings, ${mom} moments, test.lock ${lock.slice(0, 12)}`);
+  console.log(`${golden.length} meetings, ${mom} moments, test.lock ${locks.test.slice(0, 12)}, test-b.lock ${locks["test-b"].slice(0, 12)}`);
   existsSync(MEETINGS) || process.exit(1);
 }

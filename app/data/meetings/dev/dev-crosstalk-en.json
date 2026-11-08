@@ -1,0 +1,302 @@
+{
+ "id": "dev-crosstalk-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "crosstalk",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Weekly rollout meeting for a new expense form. Dan runs the rollout. Facts: 40 offices in total, 37 already use the new form, the old form closes on 30 June, training slots are on Tuesday and Thursday.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5680,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "ok so the main problem with the rollout is that the"
+  },
+  {
+   "id": "l2",
+   "t": 10219,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "no wait before that the march invoices are still"
+  },
+  {
+   "id": "l3",
+   "t": 15937,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "the rollout is that eleven offices still use the old form"
+  },
+  {
+   "id": "l4",
+   "t": 19414,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "sorry go ahead lena"
+  },
+  {
+   "id": "l5",
+   "t": 24470,
+   "side": "me",
+   "text": "I thought it was three offices, I will check the list."
+  },
+  {
+   "id": "l6",
+   "t": 27665,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "no that was last month"
+  },
+  {
+   "id": "l7",
+   "t": 31279,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "and the invoices from march"
+  },
+  {
+   "id": "l8",
+   "t": 37212,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "dan can you tell us which offices still need training"
+  },
+  {
+   "id": "l9",
+   "t": 41684,
+   "side": "me",
+   "text": "the northern offices and two others still need training"
+  },
+  {
+   "id": "l10",
+   "t": 46195,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "that is too soon for the northern offices"
+  },
+  {
+   "id": "l11",
+   "t": 49605,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "they had six months"
+  },
+  {
+   "id": "l12",
+   "t": 76114,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "honestly my people will not manage by june, the training is only on two days"
+  },
+  {
+   "id": "l13",
+   "t": 81522,
+   "side": "me",
+   "text": "I can add a session if the northern offices need it."
+  },
+  {
+   "id": "l14",
+   "t": 84689,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "and the credit card"
+  },
+  {
+   "id": "l15",
+   "t": 89795,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "the credit card statements arrive on the fifth"
+  },
+  {
+   "id": "l16",
+   "t": 94580,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "right the fifth so we need the form before that"
+  },
+  {
+   "id": "l17",
+   "t": 118264,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "did you see the match yesterday"
+  },
+  {
+   "id": "l18",
+   "t": 121607,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "no I fell asleep"
+  },
+  {
+   "id": "l19",
+   "t": 124629,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "I did not sleep at all"
+  },
+  {
+   "id": "l20",
+   "t": 127690,
+   "side": "me",
+   "text": "I watched half of it."
+  },
+  {
+   "id": "l21",
+   "t": 134590,
+   "side": "them",
+   "speaker": "Lena",
+   "text": "ok back to it, dan please send the list of offices after the call"
+  },
+  {
+   "id": "l22",
+   "t": 138869,
+   "side": "me",
+   "text": "I will send the list today."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "37",
+    "eleven"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "northern",
+    "training"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "extra sessions",
+    "northern"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l16",
+   "kind": "prompt",
+   "mustMention": [
+    "fifth",
+    "form"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "deadline",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l21",
+   "kind": "prompt",
+   "mustMention": [
+    "list",
+    "offices"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "commitment",
+    "crosstalk"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l17",
+   "toLine": "l20"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Lena\",\"side\":\"them\",\"role\":\"finance\"},{\"name\":\"Omar\",\"side\":\"them\",\"role\":\"office manager\"}],\"agenda\":[\"offices still on the old form\",\"closing date\"],\"facts\":[{\"text\":\"40 offices in total\",\"src\":\"brief\"},{\"text\":\"37 offices use the new form\",\"src\":\"brief\"},{\"text\":\"Old form closes on 30 June\",\"src\":\"brief\"},{\"text\":\"Training on Tuesday and Thursday\",\"src\":\"brief\"}],\"likelyQuestions\":[\"When does the old form close?\"],\"chunks\":[\"Weekly rollout meeting for a new expense form. Dan runs the rollout. Facts: 40 offices in total, 37 already use the new form, the old form closes on 30 June, training slots are on Tuesday and Thursday.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: 37 of 40 use the new form: three remain, not eleven. Check the count.\nWHY: Number that conflicts with the plan, said over other talk.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The northern offices still need training, per the rollout list.\nWHY: Direct question to the user inside cross-talk.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Training days are fixed; offer extra sessions for the northern offices.\nWHY: Objection stated as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Statements arrive on the fifth; ask which offices must change form before then.\nWHY: Deadline hidden in the overlap.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: The offices list is owed after the call; add it to the actions.\nWHY: A request inside the overlap.",
+   "ms": 1500
+  }
+ ]
+}

@@ -1,0 +1,282 @@
+{
+ "id": "dev-noq-objection-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "noq",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Sales call for a team scheduling tool. Prospect: Granite Logistics, contact Hugh Mills, depot manager. List price: $9 per user per month, minimum 20 users. Pilot of 30 days is free. Customer references are available on request.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6060,
+   "side": "me",
+   "text": "Hi Hugh, thanks for making time. Nina, good to see you too."
+  },
+  {
+   "id": "l2",
+   "t": 9459,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Hello. I will mostly listen today."
+  },
+  {
+   "id": "l3",
+   "t": 13657,
+   "side": "me",
+   "text": "Fine. Hugh, describe your current shift planning."
+  },
+  {
+   "id": "l4",
+   "t": 21314,
+   "side": "them",
+   "speaker": "Hugh",
+   "text": "We use a shared spreadsheet and a group chat and it mostly works for us."
+  },
+  {
+   "id": "l5",
+   "t": 25230,
+   "side": "me",
+   "text": "A spreadsheet can work well for small teams."
+  },
+  {
+   "id": "l6",
+   "t": 31465,
+   "side": "them",
+   "speaker": "Hugh",
+   "text": "Honestly, nine dollars a user is too expensive for a team our size."
+  },
+  {
+   "id": "l7",
+   "t": 38119,
+   "side": "me",
+   "text": "I hear you on price, let me think about the work it replaces."
+  },
+  {
+   "id": "l8",
+   "t": 70952,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "We tried a scheduling tool two years ago and nobody on the floor used it."
+  },
+  {
+   "id": "l9",
+   "t": 74664,
+   "side": "me",
+   "text": "Adoption is the real risk, I agree."
+  },
+  {
+   "id": "l10",
+   "t": 81455,
+   "side": "them",
+   "speaker": "Hugh",
+   "text": "My boss will never sign off on anything before the end of the quarter."
+  },
+  {
+   "id": "l11",
+   "t": 87145,
+   "side": "me",
+   "text": "A pilot does not need a signature, that may help."
+  },
+  {
+   "id": "l12",
+   "t": 113274,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "Our depot has bad signal, so anything cloud based is a problem for us."
+  },
+  {
+   "id": "l13",
+   "t": 117922,
+   "side": "me",
+   "text": "I will check offline behaviour before I answer that."
+  },
+  {
+   "id": "l14",
+   "t": 124129,
+   "side": "them",
+   "speaker": "Hugh",
+   "text": "The other vendor said they would match any price you give us."
+  },
+  {
+   "id": "l15",
+   "t": 129235,
+   "side": "me",
+   "text": "Let us compare the contents of each offer."
+  },
+  {
+   "id": "l16",
+   "t": 159780,
+   "side": "them",
+   "speaker": "Hugh",
+   "text": "The depot dog had puppies last week, the whole floor is distracted."
+  },
+  {
+   "id": "l17",
+   "t": 164984,
+   "side": "me",
+   "text": "That sounds like a good reason for a distracted floor."
+  },
+  {
+   "id": "l18",
+   "t": 170987,
+   "side": "them",
+   "speaker": "Nina",
+   "text": "I will send you the shift pattern for one depot afterwards."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "spreadsheet",
+    "gaps"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "status-quo"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "nine dollars",
+    "value"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "adoption",
+    "phone"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "quarter",
+    "sponsor"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "answer",
+   "mustMention": [
+    "offline",
+    "signal"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l14",
+   "kind": "prompt",
+   "mustMention": [
+    "other vendor",
+    "pilot"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l16",
+   "toLine": "l18"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Hugh Mills\",\"side\":\"them\",\"role\":\"depot manager\"},{\"name\":\"Nina\",\"side\":\"them\",\"role\":\"team lead\"}],\"agenda\":[\"fit for the depots\",\"pilot\"],\"facts\":[{\"text\":\"List price is $9 per user per month\",\"src\":\"brief\"},{\"text\":\"Minimum is 20 users\",\"src\":\"brief\"},{\"text\":\"Free pilot of 30 days\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can we try it first?\"],\"chunks\":[\"Sales call for a team scheduling tool. Prospect: Granite Logistics, contact Hugh Mills, depot manager. List price: $9 per user per month, minimum 20 users. Pilot of 30 days is free. Customer references are available on request.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Spreadsheet works for now; find the gaps, like swaps and missed shifts.\nWHY: Status quo said as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Price objection: compare nine dollars a user with the value of one missed shift.\nWHY: Price objection with no question.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Past failure: ask what stopped adoption, then show the phone view.\nWHY: Past failure stated as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Sign-off waits for quarter end; offer the free pilot and find the sponsor.\nWHY: Timing and authority objection.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: Signal is weak; check offline mode before promising anything.\nWHY: Technical objection.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Do not match blindly; ask what the other vendor pilot and support cover.\nWHY: Competitor statement.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

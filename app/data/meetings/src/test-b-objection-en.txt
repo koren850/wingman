@@ -1,0 +1,36 @@
+id: test-b-objection-en
+split: test-b
+lang: en
+type: noq
+variant: noisy
+user: Sam
+context: Discovery call for a data audit service. Prospect: Quarry Foods, contact Anita Dole, finance director. Fixed fee $15,000, four weeks, report and one workshop included. Data stays in the client's own systems. References are available.
+roster: Anita Dole | them | finance director
+roster: Joel | them | it manager
+agenda: scope of the audit
+agenda: fee and timing
+brief: Fixed fee is $15,000
+brief: Four weeks
+brief: Data stays in the client systems
+brief: Report and one workshop included
+likely: Can you start next month?
+---
+me: hello anita and joel thanks for the time
+them@Anita: hi sam we looked at the proposal and honestly fifteen thousand is more than we have ever paid for an audit ## m: prompt || fee;scope || noq,objection || Fee objection: compare the fee with the scope and the cost of bad data. || Price objection without a question.
+me: i hear that let me think about the framing of the scope
+them@Joel: our last consultant took ten weeks instead of four and left us with a report nobody read ## m: prompt || ten weeks;workshop || noq,objection || Past delay of ten weeks; show the four-week plan and the workshop. || Past failure.
+me: a report that nobody reads is a waste i agree
+.. 25
+them@Joel: i am not comfortable with outsiders looking at our customer tables ## m: answer || stays;systems || noq,objection || Data stays in your systems; the auditor works through read-only access. || Security concern.
+me: the data stays in your systems so no copies leave
+them@Anita: the board meets in march and nothing gets approved before that ## m: prompt || board;first step || noq,objection || Approval waits for the board; offer a small first step before then. || Timing and authority.
+me: a small first step would not need the board
+.. 20
+them@Anita: a cheaper firm offered us the same thing for nine thousand ## m: prompt || cheaper;same || noq,objection || Other firm is cheaper: ask if it is really the same scope and support. || Competitor price.
+me: i would check that it is really the same scope
+them@Joel: we have a freeze on new vendors until the end of the year ## m: prompt || freeze;vendor || noq,objection || Vendor freeze until year end; look for an exception or a later start. || Policy objection.
+me: then the start date is the real question
+.. 25
+them@Anita: joel is celebrating his birthday tomorrow so we are bringing cake ## quiet
+me: happy early birthday joel ## quiet
+them@Joel: thanks i will save you a piece ## quiet

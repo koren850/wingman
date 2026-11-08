@@ -1,0 +1,302 @@
+{
+ "id": "dev-crosstalk-he",
+ "split": "dev",
+ "lang": "he",
+ "type": "crosstalk",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "ישיבה שבועית על הטמעת טופס הוצאות חדש. דן מוביל את ההטמעה. עובדות: 30 סניפים בסך הכול, 26 כבר עובדים עם הטופס החדש, הטופס הישן נסגר ב-15 ביולי, ההדרכות ביום שני וביום רביעי.",
+ "profile": {
+  "userName": "דן"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4440,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "טוב אז הבעיה העיקרית בהטמעה היא ש"
+  },
+  {
+   "id": "l2",
+   "t": 8499,
+   "side": "them",
+   "speaker": "אבי",
+   "text": "רגע לפני זה החשבוניות של אפריל עדיין"
+  },
+  {
+   "id": "l3",
+   "t": 13397,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "הבעיה בהטמעה היא שתשעה סניפים עדיין בטופס הישן"
+  },
+  {
+   "id": "l4",
+   "t": 16614,
+   "side": "them",
+   "speaker": "אבי",
+   "text": "סליחה רונית תמשיכי"
+  },
+  {
+   "id": "l5",
+   "t": 20010,
+   "side": "me",
+   "text": "חשבתי שנשארו ארבעה סניפים, אבדוק ברשימה."
+  },
+  {
+   "id": "l6",
+   "t": 23405,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "לא זה היה בחודש שעבר"
+  },
+  {
+   "id": "l7",
+   "t": 26379,
+   "side": "them",
+   "speaker": "אבי",
+   "text": "ובחשבוניות של אפריל"
+  },
+  {
+   "id": "l8",
+   "t": 31872,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "דן תגיד לנו אילו סניפים עדיין צריכים הדרכה"
+  },
+  {
+   "id": "l9",
+   "t": 35864,
+   "side": "me",
+   "text": "סניפי הצפון ועוד שניים עדיין צריכים הדרכה"
+  },
+  {
+   "id": "l10",
+   "t": 39435,
+   "side": "them",
+   "speaker": "אבי",
+   "text": "זה מוקדם מדי לסניפי הצפון"
+  },
+  {
+   "id": "l11",
+   "t": 43005,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "היה להם חצי שנה"
+  },
+  {
+   "id": "l12",
+   "t": 68434,
+   "side": "them",
+   "speaker": "אבי",
+   "text": "בכנות האנשים שלי לא יספיקו עד יולי, ההדרכות רק בשני ימים"
+  },
+  {
+   "id": "l13",
+   "t": 73022,
+   "side": "me",
+   "text": "אני יכול להוסיף מפגש אם סניפי הצפון צריכים."
+  },
+  {
+   "id": "l14",
+   "t": 75089,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "ואשראי"
+  },
+  {
+   "id": "l15",
+   "t": 79255,
+   "side": "them",
+   "speaker": "אבי",
+   "text": "דפי האשראי מגיעים בשלישי לחודש"
+  },
+  {
+   "id": "l16",
+   "t": 83600,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "נכון בשלישי אז צריך את הטופס לפני זה"
+  },
+  {
+   "id": "l17",
+   "t": 106684,
+   "side": "them",
+   "speaker": "אבי",
+   "text": "ראית את המשחק אתמול"
+  },
+  {
+   "id": "l18",
+   "t": 109347,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "לא נרדמתי"
+  },
+  {
+   "id": "l19",
+   "t": 111769,
+   "side": "them",
+   "speaker": "אבי",
+   "text": "אני בכלל לא ישנתי"
+  },
+  {
+   "id": "l20",
+   "t": 114190,
+   "side": "me",
+   "text": "ראיתי חצי ממנו."
+  },
+  {
+   "id": "l21",
+   "t": 119970,
+   "side": "them",
+   "speaker": "רונית",
+   "text": "טוב חוזרים לעניין, דן תשלח את רשימת הסניפים אחרי השיחה"
+  },
+  {
+   "id": "l22",
+   "t": 123649,
+   "side": "me",
+   "text": "אשלח את הרשימה היום."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "26",
+    "ארבעה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "צפון",
+    "הדרכה"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "מפגשי",
+    "הצפון"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l16",
+   "kind": "check",
+   "mustMention": [
+    "שלישי",
+    "טופס"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "deadline",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l21",
+   "kind": "prompt",
+   "mustMention": [
+    "רשימה",
+    "סניפים"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "commitment",
+    "crosstalk"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l17",
+   "toLine": "l20"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"רונית\",\"side\":\"them\",\"role\":\"כספים\"},{\"name\":\"אבי\",\"side\":\"them\",\"role\":\"מנהל סניפים\"}],\"agenda\":[\"סניפים שעדיין בטופס הישן\",\"מועד הסגירה\"],\"facts\":[{\"text\":\"30 סניפים בסך הכול\",\"src\":\"brief\"},{\"text\":\"26 סניפים עובדים עם הטופס החדש\",\"src\":\"brief\"},{\"text\":\"הטופס הישן נסגר ב-15 ביולי\",\"src\":\"brief\"},{\"text\":\"הדרכות ביום שני וביום רביעי\",\"src\":\"brief\"}],\"likelyQuestions\":[\"מתי הטופס הישן נסגר?\"],\"chunks\":[\"ישיבה שבועית על הטמעת טופס הוצאות חדש. דן מוביל את ההטמעה. עובדות: 30 סניפים בסך הכול, 26 כבר עובדים עם הטופס החדש, הטופס הישן נסגר ב-15 ביולי, ההדרכות ביום שני וביום רביעי.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: 26 מתוך 30 עברו, כלומר ארבעה סניפים נשארו ולא תשעה. לבדוק את הספירה.\nWHY: מספר שסותר את התוכנית, שנאמר מעל דיבור אחר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: סניפי הצפון עדיין צריכים הדרכה, לפי רשימת ההטמעה.\nWHY: שאלה ישירה למשתמש בתוך דיבור חופף.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: מועדי ההדרכה קבועים; להציע מפגשי הדרכה נוספים לסניפי הצפון.\nWHY: התנגדות שנאמרה כעובדה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: דפי האשראי מגיעים בשלישי; לברר אילו סניפים חייבים לעבור לטופס החדש לפני כן.\nWHY: מועד שנאמר תוך חפיפה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l21",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: דן התחייב לשלוח את הרשימה של הסניפים אחרי השיחה; להוסיף למשימות.\nWHY: בקשה בתוך החפיפה.",
+   "ms": 1500
+  }
+ ]
+}

@@ -9,6 +9,8 @@ import { loadSplit } from "../../qa/golden-load.ts";
 import { gradeGolden, gradeMemory, poolGrades, nullTimeline, noiseTimeline, CONTROL_LIMITS, type GoldenGrade } from "../../qa/grade-golden.ts";
 import { guard } from "../guards.ts";
 import { runMeeting, pool, type MeetingRun } from "./v2-kit.ts";
+import { controlSubset } from "../../qa/eval-v2.ts";
+import { TYPES } from "../../qa/golden-schema.ts";
 import type { Golden } from "../testkit/golden-types.ts";
 
 const dev = loadSplit("dev").filter((g) => g.type !== "interview"); // a practice interview keeps the classic engine
@@ -34,7 +36,13 @@ const pooled = (runs: MeetingRun[], only = false) => {
 before(
   async () => {
     clean = await pool(dev, 4, (g) => runMeeting(g.id));
-    noisy = await pool(dev, 4, (g) => runMeeting(g.id, { noisy: true, asks: false }));
+    // the noisy copy runs on every fourth meeting (the eval's control subset): enough to see the gap, a quarter of the cost
+    const sub = new Set(controlSubset(dev));
+    noisy = await pool(
+      dev.filter((g) => sub.has(g.id)),
+      4,
+      (g) => runMeeting(g.id, { noisy: true, asks: false }),
+    );
   },
   { timeout: 600_000 },
 );
@@ -86,7 +94,8 @@ test("golden dev through the engine (SCRIPTED): planned moments show, silent win
 });
 
 test("golden dev: noisy transcripts (no punctuation) stay within 10 points of the clean run", () => {
-  const c = pooled(clean).p,
+  const same = new Set(noisy.map((r) => r.id));
+  const c = pooled(clean.filter((r) => same.has(r.id))).p,
     n = pooled(noisy).p;
   console.log(
     `POOLED(noisy) recall ${pct(n.recall)} precision ${pct(n.precision)} direct ${pct(n.directRecall)} (clean ${pct(c.recall)} / ${pct(c.precision)} / ${pct(c.directRecall)})`,
@@ -128,7 +137,9 @@ test("memory: the memory loop learns the planned facts (checked 35 s after the l
 test("each meeting: session.json is written, the memory loop ran, no engine error survived, every ask ended in a card", () => {
   for (const r of clean) {
     assert.ok(r.sessionFile, `${r.id}: session.json`);
-    assert.ok((r.roleCalls.memory ?? 0) >= 5, `${r.id}: the memory updater ran (${r.roleCalls.memory ?? 0})`);
+    // the core meetings are 6 minutes or longer: the updater runs every few seconds. The short r2 meetings (2 to 4 minutes) only need it to run.
+    const isCore = (TYPES as readonly string[]).includes(dev.find((g) => g.id === r.id)!.type);
+    assert.ok((r.roleCalls.memory ?? 0) >= (isCore ? 5 : 1), `${r.id}: the memory updater ran (${r.roleCalls.memory ?? 0})`);
     const errs = r.events.filter((x) => x.type === "error.survived");
     assert.equal(errs.length, 0, `${r.id}: ${JSON.stringify(errs.slice(0, 2))}`);
     for (const a of r.askCards) assert.ok(a.say, `${r.id}: ask "${a.q}" gave no card`);

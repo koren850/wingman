@@ -6,6 +6,7 @@
 //   - right kind, in time, tokens missing  -> wrong text (the moment is not recalled; counts in the wrong-card rate)
 //   - right kind, after latestMs (up to 2x) -> late (not recalled)
 //   - a card that matches no moment         -> extra (lowers precision; inside a silent window it is a silent breach)
+//   - a card that matches an allowedExtra   -> allowed: a useful extra the labels do not call a moment. It is neither right nor wrong: precision ignores it.
 //   - a second card with the same text/ref close to an earlier one, or a second card for an already served moment -> duplicate
 import type { Golden, Kind } from "./golden-schema.ts";
 export type { Golden, Kind } from "./golden-schema.ts";
@@ -28,9 +29,11 @@ export type GoldenGrade = {
   id: string;
   moments: number;
   cards: number;
+  /** cards that matched an allowedExtra label (they are in `cards`, but not in the precision denominator) */
+  allowed: number;
   hits: number;
   recall: number; // 0..1
-  precision: number; // 0..1 (correct cards / all cards); 1 when there are no cards
+  precision: number; // 0..1 (correct cards / (cards - allowed)); 1 when there are no cards
   byKind: Record<Kind, KindStats>;
   directMoments: number;
   directRecall: number;
@@ -125,6 +128,16 @@ export function gradeGolden(g: Golden, cardsIn: TimelineCard[], opts: GradeOpts 
   }
   for (const m of ordered) results.push(byId.get(m.id)!);
 
+  // allowed extras: a useful card that is not a labelled moment. One card per label, the first that matches.
+  const allowed = new Set<number>();
+  for (const x of g.allowedExtra ?? []) {
+    const t0 = lineT(x.afterLine);
+    const c = cards.find((c) => !used.has(c.i) && (!x.kind || c.kind === x.kind) && c.atMs >= t0 && c.atMs <= t0 + x.latestMs && hasAll(c.text, x.mustMention));
+    if (!c) continue;
+    used.add(c.i);
+    allowed.add(c.i);
+  }
+
   // duplicates: a second card with the same squashed text (or ref) within the window, or a second right-kind card inside a served moment's window
   const dup = new Set<number>();
   const lastSeen = new Map<string, number>();
@@ -179,7 +192,7 @@ export function gradeGolden(g: Golden, cardsIn: TimelineCard[], opts: GradeOpts 
   for (const k of KINDS) {
     const ms = results.filter((r) => r.kind === k);
     const hits = ms.filter((r) => r.status === "hit").length;
-    const kc = cards.filter((c) => c.kind === k);
+    const kc = cards.filter((c) => c.kind === k && !allowed.has(c.i));
     const ok = kc.filter((c) => correct.has(c.i)).length;
     byKind[k] = {
       moments: ms.length,
@@ -198,9 +211,10 @@ export function gradeGolden(g: Golden, cardsIn: TimelineCard[], opts: GradeOpts 
     id: g.id,
     moments: g.moments.length,
     cards: cards.length,
+    allowed: allowed.size,
     hits: hits.length,
     recall: g.moments.length ? hits.length / g.moments.length : 1,
-    precision: cards.length ? correct.size / cards.length : 1,
+    precision: cards.length - allowed.size > 0 ? correct.size / (cards.length - allowed.size) : 1,
     byKind,
     directMoments: direct.length,
     directRecall: direct.length ? directHits / direct.length : 1,
@@ -226,6 +240,7 @@ export type PooledGrade = {
   meetings: number;
   moments: number;
   cards: number;
+  allowed: number;
   hits: number;
   correct: number;
   recall: number;
@@ -278,10 +293,11 @@ export function poolGrades(gs: { golden: Golden; grade: GoldenGrade }[]): Pooled
     meetings: gs.length,
     moments,
     cards,
+    allowed: sum((x) => x.allowed),
     hits,
     correct,
     recall: moments ? hits / moments : 1,
-    precision: cards ? correct / cards : 1,
+    precision: cards - sum((x) => x.allowed) > 0 ? correct / (cards - sum((x) => x.allowed)) : 1,
     byKind,
     directMoments,
     directHits,
@@ -340,7 +356,7 @@ export function gradeMemory(g: Golden, snaps: MemorySnapshot[]): MemoryGrade {
 // ---- negative controls and the oracle
 /** The null model: always SKIP, so no cards. */
 export const nullTimeline = (_g: Golden): TimelineCard[] => [];
-const rng = (seed: number) => () => {
+export const rng = (seed: number) => () => {
   seed = (seed + 0x6d2b79f5) | 0;
   let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
   t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
@@ -369,7 +385,34 @@ export function oracleTimeline(g: Golden): TimelineCard[] {
   return out;
 }
 /** Limits the negative controls must stay under (PLAN g1-golden item 4). */
-export const CONTROL_LIMITS = { nullRecall: 0.2, noisePrecision: 0.4, noiseRecall: 0.2 };
+export const CONTROL_LIMITS = {
+  nullRecall: 0.2,
+  noisePrecision: 0.4,
+  noiseRecall: 0.2,
+  /** shuffled: the replies of other slots (right style, wrong place) */
+  shuffledPrecision: 0.4,
+  shuffledRecall: 0.2,
+  /** always-ANS: an answer card for every call, with one fixed sentence */
+  ansPrecision: 0.4,
+  ansRecall: 0.2,
+};
+export type ControlName = "null" | "noise" | "shuffled" | "always-ans";
+/** Which limits a control must stay under. A control that scores above a limit means the grader (or the labels) can be fooled. Returns the problems. */
+export function controlProblems(name: ControlName, p: Pick<PooledGrade, "recall" | "precision" | "cards">): string[] {
+  const L = CONTROL_LIMITS;
+  const out: string[] = [];
+  const lim: Record<ControlName, { recall: number; precision?: number }> = {
+    null: { recall: L.nullRecall },
+    noise: { recall: L.noiseRecall, precision: L.noisePrecision },
+    shuffled: { recall: L.shuffledRecall, precision: L.shuffledPrecision },
+    "always-ans": { recall: L.ansRecall, precision: L.ansPrecision },
+  };
+  const l = lim[name];
+  if (p.recall >= l.recall) out.push(`${name}: recall ${(p.recall * 100).toFixed(1)}% is not under ${l.recall * 100}%`);
+  if (l.precision !== undefined && p.cards > 0 && p.precision >= l.precision)
+    out.push(`${name}: precision ${(p.precision * 100).toFixed(1)}% is not under ${l.precision * 100}%`);
+  return out;
+}
 
 // ---- ASR noise for runs on clean meetings: drop "?" and all punctuation, lowercase Latin text. Deterministic. The test meetings carry richer noise by hand.
 export function degradeAsr(g: Golden): Golden {

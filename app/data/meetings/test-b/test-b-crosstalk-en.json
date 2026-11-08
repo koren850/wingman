@@ -1,0 +1,256 @@
+{
+ "id": "test-b-crosstalk-en",
+ "split": "test-b",
+ "lang": "en",
+ "type": "crosstalk",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Handover call for a warehouse move. Sam coordinates the move. Facts: 220 pallets to move, the move happens on the weekend of 18 October, two trucks are booked, the new site opens on Monday 20 October.",
+ "profile": {
+  "userName": "Sam"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6060,
+   "side": "them",
+   "speaker": "Cora",
+   "text": "ok so for the move we have about three hundred pallets and"
+  },
+  {
+   "id": "l2",
+   "t": 9079,
+   "side": "them",
+   "speaker": "Dev",
+   "text": "sorry cora the trucks were"
+  },
+  {
+   "id": "l3",
+   "t": 14417,
+   "side": "them",
+   "speaker": "Cora",
+   "text": "three hundred pallets and they all need to be wrapped"
+  },
+  {
+   "id": "l4",
+   "t": 17134,
+   "side": "them",
+   "speaker": "Dev",
+   "text": "go ahead"
+  },
+  {
+   "id": "l5",
+   "t": 22950,
+   "side": "me",
+   "text": "i have two hundred twenty in the plan i will check the list"
+  },
+  {
+   "id": "l6",
+   "t": 26525,
+   "side": "them",
+   "speaker": "Cora",
+   "text": "that was before the new order"
+  },
+  {
+   "id": "l7",
+   "t": 29379,
+   "side": "them",
+   "speaker": "Dev",
+   "text": "and the trucks"
+  },
+  {
+   "id": "l8",
+   "t": 34552,
+   "side": "them",
+   "speaker": "Cora",
+   "text": "sam how many trucks do we have booked"
+  },
+  {
+   "id": "l9",
+   "t": 37124,
+   "side": "me",
+   "text": "two trucks are booked"
+  },
+  {
+   "id": "l10",
+   "t": 41255,
+   "side": "them",
+   "speaker": "Dev",
+   "text": "two is not enough for one weekend"
+  },
+  {
+   "id": "l11",
+   "t": 45805,
+   "side": "them",
+   "speaker": "Cora",
+   "text": "they did it with two last time"
+  },
+  {
+   "id": "l12",
+   "t": 70034,
+   "side": "them",
+   "speaker": "Dev",
+   "text": "honestly the drivers will not work the whole sunday"
+  },
+  {
+   "id": "l13",
+   "t": 75442,
+   "side": "me",
+   "text": "i can ask for a third truck or an earlier start"
+  },
+  {
+   "id": "l14",
+   "t": 78229,
+   "side": "them",
+   "speaker": "Cora",
+   "text": "and the keys"
+  },
+  {
+   "id": "l15",
+   "t": 83715,
+   "side": "them",
+   "speaker": "Dev",
+   "text": "the keys for the new site come on friday"
+  },
+  {
+   "id": "l16",
+   "t": 89260,
+   "side": "them",
+   "speaker": "Cora",
+   "text": "right friday so everything has to be ready before monday the twentieth"
+  },
+  {
+   "id": "l17",
+   "t": 113324,
+   "side": "them",
+   "speaker": "Dev",
+   "text": "did you see the game last night"
+  },
+  {
+   "id": "l18",
+   "t": 116287,
+   "side": "them",
+   "speaker": "Cora",
+   "text": "i fell asleep"
+  },
+  {
+   "id": "l19",
+   "t": 118929,
+   "side": "me",
+   "text": "i saw the first half"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "220",
+    "300"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "two trucks"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "drivers",
+    "truck"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l16",
+   "kind": "check",
+   "mustMention": [
+    "Friday",
+    "Monday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "deadline",
+    "crosstalk"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l17",
+   "toLine": "l19"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Cora\",\"side\":\"them\",\"role\":\"warehouse lead\"},{\"name\":\"Dev\",\"side\":\"them\",\"role\":\"transport\"}],\"agenda\":[\"pallets and trucks\",\"dates\"],\"facts\":[{\"text\":\"220 pallets to move\",\"src\":\"brief\"},{\"text\":\"Move on the weekend of 18 October\",\"src\":\"brief\"},{\"text\":\"Two trucks booked\",\"src\":\"brief\"},{\"text\":\"New site opens on Monday 20 October\",\"src\":\"brief\"}],\"likelyQuestions\":[\"How many trucks are booked?\"],\"chunks\":[\"Handover call for a warehouse move. Sam coordinates the move. Facts: 220 pallets to move, the move happens on the weekend of 18 October, two trucks are booked, the new site opens on Monday 20 October.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The plan has 220 pallets, she says 300. Confirm the count with the lead.\nWHY: Number that conflicts with the plan, said over other talk.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Two trucks are booked for the weekend.\nWHY: Direct question inside overlap.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Drivers will not work a full day; ask for a third truck.\nWHY: Objection hidden in the overlap.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Keys arrive Friday, the site opens Monday; list what must be ready.\nWHY: Deadline in the overlap.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

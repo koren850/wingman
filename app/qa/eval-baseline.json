@@ -1,107 +1,141 @@
 {
-  "tolerance": 1,
-  "metrics": {
-    "detector.set.precision": 100,
-    "detector.set.recall": 100,
-    "detector.scenarios.precision": 97,
-    "detector.scenarios.recall": 100,
-    "bank.top1": 97.6,
-    "bank.wrong": 2.4,
-    "bank.none": 0,
-    "guards.blocked": 100,
-    "guards.falsePositives": 0,
-    "salary.blocked": 100,
-    "salary.falsePositives": 0
+  "legacy": {
+    "tolerance": 1,
+    "metrics": {
+      "detector.set.precision": 100,
+      "detector.set.recall": 100,
+      "detector.scenarios.precision": 97,
+      "detector.scenarios.recall": 100,
+      "bank.top1": 97.6,
+      "bank.wrong": 2.4,
+      "bank.none": 0,
+      "guards.blocked": 100,
+      "guards.falsePositives": 0,
+      "salary.blocked": 100,
+      "salary.falsePositives": 0
+    }
   },
-  "golden": {
-    "engine": "legacy",
+  "v2": {
+    "engine": "v2",
     "split": "dev",
-    "meetings": 16,
-    "moments": 236,
+    "scripted": true,
+    "meetings": 32,
+    "moments": 292,
+    "floor": {
+      "%": 0.005,
+      "ms": 1,
+      "/min": 0.01,
+      "usd": 0.0001,
+      "#": 1
+    },
     "metrics": {
       "card.recall": {
-        "value": 0,
-        "n": 236
+        "value": 0.83219,
+        "n": 292
       },
       "card.precision": {
-        "value": 0,
-        "n": 28
+        "value": 0.70845,
+        "n": 343
       },
       "recall.answer": {
-        "value": 0,
-        "n": 76
+        "value": 0.95588,
+        "n": 68
       },
       "recall.prompt": {
-        "value": 0,
-        "n": 80
+        "value": 0.78302,
+        "n": 106
       },
       "recall.check": {
-        "value": 0,
-        "n": 56
+        "value": 0.7907,
+        "n": 86
       },
       "recall.fact": {
-        "value": 0,
-        "n": 24
+        "value": 0.84375,
+        "n": 32
       },
       "precision.answer": {
-        "value": 0,
-        "n": 28
+        "value": 0.6701,
+        "n": 97
       },
       "precision.prompt": {
-        "value": 1,
-        "n": 0
+        "value": 0.7757,
+        "n": 107
       },
       "precision.check": {
-        "value": 1,
-        "n": 0
+        "value": 0.67327,
+        "n": 101
       },
       "precision.fact": {
-        "value": 1,
-        "n": 0
+        "value": 0.71053,
+        "n": 38
       },
       "direct.recall": {
-        "value": 0,
-        "n": 66
+        "value": 0.94643,
+        "n": 56
+      },
+      "noq.recall": {
+        "value": 0.83784,
+        "n": 74
+      },
+      "recall.en": {
+        "value": 0.84932,
+        "n": 146
+      },
+      "recall.he": {
+        "value": 0.81507,
+        "n": 146
       },
       "ttc.p50": {
-        "value": 0,
-        "n": 0
+        "value": 1500,
+        "n": 243
       },
       "ttc.p95": {
-        "value": 0,
-        "n": 0
+        "value": 2200,
+        "n": 243
       },
       "silent.cpm": {
-        "value": 0.126,
-        "n": 16
+        "value": 0.04467,
+        "n": 112
       },
       "wrong.card": {
-        "value": 1,
-        "n": 8
+        "value": 0.03571,
+        "n": 252
       },
       "dup.rate": {
-        "value": 0.1071,
-        "n": 28
+        "value": 0.05814,
+        "n": 344
       },
       "wrong.lang": {
-        "value": 0,
-        "n": 28
+        "value": 0.00585,
+        "n": 342
       },
-      "gate.recall": {
-        "value": 0.9211,
-        "n": 76
-      },
-      "gate.quietFp": {
-        "value": 0.561,
-        "n": 82
+      "guard.rate": {
+        "value": 0.005,
+        "n": 166
       },
       "memory.pass": {
-        "value": 0,
-        "n": 16
+        "value": 0.9,
+        "n": 20
       },
-      "guard.breaches": {
-        "value": 0,
-        "n": 28
+      "rubric.pass": {
+        "value": 0.77907,
+        "n": 344
+      },
+      "noisy.delta": {
+        "value": 0.05063,
+        "n": 79
+      },
+      "cost.perHour": {
+        "value": 0.03645,
+        "n": 1088
+      },
+      "calls.perHour": {
+        "value": 286.88444,
+        "n": 1088
+      },
+      "cards.perHour": {
+        "value": 90.70611,
+        "n": 344
       }
     }
   }

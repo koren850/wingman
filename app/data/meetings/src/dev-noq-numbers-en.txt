@@ -1,0 +1,38 @@
+id: dev-noq-numbers-en
+split: dev
+lang: en
+type: noq
+variant: clean
+user: Dan
+context: Renewal call. Customer: Pine Ridge Clinics, contact Alina Brandt, operations lead. Current contract: 80 seats at $14,000 per year, renews on 1 March. Our usual discount cap on renewals is 5 percent without approval.
+roster: Alina Brandt | them | operations lead
+roster: Sam | them | finance
+agenda: renewal terms
+agenda: seat count
+brief: Current contract is 80 seats
+brief: Price is $14,000 per year
+brief: Renewal date is 1 March
+brief: Discount above 5 percent needs approval
+likely: Can you lower the price?
+---
+me: Hi Alina, thanks for joining. I see Sam from finance is here as well.
+them@Alina: Yes, Sam will keep an eye on the numbers.
+me: Good. Let us start with your situation today.
+them@Alina: We have grown a lot, we are around a hundred and twenty seats now. ## m: check || 80;120 || noq,number-conflict || Contract says 80 seats; she says 120. Confirm the real count. || Seat count conflicts with the contract.
+me: That is a big change from the eighty in the contract. I will check the usage report.
+them@Sam: Our budget for this tool next year is nine thousand dollars, no more. ## m: check || 14,000;9,000 || noq,number-conflict || Current price is $14,000; Sam's limit is $9,000. Name the gap early. || Budget conflicts with the current price.
+me: Noted, I will take that into account.
+.. 25
+them@Alina: Last quarter we lost forty percent of our new staff accounts in the first week because nobody finished onboarding. ## m: prompt || forty;onboarding || noq,number || Forty percent drop in week one; find the onboarding step where they stop. || A number that signals a product problem.
+me: That is a high number and onboarding is the first place I would look.
+them@Sam: The renewal is on the first of March and we will not sign anything before the audit ends on the fifteenth. ## m: check || 1 March;15 || noq,date || Renewal is 1 March, audit ends the 15th. Ask for a short extension. || Two dates that clash.
+me: Then the dates collide, so I will think about an extension.
+.. 20
+them@Alina: Support tickets doubled since January, from about fifty to a hundred a month. ## m: fact || tickets;doubled || noq,number || Tickets doubled from fifty to a hundred a month; link this to seat growth. || Number claim, trend.
+me: That fits with the growth in seats.
+them@Sam: Another vendor offered us a flat rate of ten thousand for unlimited seats. ## m: check || 10,000;unlimited || noq,objection || Other offer: $10,000 flat for unlimited seats. Ask what support it covers. || Competing offer as a statement.
+me: I would like to compare what that flat rate includes.
+.. 25
+them@Alina: It is raining here again and the roads are a mess. ## quiet
+me: Same here, the traffic was terrible this morning. ## quiet
+them@Sam: I will send you the audit schedule after the call. ## quiet

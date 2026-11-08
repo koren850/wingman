@@ -3,7 +3,15 @@
 import { z } from "zod";
 
 export const KINDS = ["answer", "prompt", "check", "fact"] as const;
+/** The eight core meeting types: each has three meetings (EN, HE and one held-out). Counts in src/golden.test.ts are about these. */
 export const TYPES = ["sales", "pricing", "support", "vendor", "standup", "one2one", "kickoff", "interview"] as const;
+/** Extra types of the r2 corpus. "noq": the card must show for a line with no "?" and no question word. The others are variety: a long talk by one
+ *  person, people talking over each other, three speakers, speech-to-text errors, and a meeting where the right behaviour is silence. */
+export const EXTRA_TYPES = ["noq", "monologue", "crosstalk", "threeway", "asr", "silence"] as const;
+export const SPLITS = ["dev", "test", "test-b"] as const;
+export type Split = (typeof SPLITS)[number];
+/** Splits that are held out: they load only with { final: true } and only when their lock file matches. */
+export const HELD_OUT: readonly Split[] = ["test", "test-b"];
 
 const Line = z.object({
   id: z.string().regex(/^l\d+$/),
@@ -19,7 +27,16 @@ const Moment = z.object({
   mustMention: z.array(z.string().min(1)).optional(),
   latestMs: z.number().int().positive(), // the card must show within this many ms after the line is final
   direct: z.boolean().optional(), // a question put to the user: counts for direct-question recall
-  tags: z.array(z.string()).optional(), // implied, objection, number-conflict, promise, jargon, topic-shift, unanswered ...
+  tags: z.array(z.string()).optional(), // implied, objection, number-conflict, promise, jargon, topic-shift, unanswered, noq (no "?" and no question word) ...
+});
+/** A card that is not one of the labelled moments but is useful, so it is neither right nor wrong: it leaves precision alone. It counts when a card of
+ *  `kind` (any kind when absent) with the `mustMention` tokens (none when absent) shows within `latestMs` after the line. */
+const AllowedExtra = z.object({
+  id: z.string().regex(/^x\d+$/),
+  afterLine: z.string(),
+  kind: z.enum(KINDS).optional(),
+  mustMention: z.array(z.string().min(1)).optional(),
+  latestMs: z.number().int().positive(),
 });
 const Script = z.object({
   role: z.enum(["moment", "memory", "ask", "digest"]),
@@ -32,9 +49,9 @@ const Script = z.object({
 export const GoldenSchema = z
   .object({
     id: z.string().regex(/^(dev|test)-[a-z0-9-]+$/),
-    split: z.enum(["dev", "test"]),
+    split: z.enum(SPLITS),
     lang: z.enum(["en", "he", "mixed"]),
-    type: z.enum(TYPES),
+    type: z.enum([...TYPES, ...EXTRA_TYPES]),
     variant: z.enum(["clean", "noisy"]),
     scripted: z.boolean().optional(),
     context: z.string().optional(),
@@ -42,6 +59,7 @@ export const GoldenSchema = z
     lines: z.array(Line).min(10),
     moments: z.array(Moment),
     silent: z.array(z.object({ fromLine: z.string(), toLine: z.string() })),
+    allowedExtra: z.array(AllowedExtra).optional(),
     memoryChecks: z.array(z.object({ atLine: z.string(), mustContain: z.array(z.string().min(1)).min(1) })).optional(),
     script: z.array(Script).optional(),
   })
@@ -50,6 +68,8 @@ export const GoldenSchema = z
     const bad = (m: string) => ctx.addIssue({ code: "custom", message: m });
     if (ids.size !== g.lines.length) bad("duplicate line id");
     g.lines.forEach((l, i) => i && l.t < g.lines[i - 1].t && bad(`line ${l.id} goes back in time`));
+    if (!g.id.startsWith(g.split + "-")) bad(`id ${g.id} must start with ${g.split}-`);
+    for (const x of g.allowedExtra ?? []) ids.has(x.afterLine) || bad(`allowedExtra ${x.id}: unknown line ${x.afterLine}`);
     for (const m of g.moments) ids.has(m.afterLine) || bad(`moment ${m.id}: unknown line ${m.afterLine}`);
     for (const s of g.silent) (ids.has(s.fromLine) && ids.has(s.toLine)) || bad(`silent window ${s.fromLine}-${s.toLine}: unknown line`);
     for (const c of g.memoryChecks ?? []) ids.has(c.atLine) || bad(`memory check: unknown line ${c.atLine}`);

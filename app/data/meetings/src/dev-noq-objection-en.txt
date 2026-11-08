@@ -1,0 +1,37 @@
+id: dev-noq-objection-en
+split: dev
+lang: en
+type: noq
+variant: clean
+user: Dan
+context: Sales call for a team scheduling tool. Prospect: Granite Logistics, contact Hugh Mills, depot manager. List price: $9 per user per month, minimum 20 users. Pilot of 30 days is free. Customer references are available on request.
+roster: Hugh Mills | them | depot manager
+roster: Nina | them | team lead
+agenda: fit for the depots
+agenda: pilot
+brief: List price is $9 per user per month
+brief: Minimum is 20 users
+brief: Free pilot of 30 days
+likely: Can we try it first?
+---
+me: Hi Hugh, thanks for making time. Nina, good to see you too.
+them@Nina: Hello. I will mostly listen today.
+me: Fine. Hugh, describe your current shift planning.
+them@Hugh: We use a shared spreadsheet and a group chat and it mostly works for us. ## m: prompt || spreadsheet;gaps || noq,status-quo || Spreadsheet works for now; find the gaps, like swaps and missed shifts. || Status quo said as a fact.
+me: A spreadsheet can work well for small teams.
+them@Hugh: Honestly, nine dollars a user is too expensive for a team our size. ## m: check || nine dollars;value || noq,objection || Price objection: compare nine dollars a user with the value of one missed shift. || Price objection with no question.
+me: I hear you on price, let me think about the work it replaces.
+.. 25
+them@Nina: We tried a scheduling tool two years ago and nobody on the floor used it. ## m: prompt || adoption;phone || noq,objection || Past failure: ask what stopped adoption, then show the phone view. || Past failure stated as a fact.
+me: Adoption is the real risk, I agree.
+them@Hugh: My boss will never sign off on anything before the end of the quarter. ## m: prompt || quarter;sponsor || noq,objection || Sign-off waits for quarter end; offer the free pilot and find the sponsor. || Timing and authority objection.
+me: A pilot does not need a signature, that may help.
+.. 20
+them@Nina: Our depot has bad signal, so anything cloud based is a problem for us. ## m: answer || offline;signal || noq,objection || Signal is weak; check offline mode before promising anything. || Technical objection.
+me: I will check offline behaviour before I answer that.
+them@Hugh: The other vendor said they would match any price you give us. ## m: prompt || other vendor;pilot || noq,objection || Do not match blindly; ask what the other vendor pilot and support cover. || Competitor statement.
+me: Let us compare the contents of each offer.
+.. 25
+them@Hugh: The depot dog had puppies last week, the whole floor is distracted. ## quiet
+me: That sounds like a good reason for a distracted floor. ## quiet
+them@Nina: I will send you the shift pattern for one depot afterwards. ## quiet

@@ -1,0 +1,27 @@
+id: test-b-silence-en
+split: test-b
+lang: en
+type: silence
+variant: clean
+user: Sam
+context: Social catch-up before a team lunch. Nothing is due. Facts: lunch is at noon on Friday, the restaurant is booked for 8 people, the office closes at 15:00 on Friday.
+roster: Mona | them | teammate
+roster: Eli | them | teammate
+agenda: lunch plan
+brief: Lunch is at noon on Friday
+brief: Table is booked for 8 people
+brief: Office closes at 15:00 on Friday
+likely: Is the table booked?
+---
+them@Mona: Hi Sam, hi Eli, the lunch is on, the table is booked for eight. ## quiet
+me: Great, thanks for booking it. ## quiet
+them@Eli: Noon on Friday, right by the river. ## quiet
+me: I like that place, the food is good. ## quiet
+them@Mona: The office closes at three that day, so nobody has to rush back. ## quiet
+.. 30
+them@Eli: I will bring the box of games from the cupboard. ## quiet
+me: Good idea, the cards are in there too. ## quiet
+them@Mona: Everyone said yes except one person who has a doctor visit. ## quiet
+.. 30
+me: That is fine, we can eat without them. ## quiet
+them@Eli: See you all on Friday. ## quiet

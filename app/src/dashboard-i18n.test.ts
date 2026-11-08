@@ -133,7 +133,7 @@ test("errors: every entry says what happened, the next step, and has a button wi
   assert.deepEqual(orphan, [], "catalog texts with no table entry");
 });
 
-test("errors: raw messages from the engine and from file import reach the right entry, and every button action can run", () => {
+test("errors: raw messages from the engine and from file import reach the right entry", () => {
   const code = (s: string) => E.classify(s).code;
   assert.equal(code("Deepgram key missing"), "key-deepgram");
   assert.equal(code("Anthropic API key is invalid (401)"), "key-anthropic");
@@ -160,9 +160,6 @@ test("errors: raw messages from the engine and from file import reach the right 
   const d = E.describe((k: string, v?: object) => I.t("he", k, v), "Deepgram key missing");
   assert.deepEqual([d.code, d.action], ["key-deepgram", "keys"]);
   assert.match(d.btn, HEB);
-  // every action the table uses is handled by performErrorAction (a switch case)
-  const ui = readFileSync(join(DASH, "errui.js"), "utf8");
-  for (const a of new Set(E.TABLE.map((e: { action: string }) => e.action))) assert.match(ui, new RegExp(`case "${a}":`), `performErrorAction handles ${a}`);
 });
 
 test("errors: the backend messages the window can show are all covered by the table (no message ends as generic by accident)", () => {

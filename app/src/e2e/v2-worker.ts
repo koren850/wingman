@@ -7,6 +7,11 @@ import { setupEngine } from "../testkit/engine-inproc.ts";
 import { loadSplit } from "../../qa/golden-load.ts";
 import { observeModel, timelineOf, type MeetingRun, type WorkerOptions } from "./v2-kit.ts";
 import { registerRole } from "../testkit/prompt.ts";
+import { Cassette, wrapCassette } from "../providers/cassette.ts";
+import { ModelRegistry } from "../providers/llm.ts";
+import { controlReplies } from "../../qa/controls.ts";
+
+const realSetTimeout = globalThis.setTimeout; // the virtual clock replaces setTimeout; the paced record mode sleeps in real time
 
 const id = process.env.V2_MEETING!;
 const out = process.env.V2_OUT!;
@@ -22,10 +27,20 @@ const roughen = (s: string) =>
 async function main() {
   registerRole("memory", "You keep the memory of a live call");
   registerRole("compact", "You tidy the memory of a live call");
-  const g = loadSplit("dev").find((x) => x.id === id);
-  if (!g) throw new Error(`no dev meeting ${id}`);
+  const split = opts.split ?? "dev";
+  const g = loadSplit(split, { final: split !== "dev" }).find((x) => x.id === id);
+  if (!g) throw new Error(`no ${split} meeting ${id}`);
   const e = await setupEngine({ "llm.reflex.model": "anthropic:claude-haiku-5-5", ...(opts.sets ?? {}) });
   const obs = observeModel(e, { roleFirst: opts.roleFirst });
+  if (opts.record) {
+    // Record mode: every model call goes through the cassette recorder. The inner model is the observed policy fake ("mock" transport, used by the
+    // tests) or the real provider ("real", the owner's command only: needs ANTHROPIC_API_KEY in the environment and WINGMAN_LLM_MODE unset).
+    const cassette = new Cassette(opts.record.cassette);
+    const observed = e.boot.registry.resolve as unknown as (ref: string, role?: string) => Promise<unknown>;
+    const real = opts.record.transport === "real" ? new ModelRegistry({ anthropic: process.env.ANTHROPIC_API_KEY } as never) : undefined;
+    e.boot.registry.resolve = (async (ref: string, role?: string) =>
+      wrapCassette({ mode: "record", cassette, ref, role, inner: (real ? await real.resolve(ref, role) : await observed(ref, role)) as never })) as never;
+  }
   const coach = await import("../engine/coach.ts");
   const ask = await import("../engine/askcall.ts");
   await e.reset(0);
@@ -35,9 +50,11 @@ async function main() {
   const rawOf = new Map(g.lines.map((l, i) => [l.id, lines[i].text]));
   const idx = new Map(g.lines.map((l, i) => [l.id, i]));
   // moment + observer replies are keyed by the line the call is about (the last line of its transcript block)
-  for (const s of g.script ?? []) {
-    const t = rawOf.get(s.whenLastLine);
-    if (s.role === "moment" && t) e.pm.reply({ role: ["moment", "observer"], lastLine: t }, s.reply, { ms: s.ms ?? 800 });
+  // A control (null, noise, shuffled, always-ANS) replaces the scripted moment replies with a deliberately bad model; everything else stays the same.
+  const momentReplies = controlReplies(g, opts.control, rawOf);
+  for (const r of momentReplies) {
+    if (r.lastLine) e.pm.reply({ role: ["moment", "observer"], lastLine: r.lastLine }, r.reply, { ms: r.ms });
+    else e.pm.reply({ role: ["moment", "observer"] }, r.reply, { ms: r.ms });
   }
   // memory patches: patch k is served by the first memory call whose newest line is at or after the line it was written for
   let lastSeen = -1;
@@ -63,6 +80,30 @@ async function main() {
   for (const s of g.script ?? []) if (s.role === "ask") e.pm.reply({ role: "ask" }, s.reply, { ms: s.ms ?? 1200 });
   e.pm.reply({ role: "ask" }, "Not in the call.", { ms: 800 });
 
+  // Paced record mode: the virtual clock moves at `pace` times real time so a real network answer can arrive before its virtual timeout.
+  const pace = opts.record?.pace ?? 0;
+  const advance = async (ms: number) => {
+    if (!pace) return e.vc.advance(ms);
+    for (let left = ms; left > 0; left -= 200) {
+      await new Promise((r) => realSetTimeout(r, Math.min(200, left) / pace));
+      await e.vc.advance(Math.min(200, left));
+    }
+  };
+  const spent = () => {
+    try {
+      return readFileSync(e.boot.log.dir + "/usage.jsonl", "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .reduce((a, l) => a + (JSON.parse(l).usd ?? 0), 0);
+    } catch {
+      return 0;
+    }
+  };
+  let capped = false;
+  const capHit = () => {
+    if (opts.record?.capUsd !== undefined && spent() > opts.record.capUsd) capped = true;
+    return capped;
+  };
   coach.tipsTick(); // starts the v2 timer (memory loop, open loops) like run.ts does every 5 s
   const t0 = Date.now();
   const snapshots: MeetingRun["snapshots"] = [];
@@ -75,8 +116,9 @@ async function main() {
   const asks = opts.asks === false ? [] : (g.script ?? []).filter((s) => s.role === "ask" && (s as { q?: string }).q);
   let prev = 0;
   for (const l of lines.map((x, i) => ({ ...x, t: g.lines[i].t }))) {
-    await e.vc.advance(Math.max(0, l.t - prev));
+    await advance(Math.max(0, l.t - prev));
     prev = l.t;
+    if (capHit()) break;
     e.say(l.side, l.text);
     for (const a of asks.filter((x) => x.whenLastLine === l.id)) {
       const before = e.rows.length;
@@ -92,7 +134,7 @@ async function main() {
       askCards.push({ q: (a as { q: string }).q, say: String(card?.say ?? ""), ms: card ? card.t - at : undefined });
     }
   }
-  await e.vc.advance(40_000); // the last memory checks, a compaction and the open-loop prompts
+  await advance(40_000); // the last memory checks, a compaction and the open-loop prompts
   const lengthMs = g.lines.at(-1)?.t ?? 0;
   const flushed = coach.flushMemory(1000);
   await e.vc.advance(1500); // its timeout is on the virtual clock
@@ -124,6 +166,7 @@ async function main() {
     sessionFile: (await import("node:fs")).existsSync(e.boot.log.dir + "/session.json"),
     cacheRead: obs.cacheReadRatio(),
     roleCalls,
+    ...(capped ? { error: "cost cap reached: the meeting was cut short" } : {}),
   };
   writeFileSync(out, JSON.stringify(res));
   e.stop();

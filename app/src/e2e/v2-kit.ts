@@ -15,6 +15,7 @@ import { estimateTokens } from "../testkit/prompt.ts";
 import type { Engine } from "../testkit/engine-inproc.ts";
 import type { PolicyModel } from "../testkit/policy-model.ts";
 import type { TimelineCard } from "../../qa/grade-golden.ts";
+import type { Control } from "../../qa/controls.ts";
 
 // ---------------------------------------------------------------- the cache simulator
 type Block = { text: string; ttlMs?: number };
@@ -227,6 +228,13 @@ export type WorkerOptions = {
   lagMs?: number;
   /** what-if cache layout for the usage rows: role instructions right after block A, cached for 1 h */
   roleFirst?: boolean;
+  /** which split the meeting is in (default dev); the held-out splits check their lock file in the child */
+  split?: "dev" | "test" | "test-b";
+  /** a deliberately bad model instead of the scripted replies (qa/controls.ts) */
+  control?: Control;
+  /** record every model call into a cassette. "mock" records the policy fake (tests); "real" the provider (owner only). `pace` > 0 runs the virtual clock at
+   *  that many times real time; `capUsd` stops the meeting when the booked cost passes it. */
+  record?: { cassette: string; transport: "mock" | "real"; pace?: number; capUsd?: number };
 };
 
 /** Plays one dev meeting through the engine (child process). Times out after `timeoutMs`. */

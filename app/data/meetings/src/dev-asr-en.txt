@@ -1,0 +1,33 @@
+id: dev-asr-en
+split: dev
+lang: en
+type: asr
+variant: noisy
+user: Dan
+context: Call with a client about a new web shop. Dan is the freelancer. Facts: quote is $4,000, build time 2 weeks, 50 percent deposit, the client's sale starts on Friday 12 June.
+roster: Gwen Ash | them | owner of the shop
+agenda: timeline
+agenda: price
+brief: Quote is $4,000
+brief: Build time is 2 weeks
+brief: Deposit is 50 percent
+brief: Client sale starts on Friday 12 June
+likely: Can you start this week?
+---
+me: hi gwen thanks for calling i have the quote open
+them@Gwen: hi dan yes so the sail starts on friday the twelfth and we cannot wait more than to weeks ## m: check || 2 weeks;12 June || noq,asr,homophone || Build is 2 weeks and the sale starts 12 June; check the start date. || "sail" for sale and "to weeks" for two weeks.
+me: two weeks is in the quote so the start date matters
+them@Gwen: their is also a bug in the check out and customers cant pay with there card ## m: prompt || checkout;card || noq,asr,homophone || Card payments fail at checkout; ask for the error message and time. || "check out" and "there card".
+me: send me the error message when you see it
+them@Gwen: and the price you quoted was for thousand dollars right ## m: check || 4,000 || asr,number || The quote is $4,000. || "for thousand" for four thousand.
+me: yes it is four thousand
+them@Gwen: the deposit is fifty percent so
+them@Gwen: the deposit is fifty percent so that is two thousand dollars up front ## m: check || 2,000;deposit || noq,asr,duplicate || Deposit of 50 percent is $2,000; confirm when it is due. || Duplicated final.
+me: that is correct
+.. 20
+them@Gwen: we would like to move the launch to the
+them@Gwen: twentieth of may because the photographer is late ## m: prompt || 20 May;photographer || noq,asr,split-final || Launch moves to 20 May because of the photographer; confirm the build still fits. || A sentence split over two finals.
+me: that changes the plan a little
+them@Gwen: the hosting is paid until december and then we renew it ## quiet
+me: good to know ## quiet
+them@Gwen: ok thanks dan i have to go ## quiet

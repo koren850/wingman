@@ -1,0 +1,253 @@
+{
+ "id": "dev-asr-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "asr",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Call with a client about a new web shop. Dan is the freelancer. Facts: quote is $4,000, build time 2 weeks, 50 percent deposit, the client's sale starts on Friday 12 June.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5300,
+   "side": "me",
+   "text": "hi gwen thanks for calling i have the quote open"
+  },
+  {
+   "id": "l2",
+   "t": 13639,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "hi dan yes so the sail starts on friday the twelfth and we cannot wait more than to weeks"
+  },
+  {
+   "id": "l3",
+   "t": 19357,
+   "side": "me",
+   "text": "two weeks is in the quote so the start date matters"
+  },
+  {
+   "id": "l4",
+   "t": 27394,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "their is also a bug in the check out and customers cant pay with there card"
+  },
+  {
+   "id": "l5",
+   "t": 31690,
+   "side": "me",
+   "text": "send me the error message when you see it"
+  },
+  {
+   "id": "l6",
+   "t": 36785,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "and the price you quoted was for thousand dollars right"
+  },
+  {
+   "id": "l7",
+   "t": 40399,
+   "side": "me",
+   "text": "yes it is four thousand"
+  },
+  {
+   "id": "l8",
+   "t": 44812,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "the deposit is fifty percent so"
+  },
+  {
+   "id": "l9",
+   "t": 50804,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "the deposit is fifty percent so that is two thousand dollars up front"
+  },
+  {
+   "id": "l10",
+   "t": 53415,
+   "side": "me",
+   "text": "that is correct"
+  },
+  {
+   "id": "l11",
+   "t": 78725,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "we would like to move the launch to the"
+  },
+  {
+   "id": "l12",
+   "t": 82574,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "twentieth of may because the photographer is late"
+  },
+  {
+   "id": "l13",
+   "t": 86082,
+   "side": "me",
+   "text": "that changes the plan a little"
+  },
+  {
+   "id": "l14",
+   "t": 91909,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "the hosting is paid until december and then we renew it"
+  },
+  {
+   "id": "l15",
+   "t": 95115,
+   "side": "me",
+   "text": "good to know"
+  },
+  {
+   "id": "l16",
+   "t": 98760,
+   "side": "them",
+   "speaker": "Gwen",
+   "text": "ok thanks dan i have to go"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "2 weeks",
+    "12 June"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "homophone"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "checkout",
+    "card"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "homophone"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "4,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "asr",
+    "number"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l9",
+   "kind": "check",
+   "mustMention": [
+    "2,000",
+    "deposit"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "duplicate"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "20 May",
+    "photographer"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "split-final"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l14",
+   "toLine": "l16"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Gwen Ash\",\"side\":\"them\",\"role\":\"owner of the shop\"}],\"agenda\":[\"timeline\",\"price\"],\"facts\":[{\"text\":\"Quote is $4,000\",\"src\":\"brief\"},{\"text\":\"Build time is 2 weeks\",\"src\":\"brief\"},{\"text\":\"Deposit is 50 percent\",\"src\":\"brief\"},{\"text\":\"Client sale starts on Friday 12 June\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can you start this week?\"],\"chunks\":[\"Call with a client about a new web shop. Dan is the freelancer. Facts: quote is $4,000, build time 2 weeks, 50 percent deposit, the client's sale starts on Friday 12 June.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Build is 2 weeks and the sale starts 12 June; check the start date.\nWHY: \"sail\" for sale and \"to weeks\" for two weeks.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Card payments fail at checkout; ask for the error message and time.\nWHY: \"check out\" and \"there card\".",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The quote is $4,000.\nWHY: \"for thousand\" for four thousand.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Deposit of 50 percent is $2,000; confirm when it is due.\nWHY: Duplicated final.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Launch moves to 20 May because of the photographer; confirm the build still fits.\nWHY: A sentence split over two finals.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

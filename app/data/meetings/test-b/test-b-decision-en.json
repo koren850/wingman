@@ -1,0 +1,282 @@
+{
+ "id": "test-b-decision-en",
+ "split": "test-b",
+ "lang": "en",
+ "type": "noq",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Operations meeting of a small online shop. Sam leads operations. Current plan: two support agents, support hours 9 to 17, website redesign starts in May, the database stays on the current provider. Monthly support budget is $6,000.",
+ "profile": {
+  "userName": "Sam"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6820,
+   "side": "me",
+   "text": "Thanks both for joining. Today we settle three things, staffing, redesign and the database."
+  },
+  {
+   "id": "l2",
+   "t": 13259,
+   "side": "them",
+   "speaker": "Vera",
+   "text": "We are drowning in tickets after the holiday sale, and two agents cannot cope."
+  },
+  {
+   "id": "l3",
+   "t": 17457,
+   "side": "me",
+   "text": "Understood. Give me your recommendation on staffing."
+  },
+  {
+   "id": "l4",
+   "t": 24734,
+   "side": "them",
+   "speaker": "Vera",
+   "text": "I am hiring two contractors for the next three months to clear the backlog."
+  },
+  {
+   "id": "l5",
+   "t": 29410,
+   "side": "me",
+   "text": "That affects the support budget, I will check the numbers."
+  },
+  {
+   "id": "l6",
+   "t": 36025,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "The redesign will wait until September, because the checkout fixes take all my time."
+  },
+  {
+   "id": "l7",
+   "t": 40399,
+   "side": "me",
+   "text": "Then the plan moves by four months."
+  },
+  {
+   "id": "l8",
+   "t": 74372,
+   "side": "them",
+   "speaker": "Vera",
+   "text": "From next week support hours run from eight to eighteen, so we cover both ends of the day."
+  },
+  {
+   "id": "l9",
+   "t": 78464,
+   "side": "me",
+   "text": "I will update the hours on the site."
+  },
+  {
+   "id": "l10",
+   "t": 85255,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "We keep the database with the current provider and we revisit it in January."
+  },
+  {
+   "id": "l11",
+   "t": 89805,
+   "side": "me",
+   "text": "Good, one less thing to move now."
+  },
+  {
+   "id": "l12",
+   "t": 115174,
+   "side": "them",
+   "speaker": "Vera",
+   "text": "I will send the contractor job posts to the team by Wednesday."
+  },
+  {
+   "id": "l13",
+   "t": 117922,
+   "side": "me",
+   "text": "Wednesday works for me."
+  },
+  {
+   "id": "l14",
+   "t": 124129,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "Weekend cover stays with the on-call rota, we are not changing that."
+  },
+  {
+   "id": "l15",
+   "t": 128475,
+   "side": "me",
+   "text": "Fine, that matches the current setup."
+  },
+  {
+   "id": "l16",
+   "t": 152500,
+   "side": "them",
+   "speaker": "Ben",
+   "text": "My neighbour started drilling at seven this morning."
+  },
+  {
+   "id": "l17",
+   "t": 156944,
+   "side": "me",
+   "text": "That is a rough start to the day."
+  },
+  {
+   "id": "l18",
+   "t": 161427,
+   "side": "them",
+   "speaker": "Vera",
+   "text": "I am on my second coffee already."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "two contractors",
+    "6,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "May",
+    "September"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "check",
+   "mustMention": [
+    "9 to 17",
+    "8"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "fact",
+   "mustMention": [
+    "January",
+    "provider"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "check",
+   "mustMention": [
+    "Wednesday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "commitment"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l14",
+   "kind": "fact",
+   "mustMention": [
+    "on-call",
+    "weekend"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l16",
+   "toLine": "l18"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Vera\",\"side\":\"them\",\"role\":\"head of customer care\"},{\"name\":\"Ben\",\"side\":\"them\",\"role\":\"developer\"}],\"agenda\":[\"support staffing\",\"redesign timing\",\"database\"],\"facts\":[{\"text\":\"Two support agents today\",\"src\":\"brief\"},{\"text\":\"Support hours are 9 to 17\",\"src\":\"brief\"},{\"text\":\"Redesign starts in May\",\"src\":\"brief\"},{\"text\":\"Support budget is $6,000 per month\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Who covers weekends?\"],\"chunks\":[\"Operations meeting of a small online shop. Sam leads operations. Current plan: two support agents, support hours 9 to 17, website redesign starts in May, the database stays on the current provider. Monthly support budget is $6,000.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Two contractors for three months: check the cost against the $6,000 budget.\nWHY: Decision with a budget effect.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Redesign was planned for May, now September. Tell the marketing owner.\nWHY: Decision that changes the plan.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Hours change from 9 to 17 to 8 to 18; update the website.\nWHY: Decision that needs follow-up.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Database stays with the provider; review in January. Log the date.\nWHY: Decision with a review date.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Vera promised job posts by Wednesday; add it to the action list.\nWHY: Commitment as a statement.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Weekend cover stays on the on-call rota. Record it as unchanged.\nWHY: Decision to keep things as they are.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

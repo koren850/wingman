@@ -1,0 +1,41 @@
+id: dev-crosstalk-en
+split: dev
+lang: en
+type: crosstalk
+variant: noisy
+user: Dan
+context: Weekly rollout meeting for a new expense form. Dan runs the rollout. Facts: 40 offices in total, 37 already use the new form, the old form closes on 30 June, training slots are on Tuesday and Thursday.
+roster: Lena | them | finance
+roster: Omar | them | office manager
+agenda: offices still on the old form
+agenda: closing date
+brief: 40 offices in total
+brief: 37 offices use the new form
+brief: Old form closes on 30 June
+brief: Training on Tuesday and Thursday
+likely: When does the old form close?
+---
+them@Lena: ok so the main problem with the rollout is that the
+them@Omar: no wait before that the march invoices are still
+them@Lena: the rollout is that eleven offices still use the old form
+them@Omar: sorry go ahead lena ## m: check || 37;eleven || noq,number-conflict,crosstalk || 37 of 40 use the new form: three remain, not eleven. Check the count. || Number that conflicts with the plan, said over other talk.
+me: I thought it was three offices, I will check the list.
+them@Lena: no that was last month
+them@Omar: and the invoices from march
+them@Lena: dan can you tell us which offices still need training ## m: answer || northern;training || direct,crosstalk || The northern offices still need training, per the rollout list. || Direct question to the user inside cross-talk.
+me: the northern offices and two others still need training
+them@Omar: that is too soon for the northern offices
+them@Lena: they had six months
+.. 20
+them@Omar: honestly my people will not manage by june, the training is only on two days ## m: prompt || extra sessions;northern || noq,objection,crosstalk || Training days are fixed; offer extra sessions for the northern offices. || Objection stated as a fact.
+me: I can add a session if the northern offices need it.
+them@Lena: and the credit card
+them@Omar: the credit card statements arrive on the fifth
+them@Lena: right the fifth so we need the form before that ## m: prompt || fifth;form || noq,deadline,crosstalk || Statements arrive on the fifth; ask which offices must change form before then. || Deadline hidden in the overlap.
+.. 20
+them@Omar: did you see the match yesterday ## quiet
+them@Lena: no I fell asleep ## quiet
+them@Omar: I did not sleep at all ## quiet
+me: I watched half of it. ## quiet
+them@Lena: ok back to it, dan please send the list of offices after the call ## m: prompt || list;offices || commitment,crosstalk || The offices list is owed after the call; add it to the actions. || A request inside the overlap.
+me: I will send the list today.

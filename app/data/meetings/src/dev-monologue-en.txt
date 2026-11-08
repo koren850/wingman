@@ -1,0 +1,55 @@
+id: dev-monologue-en
+split: dev
+lang: en
+type: monologue
+variant: clean
+user: Dan
+context: Quarterly platform talk given by Priya Rao, head of engineering at a mid-size software company. Dan is in the audience and listens. Facts from the plan: the migration budget is $1.2 million, the target is 31 July, the old data centre closes on 30 September, the team has 14 engineers.
+roster: Priya Rao | them | head of engineering
+agenda: migration progress
+agenda: risks
+agenda: next quarter
+brief: Migration budget is $1.2 million
+brief: Target date is 31 July
+brief: Old data centre closes on 30 September
+brief: Team size is 14 engineers
+likely: What is the plan for the old servers?
+---
+them@Priya: Good morning everyone, thank you for joining the quarterly platform talk. I will go through where the migration stands, what went wrong, and what we do next. ## quiet
+them@Priya: Let me start with the big picture. Two years ago we ran everything on three machines in one rack, and today most services run on the new container platform. ## quiet
+them@Priya: The first half of the year was about moving the stateless services. They were the easy part, and we moved forty of them with no customer noticing. ## quiet
+.. 240
+them@Priya: The second half is about the databases, and here I have to be honest, because we are behind. ## quiet
+them@Priya: We planned to move the orders database in April and we are now in the middle of a long dry run that shows the copy needs nine hours, not the three we assumed. ## m: check || nine hours;three || noq,number || She says nine hours, not the planned three. Ask what window this needs. || A number that changes the cutover plan. ## mem: n:orders copy time=nine hours / f:orders database copy needs nine hours ## chk: nine hours
+them@Priya: Because of that, the cutover will happen over a weekend and we will freeze orders for a short time. ## quiet
+.. 215
+them@Priya: Now the budget. We started with one point two million dollars and I can tell you we have spent about nine hundred thousand of it so far. ## quiet ## mem: n:budget spent=900 thousand of 1.2 million ## chk: 900;1.2 million
+them@Priya: The largest part was the licence for the storage system, and we also paid for two consultants who helped us with the network design. ## quiet
+.. 240
+them@Priya: A word about observability. We moved from the old metrics tool to an open standard called OpenTelemetry, and every team now sends traces in the same format. ## m: fact || OpenTelemetry || jargon || OpenTelemetry is an open standard for traces, metrics and logs from services. || Jargon term worth a short note.
+them@Priya: This took longer than planned, because every team used its own naming for the same thing, and we had to agree on one. ## x: fact || traces || Traces follow one request across services. || latest=15000
+.. 215
+them@Priya: Let me talk about people. We are fourteen engineers and two of them are on leave until August, so the real number for the next two months is twelve. ## quiet
+them@Priya: I am asking each team lead to protect two days a week for migration work, and nothing else may take them. ## quiet
+.. 240
+them@Priya: There is a risk I want to name. The old data centre contract ends on the thirtieth of September, and there is no extension option. ## quiet
+them@Priya: If we miss the databases, we will pay for a month of emergency hosting, and that costs about three hundred thousand. ## m: check || 1.2 million;300 || noq,number || Spent 900 thousand of 1.2 million; 300 thousand more would use the rest. || Budget arithmetic that leaves no room.
+.. 215
+them@Priya: Security is the other area. We replaced shared passwords with short-lived tokens, and every access to production now leaves a record. ## quiet
+them@Priya: One audit finding remains open, about the old backup tapes, and I will close it when the tapes are destroyed. ## quiet
+.. 240
+them@Priya: Customer impact has been small. We had two incidents this quarter that came from the migration, and both lasted less than twenty minutes. ## quiet
+them@Priya: I want to thank the support team, because they handled every ticket during those incidents without escalating a single one. ## quiet
+.. 215
+them@Priya: Now the plan for next quarter. First, finish the databases by the thirty-first of July. Second, switch off the old load balancers. Third, write the guide for new joiners. ## m: check || 31 July;owner || noq,deadline || Databases due 31 July; confirm an owner for each of the three items. || A plan with a date and no owners. ## mem: d:databases finished by 31 July / c:team leads>protect two days a week for migration ## chk: 31 July
+them@Priya: I will share the slides after this session and I will keep the channel open for comments. ## quiet
+.. 240
+them@Priya: Some details on cost per service. The average service now costs us nineteen percent less to run, but the databases cost more, because we pay for replicas in two regions. ## quiet
+them@Priya: We will review those replicas in the autumn, and if the traffic does not need them, we will drop one region. ## quiet
+.. 215
+them@Priya: A short story from the weekend dry run. At two in the morning the copy stopped, because a disk filled up, and we learned that nobody had set an alert for it. ## quiet
+them@Priya: We fixed it in ten minutes, but it is a good example of why the checklist matters. ## quiet
+.. 240
+them@Priya: I will now take a break from slides. Please look at the diagram on the screen, it shows the order of the cutover steps. ## quiet
+.. 215
+them@Priya: Thank you all. If there is anything I missed, please send it to me in writing. ## quiet

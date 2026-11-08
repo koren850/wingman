@@ -8,7 +8,6 @@ import { join } from "node:path";
 import { ROOT } from "./env.ts";
 const req = createRequire(import.meta.url);
 const S = req("../dashboard/setuplib.js");
-const src = readFileSync(join(ROOT, "dashboard/setup.js"), "utf8");
 
 test("the required path is three steps: try, connect, allow", () => {
   assert.deepEqual(S.REQUIRED, ["try", "connect", "allow"]);
@@ -42,27 +41,7 @@ test("skipping a required step moves on and hides the card; opening the guide fr
   assert.equal(S.plan({}).next, "try");
 });
 
-test("setup.js defines exactly these steps, with the same ids the helper knows, and keeps every optional item", () => {
-  const ids = (name: string) => {
-    const m = src.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\n\\];`));
-    assert.ok(m, name);
-    return [...m[1].matchAll(/\n {4}id: "([a-z]+)"/g)].map((x) => x[1]);
-  };
-  assert.deepEqual(ids("REQUIRED_STEPS"), S.REQUIRED);
-  assert.deepEqual(ids("OPTIONAL_STEPS"), S.OPTIONAL);
-  assert.match(src, /T\("su\.opt"\)/);
-  assert.match(src, /T\("su\.ready1"\)/);
-});
-
-test("the Allow step explains the screens and the second-screen rule in plain words", () => {
-  assert.match(src, /that window must never be in your screen share/);
-  assert.match(src, /allowPanel/);
-});
-
-test("plain names: the main window uses the glossary words, and the user guide lists them", () => {
-  const app = readFileSync(join(ROOT, "dashboard/app.js"), "utf8");
-  for (const t of ["AI · unverified", "Buy time", "Prepared", "Speech to text", "Words final after", "AI decision after"]) assert.ok(app.includes(`"${t}`), t);
-  assert.doesNotMatch(app, /"→ Haiku tag"|"Latency per question"|h\("div", \{ class: "k" \}, "STT"\)/);
+test("plain names: the user guide lists the glossary words (the window wording is held by the glossary lint rule in eslint.config.mjs)", () => {
   const guide = readFileSync(join(ROOT, "../docs/USER-GUIDE.md"), "utf8");
   assert.match(guide, /## Words used in Wingman/);
   for (const t of ["Group call mode", "About the call", "Your answers", "Speech to text", "Readiness check"]) assert.ok(guide.includes(t), t);

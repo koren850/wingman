@@ -59,7 +59,7 @@ test("golden run: the committed fixture file equals a fresh build, and the set r
 test("golden run: every dev meeting runs through the real parsers without a bad row", () => {
   for (const g of loadSplit("dev")) {
     const run = goldenLiveRun(g as never);
-    assert.ok(run.cards.length > 0, g.id);
+    assert.ok(run.cards.length > 0 || g.moments.length === 0, g.id); // a "silence" meeting has no card on purpose
     for (const c of run.cards) {
       if (c.closes) continue;
       assert.ok(typeof c.say === "string" && (c.say as string).split(/\s+/).length <= 14, g.id + " say");

@@ -1,0 +1,269 @@
+{
+ "id": "test-b-numbers-en",
+ "split": "test-b",
+ "lang": "en",
+ "type": "noq",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Quarterly review with Tern Freight, a freight broker using our dispatch software. Contact: Gina Wolfe, head of operations. Contract: 45 dispatcher seats, $22,500 per year, renewal on 1 November. Their goal for this year was a conversion rate of 3 percent on web quotes. Fuel surcharge reports are included.",
+ "profile": {
+  "userName": "Sam"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6060,
+   "side": "me",
+   "text": "hi gina thanks for making time pavel good to see you too"
+  },
+  {
+   "id": "l2",
+   "t": 14019,
+   "side": "them",
+   "speaker": "Gina",
+   "text": "hello sam so the team has shrunk we are down to about thirty dispatchers now not forty five"
+  },
+  {
+   "id": "l3",
+   "t": 20877,
+   "side": "me",
+   "text": "that is a big drop from the contract i will check the seat report"
+  },
+  {
+   "id": "l4",
+   "t": 27774,
+   "side": "them",
+   "speaker": "Pavel",
+   "text": "finance wants the whole cost of this tool under eighteen thousand next year"
+  },
+  {
+   "id": "l5",
+   "t": 31310,
+   "side": "me",
+   "text": "understood i will keep that in mind"
+  },
+  {
+   "id": "l6",
+   "t": 62925,
+   "side": "them",
+   "speaker": "Gina",
+   "text": "our web quotes convert at two point one percent and the goal was three"
+  },
+  {
+   "id": "l7",
+   "t": 68439,
+   "side": "me",
+   "text": "that is below target so the funnel needs a look"
+  },
+  {
+   "id": "l8",
+   "t": 77032,
+   "side": "them",
+   "speaker": "Pavel",
+   "text": "the renewal is on the first of november but our budget freeze starts the fifteenth of october"
+  },
+  {
+   "id": "l9",
+   "t": 79984,
+   "side": "me",
+   "text": "so the freeze comes first"
+  },
+  {
+   "id": "l10",
+   "t": 107535,
+   "side": "them",
+   "speaker": "Gina",
+   "text": "late deliveries went down from eleven percent to seven percent since we started using your alerts"
+  },
+  {
+   "id": "l11",
+   "t": 112085,
+   "side": "me",
+   "text": "that is good news for the renewal"
+  },
+  {
+   "id": "l12",
+   "t": 117074,
+   "side": "them",
+   "speaker": "Pavel",
+   "text": "a competitor quoted us a flat nineteen thousand for unlimited seats"
+  },
+  {
+   "id": "l13",
+   "t": 120962,
+   "side": "me",
+   "text": "i would compare what each offer includes"
+  },
+  {
+   "id": "l14",
+   "t": 151029,
+   "side": "them",
+   "speaker": "Gina",
+   "text": "it has been raining here for four days straight"
+  },
+  {
+   "id": "l15",
+   "t": 156135,
+   "side": "me",
+   "text": "same here the roads were flooded this morning"
+  },
+  {
+   "id": "l16",
+   "t": 160160,
+   "side": "them",
+   "speaker": "Pavel",
+   "text": "i will email you the seat report tomorrow"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "45",
+    "30"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "22,500",
+    "18,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "2.1",
+    "goal"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l8",
+   "kind": "check",
+   "mustMention": [
+    "1 November",
+    "15 October"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "date"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l10",
+   "kind": "fact",
+   "mustMention": [
+    "11",
+    "7 percent"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l12",
+   "kind": "check",
+   "mustMention": [
+    "19,000",
+    "unlimited"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l14",
+   "toLine": "l16"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Gina Wolfe\",\"side\":\"them\",\"role\":\"head of operations\"},{\"name\":\"Pavel\",\"side\":\"them\",\"role\":\"finance analyst\"}],\"agenda\":[\"seat count\",\"results\",\"renewal\"],\"facts\":[{\"text\":\"Contract is 45 dispatcher seats\",\"src\":\"brief\"},{\"text\":\"Price is $22,500 per year\",\"src\":\"brief\"},{\"text\":\"Renewal date is 1 November\",\"src\":\"brief\"},{\"text\":\"Goal was 3 percent conversion\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can we reduce seats at renewal?\"],\"chunks\":[\"Quarterly review with Tern Freight, a freight broker using our dispatch software. Contact: Gina Wolfe, head of operations. Contract: 45 dispatcher seats, $22,500 per year, renewal on 1 November. Their goal for this year was a conversion rate of 3 percent on web quotes. Fuel surcharge reports are included.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Contract has 45 seats; she says about 30. Confirm the count before renewal.\nWHY: Seat count conflicts with the contract.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Current price is $22,500; their limit is $18,000. Name the gap early.\nWHY: Budget conflicts with the current price.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Conversion is 2.1 percent against a goal of 3; look at quote drop-off.\nWHY: Result below the goal.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Renewal is 1 November, their freeze starts 15 October. Ask for an early decision.\nWHY: Two dates that clash.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Late deliveries fell from 11 to 7 percent; use it in the renewal.\nWHY: A positive result worth saving.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Other offer: $19,000 for unlimited seats. Compare support and limits first.\nWHY: Competing offer as a statement.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

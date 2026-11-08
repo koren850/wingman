@@ -1,0 +1,37 @@
+id: test-b-numbers-en
+split: test-b
+lang: en
+type: noq
+variant: noisy
+user: Sam
+context: Quarterly review with Tern Freight, a freight broker using our dispatch software. Contact: Gina Wolfe, head of operations. Contract: 45 dispatcher seats, $22,500 per year, renewal on 1 November. Their goal for this year was a conversion rate of 3 percent on web quotes. Fuel surcharge reports are included.
+roster: Gina Wolfe | them | head of operations
+roster: Pavel | them | finance analyst
+agenda: seat count
+agenda: results
+agenda: renewal
+brief: Contract is 45 dispatcher seats
+brief: Price is $22,500 per year
+brief: Renewal date is 1 November
+brief: Goal was 3 percent conversion
+likely: Can we reduce seats at renewal?
+---
+me: hi gina thanks for making time pavel good to see you too
+them@Gina: hello sam so the team has shrunk we are down to about thirty dispatchers now not forty five ## m: check || 45;30 || noq,number-conflict || Contract has 45 seats; she says about 30. Confirm the count before renewal. || Seat count conflicts with the contract.
+me: that is a big drop from the contract i will check the seat report
+them@Pavel: finance wants the whole cost of this tool under eighteen thousand next year ## m: check || 22,500;18,000 || noq,number-conflict || Current price is $22,500; their limit is $18,000. Name the gap early. || Budget conflicts with the current price.
+me: understood i will keep that in mind
+.. 25
+them@Gina: our web quotes convert at two point one percent and the goal was three ## m: check || 2.1;goal || noq,number || Conversion is 2.1 percent against a goal of 3; look at quote drop-off. || Result below the goal.
+me: that is below target so the funnel needs a look
+them@Pavel: the renewal is on the first of november but our budget freeze starts the fifteenth of october ## m: check || 1 November;15 October || noq,date || Renewal is 1 November, their freeze starts 15 October. Ask for an early decision. || Two dates that clash.
+me: so the freeze comes first
+.. 20
+them@Gina: late deliveries went down from eleven percent to seven percent since we started using your alerts ## m: fact || 11;7 percent || noq,number || Late deliveries fell from 11 to 7 percent; use it in the renewal. || A positive result worth saving.
+me: that is good news for the renewal
+them@Pavel: a competitor quoted us a flat nineteen thousand for unlimited seats ## m: check || 19,000;unlimited || noq,objection || Other offer: $19,000 for unlimited seats. Compare support and limits first. || Competing offer as a statement.
+me: i would compare what each offer includes
+.. 25
+them@Gina: it has been raining here for four days straight ## quiet
+me: same here the roads were flooded this morning ## quiet
+them@Pavel: i will email you the seat report tomorrow ## quiet

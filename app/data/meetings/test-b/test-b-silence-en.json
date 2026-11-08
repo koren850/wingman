@@ -1,0 +1,145 @@
+{
+ "id": "test-b-silence-en",
+ "split": "test-b",
+ "lang": "en",
+ "type": "silence",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Social catch-up before a team lunch. Nothing is due. Facts: lunch is at noon on Friday, the restaurant is booked for 8 people, the office closes at 15:00 on Friday.",
+ "profile": {
+  "userName": "Sam"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6820,
+   "side": "them",
+   "speaker": "Mona",
+   "text": "Hi Sam, hi Eli, the lunch is on, the table is booked for eight."
+  },
+  {
+   "id": "l2",
+   "t": 9839,
+   "side": "me",
+   "text": "Great, thanks for booking it."
+  },
+  {
+   "id": "l3",
+   "t": 14037,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "Noon on Friday, right by the river."
+  },
+  {
+   "id": "l4",
+   "t": 19034,
+   "side": "me",
+   "text": "I like that place, the food is good."
+  },
+  {
+   "id": "l5",
+   "t": 24850,
+   "side": "them",
+   "speaker": "Mona",
+   "text": "The office closes at three that day, so nobody has to rush back."
+  },
+  {
+   "id": "l6",
+   "t": 59945,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "I will bring the box of games from the cupboard."
+  },
+  {
+   "id": "l7",
+   "t": 64699,
+   "side": "me",
+   "text": "Good idea, the cards are in there too."
+  },
+  {
+   "id": "l8",
+   "t": 71012,
+   "side": "them",
+   "speaker": "Mona",
+   "text": "Everyone said yes except one person who has a doctor visit."
+  },
+  {
+   "id": "l9",
+   "t": 105104,
+   "side": "me",
+   "text": "That is fine, we can eat without them."
+  },
+  {
+   "id": "l10",
+   "t": 108475,
+   "side": "them",
+   "speaker": "Eli",
+   "text": "See you all on Friday."
+  }
+ ],
+ "moments": [],
+ "silent": [
+  {
+   "fromLine": "l1",
+   "toLine": "l10"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Mona\",\"side\":\"them\",\"role\":\"teammate\"},{\"name\":\"Eli\",\"side\":\"them\",\"role\":\"teammate\"}],\"agenda\":[\"lunch plan\"],\"facts\":[{\"text\":\"Lunch is at noon on Friday\",\"src\":\"brief\"},{\"text\":\"Table is booked for 8 people\",\"src\":\"brief\"},{\"text\":\"Office closes at 15:00 on Friday\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Is the table booked?\"],\"chunks\":[\"Social catch-up before a team lunch. Nothing is due. Facts: lunch is at noon on Friday, the restaurant is booked for 8 people, the office closes at 15:00 on Friday.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l1",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l3",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

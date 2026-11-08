@@ -1,0 +1,253 @@
+{
+ "id": "dev-asr-he",
+ "split": "dev",
+ "lang": "he",
+ "type": "asr",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "שיחה עם לקוחה על חנות אינטרנט חדשה. דן הוא פרילנסר. עובדות: הצעת המחיר 5,000 שקל, זמן בנייה 3 שבועות, מקדמה של 40 אחוז, המבצע של הלקוחה מתחיל ביום חמישי 18 ביוני.",
+ "profile": {
+  "userName": "דן"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4440,
+   "side": "me",
+   "text": "שלום גלית תודה שהתקשרת ההצעה פתוחה אצלי"
+  },
+  {
+   "id": "l2",
+   "t": 13539,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "היי דן כן אז המבצע מתחיל ב חמישי שמונה עשר ביוני ואני לא יכולה לחכות יותר משל שה שבועות"
+  },
+  {
+   "id": "l3",
+   "t": 18437,
+   "side": "me",
+   "text": "שלושה שבועות כתוב בהצעה אז תאריך ההתחלה חשוב"
+  },
+  {
+   "id": "l4",
+   "t": 25434,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "יש גם באג ב קופה והלקוחות לא מצליחים לשלם ב כרטיס אשראי"
+  },
+  {
+   "id": "l5",
+   "t": 29670,
+   "side": "me",
+   "text": "תשלחי לי את הודעת השגיאה כשאת רואה אותה"
+  },
+  {
+   "id": "l6",
+   "t": 33905,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "והמחיר שהצעת היה חמש אלפים שקל נכון"
+  },
+  {
+   "id": "l7",
+   "t": 37299,
+   "side": "me",
+   "text": "כן זה חמשת אלפים"
+  },
+  {
+   "id": "l8",
+   "t": 41532,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "המקדמה היא ארבעים אחוז אז"
+  },
+  {
+   "id": "l9",
+   "t": 46364,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "המקדמה היא ארבעים אחוז אז זה אלפיים שקל מראש"
+  },
+  {
+   "id": "l10",
+   "t": 48255,
+   "side": "me",
+   "text": "נכון"
+  },
+  {
+   "id": "l11",
+   "t": 72665,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "אנחנו רוצים להזיז את ההשקה ל"
+  },
+  {
+   "id": "l12",
+   "t": 75574,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "עשרים במאי כי הצלמת מאחרת"
+  },
+  {
+   "id": "l13",
+   "t": 78902,
+   "side": "me",
+   "text": "זה משנה קצת את התוכנית"
+  },
+  {
+   "id": "l14",
+   "t": 83489,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "האחסון משולם עד דצמבר ואז נחדש אותו"
+  },
+  {
+   "id": "l15",
+   "t": 86395,
+   "side": "me",
+   "text": "טוב לדעת"
+  },
+  {
+   "id": "l16",
+   "t": 89900,
+   "side": "them",
+   "speaker": "גלית",
+   "text": "אוקיי תודה דן אני צריכה ללכת"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "3 שבועות",
+    "18 ביוני"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "prefix-glue"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "קופה",
+    "אשראי"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "prefix-glue"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "5,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "asr",
+    "number"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l9",
+   "kind": "check",
+   "mustMention": [
+    "2,000",
+    "מקדמה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "duplicate"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "check",
+   "mustMention": [
+    "20 במאי",
+    "צלמת"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "split-final"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l14",
+   "toLine": "l16"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"גלית אשכנזי\",\"side\":\"them\",\"role\":\"בעלת החנות\"}],\"agenda\":[\"לוח זמנים\",\"מחיר\"],\"facts\":[{\"text\":\"הצעת המחיר 5,000 שקל\",\"src\":\"brief\"},{\"text\":\"זמן בנייה 3 שבועות\",\"src\":\"brief\"},{\"text\":\"מקדמה 40 אחוז\",\"src\":\"brief\"},{\"text\":\"המבצע מתחיל ביום חמישי 18 ביוני\",\"src\":\"brief\"}],\"likelyQuestions\":[\"אפשר להתחיל השבוע?\"],\"chunks\":[\"שיחה עם לקוחה על חנות אינטרנט חדשה. דן הוא פרילנסר. עובדות: הצעת המחיר 5,000 שקל, זמן בנייה 3 שבועות, מקדמה של 40 אחוז, המבצע של הלקוחה מתחיל ביום חמישי 18 ביוני.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: זמן הבנייה הוא 3 שבועות והמבצע מתחיל ב-18 ביוני; לבדוק את מועד ההתחלה.\nWHY: \"ב חמישי\" ו\"של שה\" במקום שלושה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: תשלום באשראי נכשל בקופה; לבקש את הודעת השגיאה ואת השעה.\nWHY: קידומות מנותקות.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: ההצעה היא 5,000 שקל.\nWHY: מספר בניסוח מדובר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: מקדמה של 40 אחוז היא 2,000 שקל; לוודא מתי היא לתשלום.\nWHY: סיום כפול.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: ההשקה זזה ל-20 במאי בגלל הצלמת; לבדוק שהבנייה עדיין מתאימה.\nWHY: משפט שפוצל לשני סיומים.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

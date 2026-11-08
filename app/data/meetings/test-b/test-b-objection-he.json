@@ -1,0 +1,269 @@
+{
+ "id": "test-b-objection-he",
+ "split": "test-b",
+ "lang": "he",
+ "type": "noq",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "שיחת גילוי למכירת סדנת ניהול זמן לצוותים. לקוח פוטנציאלי: חברת הרים, איש קשר מיכל דרור, מנהלת משאבי אנוש. מחיר סדנה 12,000 שקל לצוות, יום אחד, חומרים ומעקב של שבועיים כלולים. אפשר לספק ממליצים.",
+ "profile": {
+  "userName": "סער"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4440,
+   "side": "me",
+   "text": "שלום מיכל ושלום חיים תודה על הזמן"
+  },
+  {
+   "id": "l2",
+   "t": 13119,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "היי סער עברנו על ההצעה ובכנות שתים עשרה אלף שקל זה יותר ממה ששילמנו אי פעם על סדנה"
+  },
+  {
+   "id": "l3",
+   "t": 17597,
+   "side": "me",
+   "text": "אני שומע אותך אחשוב על הצגת הערך"
+  },
+  {
+   "id": "l4",
+   "t": 25854,
+   "side": "them",
+   "speaker": "חיים",
+   "text": "הסדנה הקודמת שהזמנו הייתה יום שלם של הרצאות ואחרי שבוע אף אחד לא זכר דבר"
+  },
+  {
+   "id": "l5",
+   "t": 29670,
+   "side": "me",
+   "text": "בדיוק בגלל זה יש מעקב אחרי הסדנה"
+  },
+  {
+   "id": "l6",
+   "t": 60165,
+   "side": "them",
+   "speaker": "חיים",
+   "text": "אני לא יכול לשחרר את הצוות ליום שלם באמצע הרבעון"
+  },
+  {
+   "id": "l7",
+   "t": 64399,
+   "side": "me",
+   "text": "אפשר לחשוב על שני חצאי ימים"
+  },
+  {
+   "id": "l8",
+   "t": 69052,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "ההנהלה מאשרת תקציבי הדרכה רק בינואר"
+  },
+  {
+   "id": "l9",
+   "t": 72624,
+   "side": "me",
+   "text": "צעד קטן לא צריך את ההנהלה"
+  },
+  {
+   "id": "l10",
+   "t": 97875,
+   "side": "them",
+   "speaker": "חיים",
+   "text": "חברה אחרת הציעה לנו אותה סדנה בשמונה אלף שקל"
+  },
+  {
+   "id": "l11",
+   "t": 102285,
+   "side": "me",
+   "text": "כדאי לבדוק שזו אכן אותה סדנה"
+  },
+  {
+   "id": "l12",
+   "t": 106874,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "יש לנו הקפאה על ספקים חדשים עד סוף השנה"
+  },
+  {
+   "id": "l13",
+   "t": 110202,
+   "side": "me",
+   "text": "אז תאריך ההתחלה הוא העיקר"
+  },
+  {
+   "id": "l14",
+   "t": 140209,
+   "side": "them",
+   "speaker": "מיכל",
+   "text": "חיים חוגג מחר יום הולדת אז מביאים עוגה"
+  },
+  {
+   "id": "l15",
+   "t": 143955,
+   "side": "me",
+   "text": "יום הולדת שמח חיים"
+  },
+  {
+   "id": "l16",
+   "t": 146620,
+   "side": "them",
+   "speaker": "חיים",
+   "text": "תודה אשמור לך חתיכה"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "prompt",
+   "mustMention": [
+    "עלות",
+    "ערך"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "מעקב",
+    "סדנה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "prompt",
+   "mustMention": [
+    "חצאי",
+    "צוות"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "הנהלה",
+    "צעד"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "8,000",
+    "אותה"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "הקפאת",
+    "ספקים"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l14",
+   "toLine": "l16"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"מיכל דרור\",\"side\":\"them\",\"role\":\"מנהלת משאבי אנוש\"},{\"name\":\"חיים\",\"side\":\"them\",\"role\":\"מנהל צוות\"}],\"agenda\":[\"מטרות הסדנה\",\"מחיר ותזמון\"],\"facts\":[{\"text\":\"מחיר 12,000 שקל לצוות\",\"src\":\"brief\"},{\"text\":\"סדנה של יום אחד\",\"src\":\"brief\"},{\"text\":\"מעקב של שבועיים כלול\",\"src\":\"brief\"}],\"likelyQuestions\":[\"אפשר להתחיל בחודש הבא?\"],\"chunks\":[\"שיחת גילוי למכירת סדנת ניהול זמן לצוותים. לקוח פוטנציאלי: חברת הרים, איש קשר מיכל דרור, מנהלת משאבי אנוש. מחיר סדנה 12,000 שקל לצוות, יום אחד, חומרים ומעקב של שבועיים כלולים. אפשר לספק ממליצים.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: התנגדות מחיר: להשוות את העלות לערך של שעות שהצוות מבזבז.\nWHY: התנגדות מחיר בלי שאלה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: סדנה קודמת נשכחה; להראות את המעקב אחרי הסדנה שמחזיק את השינוי.\nWHY: כישלון קודם.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: אי אפשר ליום שלם; להציע שני חצאי ימים כדי לא לעצור את הצוות.\nWHY: התנגדות של זמן.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: האישור מחכה להנהלה; להציע צעד קטן לפני כן או למצוא תומך.\nWHY: סמכות ותזמון.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: מתחרה ב-8,000: לבדוק שזו אותה סדנה, עם אותו מעקב ותמיכה.\nWHY: מחיר מתחרה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: הקפאת ספקים עד סוף השנה; לחפש חריג או תאריך התחלה מאוחר.\nWHY: מדיניות.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

@@ -1,0 +1,279 @@
+{
+ "id": "dev-noq-decision-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "noq",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Project review for the Orchard mobile app. Team: Dan (project lead), Tessa (design), Marco (backend). The plan says launch on 6 March with five features. The vendor shortlist for the payment service is Alder Pay and Birch Pay.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6060,
+   "side": "me",
+   "text": "Thanks both. We need three decisions today, scope, payment vendor and date."
+  },
+  {
+   "id": "l2",
+   "t": 12879,
+   "side": "them",
+   "speaker": "Tessa",
+   "text": "I have been through the design backlog and it is too much for one release."
+  },
+  {
+   "id": "l3",
+   "t": 17837,
+   "side": "me",
+   "text": "Understood. Tessa, give me your view on the cuts."
+  },
+  {
+   "id": "l4",
+   "t": 27774,
+   "side": "them",
+   "speaker": "Tessa",
+   "text": "I am cutting the scope to two features, the order flow and the profile page, so we can ship on time."
+  },
+  {
+   "id": "l5",
+   "t": 33210,
+   "side": "me",
+   "text": "That is a big cut. I will take it to the sponsors."
+  },
+  {
+   "id": "l6",
+   "t": 41345,
+   "side": "them",
+   "speaker": "Marco",
+   "text": "For payments we will go with Birch Pay, since it has the longer warranty and the cheaper fee."
+  },
+  {
+   "id": "l7",
+   "t": 46479,
+   "side": "me",
+   "text": "Fine, I will note Birch Pay as the choice."
+  },
+  {
+   "id": "l8",
+   "t": 79312,
+   "side": "them",
+   "speaker": "Marco",
+   "text": "The launch moves to the twentieth of March because the store review takes two weeks."
+  },
+  {
+   "id": "l9",
+   "t": 84164,
+   "side": "me",
+   "text": "Then the plan changes from the sixth to the twentieth."
+  },
+  {
+   "id": "l10",
+   "t": 89055,
+   "side": "them",
+   "speaker": "Tessa",
+   "text": "I will send the new design files by Friday."
+  },
+  {
+   "id": "l11",
+   "t": 92465,
+   "side": "me",
+   "text": "Friday works for me."
+  },
+  {
+   "id": "l12",
+   "t": 118594,
+   "side": "them",
+   "speaker": "Marco",
+   "text": "I will not take on the analytics work, that stays out of this release."
+  },
+  {
+   "id": "l13",
+   "t": 122482,
+   "side": "me",
+   "text": "Analytics goes to the next release then."
+  },
+  {
+   "id": "l14",
+   "t": 129449,
+   "side": "them",
+   "speaker": "Tessa",
+   "text": "The team agreed that we only test on phones from the last three years."
+  },
+  {
+   "id": "l15",
+   "t": 133415,
+   "side": "me",
+   "text": "That keeps testing small, good."
+  },
+  {
+   "id": "l16",
+   "t": 158200,
+   "side": "them",
+   "speaker": "Marco",
+   "text": "My cat knocked a plant onto my keyboard this morning."
+  },
+  {
+   "id": "l17",
+   "t": 161884,
+   "side": "me",
+   "text": "That sounds like a long morning."
+  },
+  {
+   "id": "l18",
+   "t": 165987,
+   "side": "them",
+   "speaker": "Tessa",
+   "text": "Same, I had three coffees already."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "two features",
+    "owner"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "fact",
+   "mustMention": [
+    "Birch Pay"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "check",
+   "mustMention": [
+    "6 March",
+    "20"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "check",
+   "mustMention": [
+    "Friday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "commitment"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "fact",
+   "mustMention": [
+    "analytics"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l14",
+   "kind": "prompt",
+   "mustMention": [
+    "three years"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l16",
+   "toLine": "l18"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Tessa\",\"side\":\"them\",\"role\":\"design\"},{\"name\":\"Marco\",\"side\":\"them\",\"role\":\"backend\"}],\"agenda\":[\"scope for launch\",\"payment vendor\",\"launch date\"],\"facts\":[{\"text\":\"Launch date is 6 March\",\"src\":\"brief\"},{\"text\":\"Plan has five features\",\"src\":\"brief\"},{\"text\":\"Payment shortlist is Alder Pay and Birch Pay\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Who owns the vendor contract?\"],\"chunks\":[\"Project review for the Orchard mobile app. Team: Dan (project lead), Tessa (design), Marco (backend). The plan says launch on 6 March with five features. The vendor shortlist for the payment service is Alder Pay and Birch Pay.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Scope cut to two features; confirm the owner who tells stakeholders.\nWHY: A decision stated as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Decision logged: Birch Pay. Name the owner of the contract.\nWHY: Vendor decision.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Launch was 6 March, now the 20th. Tell the sponsors in writing.\nWHY: A date decision that changes the plan.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Tessa promised files by Friday; add it to the action list.\nWHY: A commitment given as a statement.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Analytics is out of this release; record it as parked, not dropped.\nWHY: Decision to exclude work.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Device rule agreed: last three years. Confirm it is written in the test plan.\nWHY: Decision with a rule.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

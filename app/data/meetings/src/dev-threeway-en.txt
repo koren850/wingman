@@ -1,0 +1,38 @@
+id: dev-threeway-en
+split: dev
+lang: en
+type: threeway
+variant: clean
+user: Dan
+context: Planning call for a trade show booth. Dan is the sales lead. Facts: booth size 12 square metres, show dates 14 to 16 October, booth budget $18,000, the lead scanner licence costs $600.
+roster: Ines | them | marketing
+roster: Ravi | them | operations
+roster: Tomas | them | design
+agenda: booth budget
+agenda: staffing
+agenda: leads
+brief: Booth size is 12 square metres
+brief: Show dates are 14 to 16 October
+brief: Booth budget is $18,000
+brief: Lead scanner licence is $600
+likely: Who will staff the booth?
+---
+me: Hello all, Ines, Ravi and Tomas, thanks for joining.
+them@Ines: Hi Dan. Let us start with the money. Ravi has the latest numbers.
+them@Ravi: The booth quote came back at twenty four thousand dollars, and that is more than we planned. ## m: check || 18,000;24,000 || noq,number-conflict || Budget is $18,000; the quote is $24,000. Name the gap early. || Quote above budget.
+me: That is higher than our budget, I will note it.
+them@Ines: Ravi, did you send the signed contract to the printer yet? ## quiet
+them@Ravi: Not yet, I will do it after this call. ## quiet
+them@Tomas: I can reduce the design cost if we drop the second banner. ## m: prompt || banner;second || noq,decision || Dropping the second banner saves cost; ask how much before agreeing. || Option stated as a fact.
+me: Let us see the saving before we decide.
+them@Ines: Dan, who will staff the booth on the first day? ## m: answer || staff;first day || direct || Staffing is not set yet; propose two sales people for the first day. || Direct question by name.
+me: I would put two people from sales on the first day.
+them@Tomas: Ravi, can you check the power sockets in the hall plan? ## quiet
+them@Ravi: Sure, I have the plan open. ## quiet
+.. 20
+them@Ines: We decided last week that the lead scanner is a must, and it costs six hundred dollars. ## m: fact || 600;scanner || noq,decision || Scanner licence is $600; log it as a decision with Ines as the owner. || Decision with a number.
+me: Agreed, leads matter most at a show.
+them@Ravi: Tomas, are you free on Friday to review the stand design? ## quiet
+them@Tomas: Yes, Friday morning works. ## quiet
+them@Ines: One more thing, the show dates are the fourteenth to the sixteenth, so we need the flights this week. ## quiet
+me: I will book mine today. ## quiet

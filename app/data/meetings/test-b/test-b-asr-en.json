@@ -1,0 +1,253 @@
+{
+ "id": "test-b-asr-en",
+ "split": "test-b",
+ "lang": "en",
+ "type": "asr",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "Call with a bakery owner about a delivery app. Sam is the developer. Facts: the app costs $7,500, build time is 6 weeks, the bakery opens a second shop on 1 September, payments run through Paygate.",
+ "profile": {
+  "userName": "Sam"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6820,
+   "side": "me",
+   "text": "hello ruth thank you for calling i have the plan in front of me"
+  },
+  {
+   "id": "l2",
+   "t": 17059,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "hi sam so the second shop opens on the first of september and i need the app by then it takes sticks weeks right"
+  },
+  {
+   "id": "l3",
+   "t": 22017,
+   "side": "me",
+   "text": "six weeks is right so we must start soon"
+  },
+  {
+   "id": "l4",
+   "t": 27394,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "the cost was seven thousand five hundred dollars write"
+  },
+  {
+   "id": "l5",
+   "t": 30170,
+   "side": "me",
+   "text": "yes seven thousand five hundred"
+  },
+  {
+   "id": "l6",
+   "t": 37165,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "my customers say the pay button does nothing as they press it on there phones"
+  },
+  {
+   "id": "l7",
+   "t": 41539,
+   "side": "me",
+   "text": "i will look at the payment log"
+  },
+  {
+   "id": "l8",
+   "t": 47092,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "the pay button does nothing as they press it"
+  },
+  {
+   "id": "l9",
+   "t": 55364,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "the pay button does nothing as they press it on there phones and its been like that since tuesday"
+  },
+  {
+   "id": "l10",
+   "t": 58355,
+   "side": "me",
+   "text": "since tuesday that helps"
+  },
+  {
+   "id": "l11",
+   "t": 84805,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "we also want to add a loyalty card but only after the"
+  },
+  {
+   "id": "l12",
+   "t": 87894,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "second shop is open in october"
+  },
+  {
+   "id": "l13",
+   "t": 91402,
+   "side": "me",
+   "text": "we can park that for later"
+  },
+  {
+   "id": "l14",
+   "t": 96089,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "the weather has been so hot this week"
+  },
+  {
+   "id": "l15",
+   "t": 100055,
+   "side": "me",
+   "text": "yes it is very hot"
+  },
+  {
+   "id": "l16",
+   "t": 104080,
+   "side": "them",
+   "speaker": "Ruth",
+   "text": "i have to go the oven is calling"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l2",
+   "kind": "check",
+   "mustMention": [
+    "6 weeks",
+    "1 September"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "homophone"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "7,500"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "asr",
+    "number"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l6",
+   "kind": "prompt",
+   "mustMention": [
+    "pay button",
+    "Paygate"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "homophone"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l9",
+   "kind": "check",
+   "mustMention": [
+    "Tuesday",
+    "log"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "duplicate"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "loyalty",
+    "second shop"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "asr",
+    "split-final"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l14",
+   "toLine": "l16"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Ruth Lang\",\"side\":\"them\",\"role\":\"bakery owner\"}],\"agenda\":[\"schedule\",\"cost\"],\"facts\":[{\"text\":\"App costs $7,500\",\"src\":\"brief\"},{\"text\":\"Build time is 6 weeks\",\"src\":\"brief\"},{\"text\":\"Second shop opens on 1 September\",\"src\":\"brief\"},{\"text\":\"Payments run through Paygate\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can the app be ready for the second shop?\"],\"chunks\":[\"Call with a bakery owner about a delivery app. Sam is the developer. Facts: the app costs $7,500, build time is 6 weeks, the bakery opens a second shop on 1 September, payments run through Paygate.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Build is 6 weeks and the shop opens 1 September; check the start date.\nWHY: \"sticks weeks\" for six weeks.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The quote is $7,500.\nWHY: \"write\" for right.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Pay button dead on phones; check the Paygate call and the error log.\nWHY: \"there phones\".",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The problem started on Tuesday; check what changed in the log that day.\nWHY: Duplicated final with a new fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Loyalty card waits for the second shop; park it for now.\nWHY: A sentence split over two finals.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

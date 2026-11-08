@@ -1,0 +1,145 @@
+{
+ "id": "test-b-silence-he",
+ "split": "test-b",
+ "lang": "he",
+ "type": "silence",
+ "variant": "clean",
+ "scripted": true,
+ "context": "שיחה חברתית לפני ארוחת צוות. אין שום דבר דחוף. עובדות: הארוחה ביום שישי בצהריים, השולחן הוזמן ל-9 אנשים, המשרד נסגר ב-14:00 ביום שישי.",
+ "profile": {
+  "userName": "סער"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5700,
+   "side": "them",
+   "speaker": "מיה",
+   "text": "היי סער, היי אלון, הארוחה בתוקף והשולחן הוזמן לתשעה אנשים."
+  },
+  {
+   "id": "l2",
+   "t": 8079,
+   "side": "me",
+   "text": "מעולה, תודה שהזמנת."
+  },
+  {
+   "id": "l3",
+   "t": 12137,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "יום שישי בצהריים, ממש ליד הנחל."
+  },
+  {
+   "id": "l4",
+   "t": 17454,
+   "side": "me",
+   "text": "אני אוהב את המקום הזה, האוכל טוב שם."
+  },
+  {
+   "id": "l5",
+   "t": 23370,
+   "side": "them",
+   "speaker": "מיה",
+   "text": "המשרד נסגר בשתיים באותו יום, אז אף אחד לא צריך למהר חזרה."
+  },
+  {
+   "id": "l6",
+   "t": 57185,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "אני אביא את קופסת המשחקים מהארון."
+  },
+  {
+   "id": "l7",
+   "t": 60999,
+   "side": "me",
+   "text": "רעיון טוב, גם הקלפים שם."
+  },
+  {
+   "id": "l8",
+   "t": 67332,
+   "side": "them",
+   "speaker": "מיה",
+   "text": "כולם אמרו כן חוץ מאחד שיש לו ביקור אצל רופא."
+  },
+  {
+   "id": "l9",
+   "t": 100484,
+   "side": "me",
+   "text": "זה בסדר, נאכל גם בלעדיו."
+  },
+  {
+   "id": "l10",
+   "t": 103215,
+   "side": "them",
+   "speaker": "אלון",
+   "text": "נתראה ביום שישי."
+  }
+ ],
+ "moments": [],
+ "silent": [
+  {
+   "fromLine": "l1",
+   "toLine": "l10"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"מיה\",\"side\":\"them\",\"role\":\"חברה בצוות\"},{\"name\":\"אלון\",\"side\":\"them\",\"role\":\"חבר בצוות\"}],\"agenda\":[\"תוכנית הארוחה\"],\"facts\":[{\"text\":\"הארוחה ביום שישי בצהריים\",\"src\":\"brief\"},{\"text\":\"השולחן הוזמן ל-9 אנשים\",\"src\":\"brief\"},{\"text\":\"המשרד נסגר ב-14:00 ביום שישי\",\"src\":\"brief\"}],\"likelyQuestions\":[\"השולחן הוזמן?\"],\"chunks\":[\"שיחה חברתית לפני ארוחת צוות. אין שום דבר דחוף. עובדות: הארוחה ביום שישי בצהריים, השולחן הוזמן ל-9 אנשים, המשרד נסגר ב-14:00 ביום שישי.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l1",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l3",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

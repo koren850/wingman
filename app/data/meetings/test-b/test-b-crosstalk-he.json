@@ -1,0 +1,256 @@
+{
+ "id": "test-b-crosstalk-he",
+ "split": "test-b",
+ "lang": "he",
+ "type": "crosstalk",
+ "variant": "noisy",
+ "scripted": true,
+ "context": "שיחת מסירה למעבר מחסן. סער מתאם את המעבר. עובדות: 180 משטחים להעברה, המעבר בסוף השבוע של 25 באוקטובר, שתי משאיות הוזמנו, האתר החדש נפתח ביום ראשון 26 באוקטובר.",
+ "profile": {
+  "userName": "סער"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 5700,
+   "side": "them",
+   "speaker": "קורל",
+   "text": "טוב אז למעבר יש לנו בערך מאתיים ועשרים משטחים ו"
+  },
+  {
+   "id": "l2",
+   "t": 8499,
+   "side": "them",
+   "speaker": "דוד",
+   "text": "סליחה קורל המשאיות היו"
+  },
+  {
+   "id": "l3",
+   "t": 12977,
+   "side": "them",
+   "speaker": "קורל",
+   "text": "מאתיים ועשרים משטחים וכולם צריכים להיות עטופים"
+  },
+  {
+   "id": "l4",
+   "t": 15354,
+   "side": "them",
+   "speaker": "דוד",
+   "text": "תמשיכי"
+  },
+  {
+   "id": "l5",
+   "t": 19590,
+   "side": "me",
+   "text": "יש לי מאה ושמונים בתוכנית אבדוק את הרשימה"
+  },
+  {
+   "id": "l6",
+   "t": 22985,
+   "side": "them",
+   "speaker": "קורל",
+   "text": "זה היה לפני ההזמנה החדשה"
+  },
+  {
+   "id": "l7",
+   "t": 25119,
+   "side": "them",
+   "speaker": "דוד",
+   "text": "ובמשאיות"
+  },
+  {
+   "id": "l8",
+   "t": 28932,
+   "side": "them",
+   "speaker": "קורל",
+   "text": "סער כמה משאיות הוזמנו"
+  },
+  {
+   "id": "l9",
+   "t": 31244,
+   "side": "me",
+   "text": "שתי משאיות הוזמנו"
+  },
+  {
+   "id": "l10",
+   "t": 35235,
+   "side": "them",
+   "speaker": "דוד",
+   "text": "שתיים לא מספיק לסוף שבוע אחד"
+  },
+  {
+   "id": "l11",
+   "t": 39225,
+   "side": "them",
+   "speaker": "קורל",
+   "text": "בפעם הקודמת הסתדרנו עם שתיים"
+  },
+  {
+   "id": "l12",
+   "t": 63394,
+   "side": "them",
+   "speaker": "דוד",
+   "text": "בכנות הנהגים לא יעבדו את כל יום שבת"
+  },
+  {
+   "id": "l13",
+   "t": 67562,
+   "side": "me",
+   "text": "אפשר לבקש משאית שלישית או התחלה מוקדמת."
+  },
+  {
+   "id": "l14",
+   "t": 69629,
+   "side": "them",
+   "speaker": "קורל",
+   "text": "ומפתחות"
+  },
+  {
+   "id": "l15",
+   "t": 74215,
+   "side": "them",
+   "speaker": "דוד",
+   "text": "המפתחות לאתר החדש מגיעים ביום חמישי"
+  },
+  {
+   "id": "l16",
+   "t": 80240,
+   "side": "them",
+   "speaker": "קורל",
+   "text": "נכון חמישי אז הכול צריך להיות מוכן לפני יום ראשון עשרים ושישה"
+  },
+  {
+   "id": "l17",
+   "t": 103324,
+   "side": "them",
+   "speaker": "דוד",
+   "text": "ראית את המשחק אתמול"
+  },
+  {
+   "id": "l18",
+   "t": 105567,
+   "side": "them",
+   "speaker": "קורל",
+   "text": "נרדמתי"
+  },
+  {
+   "id": "l19",
+   "t": 107989,
+   "side": "me",
+   "text": "ראיתי את המחצית הראשונה"
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "180",
+    "220"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "answer",
+   "mustMention": [
+    "שתי משאיות"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": [
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l12",
+   "kind": "prompt",
+   "mustMention": [
+    "שבת",
+    "נהגים"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection",
+    "crosstalk"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l16",
+   "kind": "check",
+   "mustMention": [
+    "חמישי",
+    "ראשון"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "deadline",
+    "crosstalk"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l17",
+   "toLine": "l19"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"קורל\",\"side\":\"them\",\"role\":\"מנהלת מחסן\"},{\"name\":\"דוד\",\"side\":\"them\",\"role\":\"הובלה\"}],\"agenda\":[\"משטחים ומשאיות\",\"תאריכים\"],\"facts\":[{\"text\":\"180 משטחים להעברה\",\"src\":\"brief\"},{\"text\":\"המעבר בסוף השבוע של 25 באוקטובר\",\"src\":\"brief\"},{\"text\":\"שתי משאיות הוזמנו\",\"src\":\"brief\"},{\"text\":\"האתר החדש נפתח ביום ראשון 26 באוקטובר\",\"src\":\"brief\"}],\"likelyQuestions\":[\"כמה משאיות הוזמנו?\"],\"chunks\":[\"שיחת מסירה למעבר מחסן. סער מתאם את המעבר. עובדות: 180 משטחים להעברה, המעבר בסוף השבוע של 25 באוקטובר, שתי משאיות הוזמנו, האתר החדש נפתח ביום ראשון 26 באוקטובר.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: בתוכנית 180 משטחים והיא אומרת 220. לאשר את הספירה עם מנהלת המחסן.\nWHY: מספר שסותר את התוכנית, מעל דיבור אחר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: הוזמנו שתי משאיות להובלה.\nWHY: שאלה ישירה בתוך חפיפה.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: הנהגים לא יעבדו כל שבת; לבקש משאית שלישית או התחלה מוקדמת.\nWHY: התנגדות בתוך החפיפה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: המפתחות מגיעים בחמישי והאתר נפתח ביום ראשון; לרשום מה חייב להיות מוכן.\nWHY: מועד בתוך החפיפה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

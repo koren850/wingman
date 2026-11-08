@@ -1,0 +1,40 @@
+id: dev-noq-problem-en
+split: dev
+lang: en
+type: noq
+variant: clean
+user: Dan
+context: Ticket 5530. Customer: Harbor Print, a print shop with an online order form. Contact: Rita Cole, office manager. The order form runs on PHP 8.1 with a mail plugin called MailPost. Server backups run nightly at 02:00. The support plan includes 4 hours per month.
+roster: Rita Cole | them | office manager
+roster: Omar | them | web helper at Harbor Print
+agenda: find why order emails are late
+agenda: agree the next step
+brief: Order form runs on PHP 8.1
+brief: Mail plugin is MailPost
+brief: Nightly backup at 02:00
+brief: Support plan is 4 hours per month
+likely: Is our data safe?
+---
+me: Hi Rita, this is Dan from support. I have your ticket open in front of me.
+them@Rita: Thanks Dan. Omar is on the line too, he looks after our website part time.
+me: Good. Please walk me through the symptoms on your side.
+them@Rita: Order emails reach us twenty or thirty minutes late, and sometimes a customer gets nothing at all. ## m: prompt || MailPost;queue || noq,problem || Check the MailPost queue and sender logs for delayed or dropped mail. || Problem statement with no question.
+me: That points to the mail queue. I will look at the plugin logs while we talk.
+them@Omar: I did not touch the plugin, but the host moved us to a new server last week.
+me: That is useful to know, I will note the move.
+them@Rita: Since the move the order form also freezes on the last step and customers press the button twice. ## m: prompt || last step;twice || noq,problem || Freeze on the last step makes customers order twice; look for duplicate submissions. || Second problem, a freeze causing double clicks.
+me: Double clicks can create duplicate orders, so I will check the order table for pairs.
+.. 25
+them@Omar: I found six duplicate orders from Tuesday alone, and two customers were charged twice. ## m: check || six;charged twice || noq,number || Six duplicates and two customers charged twice; confirm refunds and tell finance. || Number claim with money impact.
+me: Thank you Omar. Refunds for the two double charges should go out today.
+them@Rita: Our busiest week starts on Monday and I cannot have this broken then. ## m: check || Monday || noq,deadline || Hard deadline is Monday; agree a fix or a workaround before the call ends. || Deadline pressure stated as a fact.
+me: I understand, Monday is the deadline for both of us.
+.. 20
+them@Omar: Logs show the mail plugin timing out against the new mail server every few minutes. ## m: answer || timeout;mail server || noq,cause || Plugin timeout against the new mail server; point it to the host relay. || Cause found in the logs.
+me: Then the fix is likely a setting on the mail server address.
+them@Rita: Honestly our last agency said it was fixed and it was not. ## m: prompt || last agency || noq,objection || Acknowledge the last agency, then offer to confirm the fix with a test order. || Trust issue stated as a fact.
+me: I will not close the ticket until we place a test order together.
+.. 20
+them@Rita: My daughter is getting married on Sunday, so I will be slow to answer this weekend. ## quiet
+me: Congratulations, I hope it goes well. ## quiet
+them@Omar: I can be reachable on Saturday if you need me. ## quiet

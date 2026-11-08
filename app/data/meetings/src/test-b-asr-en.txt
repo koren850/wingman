@@ -1,0 +1,33 @@
+id: test-b-asr-en
+split: test-b
+lang: en
+type: asr
+variant: noisy
+user: Sam
+context: Call with a bakery owner about a delivery app. Sam is the developer. Facts: the app costs $7,500, build time is 6 weeks, the bakery opens a second shop on 1 September, payments run through Paygate.
+roster: Ruth Lang | them | bakery owner
+agenda: schedule
+agenda: cost
+brief: App costs $7,500
+brief: Build time is 6 weeks
+brief: Second shop opens on 1 September
+brief: Payments run through Paygate
+likely: Can the app be ready for the second shop?
+---
+me: hello ruth thank you for calling i have the plan in front of me
+them@Ruth: hi sam so the second shop opens on the first of september and i need the app by then it takes sticks weeks right ## m: check || 6 weeks;1 September || noq,asr,homophone || Build is 6 weeks and the shop opens 1 September; check the start date. || "sticks weeks" for six weeks.
+me: six weeks is right so we must start soon
+them@Ruth: the cost was seven thousand five hundred dollars write ## m: check || 7,500 || asr,number || The quote is $7,500. || "write" for right.
+me: yes seven thousand five hundred
+them@Ruth: my customers say the pay button does nothing as they press it on there phones ## m: prompt || pay button;Paygate || noq,asr,homophone || Pay button dead on phones; check the Paygate call and the error log. || "there phones".
+me: i will look at the payment log
+them@Ruth: the pay button does nothing as they press it
+them@Ruth: the pay button does nothing as they press it on there phones and its been like that since tuesday ## m: check || Tuesday;log || noq,asr,duplicate || The problem started on Tuesday; check what changed in the log that day. || Duplicated final with a new fact.
+me: since tuesday that helps
+.. 20
+them@Ruth: we also want to add a loyalty card but only after the
+them@Ruth: second shop is open in october ## m: prompt || loyalty;second shop || noq,asr,split-final || Loyalty card waits for the second shop; park it for now. || A sentence split over two finals.
+me: we can park that for later
+them@Ruth: the weather has been so hot this week ## quiet
+me: yes it is very hot ## quiet
+them@Ruth: i have to go the oven is calling ## quiet

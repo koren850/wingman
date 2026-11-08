@@ -1,0 +1,280 @@
+{
+ "id": "test-b-problem-en",
+ "split": "test-b",
+ "lang": "en",
+ "type": "noq",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Support session for Basil Kitchen, a restaurant group with an ordering app. Contact: Leo Hart, operations. The app takes card payments through a provider called Paygate. Kitchen printers are connected through a small box in each branch. The support plan covers 6 hours a month. The last release went out on Monday.",
+ "profile": {
+  "userName": "Sam"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6440,
+   "side": "me",
+   "text": "Hello Leo, Sam here from support. Your ticket is open on my screen."
+  },
+  {
+   "id": "l2",
+   "t": 11739,
+   "side": "them",
+   "speaker": "Leo",
+   "text": "Thanks Sam. Kim is with me, she runs our busiest branch."
+  },
+  {
+   "id": "l3",
+   "t": 16317,
+   "side": "me",
+   "text": "Good. Describe the symptoms in your own words."
+  },
+  {
+   "id": "l4",
+   "t": 24354,
+   "side": "them",
+   "speaker": "Leo",
+   "text": "On Android phones the app closes by itself at the exact moment the customer presses pay."
+  },
+  {
+   "id": "l5",
+   "t": 29030,
+   "side": "me",
+   "text": "I will pull the crash reports for the last release."
+  },
+  {
+   "id": "l6",
+   "t": 36785,
+   "side": "them",
+   "speaker": "Kim",
+   "text": "In the kitchen every order prints twice, so the cooks make double meals and we waste food."
+  },
+  {
+   "id": "l7",
+   "t": 42679,
+   "side": "me",
+   "text": "Duplicate prints often come from a retry, I will look there."
+  },
+  {
+   "id": "l8",
+   "t": 74752,
+   "side": "them",
+   "speaker": "Kim",
+   "text": "Yesterday alone we threw away about forty meals because of the double prints."
+  },
+  {
+   "id": "l9",
+   "t": 80364,
+   "side": "me",
+   "text": "That is a real cost, I will put it in the ticket."
+  },
+  {
+   "id": "l10",
+   "t": 88295,
+   "side": "them",
+   "speaker": "Leo",
+   "text": "The estimated delivery time in the app always shows thirty minutes, even on a rainy Friday night."
+  },
+  {
+   "id": "l11",
+   "t": 94365,
+   "side": "me",
+   "text": "A fixed estimate sounds like a default value, I will check."
+  },
+  {
+   "id": "l12",
+   "t": 122014,
+   "side": "them",
+   "speaker": "Leo",
+   "text": "Our owner is furious since the release went out on Monday and she wants it rolled back today."
+  },
+  {
+   "id": "l13",
+   "t": 127802,
+   "side": "me",
+   "text": "I understand the pressure, let me see the effect of a rollback."
+  },
+  {
+   "id": "l14",
+   "t": 135149,
+   "side": "them",
+   "speaker": "Kim",
+   "text": "Two branches have already stopped taking app orders and send people to the phone line."
+  },
+  {
+   "id": "l15",
+   "t": 139115,
+   "side": "me",
+   "text": "Then the workaround comes first."
+  },
+  {
+   "id": "l16",
+   "t": 165040,
+   "side": "them",
+   "speaker": "Leo",
+   "text": "Kim just told me the new coffee machine arrived and it is huge."
+  },
+  {
+   "id": "l17",
+   "t": 168724,
+   "side": "me",
+   "text": "That sounds exciting for the branch."
+  },
+  {
+   "id": "l18",
+   "t": 175107,
+   "side": "them",
+   "speaker": "Kim",
+   "text": "It makes a lot of noise, I hope you cannot hear it."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "Android",
+    "Paygate"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "problem"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "prompt",
+   "mustMention": [
+    "twice",
+    "printer"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "problem"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "check",
+   "mustMention": [
+    "forty meals"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "prompt",
+   "mustMention": [
+    "thirty minutes",
+    "estimate"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "problem"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "check",
+   "mustMention": [
+    "Monday",
+    "rollback"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "deadline"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l14",
+   "kind": "check",
+   "mustMention": [
+    "two branches"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l16",
+   "toLine": "l18"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Leo Hart\",\"side\":\"them\",\"role\":\"operations manager\"},{\"name\":\"Kim\",\"side\":\"them\",\"role\":\"branch lead\"}],\"agenda\":[\"payment crashes\",\"kitchen printing\"],\"facts\":[{\"text\":\"Card payments use Paygate\",\"src\":\"brief\"},{\"text\":\"Kitchen printers connect through a box in each branch\",\"src\":\"brief\"},{\"text\":\"Support plan is 6 hours a month\",\"src\":\"brief\"},{\"text\":\"Last release was on Monday\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Is it safe to take orders now?\"],\"chunks\":[\"Support session for Basil Kitchen, a restaurant group with an ordering app. Contact: Leo Hart, operations. The app takes card payments through a provider called Paygate. Kitchen printers are connected through a small box in each branch. The support plan covers 6 hours a month. The last release went out on Monday.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: App closes at pay on Android; check the Paygate call and the crash log.\nWHY: Problem statement without a question.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Orders print twice; look at the printer box retry setting.\nWHY: Second problem, with waste.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: About forty meals thrown away in a day; note the cost for the report.\nWHY: Number claim that shows impact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Delivery estimate is fixed at thirty minutes; check how it is calculated.\nWHY: Third problem.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Owner wants a rollback; weigh it against a quick fix, release was Monday.\nWHY: Pressure stated as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Two branches stopped app orders; agree a temporary workaround today.\nWHY: Impact count.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

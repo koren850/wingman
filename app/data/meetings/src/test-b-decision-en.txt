@@ -1,0 +1,39 @@
+id: test-b-decision-en
+split: test-b
+lang: en
+type: noq
+variant: clean
+user: Sam
+context: Operations meeting of a small online shop. Sam leads operations. Current plan: two support agents, support hours 9 to 17, website redesign starts in May, the database stays on the current provider. Monthly support budget is $6,000.
+roster: Vera | them | head of customer care
+roster: Ben | them | developer
+agenda: support staffing
+agenda: redesign timing
+agenda: database
+brief: Two support agents today
+brief: Support hours are 9 to 17
+brief: Redesign starts in May
+brief: Support budget is $6,000 per month
+likely: Who covers weekends?
+---
+me: Thanks both for joining. Today we settle three things, staffing, redesign and the database.
+them@Vera: We are drowning in tickets after the holiday sale, and two agents cannot cope.
+me: Understood. Give me your recommendation on staffing.
+them@Vera: I am hiring two contractors for the next three months to clear the backlog. ## m: check || two contractors;6,000 || noq,decision || Two contractors for three months: check the cost against the $6,000 budget. || Decision with a budget effect.
+me: That affects the support budget, I will check the numbers.
+them@Ben: The redesign will wait until September, because the checkout fixes take all my time. ## m: check || May;September || noq,decision,number-conflict || Redesign was planned for May, now September. Tell the marketing owner. || Decision that changes the plan.
+me: Then the plan moves by four months.
+.. 25
+them@Vera: From next week support hours run from eight to eighteen, so we cover both ends of the day. ## m: check || 9 to 17;8 || noq,decision || Hours change from 9 to 17 to 8 to 18; update the website. || Decision that needs follow-up.
+me: I will update the hours on the site.
+them@Ben: We keep the database with the current provider and we revisit it in January. ## m: fact || January;provider || noq,decision || Database stays with the provider; review in January. Log the date. || Decision with a review date.
+me: Good, one less thing to move now.
+.. 20
+them@Vera: I will send the contractor job posts to the team by Wednesday. ## m: check || Wednesday || noq,commitment || Vera promised job posts by Wednesday; add it to the action list. || Commitment as a statement.
+me: Wednesday works for me.
+them@Ben: Weekend cover stays with the on-call rota, we are not changing that. ## m: fact || on-call;weekend || noq,decision || Weekend cover stays on the on-call rota. Record it as unchanged. || Decision to keep things as they are.
+me: Fine, that matches the current setup.
+.. 20
+them@Ben: My neighbour started drilling at seven this morning. ## quiet
+me: That is a rough start to the day. ## quiet
+them@Vera: I am on my second coffee already. ## quiet

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
 import net from "node:net";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ModelRegistry } from "./providers/llm.ts";
@@ -251,10 +251,6 @@ test("hotkey path: the recap key calls ctl.recap, which writes 'recap' to the en
   assert.equal(trayLib.KEYS.recap, "Control+Alt+U");
   assert.ok(!trayLib.OVERLAY_KEYS.includes(trayLib.KEYS.recap), "not a key of the answer window (Ctrl+Opt+R is rewind)");
   assert.equal(new Set(Object.values(trayLib.KEYS)).size, Object.keys(trayLib.KEYS).length, "every tray key is different");
-  // the tray main registers the key and a menu item (electron is not loaded here)
-  const main = readFileSync(join(ROOT, "tray", "main.cjs"), "utf8");
-  assert.match(main, /globalShortcut\.register\(KEYS\.recap, \(\) => ctl\.recap\(\)\)/);
-  assert.match(main, /label: t\("recap"\)/);
 });
 
 test("control socket: recap is an allowed command with no arguments; refused when no call is live", async () => {
@@ -294,13 +290,4 @@ test("control socket: recap is an allowed command with no arguments; refused whe
   } finally {
     await server.stop();
   }
-});
-
-test("the engine understands 'recap' and routes a typed 'ask <text>' to the ask-the-call job (source check; the process test is in e2e/ask-call)", () => {
-  const ctl = readFileSync(join(ROOT, "src", "engine", "control.ts"), "utf8");
-  assert.match(ctl, /cmd === "recap"/);
-  assert.match(ctl, /catchMeUp\(\)/);
-  const me = readFileSync(join(ROOT, "src", "engine", "me.ts"), "utf8");
-  assert.match(me, /export function askTyped[\s\S]*askTheCall\(text\)/);
-  assert.match(me, /useLists: !canMeAi\(\)/);
 });

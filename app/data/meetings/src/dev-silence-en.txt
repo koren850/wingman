@@ -1,0 +1,29 @@
+id: dev-silence-en
+split: dev
+lang: en
+type: silence
+variant: clean
+user: Dan
+context: Weekly check-in with a colleague. Nothing is due. Facts: the report is done, the next review is on 3 July, and the team has 6 people.
+roster: Hana | them | colleague
+agenda: weekly check-in
+brief: Report is done
+brief: Next review is on 3 July
+brief: Team has 6 people
+likely: Is the report done?
+---
+me: Morning Hana, how was your weekend? ## quiet
+them@Hana: Quiet, we walked by the sea and cooked dinner at home. ## quiet
+me: That sounds lovely, ours was rainy. ## quiet
+them@Hana: The report is finished and I sent it to the team on Friday. ## quiet
+me: Good, thank you for finishing it. ## quiet
+them@Hana: The next review is on the third of July, so we have time. ## quiet
+me: Yes, there is no rush this week. ## quiet
+.. 40
+them@Hana: I think the six of us are in a good place right now. ## quiet
+me: I agree, the mood is good. ## quiet
+them@Hana: I will take the afternoon off on Thursday for a dentist visit. ## quiet
+me: No problem, have a good week. ## quiet
+.. 30
+them@Hana: Thanks Dan, talk next week. ## quiet
+me: Bye Hana. ## quiet

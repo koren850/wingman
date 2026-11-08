@@ -1,0 +1,38 @@
+id: test-b-problem-en
+split: test-b
+lang: en
+type: noq
+variant: clean
+user: Sam
+context: Support session for Basil Kitchen, a restaurant group with an ordering app. Contact: Leo Hart, operations. The app takes card payments through a provider called Paygate. Kitchen printers are connected through a small box in each branch. The support plan covers 6 hours a month. The last release went out on Monday.
+roster: Leo Hart | them | operations manager
+roster: Kim | them | branch lead
+agenda: payment crashes
+agenda: kitchen printing
+brief: Card payments use Paygate
+brief: Kitchen printers connect through a box in each branch
+brief: Support plan is 6 hours a month
+brief: Last release was on Monday
+likely: Is it safe to take orders now?
+---
+me: Hello Leo, Sam here from support. Your ticket is open on my screen.
+them@Leo: Thanks Sam. Kim is with me, she runs our busiest branch.
+me: Good. Describe the symptoms in your own words.
+them@Leo: On Android phones the app closes by itself at the exact moment the customer presses pay. ## m: prompt || Android;Paygate || noq,problem || App closes at pay on Android; check the Paygate call and the crash log. || Problem statement without a question.
+me: I will pull the crash reports for the last release.
+them@Kim: In the kitchen every order prints twice, so the cooks make double meals and we waste food. ## m: prompt || twice;printer || noq,problem || Orders print twice; look at the printer box retry setting. || Second problem, with waste.
+me: Duplicate prints often come from a retry, I will look there.
+.. 25
+them@Kim: Yesterday alone we threw away about forty meals because of the double prints. ## m: check || forty meals || noq,number || About forty meals thrown away in a day; note the cost for the report. || Number claim that shows impact.
+me: That is a real cost, I will put it in the ticket.
+them@Leo: The estimated delivery time in the app always shows thirty minutes, even on a rainy Friday night. ## m: prompt || thirty minutes;estimate || noq,problem || Delivery estimate is fixed at thirty minutes; check how it is calculated. || Third problem.
+me: A fixed estimate sounds like a default value, I will check.
+.. 20
+them@Leo: Our owner is furious since the release went out on Monday and she wants it rolled back today. ## m: check || Monday;rollback || noq,deadline || Owner wants a rollback; weigh it against a quick fix, release was Monday. || Pressure stated as a fact.
+me: I understand the pressure, let me see the effect of a rollback.
+them@Kim: Two branches have already stopped taking app orders and send people to the phone line. ## m: check || two branches || noq,number || Two branches stopped app orders; agree a temporary workaround today. || Impact count.
+me: Then the workaround comes first.
+.. 20
+them@Leo: Kim just told me the new coffee machine arrived and it is huge. ## quiet
+me: That sounds exciting for the branch. ## quiet
+them@Kim: It makes a lot of noise, I hope you cannot hear it. ## quiet

@@ -1,0 +1,293 @@
+{
+ "id": "dev-noq-problem-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "noq",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Ticket 5530. Customer: Harbor Print, a print shop with an online order form. Contact: Rita Cole, office manager. The order form runs on PHP 8.1 with a mail plugin called MailPost. Server backups run nightly at 02:00. The support plan includes 4 hours per month.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 7580,
+   "side": "me",
+   "text": "Hi Rita, this is Dan from support. I have your ticket open in front of me."
+  },
+  {
+   "id": "l2",
+   "t": 14399,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Thanks Dan. Omar is on the line too, he looks after our website part time."
+  },
+  {
+   "id": "l3",
+   "t": 19737,
+   "side": "me",
+   "text": "Good. Please walk me through the symptoms on your side."
+  },
+  {
+   "id": "l4",
+   "t": 28154,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Order emails reach us twenty or thirty minutes late, and sometimes a customer gets nothing at all."
+  },
+  {
+   "id": "l5",
+   "t": 35110,
+   "side": "me",
+   "text": "That points to the mail queue. I will look at the plugin logs while we talk."
+  },
+  {
+   "id": "l6",
+   "t": 42865,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "I did not touch the plugin, but the host moved us to a new server last week."
+  },
+  {
+   "id": "l7",
+   "t": 48379,
+   "side": "me",
+   "text": "That is useful to know, I will note the move."
+  },
+  {
+   "id": "l8",
+   "t": 57352,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Since the move the order form also freezes on the last step and customers press the button twice."
+  },
+  {
+   "id": "l9",
+   "t": 64104,
+   "side": "me",
+   "text": "Double clicks can create duplicate orders, so I will check the order table for pairs."
+  },
+  {
+   "id": "l10",
+   "t": 95895,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "I found six duplicate orders from Tuesday alone, and two customers were charged twice."
+  },
+  {
+   "id": "l11",
+   "t": 102725,
+   "side": "me",
+   "text": "Thank you Omar. Refunds for the two double charges should go out today."
+  },
+  {
+   "id": "l12",
+   "t": 108474,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Our busiest week starts on Monday and I cannot have this broken then."
+  },
+  {
+   "id": "l13",
+   "t": 113502,
+   "side": "me",
+   "text": "I understand, Monday is the deadline for both of us."
+  },
+  {
+   "id": "l14",
+   "t": 140849,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "Logs show the mail plugin timing out against the new mail server every few minutes."
+  },
+  {
+   "id": "l15",
+   "t": 147475,
+   "side": "me",
+   "text": "Then the fix is likely a setting on the mail server address."
+  },
+  {
+   "id": "l16",
+   "t": 153020,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "Honestly our last agency said it was fixed and it was not."
+  },
+  {
+   "id": "l17",
+   "t": 159364,
+   "side": "me",
+   "text": "I will not close the ticket until we place a test order together."
+  },
+  {
+   "id": "l18",
+   "t": 187267,
+   "side": "them",
+   "speaker": "Rita",
+   "text": "My daughter is getting married on Sunday, so I will be slow to answer this weekend."
+  },
+  {
+   "id": "l19",
+   "t": 190289,
+   "side": "me",
+   "text": "Congratulations, I hope it goes well."
+  },
+  {
+   "id": "l20",
+   "t": 195250,
+   "side": "them",
+   "speaker": "Omar",
+   "text": "I can be reachable on Saturday if you need me."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "prompt",
+   "mustMention": [
+    "MailPost",
+    "queue"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "problem"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "last step",
+    "twice"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "problem"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l10",
+   "kind": "check",
+   "mustMention": [
+    "six",
+    "charged twice"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l12",
+   "kind": "check",
+   "mustMention": [
+    "Monday"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "deadline"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l14",
+   "kind": "answer",
+   "mustMention": [
+    "timeout",
+    "mail server"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "cause"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l16",
+   "kind": "prompt",
+   "mustMention": [
+    "last agency"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l18",
+   "toLine": "l20"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Rita Cole\",\"side\":\"them\",\"role\":\"office manager\"},{\"name\":\"Omar\",\"side\":\"them\",\"role\":\"web helper at Harbor Print\"}],\"agenda\":[\"find why order emails are late\",\"agree the next step\"],\"facts\":[{\"text\":\"Order form runs on PHP 8.1\",\"src\":\"brief\"},{\"text\":\"Mail plugin is MailPost\",\"src\":\"brief\"},{\"text\":\"Nightly backup at 02:00\",\"src\":\"brief\"},{\"text\":\"Support plan is 4 hours per month\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Is our data safe?\"],\"chunks\":[\"Ticket 5530. Customer: Harbor Print, a print shop with an online order form. Contact: Rita Cole, office manager. The order form runs on PHP 8.1 with a mail plugin called MailPost. Server backups run nightly at 02:00. The support plan includes 4 hours per month.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Check the MailPost queue and sender logs for delayed or dropped mail.\nWHY: Problem statement with no question.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Freeze on the last step makes customers order twice; look for duplicate submissions.\nWHY: Second problem, a freeze causing double clicks.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Six duplicates and two customers charged twice; confirm refunds and tell finance.\nWHY: Number claim with money impact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Hard deadline is Monday; agree a fix or a workaround before the call ends.\nWHY: Deadline pressure stated as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: ANS\nVALUE: 2\nAIM: me\nSAY: Plugin timeout against the new mail server; point it to the host relay.\nWHY: Cause found in the logs.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Acknowledge the last agency, then offer to confirm the fix with a test order.\nWHY: Trust issue stated as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l19",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l20",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

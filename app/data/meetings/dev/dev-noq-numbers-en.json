@@ -1,0 +1,282 @@
+{
+ "id": "dev-noq-numbers-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "noq",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Renewal call. Customer: Pine Ridge Clinics, contact Alina Brandt, operations lead. Current contract: 80 seats at $14,000 per year, renews on 1 March. Our usual discount cap on renewals is 5 percent without approval.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 6820,
+   "side": "me",
+   "text": "Hi Alina, thanks for joining. I see Sam from finance is here as well."
+  },
+  {
+   "id": "l2",
+   "t": 11359,
+   "side": "them",
+   "speaker": "Alina",
+   "text": "Yes, Sam will keep an eye on the numbers."
+  },
+  {
+   "id": "l3",
+   "t": 15937,
+   "side": "me",
+   "text": "Good. Let us start with your situation today."
+  },
+  {
+   "id": "l4",
+   "t": 23214,
+   "side": "them",
+   "speaker": "Alina",
+   "text": "We have grown a lot, we are around a hundred and twenty seats now."
+  },
+  {
+   "id": "l5",
+   "t": 30550,
+   "side": "me",
+   "text": "That is a big change from the eighty in the contract. I will check the usage report."
+  },
+  {
+   "id": "l6",
+   "t": 36785,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Our budget for this tool next year is nine thousand dollars, no more."
+  },
+  {
+   "id": "l7",
+   "t": 41159,
+   "side": "me",
+   "text": "Noted, I will take that into account."
+  },
+  {
+   "id": "l8",
+   "t": 75512,
+   "side": "them",
+   "speaker": "Alina",
+   "text": "Last quarter we lost forty percent of our new staff accounts in the first week because nobody finished onboarding."
+  },
+  {
+   "id": "l9",
+   "t": 81884,
+   "side": "me",
+   "text": "That is a high number and onboarding is the first place I would look."
+  },
+  {
+   "id": "l10",
+   "t": 91335,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "The renewal is on the first of March and we will not sign anything before the audit ends on the fifteenth."
+  },
+  {
+   "id": "l11",
+   "t": 97405,
+   "side": "me",
+   "text": "Then the dates collide, so I will think about an extension."
+  },
+  {
+   "id": "l12",
+   "t": 123154,
+   "side": "them",
+   "speaker": "Alina",
+   "text": "Support tickets doubled since January, from about fifty to a hundred a month."
+  },
+  {
+   "id": "l13",
+   "t": 127042,
+   "side": "me",
+   "text": "That fits with the growth in seats."
+  },
+  {
+   "id": "l14",
+   "t": 133629,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "Another vendor offered us a flat rate of ten thousand for unlimited seats."
+  },
+  {
+   "id": "l15",
+   "t": 139495,
+   "side": "me",
+   "text": "I would like to compare what that flat rate includes."
+  },
+  {
+   "id": "l16",
+   "t": 169660,
+   "side": "them",
+   "speaker": "Alina",
+   "text": "It is raining here again and the roads are a mess."
+  },
+  {
+   "id": "l17",
+   "t": 174104,
+   "side": "me",
+   "text": "Same here, the traffic was terrible this morning."
+  },
+  {
+   "id": "l18",
+   "t": 179727,
+   "side": "them",
+   "speaker": "Sam",
+   "text": "I will send you the audit schedule after the call."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l4",
+   "kind": "check",
+   "mustMention": [
+    "80",
+    "120"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l6",
+   "kind": "check",
+   "mustMention": [
+    "14,000",
+    "9,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l8",
+   "kind": "prompt",
+   "mustMention": [
+    "forty",
+    "onboarding"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m4",
+   "afterLine": "l10",
+   "kind": "check",
+   "mustMention": [
+    "1 March",
+    "15"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "date"
+   ]
+  },
+  {
+   "id": "m5",
+   "afterLine": "l12",
+   "kind": "fact",
+   "mustMention": [
+    "tickets",
+    "doubled"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number"
+   ]
+  },
+  {
+   "id": "m6",
+   "afterLine": "l14",
+   "kind": "check",
+   "mustMention": [
+    "10,000",
+    "unlimited"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "objection"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l16",
+   "toLine": "l18"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Alina Brandt\",\"side\":\"them\",\"role\":\"operations lead\"},{\"name\":\"Sam\",\"side\":\"them\",\"role\":\"finance\"}],\"agenda\":[\"renewal terms\",\"seat count\"],\"facts\":[{\"text\":\"Current contract is 80 seats\",\"src\":\"brief\"},{\"text\":\"Price is $14,000 per year\",\"src\":\"brief\"},{\"text\":\"Renewal date is 1 March\",\"src\":\"brief\"},{\"text\":\"Discount above 5 percent needs approval\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can you lower the price?\"],\"chunks\":[\"Renewal call. Customer: Pine Ridge Clinics, contact Alina Brandt, operations lead. Current contract: 80 seats at $14,000 per year, renews on 1 March. Our usual discount cap on renewals is 5 percent without approval.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Contract says 80 seats; she says 120. Confirm the real count.\nWHY: Seat count conflicts with the contract.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Current price is $14,000; Sam's limit is $9,000. Name the gap early.\nWHY: Budget conflicts with the current price.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Forty percent drop in week one; find the onboarding step where they stop.\nWHY: A number that signals a product problem.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Renewal is 1 March, audit ends the 15th. Ask for a short extension.\nWHY: Two dates that clash.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Tickets doubled from fifty to a hundred a month; link this to seat growth.\nWHY: Number claim, trend.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l14",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Other offer: $10,000 flat for unlimited seats. Ask what support it covers.\nWHY: Competing offer as a statement.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

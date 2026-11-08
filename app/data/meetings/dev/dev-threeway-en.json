@@ -1,0 +1,276 @@
+{
+ "id": "dev-threeway-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "threeway",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Planning call for a trade show booth. Dan is the sales lead. Facts: booth size 12 square metres, show dates 14 to 16 October, booth budget $18,000, the lead scanner licence costs $600.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4920,
+   "side": "me",
+   "text": "Hello all, Ines, Ravi and Tomas, thanks for joining."
+  },
+  {
+   "id": "l2",
+   "t": 10979,
+   "side": "them",
+   "speaker": "Ines",
+   "text": "Hi Dan. Let us start with the money. Ravi has the latest numbers."
+  },
+  {
+   "id": "l3",
+   "t": 18977,
+   "side": "them",
+   "speaker": "Ravi",
+   "text": "The booth quote came back at twenty four thousand dollars, and that is more than we planned."
+  },
+  {
+   "id": "l4",
+   "t": 24734,
+   "side": "me",
+   "text": "That is higher than our budget, I will note it."
+  },
+  {
+   "id": "l5",
+   "t": 29790,
+   "side": "them",
+   "speaker": "Ines",
+   "text": "Ravi, did you send the signed contract to the printer yet?"
+  },
+  {
+   "id": "l6",
+   "t": 34505,
+   "side": "them",
+   "speaker": "Ravi",
+   "text": "Not yet, I will do it after this call."
+  },
+  {
+   "id": "l7",
+   "t": 40779,
+   "side": "them",
+   "speaker": "Tomas",
+   "text": "I can reduce the design cost if we drop the second banner."
+  },
+  {
+   "id": "l8",
+   "t": 45952,
+   "side": "me",
+   "text": "Let us see the saving before we decide."
+  },
+  {
+   "id": "l9",
+   "t": 50804,
+   "side": "them",
+   "speaker": "Ines",
+   "text": "Dan, who will staff the booth on the first day?"
+  },
+  {
+   "id": "l10",
+   "t": 56455,
+   "side": "me",
+   "text": "I would put two people from sales on the first day."
+  },
+  {
+   "id": "l11",
+   "t": 62525,
+   "side": "them",
+   "speaker": "Tomas",
+   "text": "Ravi, can you check the power sockets in the hall plan?"
+  },
+  {
+   "id": "l12",
+   "t": 65614,
+   "side": "them",
+   "speaker": "Ravi",
+   "text": "Sure, I have the plan open."
+  },
+  {
+   "id": "l13",
+   "t": 93302,
+   "side": "them",
+   "speaker": "Ines",
+   "text": "We decided last week that the lead scanner is a must, and it costs six hundred dollars."
+  },
+  {
+   "id": "l14",
+   "t": 97609,
+   "side": "me",
+   "text": "Agreed, leads matter most at a show."
+  },
+  {
+   "id": "l15",
+   "t": 103855,
+   "side": "them",
+   "speaker": "Ravi",
+   "text": "Tomas, are you free on Friday to review the stand design?"
+  },
+  {
+   "id": "l16",
+   "t": 106360,
+   "side": "them",
+   "speaker": "Tomas",
+   "text": "Yes, Friday morning works."
+  },
+  {
+   "id": "l17",
+   "t": 114984,
+   "side": "them",
+   "speaker": "Ines",
+   "text": "One more thing, the show dates are the fourteenth to the sixteenth, so we need the flights this week."
+  },
+  {
+   "id": "l18",
+   "t": 118707,
+   "side": "me",
+   "text": "I will book mine today."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l3",
+   "kind": "check",
+   "mustMention": [
+    "18,000",
+    "24,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l7",
+   "kind": "prompt",
+   "mustMention": [
+    "banner",
+    "second"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l9",
+   "kind": "answer",
+   "mustMention": [
+    "staff",
+    "first day"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m4",
+   "afterLine": "l13",
+   "kind": "fact",
+   "mustMention": [
+    "600",
+    "scanner"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l5",
+   "toLine": "l6"
+  },
+  {
+   "fromLine": "l11",
+   "toLine": "l12"
+  },
+  {
+   "fromLine": "l15",
+   "toLine": "l18"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Ines\",\"side\":\"them\",\"role\":\"marketing\"},{\"name\":\"Ravi\",\"side\":\"them\",\"role\":\"operations\"},{\"name\":\"Tomas\",\"side\":\"them\",\"role\":\"design\"}],\"agenda\":[\"booth budget\",\"staffing\",\"leads\"],\"facts\":[{\"text\":\"Booth size is 12 square metres\",\"src\":\"brief\"},{\"text\":\"Show dates are 14 to 16 October\",\"src\":\"brief\"},{\"text\":\"Booth budget is $18,000\",\"src\":\"brief\"},{\"text\":\"Lead scanner licence is $600\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Who will staff the booth?\"],\"chunks\":[\"Planning call for a trade show booth. Dan is the sales lead. Facts: booth size 12 square metres, show dates 14 to 16 October, booth budget $18,000, the lead scanner licence costs $600.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l3",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Budget is $18,000; the quote is $24,000. Name the gap early.\nWHY: Quote above budget.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Dropping the second banner saves cost; ask how much before agreeing.\nWHY: Option stated as a fact.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Staffing is not set yet; propose two sales people for the first day.\nWHY: Direct question by name.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Scanner licence is $600; log it as a decision with Ines as the owner.\nWHY: Decision with a number.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

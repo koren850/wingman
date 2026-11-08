@@ -1,0 +1,178 @@
+{
+ "id": "dev-silence-en",
+ "split": "dev",
+ "lang": "en",
+ "type": "silence",
+ "variant": "clean",
+ "scripted": true,
+ "context": "Weekly check-in with a colleague. Nothing is due. Facts: the report is done, the next review is on 3 July, and the team has 6 people.",
+ "profile": {
+  "userName": "Dan"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 3780,
+   "side": "me",
+   "text": "Morning Hana, how was your weekend?"
+  },
+  {
+   "id": "l2",
+   "t": 9079,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "Quiet, we walked by the sea and cooked dinner at home."
+  },
+  {
+   "id": "l3",
+   "t": 12897,
+   "side": "me",
+   "text": "That sounds lovely, ours was rainy."
+  },
+  {
+   "id": "l4",
+   "t": 19794,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "The report is finished and I sent it to the team on Friday."
+  },
+  {
+   "id": "l5",
+   "t": 22950,
+   "side": "me",
+   "text": "Good, thank you for finishing it."
+  },
+  {
+   "id": "l6",
+   "t": 29185,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "The next review is on the third of July, so we have time."
+  },
+  {
+   "id": "l7",
+   "t": 33559,
+   "side": "me",
+   "text": "Yes, there is no rush this week."
+  },
+  {
+   "id": "l8",
+   "t": 80632,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "I think the six of us are in a good place right now."
+  },
+  {
+   "id": "l9",
+   "t": 83964,
+   "side": "me",
+   "text": "I agree, the mood is good."
+  },
+  {
+   "id": "l10",
+   "t": 89995,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "I will take the afternoon off on Thursday for a dentist visit."
+  },
+  {
+   "id": "l11",
+   "t": 94165,
+   "side": "me",
+   "text": "No problem, have a good week."
+  },
+  {
+   "id": "l12",
+   "t": 126874,
+   "side": "them",
+   "speaker": "Hana",
+   "text": "Thanks Dan, talk next week."
+  },
+  {
+   "id": "l13",
+   "t": 128862,
+   "side": "me",
+   "text": "Bye Hana."
+  }
+ ],
+ "moments": [],
+ "silent": [
+  {
+   "fromLine": "l1",
+   "toLine": "l13"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"Hana\",\"side\":\"them\",\"role\":\"colleague\"}],\"agenda\":[\"weekly check-in\"],\"facts\":[{\"text\":\"Report is done\",\"src\":\"brief\"},{\"text\":\"Next review is on 3 July\",\"src\":\"brief\"},{\"text\":\"Team has 6 people\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Is the report done?\"],\"chunks\":[\"Weekly check-in with a colleague. Nothing is due. Facts: the report is done, the next review is on 3 July, and the team has 6 people.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l1",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l2",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l3",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l4",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l8",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l10",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

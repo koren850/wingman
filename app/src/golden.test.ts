@@ -26,12 +26,14 @@ import {
   type TimelineCard,
 } from "../qa/grade-golden.ts";
 import { GoldenSchema, TYPES } from "../qa/golden-schema.ts";
-import { loadSplit, checkTestLock, readSplitFiles, lockHash } from "../qa/golden-load.ts";
+import { loadSplit, checkTestLock, checkLock, readSplitFiles, lockHash } from "../qa/golden-load.ts";
 import { buildAll, MEETINGS } from "../qa/golden-build.ts";
 import { legacyTimeline } from "../qa/legacy-replay.ts";
 
 const dev = () => loadSplit("dev");
-const allRaw = () => [...readSplitFiles("dev"), ...readSplitFiles("test")].map((f) => GoldenSchema.parse(JSON.parse(f.text)));
+const allRaw = () => [...readSplitFiles("dev"), ...readSplitFiles("test"), ...readSplitFiles("test-b")].map((f) => GoldenSchema.parse(JSON.parse(f.text)));
+/** The 24 core meetings of round 1: 8 types x (EN dev, HE dev, one held out). The r2 corpus (noq, variety, test-b) has its own checks in r2-verify-core.test.ts. */
+const core = () => allRaw().filter((g) => (TYPES as readonly string[]).includes(g.type));
 
 // ---------------------------------------------------------------- the grader on a toy meeting
 const toy: Golden = {
@@ -191,7 +193,7 @@ test("oracle: one card per moment from the scripted SAY scores perfectly on ever
     assert.equal(r.silentCards, 0, `${g.id}: an oracle card fell in a silent window`);
     assert.equal(r.wrongLang, 0, `${g.id}: oracle card in the wrong language`);
     assert.equal(r.duplicates, 0, g.id);
-    assert.equal(r.ttcP95, 1200);
+    assert.equal(r.ttcP95, g.moments.length ? 1200 : null);
   }
 });
 
@@ -222,7 +224,7 @@ test("memory oracle: the scripted memory patches, applied in order, pass every m
     }
     const r = gradeMemory(g, snaps);
     assert.deepEqual(r.failures, [], `${g.id}: ${JSON.stringify(r.failures)}`);
-    assert.ok(r.checks >= 1, `${g.id} has a memory check`);
+    if ((TYPES as readonly string[]).includes(g.type) || g.type === "monologue") assert.ok(r.checks >= 1, `${g.id} has a memory check`);
   }
 });
 
@@ -236,12 +238,12 @@ test("every golden file validates against the schema, and the JSON on disk match
     assert.ok(d, `${b.id} is on disk`);
     assert.deepEqual(d, b, `${b.id}: run tsx qa/golden-build.ts`);
   }
-  for (const s of ["dev", "test"] as const)
+  for (const s of ["dev", "test", "test-b"] as const)
     for (const f of readdirSync(join(MEETINGS, s)).filter((x) => x.endsWith(".json"))) assert.match(f, new RegExp(`^${s}-[a-z0-9-]+\\.json$`));
 });
 
-test("counts: 24 meetings, 16 dev and 8 test, 300 or more moments, 100 or more in test, English and Hebrew balanced", () => {
-  const all = allRaw();
+test("counts: 24 core meetings, 16 dev and 8 test, 300 or more moments, 100 or more in test, English and Hebrew balanced", () => {
+  const all = core();
   assert.equal(all.length, 24);
   assert.equal(all.filter((g) => g.split === "dev").length, 16);
   assert.equal(all.filter((g) => g.split === "test").length, 8);
@@ -269,10 +271,17 @@ test("counts: 24 meetings, 16 dev and 8 test, 300 or more moments, 100 or more i
     );
     assert.equal(ofType.filter((g) => g.split === "test").length, 1, t);
   }
+  // the whole corpus (core, noq, variety, test-b) stays balanced between English and Hebrew within 10 percent, in meetings and in moments
+  const every = allRaw();
+  for (const by of [(gs: Golden[]) => gs.length, moments]) {
+    const en = by(every.filter((g) => g.lang === "en")),
+      he = by(every.filter((g) => g.lang === "he"));
+    assert.ok(Math.abs(en - he) / Math.max(en, he) <= 0.1, `whole corpus: EN ${en} vs HE ${he}`);
+  }
 });
 
 test("shape: 6 to 20 minutes, 10 or more moments each, every kind and every hard case present, noisy test meetings", () => {
-  const all = allRaw();
+  const all = core();
   const tags = new Set(all.flatMap((g) => g.moments.flatMap((m) => m.tags ?? [])));
   for (const need of ["implied", "objection", "number-conflict", "promise", "jargon", "topic-shift", "unanswered"]) assert.ok(tags.has(need), `tag ${need}`);
   const kinds = new Set(all.flatMap((g) => g.moments.map((m) => m.kind)));
@@ -334,7 +343,7 @@ test("script: every moment has a reply in the PLAN 3.2 format; quiet lines get S
       assert.ok(hit, `${g.id} ${m.id}: ${s.reply}`);
       assert.ok(hit[4].trim().split(/\s+/).length <= 14, `${g.id} ${m.id}: SAY over 14 words`);
     }
-    const momentLines = new Set(g.moments.map((m) => m.afterLine));
+    const momentLines = new Set([...g.moments.map((m) => m.afterLine), ...(g.allowedExtra ?? []).map((x) => x.afterLine)]);
     for (const s of moment) if (!momentLines.has(s.whenLastLine)) assert.equal(s.reply, "TAG: SKIP", `${g.id} ${s.whenLastLine}`);
     for (const s of (g.script ?? []).filter((x) => x.role === "memory")) assert.ok(typeof JSON.parse(s.reply) === "object", g.id);
     const dig = (g.script ?? []).filter((x) => x.role === "digest");
@@ -344,10 +353,12 @@ test("script: every moment has a reply in the PLAN 3.2 format; quiet lines get S
       Array.isArray(d.roster) && Array.isArray(d.agenda) && Array.isArray(d.facts) && Array.isArray(d.likelyQuestions) && Array.isArray(d.chunks),
       g.id,
     );
-    assert.ok(
-      (g.script ?? []).some((x) => x.role === "memory"),
-      `${g.id} has a memory patch`,
-    );
+    // the core meetings and the long talks carry memory patches; the short r2 meetings test cards, not memory
+    if ((TYPES as readonly string[]).includes(g.type) || g.type === "monologue")
+      assert.ok(
+        (g.script ?? []).some((x) => x.role === "memory"),
+        `${g.id} has a memory patch`,
+      );
   }
 });
 
@@ -383,6 +394,7 @@ test("denylist: no real person, company or client name in the golden data or its
   const files = [
     ...readSplitFiles("dev").map((f) => f.text),
     ...readSplitFiles("test").map((f) => f.text),
+    ...readSplitFiles("test-b").map((f) => f.text),
     ...readdirSync(join(MEETINGS, "src")).map((f) => readFileSync(join(MEETINGS, "src", f), "utf8")),
   ];
   for (const text of files) {
@@ -394,26 +406,31 @@ test("denylist: no real person, company or client name in the golden data or its
 });
 
 // ---------------------------------------------------------------- the lock and the final flag
-test("test.lock: the test split matches its hash; any edit, addition or missing lock is refused", () => {
+for (const split of ["test", "test-b"] as const) {
+  test(`${split}.lock: the ${split} split matches its hash; any edit, addition or missing lock is refused`, () => {
+    checkLock(split);
+    const tmp = mkdtempSync(join(tmpdir(), "golden-lock-"));
+    try {
+      cpSync(MEETINGS, tmp, { recursive: true });
+      checkLock(split, tmp);
+      const f = join(tmp, split, readdirSync(join(tmp, split))[0]);
+      writeFileSync(f, readFileSync(f, "utf8").replace('"side"', '"side" '));
+      assert.throws(() => checkLock(split, tmp), /does not match/);
+      assert.throws(() => loadSplit(split, { final: true, dir: tmp }), /does not match/);
+      cpSync(join(MEETINGS, split, readdirSync(join(MEETINGS, split))[0]), f);
+      checkLock(split, tmp);
+      writeFileSync(join(tmp, split, `${split}-extra.json`), "{}");
+      assert.throws(() => checkLock(split, tmp), /does not match/, "an extra file changes the hash");
+      rmSync(join(tmp, split, `${split}-extra.json`));
+      rmSync(join(tmp, `${split}.lock`));
+      assert.throws(() => checkLock(split, tmp), new RegExp(`${split}.lock is missing`));
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+}
+test("lock hash: the hash does not depend on file order, and checkTestLock still checks the test split", () => {
   checkTestLock();
-  const tmp = mkdtempSync(join(tmpdir(), "golden-lock-"));
-  try {
-    cpSync(MEETINGS, tmp, { recursive: true });
-    checkTestLock(tmp);
-    const f = join(tmp, "test", readdirSync(join(tmp, "test"))[0]);
-    writeFileSync(f, readFileSync(f, "utf8").replace('"side"', '"side" '));
-    assert.throws(() => checkTestLock(tmp), /does not match/);
-    assert.throws(() => loadSplit("test", { final: true, dir: tmp }), /does not match/);
-    cpSync(join(MEETINGS, "test", readdirSync(join(MEETINGS, "test"))[0]), f);
-    checkTestLock(tmp);
-    writeFileSync(join(tmp, "test", "test-extra.json"), "{}");
-    assert.throws(() => checkTestLock(tmp), /does not match/, "an extra file changes the hash");
-    rmSync(join(tmp, "test", "test-extra.json"));
-    rmSync(join(tmp, "test.lock"));
-    assert.throws(() => checkTestLock(tmp), /test.lock is missing/);
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
-  }
   assert.equal(
     lockHash([
       { name: "b", text: "2" },
@@ -423,27 +440,29 @@ test("test.lock: the test split matches its hash; any edit, addition or missing 
       { name: "a", text: "1" },
       { name: "b", text: "2" },
     ]),
-    "the hash does not depend on file order",
   );
 });
 
 test("the test split is held out: loadSplit refuses without final, and pnpm eval never reads it", () => {
   assert.throws(() => loadSplit("test"), /held out/);
+  assert.throws(() => loadSplit("test-b"), /held out/);
   assert.equal(loadSplit("test", { final: true }).length, 8);
-  assert.equal(loadSplit("dev").length, 16);
+  assert.ok(loadSplit("test-b", { final: true }).length >= 10);
+  assert.ok(loadSplit("dev").length >= 16);
 });
 
-test("pnpm eval: prints the legacy gates and the golden baseline on dev in under 60 s; --final never writes a baseline", { timeout: 120_000 }, () => {
+test("pnpm eval: v2 golden table on dev, controls, legacy smoke after it; offline in about a minute; bad flags refuse", { timeout: 240_000 }, () => {
   const t0 = Date.now();
-  const r = spawnSync(...tsx([join(ROOT, "scripts", "eval.ts")]), { cwd: ROOT, encoding: "utf8", timeout: 100_000, env: { ...process.env } });
+  const r = spawnSync(...tsx([join(ROOT, "scripts", "eval.ts")]), { cwd: ROOT, encoding: "utf8", timeout: 200_000, env: { ...process.env } });
   const secs = (Date.now() - t0) / 1000;
   assert.equal(r.status, 0, `eval exited ${r.status}\n${r.stdout}\n${r.stderr}`);
-  assert.ok(secs < 60, `eval took ${secs} s`);
-  assert.match(r.stdout, /Legacy gates \(in-sample/);
-  assert.match(r.stdout, /Golden meetings, dev: engine legacy, 16 meetings/);
-  assert.match(r.stdout, /legacy baseline/);
-  assert.match(r.stdout, /Negative controls: null recall .* ok; noise precision .* ok/);
-  assert.doesNotMatch(r.stdout, /HELD OUT/, "a plain eval run never touches the test split");
+  assert.ok(secs < 150, `eval took ${secs} s (about 60 s on a quiet machine; the target is 90 s)`);
+  assert.match(r.stdout, /Golden meetings, dev: engine v2, \d+ meetings/);
+  assert.match(r.stdout, /recall, no '\?' and no question word/);
+  assert.match(r.stdout, /Controls on \d+ meetings/);
+  for (const c of ["null", "noise", "shuffled", "always-ans"]) assert.match(r.stdout, new RegExp(`${c}\\s+recall .* ok`));
+  assert.ok(r.stdout.indexOf("Golden meetings, dev") < r.stdout.indexOf("Legacy smoke (in-sample"), "the legacy smoke comes after the v2 headline");
+  assert.doesNotMatch(r.stdout, /HELD OUT/, "a plain eval run never touches the held-out splits");
   const both = spawnSync(...tsx([join(ROOT, "scripts", "eval.ts"), "--final", "--update"]), {
     cwd: ROOT,
     encoding: "utf8",
@@ -451,6 +470,13 @@ test("pnpm eval: prints the legacy gates and the golden baseline on dev in under
     env: { ...process.env },
   });
   assert.equal(both.status, 2, "--final never writes a baseline");
+  const bad = spawnSync(...tsx([join(ROOT, "scripts", "eval.ts"), "--broken", "nonsense"]), {
+    cwd: ROOT,
+    encoding: "utf8",
+    timeout: 100_000,
+    env: { ...process.env },
+  });
+  assert.equal(bad.status, 2, "--broken takes a known control");
 });
 
 test("noise helper: degradeAsr drops question marks and punctuation, keeps ids and moments", () => {

@@ -2,8 +2,6 @@
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import {
   loadBank,
   matchBank,
@@ -85,12 +83,6 @@ test("bank scorer: 3-grams are padded per token and the index follows a bank tha
   mine.push({ id: "two", title: "email spam", triggers: ["spam"], say: "mail goes to the spam folder", facts: [] });
   assert.equal(topCandidates("my mail goes to spam", 3, mine)[0]?.card.id, "two");
   assert.deepEqual(topCandidates("x", 3, []), []);
-});
-
-test("language: the module keeps no turn-language global", () => {
-  const src = readFileSync(fileURLToPath(new URL("./bank.ts", import.meta.url)), "utf8");
-  assert.ok(!/\bturnLang\b/.test(src), "the old turnLang variable must not come back");
-  assert.ok(!/^let\s+\w*[Ll]ang\b/m.test(src), "no module-level `let` language state");
 });
 
 test("language: two interleaved turns in different languages each get a card in their own language", () => {

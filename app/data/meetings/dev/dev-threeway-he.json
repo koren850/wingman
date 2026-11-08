@@ -1,0 +1,276 @@
+{
+ "id": "dev-threeway-he",
+ "split": "dev",
+ "lang": "he",
+ "type": "threeway",
+ "variant": "clean",
+ "scripted": true,
+ "context": "שיחת תכנון לדוכן בתערוכה. דן הוא ראש המכירות. עובדות: גודל הדוכן 15 מטר רבוע, התערוכה בין 3 ל-5 בנובמבר, תקציב הדוכן 20,000 שקל, רישיון סורק הלידים עולה 700 שקל.",
+ "profile": {
+  "userName": "דן"
+ },
+ "lines": [
+  {
+   "id": "l1",
+   "t": 4440,
+   "side": "me",
+   "text": "שלום לכולם, מורן, עמית ושירה, תודה שהצטרפתם."
+  },
+  {
+   "id": "l2",
+   "t": 9339,
+   "side": "them",
+   "speaker": "מורן",
+   "text": "היי דן. נתחיל מהכסף. לעמית יש את המספרים העדכניים."
+  },
+  {
+   "id": "l3",
+   "t": 16337,
+   "side": "them",
+   "speaker": "עמית",
+   "text": "הצעת המחיר לדוכן חזרה על עשרים ושישה אלף שקל, וזה יותר ממה שתכננו."
+  },
+  {
+   "id": "l4",
+   "t": 21234,
+   "side": "me",
+   "text": "זה גבוה מהתקציב שלנו, אני רושם לעצמי."
+  },
+  {
+   "id": "l5",
+   "t": 25050,
+   "side": "them",
+   "speaker": "מורן",
+   "text": "עמית, שלחת כבר למדפיס את החוזה החתום?"
+  },
+  {
+   "id": "l6",
+   "t": 29285,
+   "side": "them",
+   "speaker": "עמית",
+   "text": "עדיין לא, אעשה את זה אחרי השיחה."
+  },
+  {
+   "id": "l7",
+   "t": 35199,
+   "side": "them",
+   "speaker": "שירה",
+   "text": "אפשר להוריד את עלות העיצוב אם נוותר על הבאנר השני."
+  },
+  {
+   "id": "l8",
+   "t": 39852,
+   "side": "me",
+   "text": "בואו נראה את החיסכון לפני שמחליטים."
+  },
+  {
+   "id": "l9",
+   "t": 43844,
+   "side": "them",
+   "speaker": "מורן",
+   "text": "דן, מי יאייש את הדוכן ביום הראשון?"
+  },
+  {
+   "id": "l10",
+   "t": 48255,
+   "side": "me",
+   "text": "הייתי שם שני אנשים ממכירות ביום הראשון."
+  },
+  {
+   "id": "l11",
+   "t": 53505,
+   "side": "them",
+   "speaker": "שירה",
+   "text": "עמית, תוכל לבדוק את שקעי החשמל בתוכנית האולם?"
+  },
+  {
+   "id": "l12",
+   "t": 55994,
+   "side": "them",
+   "speaker": "עמית",
+   "text": "בטח, התוכנית פתוחה אצלי."
+  },
+  {
+   "id": "l13",
+   "t": 82262,
+   "side": "them",
+   "speaker": "מורן",
+   "text": "החלטנו בשבוע שעבר שסורק הלידים הוא חובה, והוא עולה שבע מאות שקל."
+  },
+  {
+   "id": "l14",
+   "t": 86429,
+   "side": "me",
+   "text": "מסכים, לידים הם הדבר החשוב בתערוכה."
+  },
+  {
+   "id": "l15",
+   "t": 91855,
+   "side": "them",
+   "speaker": "עמית",
+   "text": "שירה, את פנויה ביום שישי לסקירת עיצוב הדוכן?"
+  },
+  {
+   "id": "l16",
+   "t": 95360,
+   "side": "them",
+   "speaker": "שירה",
+   "text": "כן, יום שישי בבוקר מתאים לי."
+  },
+  {
+   "id": "l17",
+   "t": 102224,
+   "side": "them",
+   "speaker": "מורן",
+   "text": "עוד דבר אחד, התערוכה בין השלישי לחמישי בנובמבר, אז צריך להזמין טיסות השבוע."
+  },
+  {
+   "id": "l18",
+   "t": 106147,
+   "side": "me",
+   "text": "אני אזמין את שלי היום."
+  }
+ ],
+ "moments": [
+  {
+   "id": "m1",
+   "afterLine": "l3",
+   "kind": "check",
+   "mustMention": [
+    "20,000",
+    "26,000"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "number-conflict"
+   ]
+  },
+  {
+   "id": "m2",
+   "afterLine": "l7",
+   "kind": "prompt",
+   "mustMention": [
+    "באנר",
+    "חוסך"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  },
+  {
+   "id": "m3",
+   "afterLine": "l9",
+   "kind": "answer",
+   "mustMention": [
+    "איוש",
+    "יום הראשון"
+   ],
+   "latestMs": 4000,
+   "direct": true,
+   "tags": []
+  },
+  {
+   "id": "m4",
+   "afterLine": "l13",
+   "kind": "fact",
+   "mustMention": [
+    "700",
+    "סורק"
+   ],
+   "latestMs": 8000,
+   "tags": [
+    "noq",
+    "decision"
+   ]
+  }
+ ],
+ "silent": [
+  {
+   "fromLine": "l5",
+   "toLine": "l6"
+  },
+  {
+   "fromLine": "l11",
+   "toLine": "l12"
+  },
+  {
+   "fromLine": "l15",
+   "toLine": "l18"
+  }
+ ],
+ "script": [
+  {
+   "role": "digest",
+   "whenLastLine": "start",
+   "reply": "{\"roster\":[{\"name\":\"מורן\",\"side\":\"them\",\"role\":\"שיווק\"},{\"name\":\"עמית\",\"side\":\"them\",\"role\":\"תפעול\"},{\"name\":\"שירה\",\"side\":\"them\",\"role\":\"עיצוב\"}],\"agenda\":[\"תקציב הדוכן\",\"איוש\",\"לידים\"],\"facts\":[{\"text\":\"גודל הדוכן 15 מטר רבוע\",\"src\":\"brief\"},{\"text\":\"התערוכה בין 3 ל-5 בנובמבר\",\"src\":\"brief\"},{\"text\":\"תקציב הדוכן 20,000 שקל\",\"src\":\"brief\"},{\"text\":\"רישיון סורק הלידים 700 שקל\",\"src\":\"brief\"}],\"likelyQuestions\":[\"מי מאייש את הדוכן?\"],\"chunks\":[\"שיחת תכנון לדוכן בתערוכה. דן הוא ראש המכירות. עובדות: גודל הדוכן 15 מטר רבוע, התערוכה בין 3 ל-5 בנובמבר, תקציב הדוכן 20,000 שקל, רישיון סורק הלידים עולה 700 שקל.\"]}",
+   "ms": 1800
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l3",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: התקציב הוא 20,000 והצעת המחיר 26,000. לשים את הפער על השולחן.\nWHY: הצעה מעל התקציב.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l5",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l6",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l7",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: ויתור על הבאנר השני חוסך עלות; לברר כמה לפני שמסכימים.\nWHY: אפשרות שנאמרה כעובדה.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l9",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: האיוש עוד לא סגור; להציע שני אנשי מכירות ליום הראשון.\nWHY: שאלה ישירה בשם.",
+   "ms": 900
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l11",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l12",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l13",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: הסורק עולה 700 שקל; לרשום את זה כהחלטה עם מורן כאחראית.\nWHY: החלטה עם מספר.",
+   "ms": 1500
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l15",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l16",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l17",
+   "reply": "TAG: SKIP"
+  },
+  {
+   "role": "moment",
+   "whenLastLine": "l18",
+   "reply": "TAG: SKIP"
+  }
+ ]
+}

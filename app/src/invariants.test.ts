@@ -9,16 +9,13 @@ import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { ROOT } from "./env.ts";
 import { BASH } from "./test-platform.ts";
 
 const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
-const require = createRequire(import.meta.url);
-const strings = require("../overlay/strings.js");
-const readOverlayFile = readFileSync;
 
 // Why static: Every window must keep its CSP, sender checks and fixed command lists. A regression here is silent at runtime (the page just becomes less safe), so the check reads the source.
 test("CSP is strict and the page loads only its own files", () => {
@@ -207,18 +204,6 @@ test("install.sh rebuilds a stale app, checks ffmpeg where the app looks, and in
 });
 
 // Why static: The dashboard pages are plain browser scripts loaded by Electron; wiring, one badge palette and main-process-only plan files are checked in the source.
-test("the unused skins are gone: no skins.css, no ?skin= param, no SK() branches, no data-skin selector", () => {
-  assert.equal(existsSync(join(ROOT, "dashboard/skins.css")), false);
-  assert.doesNotMatch(read("dashboard/index.html"), /skins\.css/);
-  for (const f of readdirSync(join(ROOT, "dashboard")).filter((x) => /\.(js|cjs|css|html)$/.test(x))) {
-    const t = read("dashboard/" + f);
-    assert.doesNotMatch(t, /data-skin|\bSK\(\)|WINGMAN_DASHBOARD_SKIN|DEFAULT_SKIN|searchParams|get\("skin"\)/, f + " still mentions skins");
-  }
-  assert.match(read("dashboard/app.css"), /\.tip:focus-visible::after/); // base rules the default look needs moved here
-  assert.match(read("dashboard/app.css"), /\.sheet-ov \{/);
-});
-
-// Why static: The dashboard pages are plain browser scripts loaded by Electron; wiring, one badge palette and main-process-only plan files are checked in the source.
 test("the live Ask/Note input goes through validated, fixed commands only", () => {
   const w = read("dashboard/window.cjs"),
     p = read("dashboard/preload.cjs");
@@ -237,16 +222,6 @@ test("the snapshot doctor fixtures never mention keys.env or a terminal (the app
   const fx = w.slice(w.indexOf("const FAKE_DOCTOR"), w.indexOf("/** The sender must be"));
   assert.ok(fx.length > 100);
   assert.doesNotMatch(fx, /keys\.env|terminal/i);
-});
-
-// Why static: The dashboard pages are plain browser scripts loaded by Electron; wiring, one badge palette and main-process-only plan files are checked in the source.
-test("the practice button and the Start card are wired to the plan and the settings read", () => {
-  const t = read("dashboard/home.js");
-  assert.match(t, /HL\.practiceLabel\(target, T\)/);
-  assert.match(t, /id: "start-call"[\s\S]*?startFlow\(\{ noAi: false \}\)/); // the Quick call button starts with no meeting
-  assert.match(t, /startFlow\(\{ planId: r\.id \}\)/); // a row's Start button starts that meeting
-  assert.match(t, /api\s*\.getSettings\(\)\s*\.then\(\(r\) => \{\s*H\.ai = r && r\.ok \? HL\.aiMode\(r\.items, T\)/);
-  assert.match(t, /HL\.stopSteps\(s, T\)/);
 });
 
 // Why static: The dashboard pages are plain browser scripts loaded by Electron; wiring, one badge palette and main-process-only plan files are checked in the source.
@@ -309,52 +284,6 @@ test("recent plans are read and written only by the main process, in the private
   assert.match(w, /handle\("brief:recent"/); // recent plans are a convenience kept beside the prepared meetings assert.match(w, /handle\("brief:forgetRecent"/);
   assert.match(w, /const RECENT = path\.join\(BRIEFS, "recent\.json"\)/);
   assert.match(w, /writeFileSync\(RECENT, JSON\.stringify\(list\), \{ mode: 0o600 \}\)/);
-});
-
-// Why static: The dashboard pages are plain browser scripts loaded by Electron; wiring, one badge palette and main-process-only plan files are checked in the source.
-test("calls:delete asks deleteRefusal before the dialog, and the page hides the button for the live call", async () => {
-  const { readFileSync } = await import("node:fs"),
-    { join } = await import("node:path"),
-    { ROOT } = await import("./env.ts");
-  const w = readFileSync(join(ROOT, "dashboard/window.cjs"), "utf8"),
-    a = readFileSync(join(ROOT, "dashboard/app.js"), "utf8");
-  assert.ok(w.indexOf("data.deleteRefusal(controller.getState(), id)") > 0 && w.indexOf("data.deleteRefusal") < w.indexOf('title: "Delete call"'));
-  assert.match(a, /const isLive = !!\(state\.call && state\.call\.running && state\.call\.callId === state\.id/);
-  assert.equal((a.match(/isLive \? null : /g) || []).length, 3, "all three Delete call buttons");
-});
-
-// Why static: The dashboard pages are plain browser scripts loaded by Electron; wiring, one badge palette and main-process-only plan files are checked in the source.
-test("the nativeTheme listener is added once per window host, not on every open", async () => {
-  const { readFileSync } = await import("node:fs"),
-    { join } = await import("node:path"),
-    { ROOT } = await import("./env.ts");
-  const w = readFileSync(join(ROOT, "dashboard/window.cjs"), "utf8");
-  assert.equal((w.match(/nativeTheme\.on\(/g) || []).length, 1);
-  assert.ok(w.indexOf("nativeTheme.on(") < w.indexOf("function open("), "registered before open(), in create()");
-});
-
-// Why static: Stdin command names, the IPC channel and the page script tags are wiring between processes that a unit test cannot start.
-test("engine: fixed stdin commands stop-no-summary and skip-summary, abort signal passed to the summary call", () => {
-  const t = read("src/engine/shutdown.ts"),
-    ctl = read("src/engine/control.ts"); // (the stdin commands live in control.ts, the summary in shutdown.ts)
-  assert.match(ctl, /cmd === "stop-no-summary"\) \{\s*skipSummaryNow\(\);\s*void shutdown\(\);\s*\}/);
-  assert.match(ctl, /cmd === "skip-summary"\) \{\s*if \(st\.call\.shuttingDown\) skipSummaryNow\(\);\s*\}/);
-  assert.match(t, /signal: summaryAbort\.signal/);
-  assert.match(t, /Promise\.race\(\[postCallSummary\(\), summarySkipWait,/);
-  assert.match(t, /reason: "user"/);
-  assert.match(read("tray/controller.cjs"), /COMMANDS = Object\.freeze\(\[[^\]]*"stop-no-summary", "skip-summary"\]/);
-});
-
-// Why static: Stdin command names, the IPC channel and the page script tags are wiring between processes that a unit test cannot start.
-test("pages wired: Skip summary button + fixed IPC, Write summary in Calls, countdown in the answer window", () => {
-  assert.match(read("dashboard/home.js"), /btn\(T\("stop\.skipSummary"\), \{ id: "skip-summary"/);
-  assert.match(read("dashboard/preload.cjs"), /skipSummary: \(\) => ipcRenderer\.invoke\("call:cmd", "skipSummary"\)/);
-  assert.match(read("dashboard/window.cjs"), /case "skipSummary":\s*return \{ ok: controller\.skipSummary\(\) \}/);
-  assert.match(read("dashboard/app.js"), /btn\("Write summary"/);
-  assert.match(read("dashboard/window.cjs"), /handle\(\s*"calls:writeSummary"/);
-  assert.match(read("overlay/app.js"), /WingmanAsk\.askSecondsLeft/);
-  assert.match(read("overlay/index.html"), /src="\.\.\/shared\/ask\.js"/);
-  assert.match(read("dashboard/index.html"), /src="\.\.\/shared\/ask\.js"/);
 });
 
 // Why static: Key values must never reach logging or persistence: an allow-list of modules that may touch them.
@@ -435,24 +364,6 @@ test("static: key values can only reach memory; no logging or persistence path t
   assert.match(ui, /const v = inp\.value;\s*inp\.value = ""/);
 });
 
-// Why static: Phase and stop-step names are a protocol between run.ts and the menu-bar app; their order is checked in the source.
-// ---- run.ts: phases and stop steps are wired in order ----
-test("engine writes call.json phases and emits stop steps in order", () => {
-  const read = (f: string) => readFileSync(join(ROOT, "src", f), "utf8");
-  const src = read("engine/shutdown.ts"),
-    consent = read("engine/consent.ts"); // (phases: run.ts "starting", consent.ts "waiting" / "live"; stop steps: shutdown.ts)
-  assert.ok(read("run.ts").includes('setPhase("starting")'), 'setPhase("starting")');
-  for (const p of ['setPhase("waiting")', 'setPhase("live", { liveAt']) assert.ok(consent.includes(p), p);
-  const at = (t: string) => src.indexOf(t);
-  assert.ok(at('status("stopphase", { phase: "saving" })') < at('status("stopphase", { phase: "summary" })'));
-  assert.ok(at('status("stopphase", { phase: "summary" })') < at('status("stopphase", { phase: "done" })'));
-  assert.ok(at('status("stopphase", { phase: "done" })') < at('status("ended"'));
-  assert.match(src, /phase: "ended"/);
-  const boot = read("engine/boot.ts");
-  assert.match(boot, /loadAttachments\(S\.attachments\.maxChars\)/, "loading the files never deletes them");
-  assert.match(boot, /function confirmContext\(\): void \{\s*if \(fileArg\) return;/, "a practice call never retires the real call's brief or files");
-});
-
 // Why static: The overlay main process needs crash and hang handlers; Electron cannot run in a unit test.
 test("overlay main.cjs: crash and hang handlers are wired, poll cannot throw out, errors only log", () => {
   const src = readFileSync(join(ROOT, "overlay", "main.cjs"), "utf8");
@@ -468,66 +379,6 @@ test("overlay main.cjs: crash and hang handlers are wired, poll cannot throw out
   ])
     assert.ok(src.includes(needle), needle);
   assert.match(src, /function poll\(\) \{\s*try \{/);
-});
-
-// Why static: i18n completeness: every tr() key exists in the string table and no Hebrew literal sits outside strings.js (a lint-style rule over the page scripts).
-test("every tr('...') key used by app.js and text.js exists in the table, and Hebrew UI literals live only in strings.js", () => {
-  // Hebrew allowed outside strings.js: the one regex alternation in text.js that recognises the engine's Hebrew health texts.
-  const ALLOWED_LINES = [/healthText|englishHealth|HEB = |\/[^/\n]*[֐-׿][^/\n]*\//];
-  for (const f of ["app.js", "text.js", "index.html"]) {
-    const src = readOverlayFile(new URL("../overlay/" + f, import.meta.url), "utf8");
-    src.split("\n").forEach((line: string, i: number) => {
-      if (!/[֐-׿]/.test(line)) return;
-      const code = line.replace(/\/\/.*$/, ""); // comments may contain Hebrew examples
-      if (!/[֐-׿]/.test(code)) return;
-      assert.ok(
-        f === "text.js" && ALLOWED_LINES.some((r) => r.test(code)),
-        `${f}:${i + 1} has a Hebrew literal outside strings.js: ${line.trim().slice(0, 80)}`,
-      );
-    });
-  }
-  const used = new Set<string>();
-  for (const f of ["app.js", "text.js"])
-    for (const m of readOverlayFile(new URL("../overlay/" + f, import.meta.url), "utf8").matchAll(/\btr\("([\w.-]+)"[,)]/g)) used.add(m[1]);
-  // keys built at run time in app.js ("badge." + type, "kind." + kind, ...)
-  const dyn: Record<string, string[]> = {
-    badge: ["bank", "ai", "stall", "me", "fix", "careful", "calc", "info", "consent"],
-    kind: ["client", "support", "vendor", "team", "consult", "personal", "other"],
-    tip: ["ask", "clarify", "term", "remind", "note"],
-    cap: ["phone", "email", "domain"],
-    keys: ["ask", "rewind", "checklist", "pause", "clear", "copy"],
-    "health.who": ["stt-me", "stt-them"],
-  };
-  for (const [p, names] of Object.entries(dyn)) for (const n of names) assert.ok(`${p}.${n}` in strings.STRINGS.en, `${p}.${n}`);
-  for (const st of ["ended", "paused", "quiet", "starting", "waiting", "listening"])
-    for (const part of ["", ".title", ".sub"]) assert.ok(`state.${st}${part}` in strings.STRINGS.en, `state.${st}${part}`);
-  for (const k of used) assert.ok(k in strings.STRINGS.en, "unknown key " + k);
-  const html = readOverlayFile(new URL("../overlay/index.html", import.meta.url), "utf8");
-  for (const m of html.matchAll(/data-i18n="([\w.]+)"/g)) assert.ok(m[1] in strings.STRINGS.en, "unknown key " + m[1]);
-});
-
-// Why static: Engine singletons (watchdogs, boot) run on import and cannot be driven from a unit test; the orphan-overlay guard spans two Electron processes.
-test("engine: the silent-while-talking heuristic never sets themDead (source check)", () => {
-  const src = readFileSync(join(ROOT, "src", "engine", "watchdogs.ts"), "utf8");
-  const calm = src.slice(
-    src.indexOf('log.write("events", { type: "watchdog.silent-them"'),
-    src.indexOf("}), 2000).unref();", src.indexOf("watchdog.silent-them")),
-  );
-  assert.ok(calm.includes('"only-you"') && !/themDead/.test(calm), "calm branch must not touch themDead");
-});
-
-// Why static: Engine singletons (watchdogs, boot) run on import and cannot be driven from a unit test; the orphan-overlay guard spans two Electron processes.
-// ---- overlay orphan guard, linger, doctor ----
-test("overlay: spawned with a stdin pipe + parent watch; main.cjs quits when the parent goes away", () => {
-  const o = readFileSync(join(ROOT, "src", "overlay.ts"), "utf8"),
-    m = readFileSync(join(ROOT, "overlay", "main.cjs"), "utf8");
-  assert.match(o, /stdio: \["pipe"/);
-  assert.match(o, /WINGMAN_WATCH_PARENT/);
-  assert.match(m, /WINGMAN_WATCH_PARENT/);
-  assert.match(m, /process\.stdin\.on\("end"/);
-  assert.match(m, /process\.kill\(parent, 0\)/);
-  const c = readFileSync(join(ROOT, "src", "call.ts"), "utf8");
-  assert.match(c, /SIGKILL/, "call.ts escalates to SIGKILL for a hung overlay");
 });
 
 // Why static: a new Electron window or spawn site is where these slip in; there is no runtime path to exercise.
