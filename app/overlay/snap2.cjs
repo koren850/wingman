@@ -159,7 +159,7 @@ async function one(spec) {
       captionBottom: vis(q("#last")) ? Math.round(q("#last").getBoundingClientRect().bottom) : null,
       bar: document.body.classList.contains("bar"),
       iconOnly: all("#hero .b.ib").every((b) => !b.textContent.trim() && b.getAttribute("aria-label")),
-      // round 3
+      // is the hero text clamped or cut
       heroClamped: hero ? hero.querySelector(".hsay").classList.contains("clamp") : false,
       heroCut: hero ? hero.querySelector(".hsay").scrollHeight > hero.querySelector(".hsay").clientHeight + 1 : false,
       moreBtn: hero && hero.querySelector(".b.more") ? hero.querySelector(".b.more").textContent : "",

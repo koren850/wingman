@@ -1,4 +1,4 @@
-// Call frame: the small shape the older parts of the app (tips, summary, shutdown) still read. Since round 12 (r3) it has NO model call of its own:
+// Call frame: the small shape the older parts of the app (tips, summary, shutdown) still read. It has NO model call of its own:
 // the call memory (src/session/types.ts SessionMemory) is the one place that learns what a call is about, and the kind list lives there too.
 // What stays here is pure: the Frame type, the parser for frames in old call folders, the stability rules, the agency-topic check and the text helpers.
 //   - kind uses hysteresis in FrameTracker: it only changes after two consecutive updates agree on the new kind.

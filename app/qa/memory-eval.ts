@@ -7,7 +7,7 @@
 //
 //   mode "fake"      the policy fake model answers with the labelled items, with seeded noise (some dropped, one wrong owner, one extra). Tests the pipeline and the
 //                    scorer. It says nothing about a real model. Works offline, no key.
-//   mode "model"     a real registry: the cassette replay (WINGMAN_LLM_MODE=replay) or a live model. This is the measure that matters; the owner records it.
+//   mode "model"     a real registry: the cassette replay (WINGMAN_LLM_MODE=replay) or a live model. This is the measure that matters; a maintainer records it.
 //   mode "null"      control: the updater never writes anything. Must score (almost) zero.
 //   mode "copy-all"  control: every line is written into every class. Must have a low precision.
 // A grader that lets a control through is broken: CONTROL_LIMITS are checked by the tests and by scripts/eval-memory.ts.
@@ -59,7 +59,7 @@ export const CONTROL_LIMITS = {
 } as const;
 
 /** Floors for a RECORDED run (mode "model"): the numbers of a real model, replayed from a cassette or live. They do not apply to the fake or the controls.
- *  Provisional: set from what a small model should manage; the owner moves them after the first recorded run (the report says by how much). */
+ *  Provisional: set from what a small model should manage; a maintainer moves them after the first recorded run (the report says by how much). */
 export const RECORDED_FLOORS = {
   overallF1: 0.55,
   classF1: { promises: 0.5, openQuestions: 0.45, numbers: 0.55, decisions: 0.4, objections: 0.3 },

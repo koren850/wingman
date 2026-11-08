@@ -282,15 +282,15 @@ How they work: `v2-kit.ts` wraps the policy fake so that every call reports the 
 
 ## Gate tests (`app/src/e2e/r3-gates-*.test.ts`)
 
-Five end-to-end files that run the real engine modules on the virtual clock with fake streams and the policy fake model. No network, no key, no audio. Each file holds one engine, so run it alone (`tsx --import ./src/test-setup.ts --test src/e2e/r3-gates-soak.test.ts`). All numbers they print are **scripted**. `r3-gates-kit.ts` has the shared fake stream and provider (an open that can be a black hole).
+Five end-to-end files that run the real engine modules on the virtual clock with fake streams and the policy fake model. No network, no key, no audio. Each file holds one engine, so run it alone (`tsx --import ./src/test-setup.ts --test src/e2e/gates-soak.test.ts`). All numbers they print are **scripted**. `gates-kit.ts` has the shared fake stream and provider (an open that can be a black hole).
 
 | File | What it proves |
 |---|---|
-| `r3-gates-speakers` | The same raw speaker id before and after a faked reconnect or provider switch is a different person; an introduction with the same name joins the earlier person; a burst of reconnects with no voice between counts once. Real `SttChannel`, `engine/stt.ts` wiring, ingest and speaker book. |
-| `r3-gates-ring` | 100 ms chunks sent from the first moment arrive in order, once, after an open that was a black hole for 1.5 s; after an open that never answers (8 s timeout, then the engine's retry), the newest 2 s are kept in order and every older chunk is counted as dropped. |
-| `r3-gates-early-start` | With `moments.earlyStart` on, over 12 questions the card comes earlier after the end of speech (median gain 500 ms), the cards are the same, and no extra model call is made. The speech-to-text lag (700 ms) and the model delay (800 ms) are assumptions. |
-| `r3-gates-floor` | Golden dev meetings replayed with the AI marked down: no model call, no error, 60 of 68 answer moments get a card, p95 of the card time is within the budget, quiet stretches stay mostly quiet. Dev is the tuning set, so it is in-sample. |
-| `r3-gates-soak` | 180 virtual minutes with a reconnect storm (8 minutes), a dead socket and provider switch, a slow model, a 529 storm, a dialog nobody answers (the menu-bar controller keeps reading engine lines) and a quit while the engine is wedged (a fake child gets a synchronous SIGKILL to its group). Eight probe questions each get a card inside the budget and the screen is never empty after the first card. State, timers and cost stay bounded ($0.13 an hour scripted). |
+| `gates-speakers` | The same raw speaker id before and after a faked reconnect or provider switch is a different person; an introduction with the same name joins the earlier person; a burst of reconnects with no voice between counts once. Real `SttChannel`, `engine/stt.ts` wiring, ingest and speaker book. |
+| `gates-ring` | 100 ms chunks sent from the first moment arrive in order, once, after an open that was a black hole for 1.5 s; after an open that never answers (8 s timeout, then the engine's retry), the newest 2 s are kept in order and every older chunk is counted as dropped. |
+| `gates-early-start` | With `moments.earlyStart` on, over 12 questions the card comes earlier after the end of speech (median gain 500 ms), the cards are the same, and no extra model call is made. The speech-to-text lag (700 ms) and the model delay (800 ms) are assumptions. |
+| `gates-floor` | Golden dev meetings replayed with the AI marked down: no model call, no error, 60 of 68 answer moments get a card, p95 of the card time is within the budget, quiet stretches stay mostly quiet. Dev is the tuning set, so it is in-sample. |
+| `gates-soak` | 180 virtual minutes with a reconnect storm (8 minutes), a dead socket and provider switch, a slow model, a 529 storm, a dialog nobody answers (the menu-bar controller keeps reading engine lines) and a quit while the engine is wedged (a fake child gets a synchronous SIGKILL to its group). Eight probe questions each get a card inside the budget and the screen is never empty after the first card. State, timers and cost stay bounded ($0.13 an hour scripted). |
 
 A note on the virtual clock: a large jump of the test clock can raise the "computer slept" bar in these runs. The tests do not assert on that bar.
 
@@ -309,7 +309,7 @@ Every number is marked **scripted** (the replies in the golden files; they prove
 
 Budgets (`qa/budgets.json`): per role, USD per call and USD per hour; per card path (direct question, observer), time to card p50 and p95; the whole call per hour (release gate $0.25). A role or path over its budget by more than 20 percent fails the eval, and `src/e2e/v2-cost.test.ts` fails the same way per call. The `oneShot` entries (digest, wrap-up) are measured by `v2-cost.test.ts`.
 
-Fault soak: `src/e2e/r2-soak.test.ts` runs an 80 minute call on the virtual clock with a hung audio respawn, a display unplug (injected screen), a dead STT socket, a slow model and a 529 storm, and a probe question inside each fault. A second case stops a real v2 process with a stray error. `WINGMAN_E2E_ENGINE=v2` plays the older child-process e2e files (`reliability-r2`, `chaos`, `engine-reliability`) on the v2 engine instead of the pinned classic one.
+Fault soak: `src/e2e/soak.test.ts` runs an 80 minute call on the virtual clock with a hung audio respawn, a display unplug (injected screen), a dead STT socket, a slow model and a 529 storm, and a probe question inside each fault. A second case stops a real v2 process with a stray error. `WINGMAN_E2E_ENGINE=v2` plays the older child-process e2e files (`fault-injection`, `chaos`, `engine-reliability`) on the v2 engine instead of the pinned classic one.
 
 ## Recording a cassette (maintainer, by hand)
 

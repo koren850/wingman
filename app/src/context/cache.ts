@@ -24,7 +24,7 @@ export type CachePolicy = {
   tailChunk: number;
 };
 
-/** Why each choice (calls per hour from the PLAN caps; the fixtures in src/e2e/v2-cost.test.ts measure it):
+/** Why each choice (calls per hour from the planned caps; the fixtures in src/e2e/v2-cost.test.ts measure it):
  *  moment, observer   often, several calls between two memory patches -> rules 1 h, memory 5 min.
  *  memory             every 20 s but its own patch changes the memory block before its next call -> rules 1 h, memory never cached (a write nobody reads).
  *  compact            every 6 min -> rules 1 h; the memory block is written once per call, so no marker.

@@ -1,7 +1,7 @@
 // Cost and latency budgets per role, calibrated from the usage rows and card timings of the golden run, and the gate that fails at +20 percent.
 //   qa/budgets.json has two sections: `scripted` (the policy fake: real prompts, a simulated provider cache, scripted replies and delays) and `recorded`
 //   (a cassette of real model calls, written by `pnpm eval --cassette <file> --update`). Every number belongs to one section, so it is always clear which
-//   kind of evidence it is. The recorded section does not exist until the owner has recorded a cassette.
+//   kind of evidence it is. The recorded section does not exist until a maintainer has recorded a cassette.
 // What is gated, per role: USD per call, USD per hour. Per card path (direct question, observer, other): time to card p50 and p95.
 // A role or path that has no budget yet is reported, not failed: the first `--update` after a new role creates it.
 import { readFileSync, writeFileSync } from "node:fs";

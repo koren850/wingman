@@ -1,6 +1,6 @@
 // The golden dev meetings through the real v2 engine (in-process, virtual clock, the policy fake serving the meetings' own scripted replies).
 // Scores are labelled SCRIPTED: the replies were written by hand next to the moments, so this proves the plumbing (hint, observer window, scheduler,
-// guards, card kinds, timing), not the model. Also: cost per role against the PLAN 3.6 table.
+// guards, card kinds, timing), not the model. Also: cost per role against the planned table.
 import "./test-setup.ts";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -74,10 +74,10 @@ test("golden dev through the v2 engine (SCRIPTED): the planned moments show, sil
 });
 
 // ---------------------------------------------------------------- cost
-// PLAN 3.6 estimates per call (USD, Haiku list prices): moment 0.00016, observer 0.00013. The cost test fails at +20 percent per role.
-// Round 12: the observer reads a little more per call (the LABEL line, windows that carry lines back after a dropped silence look): 0.00014. The per-hour gate (v2-cost, USD 0.25) is the real limit.
+// Estimates per call (USD, Haiku list prices): moment 0.00016, observer 0.00013. The cost test fails at +20 percent per role.
+// The observer reads a little more per call (the LABEL line, windows that carry lines back after a dropped silence look): 0.00014. The per-hour gate (v2-cost, USD 0.25) is the real limit.
 const TABLE = { moment: 0.00016, observer: 0.00014 };
-test("cost: usage rows of golden dev meetings, per role, stay within the PLAN 3.6 table (+20 percent)", { timeout: 120_000 }, async () => {
+test("cost: usage rows of golden dev meetings, per role, stay within the planned table (+20 percent)", { timeout: 120_000 }, async () => {
   const { readFileSync } = await import("node:fs");
   const usageRows = () =>
     readFileSync(e.boot.log.dir + "/usage.jsonl", "utf8")

@@ -39,7 +39,7 @@ export const callDir = (calls: string) => {
   const d = readdirSync(calls).filter((x) => x !== "latest");
   return d.length ? join(calls, d[0]) : "";
 };
-/** Runs src/run.ts as a child. The older e2e files pin the classic engine; WINGMAN_E2E_ENGINE=v2 plays the same files on the default v2 engine (round 2 gates). */
+/** Runs src/run.ts as a child. The older e2e files pin the classic engine; WINGMAN_E2E_ENGINE=v2 plays the same files on the default v2 engine. */
 export function runEngine(args: string[], env: Record<string, string>, profile = "e2e") {
   const p = spawn(
     ...tsx([

@@ -1,6 +1,6 @@
 // Absolute ship gates (qa/ship.json), separate from the regression baseline (qa/eval-baseline.json).  pnpm eval --ship
 // The baseline says "not worse than last time". These lines say "good enough to release". Most of them can be measured on scripted replies, but a
-// scripted pass only proves the engine around the model. Lines marked `recordedOnly` need a recorded cassette run (the morning kit); on scripted replies
+// scripted pass only proves the engine around the model. Lines marked `recordedOnly` need a recorded cassette run (see docs/RECORDING-EVALS.md); on scripted replies
 // they print "n/a (scripted)" and do not count for or against.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

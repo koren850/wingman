@@ -9,7 +9,7 @@
 (function (root) {
   const HOUR = 3600_000,
     DAY = 24 * HOUR;
-  /** The few time rules in one place. See docs/DECISIONS.md (ADR "Quick call and prepared meetings", and the round 12 note on plans that do not expire). */
+  /** The few time rules in one place. See docs/DECISIONS.md (ADR "Quick call and prepared meetings", and its note on plans that do not expire). */
   const RULES = {
     housekeepingMs: 180 * DAY, // a plan nobody opened, edited or used for this long is cleaned up (this is housekeeping, not an expiry)
     dueWindowMs: 30 * 60_000, // plain `wingman start` picks the one meeting scheduled within +/- this

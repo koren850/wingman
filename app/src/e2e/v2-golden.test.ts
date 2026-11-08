@@ -1,6 +1,6 @@
 // The golden dev meetings through the real v2 engine modules (child process per meeting, virtual clock, memory loop on, scripted model replies),
 // graded by qa/grade-golden.ts, with the null and noise controls. Scores are SCRIPTED: the replies were written next to the moments, so they prove
-// the plumbing (hint, observer window, scheduler, guards, card kinds, timing, memory loop, cache layout), not the model. See docs in the build report.
+// the plumbing (hint, observer window, scheduler, guards, card kinds, timing, memory loop, cache layout), not the model. See docs/ARCHITECTURE.md, Moment core.
 // Dev split only. The held-out test split is never read here.
 import "../test-setup.ts";
 import { test, before } from "node:test";
@@ -82,7 +82,7 @@ test("golden dev through the engine (SCRIPTED): planned moments show, silent win
     `POOLED(clean) recall ${pct(p.recall)} precision ${pct(p.precision)} direct ${pct(p.directRecall)} silent cpm ${p.silentCpm.toFixed(2)} dup ${pct(p.duplicateRate ?? 0)}`,
   );
   assert.equal(gs.length, dev.length);
-  // Regression floors, set a little under what the scripted run gives today. The PLAN targets are recall 85, precision 80, direct 95: the report says where
+  // Regression floors, set a little under what the scripted run gives today. The targets are recall 85, precision 80, direct 95: `pnpm eval` shows where
   // we stand. Strict precision counts every card on screen, also the open-loop, tip, self-check and ask cards the labels do not list.
   assert.ok(mp.recall >= 0.8, `recall ${mp.recall}`);
   assert.ok(mp.precision >= 0.85, `moment-path precision ${mp.precision}`);

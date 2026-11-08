@@ -2,7 +2,7 @@
 // Hidden snapshot of the note window (prompt.html): never shows a window, no call, no network.
 // Usage: electron tray/prompt-snapshot.cjs <outDir> [kind]    kind = note | brief (default note)
 // Writes <outDir>/prompt-<kind>-<lang>-<theme>.png and .json for English and Hebrew, light and dark. The json has the clip and contrast checks:
-// { lang, dir, theme, overflow: bool, clipped: [ids], contrast: { min, pairs } }. src/r3-app-ux.test.ts runs it when WINGMAN_DASH_SNAP=1.
+// { lang, dir, theme, overflow: bool, clipped: [ids], contrast: { min, pairs } }. src/app-ux.test.ts runs it when WINGMAN_DASH_SNAP=1.
 const { app, BrowserWindow, nativeTheme } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");

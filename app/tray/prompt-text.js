@@ -1,5 +1,5 @@
 // Texts of the small note window (prompt.html), English and Hebrew, in one table. Classic script in the page (window.WingmanPromptText), require() in tests.
-// A test (src/r3-app-ux.test.ts) keeps both languages complete.
+// A test (src/app-ux.test.ts) keeps both languages complete.
 (function (root) {
   const T = {
     "note.title": ["Note for the AI", "הערה ל-AI"],

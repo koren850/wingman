@@ -1,5 +1,5 @@
 // The "no real names" check for data the eval tools write or ship: judgement cases, memory-eval calls and the case files that `pnpm replay --to-case` exports.
-// The same list as the golden corpus test (src/golden.test.ts), plus the owner's private list (WINGMAN_DENYLIST or data/private/denylist.txt, never in the repo),
+// The same list as the golden corpus test (src/golden.test.ts), plus the maintainer's private list (WINGMAN_DENYLIST or data/private/denylist.txt, never in the repo),
 // plus e-mail addresses and phone numbers.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

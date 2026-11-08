@@ -1,7 +1,7 @@
 "use strict";
 // The Meeting context box (renderer): one optional box on Home where the user pastes text or drops a file, with a few small fields behind "More".
 // Pasted text is saved with the meeting (tray/plans.cjs, setContext) and is plain background for the call. "Prepare" asks the main process to digest it;
-// until the digest exists (wave 2) it shows what is saved, so the box and the panel below work without any model.
+// until the digest exists it shows what is saved, so the box and the panel below work without any model.
 // Files: .txt, .md, .pdf (only with pdftotext), .ics (calendar invite). Long files are cut into parts of about 500 tokens when they are added (tray/attachments.cjs).
 // Classic script, loaded after home.js (uses H, h, ico, btn, chip, tip, T, api, $, state, announce, errorBox, knowsPanel, KN, WingmanPlans).
 
@@ -142,7 +142,7 @@ async function saveFromForm(stay) {
   return r.plan;
 }
 
-/** Prepare: save, ask the main process to digest (wave 2), and show what Wingman knows. With no digest the saved text is plain background and the panel shows the saved details. */
+/** Prepare: save, ask the main process to digest, and show what Wingman knows. With no digest the saved text is plain background and the panel shows the saved details. */
 async function prepareContext() {
   const btnEl = $("ctx-prepare");
   if (btnEl) btnEl.disabled = true;

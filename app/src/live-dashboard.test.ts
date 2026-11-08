@@ -1,5 +1,6 @@
-// Round 12 live UI, Wingman window side: the live notes (knowslib, memlib, livetail), Prepare (dashboard/prepare.cjs, src/prepare-cli.ts),
+// Live UI, Wingman window side: the live notes (knowslib, memlib, livetail), Prepare (dashboard/prepare.cjs, src/prepare-cli.ts),
 // the golden-run fixtures, EN/HE parity of the new strings, and the opt-in Electron snapshots with clipping checks.
+// These tests call the modules and read fixtures; none of them match source text. The Electron snapshot runs are opt-in.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

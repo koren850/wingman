@@ -1,7 +1,7 @@
 // Child process for the call page's export buttons (dashboard/window.cjs, "calls:export").
 // stdin: { id, fmt: "md" | "json", out }. It writes the export of one saved call to `out` (mode 600) and prints one JSON line:
 // { ok: true } or { ok: false, reason: "no-export" | "bad-input" | "failed" }. It never prints call text.
-// The export itself is exportCall(callDir, fmt) from session/export.ts (contract 3.5 of the round 12 plan). If that module is not in this build,
+// The export itself is exportCall(callDir, fmt) from session/export.ts. If that module is not in this build,
 // the answer is "no-export" and the window says so.
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";

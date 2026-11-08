@@ -70,7 +70,7 @@ export const BLOCKED: [string, "price" | "date" | "promise"][] = [
   ["בהחלט נעשה את זה", "promise"],
   ["אני אעשה את זה", "promise"],
   ["הבטחה", "promise"],
-  // held-out probe, round 2: spoken digits, bare figures after a money noun, percentage discounts, zero price, unhedged certainty
+  // held-out probe: spoken digits, bare figures after a money noun, percentage discounts, zero price, unhedged certainty
   ["It is five fifty", "price"],
   ["הצעה של 4,500", "price"],
   ['חשבונית 20000 ש"ח', "price"],

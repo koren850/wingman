@@ -32,7 +32,7 @@ async function main() {
   if (!g) throw new Error(`no ${split} meeting ${id}`);
   const e = await setupEngine({ "llm.reflex.model": "anthropic:claude-haiku-5-5", ...(opts.sets ?? {}) });
   if (opts.tailChunk) {
-    // Simulator study (r3-context-modes): cache the raw tail in chunks for these roles. CACHE_POLICY is read for every call, so a change here is in force.
+    // Simulator study (context-modes): cache the raw tail in chunks for these roles. CACHE_POLICY is read for every call, so a change here is in force.
     const { CACHE_POLICY } = await import("../context/cache.ts");
     for (const [role, n] of Object.entries(opts.tailChunk)) (CACHE_POLICY as Record<string, { tailChunk: number }>)[role].tailChunk = n ?? 0;
   }

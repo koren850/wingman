@@ -1,4 +1,4 @@
-// Child process for the Wingman window (dashboard/window.cjs): the parts of round 12 / r3-features that need TypeScript code.
+// Child process for the Wingman window (dashboard/window.cjs): the parts of the window features that need TypeScript code.
 // stdin: one JSON object { op, ... }. stdout: one JSON line { ok: true, ... } or { ok: false, reason }. It never prints call text except the answers it was asked for.
 //   learn.summary                       what the app learned about the user's ratings (counts only)
 //   learn.reset                         forget it (deletes learn.json)

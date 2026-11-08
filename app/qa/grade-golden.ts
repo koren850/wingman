@@ -1,4 +1,4 @@
-// Grader for the golden meetings (PLAN 3.4). Pure: a golden meeting plus a card timeline in, metrics out. It imports no engine code,
+// Grader for the golden meetings . Pure: a golden meeting plus a card timeline in, metrics out. It imports no engine code,
 // so the same grader scores the legacy engine, the v2 engine, a recorded cassette run and the two negative controls.
 //
 // A card timeline is a list of { atMs, kind, text } with atMs measured from the start of the meeting (virtual time is fine).
@@ -384,7 +384,7 @@ export function oracleTimeline(g: Golden): TimelineCard[] {
   }
   return out;
 }
-/** Limits the negative controls must stay under (PLAN g1-golden item 4). */
+/** Limits the negative controls must stay under. */
 export const CONTROL_LIMITS = {
   nullRecall: 0.2,
   noisePrecision: 0.4,

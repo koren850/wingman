@@ -1,7 +1,7 @@
 {
   "v": 1,
   "basis": "assumed",
-  "about": "Time from the model request to the first token of a card reply, in ms. ASSUMED: shaped like a small fast model on a normal network (p50 700, p95 2000, a long tail). It is not measured. The morning kit (scripts/morning.ts) should replace the quantiles with the recorded ones from a cassette; until then every latency number built on this file is labelled assumed.",
+  "about": "Time from the model request to the first token of a card reply, in ms. ASSUMED: shaped like a small fast model on a normal network (p50 700, p95 2000, a long tail). It is not measured. A recorded run (scripts/morning.ts) should replace the quantiles with the recorded ones from a cassette; until then every latency number built on this file is labelled assumed.",
   "quantiles": [
     [0.0, 350],
     [0.1, 450],

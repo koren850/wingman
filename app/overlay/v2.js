@@ -1,7 +1,7 @@
 "use strict";
 // Answer window v2 model: pure logic, no DOM. Classic script in the page (window.WingmanV2), require() in tests.
 // It decides which card is the hero, which ones wait as chips, how a card dims and leaves, and what the card controls send.
-// Rows follow the card row v2 contract (PLAN section 3.3): kind, value, why, more, ref, closes, pinned. Rows without those fields are legacy and are not handled here.
+// Rows follow the card row v2 contract: kind, value, why, more, ref, closes, pinned. Rows without those fields are legacy and are not handled here.
 (function (root) {
   const KINDS = ["answer", "prompt", "check", "fact"];
   /** Check is never hidden by the cap and wins the hero; Fact is a chip only. */

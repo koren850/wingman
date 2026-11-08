@@ -106,7 +106,7 @@ export function formatCacheReport(rep: readonly CacheReportRow[], o: { simulated
   return o.simulated ? ["(simulated: fixture calls with a simulated provider cache, not real usage)", ...lines] : lines;
 }
 
-/** Usage roles (usage.jsonl). `reflex`, `notes`, `assist`... are the older jobs; the last seven are the moment engine's (PLAN 3.5). */
+/** Usage roles (usage.jsonl). `reflex`, `notes`, `assist`... are the older jobs; the last seven are the moment engine's . */
 export const MOMENT_ROLES = ["moment", "observer", "memory", "compact", "ask", "digest", "wrapup"] as const;
 export type MomentRole = (typeof MOMENT_ROLES)[number];
 /** Soft hourly cap: when the last 60 minutes of AI spend reach this share of budget.maxLlmUsdPerHour, that job stops. Cheapest to lose first; a direct question stops last.

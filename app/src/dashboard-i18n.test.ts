@@ -1,5 +1,6 @@
-// Main window in Hebrew (round 12, d1): string catalogs (parity), the error table, "What Wingman knows" data, setup path length.
+// Main window in Hebrew: string catalogs (parity), the error table, "What Wingman knows" data, setup path length.
 // Pure logic, no browser. The window screenshots, the clipping check and the keyboard path run in Electron: see the opt-in test at the end.
+// One test here ("page scripts") reads dashboard/index.html as text to get the script order, then runs the scripts in that order. The rest call the catalogs and libraries.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

@@ -1,4 +1,4 @@
-// SCOPE (round 12): interview mode and the legacy engine only. This file holds a unit list (UNITS) and Hebrew number words (HEB_NUM), which is word-list
+// SCOPE: interview mode and the legacy engine only. This file holds a unit list (UNITS) and Hebrew number words (HEB_NUM), which is word-list
 // code on purpose: a claim check needs "<number> <unit>". The v2 engine does not use it for its call memory (numbers there are written by the memory
 // updater); it calls spokenNumbers() only when `localNumbers` is set, and coach.ts sets that for interview calls. Do not present it as the context model.
 // Number check: the user's own numbers (profile.yaml `claims`, for example "4+ years", "30+ client sites") against what the user just said.

@@ -1,4 +1,4 @@
-// Latency budgets of PLAN 3.6, asserted on the virtual clock with the real engine modules and the policy fake model (in-process, one engine per file).
+// Latency budgets, asserted on the virtual clock with the real engine modules and the policy fake model (in-process, one engine per file).
 // The direct-question budget takes its model delays from qa/latency-dist.json (ASSUMED: p50 700 ms, p95 2000 ms, a long tail), not from numbers the test picked.
 // What is measured is everything the engine adds around them: hints, routing, scheduling, the stall timer. The other tests use fixed delays on purpose: they test a boundary (4 s, 6 s, hung).
 import "../test-setup.ts";
@@ -30,7 +30,7 @@ test("direct question with a model answer: first card p50 <= 1.5 s, p95 <= 2.5 s
   assert.equal(
     dist.basis,
     "assumed",
-    "tonight the distribution is an assumption; the morning kit replaces it, then this label and the budget below are revisited",
+    "tonight the distribution is an assumption; a recorded run replaces it, then this label and the budget below are revisited",
   );
   assert.ok(ms(model, 95) >= 1800 && ms(model, 95) <= 2200, `the sample keeps the file's p95: ${ms(model, 95)}`);
   const seen: number[] = [];

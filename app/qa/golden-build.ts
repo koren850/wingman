@@ -1,6 +1,6 @@
 // Builds the golden meeting JSON files from the hand-written sources in data/meetings/src/*.txt:  tsx qa/golden-build.ts
 // Why a source format: a meeting is 40 to 60 lines of dialogue plus labels, and the labels sit best on the line they belong to.
-// The builder adds line ids, times, moment ids, silent windows, the scripted model replies (PLAN 3.2 and 3.1 formats) and test.lock.
+// The builder adds line ids, times, moment ids, silent windows, the scripted model replies and test.lock.
 //
 // Source format (data/meetings/src/<id>.txt):
 //   header:   key: value          id, split, lang, type, variant, user (Name | alias, alias), context (repeatable, joined),

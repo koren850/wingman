@@ -1,4 +1,4 @@
-// Meeting context input (round 12, d1): the .ics reader, chunking at import, unsupported files, and the brief / background-file lifecycle
+// Meeting context input: the .ics reader, chunking at import, unsupported files, and the brief / background-file lifecycle
 // (no 6 h expiry, nothing consumed on load, retired only after the call is live and has saved its first memory). Offline, invented data only.
 import "./test-setup.ts";
 import { test } from "node:test";

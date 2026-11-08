@@ -1,4 +1,4 @@
-// Tag-first parser for the moment reply (PLAN.md 3.2). Line 1 is the verdict (TAG), then labelled lines in any order:
+// Tag-first parser for the moment reply. Line 1 is the verdict (TAG), then labelled lines in any order:
 //   VALUE: 0..3   AIM: me|other|all|unclear   CONF: high|low   SAY: <= 12 words (up to 14 accepted)   LABEL: 2-4 word topic   ABOUT: <= 8 words   VAL: <= 4 words
 //   WHY: one line   MORE: up to 3 short lines   REF: memory id
 // CONF, LABEL, ABOUT and VAL are optional for the parser (the prompt asks for LABEL). CONF comes before SAY in the prompt, so the scheduler knows it when the say-line completes.

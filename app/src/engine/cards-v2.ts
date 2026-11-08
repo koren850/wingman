@@ -1,4 +1,4 @@
-// Card pipeline v2, the pure part: card rows (PLAN 3.3), the cap decision, the scheduler hookup (rank, topic lifetime, closing rows) and the
+// Card pipeline v2, the pure part: card rows , the cap decision, the scheduler hookup (rank, topic lifetime, closing rows) and the
 // feedback loop from tags.jsonl. No globals and no clock of its own: engine/cards.ts is the thin glue that writes the rows.
 //
 // A v2 row is a normal cards.jsonl row (all v1 fields stay: id, turnId, badge, question, say, facts, at) plus: kind, value, why, more, ref,
@@ -28,7 +28,7 @@ export type CardKind = "answer" | "prompt" | "check" | "fact";
 export type CardCloses = "answered" | "topic" | "time" | "dismissed";
 export type CardBadge = "bank" | "ai" | "stall" | "info" | "warn" | "tip" | "me" | "careful" | "fix";
 
-/** The v2 fields of a row (PLAN 3.3). `chip` is an addition: the scheduler wanted this card small (it is still shown). */
+/** The v2 fields of a row . `chip` is an addition: the scheduler wanted this card small (it is still shown). */
 export type CardV2Extra = {
   kind?: CardKind;
   value?: 0 | 1 | 2 | 3;
@@ -362,7 +362,7 @@ export class CardScheduler {
   }
 }
 
-/** tags.jsonl rows: {cardId, rating: "useful"|"not_useful"|"fewer"|"none"} (PLAN) or the older {id, useful: "y"|"n"}. A "fewer" row may also carry useful "n". Junk lines and "none" are skipped. */
+/** tags.jsonl rows: {cardId, rating: "useful"|"not_useful"|"fewer"|"none"} or the older {id, useful: "y"|"n"}. A "fewer" row may also carry useful "n". Junk lines and "none" are skipped. */
 export function parseTags(text: string): { id: string; rating: Rating }[] {
   const objs: unknown[] = [];
   for (const line of String(text ?? "").split("\n")) {

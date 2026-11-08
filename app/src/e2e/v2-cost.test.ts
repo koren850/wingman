@@ -1,4 +1,4 @@
-// Cost per role, replayed over the golden dev meetings (usage.jsonl of the real engine modules), against the PLAN 3.6 table. Fails at +20 percent per role.
+// Cost per role, replayed over the golden dev meetings (usage.jsonl of the real engine modules), against the cost table below. Fails at +20 percent per role.
 // The policy fake reports usage computed from each real prompt and a simulated prompt cache (v2-kit.ts), so the rows carry honest prices. Output sizes
 // are the scripted replies (memory and compaction answers are padded to a typical size). Digest and wrap-up run once each, in this process.
 import "../test-setup.ts";
@@ -19,12 +19,12 @@ import type { ModelRegistry } from "../providers/llm.ts";
 import type { SessionMemory } from "../session/types.ts";
 import { readBudgets, BUDGET_TOLERANCE } from "../../qa/budgets.ts";
 
-// PLAN 3.6, USD per call. This table is the ceiling. The gate itself is qa/budgets.json (calibrated from the golden run by `pnpm eval --update`, section
+// Planned cost, USD per call. This table is the ceiling. The gate itself is qa/budgets.json (calibrated from the golden run by `pnpm eval --update`, section
 // `scripted`; `oneShot` holds the digest and the wrap-up, measured by this file). A role over its calibrated budget + 20 percent fails.
 export const TABLE: Record<string, number> = { moment: 0.00016, observer: 0.00013, memory: 0.0002, compact: 0.0006, ask: 0.0004, digest: 0.002, wrapup: 0.001 };
 const TOL = 1 + BUDGET_TOLERANCE;
 const BUDGETS = readBudgets();
-/** The calibrated budget of a role (USD per call), else the PLAN table. */
+/** The calibrated budget of a role (USD per call), else the planned table. */
 export const budgetOf = (role: string): number => BUDGETS.scripted?.roles[role]?.usdPerCall ?? BUDGETS.oneShot?.[role] ?? TABLE[role];
 const dev = loadSplit("dev").filter((g) => g.type !== "interview");
 const S0 = loadSettings({ env: {}, userFile: "/nonexistent/x.yaml" }).settings;
@@ -102,18 +102,18 @@ test("cost per role: the average USD per call of every role stays within its cal
   per.wrapup = { calls: 1, avg: once.wrapup };
   const lines = Object.entries(per).map(
     ([role, v]) =>
-      `COST ${role.padEnd(8)} ${String(v.calls).padStart(4)} calls  avg $${v.avg.toFixed(6)}  budget $${budgetOf(role)}  PLAN table $${TABLE[role]}  ratio ${(v.avg / budgetOf(role)).toFixed(2)}`,
+      `COST ${role.padEnd(8)} ${String(v.calls).padStart(4)} calls  avg $${v.avg.toFixed(6)}  budget $${budgetOf(role)}  planned table $${TABLE[role]}  ratio ${(v.avg / budgetOf(role)).toFixed(2)}`,
   );
   console.log(lines.join("\n"));
   for (const [role, v] of Object.entries(per)) {
     assert.ok(v.calls >= 1, `${role}: no usage rows`);
     assert.ok(v.avg > 0, `${role}: a zero price means the usage row was not priced`);
     assert.ok(v.avg <= budgetOf(role) * TOL, `${role}: $${v.avg.toFixed(6)} per call is over its budget $${budgetOf(role)} + 20 percent`);
-    assert.ok(v.avg <= TABLE[role] * TOL, `${role}: $${v.avg.toFixed(6)} per call is over the PLAN table $${TABLE[role]} + 20 percent`);
+    assert.ok(v.avg <= TABLE[role] * TOL, `${role}: $${v.avg.toFixed(6)} per call is over the planned table $${TABLE[role]} + 20 percent`);
   }
 });
 
-test("cost per hour: the whole call (all roles, the old me-channel jobs included) is under the PLAN worst case and the $0.25 release gate", () => {
+test("cost per hour: the whole call (all roles, the old me-channel jobs included) is under the planned worst case and the $0.25 release gate", () => {
   const rows = runs.flatMap((r) => r.usage);
   const minutes = runs.reduce((a, r) => a + r.lengthMs, 0) / 60_000;
   const total = rows.reduce((a, r) => a + (r.usd ?? 0), 0);
@@ -160,7 +160,7 @@ test("usage rows carry input_tokens, cache_read and cache_write per role, and th
   assert.ok(rep.every((r) => r.hitPct + r.writePct <= 100));
 });
 
-test("cache layout: the round 12 layout (rules and memory cached by role) costs less per hour than the layout before it, on the same calls", async () => {
+test("cache layout: the current layout (rules and memory cached by role) costs less per hour than the layout before it, on the same calls", async () => {
   // Before: A (1 h), the memory block (5 min) for every role, then the rules and the per-call facts as one block with no marker.
   // After: A (1 h), the role's fixed rules (1 h), the memory block (5 min, only moment and observer), the per-call facts last. The calls are the same;
   // only the cache markers and the block order differ (the simulator in v2-kit.ts prices what the provider would bill).

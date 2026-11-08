@@ -7,7 +7,7 @@
 // so a bad prompt shows up as a number per kind. It uses no word list: the model reads the lines, the code only compares verdicts.
 //
 //   mode "fake"         the policy fake answers the labelled verdict with seeded noise. Tests the plumbing and the scorer; says nothing about a model.
-//   mode "model"        a registry: the cassette replay (no key) or the owner's recording. The measure that matters.
+//   mode "model"        a registry: the cassette replay (no key) or a maintainer's recording. The measure that matters.
 //   control always-skip the model never speaks. Must fall under the limits.
 //   control always-ans  every case gets an answer card. Must fall under the limits.
 import { readdirSync, readFileSync } from "node:fs";
@@ -232,7 +232,7 @@ export const JUDGE_CONTROL_LIMITS = {
   /** the fake with noise: a sanity floor for the plumbing */
   fakeMacroF1Min: 0.6,
 } as const;
-/** Floors for a RECORDED run (mode "model"). Provisional: the owner moves them after the first recorded run. */
+/** Floors for a RECORDED run (mode "model"). Provisional: a maintainer moves them after the first recorded run. */
 export const JUDGE_FLOORS = { accuracy: 0.6, macroF1: 0.5, skipRecall: 0.75, actionableRecall: 0.5, langAccuracy: 0.5, falseAlarmMax: 0.2 } as const;
 
 export function controlBreaches(mode: JudgeMode, s: JudgeScore): string[] {

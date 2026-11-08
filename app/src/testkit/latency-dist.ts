@@ -1,6 +1,6 @@
 // A committed model-delay distribution (qa/latency-dist.json) for the latency tests, so the p95 budget is not set by delays the test itself picked.
 // The samples are STRATIFIED, not random: sample i of n sits at quantile (i + 0.5) / n, so the sample p50 and p95 land on the file's p50 and p95 for any n.
-// The file is ASSUMED until the morning kit replaces it with recorded timings; every test that uses it says so in its output.
+// The file is ASSUMED until a recorded run replaces it with recorded timings; every test that uses it says so in its output.
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

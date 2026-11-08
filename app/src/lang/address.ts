@@ -1,6 +1,6 @@
 // Who is a line aimed at? The "you" and question-opener patterns that used to be copied in detector.ts, engine/rules.ts and flow.ts live here, unchanged.
 // They are NOT one pattern on purpose: each caller needs a different strictness (see the notes). Nothing was added or reworded when they moved.
-// No new words (round 12): the detector is frozen as an offline hint, and the model decides who a line is aimed at.
+// No new words: the detector is frozen as an offline hint, and the model decides who a line is aimed at.
 import { nameRegex } from "../profile.ts";
 import { tokens, tokenVariants, normalize } from "../normalize.ts";
 

@@ -1,7 +1,7 @@
 // A second opinion on the cards, apart from the golden labels. Two parts:
 //  1. rubricJudge: a deterministic rubric. For each card on screen: is it relevant (the tokens of the moment it serves, or words from the last lines),
 //     is it in the language of the call, is it not a repeat of an earlier card, and is it inside the time window. No model, same answer every time.
-//  2. ModelJudge: asks a model "is this card useful here". It replays the answer from a cassette file. It records new answers only when the owner
+//  2. ModelJudge: asks a model "is this card useful here". It replays the answer from a cassette file. It records new answers only when the maintainer
 //     passes a transport (scripts/cassette-record.ts does that, never in CI). In replay a missing answer is a loud CassetteMiss, not a guess.
 // Why both: the labels list the moments we thought of. The rubric catches a card that is late, in the wrong language, repeated or off topic. The model
 // judge rates the cards the labels do not list (tips, open loops) with a usefulness verdict that can be stored and replayed.
@@ -173,7 +173,7 @@ export class ModelJudge {
     private o: {
       cassette: Cassette;
       model?: string;
-      /** Only the owner's record command passes this. Without it a miss throws CassetteMiss. */
+      /** Only the maintainer's record command passes this. Without it a miss throws CassetteMiss. */
       transport?: JudgeTransport;
     },
   ) {}

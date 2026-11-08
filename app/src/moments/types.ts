@@ -1,5 +1,5 @@
 // Shared types of the moment engine core (pure code, no globals). A "moment" is the model's verdict on one stretch of the call:
-// SKIP (stay silent) or one kind of short private help. Contract: PLAN.md 3.2 (round 12).
+// SKIP (stay silent) or one kind of short private help. Contract: docs/ARCHITECTURE.md, Moment core.
 
 export const MOMENT_TAGS = ["SKIP", "ANS", "BANK", "STALL", "REPLY", "CHECK", "TERM", "PROMPT", "NOTE"] as const;
 export type MomentTag = (typeof MOMENT_TAGS)[number];

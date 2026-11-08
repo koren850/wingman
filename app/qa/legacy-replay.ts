@@ -8,7 +8,7 @@ import { loadBank, matchBankFor, localizeCard, setTurnLang, questionLang, type B
 import { guard } from "../src/guards.ts";
 import type { Golden, TimelineCard } from "./grade-golden.ts";
 
-/** Virtual time from a final line to the bank card on screen: the bank path is local (PLAN 3.6: 0.6 s p50). */
+/** Virtual time from a final line to the bank card on screen: the bank path is local (0.6 s p50). */
 export const BANK_CARD_MS = 600;
 
 export function legacyTimeline(g: Golden, bank: BankCard[] = loadBank()): TimelineCard[] {
@@ -31,7 +31,7 @@ export const guardBreach = (text: string) => !guard(text).ok;
 
 /**
  * The legacy question gate alone, with the answer text assumed right: how many answer moments does detect() call a question, and how many
- * lines that should stay quiet (silent windows) does it call a question? This isolates the word-list design the owner doubts.
+ * lines that should stay quiet (silent windows) does it call a question? This isolates the word-list design as a baseline.
  */
 export function gateReport(g: Golden, bank: BankCard[] = loadBank()) {
   const flagged = (text: string) => {

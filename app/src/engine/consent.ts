@@ -36,7 +36,7 @@ export function startConsent() {
       console.log("\nListening started: audio is now being sent for transcription.");
     }
     status("consented", { id: log.id });
-    confirmContext(); // the brief and files are kept until now. TODO(w2): move this to the first successful session-memory write ({ev:"memory"} for the tray).
+    confirmContext(); // the brief and files are kept until now. Later it could move to the first successful session-memory write ({ev:"memory"} for the tray).
     const consentedAt = Date.now();
     st.call.consentedMono = mono();
     setPhase("live", { liveAt: consentedAt });

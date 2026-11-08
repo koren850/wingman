@@ -4163,7 +4163,7 @@ button.chip.spk-btn:focus-visible,
   line-height: 18px;
 }
 
-/* ---------- round 12: Meeting context box, What Wingman knows, So far, error boxes ---------- */
+/* ---------- Meeting context box, What Wingman knows, So far, error boxes ---------- */
 /* Logical properties only (inline-start/end), so the same rules work with dir="rtl" on <html>. */
 .errslot:not(:empty) {
   position: sticky;
@@ -4401,7 +4401,7 @@ button.chip.spk-btn:focus-visible,
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 }
 
-/* ---- Round 12, wave 2: AI paused note, after-call open loops ---- */
+/* ---- AI paused note, after-call open loops ---- */
 .kn-paused {
   display: flex;
   align-items: center;
@@ -4440,7 +4440,7 @@ button.chip.spk-btn:focus-visible,
   margin: 0 16px 12px;
 }
 
-/* ---- Round 12, r2-dash-ux: pills never wrap, one-column idle Home, key sheet, settings search, Fix it ---- */
+/* ---- Pills never wrap, one-column idle Home, key sheet, settings search, Fix it ---- */
 .seg {
   max-width: 100%;
 }
@@ -4644,7 +4644,7 @@ button.chip.spk-btn:focus-visible,
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- round 12, r3: Start with a reason, review step, settings tabs, call kind ---- */
+/* ---- Start with a reason, review step, settings tabs, call kind ---- */
 .startrow {
   display: flex;
   flex-wrap: wrap;

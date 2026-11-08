@@ -1921,7 +1921,7 @@ body.fit.bar #wrap {
   background: var(--raised);
 }
 
-/* ======== Answer window v3 (round 3) ========
+/* ======== Answer window v3 ========
    Hierarchy: the card is the largest element; the transcript is one line at about 60 percent. Stale cards fade; controls show on hover or focus.
    Every colour pair here keeps 4.5:1 (the snapshot checks run in both themes). */
 :root {

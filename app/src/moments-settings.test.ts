@@ -1,4 +1,4 @@
-// Moment engine settings (PLAN 3.5): defaults, validation, the price rule for the new model keys, and the soft hourly cap in CostMeter.
+// Moment engine settings: defaults, validation, the price rule for the new model keys, and the soft hourly cap in CostMeter.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -16,7 +16,7 @@ const load = (yaml?: string) => {
   return loadSettings({ env: {}, userFile });
 };
 
-test("defaults: live reading (v2) is the default; every key of PLAN 3.5 has its documented default", () => {
+test("defaults: live reading (v2) is the default; every moment key has its documented default", () => {
   const { settings: s } = load();
   assert.equal(s.moments.engine, "v2");
   assert.equal(s.moments.observerPerMinute, 6);

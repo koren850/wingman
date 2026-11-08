@@ -1,4 +1,4 @@
-// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see r3-moments-floor.test.ts for the floor.
+// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see moments-floor.test.ts for the floor.
 // Detector, bank, reflex tag parsing and question split/merge cases found by the synthetic QA harness (qa/).
 // The "qa2" tests cover the second replay run.
 import "./test-setup.ts";

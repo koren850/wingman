@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 
-// Rules that replace source-text tests (r2-verify-core). A rule sees syntax, not comments, and covers new files too.
+// Rules that replace source-text tests (verify-core). A rule sees syntax, not comments, and covers new files too.
 //   wingman/no-hebrew-literal   no Hebrew letters in a string of the answer window's scripts: UI words live in overlay/strings.js (regex literals are fine:
 //                               text.js recognises the engine's Hebrew health texts with one)
 //   wingman/tr-key-exists       tr("key") with a literal key must name a key of the English table in overlay/strings.js
@@ -132,7 +132,7 @@ export default tseslint.config(
       "@typescript-eslint/no-require-imports": "off",
     },
   },
-  // Security rules that used to be source-text tests (invariants.test.ts). A lint rule sees the syntax, not comments, and covers new files too.
+  // Security rules that used to be source-text tests (static-hygiene.test.ts). A lint rule sees the syntax, not comments, and covers new files too.
   // Renderer pages: text goes in with textContent / createElement; no HTML strings, no string evaluation (the CSP forbids it as well).
   {
     files: ["dashboard/**/*.js", "overlay/**/*.js"],

@@ -12,7 +12,7 @@
 //             These hints use no word list and no capital letters, so they work the same in Hebrew and English. They only wake the updater;
 //             what the call means is the model's job.
 //   compact   every memory.compactEveryMinutes (6), or when the render goes over its budget, or when a list is nearly full (once a minute at most)
-// Cost guard: at most memory.maxPerHour updater calls an hour (240 is about $0.05 at the PLAN price of $0.0002 a call).
+// Cost guard: at most memory.maxPerHour updater calls an hour (240 is about $0.05 at the planned price of $0.0002 a call).
 // Fallback: after 3 failures in a row the updater rests for a minute and tries again. The memory keeps its last good state, the file stays valid.
 import { buildContext, modelMessages, type ContextOutput, type RawLine, type SharedContext } from "../context/build.ts";
 import { withSettings, type Budgets } from "../context/budget.ts";

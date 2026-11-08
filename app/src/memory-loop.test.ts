@@ -360,7 +360,7 @@ test("updater calls per hour stay inside the cost table", async () => {
     }
     const calls = r.pm.callsFor("memory").length;
     const compacts = r.pm.callsFor("compact").length;
-    const usd = calls * 0.0002 + compacts * 0.0006; // PLAN 3.6 price per call
+    const usd = calls * 0.0002 + compacts * 0.0006; // planned price per call
     assert.ok(calls <= DEFAULT_MEMORY_CONFIG.maxPerHour, `updater calls ${calls}`);
     assert.ok(usd <= 0.06, `memory cost ${usd.toFixed(4)} an hour (dense talk with a figure every 35 s)`);
     assert.ok(compacts <= 11, `compactions ${compacts}`);

@@ -1,4 +1,4 @@
-// The golden meeting file (PLAN 3.4) as a zod schema, plus the plain type. Used by the loader, the builder and the tests.
+// The golden meeting file  as a zod schema, plus the plain type. Used by the loader, the builder and the tests.
 // Extensions over the plan (all optional): `scripted` on the file, `tags` and `direct` on a moment, `q` on an ask script entry.
 import { z } from "zod";
 

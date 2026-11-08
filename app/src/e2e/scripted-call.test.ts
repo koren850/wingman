@@ -102,7 +102,7 @@ test("e2e: a scripted call produces bank cards, a stall, captures, a fact card, 
       rows("usage.jsonl").some((u) => u.role === "summary" && u.roles?.summary?.calls === 1),
       "call cost includes the summary",
     );
-    // The call frame model call is gone (round 12): no frame event, no frame usage row, no frame row for the overlay.
+    // The call frame model call is gone: no frame event, no frame usage row, no frame row for the overlay.
     assert.ok(!events.some((e) => e.type === "frame" || e.type === "frame.summary"), "no frame events");
     assert.ok(!rows("usage.jsonl").some((u) => u.role === "frame"), "no frame model call");
     assert.ok(!cards.some((c) => c.type === "frame"), "no frame row for the overlay");

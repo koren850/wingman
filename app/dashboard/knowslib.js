@@ -1,7 +1,7 @@
 "use strict";
 // "What Wingman knows": the data side of the panel (pure functions, no DOM). The page draws it in knows.js.
-// Round 12 wave 1 feeds it from fixtures (and, before a call, from the saved meeting context). Wave 2 feeds it from the digest and the call memory.
-// The shape is a small view of the session memory (see PLAN section 3.1): every line has an id, a text, and may be edited or removed by the user.
+// It is fed from fixtures, from the saved meeting context before a call, and from the digest and the call memory during one.
+// The shape is a small view of the session memory (see docs/ARCHITECTURE.md, Moment core): every line has an id, a text, and may be edited or removed by the user.
 //
 //   model = { mode: "before" | "live", source: "fixture" | "saved" | "digest" | "memory", ver, topic, sections: { <name>: [{ id, text, who?, done? }] } }
 //   before the call: roster (people), agenda, facts, mustCover        live on Home: soFar, decisions, open, promises, mustCover (left to cover)

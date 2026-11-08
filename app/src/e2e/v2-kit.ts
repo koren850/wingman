@@ -63,7 +63,7 @@ export function observePolicy(
     const prompt = c.prompt ?? [];
     let sys = prompt.filter((m) => m.role === "system");
     if (o.legacyLayout && sys.length >= 2) {
-      // The layout before round 12: A (1 h), the memory block (5 min, every role), then the role rules and the per-call facts as one block with no marker.
+      // The older layout: A (1 h), the memory block (5 min, every role), then the role rules and the per-call facts as one block with no marker.
       const marker = (ttl: "5m" | "1h") => ({ anthropic: { cacheControl: { ttl } } });
       const isMem = (m: Msg) => textOf(m.content).startsWith("<call_memory>");
       const a = sys.length >= 3 && !isMem(sys[0]) ? sys[0] : undefined;
@@ -245,7 +245,7 @@ export type WorkerOptions = {
   /** Play the meeting against a recorded cassette (qa/eval --cassette): every model reply comes from the file, with its recorded delay on the virtual clock.
    *  A call the cassette does not know fails like a model error and is counted in `cassetteMisses`. */
   replay?: { cassette: string };
-  /** price the calls with the cache layout of before round 12 (A, memory for every role, rules and facts last with no marker) */
+  /** price the calls with the older cache layout (A, memory for every role, rules and facts last with no marker) */
   legacyLayout?: boolean;
   /** simulator study: raw transcript lines per cached tail chunk, by role (build.ts `tailChunk`; 0 or missing = tail not cached) */
   tailChunk?: Partial<Record<string, number>>;

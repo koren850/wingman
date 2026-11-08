@@ -1,4 +1,4 @@
-// Scheduler fuzz and property tests (r3-verify-ship). 500 fixed seeds, no clock, no network, under 20 s.
+// Scheduler fuzz and property tests (ship-gate). 500 fixed seeds, no clock, no network, under 20 s.
 //   Part A: the pure scheduler (src/moments/scheduler.ts) on random streams of moments. Invariants: a Check is never held back by the per-minute cap; a
 //           late observer moment is dropped; the same card ref is not shown twice in a row without new memory; the per-minute cap holds; the record
 //           of shown cards stays bounded; a stale turn is dropped.

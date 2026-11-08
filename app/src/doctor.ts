@@ -229,7 +229,7 @@ section("Budget and data hygiene");
         IS_APP ? "delete the old calls in the Wingman window (Calls tab)" : `pnpm purge --older-than ${S.privacy.retentionDays}`,
       )
     : ok("no calls past retention");
-  // Soft hourly AI cap (moment engine). Estimates from PLAN 3.6: typical about 0.09 USD an hour, a busy hour about 0.20 USD.
+  // Soft hourly AI cap (moment engine). Estimates: typical about 0.09 USD an hour, a busy hour about 0.20 USD.
   {
     const cap = S.budget.maxLlmUsdPerHour,
       on = S.moments.engine === "v2";

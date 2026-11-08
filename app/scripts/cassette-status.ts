@@ -1,6 +1,6 @@
 // What the cassettes hold and how much of a play they cover.  pnpm cassette:status [--cassette a.json[,b.json]] [--suite dev] [--no-play] [--limit n]
 //   Without --cassette it lists every data/cassettes/*.cassette.json. For each file: entries by role, model and source (recorded or authored), and how many have no
-//   prompt hash (recorded before the prompt hash existed: they cannot be told stale from missing).
+//   prompt hash (recorded before prompt hashes existed: they cannot be told stale from missing).
 //   Coverage: with --cassette and no --no-play it plays the dev meetings against the file (no network, the policy-free replay of qa eval --cassette) and counts for each
 //   model call: found, STALE (an entry exists but was recorded with another prompt text or model: re-record) or MISSING (no entry at all).
 //   Held-out suites are never played here.
@@ -61,7 +61,7 @@ export async function main(argv: string[], deps: Deps): Promise<number> {
           .filter((f) => f.endsWith(".cassette.json") && !f.endsWith(".part.json"))
           .map((f) => join(dir, f))
       : []);
-  if (!files.length) return (deps.log(`No cassettes in ${dir}. Record them with: pnpm morning --cap 5 (run it by hand).`), 0);
+  if (!files.length) return (deps.log(`No cassettes in ${dir}. Record them with: pnpm morning --cap 5 (owner only).`), 0);
   for (const f of files) if (!existsSync(f)) return (deps.log(`cassette:status: no such file ${f}`), 2);
   for (const f of files) deps.log(formatSummary(f, summarizeCassette(new Cassette(f))));
   if (given && !argv.includes("--no-play")) {

@@ -1,4 +1,4 @@
-// NOT the question gate. This is the Hebrew STT quality tool (renamed from gate.ts in round 12; gate.ts re-exports it, so package.json "gate" and the docs still work; the question gate is detector.ts).
+// NOT the question gate. This is the Hebrew STT quality tool (renamed from gate.ts; gate.ts re-exports it, so package.json "gate" and the docs still work; the question gate is detector.ts).
 // Hebrew STT quality gate (dev tool, not part of a call). Streams each recording to Deepgram in real time
 // through the same SttStream the engine uses, and reports:
 //   term recall on the gold English tech terms (pass >= 85%), endpoint-to-final p50/p95 (pass <= 600 ms),

@@ -1,7 +1,7 @@
 "use strict";
 // Call review: the data side (pure functions, no DOM), used by the call page in app.js and by dashboard/lib.cjs.
 //   momentReport(events)  counts of moments that were skipped, dropped or shown as a small chip, with the reasons, from the moment.* rows of events.jsonl
-//   cleanCoaching(raw)    the `coaching` object of summary.json (contract 3.5 of the plan), checked: plain numbers only, or null
+//   cleanCoaching(raw)    the `coaching` object of summary.json, checked: plain numbers only, or null
 //   coachingRows(c)       the lines the page shows for it
 // Everything that comes from a file is treated as untrusted: only known fields, numbers clamped, reason words clipped.
 (function (root) {

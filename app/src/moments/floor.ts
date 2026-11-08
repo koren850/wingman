@@ -3,7 +3,7 @@
 // (trigger score, stall-tier hit, 3-gram + word scorer). It has no word list and no language rule of its own, so it works the same in Hebrew, English and mixed talk.
 // "Aimed at you" comes from the caller: the user's name, or the only other voice. A line that opens with the name of another person is aimed elsewhere.
 // The old question detector (detector.ts through moments/hint.ts) is NOT part of the floor. It may be passed in as `hint`: a tiebreak for a line the shape
-// rules left undecided. Reports: src/e2e/r3-floor.test.ts prints the floor's recall and precision on the golden dev meetings with the hint on and off.
+// rules left undecided. Reports: src/e2e/floor.test.ts prints the floor's recall and precision on the golden dev meetings with the hint on and off.
 import type { TurnFeatures } from "./intake.ts";
 import type { HintLevel } from "./types.ts";
 import { SHORT_LINE_WORDS } from "./hint.ts";

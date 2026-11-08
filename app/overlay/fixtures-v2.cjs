@@ -241,7 +241,7 @@ const SCENARIOS = {
   "v2-nolines": (T) => ({ rows: [view(T), answer(T)], lines: [] }),
 };
 Object.assign(SCENARIOS, {
-  // ---- round 2 scenarios ----
+  // ---- more scenarios ----
   // a busy call: 11 rows (two checks about the same date merge into one), Hebrew or English labels, one row with no label, a long line
   "v2-busy": (T) => ({
     rows: [
@@ -280,7 +280,7 @@ Object.assign(SCENARIOS, {
     ],
     lines: lines(T),
   }),
-  // ---- round 3 scenarios ----
+  // ---- answer window v3 scenarios ----
   // the line was cut by the engine (fit false): the hero clamps to 3 lines and offers More
   "v2-fitfalse": (T) => ({ rows: [view(T), answer(T, { say: T.cut, fit: false, more: T.longMore })], lines: lines(T) }),
   // a very long line with no detail: the hero clamps to 3 lines and More opens the rest

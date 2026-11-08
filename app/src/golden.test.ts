@@ -1,4 +1,4 @@
-// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see r3-moments-floor.test.ts for the floor.
+// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see moments-floor.test.ts for the floor.
 // Tests for the golden meetings and their grader (qa/grade-golden.ts, qa/golden-*.ts). No model, no network.
 // Structure checks read the test split as raw files (counts, schema, lock). Nothing here scores an engine on it: only `pnpm eval --final` does.
 import "./test-setup.ts";
@@ -37,8 +37,8 @@ const allRaw = () =>
   [...readSplitFiles("dev"), ...readSplitFiles("test"), ...readSplitFiles("test-b"), ...readSplitFiles("test-c")].map((f) =>
     GoldenSchema.parse(JSON.parse(f.text)),
   );
-/** The 24 core meetings of round 1: 8 types x (EN dev, HE dev, one held out). The r2 corpus (noq, variety, test-b) has its own checks in r2-verify-core.test.ts. */
-const core = () => allRaw().filter((g) => g.split !== "test-c" && (TYPES as readonly string[]).includes(g.type)); // test-c (r3) has its own checks in r3-verify-ship.test.ts
+/** The 24 core meetings of the first corpus: 8 types x (EN dev, HE dev, one held out). The second corpus (noq, variety, test-b) has its own checks in verify-core.test.ts. */
+const core = () => allRaw().filter((g) => g.split !== "test-c" && (TYPES as readonly string[]).includes(g.type)); // test-c (r3) has its own checks in ship-gate.test.ts
 
 // ---------------------------------------------------------------- the grader on a toy meeting
 const toy: Golden = {
@@ -337,7 +337,7 @@ test("shape: 6 to 20 minutes, 10 or more moments each, every kind and every hard
     assert.ok(g.lines.filter((l) => l.text.includes("?")).length >= 3, `${g.id}: clean meetings keep question marks`);
 });
 
-test("script: every moment has a reply in the PLAN 3.2 format; quiet lines get SKIP; memory and digest replies parse", () => {
+test("script: every moment has a reply in the moment reply format; quiet lines get SKIP; memory and digest replies parse", () => {
   const TAGS = /^TAG: (ANS|BANK \w+|STALL|REPLY|CHECK|TERM|PROMPT|NOTE)\nVALUE: [0-3]\nAIM: (me|other|all|unclear)\nSAY: (.+)\nWHY: (.+)$/;
   for (const g of allRaw()) {
     const moment = (g.script ?? []).filter((s) => s.role === "moment");

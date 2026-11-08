@@ -76,7 +76,7 @@
     const out = { id, badge: r.badge, question: str(r.question, MAX_Q).trim(), say, t: Math.round(tt), dim: !!r.dim };
     if (r.source === "calc") out.source = "calc";
     if (r.badge === "tip") out.tipType = ["ask", "clarify", "term", "remind", "note"].includes(r.tipType) ? r.tipType : "note";
-    // Card row v2 (PLAN 3.3): the extra fields pass through when they are valid; a row without them is a plain legacy card.
+    // Card row v2: the extra fields pass through when they are valid; a row without them is a plain legacy card.
     if (["answer", "prompt", "check", "fact"].includes(r.kind)) out.kind = r.kind;
     if (Number.isInteger(r.value) && r.value >= 0 && r.value <= 3) out.value = r.value;
     const why = str(r.why, 160).trim();

@@ -1,4 +1,4 @@
-// Round 12 live UI, data side: memory -> screens (shared/memview.js), user edits (shared/memedit.cjs, session/useredit.ts),
+// Live UI, data side: memory -> screens (shared/memview.js), user edits (shared/memedit.cjs, session/useredit.ts),
 // the answer window's memory feed and card controls (overlay/memfeed.cjs, overlay/act.cjs).
 import "./test-setup.ts";
 import { test } from "node:test";

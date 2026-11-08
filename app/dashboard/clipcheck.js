@@ -159,7 +159,7 @@
     sources: !!document.getElementById("ctx-url") && !!document.getElementById("ctx-cal-use"),
     review: !!document.getElementById("rev-moments") && !!document.getElementById("rev-coaching") && !!document.getElementById("rev-export"),
     reviewCounts: (document.getElementById("rev-moments-sum") || {}).textContent || "",
-    // round 12, r3: what the plain-words, Start, live, ended, settings and review rules look at
+    // What the plain-words, Start, live, ended, settings and review rules look at
     lowContrast: lowContrast.slice(0, 20),
     envNames,
     rawKeys,
@@ -182,7 +182,7 @@
     reviewSources: document.querySelectorAll("#prestart-sheet .kn-src").length,
     reviewWarn: shown("ps-warn"),
     reviewSkip: shown("ps-skip"),
-    // round 12, r3-features: mode picker, card trust, held back, learning, earlier calls
+    // Mode picker, card trust, held back, learning, earlier calls
     modeRows: document.querySelectorAll("#main .pm .mode-sel").length,
     modeCustom: [...document.querySelectorAll("#main .mode-sel option")].some((o) => o.value === "standup"),
     modeLive: shown("mode-live"),

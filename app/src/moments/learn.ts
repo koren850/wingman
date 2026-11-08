@@ -1,6 +1,6 @@
 // Per-user learning across calls. The ratings of one call tune the scheduler for that call (scheduler.ts). This file remembers, between calls, which kinds of card
 // this user keeps rating down, and raises the minimum VALUE of that kind by one at the start of the next calls.
-// Rule (PLAN-r3 3.2): a tag's offset becomes +1 only after at least 3 negative ratings (not useful, or "fewer like this") over at least 2 different calls. It decays
+// Rule: a tag's offset becomes +1 only after at least 3 negative ratings (not useful, or "fewer like this") over at least 2 different calls. It decays
 // after 5 calls without a negative rating. The offset is 0 or 1: it never lowers a threshold and never raises it by more than one step.
 // The file holds counts only: no card text, no transcript, no names. learn.json in the user data folder, mode 600, written atomically.
 // A missing, unreadable or corrupt file is the same as an empty one. Nothing here throws.

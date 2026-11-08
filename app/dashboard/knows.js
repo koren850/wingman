@@ -1,6 +1,6 @@
 "use strict";
 // "What Wingman knows" panel and the "So far" card (renderer). The data and the pure edit functions are in knowslib.js.
-// Each line can be edited or removed. In wave 1 the lines come from a fixture or from the saved meeting context; changes are kept in the page only.
+// Each line can be edited or removed. The lines come from a fixture or from the saved meeting context; changes are kept in the page only.
 // In a live call (model.source "memory") onChange also gets an `op` ({ op: "edit"|"remove"|"add", ... }): home.js sends it to the main process, which queues a "user" edit for the engine.
 // The panel shows the text the model reads (toModelText).
 // All text goes in with textContent. Classic script, loaded after app.js (uses h, ico, btn, chip, T, tip, dirOf, langOf, announce).

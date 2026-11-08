@@ -13,7 +13,7 @@
   "staysInMain": [
     { "file": "guards-table.test.ts", "why": "safety: price, date and promise guards must hold" },
     { "file": "guards-unclaimed-terms.test.ts", "why": "safety: guard terms" },
-    { "file": "r2-wordlist-guard.test.ts", "why": "stops new word lists from entering the core path" },
+    { "file": "wordlist-guard.test.ts", "why": "stops new word lists from entering the core path" },
     { "file": "bank-cache.test.ts", "why": "cache mechanism, not wording" },
     { "file": "lang.test.ts", "why": "language detection by script, no word list" },
     { "file": "calllang.test.ts", "why": "call language tracking" },

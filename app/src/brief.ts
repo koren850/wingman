@@ -1,4 +1,4 @@
-// SCOPE (round 12): the loader of the prepared start (loadBrief, briefNotes, briefKind, isInterview, SaidIndex) is used by every engine, because a prepared
+// SCOPE: the loader of the prepared start (loadBrief, briefNotes, briefKind, isInterview, SaidIndex) is used by every engine, because a prepared
 // meeting arrives as a Brief. The 4-question CLI form below and the keyword helpers (stems, briefTerms) are the legacy and interview path. New context
 // (roster, agenda, facts, files) goes through the digest (session/seed.ts, context/) into the call memory, not through this file.
 // Prepared start: a 1-minute briefing before the meeting. Loaded by run.ts at startup; also a small interactive CLI (below).

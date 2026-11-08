@@ -395,7 +395,7 @@ export function resetCassetteCache() {
 export type CassetteSummary = {
   entries: number;
   bySource: Record<string, number>;
-  /** per role: entries, models seen, and how many carry no hash (written before round 12) */
+  /** per role: entries, models seen, and how many carry no hash (written before hashes were added) */
   byRole: Record<string, { entries: number; models: string[]; unhashed: number; ms: number }>;
 };
 export function summarizeCassette(c: Cassette): CassetteSummary {

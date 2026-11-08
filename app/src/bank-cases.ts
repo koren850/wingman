@@ -54,7 +54,7 @@ export const BANK_PARAPHRASE_CASES: [string, string][] = [
   ["אנשים משאירים פרטים באתר ולא מקבלים כלום במייל", "forms-not-arriving"],
   ["הטופס באתר לא נשלח אלי למייל", "forms-not-arriving"],
   ["לא מגיעות אלי הודעות מטופס יצירת הקשר", "forms-not-arriving"],
-  // Round 12, r3: more paraphrases (Hebrew with glued prefixes, and English questions against Hebrew cards that have an English version).
+  // More paraphrases (Hebrew with glued prefixes, and English questions against Hebrew cards that have an English version).
   ["אנשים ממלאים טופס באתר ושום דבר לא מגיע לתיבה שלי", "forms-not-arriving"],
   ["המיילים שלנו מסומנים כזבל אצל הלקוחות", "email-spam"],
 ];

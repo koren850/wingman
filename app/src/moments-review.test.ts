@@ -1,4 +1,4 @@
-// Reviewer edge cases for the moment core (round 12 review).
+// Reviewer edge cases for the moment core.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseMoment, parseMomentStream, MomentStream } from "./moments/parse.ts";

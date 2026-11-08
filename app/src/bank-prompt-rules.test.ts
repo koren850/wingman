@@ -1,4 +1,4 @@
-// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see r3-moments-floor.test.ts for the floor.
+// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see moments-floor.test.ts for the floor.
 // Bank matching and prompt rules found in call reviews: wrong bank hits, leaked control words, prompt rules.
 import "./test-setup.ts";
 import { test } from "node:test";

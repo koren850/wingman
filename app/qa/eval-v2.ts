@@ -1,5 +1,5 @@
 // The v2 evaluation: golden meetings through the real v2 engine (src/e2e/v2-kit.ts runMeeting, one child process per meeting, virtual clock, the policy
-// fake), graded by qa/grade-golden.ts and qa/judge.ts. scripts/eval.ts prints it; src/r2-verify-core.test.ts tests the pieces.
+// fake), graded by qa/grade-golden.ts and qa/judge.ts. scripts/eval.ts prints it; src/verify-core.test.ts tests the pieces.
 // The replies in the golden files are SCRIPTED (written next to the moments), so these numbers prove the plumbing, timing and the grader, not model
 // judgement. The controls below are what keeps the grader honest: a model that does nothing, guesses, or answers from the wrong slot must score low.
 import { availableParallelism } from "node:os";
