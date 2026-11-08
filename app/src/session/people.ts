@@ -15,12 +15,16 @@ export const MAX_PAST_FACTS = 5;
 const MAX_PEOPLE = 300;
 const MAX_CALLS_PER_PERSON = 3;
 const MAX_DONE = 600;
+const MAX_BLOCKED = 200;
+const MAX_KW = 12;
 const MAX_SCAN = 300;
 const MAX_PROMISES = 3;
 
-export type PastCall = { id: string; at: number; topic?: string; promises: { who: string; text: string }[] };
+/** `kw`: up to 12 plain words that say what the call was about (company, topic, summary). Local bag of words, no model. */
+export type PastCall = { id: string; at: number; topic?: string; promises: { who: string; text: string }[]; kw?: string[] };
 export type PersonRec = { name: string; calls: PastCall[] };
-export type PeopleIndex = { v: 1; people: Record<string, PersonRec>; done: string[] };
+/** `blocked`: names (normalised) the user deleted from the list. A later call does not bring them back. */
+export type PeopleIndex = { v: 1; people: Record<string, PersonRec>; done: string[]; blocked?: string[] };
 /** A fact about an earlier call, before it becomes a memory fact. `at` is the end of that call (epoch ms). */
 export type PastFact = { text: string; who: string; at: number; callId: string; kind: "promise" | "topic" };
 
@@ -69,12 +73,19 @@ export function readIndex(file: string): PeopleIndex {
             text = cleanText(x?.text, 140);
           return who && text ? [{ who, text }] : [];
         });
-        return [{ id: c.id.slice(0, 60), at: c.at, ...(topic ? { topic } : {}), promises: promises.slice(0, MAX_PROMISES) }];
+        const kw = (Array.isArray(c.kw) ? c.kw : []).filter((w): w is string => typeof w === "string" && w.length >= 2 && w.length <= 30).slice(0, MAX_KW);
+        return [{ id: c.id.slice(0, 60), at: c.at, ...(topic ? { topic } : {}), promises: promises.slice(0, MAX_PROMISES), ...(kw.length ? { kw } : {}) }];
       });
       const name = cleanText(p.name, 80);
       if (name && calls.length) people[k] = { name, calls: calls.slice(0, MAX_CALLS_PER_PERSON) };
     }
-    return { v: 1, people, done: Array.isArray(j.done) ? j.done.filter((x) => typeof x === "string").slice(-MAX_DONE) : [] };
+    const blocked = (Array.isArray(j.blocked) ? j.blocked : []).filter((x): x is string => typeof x === "string").slice(-MAX_BLOCKED);
+    return {
+      v: 1,
+      people,
+      done: Array.isArray(j.done) ? j.done.filter((x) => typeof x === "string").slice(-MAX_DONE) : [],
+      ...(blocked.length ? { blocked } : {}),
+    };
   } catch {
     return empty();
   }
@@ -86,6 +97,24 @@ function writeIndex(file: string, idx: PeopleIndex): void {
 }
 
 const ME = /^(me|i|myself|אני|אנכי)$/i;
+
+const wordSeg = new Intl.Segmenter("und", { granularity: "word" });
+/**
+ * Plain words that say what a call was about: the words of the topic and the other side's roles ("CTO at Acme"), then the most repeated longer words of the
+ * summary. No word list: a word counts when it is long enough (4+ letters, 2+ for a topic or role) and, for the summary, repeated or capitalised. Lower case, at most 12.
+ */
+export function callKeywords(parts: { topic?: string; roles?: string[]; summary?: string }): string[] {
+  const out: string[] = [];
+  const add = (w: string) => {
+    if (w && !out.includes(w)) out.push(w);
+  };
+  const words = (t: string) => [...wordSeg.segment(normName(t))].filter((x) => x.isWordLike).map((x) => x.segment);
+  for (const t of [parts.topic ?? "", ...(parts.roles ?? [])]) for (const w of words(t)) if (w.length >= 3) add(w);
+  const freq = new Map<string, number>();
+  for (const w of words(parts.summary ?? "")) if (w.length >= 4) freq.set(w, (freq.get(w) ?? 0) + 1);
+  for (const [w] of [...freq.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, 6)) add(w);
+  return out.slice(0, MAX_KW);
+}
 const isMe = (who: string) => ME.test(who.trim());
 
 /** What one finished call says about the people on its roster (the other side only): the last topic and the promises still open. Null when there is nothing to remember. */
@@ -101,7 +130,12 @@ export function summarizeCall(id: string, at: number, mem: SessionMemory): { nam
       return text ? [{ who: isMe(c.who) ? "me" : (cleanText(c.who, 60) ?? "?"), text }] : [];
     });
   if (!topic && !promises.length) return null;
-  return { names, call: { id, at, ...(topic ? { topic } : {}), promises } };
+  const kw = callKeywords({
+    topic: mem.topic.now || topic,
+    roles: mem.roster.filter((p) => p.side !== "me").flatMap((p) => (p.role ? [p.role] : [])),
+    summary: mem.summary,
+  });
+  return { names, call: { id, at, ...(topic ? { topic } : {}), promises, ...(kw.length ? { kw } : {}) } };
 }
 
 export type IndexOptions = {
@@ -142,9 +176,10 @@ export function indexFinishedCalls(o: IndexOptions): number {
       if (!at) continue;
       const s = summarizeCall(id, at, loadMemory(dir, at).mem);
       if (!s) continue;
+      const blocked = new Set(idx.blocked ?? []);
       for (const name of s.names) {
         const k = normName(name);
-        if (!k) continue;
+        if (!k || blocked.has(k)) continue;
         const rec = idx.people[k] ?? { name, calls: [] };
         rec.calls = [s.call, ...rec.calls.filter((c) => c.id !== id)].sort((a, b) => b.at - a.at).slice(0, MAX_CALLS_PER_PERSON);
         idx.people[k] = rec;
@@ -209,4 +244,75 @@ export function namesForCall(roster: { name: string; side?: string }[] | undefin
   for (const p of roster ?? []) if (p.side !== "me") add(p.name);
   for (const w of String(who ?? "").split(/[,;\n]/)) add(w.replace(/\(.*?\)/g, ""));
   return out.slice(0, 12);
+}
+
+// ---------------------------------------------------------------- Last time v2: by company and topic, list, delete
+/** The words of a meeting (title, who, topic, goal) the way callKeywords reads them. */
+export const meetingWords = (parts: { title?: string; who?: string; topic?: string; goal?: string; notes?: string }): string[] =>
+  callKeywords({ topic: [parts.title, parts.topic, parts.goal].filter(Boolean).join(" "), roles: [parts.who ?? ""], summary: parts.notes });
+
+/**
+ * Earlier calls that look like the same recurring meeting when no name matches: the topic or company words overlap in at least `minShared` words
+ * (default 2). Newest first, at most `max` (default 3). Returns each call with the person it was filed under.
+ */
+export function pastCallsLike(words: string[], o: { file: string; max?: number; minShared?: number; exclude?: string }): (PastCall & { person: string })[] {
+  const want = new Set(words.map((w) => w.toLowerCase()));
+  if (!want.size) return [];
+  const idx = readIndex(o.file);
+  const seen = new Set<string>();
+  const out: (PastCall & { person: string })[] = [];
+  for (const rec of Object.values(idx.people))
+    for (const c of rec.calls) {
+      if (c.id === o.exclude || seen.has(c.id)) continue;
+      const shared = (c.kw ?? []).filter((w) => want.has(w)).length;
+      if (shared >= (o.minShared ?? 2)) {
+        seen.add(c.id);
+        out.push({ ...c, person: rec.name });
+      }
+    }
+  return out.sort((a, b) => b.at - a.at).slice(0, Math.max(0, o.max ?? 3));
+}
+
+/** What is stored about each person, for the Settings list: [{ key, name, calls: [{ id, at, topic, promises }] }], newest person first. */
+export function listPast(file: string): { key: string; name: string; calls: Omit<PastCall, "kw">[] }[] {
+  const idx = readIndex(file);
+  return Object.entries(idx.people)
+    .map(([key, r]) => ({ key, name: r.name, calls: r.calls.map(({ kw: _kw, ...c }) => c) }))
+    .sort((a, b) => (b.calls[0]?.at ?? 0) - (a.calls[0]?.at ?? 0));
+}
+
+/**
+ * Deletes what is stored about one person (`key` from listPast), or one stored call of that person (`callId`). The name is blocked, so a later call does
+ * not bring it back until the user clears the list. Returns true when something was removed.
+ */
+export function forgetPast(file: string, key: string, callId?: string): boolean {
+  const idx = readIndex(file);
+  const rec = idx.people[key];
+  if (!rec) return false;
+  if (callId) {
+    rec.calls = rec.calls.filter((c) => c.id !== callId);
+    if (!rec.calls.length) delete idx.people[key];
+    idx.blocked = [...new Set([...(idx.blocked ?? []), `call:${callId}`])].slice(-MAX_BLOCKED); // the search of finished calls leaves this call out too
+  } else {
+    delete idx.people[key];
+    idx.blocked = [...new Set([...(idx.blocked ?? []), key])].slice(-MAX_BLOCKED);
+  }
+  mkdirSync(join(file, ".."), { recursive: true, mode: 0o700 });
+  writeIndex(file, idx);
+  return true;
+}
+
+/** Is this saved call or person on the user's deleted list? (`names` are the roster names of the call.) */
+export function isForgotten(blocked: readonly string[] | undefined, callId: string, names: string[]): boolean {
+  if (!blocked?.length) return false;
+  const b = new Set(blocked);
+  return b.has(`call:${callId}`) || names.some((n) => b.has(normName(n)));
+}
+
+/** The user wants the list back (clear the blocked names). */
+export function unblockPast(file: string): void {
+  const idx = readIndex(file);
+  if (!idx.blocked) return;
+  delete idx.blocked;
+  writeIndex(file, idx);
 }

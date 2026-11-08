@@ -93,7 +93,33 @@
     if (["answered", "topic", "time", "dismissed"].includes(r.closes)) out.closes = r.closes;
     if (r.pinned === true) out.pinned = true;
     if (r.chip === true) out.chip = true;
+    const ctx = cleanCtx(r.ctx);
+    if (ctx) out.ctx = ctx;
     return out;
+  }
+
+  /** What the model saw for a card (the `ctx` record of cards.jsonl): only known fields, numbers and short words. Null when there is none or it is not an object. */
+  function cleanCtx(c) {
+    if (!c || typeof c !== "object" || Array.isArray(c)) return null;
+    const n = (v, hi) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(0, Math.round(v))) : null);
+    const parts = {};
+    if (c.parts && typeof c.parts === "object" && !Array.isArray(c.parts))
+      for (const [k, v] of Object.entries(c.parts).slice(0, 16)) {
+        const t = n(v, 1e7);
+        if (t !== null && /^[A-Za-z][A-Za-z0-9]{0,30}$/.test(k)) parts[k] = t;
+      }
+    const chunks = (Array.isArray(c.chunks) ? c.chunks : []).slice(0, 12).flatMap((x) => {
+      if (typeof x === "string") return [str(x, 60)];
+      if (x && typeof x === "object") return [{ id: str(x.id, 60), source: str(x.source || x.label, 80) }];
+      return [];
+    });
+    return {
+      memV: n(c.memV, 1e9) ?? 0,
+      tokens: n(c.tokens, 1e8) ?? 0,
+      parts,
+      trimmed: (Array.isArray(c.trimmed) ? c.trimmed : []).slice(0, 8).map((x) => str(x, 40)),
+      chunks,
+    };
   }
 
   const listOf = (x, n, f) =>

@@ -310,7 +310,9 @@ test("page scripts: loaded in the order of index.html in a bare context, the lib
   assert.equal(files[files.length - 1], "boot.js", "boot.js starts the page, so it loads last");
   assert.equal(html.match(/<script\b(?![^>]*\bsrc=)/g), null, "no inline script (the page policy allows only files)");
   const libs = files.filter((f) =>
-    /^(?:\.\.\/shared\/(?:ask|plans|memview)|i18n|strings\.(?:en|he)|errors|knowslib|reviewlib|bidi|livefeed|homelib|setuplib|settingslib)\.js$/.test(f),
+    /^(?:\.\.\/shared\/(?:ask|plans|memview)|i18n|strings\.(?:en|he)|errors|knowslib|modelib|trustlib|reviewlib|bidi|livefeed|homelib|setuplib|settingslib)\.js$/.test(
+      f,
+    ),
   );
   assert.ok(libs.length >= 12, "libraries found: " + libs.join(","));
   const g: Record<string, unknown> = {};

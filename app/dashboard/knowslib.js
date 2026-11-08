@@ -15,8 +15,10 @@
   const MAX_TEXT = 200;
   /** The call kinds the engine knows (src/session/memory.ts MemoryKind). Anything else shows as nothing, never as a guess. */
   const KINDS = ["client", "support", "vendor", "team", "consult", "personal", "interview", "other"];
+  /** A built-in kind, or the id of a custom mode (letters, digits, dash, underscore; the call mode picker lists those). */
+  const kindOk = (k) => typeof k === "string" && (KINDS.includes(k) || /^[A-Za-z0-9_-]{1,20}$/.test(k));
   /** The kind of a model, or "" when it has none or an unknown one. Read only: the person cannot change it here yet. */
-  const kindOf = (model) => (model && KINDS.includes(model.kind) ? model.kind : "");
+  const kindOf = (model) => (model && kindOk(model.kind) ? model.kind : "");
   const clean = (t) =>
     String(t == null ? "" : t)
       .replace(/[\u0000-\u001f\u007f‪-‮⁦-⁩]+/g, " ")
@@ -151,7 +153,7 @@
       mode: "live",
       source: "memory",
       ver: Number(m.ver) || 0,
-      ...(KINDS.includes(m.kind) ? { kind: m.kind } : {}),
+      ...(kindOk(m.kind) ? { kind: m.kind, kindLocked: m.kindLocked === true } : {}),
       topic: clean(m.topic && m.topic.now),
       sections: {
         soFar: arr(m.facts)

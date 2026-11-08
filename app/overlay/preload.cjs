@@ -26,6 +26,7 @@ const EVENTS = [
   ["recap", "onRecap", true], // Catch me up: no payload = open the sheet; { phase, text, recap } = the streamed recap
   ["restore", "onRestore", false], // bring back the card that left in the last 30 s
   ["note", "onNote", true], // { kind, text }: a taken hotkey or a lost screen; empty text clears it
+  ["nudge", "onNudge", true], // { kind: pace | share | interrupt, value, limit }: a thin bar, not a card
   ["ctl", "onCtl", true], // a card control pressed on the keyboard: { name: more | pin | useful | notuseful | dismiss }
 ];
 

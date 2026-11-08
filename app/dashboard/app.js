@@ -1662,6 +1662,8 @@ function cardEl(c, d, idx, total) {
           c.facts.map((f) => h("li", { dir: dirOf(f), lang: langOf(f) }, rich(f))),
         )
       : null,
+    // card trust: jump to the line it answers, and what the model saw for it (a card from before the record says so)
+    trustButtons(c, { onLine: c.question || c.t ? () => trustJump(c) : null }),
     rateable(c) ? rt : null,
   );
   const src = el.querySelector(".chip .dot");

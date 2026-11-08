@@ -422,7 +422,17 @@ function handleCardRow(c) {
   else if (c.type === "frame") {
     if (c.frame && typeof c.frame === "object") win.webContents.send("frame", c.frame);
   } else if (c.type === "memory") mem.fromRow(c);
-  else if (c.type === "recap") {
+  else if (c.type === "nudge") {
+    // a live nudge (coach.nudges): numbers only, the window writes the words. An old row (a replay after a reload) is not shown.
+    const kind = ["pace", "share", "interrupt"].includes(c.kind) ? c.kind : "";
+    const fresh = !Number.isFinite(c.at) || Date.now() - c.at < 30000;
+    if (kind && fresh)
+      win.webContents.send("nudge", {
+        kind,
+        value: Math.max(0, Math.min(1000, Math.round(Number(c.value) || 0))),
+        limit: Math.max(0, Math.min(1000, Math.round(Number(c.limit) || 0))),
+      });
+  } else if (c.type === "recap") {
     const p = mem.recap(c);
     if (p) win.webContents.send("recap", p);
   } else if (!c.hidden) {

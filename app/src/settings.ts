@@ -161,6 +161,10 @@ export const schema = z.strictObject({
     plannedMin: int(0, 600),
     timeoutMs: int(2000, 30000),
   }),
+  // Live nudges from numbers the app already has (pace, talk share, interruptions): a thin bar, never a card. Off by default.
+  coach: z.strictObject({ nudges: z.boolean().default(false), talkShareMax: int(50, 95).default(70), paceMax: int(120, 260).default(180) }),
+  // Opt-in lookup of a term on a public page (CLI `wingman lookup` and the Ask tab). Off by default.
+  lookup: z.strictObject({ enabled: z.boolean().default(false), maxUsdPerCall: z.number().min(0).max(5).default(0.05) }),
   attachments: z.strictObject({ maxChars: int(0, 40000) }),
   context: z.strictObject({
     calendarUrl: z

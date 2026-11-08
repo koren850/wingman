@@ -63,6 +63,10 @@ COMMANDS
                                Ask the live call. Wingman answers from what it learned in the call (its memory first, then the transcript), or from general
                                knowledge when the question is not about the call. The answer appears as a card and is printed here (waits up to 20 s;
                                --no-wait returns at once). If the AI is down it answers from the notes and says "AI offline: from notes". Needs phase "live".
+  ask --past "<question>"      Search your finished calls (their summaries and facts) on this Mac. Prints the best 3 lines, each with the call date and where it came from
+                               (summary, decision, promise, fact). Needs no app and no network; the answer says "AI offline: from notes". Exit 5 when nothing matches.
+  lookup "<term>"              Look one term up on a public web page: one line, the address, the exact sentence. OFF by default (settings lookup.enabled). One request,
+                               https only, private addresses refused, nothing is stored. --json: {term,line,url,sentence,ai,usd}.
   ask --listen                 Same as the Ctrl+Opt+A key: the user's next spoken sentence is the question.
   recap [--id <call>] [--no-wait] [--wait S]
                                "Catch me up" (the Ctrl+Opt+U key): five lines: where we are, decided, open, you promised, they asked of you.

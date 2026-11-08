@@ -133,7 +133,20 @@ test("Settings: advanced entries stay off the normal page; the engine setting is
 });
 
 test("snapshot rules: the gate fails on a clipped pill, a second primary button, a twin waiting row, a stray Sample badge", () => {
-  const ok = { ok: true, problems: [], lang: "en", dir: "ltr", primaries: 1, dupWait: 0, sample: 0, pills: 2, sheet: true };
+  const ok = {
+    ok: true,
+    problems: [],
+    lang: "en",
+    dir: "ltr",
+    primaries: 1,
+    dupWait: 0,
+    sample: 0,
+    pills: 2,
+    sheet: true,
+    modeRows: 3,
+    modeCustom: true,
+    pastCard: true,
+  };
   assert.deepEqual(SC.rules("idle-en-light", ok), []);
   assert.deepEqual(SC.rules("idle-he-dark", { ...ok, lang: "he", dir: "rtl" }), []);
   assert.match(SC.rules("idle-en-light", { ...ok, primaries: 2 })[0], /primary/);

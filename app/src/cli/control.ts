@@ -7,6 +7,9 @@ import { join } from "node:path";
 import { call, appStatus, needApp, NO_APP_HINT, appProcessRunning } from "./client.ts";
 import { CliError, EXIT, parse, usage, type Ctx, type Result } from "./common.ts";
 import { waitForEvent } from "./recall.ts";
+import { askPast, citeLine } from "../session/past.ts";
+import { PEOPLE_FILE } from "../session/people.ts";
+import { USER_DATA } from "../env.ts";
 
 const APP_PATH = "/Applications/Wingman.app";
 const PHASE_TEXT: Record<string, string> = {
@@ -193,7 +196,31 @@ function engineHasAsk(ctx: Ctx): boolean {
 }
 
 export async function ask(ctx: Ctx, args: string[]): Promise<Result> {
-  const { values, positionals } = parse(args, { listen: { type: "boolean" }, "no-wait": { type: "boolean" }, wait: { type: "string" } });
+  const { values, positionals } = parse(args, {
+    listen: { type: "boolean" },
+    past: { type: "boolean" },
+    "no-wait": { type: "boolean" },
+    wait: { type: "string" },
+  });
+  if (values.past) {
+    // Search the finished calls (summaries and facts) on this Mac. No app, no call and no network are needed. Without an AI the answer is labelled "AI offline: from notes".
+    if (values.listen) throw usage("--past and --listen do not go together.");
+    const q = await text(ctx, positionals, "ask --past");
+    const r = await askPast(ctx.calls, q, { peopleFile: join(USER_DATA, PEOPLE_FILE) });
+    const hits = r.hits.map((h) => ({
+      text: h.text,
+      callId: h.callId,
+      at: h.at,
+      date: new Date(h.at).toISOString().slice(0, 10),
+      source: h.source,
+      people: h.people,
+    }));
+    return {
+      data: { found: r.found, answer: r.text, ai: r.ai, offline: r.offline, hits },
+      text: r.found ? [r.text, ...r.hits.map((h) => `  ${citeLine(h)} call ${h.callId}`)].join("\n") : r.text,
+      ...(r.found ? {} : { exit: EXIT.NOT_FOUND }),
+    };
+  }
   if (values.listen) {
     // the Ctrl+Opt+A key: the user's next spoken sentence is a question for Wingman
     if (positionals.length) throw usage("--listen takes no question; it arms the microphone for the user's next sentence.");

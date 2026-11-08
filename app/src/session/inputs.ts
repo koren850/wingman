@@ -17,3 +17,6 @@ export async function readSource(spec: SourceSpec, o: ReadOptions = {}): Promise
 }
 export const isPrivateAddress = inputs.isPrivateAddress;
 export const nearestEvent = inputs.nearestEvent;
+export const fetchSafe = inputs.fetchSafe;
+export const checkUrl = inputs.checkUrl;
+export const htmlToText = inputs.htmlToText;

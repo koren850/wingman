@@ -55,7 +55,31 @@ function writeCall(dataDir, lang, o = {}) {
   );
   w(
     "cards.jsonl",
-    g.cards.map((c) => ({ ...c, at: t0 + c.at })),
+    // model cards carry the record of what the model saw (ctx); the first one also lists background pieces with their sources
+    g.cards.map((c, i) => ({
+      ...c,
+      at: t0 + c.at,
+      ...(c.badge === "ai" || c.kind
+        ? {
+            ctx: {
+              role: "observer",
+              memV: 7 + i,
+              tokens: 1130,
+              parts: { rules: 300, memory: 420, rawTail: 310, trigger: 100 },
+              trimmed: i === 0 ? ["retrieved", "memory:facts"] : [],
+              hash: "a1b2c3d4e5f6",
+              aHash: "a1b2c3d4e5f6",
+              chunks:
+                i === 0
+                  ? [
+                      { id: "c1", source: "backup-policy.md" },
+                      { id: "c2", source: "notes.txt" },
+                    ]
+                  : [],
+            },
+          }
+        : {}),
+    })),
   );
   // moment.* rows (invented) for the Review part of the Details tab
   w("events.jsonl", [
@@ -127,4 +151,36 @@ if (require.main === module) {
     writeCall(dir, lang, { summary: true });
   }
 }
-module.exports = { golden, knowsFixture, writeCall };
+// Invented past-call data for the previews (Ask tab search, Settings list, recurring-meeting recap).
+const DAY = 86400_000;
+const PAST_HITS = [
+  {
+    text: "Daily backups run at 3 AM and are kept for 30 days",
+    callId: "01SNAPPASTA000000000000000",
+    at: Date.now() - 19 * DAY,
+    source: "fact",
+    people: ["Dana Levi"],
+  },
+  { text: "Agreed a December date for the move", callId: "01SNAPPASTA000000000000000", at: Date.now() - 19 * DAY, source: "decision", people: ["Dana Levi"] },
+  { text: "Dan: send the updated offer", callId: "01SNAPPASTA000000000000000", at: Date.now() - 19 * DAY, source: "promise", people: ["Dana Levi"] },
+];
+const PAST_PEOPLE = [
+  {
+    key: "dana levi",
+    name: "Dana Levi",
+    calls: [
+      {
+        id: "01SNAPPASTA000000000000000",
+        at: Date.now() - 19 * DAY,
+        topic: "Hosting move for Levi Studio",
+        promises: [{ who: "me", text: "send the updated offer" }],
+      },
+    ],
+  },
+  { key: "ron katz", name: "Ron Katz", calls: [{ id: "01SNAPPASTB000000000000000", at: Date.now() - 6 * DAY, topic: "Domain renewal", promises: [] }] },
+];
+const PAST_RECAP = [
+  { text: "Hosting move for Levi Studio", at: Date.now() - 19 * DAY, callId: "01SNAPPASTA000000000000000" },
+  { text: "me: send the updated offer", at: Date.now() - 19 * DAY, callId: "01SNAPPASTA000000000000000" },
+];
+module.exports = { golden, knowsFixture, writeCall, PAST_HITS, PAST_PEOPLE, PAST_RECAP };

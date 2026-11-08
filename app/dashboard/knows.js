@@ -248,7 +248,18 @@ function soFarCard(model, ai) {
       "div",
       { class: "rhead" },
       h("h2", { id: "sofar-h" }, T("sofar.title")),
-      KN.kindOf(model) ? chip(T("kind." + KN.kindOf(model)), "info", { title: T("knows.kindNote") }) : null,
+      model && KN.kindOf(model)
+        ? modePicker({
+            id: "mode-live",
+            label: T("mode.label"),
+            view: model,
+            onPick: async (v) => {
+              const x = await api.setMode(v);
+              if (x && x.ok) H.knows = undefined; // the notes are read again, so the picker shows what the engine now has
+              return x;
+            },
+          })
+        : null,
       h("span", { class: "grow" }),
       ai && ai !== "ok" ? chip(T(ai === "offline" ? "knows.aiOffline.short" : "knows.aiPaused.short"), "warn", { dot: true }) : null,
       model && model.source === "fixture" ? chip(T("knows.source.fixture"), "warn") : null,

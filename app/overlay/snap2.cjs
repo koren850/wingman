@@ -181,6 +181,8 @@ async function one(spec) {
       ageDir: q("#hero .hage") ? { dir: q("#hero .hage").dir, bidi: getComputedStyle(q("#hero .hage")).unicodeBidi } : null,
       aiPaused: document.body.classList.contains("ai-paused") && vis(q("#aipill")),
       aiOffline: document.body.classList.contains("ai-offline") && vis(q("#aibar")),
+      kindPill: vis(q("#kindpill")) ? { text: q("#kindpill").textContent, title: q("#kindpill").title, locked: q("#kindpill").dataset.locked } : null,
+      nudge: vis(q("#nudge")) ? q("#nudge").textContent : "",
       legacyCards: all("#cards .card").length,
       menuBtns: all("#hero .hmenu .b").map((b) => b.textContent),
     };

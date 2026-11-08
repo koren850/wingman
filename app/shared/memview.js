@@ -36,6 +36,9 @@
       .replace(/[^\p{L}\p{N}]+/gu, " ")
       .trim();
 
+  /** A call mode id: a built-in kind or the id of a custom mode (letters, digits, dash, underscore). Anything else is "other". */
+  const kindId = (k) => (typeof k === "string" && /^[A-Za-z0-9_-]{1,24}$/.test(k) ? k : "other");
+
   /** Same output as toView in src/session/view.ts (a test keeps them equal). */
   function viewFromMemory(m) {
     const mem = obj(m);
@@ -51,7 +54,7 @@
     ];
     return {
       ver: Number(mem.ver) || 0,
-      kind: KINDS.includes(mem.kind) ? mem.kind : "other",
+      kind: kindId(mem.kind),
       kindLocked: mem.kindLocked === true,
       ...(typeof mem.modeId === "string" && MODE_ID.test(mem.modeId) ? { modeId: mem.modeId } : {}),
       topic: clip(str(obj(mem.topic).now, 400), 80),
@@ -86,8 +89,8 @@
     if (v.ver === undefined && v.topic === undefined) return null;
     return {
       ver: Number.isFinite(v.ver) ? Math.max(0, Math.round(v.ver)) : 0,
-      // the call mode (r3-context-modes): only when it is a known kind, so an older sender's view stays as it was
-      ...(KINDS.includes(v.kind) ? { kind: v.kind, kindLocked: v.kindLocked === true } : {}),
+      kind: v.kind === undefined ? "" : kindId(v.kind), // a view from an older engine has no kind: the screens show no pill then
+      kindLocked: v.kindLocked === true,
       ...(typeof v.modeId === "string" && MODE_ID.test(v.modeId) ? { modeId: v.modeId } : {}),
       topic: str(v.topic, 120),
       soFar: arr(v.soFar)
@@ -193,7 +196,7 @@
     const opt = o || {};
     const s = obj(src);
     const full = Array.isArray(s.openQuestions) || Array.isArray(s.facts);
-    const v = full ? viewFromMemory(s) : cleanView(s) || { topic: "", soFar: [], open: [], promises: [], coverLeft: [] };
+    const v = full ? viewFromMemory(s) : cleanView(s) || { kind: "", kindLocked: false, topic: "", soFar: [], open: [], promises: [], coverLeft: [] };
     const recap =
       opt.recap ||
       (full
@@ -209,7 +212,8 @@
       type: "view",
       at: opt.at !== undefined ? opt.at : Date.now(),
       now: v.topic,
-      kind: full && typeof s.kind === "string" ? s.kind : "other",
+      kind: v.kind,
+      kindLocked: v.kindLocked,
       soFar: v.soFar,
       open: v.open.map((x) => x.text),
       promises: v.promises.map((x) => (x.who ? x.who + ": " : "") + x.text),

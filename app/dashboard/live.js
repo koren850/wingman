@@ -281,9 +281,23 @@ function liveCardEl(c) {
     { class: `lf-card ${c.badge === "tip" ? "tipc" : c.badge}${c.dim ? " dim" : ""}`, dir: dirOf(c.say), role: "note", "aria-label": `${label} answer` },
     badgeChip(kind, label),
     h("div", { class: "lf-say", dir: dirOf(c.say), lang: langOf(c.say) }, rich(c.say)),
+    // card trust: the line it answers is the one just above it in the feed; "What this card saw" comes from the card's ctx record
+    trustButtons(c, { onLine: () => liveShowLine(c) }),
   );
   el._sig = c.badge + "|" + c.say + "|" + !!c.dim;
   return el;
+}
+
+/** "Show the line" in the live feed: scrolls to the line this card sits under and marks it for a moment. */
+function liveShowLine(c) {
+  const card = LV.els.get("c" + c.id);
+  let row = card ? card.previousElementSibling : null;
+  while (row && !row.classList.contains("lf-row")) row = row.previousElementSibling;
+  if (!row) return announce(T("trust.noLine"));
+  LV.auto = false; // the feed stops following the newest line while the user looks at an older one
+  row.scrollIntoView({ block: "center" });
+  row.classList.add("lf-target");
+  setTimeout(() => row.classList.remove("lf-target"), 2500);
 }
 
 /** Call frame header: kind, topic, goal and the checklist with ticks. Rebuilt only when the frame changed. */

@@ -11,7 +11,7 @@ const PRESTART_SECTIONS = ["roster", "past", "agenda", "facts", "mustCover"];
 /**
  * Opens the review sheet for a "before the call" model. Resolves to { go: false } (closed, nothing started) or { go: true, ops } (start; ops = the edits to send to the call).
  */
-function prestartReview(model) {
+function prestartReview(model, o = {}) {
   return new Promise((resolve) => {
     const KNW = window.WingmanKnows;
     const st = { off: {}, text: {} };
@@ -25,6 +25,7 @@ function prestartReview(model) {
       if (!r.go && opener && document.contains(opener)) opener.focus();
       resolve(r);
     };
+    const offer = recapOffer(o.recap);
     const body = h("div", { class: "ps-body", id: "ps-body" });
     const draw = () => {
       body.textContent = "";
@@ -66,6 +67,7 @@ function prestartReview(model) {
             ),
           ),
         );
+      if (offer) body.append(offer.el);
       for (const key of PRESTART_SECTIONS) {
         const list = (model.sections && model.sections[key]) || [];
         if (!list.length) continue;
@@ -149,7 +151,12 @@ function prestartReview(model) {
       h(
         "div",
         { class: "actions ps-actions" },
-        btn(T("review.start"), { id: "ps-start", icon: "phone", cls: "primary", onclick: () => finish({ go: true, ops: KNW.applyReview(model, st).ops }) }),
+        btn(T("review.start"), {
+          id: "ps-start",
+          icon: "phone",
+          cls: "primary",
+          onclick: () => finish({ go: true, ops: [...KNW.applyReview(model, st).ops, ...(offer ? offer.ops() : [])] }),
+        }),
         btn(T("review.skip"), { id: "ps-skip", onclick: () => finish({ go: true, ops: [] }) }),
         btn(T("review.cancel"), { id: "ps-cancel", cls: "ghost", onclick: () => finish({ go: false }) }),
       ),

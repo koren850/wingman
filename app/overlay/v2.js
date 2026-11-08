@@ -424,6 +424,7 @@
     return {
       topic: str(r.now || r.topic).trim(),
       kind: str(r.kind),
+      kindLocked: r.kindLocked === true,
       open: items(r.open),
       promises: items(r.promises),
       cover: items(r.cover),

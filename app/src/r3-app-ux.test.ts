@@ -335,7 +335,19 @@ test("note window text: the same keys in English and Hebrew, and every data-t in
 
 // ---- snapshot rules (the pure part of snapshot.sh --check) ----
 test("snapshot rules: a window result with the old problems fails, a clean one passes", () => {
-  const ok = (extra = {}) => ({ problems: [], dir: "ltr", lang: "en", primaries: 1, dupWait: 0, envNames: 0, pendingPill: false, ...extra });
+  const ok = (extra = {}) => ({
+    problems: [],
+    dir: "ltr",
+    lang: "en",
+    primaries: 1,
+    dupWait: 0,
+    envNames: 0,
+    pendingPill: false,
+    modeRows: 3,
+    modeCustom: true,
+    pastCard: true,
+    ...extra,
+  });
   assert.deepEqual(SC.rules("idle-en-light", ok()), []);
   assert.match(SC.rules("idle-en-light", ok({ envNames: 2 })).join(), /env/i);
   assert.match(SC.rules("idle-en-light", ok({ pendingPill: true })).join(), /rate/i);
@@ -387,5 +399,5 @@ test("review: conflicts and applyReview survive empty or odd models", () => {
   assert.deepEqual(K.conflicts({}), []);
   assert.deepEqual(K.applyReview(null, { off: { a: true } }).ops, []);
   assert.equal(K.hasContext(null), false);
-  assert.equal(K.kindOf({ kind: "nonsense" }), "");
+  assert.equal(K.kindOf({ kind: "not a kind!" }), "");
 });

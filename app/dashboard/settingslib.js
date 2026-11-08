@@ -23,8 +23,8 @@
   const TABS = [
     { id: "basics", keys: ["stt.language", "@mic", "overlay.display", "ui.language"] },
     { id: "keys", keys: [] },
-    { id: "engine", keys: ["run.noAi", "cards.quiet", "summary.enabled", "budget.maxUsdPerCall"] },
-    { id: "privacy", keys: ["privacy.requireConsentAck"] },
+    { id: "engine", keys: ["run.noAi", "cards.quiet", "summary.enabled", "budget.maxUsdPerCall", "coach.nudges"] },
+    { id: "privacy", keys: ["privacy.requireConsentAck", "context.pastCalls", "lookup.enabled"] },
     { id: "advanced", keys: [] },
   ];
   const TAB_IDS = TABS.map((t) => t.id);

@@ -186,6 +186,17 @@ selfCheck:
   minGapMs: 8000 # at least this long between two AI checks
   timeoutMs: 6000 # abort an AI check that takes longer than this (ms); no card that time
 
+# ---- Live nudges: a thin bar from numbers the app already measures. No AI call, no word lists ----
+coach:
+  nudges: false # true = at most one short nudge per 5 minutes (you talk fast, you talk most of the time, you keep talking over the other side). Never while a check card is up
+  talkShareMax: 70 # nudge when your share of the speaking time over the last 5 minutes is above this (percent)
+  paceMax: 180 # nudge when your pace over the last minute is above this (words a minute)
+
+# ---- Lookup: look up one term on a public web page (wingman lookup, Ask tab). Off by default ----
+lookup:
+  enabled: false # true = the lookup button and command work. One request per use, https only, no private addresses
+  maxUsdPerCall: 0.05 # most one lookup may cost if it uses the AI to shorten the page text (0 = never use the AI)
+
 # ---- Background files from "Plan a call" (text the AI may read as background) ----
 attachments:
   maxChars: 40000 # at most this many characters in total (the Plan form refuses more); 0 = ignore attachments

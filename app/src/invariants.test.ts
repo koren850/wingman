@@ -106,7 +106,7 @@ test("overlay: preload bridge functions return nothing; page script is external;
     Mod._load = orig;
   }
   const subs = Object.keys(api).filter((k) => k.startsWith("on"));
-  assert.equal(subs.length, 22); // r2-overlay-ux added onRestore and onNote
+  assert.equal(subs.length, 23); // r2-overlay-ux added onRestore and onNote; r3-features added onNudge
   assert.deepEqual(
     Object.keys(api).filter((k) => !k.startsWith("on")),
     ["size", "copy", "shown", "act"],
@@ -119,7 +119,7 @@ test("overlay: preload bridge functions return nothing; page script is external;
       "a bridge function must not return the ipcRenderer proxy",
     );
   }
-  assert.equal(Object.keys(registered).length, 22);
+  assert.equal(Object.keys(registered).length, 23);
   const seen: unknown[][] = [];
   const expectSeen = (want: unknown[][], why: string) => assert.deepEqual(seen as unknown[], want as unknown[], why);
   api.onCard!((...a: unknown[]) => seen.push(a));

@@ -100,5 +100,5 @@ function reviewExport() {
 
 /** The Review part of the Details tab. */
 function subReview(out, d) {
-  out.append(h("div", { class: "review", id: "review" }, reviewMoments(d), reviewCoaching(d), reviewExport()));
+  out.append(h("div", { class: "review", id: "review" }, reviewMoments(d), reviewHeld(d), reviewCoaching(d), reviewLearning(), reviewExport()));
 }

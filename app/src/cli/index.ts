@@ -19,6 +19,7 @@ import { pack } from "./pack-cmd.ts";
 import { recap, followup } from "./recall.ts";
 import { digest } from "./digest-cmd.ts";
 import { exportCmd } from "./export-cmd.ts";
+import { lookupCmd } from "./lookup-cmd.ts";
 
 type Cmd = (ctx: Ctx, args: string[]) => Promise<Result>;
 const COMMANDS: Record<string, Cmd> = {
@@ -39,6 +40,7 @@ const COMMANDS: Record<string, Cmd> = {
   recap,
   followup,
   export: exportCmd,
+  lookup: lookupCmd,
   digest,
   live,
   calls,

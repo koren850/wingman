@@ -113,6 +113,27 @@ export function noteCallEnd(counts: Partial<Record<MomentTag, number>>, file: st
   return state;
 }
 
+/**
+ * After the call, in the call review: the user rated a held-back moment of this kind "I wanted this". That is evidence against the raised step: it takes one negative
+ * rating away (never below 0), and when fewer than MIN_NEGATIVES are left the tag is not raised any more. It never counts as a call (decay is untouched). Returns the new state.
+ */
+export function noteWanted(tag: MomentTag, file: string = LEARN_FILE): LearnState {
+  const prev = loadLearning(file);
+  if (!isTag(tag)) return prev;
+  const tags: LearnState["tags"] = {};
+  for (const [k, v] of Object.entries(prev.tags)) if (v) tags[k as MomentTag] = { ...v };
+  const t = tags[tag];
+  if (t) {
+    t.neg = Math.max(0, t.neg - 1);
+    if (t.neg < MIN_NEGATIVES) t.offset = 0;
+    if (!t.neg && !t.negCalls && !t.offset) delete tags[tag];
+  }
+  const state: LearnState = { v: 1, calls: prev.calls, tags };
+  cache = { file, state };
+  save(file, state);
+  return state;
+}
+
 /** Counts only, for the dashboard or a log row. */
 export function learnSummary(file: string = LEARN_FILE): {
   calls: number;

@@ -16,6 +16,7 @@ const liveFixture = require("./livefixture.cjs");
 const attachments = require("../tray/attachments.cjs");
 const inputs = require("../shared/inputs.cjs");
 const Plans = require("../shared/plans.js");
+const features = require("./featureslib.cjs");
 
 const ROOT = path.join(__dirname, "..");
 const BRAND_ICON = path.join(ROOT, "..", "brand", "png", "icon-512.png");
@@ -276,6 +277,7 @@ function create(ctx) {
   handle("calls:get", async (id) => {
     const d = data.getCall(CALLS, id);
     if (d && d.memory) d.memory = memLib.afterCall(CALLS, id, { meNames: await meNames() });
+    if (d) d.held = features.readHeld(CALLS, id); // ratings of held-back moments (Review), { key: "wanted" | "fine" }
     return d;
   });
   // "Write summary" for a saved call that has none: the same tool as `wingman calls summary <id> --generate` (one small AI call, up to 3 min). Output is dropped: it contains call content.
@@ -398,6 +400,11 @@ function create(ctx) {
         return { ok: controller.ask(arg) }; // a typed question for Wingman
       case "askWingman":
         return { ok: controller.askWingman() }; // same as Ctrl+Opt+A
+      case "mode": {
+        // the call mode for the running call: "auto" | a kind | a custom mode id. The controller sends it down the control socket; the engine applies it.
+        if (typeof arg !== "string") throw new Error("bad argument");
+        return features.setMode(controller, arg, (await customModes()) || []);
+      }
       case "stop":
         return { ok: controller.stop() };
       case "skipSummary":
@@ -409,6 +416,74 @@ function create(ctx) {
       default:
         throw new Error("unknown command");
     }
+  });
+
+  // ---- r3 features: mode picker, card trust, held-back ratings, learning, earlier calls, lookup ----
+  // They run the TypeScript parts in a child process (src/features-cli.ts); a missing or failing child is a plain "unavailable" result, never a crash.
+  const feat = async (op, extra) => {
+    const r = await spawnTool(["src/features-cli.ts"], JSON.stringify({ op, ...extra }));
+    return r && typeof r === "object" ? r : { ok: false, reason: "failed" };
+  };
+  /** @type {{ at: number, list: { id: string, label: string }[] } | null} */
+  let modesCache = null;
+  const customModes = async () => {
+    if (fake || SNAP) return process.env.WINGMAN_SNAP_MODES === "none" ? [] : [{ id: "standup", label: "Standup" }];
+    if (!modesCache || Date.now() - modesCache.at > 60_000) {
+      const r = await feat("modes.list");
+      modesCache = { at: Date.now(), list: r && r.ok && Array.isArray(r.modes) ? r.modes : [] };
+    }
+    return modesCache.list;
+  };
+  handle("modes:list", async () => ({ ok: true, modes: await customModes() }));
+  // A prepared meeting stores its mode (its `kind`); empty = auto. A locked kind is the user's choice for the call that starts from it.
+  handle("plans:setKind", async (id, kind) => {
+    const pid = planArg(id);
+    const k = features.modeArg(kind, await customModes());
+    if (!pid || !k) throw new Error("bad argument");
+    if (fake || SNAP) return { ok: false, error: "preview" };
+    const r = plans.update(pid, { kind: k === "auto" ? "" : k });
+    if (!r.ok) return { ok: false, error: r.error };
+    controller.refreshPlans();
+    return { ok: true, plan: meetingOut(r.meeting) };
+  });
+  // Held-back moments (call review): the rating is stored next to the call; "I wanted this" also tells learn.ts about that kind of card, once per moment.
+  handle("held:rate", async (id, key, rating) => {
+    data.callDir(CALLS, id); // validates the id
+    if (fake || SNAP) return { ok: false, error: "preview" };
+    const r = features.rateHeld(CALLS, id, key, rating);
+    if (r.ok && r.learnTag) await feat("learn.wanted", { tag: r.learnTag });
+    return r.ok ? { ok: true, ratings: r.ratings } : { ok: false, error: r.error };
+  });
+  handle("learn:summary", async () => {
+    if (fake || SNAP) return { ok: true, calls: 7, raised: ["NOTE"], watching: { NOTE: { neg: 4, calls: 3 }, PROMPT: { neg: 1, calls: 1 } } };
+    return feat("learn.summary");
+  });
+  handle("learn:reset", async () => (fake || SNAP ? { ok: false, error: "preview" } : feat("learn.reset")));
+  // Earlier calls: search (offline answer with call date and source), the stored "Last time" facts per person, and the recap of a recurring meeting.
+  handle("past:search", async (q) => {
+    if (typeof q !== "string" || !q.trim() || q.length > 300) throw new Error("bad query");
+    if (fake || SNAP) return { ok: true, found: true, offline: true, text: "AI offline: from notes", hits: require("./snapshot-fixtures.cjs").PAST_HITS };
+    return feat("past.search", { q });
+  });
+  handle("past:list", async () => {
+    if (fake || SNAP) return { ok: true, people: require("./snapshot-fixtures.cjs").PAST_PEOPLE };
+    return feat("past.list");
+  });
+  handle("past:forget", async (key, callId) => {
+    if (typeof key !== "string" || !key || key.length > 100 || (callId && !/^[0-9A-Za-z_-]{1,60}$/.test(callId))) throw new Error("bad argument");
+    if (fake || SNAP) return { ok: false, error: "preview" };
+    return feat("past.forget", { key, callId: callId || "" });
+  });
+  handle("past:recap", async (m) => {
+    if (!m || typeof m !== "object") throw new Error("bad meeting");
+    if (fake || SNAP) return { ok: true, by: "topic", person: "Dana Levi", facts: require("./snapshot-fixtures.cjs").PAST_RECAP };
+    return feat("past.recap", { title: m.title, who: m.who, topic: m.topic, goal: m.goal });
+  });
+  // Lookup runs only when the setting says so (the child checks it again): one public page, the address and the exact sentence.
+  handle("lookup:run", async (term) => {
+    if (typeof term !== "string" || !term.trim() || term.length > 200) throw new Error("bad term");
+    if (fake || SNAP) return { ok: false, reason: "off", message: "preview" };
+    return feat("lookup", { term });
   });
 
   // ---- prepared meetings ("Plan"): several can wait; a call uses one only when it is started with it ----

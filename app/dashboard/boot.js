@@ -65,7 +65,14 @@ Promise.all([
     if (view === "inbox" || view === "calls") return viewInbox();
     if (q.get("call")) {
       const n = normTab(q.get("tab"), q.get("x"));
-      return openCall(q.get("call"), { tab: n.tab || undefined, filter: n.filter, line: n.line, sub: n.sub });
+      const opened = openCall(q.get("call"), { tab: n.tab || undefined, filter: n.filter, line: n.line, sub: n.sub });
+      // screenshot aid: x=saw opens "What this card saw" on the first card
+      if (q.get("x") === "saw")
+        return Promise.resolve(opened).then(() => {
+          const b = document.querySelector("#cardlist .trust-btns button:last-child");
+          if (b) b.click();
+        });
+      return opened;
     }
     viewHome(q.get("focus"));
   })

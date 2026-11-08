@@ -32,7 +32,7 @@ import { applyFeedback, topicChanged } from "./moments.ts";
 import { parseTags } from "./cards-v2.ts";
 import { recentWindow, capTail } from "./rules.ts";
 import { MemoryLoop, engineV2, makeModelRunner, memoryConfigFrom, memoryGate } from "./memory.ts";
-import { emitMemoryView, safe } from "./out.ts";
+import { emitMemoryView, safe, survived } from "./out.ts";
 import { loadMemory, saveMemory } from "../session/store.ts";
 import { seedForCall } from "../session/callseed.ts";
 import { PEOPLE_FILE } from "../session/people.ts";
@@ -48,6 +48,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Moment } from "../moments/types.ts";
 import { modeProfile, setCustomMode } from "../moments/modes.ts";
+import { DEFAULT_NUDGE_CFG, Nudger, speechRing } from "../session/coaching.ts";
 
 let tipSeq = 0,
   tipBusy = false,
@@ -373,6 +374,7 @@ function v2Tick() {
       /* no ratings yet */
     }
   }
+  nudgeTick(now);
   // Local cues that need no model: wrap-up from the memory, and the talk ratio.
   if (now - lastLocalTipAt < 5000 || st.call.quiet) return;
   lastLocalTipAt = now;
@@ -412,13 +414,32 @@ function v2Tick() {
     emitTip(timeLeft, "time");
     return;
   }
-  if (!S.tips.talkRatio || now - lastTalkTipAt <= 10 * 60_000 || !tipGate.can(now, { quiet: st.call.quiet })) return;
+  if (!S.tips.talkRatio || S.coach.nudges || now - lastTalkTipAt <= 10 * 60_000 || !tipGate.can(now, { quiet: st.call.quiet })) return; // with live nudges on, the talk share is a nudge, not a tip
   const t = interview ? talkTip(talkRatio(transcript, now), 0.85, true, lang) : talkTip(talkRatio(transcript, now), 0.75, false, lang);
   if (t) {
     lastTalkTipAt = now;
     emitTip(t, "talk");
   }
 }
+// ---- live nudges (settings coach.nudges, off by default): a thin bar from numbers the app already has. No model call. ----
+const nudger = new Nudger();
+let nudgeSeq = 0;
+const CHECK_HOLD_MS = 30_000;
+/** At most one nudge per 5 minutes, never while a Check is on screen. The row goes to the answer window as a `nudge` row; it is not a card. */
+function nudgeTick(now: number) {
+  try {
+    nudger.cfg = { ...DEFAULT_NUDGE_CFG, enabled: S.coach.nudges, talkShareMax: S.coach.talkShareMax, paceMax: S.coach.paceMax };
+    if (!nudger.cfg.enabled) return;
+    const checkHold = st.m.sched.shown.some((r) => r.tag === "CHECK" && now - r.at < CHECK_HOLD_MS);
+    const n = nudger.check(now, speechRing.rows(), { checkHold, quiet: st.call.quiet });
+    if (!n) return;
+    log.write("cards", { type: "nudge", id: `nudge${++nudgeSeq}`, ...n, at: now });
+    log.write("events", { type: "nudge", kind: n.kind, value: n.value, limit: n.limit });
+  } catch (e) {
+    survived("nudge", e);
+  }
+}
+
 /** Shutdown and crash. Without `maxMs`: write session.json now (sync, no model call). With `maxMs`: also learn the last lines if there is time, write, and stop the loop. Never throws. */
 export async function flushMemory(maxMs?: number): Promise<void> {
   const l = loop;

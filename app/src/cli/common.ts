@@ -53,6 +53,9 @@ export interface Ctx {
   openApp?: () => Promise<void>;
   /** Audio devices for `wingman diagnose`; tests inject a fixed list. */
   devices?: () => Promise<{ name: string; transport: string; defaultInput: boolean; defaultOutput: boolean }[]>;
+  /** Tests inject these for `wingman lookup`: the fetch and the DNS lookup of the reader. Production leaves them unset. */
+  lookupFetch?: typeof fetch;
+  lookupDns?: (host: string, o: { all: true }) => Promise<{ address: string; family: number }[]>;
   spawnTsx?: (args: string[], timeoutMs: number) => Promise<{ code: number; out: string }>;
   signal?: AbortSignal;
 }

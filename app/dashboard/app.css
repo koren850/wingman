@@ -4730,3 +4730,89 @@ button.chip.spk-btn:focus-visible,
 .settab {
   outline: none;
 }
+
+/* Call mode picker: a small select and one plain line that says what it means now (Auto and Wingman's guess, or Locked). */
+.mode-picker {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  min-width: 0;
+}
+.mode-sel {
+  font: inherit;
+  font-size: 12px;
+  height: 24px;
+  max-width: 12em;
+  padding: 0 6px;
+  color: var(--text);
+  background: var(--s1);
+  border: 1px solid var(--input-line);
+  border-radius: var(--r-pill, 12px);
+}
+.mode-sel[data-locked="1"] {
+  border-color: var(--accent);
+}
+.mode-sel:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+}
+.mode-note {
+  font-size: 12px;
+}
+
+/* Card trust: two small buttons under a card, and the panel "What this card saw". Held back list in the call review. */
+.trust {
+  margin-block-start: 6px;
+}
+.trust-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.trust-btns .btn {
+  border: 1px solid var(--line2);
+}
+.trust-saw {
+  margin-block-start: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 8px);
+  background: var(--s1);
+}
+.trust-part {
+  display: inline-block;
+  margin-inline-end: 10px;
+  white-space: nowrap;
+}
+.lf-row.lf-target {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.held-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 8px);
+}
+.held-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.held-item:last-child {
+  border-bottom: 0;
+}
+.held-line {
+  margin-block: 2px 4px;
+  font-size: 13px;
+}
+.held-rate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.held-rate button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}

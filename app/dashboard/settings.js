@@ -216,8 +216,11 @@ function drawSettingsBody(body) {
     panel.append(group("g-engine", T("set.tab.engine"), rowsFor("engine"), h("p", { class: "help" }, T("set.engine.note"))));
     jump.push(["g-engine", T("set.tab.engine")]);
   } else if (tab === "privacy") {
-    panel.append(group("g-privacy", T("set.tab.privacy"), rowsFor("privacy"), h("p", { class: "help", id: "privacy-note" }, T("set.privacy.note"))));
-    jump.push(["g-privacy", T("set.tab.privacy")]);
+    panel.append(
+      group("g-privacy", T("set.tab.privacy"), rowsFor("privacy"), h("p", { class: "help", id: "privacy-note" }, T("set.privacy.note"))),
+      pastFactsBlock(),
+    );
+    jump.push(["g-privacy", T("set.tab.privacy")], ["g-past", T("past.list.title")]);
   } else {
     const adv = advancedBlock(r);
     adv.open = true; // under its own tab, the fold is already open

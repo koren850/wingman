@@ -438,6 +438,22 @@ window.wingman.onFlow((f) => {
   if (f.topic) mixed(fx, "· " + f.topic);
   flowBox.classList.add("on");
 });
+// ---- live nudges (coach.nudges): one thin line that goes away by itself. Never while a Check is on screen. Not a card: no rating, no key. ----
+const nudgeBox = document.getElementById("nudge");
+let nudgeTimer;
+const NUDGE_MS = 12000;
+window.wingman.onNudge((n) => {
+  if (!n || !["pace", "share", "interrupt"].includes(n.kind) || v2.checkLive()) return;
+  nudgeBox.replaceChildren();
+  mixed(nudgeBox, tr("nudge." + n.kind, { n: n.value }));
+  nudgeBox.classList.add("on");
+  clearTimeout(nudgeTimer);
+  nudgeTimer = setTimeout(() => {
+    nudgeBox.classList.remove("on");
+    reportSize();
+  }, NUDGE_MS);
+  reportSize();
+});
 window.wingman.onAddressed((a) => {
   flowBox.classList.remove("on");
   const yt = youBox.querySelector(".yt");

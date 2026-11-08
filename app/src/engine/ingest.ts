@@ -1,4 +1,5 @@
 // STT results into the call: foreign-script and echo drops, side features, transcript, the per-channel buffer, and flush() into questions ("them") or handleMe ("me").
+import { speechRing } from "../session/coaching.ts";
 import { eventError } from "../errtext.ts";
 import { matchBank, matchBankFor, matchBankSmart } from "../bank.ts";
 import { evalMath } from "../calc.ts";
@@ -436,6 +437,7 @@ function acceptResultCore(r: SttResult, checkEcho: boolean) {
     if (notesOn) queueNoteLine(lineOf({ ch: r.channel, text: r.text, who }));
     if (r.channel === "me" && r.text.length >= 6 && r.text.split(/\s+/).length >= 2) st.voice.lastMeVoiced = Date.now();
     transcript.push({ ch: r.channel, text: r.text, at: Date.now(), ...(who ? { who } : {}) });
+    speechRing.push({ ch: r.channel, text: r.text, t: Date.now(), words: r.words }); // live nudges (coach.nudges) read the last minutes of speech from here
     if (flowOn)
       try {
         flowEvents(flow.add({ ch: r.channel, spk: who?.spk, who: who ? voiceName(who) : undefined, text: r.text, at: Date.now() }));

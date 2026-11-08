@@ -224,6 +224,18 @@ const SCENARIOS = {
   "v2-offline": (T) => ({ rows: [view(T, { ai: "offline" }), ...legacy(T)], lines: lines(T) }),
   "v2-aipaused": (T) => ({ rows: [view(T, { ai: "paused" }), answer(T)], lines: lines(T) }),
   "v2-legacy": (T) => ({ rows: legacy(T), lines: lines(T) }),
+  // the kind of call as a read-only pill: a guess (auto) and a locked kind; no pill when the engine sent no kind
+  "v2-mode-auto": (T) => ({ rows: [view(T, { kind: "support", kindLocked: false }), answer(T)], lines: lines(T) }),
+  "v2-mode-locked": (T) => ({ rows: [view(T, { kind: "interview", kindLocked: true }), answer(T)], lines: lines(T) }),
+  "v2-mode-none": (T) => ({ rows: [view(T, { kind: "" }), answer(T)], lines: lines(T) }),
+  // a live nudge: a thin line under the top bar; a Check on screen holds it back
+  "v2-nudge": (T) => ({
+    rows: [view(T, { kind: "client", kindLocked: true }), answer(T)],
+    lines: lines(T),
+    steps: [{ send: ["nudge", { kind: "pace", value: 196, limit: 180 }] }],
+  }),
+  "v2-nudge-share": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ send: ["nudge", { kind: "share", value: 78, limit: 70 }] }] }),
+  "v2-nudge-held": (T) => ({ rows: [view(T), check(T)], lines: lines(T), steps: [{ send: ["nudge", { kind: "interrupt", value: 3, limit: 3 }] }] }),
   "v2-firstrun": () => ({ rows: [], lines: [], phase: "starting" }),
   "v2-nolines": (T) => ({ rows: [view(T), answer(T)], lines: [] }),
 };

@@ -1597,6 +1597,35 @@ body.paused #watch {
   padding: 1px 10px;
   white-space: nowrap;
 }
+/* The kind of call: read only. The window can change it (Wingman window), this is only a reminder. */
+#kindpill {
+  display: none;
+  font-size: max(12px, calc(13px * var(--ui)));
+  font-weight: 600;
+  color: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 1px 10px;
+  white-space: nowrap;
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A live nudge: one thin line under the top bar, not a card. It goes away by itself. */
+#nudge {
+  display: none;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 8px;
+  font-size: max(14px, calc(15px * var(--ui)));
+  color: var(--soft);
+  border-inline-start: 3px solid var(--line);
+  padding: 2px 10px;
+  unicode-bidi: plaintext;
+}
+#nudge.on {
+  display: flex;
+}
 /* Idle: what Wingman understands so far */
 #idle {
   display: none;

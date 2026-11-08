@@ -273,6 +273,7 @@ function renderSide() {
         ...(problems ? [readinessCard()] : []),
         editorCard(),
         idleCard(),
+        pastCard(),
         sc,
         ...(problems ? [] : [readinessCard()]),
         waitingCard(),
@@ -434,6 +435,7 @@ const firstCallDone = () => state.calls.length > 0;
 
 /** The Start card: one primary button (Start a call), the keys line when keys are missing, the prepared meetings, and the other ways to start folded below. */
 function idleCard() {
+  if (!MODE.loaded) modeLoad(() => MODE.custom.length && state.view === "home" && renderSide()); // the custom modes arrive once; the rows are drawn again when there are some
   const now = Date.now(),
     paths = HL.startPaths(H.plans, now, T, WingmanI18n.lang);
   const ss = startNow();
@@ -480,7 +482,18 @@ function idleCard() {
         "div",
         { class: "pm-meta" },
         r.time ? chip(r.time, r.isNext ? "warn" : "info") : chip(T("home.noTime"), ""),
-        KN.KINDS.includes(r.kind) ? chip(T("kind." + r.kind), "", { title: T("knows.kindNote") }) : null,
+        // The mode of this meeting: Auto (Wingman decides during the call) or a locked kind. The call that starts from this meeting uses it.
+        modePicker({
+          id: "pm-mode-" + r.id,
+          label: T("mode.forMeeting", { name: r.name }),
+          compact: true,
+          view: { kind: r.kind, kindLocked: !!r.kind },
+          onPick: async (v) => {
+            const x = await api.setPlanKind(r.id, v);
+            if (x && x.ok) r.kind = v === "auto" ? "" : v;
+            return x;
+          },
+        }),
         r.must ? chip(WingmanI18n.plural(WingmanI18n.lang, "home.mustChip", r.must), "") : null,
         r.files ? chip(WingmanI18n.plural(WingmanI18n.lang, "home.fileChip", r.files), "") : null,
         r.uses ? chip(WingmanI18n.plural(WingmanI18n.lang, "home.usedChip", r.uses), "") : null,
@@ -643,7 +656,15 @@ async function reviewBeforeStart(planId) {
     model = null;
   }
   if (!KN.hasContext(model)) return { go: true, ops: [] };
-  return prestartReview(model);
+  // a recurring meeting (the same company or topic words as an earlier call, but no matching name): offer a short recap of that call. Never added by itself.
+  let recap = null;
+  try {
+    const m = H.plans.find((x) => x.id === planId);
+    if (m) recap = await api.pastRecap({ title: m.title, who: m.who, topic: m.topic, goal: m.goal });
+  } catch {
+    recap = null;
+  }
+  return prestartReview(model, { recap });
 }
 /** The edits made in the review step go to the call as soon as its notes exist (the ids are the ones the notes will get). A refusal is ignored: the line simply stays as the engine has it. */
 function sendReviewOps(m) {
@@ -834,16 +855,31 @@ function livePanel(s) {
   }
   return wrap;
 }
+/** "Ask your past calls": a folded card on the idle Home. It searches the summaries and facts of finished calls on this Mac (no AI needed) and holds the opt-in lookup. */
+function pastCard() {
+  if (!state.calls.length) return null; // nothing to ask before the first call is saved
+  return h(
+    "details",
+    { class: "card-big past-card", id: "past-card" },
+    h("summary", { id: "past-card-h" }, T("past.title")),
+    h("p", { class: "sub" }, T("past.sub")),
+    pastPanel({ id: "past-idle" }),
+  );
+}
 /** One input for the live call with two clear modes: a Note for the AI (background it keeps) or a question for Wingman (it answers in the answer window). The voice way to ask is armed by Ctrl+Opt+A or the button. */
 function composerEl(s) {
   const input = h("input", { type: "text", id: "note-in", maxlength: "300", autocomplete: "off" });
   const go = h("button", { type: "button", class: "btn", id: "note-add" });
   const seg = h("div", { class: "seg composer-mode", role: "group", "aria-label": T("compose.mode") });
+  const pastEl = pastPanel({ id: "past-live" });
+  const noteRow = h("div", { class: "noterow" }, input, go);
   const sync = () => {
     const c = HL.composer(H.compose, T);
     input.placeholder = c.placeholder;
     input.setAttribute("aria-label", c.label);
     go.textContent = c.button;
+    noteRow.hidden = H.compose === "past";
+    pastEl.hidden = H.compose !== "past";
     for (const b of seg.children) b.setAttribute("aria-pressed", b.dataset.m === H.compose ? "true" : "false");
   };
   const send = async () => {
@@ -858,6 +894,7 @@ function composerEl(s) {
   for (const [m, label, icon] of [
     ["note", T("compose.note.label"), "pencil"],
     ["ask", T("compose.ask.label"), "help"],
+    ["past", T("compose.past.label"), "search"],
   ])
     seg.append(
       h(
@@ -869,7 +906,7 @@ function composerEl(s) {
           onclick: () => {
             H.compose = m;
             sync();
-            input.focus();
+            (m === "past" ? $("past-live-in") : input).focus();
           },
         },
         ico(icon),
@@ -894,7 +931,8 @@ function composerEl(s) {
     "div",
     { class: "composer" },
     h("div", { class: "composer-head" }, seg, h("span", { class: "grow" }), h("span", { class: "composer-tools" }, voice, tip(T("compose.tip"), true))),
-    h("div", { class: "noterow" }, input, go),
+    noteRow,
+    pastEl,
     h("div", { id: "ask-status", class: "askstatus", role: "status" }),
     h(
       "p",

@@ -34,6 +34,14 @@ function rules(name, r) {
   if (/^edit-/.test(base) && !r.understood) out.push("the Wingman understood line is not in the context editor");
   if (/^edit-/.test(base) && !r.sources) out.push("the web page and calendar controls are not in the context editor");
   if (/^review-/.test(base) && !r.review) out.push("the Review part of the call page did not draw");
+  if (/^idle-/.test(base) && !(r.modeRows >= 3 && r.modeCustom)) out.push("each prepared meeting needs a mode picker that lists the custom modes");
+  if (/^idle-/.test(base) && !r.pastCard) out.push("the Ask your past calls card is missing on a Home with saved calls");
+  if (/^(live|golden)-/.test(base) && !r.sample && /^golden-/.test(base) && !(r.modeLive && r.modeLiveNote))
+    out.push("the live So far card has no mode picker with its plain line");
+  if (/^review-/.test(base) && !(r.heldList && r.heldItems > 0 && r.heldRate >= 2 * r.heldItems && r.learnReset))
+    out.push("the Review tab lacks the Held back list with ratings or the learning reset button");
+  if (/^trust-/.test(base) && !(r.trustBtns > 0 && r.trustSaw)) out.push("cards have no Show the line / What this card saw buttons, or the panel did not open");
+  if (/^settings-privacy/.test(base) && !(r.pastPeople > 0)) out.push("Settings, Privacy does not list what is remembered about people");
   if (/^keys-/.test(base) && !r.sheet) out.push("the keys sheet did not open");
   if (/^golden-/.test(base) && r.sample) out.push("a Sample badge shows on real (golden) data");
   if (/^(live|golden)-/.test(base) && !r.pills) out.push("the Note / Ask pills were not found");

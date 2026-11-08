@@ -24,7 +24,8 @@ function createV2View(deps) {
     idleBox = document.getElementById("idle"),
     recapBox = document.getElementById("recap"),
     aiBar = document.getElementById("aibar"),
-    aiPill = document.getElementById("aipill");
+    aiPill = document.getElementById("aipill"),
+    kindPill = document.getElementById("kindpill");
 
   const GLYPH = { answer: "✦", prompt: "›", check: "!", fact: "ℹ" };
   const SVGNS = "http://www.w3.org/2000/svg";
@@ -524,6 +525,7 @@ function createV2View(deps) {
 
   // ---- AI state ----
   function drawAi() {
+    drawKindPill();
     aiBar.replaceChildren();
     aiBar.style.display = view.ai === "offline" ? "flex" : "none";
     if (view.ai === "offline") aiBar.append(span("", tr("v2.ai.offline")));
@@ -531,6 +533,18 @@ function createV2View(deps) {
     aiPill.textContent = view.ai === "paused" ? tr("v2.ai.paused") : "";
     document.body.classList.toggle("ai-offline", view.ai === "offline");
     document.body.classList.toggle("ai-paused", view.ai === "paused");
+  }
+
+  // ---- the kind of call (read only; the Wingman window changes it) ----
+  const BUILTIN_KINDS = ["client", "support", "vendor", "team", "consult", "personal", "interview", "other"];
+  /** The pill text for a kind id: a built-in kind in the window language, a custom mode by its own id. */
+  const kindWord = (k) => (BUILTIN_KINDS.includes(k) ? tr("kind." + k) : k);
+  function drawKindPill() {
+    const k = view.kind;
+    kindPill.style.display = k ? "inline-block" : "none";
+    kindPill.textContent = k ? (view.kindLocked ? kindWord(k) : tr("mode.pill.auto", { kind: kindWord(k) })) : "";
+    kindPill.title = k ? tr(view.kindLocked ? "mode.pill.title" : "mode.pill.titleAuto") : "";
+    kindPill.dataset.locked = view.kindLocked ? "1" : "0";
   }
 
   // ---- idle: "What I understand so far" ----
@@ -719,6 +733,8 @@ function createV2View(deps) {
       return view;
     },
     drawIdle,
+    /** A Check is on screen (live): a live nudge waits while it is. */
+    checkLive: () => [...board.cards.values()].some((e) => e.kind === "check" && e.state === "live"),
     toggleRecap,
     requestRecap,
     /** The hotkey: closes the sheet when it is open, else opens it and asks for a fresh recap. */

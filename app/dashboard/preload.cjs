@@ -39,6 +39,21 @@ contextBridge.exposeInMainWorld("wingman", {
   skipSummary: () => ipcRenderer.invoke("call:cmd", "skipSummary"),
   writeSummary: (id) => ipcRenderer.invoke("calls:writeSummary", String(id)),
   stopDelete: () => ipcRenderer.invoke("call:cmd", "stopDelete"),
+  // the call mode: "auto" | a kind | a custom mode id. The running call gets it through the control socket; a prepared meeting stores it.
+  setMode: (kind) => ipcRenderer.invoke("call:cmd", "mode", String(kind)),
+  setPlanKind: (id, kind) => ipcRenderer.invoke("plans:setKind", String(id || ""), String(kind)),
+  modesList: () => ipcRenderer.invoke("modes:list"),
+  // card trust and learning (call review)
+  rateHeld: (id, key, rating) => ipcRenderer.invoke("held:rate", String(id), String(key), rating === null ? null : String(rating)),
+  learnSummary: () => ipcRenderer.invoke("learn:summary"),
+  learnReset: () => ipcRenderer.invoke("learn:reset"),
+  // earlier calls
+  pastSearch: (q) => ipcRenderer.invoke("past:search", String(q)),
+  pastList: () => ipcRenderer.invoke("past:list"),
+  pastForget: (key, callId) => ipcRenderer.invoke("past:forget", String(key), callId ? String(callId) : ""),
+  pastRecap: (m) =>
+    ipcRenderer.invoke("past:recap", { title: String(m && m.title), who: String(m && m.who), topic: String(m && m.topic), goal: String((m && m.goal) || "") }),
+  lookup: (term) => ipcRenderer.invoke("lookup:run", String(term)),
   plansList: () => ipcRenderer.invoke("plans:list"),
   // Only the keys the page gives are sent (a missing key leaves that field as it is). `context` is the pasted Meeting context text.
   savePlan: (d) => {
