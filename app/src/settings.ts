@@ -80,6 +80,7 @@ export const schema = z.strictObject({
     windowSeconds: int(10, 120),
     minValue,
     checkPromises: z.boolean(),
+    earlyStart: z.boolean().default(false),
   }),
   memory: z.strictObject({
     enabled: z.boolean(),

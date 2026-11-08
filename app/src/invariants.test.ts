@@ -298,6 +298,7 @@ test("static: key values can only reach memory; no logging or persistence path t
     "src/call.ts",
     "src/engine/boot.ts",
     "src/gate.ts",
+    "src/stt-gate.ts",
     "src/summary.ts",
     "src/settings-cli.ts",
     "src/providers/llm.ts",

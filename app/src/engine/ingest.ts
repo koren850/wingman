@@ -1,6 +1,6 @@
 // STT results into the call: foreign-script and echo drops, side features, transcript, the per-channel buffer, and flush() into questions ("them") or handleMe ("me").
 import { eventError } from "../errtext.ts";
-import { matchBank, matchBankFor } from "../bank.ts";
+import { matchBank, matchBankFor, matchBankSmart } from "../bank.ts";
 import { evalMath } from "../calc.ts";
 import { checkScript } from "../lang.ts";
 import { detect, addressesYou, isClearQuestion } from "../detector.ts";
@@ -9,7 +9,12 @@ import type { SttResult, Channel, Word } from "../providers/stt/types.ts";
 import { joinSplit, isBareQuestionTail, type PrevUtterance } from "../split.ts";
 import { splitMergedQuestions } from "../multiq.ts";
 import { splitAtQuestionMarks } from "../moments/split.ts";
-import { isAgencyTopic } from "../frame.ts";
+import { isFollowUp } from "../lang/followup.ts";
+import { noteTopicLine } from "./vertical.ts";
+import { floorQuestion, addressedElsewhere } from "../moments/floor.ts";
+import { features as lineFeatures } from "../moments/intake.ts";
+import { nameWords } from "../profile.ts";
+import { normalize } from "../normalize.ts";
 import { S, log, flow, flowOn, transcript, lineOf, notesOn, speakers, attendees, echo, ECHO, sup, bank, interview, UI_LANG } from "./boot.ts";
 import { voiceName, flowEvents } from "./flowmode.ts";
 import { st, mono } from "./state.ts";
@@ -22,7 +27,7 @@ import { ht } from "../htext.ts";
 import { onQuestion, openScope, MAX_PARTS } from "./question.ts";
 import { handleMe } from "./me.ts";
 import { v2Active, currentPause } from "./degrade.ts";
-import { keepFeatures, noteLine, noteMeLine, routeThem, speedOf } from "./moments.ts";
+import { keepFeatures, noteLine, noteMeLine, routeThem, speedOf, speedCtx } from "./moments.ts";
 import type { HintLevel } from "../moments/types.ts";
 
 // Buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer, stt.flushFallbackMs,
@@ -40,7 +45,14 @@ function flush(ch: Channel) {
 }
 function flushCore(ch: Channel) {
   const p = pending[ch];
-  if (!p) return;
+  if (!p) {
+    // The final of an early-started utterance was dropped (foreign script, echo): its early turn must not stay, nor block the next utterance.
+    if (ch === "them") {
+      const ev = takeEarly();
+      if (ev) abortEarly(ev, "final-dropped");
+    }
+    return;
+  }
   clearTimeout(p.timer);
   delete pending[ch];
   const joined: SttResult = { ...p.last, text: p.texts.join(" "), words: p.words, speechFinal: true };
@@ -55,16 +67,21 @@ function flushCore(ch: Channel) {
   }
   if (ch !== "them") return;
   const now = Date.now();
-  if (isAgencyTopic(joined.text)) st.turn.lastAgencyTopicAt = now; // any customer line about sites / hosting keeps short follow-ups on topic
+  noteTopicLine(joined.text, now); // the vertical hook (engine/vertical.ts): a line on the vertical's topic keeps short follow-ups on topic
   const endWall = joined.speechEndWall ?? now;
   // Live reading (the default): the model decides what a line means. No question detector runs; the speed hint reads the shape of the line only.
-  // The detector below runs for the legacy engine and while the AI is paused (no model can read the line, so the old rules decide what may show).
+  // Below: the legacy engine uses the old detector. While the AI is paused (no model can read the line) the floor decides: the shape of the line and the bank
+  // (moments/floor.ts), with the old detector only as a tiebreak hint.
   if (v2Active() && !currentPause()) return flushNeutral(joined, p.spk, endWall);
+  const lingering = takeEarly(); // the AI got paused or the engine is classic: an early turn of this utterance does not stay on screen
+  if (lingering) abortEarly(lingering, "not-live");
   const w = joined.words;
   const startWall = w.length && joined.speechEndWall ? endWall - Math.max(0, (w[w.length - 1].end - w[0].start) * 1000) : now;
   const detectText = (t: string) => {
     const h = interview ? matchBank(t, bank) : matchBankFor(t, bank);
-    return { hit: h, d: detect(t, { bankScore: h?.score ?? 0, stall: !!h && h.card.id.startsWith("stall-") }) };
+    const stall = !!h && h.card.id.startsWith("stall-");
+    const legacy = detect(t, { bankScore: h?.score ?? 0, stall });
+    return { hit: h, d: v2Active() ? floorDetect(t, h, stall, legacy) : legacy };
   };
   let { hit, d } = detectText(joined.text);
   // Interview: a line that matches one of the user's prepared cards is a question even without a question mark ("עבדת פעם עם טלפוניה").
@@ -86,8 +103,6 @@ function flushCore(ch: Channel) {
       d = g.d;
     }
   }
-  const FOLLOW_UP =
-    /^(and\b|so\b|what did\b|how did\b|why\??$|what was\b|what happened\b|what was the (result|outcome)|ו?מה עשית|ו?איך פתרת|ולמה|ומה|ואיך|ומה היה)/i; // openers that continue the last question
   // Interview follow-up: "Tell me about a time X failed." + "What did you do?" a moment later, same voice, is ONE question. Alone the short
   // part has no context, and as a new question it would cancel the answer to the first part.
   const followUp =
@@ -97,7 +112,7 @@ function flushCore(ch: Channel) {
     !!lastThem?.question &&
     startWall - lastThem.at < 3000 &&
     wordCount(joined.text) <= 6 &&
-    FOLLOW_UP.test(joined.text.trim());
+    isFollowUp(joined.text);
   if (followUp) {
     log.write("events", { type: "split.followup", prev: lastThem!.text, text: joined.text });
     joined.text = `${lastThem!.text} ${joined.text}`;
@@ -139,10 +154,37 @@ function flushCore(ch: Channel) {
   }
 }
 
+/** The paused-AI decision for a line (the floor): shape + bank, the legacy detector `legacy` only as a tiebreak. Same result shape as detect(). */
+function floorDetect(text: string, hit: ReturnType<typeof matchBank>, stall: boolean, legacy: ReturnType<typeof detect>): ReturnType<typeof detect> {
+  const f = lineFeatures({ text, side: "them", at: Date.now() });
+  const level: HintLevel = legacy.isQuestion ? (isClearQuestion(text, legacy.reason) ? "strong" : "weak") : "none";
+  const others = st.m.mem.roster.filter((p) => p.side !== "me").map((p) => p.name);
+  const me = [...nameWords(), ...st.m.mem.roster.filter((p) => p.side === "me").map((p) => p.name)];
+  const r = floorQuestion(f, {
+    addressed: speedCtx(text).addressed,
+    elsewhere: addressedElsewhere(text, others, me),
+    bankScore: hit?.score ?? 0,
+    stall,
+    scorer: !hit && !!matchBankSmart(text, bank).hit,
+    hint: level,
+  });
+  return { isQuestion: r.isQuestion, reason: r.via === "hint" ? legacy.reason : r.reason };
+}
+
 /** A finished line from the other side on the live-reading engine: intake, the language-neutral speed hint, then the direct path (fast) or the observer window (normal). */
 function flushNeutral(joined: SttResult, spk: number | undefined, endWall: number) {
+  const ev = takeEarly();
   const f = keepFeatures("them", joined.text, endWall, spk !== undefined ? `s${spk}` : undefined);
+  const same = !!ev && normalize(joined.text) === ev.key;
+  if (ev && !(same && f)) abortEarly(ev, f ? "text-changed" : "line-dropped");
   if (!f) return;
+  if (ev && same) {
+    // The early turn is already running on this very text: the final does not start a second one. The observer keeps the line for the "question, then silence" look.
+    log.write("events", { type: "early.dedupe", text: joined.text.slice(0, 80) });
+    lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: endWall, question: true, spk };
+    noteLine({ text: joined.text, at: endWall, hint: "none", features: f, asked: true });
+    return;
+  }
   const sp = speedOf(f, joined.text);
   const fast = sp.speed === "fast";
   lastThem = { text: joined.text.split(/\s+/).slice(-30).join(" "), at: endWall, question: fast, spk };
@@ -166,6 +208,65 @@ function flushNeutral(joined: SttResult, spk: number | undefined, endWall: numbe
   const started = sup.caps.detect ? onQuestion(joined, reason) : false;
   // Started: the observer only keeps the line for the "question, then 2 s of silence" look. Not started (the old filters skipped it): the observer reads it.
   noteLine({ text: joined.text, at: endWall, hint: started ? "none" : "weak", features: f, ...(started ? { asked: true } : {}) });
+}
+
+// ---- Early start (moments.earlyStart, default off) ----
+// A partial result of the other side that stops changing, and that the language-neutral speed hint calls fast, starts the direct path before the final arrives:
+// after 300 ms when it ends in a "?", after a 600 ms pause otherwise. One early start per utterance (a flapping partial never starts twice). The final then
+// either has the same text (deduped, no second call) or a different one (the early turn is aborted and the final runs the normal way).
+export const EARLY_STABLE_MS = 300;
+export const EARLY_PAUSE_MS = 600;
+type Early = { text: string; timer?: NodeJS.Timeout; startedAt?: number; started?: { key: string; ac: AbortController | undefined } };
+/** An early start whose final never came (lost, or never flushed) is forgotten after this long, so the next utterance can start early. */
+const EARLY_STALE_MS = 15_000;
+let early: Early = { text: "" };
+/** The early turn of this utterance (if one started), and a clean slate for the next one. */
+function takeEarly(): { key: string; ac: AbortController | undefined } | undefined {
+  clearTimeout(early.timer);
+  const s = early.started;
+  early = { text: "" };
+  return s;
+}
+function abortEarly(ev: { key: string; ac: AbortController | undefined }, why: string) {
+  if (ev.ac && st.turn.current === ev.ac) {
+    ev.ac.abort();
+    st.turn.current = undefined;
+  }
+  log.write("events", { type: "early.abort", why });
+}
+function earlyPartial(r: SttResult) {
+  if (!S.moments.earlyStart || r.channel !== "them" || !r.text || !v2Active() || currentPause()) return;
+  if (st.call.shuttingDown || !st.call.consented || !sup.caps.detect) return;
+  const text = r.text.trim();
+  const key = normalize(text);
+  if (early.started && early.startedAt !== undefined && Date.now() - early.startedAt > EARLY_STALE_MS) takeEarly();
+  if (key === early.text) return; // the same text again: the timer of its first sighting keeps running
+  clearTimeout(early.timer);
+  early.text = key;
+  if (early.started || !key) return; // one early start per utterance
+  const f = lineFeatures({ text, side: "them", at: Date.now() });
+  if (f.words < 2 || speedOf(f, text).speed !== "fast" || splitAtQuestionMarks(text, MAX_PARTS).length > 1) return; // several marked questions wait for the final (one card each)
+  early.timer = setTimeout(
+    () => {
+      try {
+        startEarly(r, text, key, f.endsWithQuestion);
+      } catch (e) {
+        survived("early.start", e);
+      }
+    },
+    f.endsWithQuestion ? EARLY_STABLE_MS : EARLY_PAUSE_MS,
+  );
+}
+function startEarly(r: SttResult, text: string, key: string, marked: boolean) {
+  if (early.text !== key || early.started || st.call.shuttingDown || currentPause()) return;
+  if (routeThem("strong").route !== "direct") return;
+  const now = Date.now();
+  const res: SttResult = { ...r, text, isFinal: true, speechFinal: true, arrivedAt: now, speechEndWall: now };
+  log.write("events", { type: "detect", text, isQuestion: true, reason: marked ? "question-mark" : "speed-hint", via: "early-start" });
+  if (onQuestion(res, marked ? "question-mark" : "speed-hint")) {
+    early.started = { key, ac: st.turn.current };
+    early.startedAt = Date.now();
+  }
 }
 
 // Words while they are spoken: interim STT text goes to live.jsonl (at most 4 rows a second per channel) for the answer window's
@@ -202,6 +303,7 @@ function watchLanguage(r: SttResult) {
 function onResultCore(r: SttResult) {
   if (!r.isFinal) {
     livePartial(r);
+    earlyPartial(r);
     return;
   }
   watchLanguage(r);
@@ -259,6 +361,25 @@ function bookLate(r: SttResult) {
     ...(who ? { spk: who.spk, ...(who.name ? { name: who.name } : {}) } : {}),
   });
 }
+/** Longest final text the engine reads. */
+export const MAX_FINAL_CHARS = 2000;
+/** A final over MAX_FINAL_CHARS keeps its newest words: the text starts at a word boundary and the word list is cut the same way (same words, same order), so the
+ *  speaker book and the speech end time still read the words that are in the text. */
+export function capFinal(r: SttResult): SttResult {
+  if (r.text.length <= MAX_FINAL_CHARS) return r;
+  let text = r.text.slice(-MAX_FINAL_CHARS);
+  const sp = /\s/u.exec(text);
+  if (sp && r.text[r.text.length - MAX_FINAL_CHARS - 1] !== " " && sp.index < 60) text = text.slice(sp.index + 1); // do not start in the middle of a word
+  text = text.trim();
+  let used = 0;
+  let n = 0;
+  for (let i = r.words.length - 1; i >= 0; i--) {
+    used += r.words[i].word.length + (n ? 1 : 0);
+    if (used > text.length) break;
+    n++;
+  }
+  return { ...r, text, words: n ? r.words.slice(-n) : [] };
+}
 /** Takes a final into the call: echo drop, side features (capture, facts, notes), transcript, then buffers it for flush(). */
 function acceptResult(r: SttResult, checkEcho: boolean) {
   try {
@@ -272,7 +393,7 @@ export function acceptLate(r: SttResult, checkEcho: boolean) {
 }
 function acceptResultCore(r: SttResult, checkEcho: boolean) {
   if (st.call.shuttingDown && !st.call.closing) return;
-  if (r.text.length > 2000) r = { ...r, text: r.text.slice(-2000) }; // a runaway final must not stall the regex/matching
+  r = capFinal(r); // a runaway final must not stall the regex/matching
   if (checkEcho) {
     const e = echo.isEcho(r.text);
     if (e.echo) {

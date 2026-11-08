@@ -1,3 +1,4 @@
+// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see r3-moments-floor.test.ts for the floor.
 // matchBankFor remembers recent answers; the answer must not change, and a different bank or language must not reuse a stale one.
 import "./test-setup.ts";
 import { test } from "node:test";

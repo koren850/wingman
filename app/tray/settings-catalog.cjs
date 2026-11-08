@@ -117,6 +117,14 @@ const ITEMS = [
     ],
   },
   {
+    key: "moments.earlyStart",
+    advanced: true,
+    group: "answers",
+    label: "Start early on a stable question",
+    kind: "bool",
+    help: "Off by default. On: a question from the other side starts the AI when the live text stops changing, before the end mark. The card can come about half a second sooner, with a few extra AI calls. Takes effect on the next call.",
+  },
+  {
     key: "memory.enabled",
     group: "answers",
     label: "Keep a memory of the call",

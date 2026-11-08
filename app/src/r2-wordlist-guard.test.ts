@@ -72,7 +72,6 @@ const LEGACY: Record<string, number> = {
   "echo.ts": 1,
   // cards-v2.ts and observer.ts: string-literal union types (CardBadge, Trigger, ...), not word lists
   "engine/cards-v2.ts": 1,
-  "engine/ingest.ts": 1,
   "engine/question.ts": 1,
   "entities.ts": 3,
   "frame.ts": 2,

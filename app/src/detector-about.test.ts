@@ -1,3 +1,4 @@
+// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see r3-moments-floor.test.ts for the floor.
 // "What about X" questions after a lead-in, as real STT writes them (no "?").
 import "./test-setup.ts";
 import { test } from "node:test";

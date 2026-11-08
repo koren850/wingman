@@ -1,3 +1,4 @@
+// hint tests, in-sample, not product truth: these check the frozen word-list hint (detector.ts, bank.ts). The product decides with the model; see r3-moments-floor.test.ts for the floor.
 // Tests for the golden meetings and their grader (qa/grade-golden.ts, qa/golden-*.ts). No model, no network.
 // Structure checks read the test split as raw files (counts, schema, lock). Nothing here scores an engine on it: only `pnpm eval --final` does.
 import "./test-setup.ts";

@@ -54,6 +54,15 @@ export const BANK_PARAPHRASE_CASES: [string, string][] = [
   ["אנשים משאירים פרטים באתר ולא מקבלים כלום במייל", "forms-not-arriving"],
   ["הטופס באתר לא נשלח אלי למייל", "forms-not-arriving"],
   ["לא מגיעות אלי הודעות מטופס יצירת הקשר", "forms-not-arriving"],
+  // Round 12, r3: more paraphrases (Hebrew with glued prefixes, and English questions against Hebrew cards that have an English version).
+  ["אנשים ממלאים טופס באתר ושום דבר לא מגיע לתיבה שלי", "forms-not-arriving"],
+  ["המיילים שלנו מסומנים כזבל אצל הלקוחות", "email-spam"],
+];
+// Cross-language: an English question, a card written in Hebrew. The scorer reads the card's English version too. Top 3, then the model picks.
+export const BANK_CROSS_CASES: [string, string][] = [
+  ["the browser warns that the connection is not secure", "ssl-basics"],
+  ["visitors send a message through the site but nothing arrives in my mailbox", "forms-not-arriving"],
+  ["can you restore an older copy of the website", "backups"],
 ];
 // Sentences that no bank card answers. The scorer must not turn them into a card.
 export const BANK_NEGATIVE_CASES: string[] = [

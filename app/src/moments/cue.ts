@@ -2,7 +2,7 @@
 // character 3-grams of the user's own prepared cards (bank-score.ts) and of the objections raised earlier in this call (the call memory). There is no word
 // list: an "objection-like" line is one that shares most of its 3-grams with a card the user wrote, or with an objection that is still open. A line with a
 // figure, or one that says the user's name, also counts. The score only decides WHEN the model looks; the model decides whether anything is shown.
-import { grams, topCandidates } from "../bank-score.ts";
+import { grams, stem, topCandidates, wordTokens } from "../bank-score.ts";
 import type { BankCard } from "../bank.ts";
 import type { TurnFeatures } from "./intake.ts";
 
@@ -20,7 +20,20 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return both / (a.size + b.size - both);
 }
 
+/** The line's word tokens, with a glued Hebrew prefix stripped when the rest is a word of `vocab` (the line's own words and the earlier line's). */
+function wordSet(text: string, vocab: ReadonlySet<string>): Set<string> {
+  return new Set(wordTokens(text).map((w) => stem(w, vocab)));
+}
+/** "The same objection again": the better of the 3-gram overlap (spelling noise) and the word overlap (prefixes handled). */
+function likeness(a: string, b: string, extra?: Iterable<string>): number {
+  const g = jaccard(new Set(grams(a)), new Set(grams(b)));
+  const vocab = new Set([...wordTokens(a), ...wordTokens(b), ...(extra ?? [])]);
+  return Math.max(g, jaccard(wordSet(a, vocab), wordSet(b, vocab)));
+}
+
 export type CueCtx = {
+  /** Words of the call memory and the roster: a Hebrew prefix is stripped when the rest is one of them. */
+  vocab?: Iterable<string>;
   /** The user's name was said in this line. */
   named?: boolean;
   /** Texts of objections raised earlier in the call that are still open (call memory). */
@@ -34,10 +47,9 @@ export function localCue(text: string, f: TurnFeatures, bank: BankCard[], ctx: C
   if (ctx.named && f.words >= 1) return "named";
   const g = grams(text);
   if (g.length >= MIN_GRAMS) {
-    const top = topCandidates(text, 1, bank)[0];
+    const top = topCandidates(text, 1, bank, ctx.vocab ? { vocab: ctx.vocab } : {})[0];
     if (top && top.coverage >= CUE_COVERAGE) return "objection";
-    const mine = new Set(g);
-    if (ctx.openObjections?.some((o) => jaccard(mine, new Set(grams(o))) >= CUE_REPEAT)) return "repeat";
+    if (ctx.openObjections?.some((o) => likeness(text, o, ctx.vocab) >= CUE_REPEAT)) return "repeat";
   }
   return undefined;
 }
