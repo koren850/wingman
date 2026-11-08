@@ -257,7 +257,15 @@ export async function runMeeting(id: string, o: WorkerOptions = {}, timeoutMs = 
   const out = join(tmp, "out.json");
   const p = spawn(...tsx([join(ROOT, "src", "e2e", "v2-worker.ts")]), {
     cwd: ROOT,
-    env: { ...process.env, V2_MEETING: id, V2_OUT: out, V2_OPTS: JSON.stringify(o), WINGMAN_DATA_DIR: join(tmp, "data") },
+    env: {
+      DEEPGRAM_API_KEY: "test-placeholder-key",
+      ANTHROPIC_API_KEY: "test-placeholder-key",
+      ...process.env,
+      V2_MEETING: id,
+      V2_OUT: out,
+      V2_OPTS: JSON.stringify(o),
+      WINGMAN_DATA_DIR: join(tmp, "data"),
+    },
   });
   let log = "";
   p.stdout.on("data", (b) => (log += b));

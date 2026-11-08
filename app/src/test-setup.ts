@@ -14,3 +14,5 @@ if (!underTmp(process.env.WINGMAN_DATA_DIR)) process.env.WINGMAN_DATA_DIR = fres
 // The user settings file is a fresh path too (it may not exist yet), so the caller's ~/.config settings never leak in.
 process.env.WINGMAN_USER_SETTINGS = join(fresh("wingman-test-settings-"), "settings.yaml");
 process.env.WINGMAN_PACK_DIR = join(APP_DIR, "data", "test", "no-pack"); // does not exist: the pack falls back to data/example-pack
+// Placeholder keys so the subprocess tests never need (or read) a real key. They only fill gaps: the model and the speech source are fakes in tests.
+for (const v of ["DEEPGRAM_API_KEY", "ANTHROPIC_API_KEY"]) process.env[v] ||= "test-placeholder-key";
