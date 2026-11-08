@@ -28,6 +28,7 @@ const H = {
   prepNote: "",
   knows: undefined, // the live "What Wingman knows" model: undefined = not asked yet, null = nothing to show
   kai: "ok", // the engine's AI state for the notes: ok | paused | offline
+  knowsView: "folded", // the live knowledge panel: folded | read | edit
   kPending: null, // a newer model that arrived while a line was being edited (shown when the edit ends)
   compose: "note",
   autoChecked: false,
@@ -77,6 +78,7 @@ function onCallState(s) {
     H.knows = undefined; // and what Wingman knows is asked for again
     H.kai = "ok";
     H.kPending = null;
+    H.knowsView = "folded";
   }
   H.stopAt = s.running && s.phase === "stopping" ? H.stopAt || Date.now() : 0;
   if (was && !s.running)
@@ -211,6 +213,8 @@ async function viewHome(focus) {
       f.scrollIntoView({ block: "center" });
       f.focus({ preventScroll: true });
     }
+  } else if (focus === "keys") {
+    openKeysSheet(); // screenshot aid and the "Add keys" link from the tray
   } else if (focus === "edit" && H.plans.length)
     openEditor(H.plans[0].id); // screenshot aid: the first meeting's editor
   else focusTop();
@@ -226,6 +230,8 @@ function renderSide() {
   keepFocus(() => {
     side.textContent = "";
     slot.textContent = "";
+    const homeEl = document.querySelector(".home");
+    if (homeEl) homeEl.classList.toggle("idle", !isRunning());
     if (isRunning()) {
       const onKnows = (m, focusId, op) => {
         H.knows = m;
@@ -237,14 +243,39 @@ function renderSide() {
           f.focus();
         }
       };
-      side.append(soFarCard(H.knows, H.kai), knowsPanel(H.knows, { id: "knows-live", onChange: onKnows, ai: H.kai }), liveFeedPanel());
+      // Glanceable order: the newest card, "So far", then What Wingman knows (folded; Show or Edit opens it), then the conversation.
+      const onView = (v) => {
+        H.knowsView = v;
+        renderSide();
+        const f = $("knows-live-" + (v === "folded" ? "show" : v === "edit" ? "done" : "edit"));
+        if (f) f.focus();
+      };
+      side.append(
+        latestCardPanel(),
+        soFarCard(H.knows, H.kai),
+        knowsPanel(H.knows, { id: "knows-live", onChange: onKnows, ai: H.kai, view: H.knowsView, onView }),
+        liveFeedPanel(),
+      );
       if (H.knows === undefined) loadKnows();
       return;
     }
     // Before a call, Home reads as a sequence: 1 Readiness check, 2 Start (a quick call, or one of the prepared meetings). The Plan editor opens above when it is in use.
+    // Idle Home is one calm column: set up (only until it is done), Start (the one primary button), the readiness line, then what is waiting.
     const sc = setupCard();
-    slot.append(h("div", { class: "hcol seqcol" }, sc, editorCard(), readinessCard(), idleCard()));
-    side.append(waitingCard());
+    const d0 = doc();
+    const problems = !!d0 && !d0.ok && !checking(); // a failed readiness check goes first: its Fix it buttons are what the user needs
+    slot.append(
+      h(
+        "div",
+        { class: "hcol seqcol" },
+        ...(problems ? [readinessCard()] : []),
+        editorCard(),
+        idleCard(),
+        sc,
+        ...(problems ? [] : [readinessCard()]),
+        waitingCard(),
+      ),
+    );
   });
 }
 /** Asks the main process for the live "What Wingman knows" model (the call memory; a fixture in previews). Later changes arrive by themselves with the live feed (knowsPush). */
@@ -362,14 +393,14 @@ const stepHead = (n, id, title, why, ...rest) =>
   h(
     "div",
     { class: "rhead" },
-    h("span", { class: "stepn", "aria-hidden": "true" }, String(n)),
+    n ? h("span", { class: "stepn", "aria-hidden": "true" }, String(n)) : null,
     h("h2", { id }, title),
     why ? tip(why) : null,
-    curStep() === n ? chip(T("step.next"), "warn") : null,
+    n && curStep() === n ? chip(T("step.next"), "warn") : null,
     ...rest,
   );
 
-/** Step 2: the Start card. Two clear paths: Quick call (no Plan) and the Prepared meetings list (pick one). Practice and the AI-mode line sit below. */
+/** The Start card: one primary button (Start a call), the keys line when keys are missing, the prepared meetings, and the other ways to start folded below. */
 function idleCard() {
   const now = Date.now(),
     paths = HL.startPaths(H.plans, now, T, WingmanI18n.lang);
@@ -410,7 +441,7 @@ function idleCard() {
       h(
         "div",
         { class: "pm-act" },
-        btn(T("home.start"), { id: "pm-start-" + r.id, cls: "primary sm", aria: r.startLabel, onclick: () => startFlow({ planId: r.id }) }),
+        btn(T("home.start"), { id: "pm-start-" + r.id, cls: "sm", aria: r.startLabel, onclick: () => startFlow({ planId: r.id }) }),
         btn("", {
           id: "pm-edit-" + r.id,
           icon: "pencil",
@@ -435,15 +466,25 @@ function idleCard() {
         { class: "nextbar", id: "next-meeting", role: "group", "aria-label": T("home.nextGroup") },
         ico("clock"),
         h("div", { class: "grow" }, h("b", { ...nm(paths.next) }, HL.nextText(paths.next, T))),
-        btn(T("home.start"), { id: "next-start", cls: "primary", aria: paths.next.startLabel, onclick: () => startFlow({ planId: paths.next.id }) }),
+        btn(T("home.start"), { id: "next-start", cls: "", aria: paths.next.startLabel, onclick: () => startFlow({ planId: paths.next.id }) }),
       )
     : null;
+  const missing = keysMissing();
   return h(
     "section",
-    { class: "card-big startcard " + seqCls(2), "aria-labelledby": "start-h" },
-    stepHead(2, "start-h", T("home.start"), T("home.startTip")),
+    { class: "card-big startcard", "aria-labelledby": "start-h" },
+    h("div", { class: "rhead" }, h("h2", { id: "start-h" }, T("home.start")), tip(T("home.startTip"))),
+    h("p", { class: "briefnote faint" }, T("home.quickNote")),
+    quick,
     nextBar,
-    h("div", { class: "path" }, h("h3", {}, T("home.quickCall")), h("p", { class: "briefnote faint" }, T("home.quickNote")), quick),
+    missing.length
+      ? h(
+          "div",
+          { class: "keysline", id: "keys-line" },
+          btn(T("keys.add"), { id: "add-keys", icon: "key", onclick: () => openKeysSheet() }),
+          h("p", { class: "faint" }, T("keys.addWhy")),
+        )
+      : null,
     h("div", { id: "start-gate" }),
     H.ai
       ? h(
@@ -470,12 +511,27 @@ function idleCard() {
         ? h("ul", { class: "pmlist", "aria-labelledby": "pm-h" }, paths.rows.map(row))
         : h("p", { class: "briefnote faint", id: "pm-empty" }, T("home.noMeetings")),
     ),
-    h("p", { class: "briefnote faint" }, T("home.listenHint1"), h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "A"), T("home.listenHint2")),
     h(
-      "div",
-      { class: "startmore" },
-      h("div", { class: "opt" }, noAi, h("p", {}, T("home.noAiNote"))),
-      h("div", { class: "opt" }, prac, h("p", {}, target ? T("home.practiceNoteWith") : T("home.practiceNote"))),
+      "details",
+      { class: "moreways", id: "more-ways" },
+      h("summary", {}, T("home.moreWays")),
+      h(
+        "div",
+        { class: "startmore" },
+        h("div", { class: "opt" }, noAi, h("p", {}, T("home.noAiNote"))),
+        h("div", { class: "opt" }, prac, h("p", {}, target ? T("home.practiceNoteWith") : T("home.practiceNote"))),
+      ),
+      h(
+        "p",
+        { class: "briefnote faint" },
+        T("home.listenHint1"),
+        h("kbd", {}, "Ctrl"),
+        " ",
+        h("kbd", {}, "Opt"),
+        " ",
+        h("kbd", {}, "A"),
+        T("home.listenHint2"),
+      ),
     ),
   );
 }
@@ -797,7 +853,7 @@ function composerEl(s) {
   return h(
     "div",
     { class: "composer" },
-    h("div", { class: "composer-head" }, seg, h("span", { class: "grow" }), voice, tip(T("compose.tip"), true)),
+    h("div", { class: "composer-head" }, seg, h("span", { class: "grow" }), h("span", { class: "composer-tools" }, voice, tip(T("compose.tip"), true))),
     h("div", { class: "noterow" }, input, go),
     h("div", { id: "ask-status", class: "askstatus", role: "status" }),
     h(
@@ -807,10 +863,18 @@ function composerEl(s) {
       h(
         "span",
         { class: "keyhint" },
-        h("span", { class: "kbs" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "N")),
-        T("compose.keyNote"),
-        h("span", { class: "kbs" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "A")),
-        T("compose.keyAsk"),
+        h(
+          "span",
+          { class: "kh" },
+          h("span", { class: "kbs" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "N")),
+          h("span", {}, T("compose.keyNote")),
+        ),
+        h(
+          "span",
+          { class: "kh" },
+          h("span", { class: "kbs" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "A")),
+          h("span", {}, T("compose.keyAsk")),
+        ),
       ),
     ),
   );
@@ -986,12 +1050,12 @@ const niceFix = HL.niceFix,
 /** One list style for readiness problems (card, Start warning). Only the status icon is red or amber; the words stay neutral. */
 /** The one button under a readiness problem: from the errors table (keys, permissions, ...), or the Keys link for a key problem. */
 function issueButton(x) {
-  const e = WingmanErrors.classify(String(x.text || "") + " " + String(x.fix || ""));
-  if (e.code === "generic")
-    return keyRelated(x) ? h("button", { type: "button", class: "linkbtn fixlink", onclick: () => viewSettings("keys") }, T("ready.openKeys")) : null;
-  const d = WingmanErrors.describe(T, e.code);
-  if (d.action === "check" || d.action === "dismiss") return null; // the card already has the Re-check button
-  return h("button", { type: "button", class: "linkbtn fixlink", "data-code": e.code, onclick: () => performErrorAction(d.action, {}) }, d.btn);
+  const raw = String(x.text || "") + " " + String(x.fix || "");
+  let code = WingmanErrors.classify(raw).code;
+  if (code === "generic" && keyRelated(x)) code = "key-deepgram"; // a key problem the table has no pattern for
+  const f = WingmanErrors.fixOf(code);
+  if (!f.action && !f.reason) return null;
+  return h("div", { class: "fixrow" }, fixControl(code, {}));
 }
 function issueList(list) {
   return h(
@@ -1011,7 +1075,28 @@ function readinessCard() {
   const d = doc(),
     running = checking();
   const quick = !!d && d.at === H.quickAt;
-  const sec = h("section", { class: "card-big ready " + seqCls(1), "aria-labelledby": "ready-h", id: "ready-card" });
+  const sec = h("section", { class: "card-big ready", "aria-labelledby": "ready-h", id: "ready-card" });
+  if (d && d.ok && !d.warnings.length && !running) {
+    // Everything works: one quiet line with a re-check button instead of a card.
+    sec.classList.add("ready-small");
+    sec.append(
+      h(
+        "div",
+        { class: "ready-ok" },
+        h("h2", { id: "ready-h", class: "sr" }, T("ready.title")),
+        chip(T("ready.ready"), "good", { dot: true }),
+        h("p", { class: "sub" }, T("ready.okLine", { when: ago(d.at) })),
+        h("span", { class: "grow" }),
+        h(
+          "button",
+          { type: "button", class: "btn sm ghost", id: "recheck", onclick: () => runCheck(false) },
+          ico("refresh"),
+          h("span", {}, quick ? T("ready.full") : T("ready.recheck")),
+        ),
+      ),
+    );
+    return sec;
+  }
   const verdict = running
     ? chip(T("ready.checking"), "warn", { dot: true })
     : !d
@@ -1021,7 +1106,7 @@ function readinessCard() {
         : chip(d.verdict === "BUSY" ? T("ready.busy") : T("ready.notReady"), d.verdict === "BUSY" ? "warn" : "bad", { dot: true });
   sec.append(
     stepHead(
-      1,
+      0,
       "ready-h",
       T("ready.title"),
       T("ready.tip"),
@@ -1094,8 +1179,8 @@ function autoCheck() {
 /* ---------- Waiting for you ---------- */
 /** Up to five saved calls with cards to rate or a summary to send. */
 function waitingCard() {
-  const todo = state.calls.filter((c) => !c.crashed && (pendingOf(c) > 0 || c.hasSummary)).slice(0, 5);
-  const sec = h("section", { class: "card-big waiting", "aria-labelledby": "wait-h" });
+  const todo = HL.waitingCalls(state.calls, Date.now(), pendingOf);
+  const sec = h("section", { class: "card-big waiting", "aria-labelledby": "wait-h", id: "waiting" });
   sec.append(
     h(
       "div",
@@ -1113,15 +1198,16 @@ function waitingCard() {
       }),
     ),
   );
-  if (!todo.length) {
+  if (!todo.rows.length) {
     sec.append(h("p", { class: "sub" }, state.calls.length ? T("wait.caughtUp") : T("wait.first")));
     return sec;
   }
+  if (todo.rows.some((c) => pendingOf(c) > 0)) sec.append(h("p", { class: "sub rate-benefit", id: "rate-benefit" }, T("wait.benefit")));
   sec.append(
     h(
       "ul",
       { class: "waitlist" },
-      todo.map((c) => {
+      todo.rows.map((c) => {
         const p = pendingOf(c),
           go = (o) => openCall(c.id, o);
         const tab = c.mode === "live" && p ? "rate" : c.hasSummary ? "followup" : "rate";
@@ -1157,6 +1243,7 @@ function waitingCard() {
       }),
     ),
   );
+  if (todo.more > 0) sec.append(h("p", { class: "sub" }, T("wait.more", { n: todo.more })));
   return sec;
 }
 

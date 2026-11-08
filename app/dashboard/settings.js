@@ -4,19 +4,9 @@
 // Also the Keys section (write-only API key entry, see keys-ipc.cjs) and the read-only Advanced list. Loaded after home.js; viewSettings is called from boot.js.
 
 // SET: settings state (data from main, in-flight keys, per-row errors, "Saved" timestamps). Rows are drawn from the catalog sent by main, not hard-coded.
-const SET = { data: null, busy: new Set(), errors: {}, savedAt: {}, tuneOpen: false, advOpen: false };
+const SET = { query: "", data: null, busy: new Set(), errors: {}, savedAt: {}, tuneOpen: false, advOpen: false };
 // The few choices shown by default (catalog items marked main), in this order. The microphone row sits after the spend cap.
-const MAIN_ORDER = [
-  "stt.language",
-  "privacy.requireConsentAck",
-  "cards.quiet",
-  "run.noAi",
-  "summary.enabled",
-  "budget.maxUsdPerCall",
-  "@mic",
-  "overlay.display",
-  "ui.language",
-];
+const MAIN_ORDER = window.WingmanSettings.MAIN_ORDER;
 
 /** Draw Settings. focus: "advanced" opens the debug list, "keys" jumps to the first key field. */
 async function viewSettings(focus) {
@@ -57,6 +47,12 @@ async function viewSettings(focus) {
       d.scrollIntoView({ block: "start" });
       loadAdvanced();
     }
+  } else if (focus === "mic") {
+    const m = $("set-audio-mic-device");
+    if (m) {
+      m.scrollIntoView({ block: "center" });
+      m.focus({ preventScroll: true });
+    } else focusTop();
   } else if (focus === "keys") {
     const k = $("key-deepgram") || $("g-keys");
     if (k) {
@@ -93,6 +89,39 @@ function windowLanguageBlock() {
   );
 }
 
+/** The search box at the top of Settings. Typing redraws the page (focus and caret stay in the box). */
+function searchBlock() {
+  const inp = h("input", {
+    type: "search",
+    id: "set-search",
+    autocomplete: "off",
+    value: SET.query,
+    placeholder: T("set.search.placeholder"),
+    "aria-label": T("set.search.label"),
+  });
+  inp.addEventListener("input", () => {
+    SET.query = inp.value;
+    drawSettings();
+  });
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && SET.query) {
+      e.preventDefault();
+      SET.query = "";
+      drawSettings();
+    }
+  });
+  return h("div", { class: "setsearch", role: "search" }, inp);
+}
+/** Entries that match the search text: label and help in the window language, the catalog text, and the key. */
+function SS_search(r) {
+  return window.WingmanSettings.search(
+    r.items,
+    SET.query,
+    (i) => SL(i, "label") || i.label,
+    (i) => SL(i, "help") || i.help,
+  );
+}
+
 // Redraw everything but keep keyboard focus (focus is matched by id / data-fk).
 function drawSettings() {
   const body = $("set-body");
@@ -121,6 +150,7 @@ function drawSettingsBody(body) {
     body.append(advancedBlock());
     return;
   }
+  const SS = window.WingmanSettings;
   const main = h("div", { class: "setmain" }),
     jump = []; // jump: [element id, title] for the "On this page" list
   main.append(
@@ -145,10 +175,27 @@ function drawSettingsBody(body) {
       ),
     ),
   );
+  main.append(searchBlock(r));
+  if (SET.query.trim()) {
+    // A search is on: only the matching settings (advanced ones too), each with its normal control.
+    const found = SS_search(r);
+    main.append(
+      h(
+        "section",
+        { class: "setgroup setresults", "aria-labelledby": "g-found", id: "set-results" },
+        h("h2", { id: "g-found", class: "label", tabindex: "-1" }, T("set.search.results", { n: found.length })),
+        found.length ? h("div", { class: "setlist" }, found.map(settingRow)) : h("p", { class: "sub", id: "set-none" }, T("set.search.none")),
+      ),
+    );
+    body.append(main);
+    return;
+  }
   main.append(windowLanguageBlock());
   main.append(keysBlock(r));
   jump.push(["g-keys", "Keys"]); // keys first: nothing works without them
-  const rows = MAIN_ORDER.map((k) => (k === "@mic" ? micRow() : settingRowFor(r, k))).filter(Boolean);
+  const rows = SS.normalKeys(r.items, MAIN_ORDER)
+    .map((k) => (k === "@mic" ? micRow() : settingRowFor(r, k)))
+    .filter(Boolean);
   main.append(
     h(
       "section",
@@ -383,8 +430,8 @@ const reset = (i) => save(i, null);
 // The typed value is read from the input once, the input is cleared at once, and it is never kept in state, storage or attributes.
 const KEYS = { data: null, busy: new Set(), msg: {} };
 const KEY_NAMES = {
-  deepgram: ["Deepgram", "Turns the call audio into text. Without it nothing is transcribed."],
-  anthropic: ["Anthropic", "Writes AI answers and the summary. Without it only Prepared cards work."],
+  deepgram: ["Deepgram", () => T("key.what.deepgram")],
+  anthropic: ["Anthropic", () => T("key.what.anthropic")],
 };
 async function loadKeyState() {
   let r;
@@ -397,11 +444,11 @@ async function loadKeyState() {
   if (state.view === "settings") drawSettings();
 }
 function keyStatusChip(st) {
-  if (!st || st.source === "missing") return chip("Missing", "bad", { dot: true });
+  if (!st || st.source === "missing") return chip(T("key.missing"), "bad", { dot: true });
   const tail = "\u2026" + st.last4;
-  if (st.source === "keychain") return chip("Saved in Keychain \u00b7 " + tail, "good", { dot: true });
-  if (st.source === "file") return chip("In file \u00b7 " + tail, "warn", { dot: true });
-  return chip("From environment \u00b7 " + tail, "", { dot: true });
+  if (st.source === "keychain") return chip(T("key.keychain") + " \u00b7 " + tail, "good", { dot: true });
+  if (st.source === "file") return chip(T("key.file") + " \u00b7 " + tail, "warn", { dot: true });
+  return chip(T("key.env") + " \u00b7 " + tail, "", { dot: true });
 }
 /** Run a key action (set, test, remove, migrate) with a busy flag and a message line. The result carries status only; a key value is never part of it. */
 async function keyAct(provider, fn, okMsg) {
@@ -409,6 +456,7 @@ async function keyAct(provider, fn, okMsg) {
   KEYS.busy.add(provider);
   KEYS.msg[provider] = null;
   drawSettings();
+  redrawKeySheet();
   let r;
   try {
     r = await fn();
@@ -421,17 +469,18 @@ async function keyAct(provider, fn, okMsg) {
   if (KEYS.msg[provider]) (KEYS.msg[provider].ok ? announce : fail)(KEY_NAMES[provider][0] + ": " + KEYS.msg[provider].text);
   if (KEYS.data) H.keys = KEYS.data; // the guided setup on Home reads H.keys
   drawSettings();
+  redrawKeySheet();
   if (state.view === "home" && typeof suRedraw === "function") suRedraw();
 }
 function testText(r) {
-  if (!r || !r.ok) return (r && r.message) || "Could not test the key. Check your connection and try again.";
+  if (!r || !r.ok) return (r && r.message) || T("key.t.fail");
   return (
     {
-      ok: "The key works.",
-      invalid: "The provider rejected this key.",
-      network: "Could not reach the provider. Check your connection.",
-      missing: "No key to test.",
-    }[r.result] || "Could not test the key. Check your connection and try again."
+      ok: T("key.t.ok"),
+      invalid: T("key.t.invalid"),
+      network: T("key.t.network"),
+      missing: T("key.t.missing"),
+    }[r.result] || T("key.t.fail")
   );
 }
 /** Row for one provider: status chip, write-only password field, Test and Remove. */
@@ -447,8 +496,8 @@ function keyRow(p) {
     autocomplete: "off",
     spellcheck: "false",
     autocapitalize: "off",
-    "aria-label": name + " key (write only)",
-    placeholder: st && st.source !== "missing" ? "Paste a new key to replace it" : "Paste your key",
+    "aria-label": T("key.aria", { name }),
+    placeholder: st && st.source !== "missing" ? T("key.pasteNew") : T("key.paste"),
     class: "keyin",
     disabled: busy,
   });
@@ -456,7 +505,7 @@ function keyRow(p) {
     const v = inp.value;
     inp.value = ""; // cleared before anything else happens
     if (!v) return;
-    keyAct(p, () => api.keysSet(p, v), "Saved in the Keychain.");
+    keyAct(p, () => api.keysSet(p, v), T("key.msg.saved"));
   };
   inp.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -471,19 +520,19 @@ function keyRow(p) {
       "div",
       { class: "txt" },
       h("span", { class: "lab" }, name),
-      h("p", { class: "help" }, what),
-      h("div", { class: "keyedit" }, inp, btn("Save", { cls: "sm", onclick: submit })),
+      h("p", { class: "help" }, what()),
+      h("div", { class: "keyedit" }, inp, btn(T("key.save"), { cls: "sm", onclick: submit })),
       m ? h("p", { class: m.ok ? "saved good" : "errline", role: m.ok ? "status" : "alert" }, m.text) : null,
     ),
     h(
       "div",
       { class: "keyside" },
-      KEYS.data ? keyStatusChip(st) : chip("Checking\u2026", ""),
+      KEYS.data ? keyStatusChip(st) : chip(T("key.checking"), ""),
       h(
         "div",
         { class: "actions" },
         st && st.source !== "missing"
-          ? btn("Test", {
+          ? btn(T("key.test"), {
               cls: "sm ghost",
               onclick: () =>
                 keyAct(
@@ -496,7 +545,7 @@ function keyRow(p) {
                 ),
             })
           : null,
-        st && st.inKeychain ? btn("Remove", { cls: "sm ghost", onclick: () => keyAct(p, () => api.keysRemove(p), "Removed.") }) : null,
+        st && st.inKeychain ? btn(T("key.remove"), { cls: "sm ghost", onclick: () => keyAct(p, () => api.keysRemove(p), T("key.msg.removed")) }) : null,
       ),
     ),
   );
@@ -554,7 +603,7 @@ function advancedBlock(r) {
   const body = h("div", { class: "advbody advmain" });
   if (r && r.ok) {
     for (const g of r.groups) {
-      const rows = r.items.filter((i) => i.group === g.id && !i.main);
+      const rows = r.items.filter((i) => i.group === g.id && (!i.main || window.WingmanSettings.isAdvanced(i)));
       if (!rows.length) continue;
       const list = h("div", { class: "setlist" }, rows.map(settingRow));
       if (g.id === "tune") {

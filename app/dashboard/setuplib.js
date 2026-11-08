@@ -22,7 +22,17 @@
   const progressText = (count, total, fmt) => (fmt ? fmt.replace("{n}", count).replace("{total}", total) : `${count} of ${total}`);
   /** The first real card needs at most this many steps on screen: keys, permissions (with the restart hint inside), the practice call. */
   const FIRST_CARD_PATH = ["connect", "allow", "try"];
-  const api = { REQUIRED, OPTIONAL, FIRST_CARD_PATH, plan, progressText };
+  /**
+   * What is still to do before the first real card, in order, for the flags { done: {id: bool} }. The practice call (try) is the last step and needs no keys.
+   * The window language picker sits on the same card but is never a step: Wingman starts in the system language.
+   */
+  function stepsToFirstCard(o) {
+    const done = (o && o.done) || {};
+    return FIRST_CARD_PATH.filter((id) => !done[id]);
+  }
+  /** The most steps a new user may need before the first card. A test holds the path to this. */
+  const MAX_FIRST_CARD_STEPS = 5;
+  const api = { stepsToFirstCard, MAX_FIRST_CARD_STEPS, REQUIRED, OPTIONAL, FIRST_CARD_PATH, plan, progressText };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WingmanSetup = api;
 })(typeof window !== "undefined" ? window : globalThis);

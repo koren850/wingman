@@ -118,6 +118,10 @@ const ICONS = {
     ["path", { d: "M7 10h.01M11 10h.01M15 10h.01M7 14h10" }],
   ],
   undo: [["path", { d: "M9 7L4 12l5 5M4 12h10a6 6 0 0 1 0 8" }]],
+  key: [
+    ["circle", { cx: 8, cy: 15, r: 3.5 }],
+    ["path", { d: "M10.5 12.5L20 3M16 7l3 3M14 9l2 2" }],
+  ],
 };
 /** Inline SVG icon from ICONS (decorative: aria-hidden). Unknown name gives an empty svg. */
 function ico(name, cls) {
@@ -408,18 +412,20 @@ function setNav() {
 function renderPendingChip() {
   const slot = $("pending-slot");
   slot.textContent = "";
-  const n = state.calls.reduce((a, c) => a + (c.crashed ? 0 : pendingOf(c)), 0);
+  const WH = window.WingmanHome,
+    fresh = (c) => Date.now() - c.startedAt <= WH.WAIT_DAYS * 86400000; // an old call does not nag from the header
+  const n = state.calls.reduce((a, c) => a + (c.crashed || !fresh(c) ? 0 : pendingOf(c)), 0);
   if (!n) return;
   slot.append(
     linkChip(
-      [h("span", { class: "dot" }), h("span", { class: "ctr" }, n), n === 1 ? " card to rate" : " cards to rate"],
+      [h("span", { class: "dot" }), h("span", { class: "ctr" }, n), " " + T(n === 1 ? "pend.one" : "pend.other")],
       "warn",
       () => {
-        const c = state.calls.find((x) => !x.crashed && pendingOf(x) > 0);
+        const c = state.calls.find((x) => !x.crashed && fresh(x) && pendingOf(x) > 0);
         if (c) openCall(c.id, { tab: "rate", filter: "unrated" });
       },
-      `${n} ${n === 1 ? "card" : "cards"} to rate, open the first call`,
-      "Open the first call with unrated cards",
+      T("pend.aria", { n }),
+      T("pend.title"),
     ),
   );
 }

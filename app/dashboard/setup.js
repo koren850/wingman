@@ -273,6 +273,7 @@ function consentNotice() {
             SU.acks.consent = true;
             suSave();
             suRedraw();
+            redrawKeySheet();
           },
         }),
   );
@@ -437,6 +438,70 @@ function allowPanel() {
 }
 const screensOk = () => !!(SU.status && (SU.status.displays >= 2 || SU.status.allowPrimary || SU.acks.screen));
 
+/* ---------- The keys sheet: "Add keys to get real answers" (short; the cost and the responsible-use note are under Details) ---------- */
+function openKeysSheet() {
+  closeKeysSheet(false);
+  const opener = document.activeElement;
+  const ov = h("div", { class: "sheet-ov", id: "keys-sheet" });
+  ov._opener = opener;
+  ov.addEventListener("pointerdown", (e) => {
+    if (e.target === ov) closeKeysSheet(true);
+  });
+  ov.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      closeKeysSheet(true);
+    }
+  });
+  $("pop-slot").append(ov);
+  fillKeySheet(ov);
+  const f = $("key-deepgram");
+  if (f) f.focus();
+}
+function fillKeySheet(ov) {
+  const none = !keysMissing().length && !!H.keys;
+  ov.textContent = "";
+  ov.append(
+    h(
+      "div",
+      { class: "sheet keysheet", role: "dialog", "aria-modal": "true", "aria-labelledby": "keys-h", tabindex: "-1" },
+      h(
+        "div",
+        { class: "sheet-head" },
+        h("h2", { id: "keys-h" }, T("keys.sheetTitle")),
+        h(
+          "button",
+          { type: "button", class: "btn ghost sm icon", id: "keys-close", "aria-label": T("keys.close"), onclick: () => closeKeysSheet(true) },
+          ico("x"),
+        ),
+      ),
+      h("p", { class: "help" }, T("keys.cost")),
+      h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic")),
+      none ? h("p", { class: "saved good", id: "keys-done", role: "status" }, ico("check"), T("keys.saved")) : null,
+      h(
+        "details",
+        { id: "keys-details" },
+        h("summary", {}, T("keys.details")),
+        h("p", { class: "help" }, T("keys.detailsBody")),
+        h("div", { class: "actions" }, linkBtn("deepgram", T("keys.getDeepgram")), linkBtn("anthropic", T("keys.getAnthropic"))),
+        consentNotice(),
+      ),
+    ),
+  );
+}
+/** Called after a key action: redraws the sheet if it is open (keeps focus on the same field). */
+function redrawKeySheet() {
+  const ov = $("keys-sheet");
+  if (ov) keepFocus(() => fillKeySheet(ov));
+}
+function closeKeysSheet(restore) {
+  const s = $("keys-sheet");
+  if (!s) return;
+  const t = s._opener;
+  s.remove();
+  if (restore && t && document.contains(t)) t.focus();
+}
+
 /** The three required steps. done(ctx): ctx.practiced says a practice call exists. */
 const REQUIRED_STEPS = [
   {
@@ -459,14 +524,8 @@ const REQUIRED_STEPS = [
       h(
         "div",
         { class: "su-body" },
-        h(
-          "p",
-          { class: "help" },
-          "For real calls you need two keys, both from paid services. Paste each one, press Save, then Test. Cost: about $1.40 per hour of call for Deepgram (speech to text) plus roughly 5 to 20 cents an hour for Anthropic (the AI). New Deepgram accounts get free credit.",
-        ),
-        h("div", { class: "actions" }, linkBtn("deepgram", "Get a Deepgram key"), linkBtn("anthropic", "Get an Anthropic key")),
-        h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic")),
-        consentNotice(),
+        h("p", { class: "help" }, T("su.connect.short")),
+        h("div", { class: "actions" }, btn(T("keys.add"), { id: "su-add-keys", icon: "key", cls: "sm", onclick: () => openKeysSheet() })),
       ),
   },
   {
@@ -752,6 +811,17 @@ function packPanel() {
 }
 
 /** The guided setup card for Home: three required steps, then "Make it yours" (optional). Null when nothing is left to do (unless the user opened it from Settings). */
+/** The window language picker for the first run (same choice as Settings). Changing it reloads the window. */
+function languageRow() {
+  const cur = windowLangChoice();
+  const sel = h(
+    "select",
+    { id: "su-lang" },
+    WingmanI18n.CHOICES.map((c) => h("option", { value: c, selected: c === cur ? "" : null }, T("lang." + c))),
+  );
+  sel.addEventListener("change", () => setWindowLanguage(sel.value));
+  return h("div", { class: "langrow" }, h("label", { for: "su-lang" }, T("su.lang")), sel);
+}
 function setupCard() {
   if (isRunning()) return null;
   const d = doc(),
@@ -856,6 +926,7 @@ function setupCard() {
         : null,
     ),
     ready,
+    languageRow(),
     h(
       "ul",
       { class: "setuplist", "aria-label": T("su.required") },

@@ -4410,3 +4410,164 @@ button.chip.spk-btn:focus-visible,
 .after-loops .after-draft .btn {
   margin: 0 16px 12px;
 }
+
+/* ---- Round 12, r2-dash-ux: pills never wrap, one-column idle Home, key sheet, settings search, Fix it ---- */
+.seg {
+  max-width: 100%;
+}
+.seg button {
+  flex: none;
+  white-space: nowrap;
+}
+.composer-head {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.tabs [role="tab"] {
+  flex: none;
+}
+.composer .sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.keyhint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.keyhint .kh {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+.home.idle {
+  grid-template-columns: minmax(0, 760px);
+}
+.home.idle .hcol {
+  min-width: 0;
+}
+.startcard .btn.lg.primary {
+  align-self: flex-start;
+}
+.startrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin: 8px 0 0;
+}
+.keysline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin: 12px 0 0;
+}
+.keysline p {
+  margin: 0;
+}
+.moreways > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 0;
+}
+.rate-benefit {
+  margin: 0 0 8px;
+}
+.ready-ok {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.ready-ok p {
+  margin: 0;
+}
+.keysheet {
+  max-width: 560px;
+}
+.keysheet details {
+  margin-top: 12px;
+}
+.keysheet details > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+}
+.langrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+}
+.langrow label {
+  font-size: 13px;
+  color: var(--muted);
+}
+.setsearch {
+  margin: 0 0 16px;
+}
+.setsearch input {
+  width: 100%;
+  max-width: 420px;
+}
+.setresults .setlist {
+  margin-top: 8px;
+}
+.fixrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin-top: 6px;
+}
+.fixrow .fixit {
+  font-weight: 600;
+}
+.fixrow .nofix {
+  margin: 0;
+}
+.knowsfold > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+}
+.knowsfold > summary::-webkit-details-marker {
+  display: none;
+}
+.livehead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.knows.kview-read .kn-act,
+.knows.kview-read .kn-add {
+  display: none;
+}
+.knows.kview-folded {
+  padding-block: 12px;
+}
+.latest-body .lf-card {
+  font-size: 1.05em;
+}
+.latest-q {
+  margin: 8px 0 0;
+}
+.composer-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.langrow select {
+  width: auto;
+  min-width: 180px;
+}

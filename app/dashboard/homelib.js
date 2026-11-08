@@ -45,6 +45,26 @@
     return { on: true, text: parts.join(" · ") };
   }
 
+  /** Calls recent enough to ask for a rating or a follow-up. Older ones stay in Calls and do not nag on Home. */
+  const WAIT_DAYS = 14;
+  /**
+   * The rows of "Waiting for you": one row per call (never the same call twice), crashed calls left out, only calls from the last 14 days,
+   * newest first, at most `max`. `more` is how many matching calls did not fit. pendingOf(c) = cards not rated yet.
+   */
+  function waitingCalls(calls, now, pendingOf, max = 3) {
+    const seen = new Set();
+    const rows = [];
+    for (const c of calls || []) {
+      if (!c || c.crashed || seen.has(c.id)) continue;
+      seen.add(c.id);
+      if (!(pendingOf(c) > 0 || c.hasSummary)) continue;
+      if (!Number.isFinite(c.startedAt) || now - c.startedAt > WAIT_DAYS * 86400000) continue; // no usable date: not recent, so no nag
+      rows.push(c);
+    }
+    rows.sort((a, b) => b.startedAt - a.startedAt);
+    return { rows: rows.slice(0, max), more: Math.max(0, rows.length - max), total: rows.length };
+  }
+
   /** The last readiness result when it says NOT READY (BUSY and "not checked" never block). */
   const blockedBy = (d) => (d && !d.ok && d.verdict === "NOT READY" ? d : null);
 
@@ -133,6 +153,8 @@
   }
 
   const api = {
+    waitingCalls,
+    WAIT_DAYS,
     stopSteps,
     aiMode,
     blockedBy,

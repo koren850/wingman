@@ -21,8 +21,26 @@ function knowsPanel(model, o = {}) {
     h("h2", { id: id + "-h" }, T("knows.title")),
     tip(T("knows.tip")),
     h("span", { class: "grow" }),
-    model ? chip(T("knows.source." + model.source), model.source === "fixture" ? "warn" : "info") : null,
+    // The "Sample" badge belongs to demo mode only (a fixture model), and the live Home shows it once, on So far.
+    model && !(o.view && model.source === "fixture") ? chip(T("knows.source." + model.source), model.source === "fixture" ? "warn" : "info") : null,
   );
+  if (o.view) {
+    // Live Home: folded by default, with Show and Edit buttons. "read" shows the lines, "edit" also shows the pencil, trash and add boxes.
+    const set = (v) => () => o.onView && o.onView(v);
+    if (model) head.append(chip(String(KN.count(model)), ""));
+    if (o.view === "folded") head.append(btn(T("knows.view.show"), { id: id + "-show", cls: "sm ghost", onclick: set("read") }));
+    if (o.view === "read") head.append(btn(T("knows.view.hide"), { id: id + "-hide", cls: "sm ghost", onclick: set("folded") }));
+    head.append(
+      o.view === "edit"
+        ? btn(T("knows.view.done"), { id: id + "-done", cls: "sm", onclick: set("read") })
+        : btn(T("knows.view.edit"), { id: id + "-edit", cls: "sm ghost", icon: "pencil", onclick: set("edit") }),
+    );
+    sec.classList.add("kview-" + o.view);
+    if (o.view === "folded") {
+      sec.append(head);
+      return sec;
+    }
+  }
   sec.append(head);
   if (!model || (KN.count(model) === 0 && !model.topic)) {
     sec.append(h("p", { class: "sub kn-empty", id: id + "-empty" }, T(o.emptyKey || (live ? "knows.empty.live" : "knows.empty.before"))));

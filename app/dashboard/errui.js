@@ -59,29 +59,80 @@ function performErrorAction(action, ctx) {
   }
 }
 
+/** The "Fix it" actions of health messages (errors.js FIX). Falls back to performErrorAction for the rest. */
+function performFix(action, ctx) {
+  switch (action) {
+    case "keys":
+      openKeysSheet();
+      return true;
+    case "pane-mic":
+    case "pane-audio":
+      api.setupOpenPrivacy(action === "pane-mic" ? "mic" : "audio").catch(() => {});
+      announce(T("fix.opened"));
+      return true;
+    case "switch-mic":
+      viewSettings("mic");
+      return true;
+    case "retry-check":
+      return performErrorAction("check", ctx);
+    default:
+      return performErrorAction(action, ctx);
+  }
+}
+/** The Fix it button (or the plain reason) for a health message. null for a message that is not a health message. */
+function fixControl(raw, ctx) {
+  const f = WingmanErrors.fixOf(raw);
+  if (f.action)
+    return h(
+      "button",
+      { type: "button", class: "btn sm fixit", "data-code": f.code, "data-fix": f.action, onclick: () => performFix(f.action, ctx || {}) },
+      T(f.label),
+    );
+  if (f.reason) return h("p", { class: "nofix faint", "data-code": f.code }, T(f.reason));
+  return null;
+}
+
 /**
  * A box for one error: what happened, the next step, one button. raw is the message from the engine or a file import (or an error code from errors.js).
  * o: { retry, paste, files, onDone } . The button runs the action and then onDone (for a box that removes itself).
  */
 function errorBox(raw, o = {}) {
   const d = WingmanErrors.describe(T, raw);
+  const f = WingmanErrors.fixOf(d.code);
+  const useFix = !!(f.action || f.reason) && !(d.action === "retry" && o.retry); // a caller's own retry (offline while saving, ...) keeps its button
   return h(
     "div",
     { class: "eb", role: "alert", "data-code": d.code },
     ico("warning"),
     h("div", { class: "eb-text" }, h("div", { class: "eb-what" }, d.what), h("div", { class: "eb-next" }, d.next)),
-    h(
-      "button",
-      {
-        type: "button",
-        class: "btn sm eb-btn",
-        onclick: () => {
-          performErrorAction(d.action, o);
-          if (o.onDone) o.onDone();
-        },
-      },
-      d.btn,
-    ),
+    useFix
+      ? f.action
+        ? h(
+            "button",
+            {
+              type: "button",
+              class: "btn sm eb-btn fixit",
+              "data-fix": f.action,
+              onclick: () => {
+                performFix(f.action, o);
+                if (o.onDone) o.onDone();
+              },
+            },
+            T(f.label),
+          )
+        : h("p", { class: "nofix faint" }, T(f.reason))
+      : h(
+          "button",
+          {
+            type: "button",
+            class: "btn sm eb-btn",
+            onclick: () => {
+              performErrorAction(d.action, o);
+              if (o.onDone) o.onDone();
+            },
+          },
+          d.btn,
+        ),
   );
 }
 

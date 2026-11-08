@@ -27,7 +27,7 @@ function writeCall(dataDir, lang, o = {}) {
   const id = ("01SNAPGOLDEN" + lang.toUpperCase() + (o.summary ? "B" : "A") + "0".repeat(26)).slice(0, 26);
   const d = path.join(dataDir, "calls", id);
   fs.mkdirSync(d, { recursive: true, mode: 0o700 });
-  const t0 = Date.now() - 3600_000;
+  const t0 = Date.now() - 3600_000 - (o.summary ? 26 * 3600_000 : 0); // the call with a summary is a day older, so the list has no twin rows
   const w = (f, rows) => fs.writeFileSync(path.join(d, f), rows.map((r) => JSON.stringify(r)).join("\n") + "\n", { mode: 0o600 });
   fs.writeFileSync(
     path.join(d, "call.json"),
@@ -95,7 +95,9 @@ if (require.main === module) {
   store.markLive(m.id, "01SNAPSHOTCALL");
   store.confirmUsed(m.id, "01SNAPSHOTCALL");
   console.log(dir);
-  for (const lang of ["en", "he"]) {
+  // Calls only in the window language of the snapshot (argv[3]); without it both languages, as before.
+  const only = process.argv[3] === "he" || process.argv[3] === "en" ? [process.argv[3]] : ["en", "he"];
+  for (const lang of only) {
     writeCall(dir, lang);
     writeCall(dir, lang, { summary: true });
   }

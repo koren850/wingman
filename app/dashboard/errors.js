@@ -50,7 +50,32 @@
     const k = keysOf(e.code);
     return { code: e.code, what: t(k.what, vars), next: t(k.next, vars), btn: t(k.btn, vars), action: e.action };
   }
-  const api = { ACTIONS, TABLE, classify, describe, keysOf };
+  // "Fix it": what the button of a health message does. Each of these codes has an action, or a plain reason why it has none.
+  const FIX = {
+    "key-deepgram": "keys",
+    "key-anthropic": "keys",
+    "mic-denied": "pane-mic", // opens System Settings at Privacy, Microphone
+    "audio-denied": "pane-audio", // opens System Settings at Privacy, System Audio Recording
+    "mic-silent": "switch-mic", // Settings, microphone choice
+    "stt-down": "retry-check",
+    "llm-down": "retry-check",
+    offline: "retry-check",
+    "one-screen": "allow",
+    "off-itself": "retry-check",
+    "call-start": "retry-check",
+    generic: "retry-check",
+  };
+  const NOFIX = { "overlay-closed": "err.overlay-closed.nofix", preview: "err.preview.nofix" };
+  /** Every code that can come from the readiness check or the engine health line. A test checks that each has an action or a reason. */
+  const HEALTH = [...Object.keys(FIX), ...Object.keys(NOFIX)];
+  /** { code, action, label, reason } for a code or a raw message. label and reason are catalog keys; exactly one of action and reason is set for a health code. */
+  function fixOf(textOrCode) {
+    const code = classify(textOrCode).code;
+    const action = FIX[code] || null;
+    return { code, action, label: action ? "fix." + action : null, reason: action ? null : NOFIX[code] || null };
+  }
+  const FIX_ACTIONS = [...new Set(Object.values(FIX))];
+  const api = { ACTIONS, TABLE, classify, describe, keysOf, FIX, NOFIX, HEALTH, FIX_ACTIONS, fixOf };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WingmanErrors = api;
 })(typeof window !== "undefined" ? window : globalThis);

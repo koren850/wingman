@@ -36,6 +36,52 @@ function liveSchedule() {
     });
 }
 
+/** Window opened mid-call: ask the main process for what was heard so far (once per call). */
+function liveHydrate() {
+  const id = state.call && state.call.callId;
+  if (!id || LV.callId === id || LV.hydrating === id) return;
+  LV.hydrating = id;
+  api
+    .liveGet(id)
+    .then((p) => {
+      LV.hydrating = "";
+      if (p && p.callId === id) liveApply({ ...p, reset: true });
+    })
+    .catch(() => {
+      LV.hydrating = "";
+    });
+}
+/** The newest answer card, big, at the top of the live Home (so the user does not need the conversation open). Re-drawn from the feed on every update. */
+function latestCardPanel() {
+  const sec = h(
+    "section",
+    { class: "card-big latest", id: "latest-card", "aria-labelledby": "latest-h" },
+    h("div", { class: "rhead" }, h("h2", { id: "latest-h" }, T("latest.title"))),
+    h("div", { id: "latest-body", class: "latest-body", role: "status", "aria-live": "polite" }),
+  );
+  liveHydrate();
+  requestAnimationFrame(liveLatestRender);
+  return sec;
+}
+function liveLatestRender() {
+  const b = $("latest-body");
+  if (!b) return;
+  const c = LV.feed
+    .snapshot()
+    .cards.filter((x) => x.say && !x.dim && x.badge !== "side")
+    .sort((x, y) => y.t - x.t)[0];
+  const sig = c ? c.id + "|" + c.badge + "|" + c.say : "";
+  if (b._sig === sig && b.firstChild) return;
+  b._sig = sig;
+  b.textContent = "";
+  if (!c) {
+    b.append(h("p", { class: "sub", id: "latest-empty" }, T("latest.empty")));
+    return;
+  }
+  b.append(liveCardEl(c));
+  if (c.question) b.append(h("p", { class: "sub latest-q", dir: dirOf(c.question), lang: langOf(c.question) }, c.question));
+}
+
 /** The right-hand column of Home while a call runs. Rebuilt with the column; its content comes from the feed kept in memory. */
 function liveFeedPanel() {
   if (!H.showConv) return liveHiddenPanel();
@@ -80,20 +126,7 @@ function liveFeedPanel() {
     h("div", { class: "lf-body" }, box, h("div", { id: "lf-empty", class: "lf-empty" }), jump),
   );
   LV.auto = true;
-  const id = state.call && state.call.callId;
-  if (id && LV.callId !== id && LV.hydrating !== id) {
-    // window opened mid-call: ask for what was heard so far
-    LV.hydrating = id;
-    api
-      .liveGet(id)
-      .then((p) => {
-        LV.hydrating = "";
-        if (p && p.callId === id) liveApply({ ...p, reset: true });
-      })
-      .catch(() => {
-        LV.hydrating = "";
-      });
-  }
+  liveHydrate();
   requestAnimationFrame(liveRender);
   return sec;
 }
@@ -306,6 +339,7 @@ function liveFrameRender() {
 
 /** Sync the DOM to the feed without rebuilding it: keep nodes that did not change, add new ones, drop old ones, and fix the order. Keeps scroll position unless following. */
 function liveRender() {
+  liveLatestRender();
   const box = $("lf-scroll");
   if (!box) return;
   liveFrameRender();
