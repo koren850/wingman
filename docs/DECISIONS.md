@@ -816,3 +816,18 @@ Date: 2026-11-08
 **Alternatives.** Cut with an ellipsis (rejected: it hides the end of the sentence). Collapse checks too (rejected: an open check is the most important card). Keep two dots (rejected: no one could tell them apart). Make the window focusable so Tab always works (rejected: a focusable window can take the focus from the call; the global keys stay the main path).
 
 **Consequences.** The fade is by text opacity of 0.6 with a text colour chosen per theme (white or black), not by element opacity, because element opacity of 0.6 cannot reach 4.5:1 for amber text on a light card. The in-page keys work only when the user gives the window focus; a "focus the answer window" hotkey is left for a later round. Old screenshots in `docs/ux/` show the earlier layout and are not regenerated here.
+
+## ADR 55: One morning command, a judgement set apart from the meetings, and stale is not a miss
+
+Date: 2026-11-09
+
+**Context.** Every quality number so far came from scripted model replies. The recording steps existed but were separate commands, each with its own cap, and a changed prompt looked like a pile of cassette misses. The golden meetings measure the whole engine over time; nothing measured the judgement of one moment alone.
+
+**Decision.** (1) `scripts/morning.ts` is the only command the owner needs: one cap for all steps, a printed estimate first, a yes before each held-out split, and it refuses without a key, in CI and over the cap. (2) A judgement set of 120 invented cases (60 English, 60 Hebrew) scores the moment role per verdict kind, with two bad models as controls and floors for recorded runs only. The verdict comes from the model reading the lines, not from word lists. (3) The memory eval has 24 calls and an objections class; F1 per class is printed. (4) Cassette entries carry a hash of the prompt and of the input. A miss with an entry of the same input and another prompt or model is a `CassetteStale`. (5) The recorded cost per role is compared with the simulated cost and fails above 15 percent. (6) `pnpm replay` shows what another prompt does to a real call, and turns "not useful" ratings into judgement cases after a no-real-names check.
+
+**Why.** One command with one cap is hard to run wrongly while tired. A set of one-call cases shows which kind of card a prompt change breaks. A stale report tells the owner to record again instead of looking for a bug. The 15 percent check catches budgets that were set from modelled usage.
+
+**Alternatives.** Keep separate commands (a cap per command adds up). Grade the judgement on the golden meetings only (a prompt change moves too many things at once). Fail the replay on any prompt change (hides which entries are only old).
+
+**Consequences.** The floors for the judgement set and the memory eval are provisional; the owner moves them after the first recorded run and the report says by how much. The held-out size in the estimate is assumed from the file count because reading a split is a one-time act. `test-c` is skipped until that split exists.
+

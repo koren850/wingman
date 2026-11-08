@@ -1,0 +1,22 @@
+{
+ "id": "j-he-060",
+ "lang": "he",
+ "tags": [
+  "decision"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "אתי",
+   "text": "בואו נסגור: תאריך ההתחלה הוא הראשון ביוני."
+  }
+ ],
+ "expected": {
+  "tag": "NOTE",
+  "accept": [
+   "SKIP"
+  ]
+ }
+}

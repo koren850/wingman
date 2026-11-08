@@ -1,0 +1,22 @@
+{
+ "id": "j-en-038",
+ "lang": "en",
+ "tags": [
+  "hard-question"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Shir",
+   "text": "Why should we sign now and not wait until next quarter?"
+  }
+ ],
+ "expected": {
+  "tag": "REPLY",
+  "accept": [
+   "ANS"
+  ]
+ }
+}

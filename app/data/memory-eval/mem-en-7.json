@@ -1,0 +1,125 @@
+{
+ "id": "mem-en-7",
+ "lang": "en",
+ "title": "Procurement call: a security objection",
+ "kind": "client",
+ "tags": [
+  "objection"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "Thanks for joining. I am the procurement lead for the clinic group.",
+   "name": "Rina"
+  },
+  {
+   "side": "me",
+   "text": "Happy to be here. We help clinics move their booking to one shared calendar."
+  },
+  {
+   "side": "them",
+   "text": "Our security officer will not accept a tool that stores patient names outside the country.",
+   "name": "Rina"
+  },
+  {
+   "side": "me",
+   "text": "That is fair. Our data stays in a regional data center, and I can send you the hosting document."
+  },
+  {
+   "side": "them",
+   "text": "Please do. And what is the yearly price for twelve clinics?",
+   "name": "Rina"
+  },
+  {
+   "side": "me",
+   "text": "For twelve clinics the yearly price is 14400 dollars, billed once."
+  },
+  {
+   "side": "them",
+   "text": "That is above our budget of 12000 for this year.",
+   "name": "Rina"
+  },
+  {
+   "side": "me",
+   "text": "I can look at a smaller first stage with six clinics and come back to you with a number."
+  },
+  {
+   "side": "them",
+   "text": "Good. We decided to run the security review first, before any pilot.",
+   "name": "Rina"
+  },
+  {
+   "side": "them",
+   "text": "Who on your side signs the data processing agreement?",
+   "name": "Rina"
+  },
+  {
+   "side": "me",
+   "text": "I will send the hosting document and the agreement draft by Tuesday."
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 10,
+    "who": "me",
+    "what": "send the hosting document and agreement draft by Tuesday",
+    "keys": [
+     "hosting document",
+     "tuesday"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 9,
+    "asker": "Rina",
+    "text": "Who signs the data processing agreement",
+    "keys": [
+     "signs",
+     "agreement"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 5,
+    "what": "yearly price for twelve clinics",
+    "value": "14400",
+    "who": "me",
+    "keys": [
+     "yearly price"
+    ]
+   },
+   {
+    "line": 6,
+    "what": "Rina budget this year",
+    "value": "12000",
+    "who": "Rina",
+    "keys": [
+     "budget"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 8,
+    "text": "run the security review before any pilot",
+    "keys": [
+     "security review",
+     "pilot"
+    ]
+   }
+  ],
+  "objections": [
+   {
+    "line": 2,
+    "who": "Rina",
+    "text": "security officer will not accept patient names stored outside the country",
+    "keys": [
+     "patient names"
+    ]
+   }
+  ]
+ }
+}

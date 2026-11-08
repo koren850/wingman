@@ -212,9 +212,12 @@ async function runV2(): Promise<{ failed: number; baseline?: V2Baseline; section
   console.log(basisLine());
   if (cassette) {
     const misses = p.plan.clean.reduce((a, r) => a + (r.cassetteMisses ?? 0), 0);
+    const stale = p.plan.clean.reduce((a, r) => a + (r.cassetteStale ?? 0), 0);
     console.log(
-      `   Cassette misses: ${misses} model call(s) had no recorded answer${misses ? " (the engine treated each as a model error; re-record if this is high)" : ""}.`,
+      `   Cassette misses: ${misses - stale} model call(s) had no recorded answer${misses - stale ? " (the engine treated each as a model error; re-record if this is high)" : ""}.`,
     );
+    if (stale)
+      console.log(`   Cassette STALE: ${stale} call(s) have an entry recorded with an older prompt text or model. Re-record; this is not an engine fault.`);
     if (!baseline) console.log("   No recorded baseline yet: this run prints numbers only. Run with --update to write the first one.");
   }
   console.log(

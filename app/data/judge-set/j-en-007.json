@@ -1,0 +1,38 @@
+{
+ "id": "j-en-007",
+ "lang": "en",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "monthly price",
+     "value": "900",
+     "who": "me"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Ilan",
+   "text": "What was the price again?"
+  },
+  {
+   "side": "me",
+   "text": "It is 900 a month, as I said before."
+  },
+  {
+   "side": "them",
+   "name": "Ilan",
+   "text": "Right, 900 a month. Thanks."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

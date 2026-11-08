@@ -1,0 +1,19 @@
+{
+ "id": "j-en-043",
+ "lang": "en",
+ "tags": [
+  "price"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Ofer",
+   "text": "Just give me a discount of 20 percent and we sign right now."
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

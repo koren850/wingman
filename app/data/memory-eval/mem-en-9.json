@@ -1,0 +1,144 @@
+{
+ "id": "mem-en-9",
+ "lang": "en",
+ "title": "Two voices on our side: a team planning call",
+ "kind": "team",
+ "tags": [
+  "two-me-voices"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "Let us plan the launch week. What do we still need from design?",
+   "name": "Maya"
+  },
+  {
+   "side": "me",
+   "text": "Design owes us the final icons and the empty states."
+  },
+  {
+   "side": "me",
+   "text": "I can finish the icons by Wednesday if we freeze the color palette today.",
+   "name": "Omer"
+  },
+  {
+   "side": "them",
+   "text": "We freeze the palette today, that is decided.",
+   "name": "Maya"
+  },
+  {
+   "side": "me",
+   "text": "I will write the release notes and share them on Thursday."
+  },
+  {
+   "side": "them",
+   "text": "How many testers can we get for the beta?",
+   "name": "Maya"
+  },
+  {
+   "side": "me",
+   "text": "We have 40 testers signed up so far.",
+   "name": "Omer"
+  },
+  {
+   "side": "them",
+   "text": "Is the payment flow tested on the old phones?",
+   "name": "Maya"
+  },
+  {
+   "side": "me",
+   "text": "I will ask the QA team about the old phones and tell you tomorrow."
+  },
+  {
+   "side": "them",
+   "text": "One worry: the launch week is also a holiday week for half of the support team.",
+   "name": "Maya"
+  },
+  {
+   "side": "me",
+   "text": "I will talk to support about a rota before the end of the week.",
+   "name": "Omer"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 2,
+    "who": "Omer",
+    "what": "finish the icons by Wednesday",
+    "keys": [
+     "icons",
+     "wednesday"
+    ]
+   },
+   {
+    "line": 4,
+    "who": "me",
+    "what": "write release notes and share on Thursday",
+    "keys": [
+     "release notes",
+     "thursday"
+    ]
+   },
+   {
+    "line": 8,
+    "who": "me",
+    "what": "ask QA about the old phones",
+    "keys": [
+     "qa",
+     "old phones"
+    ]
+   },
+   {
+    "line": 10,
+    "who": "Omer",
+    "what": "talk to support about a rota",
+    "keys": [
+     "support",
+     "rota"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 7,
+    "asker": "Maya",
+    "text": "is the payment flow tested on the old phones",
+    "keys": [
+     "payment flow"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 6,
+    "what": "beta testers signed up",
+    "value": "40",
+    "who": "Omer",
+    "keys": [
+     "testers"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 3,
+    "text": "freeze the color palette today",
+    "keys": [
+     "freeze",
+     "palette"
+    ]
+   }
+  ],
+  "objections": [
+   {
+    "line": 9,
+    "who": "Maya",
+    "text": "launch week is a holiday week for half of the support team",
+    "keys": [
+     "holiday week"
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "id": "j-en-040",
+ "lang": "en",
+ "tags": [
+  "promise"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "delivery"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Maya",
+   "text": "Can you promise delivery by the end of the month?"
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

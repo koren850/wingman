@@ -1,0 +1,36 @@
+{
+ "id": "j-en-049",
+ "lang": "en",
+ "tags": [
+  "number-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "total price",
+     "value": "5400 including tax",
+     "who": "me"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Boaz",
+   "text": "So the total is 5000 plus tax, correct?"
+  },
+  {
+   "side": "me",
+   "text": "Yes, correct."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "5400"
+  ]
+ }
+}

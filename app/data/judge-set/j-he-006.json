@@ -1,0 +1,25 @@
+{
+ "id": "j-he-006",
+ "lang": "he",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "מצב הפרויקט"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "סמי",
+   "text": "אפשר גם להוסיף את טלי למייל הבא?"
+  },
+  {
+   "side": "me",
+   "text": "בטח, אוסיף אותה לשרשור."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

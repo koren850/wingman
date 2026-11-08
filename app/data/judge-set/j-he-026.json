@@ -1,0 +1,30 @@
+{
+ "id": "j-he-026",
+ "lang": "he",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "אנחנו מספקים לנמל-גל, לתל אביב ולבאר שבע"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "יוסי",
+   "text": "לאילו ערים אתם מספקים?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "נמל-גל"
+  ]
+ }
+}

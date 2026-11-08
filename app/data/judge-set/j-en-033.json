@@ -1,0 +1,30 @@
+{
+ "id": "j-en-033",
+ "lang": "en",
+ "tags": [
+  "objection",
+  "noisy"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "our monthly price",
+     "value": "1200",
+     "who": "me"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Nadav",
+   "text": "honestly your competitor is is half the the price you know"
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

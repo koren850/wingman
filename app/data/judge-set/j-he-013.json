@@ -1,0 +1,24 @@
+{
+ "id": "j-he-013",
+ "lang": "he",
+ "tags": [
+  "statement"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "שי",
+   "text": "אנחנו צוות של חמש עשרה אנשים."
+  },
+  {
+   "side": "them",
+   "name": "שי",
+   "text": "בעיקר מפתחים, שניים במכירות."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

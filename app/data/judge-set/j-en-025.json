@@ -1,0 +1,30 @@
+{
+ "id": "j-en-025",
+ "lang": "en",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "Support team works in Central European time, 8:00 to 17:00"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Orly",
+   "text": "What time zone is your support team in?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "central european"
+  ]
+ }
+}

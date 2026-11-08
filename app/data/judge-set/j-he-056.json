@@ -1,0 +1,29 @@
+{
+ "id": "j-he-056",
+ "lang": "he",
+ "tags": [
+  "open-loop"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "תמחור",
+  "add": {
+   "openQuestions": [
+    {
+     "asker": "תומר",
+     "text": "מה מדיניות הביטולים?"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "תומר",
+   "text": "סיימנו עם התמחור. מה הלאה בסדר היום?"
+  }
+ ],
+ "expected": {
+  "tag": "PROMPT"
+ }
+}

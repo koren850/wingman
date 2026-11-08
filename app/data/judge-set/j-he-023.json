@@ -1,0 +1,30 @@
+{
+ "id": "j-he-023",
+ "lang": "he",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "תקופת הניסיון נמשכת 14 ימים, בלי כרטיס אשראי"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "דנה",
+   "text": "כמה זמן נמשכת תקופת הניסיון?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "14"
+  ]
+ }
+}

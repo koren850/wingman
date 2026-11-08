@@ -1,0 +1,28 @@
+{
+ "id": "j-he-005",
+ "lang": "he",
+ "tags": [
+  "statement"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "דינה",
+   "text": "אנחנו עובדים היום עם שלוש מערכות למעקב."
+  },
+  {
+   "side": "them",
+   "name": "דינה",
+   "text": "זה עובד, אבל קצת מבולגן."
+  },
+  {
+   "side": "me",
+   "text": "הבנתי."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "id": "j-he-047",
+ "lang": "he",
+ "tags": [
+  "promise-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "commitments": [
+    {
+     "who": "me",
+     "what": "לספק שש יחידות בשבוע הבא ושש בשבוע שאחריו"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "נספק את כל שתים עשרה היחידות בשבוע הבא."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "שש"
+  ]
+ }
+}

@@ -1,0 +1,32 @@
+{
+ "id": "j-en-031",
+ "lang": "en",
+ "tags": [
+  "direct",
+  "noq",
+  "mixed"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "The account manager for the north region is Eitan Levy"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Hila",
+   "text": "what is the name of the account manager, אצל האזור הצפוני שלנו"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "eitan"
+  ]
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "id": "j-he-059",
+ "lang": "he",
+ "tags": [
+  "decision"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "כרמית",
+   "text": "החלטנו ללכת על החבילה השנתית."
+  },
+  {
+   "side": "me",
+   "text": "נהדר."
+  }
+ ],
+ "expected": {
+  "tag": "NOTE",
+  "accept": [
+   "SKIP"
+  ]
+ }
+}

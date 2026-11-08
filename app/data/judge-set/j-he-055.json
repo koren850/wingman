@@ -1,0 +1,36 @@
+{
+ "id": "j-he-055",
+ "lang": "he",
+ "tags": [
+  "open-loop"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "commitments": [
+    {
+     "who": "me",
+     "what": "לשלוח לסיון את ההמלצות",
+     "due": "השבוע"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "סיון",
+   "text": "תודה על הזמן, אני צריכה לקפוץ לשיחה אחרת."
+  },
+  {
+   "side": "me",
+   "text": "בטח."
+  }
+ ],
+ "expected": {
+  "tag": "PROMPT",
+  "accept": [
+   "NOTE"
+  ]
+ }
+}

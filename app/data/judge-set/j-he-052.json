@@ -1,0 +1,20 @@
+{
+ "id": "j-he-052",
+ "lang": "he",
+ "tags": [
+  "jargon",
+  "mixed"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "אבי",
+   "text": "אצלנו הכל יושב מאחורי WAF ויש mTLS בין השירותים."
+  }
+ ],
+ "expected": {
+  "tag": "TERM"
+ }
+}

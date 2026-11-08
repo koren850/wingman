@@ -1,0 +1,122 @@
+{
+ "id": "mem-mixed-3",
+ "lang": "mixed",
+ "title": "צוות פיתוח: standup קצר",
+ "kind": "team",
+ "tags": [
+  "mixed",
+  "noisy-stt"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "בוקר טוב, בואו נעבור על ה-sprint. מה המצב עם ה-bug בתשלומים?",
+   "name": "נועם"
+  },
+  {
+   "side": "me",
+   "text": "ה-bug בתשלומים נסגר אתמול, ה-fix כבר ב-production."
+  },
+  {
+   "side": "them",
+   "text": "מצוין. מי לוקח את ה-refactor של ה-login?",
+   "name": "נועם"
+  },
+  {
+   "side": "me",
+   "text": "אני לוקחת את ה-refactor של ה-login ואסיים עד סוף השבוע.",
+   "name": "ליאור"
+  },
+  {
+   "side": "them",
+   "text": "כמה נקודות זה ב-estimate?",
+   "name": "נועם"
+  },
+  {
+   "side": "me",
+   "text": "בערך 8 נקודות.",
+   "name": "ליאור"
+  },
+  {
+   "side": "me",
+   "text": "אני אעדכן את ה-roadmap עם התאריכים עד מחר."
+  },
+  {
+   "side": "them",
+   "text": "סגרנו שאין release ביום שישי השבוע.",
+   "name": "נועם"
+  },
+  {
+   "side": "them",
+   "text": "אני מודאג שה-QA לא יספיק לבדוק הכל לפני ה-release.",
+   "name": "נועם"
+  },
+  {
+   "side": "me",
+   "text": "נבקש מ-QA לבדוק קודם את התשלומים."
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 3,
+    "who": "ליאור",
+    "what": "לסיים את ה-refactor של ה-login עד סוף השבוע",
+    "keys": [
+     "refactor",
+     "סוף השבוע"
+    ]
+   },
+   {
+    "line": 6,
+    "who": "me",
+    "what": "לעדכן את ה-roadmap עם התאריכים עד מחר",
+    "keys": [
+     "roadmap",
+     "מחר"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 2,
+    "asker": "נועם",
+    "text": "מי לוקח את ה-refactor של ה-login",
+    "keys": [
+     "refactor"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 5,
+    "what": "נקודות ב-estimate",
+    "value": "8",
+    "who": "ליאור",
+    "keys": [
+     "נקודות"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 7,
+    "text": "אין release ביום שישי",
+    "keys": [
+     "release",
+     "שישי"
+    ]
+   }
+  ],
+  "objections": [
+   {
+    "line": 8,
+    "who": "נועם",
+    "text": "ה-QA לא יספיק לבדוק לפני ה-release",
+    "keys": [
+     "QA"
+    ]
+   }
+  ]
+ }
+}

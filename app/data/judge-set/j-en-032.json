@@ -1,0 +1,30 @@
+{
+ "id": "j-en-032",
+ "lang": "en",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "First reply to a ticket within 4 working hours"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Amir",
+   "text": "And how fast do you usually respond to a ticket?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "4"
+  ]
+ }
+}

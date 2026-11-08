@@ -1,0 +1,19 @@
+{
+ "id": "j-en-050",
+ "lang": "en",
+ "tags": [
+  "jargon"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Gilad",
+   "text": "We need the SOC 2 report before we continue."
+  }
+ ],
+ "expected": {
+  "tag": "TERM"
+ }
+}

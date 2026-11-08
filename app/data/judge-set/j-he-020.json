@@ -1,0 +1,24 @@
+{
+ "id": "j-he-020",
+ "lang": "he",
+ "tags": [
+  "noisy",
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "מיה",
+   "text": "תודה אני תכף חוזרת שנייה"
+  },
+  {
+   "side": "me",
+   "text": "אין בעיה"
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

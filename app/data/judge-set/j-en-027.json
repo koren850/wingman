@@ -1,0 +1,31 @@
+{
+ "id": "j-en-027",
+ "lang": "en",
+ "tags": [
+  "direct",
+  "noq"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "The team plan includes up to 25 users"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Lior",
+   "text": "remind me, how many users are on the team plan"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "25"
+  ]
+ }
+}

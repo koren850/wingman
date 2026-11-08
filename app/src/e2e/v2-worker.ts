@@ -7,7 +7,7 @@ import { setupEngine } from "../testkit/engine-inproc.ts";
 import { loadSplit } from "../../qa/golden-load.ts";
 import { observeModel, timelineOf, type MeetingRun, type WorkerOptions } from "./v2-kit.ts";
 import { registerRole } from "../testkit/prompt.ts";
-import { Cassette, CassetteMiss, wrapCassette } from "../providers/cassette.ts";
+import { Cassette, CassetteMiss, CassetteStale, wrapCassette } from "../providers/cassette.ts";
 import { ModelRegistry } from "../providers/llm.ts";
 import { controlReplies } from "../../qa/controls.ts";
 
@@ -42,6 +42,7 @@ async function main() {
       wrapCassette({ mode: "record", cassette, ref, role, inner: (real ? await real.resolve(ref, role) : await observed(ref, role)) as never })) as never;
   }
   let cassetteMisses = 0;
+  let cassetteStale = 0; // a miss whose entry exists but was recorded with another prompt text or model (counted in cassetteMisses too)
   const replayCalls: Record<string, number> = {};
   if (opts.replay) {
     // Replay mode: every model reply is read from the cassette. The recorded delays run on the virtual clock. A miss is a model error for the engine.
@@ -58,6 +59,7 @@ async function main() {
             return await f.call(m, c);
           } catch (err) {
             if (err instanceof CassetteMiss) cassetteMisses++;
+            if (err instanceof CassetteStale) cassetteStale++;
             throw err;
           }
         };
@@ -192,7 +194,7 @@ async function main() {
     sessionFile: (await import("node:fs")).existsSync(e.boot.log.dir + "/session.json"),
     cacheRead: obs.cacheReadRatio(),
     roleCalls,
-    ...(opts.replay ? { cassetteMisses } : {}),
+    ...(opts.replay ? { cassetteMisses, cassetteStale } : {}),
     ...(capped ? { error: "cost cap reached: the meeting was cut short" } : {}),
   };
   writeFileSync(out, JSON.stringify(res));

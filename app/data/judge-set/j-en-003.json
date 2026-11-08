@@ -1,0 +1,36 @@
+{
+ "id": "j-en-003",
+ "lang": "en",
+ "tags": [
+  "statement"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "decisions": [
+    {
+     "text": "Launch in March"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "So the launch is planned for March."
+  },
+  {
+   "side": "them",
+   "name": "Lea",
+   "text": "Right, that matches what we agreed."
+  },
+  {
+   "side": "them",
+   "name": "Lea",
+   "text": "I just wanted to say thank you for the quick turnaround."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

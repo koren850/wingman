@@ -1,0 +1,28 @@
+{
+ "id": "j-he-015",
+ "lang": "he",
+ "tags": [
+  "offtopic"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "טל",
+   "text": "למה השמיים כחולים, דרך אגב? הבן שלי שאל אותי הבוקר."
+  },
+  {
+   "side": "me",
+   "text": "הה, שאלה טובה."
+  },
+  {
+   "side": "them",
+   "name": "טל",
+   "text": "הוא כל הזמן שואל שאלות קשות."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

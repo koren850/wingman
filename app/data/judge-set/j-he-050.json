@@ -1,0 +1,20 @@
+{
+ "id": "j-he-050",
+ "lang": "he",
+ "tags": [
+  "jargon",
+  "mixed"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "גלעד",
+   "text": "אנחנו צריכים את דוח SOC 2 לפני שממשיכים."
+  }
+ ],
+ "expected": {
+  "tag": "TERM"
+ }
+}

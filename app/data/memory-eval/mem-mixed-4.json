@@ -1,0 +1,127 @@
+{
+ "id": "mem-mixed-4",
+ "lang": "mixed",
+ "title": "Vendor call: spoken numbers and Hebrew names",
+ "kind": "vendor",
+ "tags": [
+  "mixed"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "היי, this is about the printer order for the new office.",
+   "name": "Tal"
+  },
+  {
+   "side": "me",
+   "text": "Hi Tal. How many printers do we need?"
+  },
+  {
+   "side": "them",
+   "text": "We counted 12 printers, and the price is 450 each.",
+   "name": "Tal"
+  },
+  {
+   "side": "me",
+   "text": "That is 5400 in total. Is delivery included?"
+  },
+  {
+   "side": "them",
+   "text": "לא, delivery is extra. I will send you the delivery quote today.",
+   "name": "Tal"
+  },
+  {
+   "side": "me",
+   "text": "Good. I will confirm the order with the finance team by Wednesday."
+  },
+  {
+   "side": "them",
+   "text": "מתי אתם צריכים אותם? What is the deadline?",
+   "name": "Tal"
+  },
+  {
+   "side": "me",
+   "text": "The office opens on the first of March."
+  },
+  {
+   "side": "them",
+   "text": "We decided to deliver in two batches, six printers each.",
+   "name": "Tal"
+  },
+  {
+   "side": "them",
+   "text": "I am not sure the second batch arrives before the first of March.",
+   "name": "Tal"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 4,
+    "who": "Tal",
+    "what": "send the delivery quote today",
+    "keys": [
+     "delivery quote"
+    ]
+   },
+   {
+    "line": 5,
+    "who": "me",
+    "what": "confirm the order with the finance team by Wednesday",
+    "keys": [
+     "finance",
+     "wednesday"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 6,
+    "asker": "Tal",
+    "text": "what is the deadline",
+    "keys": [
+     "deadline"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 2,
+    "what": "number of printers",
+    "value": "12",
+    "who": "Tal",
+    "keys": [
+     "printers"
+    ]
+   },
+   {
+    "line": 2,
+    "what": "price per printer",
+    "value": "450",
+    "who": "Tal",
+    "keys": [
+     "price"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 8,
+    "text": "deliver in two batches of six printers",
+    "keys": [
+     "two batches"
+    ]
+   }
+  ],
+  "objections": [
+   {
+    "line": 9,
+    "who": "Tal",
+    "text": "the second batch may not arrive before the first of March",
+    "keys": [
+     "second batch"
+    ]
+   }
+  ]
+ }
+}

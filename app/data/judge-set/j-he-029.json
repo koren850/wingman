@@ -1,0 +1,30 @@
+{
+ "id": "j-he-029",
+ "lang": "he",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "מידע הלקוחות נשמר במרכז נתונים בפרנקפורט"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "צבי",
+   "text": "תוכל להגיד לי איפה המידע נשמר?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "פרנקפורט"
+  ]
+ }
+}

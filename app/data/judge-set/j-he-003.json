@@ -1,0 +1,36 @@
+{
+ "id": "j-he-003",
+ "lang": "he",
+ "tags": [
+  "statement"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "decisions": [
+    {
+     "text": "ההשקה במרץ"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "אז ההשקה מתוכננת למרץ."
+  },
+  {
+   "side": "them",
+   "name": "לאה",
+   "text": "נכון, זה מה שסגרנו."
+  },
+  {
+   "side": "them",
+   "name": "לאה",
+   "text": "רציתי רק להגיד תודה על המהירות."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "id": "j-en-026",
+ "lang": "en",
+ "tags": [
+  "direct",
+  "noisy"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "We deliver to Rivermouth, Tel Aviv and Beer Sheva"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Yossi",
+   "text": "witch cities do you do deliver too"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "rivermouth"
+  ]
+ }
+}

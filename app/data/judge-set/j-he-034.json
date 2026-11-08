@@ -1,0 +1,19 @@
+{
+ "id": "j-he-034",
+ "lang": "he",
+ "tags": [
+  "objection"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "סמדר",
+   "text": "ניסינו כלי כזה בשנה שעברה ואף אחד לא השתמש בו."
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

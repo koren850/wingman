@@ -1,0 +1,22 @@
+{
+ "id": "j-he-036",
+ "lang": "he",
+ "tags": [
+  "objection",
+  "mixed"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "בדיקת אבטחה"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "אפרת",
+   "text": "אנשי ה-IT שלנו לא יאשרו כלי שמקשיב לשיחות."
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

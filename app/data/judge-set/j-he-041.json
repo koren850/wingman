@@ -1,0 +1,20 @@
+{
+ "id": "j-he-041",
+ "lang": "he",
+ "tags": [
+  "price",
+  "noisy"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "אומרי",
+   "text": "אז מה המחיר הסופי לארבעים רשיונות אני צריך מספר היום"
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

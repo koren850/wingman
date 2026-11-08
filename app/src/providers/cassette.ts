@@ -33,6 +33,10 @@ export type Entry = {
   source: "recorded" | "authored";
   /** What was asked, in readable form (for diffs and review). */
   request: { system: string; messages: string[]; options: unknown };
+  /** sha256 (first 16 hex) of the system text. A changed prompt changes this and nothing else: that is how a stale entry is told from a miss. */
+  promptHash?: string;
+  /** Same for the messages and options. Equal input hash with a different prompt hash (or model) = the entry is stale. */
+  inputHash?: string;
   /** Text pieces with the ms (since the call started) at which each arrived. */
   chunks: { at: number; text: string }[];
   finish: Finish;
@@ -50,6 +54,20 @@ export function cassetteKey(v: Pick<PromptView, "role" | "model" | "system" | "m
     .slice(0, 24);
 }
 
+const sha16 = (x: unknown) =>
+  createHash("sha256")
+    .update(typeof x === "string" ? x : JSON.stringify(x))
+    .digest("hex")
+    .slice(0, 16);
+/** Hash of the system text of a call. */
+export const promptHashOf = (system: string) => sha16(system);
+/** Hash of the messages and options of a call. */
+export const inputHashOf = (messages: string[], options: unknown) => sha16({ messages, options });
+const hashesOf = (e: Entry) => ({
+  promptHash: e.promptHash ?? promptHashOf(e.request.system),
+  inputHash: e.inputHash ?? inputHashOf(e.request.messages, e.request.options),
+});
+
 export class CassetteMiss extends Error {
   constructor(
     message: string,
@@ -57,6 +75,18 @@ export class CassetteMiss extends Error {
   ) {
     super(message);
     this.name = "CassetteMiss";
+  }
+}
+/** A miss where the cassette holds an entry for the same input that was recorded with another prompt text or another model. The fix is to re-record, not to look for a bug. */
+export class CassetteStale extends CassetteMiss {
+  constructor(
+    message: string,
+    key: string,
+    readonly staleKey: string,
+    readonly why: "prompt" | "model",
+  ) {
+    super(message, key);
+    this.name = "CassetteStale";
   }
 }
 
@@ -75,11 +105,29 @@ export class Cassette {
   get(key: string) {
     return this.byKey.get(key);
   }
+  private byInput?: Map<string, Entry[]>;
+  /** An entry recorded for the same role and the same input (messages, options) but another prompt text or model: stale, not missing. */
+  findStale(v: PromptView): { entry: Entry; why: "prompt" | "model" } | undefined {
+    if (!this.byInput) {
+      this.byInput = new Map();
+      for (const e of this.byKey.values()) {
+        const k = `${e.role}\u0001${hashesOf(e).inputHash}`;
+        (this.byInput.get(k) ?? this.byInput.set(k, []).get(k)!).push(e);
+      }
+    }
+    const list = this.byInput.get(`${v.role}\u0001${inputHashOf(v.messages, v.options)}`);
+    if (!list?.length) return undefined;
+    const ph = promptHashOf(v.system);
+    // the same model with another prompt is the common case; prefer it
+    const e = list.find((x) => x.model === v.model && hashesOf(x).promptHash !== ph) ?? list.find((x) => x.model !== v.model);
+    return e ? { entry: e, why: e.model === v.model ? "prompt" : "model" } : undefined;
+  }
   entries() {
     return [...this.byKey.values()];
   }
   put(e: Entry) {
     this.byKey.set(e.key, e);
+    this.byInput = undefined;
   }
   /** Writes the file atomically with sorted keys, so a re-record gives a small diff. */
   save(path = this.path) {
@@ -131,6 +179,8 @@ function entryOf(v: PromptView, chunks: Entry["chunks"], finish: Finish, usage: 
     model: v.model,
     source,
     request: { system: v.system, messages: v.messages, options: v.options },
+    promptHash: promptHashOf(v.system),
+    inputHash: inputHashOf(v.messages, v.options),
     chunks,
     finish,
     usage,
@@ -187,6 +237,12 @@ export function diffLines(a: string[], b: string[], max = 40): string {
   const lines = script.filter((_, k) => changed(k) || changed(k - 1) || changed(k + 1)); // changed lines with one line of context
   return lines.length > max ? [...lines.slice(0, max), `... ${lines.length - max} more lines`].join("\n") : lines.join("\n");
 }
+export function staleMessage(c: Cassette, v: PromptView, key: string, s: { entry: Entry; why: "prompt" | "model" }): string {
+  const head = `Cassette STALE (not a miss): role=${v.role} model=${v.model} key=${key}${c.path ? ` file=${c.path}` : ""}. The cassette has entry ${s.entry.key} for the same input, recorded with ${s.why === "model" ? `model ${s.entry.model}` : "another prompt text"}. Re-record it (needs a key); the entry is out of date, the engine did not break.`;
+  if (s.why === "model") return head;
+  const diff = diffLines(s.entry.request.system.split("\n"), v.system.split("\n"));
+  return `${head}\nSystem prompt diff (- cassette, + this call):\n${diff || "(only whitespace differs)"}`;
+}
 export function missMessage(c: Cassette, v: PromptView, key: string): string {
   const near = c.nearest(v);
   const head = `Cassette miss: role=${v.role} model=${v.model} key=${key}${c.path ? ` file=${c.path}` : ""} (${c.size} entries). Re-record it with WINGMAN_LLM_MODE=record (needs a key), or author the entry.`;
@@ -236,7 +292,11 @@ export function wrapCassette(o: CassetteOptions): LanguageModel {
     const v = view(c),
       key = cassetteKey(v),
       e = o.cassette.get(key);
-    if (!e) throw new CassetteMiss(missMessage(o.cassette, v, key), key);
+    if (!e) {
+      const st = o.cassette.findStale(v);
+      if (st) throw new CassetteStale(staleMessage(o.cassette, v, key, st), key, st.entry.key, st.why);
+      throw new CassetteMiss(missMessage(o.cassette, v, key), key);
+    }
     return e;
   };
   const save = () => {
@@ -329,4 +389,24 @@ export function cassetteFor(path = defaultCassettePath()): Cassette {
 }
 export function resetCassetteCache() {
   loaded.clear();
+}
+
+// ---- what a cassette holds (for `pnpm cassette:status`)
+export type CassetteSummary = {
+  entries: number;
+  bySource: Record<string, number>;
+  /** per role: entries, models seen, and how many carry no hash (written before round 12) */
+  byRole: Record<string, { entries: number; models: string[]; unhashed: number; ms: number }>;
+};
+export function summarizeCassette(c: Cassette): CassetteSummary {
+  const out: CassetteSummary = { entries: c.size, bySource: {}, byRole: {} };
+  for (const e of c.entries()) {
+    out.bySource[e.source] = (out.bySource[e.source] ?? 0) + 1;
+    const r = (out.byRole[e.role] ??= { entries: 0, models: [], unhashed: 0, ms: 0 });
+    r.entries++;
+    r.ms += e.ms;
+    if (!r.models.includes(e.model)) r.models.push(e.model);
+    if (!e.promptHash || !e.inputHash) r.unhashed++;
+  }
+  return out;
 }

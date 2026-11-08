@@ -1,0 +1,23 @@
+{
+ "id": "j-en-004",
+ "lang": "en",
+ "tags": [
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Omar",
+   "text": "Let me finish my coffee and then we start."
+  },
+  {
+   "side": "me",
+   "text": "Take your time."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

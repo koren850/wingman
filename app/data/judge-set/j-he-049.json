@@ -1,0 +1,36 @@
+{
+ "id": "j-he-049",
+ "lang": "he",
+ "tags": [
+  "number-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "מחיר כולל",
+     "value": "5400 כולל מע\"מ",
+     "who": "me"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "בועז",
+   "text": "אז הסכום הכולל הוא 5000 ועוד מע\"מ, נכון?"
+  },
+  {
+   "side": "me",
+   "text": "כן, נכון."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "5400"
+  ]
+ }
+}

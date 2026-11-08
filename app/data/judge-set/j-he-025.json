@@ -1,0 +1,30 @@
+{
+ "id": "j-he-025",
+ "lang": "he",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "צוות התמיכה עובד בשעון ישראל, 8:00 עד 17:00"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "אורלי",
+   "text": "באיזה אזור זמן עובד צוות התמיכה?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "8:00"
+  ]
+ }
+}

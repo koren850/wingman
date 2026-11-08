@@ -1,0 +1,31 @@
+{
+ "id": "j-he-027",
+ "lang": "he",
+ "tags": [
+  "direct",
+  "noq"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "חבילת הצוות כוללת עד 25 משתמשים"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "ליאור",
+   "text": "תזכיר לי כמה משתמשים יש בחבילת הצוות"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "25"
+  ]
+ }
+}

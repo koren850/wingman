@@ -1,0 +1,37 @@
+{
+ "id": "j-he-024",
+ "lang": "he",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "כניסה אחידה (SAML) כלולה בחבילה העסקית"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "בן",
+   "text": "אתם תומכים בכניסה אחידה?"
+  },
+  {
+   "side": "me",
+   "text": "רגע, אני חושב."
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "accept": [
+   "REPLY"
+  ],
+  "mustMention": [
+   "saml"
+  ]
+ }
+}

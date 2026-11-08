@@ -1,0 +1,31 @@
+{
+ "id": "j-en-045",
+ "lang": "en",
+ "tags": [
+  "number-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "setup fee",
+     "value": "1200",
+     "who": "me"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "The setup fee is 800 dollars."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "1200"
+  ]
+ }
+}

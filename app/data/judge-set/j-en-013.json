@@ -1,0 +1,24 @@
+{
+ "id": "j-en-013",
+ "lang": "en",
+ "tags": [
+  "statement"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Shay",
+   "text": "We are a team of fifteen people."
+  },
+  {
+   "side": "them",
+   "name": "Shay",
+   "text": "Mostly engineers, two in sales."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

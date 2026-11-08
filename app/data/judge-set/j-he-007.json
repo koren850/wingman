@@ -1,0 +1,38 @@
+{
+ "id": "j-he-007",
+ "lang": "he",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "מחיר חודשי",
+     "value": "900",
+     "who": "me"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "אילן",
+   "text": "כמה זה עולה שוב?"
+  },
+  {
+   "side": "me",
+   "text": "900 שקל בחודש, כמו שאמרתי קודם."
+  },
+  {
+   "side": "them",
+   "name": "אילן",
+   "text": "נכון, 900 בחודש. תודה."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

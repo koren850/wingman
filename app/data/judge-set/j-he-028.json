@@ -1,0 +1,31 @@
+{
+ "id": "j-he-028",
+ "lang": "he",
+ "tags": [
+  "direct",
+  "noq"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "גודל העלאה מקסימלי הוא 200 מגה לקובץ"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "אנה",
+   "text": "אני צריכה לדעת מה גודל הקובץ המקסימלי להעלאה"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "200"
+  ]
+ }
+}

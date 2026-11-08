@@ -1,0 +1,127 @@
+{
+ "id": "mem-mixed-5",
+ "lang": "mixed",
+ "title": "ראיון עבודה: שאלות באנגלית",
+ "kind": "interview",
+ "tags": [
+  "mixed"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "ברוך הבא. Tell me about your last project.",
+   "name": "מיכל"
+  },
+  {
+   "side": "me",
+   "text": "בפרויקט האחרון בניתי מערכת reporting ל-200 משתמשים."
+  },
+  {
+   "side": "them",
+   "text": "מעניין. What was the hardest technical problem?",
+   "name": "מיכל"
+  },
+  {
+   "side": "me",
+   "text": "ה-performance של ה-queries. הורדתי את הזמן מ-12 שניות ל-2 שניות."
+  },
+  {
+   "side": "them",
+   "text": "Can you work with TypeScript and Postgres?",
+   "name": "מיכל"
+  },
+  {
+   "side": "me",
+   "text": "כן, אני עובד עם שניהם שלוש שנים."
+  },
+  {
+   "side": "them",
+   "text": "אני אשלח לך תרגיל בית עד יום שלישי.",
+   "name": "מיכל"
+  },
+  {
+   "side": "me",
+   "text": "אחזיר את התרגיל תוך שלושה ימים."
+  },
+  {
+   "side": "them",
+   "text": "הצוות החליט לעבור לשלב השני רק אחרי התרגיל.",
+   "name": "מיכל"
+  },
+  {
+   "side": "them",
+   "text": "יש לי חשש קטן שאין לך ניסיון עם ניהול צוות.",
+   "name": "מיכל"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 6,
+    "who": "מיכל",
+    "what": "לשלוח תרגיל בית עד יום שלישי",
+    "keys": [
+     "תרגיל",
+     "שלישי"
+    ]
+   },
+   {
+    "line": 7,
+    "who": "me",
+    "what": "להחזיר את התרגיל תוך שלושה ימים",
+    "keys": [
+     "התרגיל",
+     "שלושה ימים"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 4,
+    "asker": "מיכל",
+    "text": "can you work with TypeScript and Postgres",
+    "keys": [
+     "typescript"
+    ]
+   },
+   {
+    "line": 2,
+    "asker": "מיכל",
+    "text": "what was the hardest technical problem",
+    "keys": [
+     "hardest"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 1,
+    "what": "משתמשי מערכת ה-reporting",
+    "value": "200",
+    "who": "me",
+    "keys": [
+     "reporting"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 8,
+    "text": "לעבור לשלב השני רק אחרי התרגיל",
+    "keys": [
+     "שלב השני"
+    ]
+   }
+  ],
+  "objections": [
+   {
+    "line": 9,
+    "who": "מיכל",
+    "text": "אין לך ניסיון עם ניהול צוות",
+    "keys": [
+     "ניהול צוות"
+    ]
+   }
+  ]
+ }
+}

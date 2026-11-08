@@ -1,0 +1,33 @@
+{
+ "id": "j-he-057",
+ "lang": "he",
+ "tags": [
+  "open-loop"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "openQuestions": [
+    {
+     "asker": "נעמה",
+     "text": "האם ההטמעה כלולה במחיר?"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "נעמה",
+   "text": "טוב, זה הכל מצידי."
+  },
+  {
+   "side": "them",
+   "name": "נעמה",
+   "text": "נדבר בשבוע הבא."
+  }
+ ],
+ "expected": {
+  "tag": "PROMPT"
+ }
+}

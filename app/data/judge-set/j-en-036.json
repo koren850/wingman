@@ -1,0 +1,21 @@
+{
+ "id": "j-en-036",
+ "lang": "en",
+ "tags": [
+  "objection"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "security review"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Efrat",
+   "text": "Our IT will never approve something that listens to calls."
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

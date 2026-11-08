@@ -1,6 +1,6 @@
 // Records real model replies for a golden suite into a cassette, so the next run can replay them offline.  OWNER ONLY. Never run by an agent, never in CI.
 //   pnpm tsx scripts/cassette-record.ts --suite dev --cap 5            record the dev meetings, stop when the booked cost passes 5 USD
-//   pnpm tsx scripts/cassette-record.ts --suite test-b --cap 5 --final held-out suites need --final (the same rule as pnpm eval --final)
+//   pnpm tsx scripts/cassette-record.ts --suite test-b --cap 5 --final held-out suites (test, test-b, test-c) need --final (the same rule as pnpm eval --final)
 //   options: --out <file>  cassette file (default data/cassettes/<suite>.cassette.json)
 //            --only <id>   record one meeting
 //            --pace <n>    virtual clock speed against real time (default 1: a 7 minute meeting takes 7 minutes; the real model answers in real time)
@@ -24,7 +24,7 @@ import { judgeCassettePath } from "../qa/judge-eval.ts";
 import { Cassette } from "../src/providers/cassette.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-export const SUITES = ["dev", "test", "test-b"] as const;
+export const SUITES = ["dev", "test", "test-b", "test-c"] as const;
 export type Suite = (typeof SUITES)[number];
 
 export type Deps = {
@@ -39,6 +39,8 @@ export type Deps = {
   dataDir?: string;
   /** Asks the judge model one question. The default calls the provider with ANTHROPIC_API_KEY; the tests pass a canned one. */
   judgeTransport?: JudgeTransport;
+  /** Filled in at the end: what the run booked, so a caller that runs several steps (pnpm morning) can keep one cap across them. */
+  report?: { spentUsd: number; entries: number; stopped: boolean; cassette: string };
 };
 export type Args = { suite: Suite; cap: number; final: boolean; out?: string; only?: string; pace?: number; allowPartial: boolean; judge: boolean };
 /** USD per judged card (about 450 input tokens and 30 output tokens on the judge model, no cache). A planning number, not a measurement. */
@@ -111,7 +113,8 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
     return err("no ANTHROPIC_API_KEY in the environment. Set it for this one command; nothing reads the key from a file.");
   if (a.suite !== "dev" && !a.final) return err(`${a.suite} is a held-out suite. Pass --final to say you mean it (the same rule as pnpm eval --final).`);
 
-  const all = loadSplit(a.suite, { final: a.suite !== "dev" });
+  if (!existsSync(join(ROOT, "data", "meetings", a.suite))) return err(`there is no ${a.suite} split in data/meetings yet`);
+  const all = loadSplit(a.suite as never, { final: a.suite !== "dev" });
   const meetings = v2Meetings(all).filter((g) => !a.only || g.id === a.only);
   if (!meetings.length) return err(a.only ? `no meeting ${a.only} in ${a.suite}` : "no meetings to record");
   const pace = a.pace ?? (deps.transport === "real" ? 1 : 0);
@@ -149,7 +152,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
     // One cassette file is written by one process: each meeting records into its own part file, merged below.
     const r = await run(
       g.id,
-      { split: a.suite, asks: false, record: { cassette: partOf(g.id), transport: deps.transport, pace: pace || undefined, capUsd: left } },
+      { split: a.suite as never, asks: false, record: { cassette: partOf(g.id), transport: deps.transport, pace: pace || undefined, capUsd: left } },
       3 * 3_600_000,
     );
     spent += r.usage.reduce((s, u) => s + (u.usd ?? 0), 0);
@@ -162,7 +165,9 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
     meetings.map((g) => partOf(g.id)).filter((p) => existsSync(p)),
   );
   deps.log(`Done: ${n} entries in ${out}, about $${spent.toFixed(3)} booked${stopped ? " (stopped at the cap)" : ""}.`);
+  if (deps.report) Object.assign(deps.report, { spentUsd: spent, entries: n, stopped, cassette: out });
   // 4. the judge: one verdict per card the model made, read back by pnpm eval --cassette
+  let judgedCards = 0;
   if (a.judge) {
     const jOut = judgeCassettePath(out);
     const jc = new Cassette(jOut);
@@ -196,10 +201,12 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
     } finally {
       jc.save(jOut);
     }
+    judgedCards = cards;
     deps.log(
       `Judge: ${cards} cards judged into ${jOut}, about $${(cards * JUDGE_USD_PER_CARD).toFixed(3)}.${failedCards ? ` ${failedCards} failed.` : ""}${skipped ? ` ${skipped} cards skipped to stay under the cap.` : ""}`,
     );
   }
+  if (deps.report && a.judge) deps.report.spentUsd = spent + judgedCards * JUDGE_USD_PER_CARD;
   return 0;
 }
 

@@ -1,7 +1,8 @@
 // Memory-quality eval: does the call memory catch what a person would write down?
 //
-// 12 invented calls (6 English, 6 Hebrew) in data/memory-eval/*.json. Each one has labels for the FINAL memory: promises (with the owner), questions still
-// open at the end, numbers (with the owner) and decisions. runMemoryEval() plays a call through the real memory loop (the same code path as a live call:
+// 24 invented calls (10 English, 9 Hebrew, 5 mixed) in data/memory-eval/*.json, among them noisy speech-to-text, two voices on the user's side and one long
+// call whose early promise has to survive a compaction. Each one has labels for the FINAL memory: promises (with the owner), questions still
+// open at the end, numbers (with the owner), decisions and objections. runMemoryEval() plays a call through the real memory loop (the same code path as a live call:
 // buildContext, the model runner, parseJsonObject, applyPatch) and scores the memory it ends with: precision and recall per class.
 //
 //   mode "fake"      the policy fake model answers with the labelled items, with seeded noise (some dropped, one wrong owner, one extra). Tests the pipeline and the
@@ -23,23 +24,29 @@ import { policyModel } from "../src/testkit/policy-model.ts";
 import { registerRole } from "../src/testkit/prompt.ts";
 import type { ModelRegistry } from "../src/providers/llm.ts";
 
-export const CLASSES = ["promises", "openQuestions", "numbers", "decisions"] as const;
+export const CLASSES = ["promises", "openQuestions", "numbers", "decisions", "objections"] as const;
 export type Cls = (typeof CLASSES)[number];
 
 export type EvalLine = { side: "me" | "them"; name?: string; text: string };
 export type EvalCase = {
   id: string;
-  lang: "en" | "he";
+  lang: "en" | "he" | "mixed";
   title: string;
   kind: string;
+  /** what the call is meant to test: "noisy-stt", "two-me-voices", "long", "compaction", "mixed", "objection" */
+  tags?: string[];
+  /** Run the compaction every this many minutes of the call clock (default: never). The long call sets it so the early promise must survive. */
+  compactEveryMinutes?: number;
   lines: EvalLine[];
   expected: {
     promises: { line: number; who: string; what: string; keys: string[] }[];
     openQuestions: { line: number; asker: string; text: string; keys: string[] }[];
     numbers: { line: number; what: string; value: string; who: string; keys: string[] }[];
     decisions: { line: number; text: string; keys: string[] }[];
+    objections?: { line: number; who: string; text: string; keys: string[] }[];
   };
 };
+const labelsOf = (c: EvalCase, cls: Cls) => (c.expected[cls] ?? []) as { line: number; keys: string[] }[];
 
 /** The limits a control must stay under (checked by the tests and by scripts/eval-memory.ts). */
 export const CONTROL_LIMITS = {
@@ -49,6 +56,14 @@ export const CONTROL_LIMITS = {
   copyAllPrecisionMax: 0.3,
   /** the fake-model run with noise (a sanity floor for the pipeline, not a quality claim) */
   fakeF1Min: 0.6,
+} as const;
+
+/** Floors for a RECORDED run (mode "model"): the numbers of a real model, replayed from a cassette or live. They do not apply to the fake or the controls.
+ *  Provisional: set from what a small model should manage; the owner moves them after the first recorded run (the report says by how much). */
+export const RECORDED_FLOORS = {
+  overallF1: 0.55,
+  classF1: { promises: 0.5, openQuestions: 0.45, numbers: 0.55, decisions: 0.4, objections: 0.3 },
+  langF1: { en: 0.45, he: 0.4, mixed: 0.35 },
 } as const;
 
 export const EVAL_DIR = join(ROOT, "data", "memory-eval");
@@ -70,8 +85,8 @@ const hasKeys = (text: string, keys: readonly string[]): boolean => {
 /** Problems with the labels of a case (empty = fine). Every key must appear in the line the label points at, so the labels stay honest. */
 export function validateCase(c: EvalCase): string[] {
   const bad: string[] = [];
-  if (!/^mem-(en|he)-\d+$/.test(c.id)) bad.push("id");
-  if (c.lang !== "en" && c.lang !== "he") bad.push("lang");
+  if (!/^mem-(en|he|mixed)-\d+$/.test(c.id) || !c.id.startsWith(`mem-${c.lang}-`)) bad.push("id");
+  if (c.lang !== "en" && c.lang !== "he" && c.lang !== "mixed") bad.push("lang");
   if (c.lines.length < 8 || c.lines.some((l) => !l.text || (l.side !== "me" && l.side !== "them"))) bad.push("lines");
   const check = (cls: Cls, i: number, l: { line: number; keys: string[] } & Record<string, unknown>) => {
     const src = c.lines[l.line];
@@ -80,8 +95,8 @@ export function validateCase(c: EvalCase): string[] {
     else if (!hasKeys(src.text, l.keys)) bad.push(`${cls}[${i}]: keys ${JSON.stringify(l.keys)} are not in line ${l.line}`);
     if (cls === "numbers" && !src.text.includes(String(l.value))) bad.push(`numbers[${i}]: value ${l.value} is not in line ${l.line}`);
   };
-  for (const cls of CLASSES) c.expected[cls].forEach((l, i) => check(cls, i, l as never));
-  if (CLASSES.every((cls) => c.expected[cls].length === 0)) bad.push("no labels");
+  for (const cls of CLASSES) labelsOf(c, cls).forEach((l, i) => check(cls, i, l as never));
+  if (CLASSES.every((cls) => labelsOf(c, cls).length === 0)) bad.push("no labels");
   return bad;
 }
 
@@ -111,6 +126,7 @@ export function itemsOf(mem: SessionMemory): Record<Cls, Item[]> {
     openQuestions: mem.openQuestions.filter((q) => q.status === "open").map((q) => ({ text: q.text, who: q.asker })),
     numbers: mem.numbers.map((n) => ({ text: n.what, who: n.who, value: n.value })),
     decisions: mem.decisions.map((d) => ({ text: d.text })),
+    objections: mem.objections.map((o) => ({ text: o.text, who: o.who })),
   };
 }
 type Label = { keys: string[]; who?: string; asker?: string; value?: string };
@@ -118,7 +134,7 @@ const fits = (cls: Cls, label: Label, it: Item): boolean => {
   if (!hasKeys(it.text, label.keys)) return false;
   if (cls === "promises") return ownerFits(label.who ?? "", it.who);
   if (cls === "numbers") return digits(it.value) === digits(label.value) && ownerFits(label.who ?? "", it.who);
-  return true; // a question's asker is not scored: the model may call the same person "them"
+  return true; // a question's asker (and who raised an objection) is not scored: the model may call the same person "them"
 };
 
 /** Precision and recall of one memory against the labels of its call. */
@@ -128,14 +144,14 @@ export function scoreMemory(mem: SessionMemory, c: EvalCase): Record<Cls, ClassS
   for (const cls of CLASSES) {
     const used = new Set<number>();
     let tp = 0;
-    for (const label of c.expected[cls] as Label[]) {
+    for (const label of labelsOf(c, cls) as Label[]) {
       const i = got[cls].findIndex((it, k) => !used.has(k) && fits(cls, label, it));
       if (i >= 0) {
         used.add(i);
         tp++;
       }
     }
-    out[cls] = toScore(tp, got[cls].length, c.expected[cls].length);
+    out[cls] = toScore(tp, got[cls].length, labelsOf(c, cls).length);
   }
   return out;
 }
@@ -170,8 +186,9 @@ export function oraclePatch(c: EvalCase, from: number, to: number, noise: number
   for (const n of c.expected.numbers.filter(inRange))
     keep() && push("numbers", { what: n.what, value: n.value, who: r() < noise / 2 ? "someone else" : n.who });
   for (const d of c.expected.decisions.filter(inRange)) keep() && push("decisions", { text: d.text });
+  for (const o of (c.expected.objections ?? []).filter(inRange)) keep() && push("objections", { who: o.who, text: o.text });
   // over-extraction: a plain line becomes a decision
-  const labelled = new Set(Object.values(c.expected).flatMap((ls) => (ls as { line: number }[]).map((l) => l.line)));
+  const labelled = new Set(Object.values(c.expected).flatMap((ls) => ((ls ?? []) as { line: number }[]).map((l) => l.line)));
   for (let i = from; i < to; i++) if (!labelled.has(i) && noise > 0 && r() < noise / 3) push("decisions", { text: c.lines[i].text.slice(0, 120) });
   return Object.keys(add).length ? { add } : {};
 }
@@ -193,6 +210,7 @@ export function copyAllMemory(c: EvalCase): SessionMemory {
           openQuestions: part.map((l) => ({ asker: who(l), text: l.text })),
           numbers: part.map((l) => ({ what: l.text, value: l.text.match(/\d+/)?.[0] ?? "0", who: who(l) })),
           decisions: part.map((l) => ({ text: l.text })),
+          objections: part.map((l) => ({ who: who(l), text: l.text })),
         },
       },
       { now: i + 1 },
@@ -210,14 +228,15 @@ export type DriveOpts = {
   batch?: number;
   onUsage?: (role: string, usage: unknown) => void;
 };
+type Driven = { memory: SessionMemory; runs: number; dropped: number; compactions: number };
 /** Feeds the lines to a MemoryLoop on a manual clock, one batch at a time, and returns the final memory. */
-export async function driveCase(c: EvalCase, o: DriveOpts): Promise<{ memory: SessionMemory; runs: number; dropped: number }> {
+export async function driveCase(c: EvalCase, o: DriveOpts): Promise<Driven> {
   const batch = o.batch ?? 5;
   let clock = 1_800_000_000_000;
   const run = makeModelRunner({ registry: o.registry as ModelRegistry, model: o.model, onUsage: (role, _m, usage) => o.onUsage?.(role, usage) });
   const loop = new MemoryLoop(
     { now: () => clock, run, save: () => {}, sendView: () => {}, log: () => {} },
-    { ...DEFAULT_MEMORY_CONFIG, minNewWords: 1, compactEveryMinutes: 10_000 },
+    { ...DEFAULT_MEMORY_CONFIG, minNewWords: 1, compactEveryMinutes: c.compactEveryMinutes ?? 10_000 },
     emptyMemory(clock),
   );
   for (let i = 0; i < c.lines.length; i += batch) {
@@ -225,10 +244,13 @@ export async function driveCase(c: EvalCase, o: DriveOpts): Promise<{ memory: Se
     clock += 21_000;
     loop.tick();
     while (loop.isBusy) await new Promise((r) => setTimeout(r, 0));
+    // A second tick: the first one starts the updater, so a compaction that is due waits for the next one (the live loop ticks every second).
+    loop.tick();
+    while (loop.isBusy) await new Promise((r) => setTimeout(r, 0));
   }
   await loop.finalPass(5000);
   loop.stop();
-  return { memory: loop.memory, runs: loop.stats.runs, dropped: loop.stats.dropped };
+  return { memory: loop.memory, runs: loop.stats.runs, dropped: loop.stats.dropped, compactions: loop.stats.compactions };
 }
 
 registerRole("memory", "You keep the memory of a live call");
@@ -257,12 +279,20 @@ export type MemoryEvalOpts = {
   noise?: number;
   seed?: number;
 };
-export type CaseResult = { id: string; lang: "en" | "he"; byClass: Record<Cls, ClassScore>; overall: ClassScore; runs: number; dropped: number };
+export type CaseResult = {
+  id: string;
+  lang: EvalCase["lang"];
+  byClass: Record<Cls, ClassScore>;
+  overall: ClassScore;
+  runs: number;
+  dropped: number;
+  compactions: number;
+};
 export type MemoryEvalResult = {
   mode: NonNullable<MemoryEvalOpts["mode"]>;
   cases: CaseResult[];
   byClass: Record<Cls, ClassScore>;
-  byLang: Record<"en" | "he", ClassScore>;
+  byLang: Record<EvalCase["lang"], ClassScore>;
   overall: ClassScore;
 };
 
@@ -274,16 +304,17 @@ export async function runMemoryEval(opts: MemoryEvalOpts = {}): Promise<MemoryEv
   for (const c of cases) {
     let memory: SessionMemory,
       runs = 0,
-      dropped = 0;
+      dropped = 0,
+      compactions = 0;
     if (mode === "null") memory = nullMemory();
     else if (mode === "copy-all") memory = copyAllMemory(c);
     else {
       const registry = mode === "model" ? opts.registry! : fakeRegistryFor(c, { noise: opts.noise ?? 0.15, seed: opts.seed ?? 7 });
       const d = await driveCase(c, { registry, model: opts.model ?? "anthropic:claude-haiku-5-5" });
-      ({ memory, runs, dropped } = d);
+      ({ memory, runs, dropped, compactions } = d);
     }
     const byClass = scoreMemory(memory, c);
-    results.push({ id: c.id, lang: c.lang, byClass, overall: sum(CLASSES.map((k) => byClass[k])), runs, dropped });
+    results.push({ id: c.id, lang: c.lang, byClass, overall: sum(CLASSES.map((k) => byClass[k])), runs, dropped, compactions });
   }
   const pool = (rs: CaseResult[]) => ({
     byClass: Object.fromEntries(CLASSES.map((k) => [k, sum(rs.map((r) => r.byClass[k]))])) as Record<Cls, ClassScore>,
@@ -294,7 +325,11 @@ export async function runMemoryEval(opts: MemoryEvalOpts = {}): Promise<MemoryEv
     mode,
     cases: results,
     byClass: all.byClass,
-    byLang: { en: pool(results.filter((r) => r.lang === "en")).overall, he: pool(results.filter((r) => r.lang === "he")).overall },
+    byLang: {
+      en: pool(results.filter((r) => r.lang === "en")).overall,
+      he: pool(results.filter((r) => r.lang === "he")).overall,
+      mixed: pool(results.filter((r) => r.lang === "mixed")).overall,
+    },
     overall: all.overall,
   };
 }
@@ -310,7 +345,9 @@ export function formatEval(r: MemoryEvalResult): string {
     ...CLASSES.map((k) => row(k, r.byClass[k])),
     row("English", r.byLang.en),
     row("Hebrew", r.byLang.he),
+    row("Mixed", r.byLang.mixed),
     row("all", r.overall),
+    `compactions in the long calls: ${r.cases.filter((c) => c.compactions > 0).length} calls, ${r.cases.reduce((a, c) => a + c.compactions, 0)} runs`,
   ].join("\n");
 }
 
@@ -320,4 +357,18 @@ export function controlBreaches(r: MemoryEvalResult): string[] {
   if (r.mode === "copy-all" && r.overall.precision > CONTROL_LIMITS.copyAllPrecisionMax)
     return [`copy-all control precision ${r.overall.precision.toFixed(2)} is over ${CONTROL_LIMITS.copyAllPrecisionMax}`];
   return [];
+}
+
+/** Floors of a recorded run. Only mode "model" is held to them: the fake is a pipeline check and the controls have their own limits. */
+export function floorBreaches(r: MemoryEvalResult): string[] {
+  if (r.mode !== "model") return [];
+  const out: string[] = [];
+  const f1 = (x: number) => (x * 100).toFixed(0);
+  if (r.overall.f1 < RECORDED_FLOORS.overallF1) out.push(`overall F1 ${f1(r.overall.f1)} is under the floor ${f1(RECORDED_FLOORS.overallF1)}`);
+  for (const k of CLASSES)
+    if (r.byClass[k].expected && r.byClass[k].f1 < RECORDED_FLOORS.classF1[k])
+      out.push(`${k} F1 ${f1(r.byClass[k].f1)} is under the floor ${f1(RECORDED_FLOORS.classF1[k])}`);
+  for (const l of ["en", "he", "mixed"] as const)
+    if (r.byLang[l].f1 < RECORDED_FLOORS.langF1[l]) out.push(`${l} F1 ${f1(r.byLang[l].f1)} is under the floor ${f1(RECORDED_FLOORS.langF1[l])}`);
+  return out;
 }

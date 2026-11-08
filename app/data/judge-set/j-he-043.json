@@ -1,0 +1,19 @@
+{
+ "id": "j-he-043",
+ "lang": "he",
+ "tags": [
+  "price"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "עופר",
+   "text": "תן לי הנחה של עשרים אחוז ואנחנו חותמים עכשיו."
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

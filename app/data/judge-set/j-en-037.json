@@ -1,0 +1,24 @@
+{
+ "id": "j-en-037",
+ "lang": "en",
+ "tags": [
+  "objection"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Yaniv",
+   "text": "This feels too complicated for our small team."
+  },
+  {
+   "side": "them",
+   "name": "Yaniv",
+   "text": "We are only five people."
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

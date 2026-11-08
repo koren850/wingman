@@ -1,0 +1,30 @@
+{
+ "id": "j-en-023",
+ "lang": "en",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "The free trial is 14 days, no card needed"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Dana",
+   "text": "How long is the free trial?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "14"
+  ]
+ }
+}

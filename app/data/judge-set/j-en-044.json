@@ -1,0 +1,19 @@
+{
+ "id": "j-en-044",
+ "lang": "en",
+ "tags": [
+  "timeline"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Liat",
+   "text": "When exactly will the integration be ready? Give me a date."
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

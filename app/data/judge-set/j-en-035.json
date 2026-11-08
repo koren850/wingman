@@ -1,0 +1,20 @@
+{
+ "id": "j-en-035",
+ "lang": "en",
+ "tags": [
+  "objection",
+  "implied"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Roi",
+   "text": "I do not see why we need this at all."
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

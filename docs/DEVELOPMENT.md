@@ -158,6 +158,30 @@ The command prints a one-page estimate first and refuses when it is over the cap
 
 Held-out cassettes (`test`, `test-b`) must be recorded and replayed once, after the dev numbers are final. Do not edit a prompt after you have looked at them.
 
+## The morning run (owner, by hand)
+
+One command records everything the quality numbers need, with one cap for the whole run. An agent never runs it and CI refuses it. It needs `ANTHROPIC_API_KEY` in the environment of that one command.
+
+```bash
+cd app
+pnpm morning --cap 5 --estimate        # prints the cost estimate and stops; needs no key
+ANTHROPIC_API_KEY=... pnpm morning --cap 5
+```
+
+Order: the dev meetings (with the model judge), then `pnpm eval --cassette ... --update` and the cost check, then the memory eval (24 calls), then the judgement set (120 cases), then `test`, `test-b` and `test-c`. Each held-out split asks for a yes first, because reading it is a one-time act. After them one `pnpm eval --final --cassette ...` reads the recorded ones. Use `--only dev,judge` or `--skip test-c` to run part of it.
+
+It writes `qa/recorded-baseline.json` (the `v2Recorded` section, with the cassette it came from) and a one-page `qa/out/morning.md`: what ran, what each step cost, the cost check, the dev eval and the held-out read. The estimate is about 0.8 USD for what exists today and is a floor. It refuses without a key, in CI, without `--cap`, and when the estimate is above the cap (`--allow-partial` stops at the cap instead).
+
+**Cost check.** After the dev recording the same meetings are played once with the scripted replies (simulated usage) and once against the recording (usage the provider reported). The cost per role and per hour must be within 15 percent in total and in every role that is more than 5 percent of the cost. The report prints calls per hour per role. A failure means the budgets in `qa/budgets.json` are wrong, not that the engine is broken.
+
+**Stale entries.** Every cassette entry carries the model id, a hash of the system prompt and a hash of the messages. When a call finds no entry, but there is one for the same messages recorded with another prompt text or another model, the replay says STALE (`CassetteStale`) and not "miss". The fix is to record again. `pnpm cassette:status [--cassette dev.cassette.json]` lists the files by role and model and, with a file, plays dev against it and prints coverage: calls found, stale and missing.
+
+## Judgement set, memory eval and replay
+
+- `pnpm eval:judge` scores the moment role on 120 invented cases in `data/judge-set` (60 English, 60 Hebrew; noisy speech-to-text, mixed languages, lines with no question mark). A case holds the call memory, the last 6 lines and the right verdict (SKIP or one card kind, with an accepted second verdict and the words a card must contain). It prints precision, recall and F1 per kind. Controls: a model that always says SKIP and one that always answers must stay under the limits in `qa/judge-set.ts`. Floors apply to a recorded run only: `pnpm eval:judge --mode model --cassette data/cassettes/judge-set.cassette.json`. Record: `pnpm eval:judge --record --cap 1` (owner).
+- `pnpm eval:memory` scores the call memory on 24 invented calls in `data/memory-eval` (10 English, 9 Hebrew, 5 mixed; noisy speech-to-text; two voices on the user's side; one long call whose early promise must survive a compaction). It prints precision, recall and F1 for promises, open questions, numbers (with the owner), decisions and objections. The null and copy-all controls stay. Floors (`RECORDED_FLOORS`) apply to a recorded run only. Record: `pnpm eval:memory --record --cap 1` (owner).
+- `pnpm replay <call-folder> [--prompt rules.txt] [--cassette file]` runs the final lines of a real call (`events.jsonl`) through the moment role and prints which cards are kept, new or gone against `cards.jsonl`. Without a cassette the policy fake repeats the original call, so the diff is empty: that checks the tool. A prompt is judged only through a recorded cassette. `--to-case` writes every card you rated "not useful" (`pnpm tag`) as a judgement case; emails and phone numbers are masked and a case with a word from the no-real-names list is not written. Read the files before you copy them into `data/judge-set`.
+
 ## QA harness
 
 ```bash

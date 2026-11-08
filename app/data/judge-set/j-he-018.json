@@ -1,0 +1,37 @@
+{
+ "id": "j-he-018",
+ "lang": "he",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "commitments": [
+    {
+     "who": "me",
+     "what": "לשלוח את הסיכום אחרי השיחה"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "אשלח לך את הסיכום אחרי השיחה."
+  },
+  {
+   "side": "them",
+   "name": "ורד",
+   "text": "נהדר."
+  },
+  {
+   "side": "them",
+   "name": "ורד",
+   "text": "נדבר."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

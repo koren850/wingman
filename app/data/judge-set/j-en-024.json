@@ -1,0 +1,37 @@
+{
+ "id": "j-en-024",
+ "lang": "en",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "Single sign on (SAML) is included in the Business plan"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Ben",
+   "text": "Do you support single sign on?"
+  },
+  {
+   "side": "me",
+   "text": "Let me think."
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "accept": [
+   "REPLY"
+  ],
+  "mustMention": [
+   "saml"
+  ]
+ }
+}

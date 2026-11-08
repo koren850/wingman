@@ -1,0 +1,29 @@
+{
+ "id": "j-en-056",
+ "lang": "en",
+ "tags": [
+  "open-loop"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "pricing",
+  "add": {
+   "openQuestions": [
+    {
+     "asker": "Tomer",
+     "text": "What is the cancellation policy?"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Tomer",
+   "text": "So we are done with pricing. What is next on the agenda?"
+  }
+ ],
+ "expected": {
+  "tag": "PROMPT"
+ }
+}

@@ -1,0 +1,25 @@
+{
+ "id": "j-en-019",
+ "lang": "en",
+ "tags": [
+  "noisy",
+  "fragment"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Uri",
+   "text": "ok so we have the budjet thing sorted and uh the the next topic"
+  },
+  {
+   "side": "them",
+   "name": "Uri",
+   "text": "is the timeline i guess"
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

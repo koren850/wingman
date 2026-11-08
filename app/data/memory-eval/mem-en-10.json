@@ -1,0 +1,197 @@
+{
+ "id": "mem-en-10",
+ "lang": "en",
+ "title": "Long call: an early promise must survive compaction",
+ "kind": "client",
+ "tags": [
+  "long",
+  "compaction"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "Welcome back. Before we start, can you confirm you will send the audit report by the end of next week?",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Yes, I will send the audit report to you by the end of next week."
+  },
+  {
+   "side": "them",
+   "text": "We are rolling out the new intake form in all branches.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Good. Which branch goes first?"
+  },
+  {
+   "side": "them",
+   "text": "The north branch, then the harbor branch two weeks later.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "And the training for the front desk staff?"
+  },
+  {
+   "side": "them",
+   "text": "Short video, ten minutes. Nothing heavy.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Fine. What about the old paper forms?"
+  },
+  {
+   "side": "them",
+   "text": "We keep them for one month as a fallback.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Makes sense. Who is the contact in the harbor branch?"
+  },
+  {
+   "side": "them",
+   "text": "That would be Eli, the office manager.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Thanks. Let me think about the reporting side."
+  },
+  {
+   "side": "them",
+   "text": "Take your time, we have no rush on that part.",
+   "name": "Yael"
+  },
+  {
+   "side": "them",
+   "text": "Now the budget. The rollout costs 22000 in total.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Understood. Is the training video included in that?"
+  },
+  {
+   "side": "them",
+   "text": "No. The video is a separate cost and I do not have the number.",
+   "name": "Yael"
+  },
+  {
+   "side": "them",
+   "text": "We are rolling out the new intake form in all branches.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Good. Which branch goes first?"
+  },
+  {
+   "side": "them",
+   "text": "The north branch, then the harbor branch two weeks later.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "And the training for the front desk staff?"
+  },
+  {
+   "side": "them",
+   "text": "Short video, ten minutes. Nothing heavy.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Fine. What about the old paper forms?"
+  },
+  {
+   "side": "them",
+   "text": "We keep them for one month as a fallback.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Makes sense. Who is the contact in the harbor branch?"
+  },
+  {
+   "side": "them",
+   "text": "That would be Eli, the office manager.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Thanks. Let me think about the reporting side."
+  },
+  {
+   "side": "them",
+   "text": "Take your time, we have no rush on that part.",
+   "name": "Yael"
+  },
+  {
+   "side": "them",
+   "text": "Last topic. Should we announce the rollout to patients by email or by text?",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Email first, and text only for the urgent changes."
+  },
+  {
+   "side": "them",
+   "text": "Agreed, email first. Thank you, that is all from me.",
+   "name": "Yael"
+  },
+  {
+   "side": "me",
+   "text": "Thanks Yael, talk soon."
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 1,
+    "who": "me",
+    "what": "send the audit report by the end of next week",
+    "keys": [
+     "audit report"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 14,
+    "asker": "me",
+    "text": "is the training video included in the rollout cost",
+    "keys": [
+     "training video"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 13,
+    "what": "total rollout cost",
+    "value": "22000",
+    "who": "Yael",
+    "keys": [
+     "rollout"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 29,
+    "text": "announce the rollout to patients by email first",
+    "keys": [
+     "email"
+    ]
+   }
+  ],
+  "objections": []
+ },
+ "compactEveryMinutes": 1
+}

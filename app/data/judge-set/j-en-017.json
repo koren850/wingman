@@ -1,0 +1,29 @@
+{
+ "id": "j-en-017",
+ "lang": "en",
+ "tags": [
+  "retracted"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Eli",
+   "text": "So what do you think?"
+  },
+  {
+   "side": "them",
+   "name": "Eli",
+   "text": "Take a moment."
+  },
+  {
+   "side": "them",
+   "name": "Eli",
+   "text": "Actually, never mind, I will explain more first."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

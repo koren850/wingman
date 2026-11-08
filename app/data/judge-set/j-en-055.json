@@ -1,0 +1,36 @@
+{
+ "id": "j-en-055",
+ "lang": "en",
+ "tags": [
+  "open-loop"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "commitments": [
+    {
+     "who": "me",
+     "what": "send Sivan the references",
+     "due": "this week"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Sivan",
+   "text": "Thanks for the time, I have to jump to another call."
+  },
+  {
+   "side": "me",
+   "text": "Of course."
+  }
+ ],
+ "expected": {
+  "tag": "PROMPT",
+  "accept": [
+   "NOTE"
+  ]
+ }
+}

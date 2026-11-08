@@ -1,0 +1,5 @@
+{"t": 1800000041500, "type": "card", "id": "c1", "turnId": "1", "badge": "ai", "kind": "answer", "question": "How long does an installation take?", "say": "Usually one day for the whole floor.", "facts": [], "at": 1800000041500}
+{"t": 1800000122000, "type": "card", "id": "c2", "turnId": "2", "badge": "ai", "kind": "answer", "question": "Our manager will not accept a contract longer than one year.", "say": "We can offer twelve months.", "facts": [], "at": 1800000122000}
+{"t": 1800000222500, "type": "card", "id": "c3", "turnId": "3", "badge": "tip", "kind": "prompt", "question": "The weather is awful today.", "say": "Ask about the start date.", "facts": [], "at": 1800000222500}
+{"t": 1800000261200, "type": "card", "id": "c4", "turnId": "4", "badge": "info", "kind": "fact", "question": "Send me the offer by Thursday, please.", "say": "Offer owed by Thursday.", "facts": [], "at": 1800000261200}
+{"t": 1800000000005, "type": "card", "id": "h1", "turnId": "5", "badge": "ai", "kind": "answer", "question": "x", "say": "hidden one", "facts": [], "hidden": true, "at": 1800000000005}

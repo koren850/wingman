@@ -212,6 +212,8 @@ export type MeetingRun = {
   roleCalls: Record<string, number>;
   /** replay only: calls the cassette had no entry for */
   cassetteMisses?: number;
+  /** replay only: of the misses, those whose entry exists but is stale (prompt text or model changed since the recording) */
+  cassetteStale?: number;
   error?: string;
 };
 export type WorkerOptions = {

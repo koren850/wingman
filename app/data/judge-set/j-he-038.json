@@ -1,0 +1,22 @@
+{
+ "id": "j-he-038",
+ "lang": "he",
+ "tags": [
+  "hard-question"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "שיר",
+   "text": "למה שנחתום עכשיו ולא נחכה לרבעון הבא?"
+  }
+ ],
+ "expected": {
+  "tag": "REPLY",
+  "accept": [
+   "ANS"
+  ]
+ }
+}

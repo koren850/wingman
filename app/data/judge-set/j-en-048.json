@@ -1,0 +1,29 @@
+{
+ "id": "j-en-048",
+ "lang": "en",
+ "tags": [
+  "number-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "Support is included for the first year only"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "Support is included for the first two years."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "first year"
+  ]
+ }
+}

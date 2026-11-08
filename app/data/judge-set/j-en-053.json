@@ -1,0 +1,22 @@
+{
+ "id": "j-en-053",
+ "lang": "en",
+ "tags": [
+  "jargon"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Yael",
+   "text": "Does your tool handle the DPA for GDPR?"
+  }
+ ],
+ "expected": {
+  "tag": "TERM",
+  "accept": [
+   "ANS"
+  ]
+ }
+}

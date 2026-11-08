@@ -1,0 +1,37 @@
+{
+ "id": "j-en-054",
+ "lang": "en",
+ "tags": [
+  "open-loop"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "openQuestions": [
+    {
+     "asker": "Idan",
+     "text": "Who will pay for the training sessions?"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Idan",
+   "text": "Okay, I think we covered everything. Anything else?"
+  },
+  {
+   "side": "me",
+   "text": "No, I think that is all."
+  },
+  {
+   "side": "them",
+   "name": "Idan",
+   "text": "Great, let us wrap up."
+  }
+ ],
+ "expected": {
+  "tag": "PROMPT"
+ }
+}

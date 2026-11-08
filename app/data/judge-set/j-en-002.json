@@ -1,0 +1,28 @@
+{
+ "id": "j-en-002",
+ "lang": "en",
+ "tags": [
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Ravi",
+   "text": "The weather here is terrible today."
+  },
+  {
+   "side": "me",
+   "text": "Same here, it has been raining all week."
+  },
+  {
+   "side": "them",
+   "name": "Ravi",
+   "text": "Anyway, how was your weekend?"
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

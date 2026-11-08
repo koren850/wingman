@@ -1,0 +1,38 @@
+{
+ "id": "j-en-016",
+ "lang": "en",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "commitments": [
+    {
+     "who": "me",
+     "what": "send the quote",
+     "due": "last week"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Rita",
+   "text": "The quote you sent last week was fine."
+  },
+  {
+   "side": "me",
+   "text": "Glad to hear it."
+  },
+  {
+   "side": "them",
+   "name": "Rita",
+   "text": "No changes from our side."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

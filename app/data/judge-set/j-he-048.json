@@ -1,0 +1,29 @@
+{
+ "id": "j-he-048",
+ "lang": "he",
+ "tags": [
+  "number-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "התמיכה כלולה בשנה הראשונה בלבד"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "התמיכה כלולה בשנתיים הראשונות."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "שנה"
+  ]
+ }
+}

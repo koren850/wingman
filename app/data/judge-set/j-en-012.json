@@ -1,0 +1,28 @@
+{
+ "id": "j-en-012",
+ "lang": "en",
+ "tags": [
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Nir",
+   "text": "Sorry, my connection dropped. Where were we?"
+  },
+  {
+   "side": "me",
+   "text": "We were just starting the agenda."
+  },
+  {
+   "side": "them",
+   "name": "Nir",
+   "text": "Perfect."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

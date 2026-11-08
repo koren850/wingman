@@ -1,0 +1,22 @@
+{
+ "id": "j-en-060",
+ "lang": "en",
+ "tags": [
+  "decision"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Etty",
+   "text": "Let us make it final: the start date is the first of June."
+  }
+ ],
+ "expected": {
+  "tag": "NOTE",
+  "accept": [
+   "SKIP"
+  ]
+ }
+}

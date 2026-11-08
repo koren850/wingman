@@ -80,13 +80,13 @@ test("cassette replay: a miss throws CassetteMiss with a readable diff against t
   const rep = wrapCassette({ mode: "replay", cassette: rec, ref: REF, role: "moment" });
   const err = (await generateOnce(undefined, {
     model: rep,
-    ...call(system.replace("Rule two.", "Rule 2 changed."), "[l1] them: hi\n[l2] them: how long is a backup?"),
+    ...call(system, "[l1] them: hi\n[l2] them: how long is a restore?"),
   }).catch((e) => e)) as Error;
   const msg = String(err.message ?? err);
   assert.match(msg, /Cassette miss: role=moment model=anthropic:claude-haiku-5-5 key=[0-9a-f]{24}/);
   assert.match(msg, /Nearest entry: key=[0-9a-f]{24} role=moment/);
-  assert.match(msg, /^- Rule two\.$/m, msg);
-  assert.match(msg, /^\+ Rule 2 changed\.$/m, msg);
+  assert.match(msg, /^- .*how long is a backup\?$/m, msg);
+  assert.match(msg, /^\+ .*how long is a restore\?$/m, msg);
   assert.match(msg, /WINGMAN_LLM_MODE=record/);
   const empty = wrapCassette({ mode: "replay", cassette: new Cassette(), ref: REF });
   await assert.rejects(generateOnce(undefined, { model: empty, ...call("a", "b") }), /The cassette is empty/);

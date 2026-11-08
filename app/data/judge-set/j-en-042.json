@@ -1,0 +1,20 @@
+{
+ "id": "j-en-042",
+ "lang": "en",
+ "tags": [
+  "guarantee",
+  "mixed"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Tamar",
+   "text": "Will you guarantee 99.9 percent uptime בכתב?"
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "id": "j-he-030",
+ "lang": "he",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "חיוב שנתי נותן 15 אחוז הנחה"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "מור",
+   "text": "יש הנחה על תשלום שנתי?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "15"
+  ]
+ }
+}

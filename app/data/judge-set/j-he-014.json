@@ -1,0 +1,28 @@
+{
+ "id": "j-he-014",
+ "lang": "he",
+ "tags": [
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "דור",
+   "text": "ראית את המשחק אתמול?"
+  },
+  {
+   "side": "me",
+   "text": "לא, פספסתי. היה טוב?"
+  },
+  {
+   "side": "them",
+   "name": "דור",
+   "text": "מדהים, כדאי לך לראות את ההקלטה."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

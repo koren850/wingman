@@ -1,0 +1,28 @@
+{
+ "id": "j-en-015",
+ "lang": "en",
+ "tags": [
+  "offtopic"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Tal",
+   "text": "Why is the sky blue, by the way? My son asked me this morning."
+  },
+  {
+   "side": "me",
+   "text": "Ha, good one."
+  },
+  {
+   "side": "them",
+   "name": "Tal",
+   "text": "He keeps asking me hard ones."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

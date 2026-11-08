@@ -1,0 +1,114 @@
+{
+ "id": "mem-en-8",
+ "lang": "en",
+ "title": "Noisy speech-to-text: vendor renewal",
+ "kind": "vendor",
+ "tags": [
+  "noisy-stt"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "so um thanks for taking the call uh i wanted to talk about the renewal for the the hosting contract",
+   "name": "Gil"
+  },
+  {
+   "side": "me",
+   "text": "sure go ahead whats the current term"
+  },
+  {
+   "side": "them",
+   "text": "its twelve months at 900 a month and it renews on the first of december",
+   "name": "Gil"
+  },
+  {
+   "side": "me",
+   "text": "ok and do you want to keep the same plan or move to the bigger one"
+  },
+  {
+   "side": "them",
+   "text": "we might need the bigger plan the traffic is is growing fast",
+   "name": "Gil"
+  },
+  {
+   "side": "me",
+   "text": "i can ask our tech lead what the bigger plan costs and get back to you friday"
+  },
+  {
+   "side": "them",
+   "text": "great and can you tell me if backups are included in the bigger plan",
+   "name": "Gil"
+  },
+  {
+   "side": "me",
+   "text": "i am not sure about that one let me check"
+  },
+  {
+   "side": "them",
+   "text": "ok we will stay on the current plan until you send the numbers",
+   "name": "Gil"
+  },
+  {
+   "side": "them",
+   "text": "also our accountant needs the invoice split in two parts",
+   "name": "Gil"
+  },
+  {
+   "side": "me",
+   "text": "no problem i will ask billing to split the invoice before the first of december"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 5,
+    "who": "me",
+    "what": "ask the tech lead for the bigger plan price and reply Friday",
+    "keys": [
+     "tech lead",
+     "friday"
+    ]
+   },
+   {
+    "line": 10,
+    "who": "me",
+    "what": "ask billing to split the invoice before December",
+    "keys": [
+     "billing",
+     "invoice"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 6,
+    "asker": "Gil",
+    "text": "are backups included in the bigger plan",
+    "keys": [
+     "backups"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 2,
+    "what": "current hosting price per month",
+    "value": "900",
+    "who": "Gil",
+    "keys": [
+     "month"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 8,
+    "text": "stay on the current plan until the numbers arrive",
+    "keys": [
+     "current plan"
+    ]
+   }
+  ],
+  "objections": []
+ }
+}

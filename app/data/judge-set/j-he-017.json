@@ -1,0 +1,29 @@
+{
+ "id": "j-he-017",
+ "lang": "he",
+ "tags": [
+  "retracted"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "אלי",
+   "text": "אז מה דעתך?"
+  },
+  {
+   "side": "them",
+   "name": "אלי",
+   "text": "קח רגע."
+  },
+  {
+   "side": "them",
+   "name": "אלי",
+   "text": "בעצם, לא חשוב, אסביר עוד קצת קודם."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

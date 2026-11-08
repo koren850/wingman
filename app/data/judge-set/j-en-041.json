@@ -1,0 +1,19 @@
+{
+ "id": "j-en-041",
+ "lang": "en",
+ "tags": [
+  "price"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Omri",
+   "text": "so whats the final price for all forty seats i need a number today"
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

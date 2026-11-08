@@ -1,0 +1,19 @@
+{
+ "id": "j-he-042",
+ "lang": "he",
+ "tags": [
+  "guarantee"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "תמר",
+   "text": "אתם מתחייבים בכתב על זמינות של 99.9 אחוז?"
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

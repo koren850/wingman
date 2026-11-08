@@ -1,0 +1,29 @@
+{
+ "id": "j-he-033",
+ "lang": "he",
+ "tags": [
+  "objection"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "מחיר חודשי שלנו",
+     "value": "1200",
+     "who": "me"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "נדב",
+   "text": "האמת, המתחרה שלכם עולה חצי מזה."
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

@@ -1,0 +1,33 @@
+{
+ "id": "j-he-021",
+ "lang": "he",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "מספר חשבונית",
+     "value": "4471",
+     "who": "אלון"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "אלון",
+   "text": "מספר החשבונית הוא 4471, תרשום."
+  },
+  {
+   "side": "me",
+   "text": "רשמתי, 4471."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

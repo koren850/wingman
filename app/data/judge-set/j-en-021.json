@@ -1,0 +1,33 @@
+{
+ "id": "j-en-021",
+ "lang": "en",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "invoice number",
+     "value": "4471",
+     "who": "Alon"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Alon",
+   "text": "The invoice number is 4471, please write it down."
+  },
+  {
+   "side": "me",
+   "text": "Got it, 4471."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

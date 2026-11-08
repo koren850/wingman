@@ -1,0 +1,24 @@
+{
+ "id": "j-he-037",
+ "lang": "he",
+ "tags": [
+  "objection"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "יניב",
+   "text": "זה נראה לי מסובך מדי לצוות קטן."
+  },
+  {
+   "side": "them",
+   "name": "יניב",
+   "text": "אנחנו רק חמישה אנשים."
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

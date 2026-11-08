@@ -1,0 +1,26 @@
+{
+ "id": "j-he-008",
+ "lang": "he",
+ "tags": [
+  "other-person"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "ישיבת צוות"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "בת",
+   "text": "מרק, אתה יכול לרשום סיכום היום?"
+  },
+  {
+   "side": "them",
+   "name": "מרק",
+   "text": "כן, אני ארשום."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

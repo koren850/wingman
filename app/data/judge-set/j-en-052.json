@@ -1,0 +1,19 @@
+{
+ "id": "j-en-052",
+ "lang": "en",
+ "tags": [
+  "jargon"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Avi",
+   "text": "We run everything behind a WAF and use mTLS between services."
+  }
+ ],
+ "expected": {
+  "tag": "TERM"
+ }
+}

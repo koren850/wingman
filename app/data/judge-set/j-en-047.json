@@ -1,0 +1,30 @@
+{
+ "id": "j-en-047",
+ "lang": "en",
+ "tags": [
+  "promise-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "commitments": [
+    {
+     "who": "me",
+     "what": "deliver six units next week, six the week after"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "We will deliver all twelve units next week."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "six"
+  ]
+ }
+}

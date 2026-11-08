@@ -1,0 +1,37 @@
+{
+ "id": "j-en-018",
+ "lang": "en",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "commitments": [
+    {
+     "who": "me",
+     "what": "send the summary after the call"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "I will send you the summary after the call."
+  },
+  {
+   "side": "them",
+   "name": "Vera",
+   "text": "Wonderful."
+  },
+  {
+   "side": "them",
+   "name": "Vera",
+   "text": "Talk soon."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "id": "j-he-045",
+ "lang": "he",
+ "tags": [
+  "number-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "numbers": [
+    {
+     "what": "דמי הקמה",
+     "value": "1200",
+     "who": "me"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "me",
+   "text": "דמי ההקמה הם 800 שקל."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "1200"
+  ]
+ }
+}

@@ -1,0 +1,25 @@
+{
+ "id": "j-he-019",
+ "lang": "he",
+ "tags": [
+  "noisy",
+  "fragment"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "אורי",
+   "text": "אוקיי אז סגרנו את עניין התקציב ואההה הנושא הבא"
+  },
+  {
+   "side": "them",
+   "name": "אורי",
+   "text": "זה לוח הזמנים נראה לי"
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

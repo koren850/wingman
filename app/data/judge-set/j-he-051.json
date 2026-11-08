@@ -1,0 +1,20 @@
+{
+ "id": "j-he-051",
+ "lang": "he",
+ "tags": [
+  "jargon",
+  "mixed"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "פנינה",
+   "text": "הדאגה העיקרית שלנו היא ה-SLA וה-RTO."
+  }
+ ],
+ "expected": {
+  "tag": "TERM"
+ }
+}

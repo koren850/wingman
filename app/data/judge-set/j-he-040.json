@@ -1,0 +1,21 @@
+{
+ "id": "j-he-040",
+ "lang": "he",
+ "tags": [
+  "promise"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "אספקה"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "מאיה",
+   "text": "אתה יכול להבטיח אספקה עד סוף החודש?"
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

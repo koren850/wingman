@@ -1,0 +1,26 @@
+{
+ "id": "j-en-058",
+ "lang": "en",
+ "tags": [
+  "commitment"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Ron",
+   "text": "Okay, I will send you the signed contract by Monday."
+  },
+  {
+   "side": "me",
+   "text": "Great."
+  }
+ ],
+ "expected": {
+  "tag": "NOTE",
+  "accept": [
+   "SKIP"
+  ]
+ }
+}

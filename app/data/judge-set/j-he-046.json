@@ -1,0 +1,34 @@
+{
+ "id": "j-he-046",
+ "lang": "he",
+ "tags": [
+  "date-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "decisions": [
+    {
+     "text": "הפיילוט מתחיל ב-3 במרץ"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "כרמן",
+   "text": "אמרת שהפיילוט מתחיל ב-3 במרץ, נכון?"
+  },
+  {
+   "side": "me",
+   "text": "כן, ב-10 במרץ."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "3"
+  ]
+ }
+}

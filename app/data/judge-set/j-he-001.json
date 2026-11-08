@@ -1,0 +1,30 @@
+{
+ "id": "j-he-001",
+ "lang": "he",
+ "tags": [
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "פתיחת פרויקט"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "נועה",
+   "text": "שלום לכולם, שומעים אותי?"
+  },
+  {
+   "side": "me",
+   "text": "כן, ברור וצלול."
+  },
+  {
+   "side": "them",
+   "name": "נועה",
+   "text": "מעולה, שנייה ואני משתפת את המסך."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

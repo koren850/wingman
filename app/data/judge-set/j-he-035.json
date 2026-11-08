@@ -1,0 +1,20 @@
+{
+ "id": "j-he-035",
+ "lang": "he",
+ "tags": [
+  "objection",
+  "implied"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "רועי",
+   "text": "אני לא מבין בכלל למה אנחנו צריכים את זה."
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

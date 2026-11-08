@@ -1,0 +1,29 @@
+{
+ "id": "j-en-009",
+ "lang": "en",
+ "tags": [
+  "fragment"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Gal",
+   "text": "Mmm."
+  },
+  {
+   "side": "them",
+   "name": "Gal",
+   "text": "Yeah."
+  },
+  {
+   "side": "them",
+   "name": "Gal",
+   "text": "Okay, so, um."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

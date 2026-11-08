@@ -1,0 +1,28 @@
+{
+ "id": "j-he-012",
+ "lang": "he",
+ "tags": [
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "ניר",
+   "text": "סליחה, החיבור נפל. איפה היינו?"
+  },
+  {
+   "side": "me",
+   "text": "רק התחלנו את סדר היום."
+  },
+  {
+   "side": "them",
+   "name": "ניר",
+   "text": "מצוין."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

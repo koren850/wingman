@@ -1,0 +1,119 @@
+{
+ "id": "mem-mixed-1",
+ "lang": "mixed",
+ "title": "שיחת מוצר: מונחים באנגלית",
+ "kind": "client",
+ "tags": [
+  "mixed"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "היי, רציתי לדבר על ה-onboarding של המשתמשים החדשים.",
+   "name": "עומר"
+  },
+  {
+   "side": "me",
+   "text": "בטח. כרגע ה-onboarding לוקח שלושה ימים."
+  },
+  {
+   "side": "them",
+   "text": "זה הרבה. אנחנו צריכים שהוא יהיה פחות מיום אחד.",
+   "name": "עומר"
+  },
+  {
+   "side": "me",
+   "text": "אפשר לעשות integration ישיר עם ה-CRM שלכם. מה הגרסה של ה-API?"
+  },
+  {
+   "side": "them",
+   "text": "גרסה 3 של ה-API, אבל יש לנו rate limit של 100 בקשות בדקה.",
+   "name": "עומר"
+  },
+  {
+   "side": "me",
+   "text": "אני אבדוק עם צוות ה-backend אם ה-rate limit מספיק ואשלח לך תשובה ביום חמישי."
+  },
+  {
+   "side": "them",
+   "text": "מעולה. החלטנו להתחיל עם pilot על עשרה משתמשים.",
+   "name": "עומר"
+  },
+  {
+   "side": "them",
+   "text": "אני חושש שה-pilot לא יצליח בלי SSO.",
+   "name": "עומר"
+  },
+  {
+   "side": "me",
+   "text": "נכון, נצטרך SSO. אתאם עם ה-security שלנו."
+  },
+  {
+   "side": "them",
+   "text": "ומה התמחור של ה-pilot?",
+   "name": "עומר"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 5,
+    "who": "me",
+    "what": "לבדוק עם צוות ה-backend את ה-rate limit ולשלוח תשובה ביום חמישי",
+    "keys": [
+     "backend",
+     "חמישי"
+    ]
+   },
+   {
+    "line": 8,
+    "who": "me",
+    "what": "לתאם עם ה-security על SSO",
+    "keys": [
+     "security"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 9,
+    "asker": "עומר",
+    "text": "מה התמחור של ה-pilot",
+    "keys": [
+     "התמחור"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 4,
+    "what": "rate limit בקשות בדקה",
+    "value": "100",
+    "who": "עומר",
+    "keys": [
+     "rate limit"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 6,
+    "text": "להתחיל עם pilot על עשרה משתמשים",
+    "keys": [
+     "pilot",
+     "עשרה"
+    ]
+   }
+  ],
+  "objections": [
+   {
+    "line": 7,
+    "who": "עומר",
+    "text": "ה-pilot לא יצליח בלי SSO",
+    "keys": [
+     "SSO"
+    ]
+   }
+  ]
+ }
+}

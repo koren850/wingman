@@ -1,0 +1,28 @@
+{
+ "id": "j-en-014",
+ "lang": "en",
+ "tags": [
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Dor",
+   "text": "Did you see the game last night?"
+  },
+  {
+   "side": "me",
+   "text": "No, I missed it. Was it good?"
+  },
+  {
+   "side": "them",
+   "name": "Dor",
+   "text": "It was incredible, you should watch the replay."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

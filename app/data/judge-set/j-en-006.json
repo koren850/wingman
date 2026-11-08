@@ -1,0 +1,25 @@
+{
+ "id": "j-en-006",
+ "lang": "en",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "project status"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Sam",
+   "text": "Could you also loop in Tali on the next email?"
+  },
+  {
+   "side": "me",
+   "text": "Sure, I will add her to the thread."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

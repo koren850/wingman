@@ -1,0 +1,20 @@
+{
+ "id": "j-he-039",
+ "lang": "he",
+ "tags": [
+  "objection",
+  "hard-question"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "דורון",
+   "text": "היתה לנו תקלה אצלכם במאי. איך אפשר לסמוך עליכם?"
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

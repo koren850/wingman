@@ -1,0 +1,33 @@
+{
+ "id": "j-en-057",
+ "lang": "en",
+ "tags": [
+  "open-loop"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "openQuestions": [
+    {
+     "asker": "Naama",
+     "text": "Is the onboarding included in the price?"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Naama",
+   "text": "Good, that is everything from my side."
+  },
+  {
+   "side": "them",
+   "name": "Naama",
+   "text": "We will talk next week."
+  }
+ ],
+ "expected": {
+  "tag": "PROMPT"
+ }
+}

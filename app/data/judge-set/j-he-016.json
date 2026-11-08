@@ -1,0 +1,38 @@
+{
+ "id": "j-he-016",
+ "lang": "he",
+ "tags": [
+  "handled"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "commitments": [
+    {
+     "who": "me",
+     "what": "לשלוח את ההצעה",
+     "due": "שבוע שעבר"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "ריטה",
+   "text": "ההצעה ששלחת בשבוע שעבר הייתה בסדר."
+  },
+  {
+   "side": "me",
+   "text": "שמח לשמוע."
+  },
+  {
+   "side": "them",
+   "name": "ריטה",
+   "text": "אין לנו שינויים."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

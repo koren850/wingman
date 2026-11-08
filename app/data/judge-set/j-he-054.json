@@ -1,0 +1,37 @@
+{
+ "id": "j-he-054",
+ "lang": "he",
+ "tags": [
+  "open-loop"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "openQuestions": [
+    {
+     "asker": "עידן",
+     "text": "מי ישלם על ההדרכות?"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "עידן",
+   "text": "טוב, נראה לי שכיסינו הכל. עוד משהו?"
+  },
+  {
+   "side": "me",
+   "text": "לא, זה הכל."
+  },
+  {
+   "side": "them",
+   "name": "עידן",
+   "text": "מעולה, בואו נסכם."
+  }
+ ],
+ "expected": {
+  "tag": "PROMPT"
+ }
+}

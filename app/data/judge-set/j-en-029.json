@@ -1,0 +1,30 @@
+{
+ "id": "j-en-029",
+ "lang": "en",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "Customer data is stored in a data center in Frankfurt"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Zvi",
+   "text": "Can you tell me where the data is stored?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "frankfurt"
+  ]
+ }
+}

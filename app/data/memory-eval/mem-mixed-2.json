@@ -1,0 +1,135 @@
+{
+ "id": "mem-mixed-2",
+ "lang": "mixed",
+ "title": "Sales call in English with Hebrew phrases",
+ "kind": "client",
+ "tags": [
+  "mixed"
+ ],
+ "lines": [
+  {
+   "side": "them",
+   "text": "שלום, thanks for joining. We want to talk about the yearly plan.",
+   "name": "Avi"
+  },
+  {
+   "side": "me",
+   "text": "Sure Avi. The yearly plan is 8400 dollars for the whole team."
+  },
+  {
+   "side": "them",
+   "text": "זה יקר קצת. Our budget is 7000 for this year.",
+   "name": "Avi"
+  },
+  {
+   "side": "me",
+   "text": "I can check with my manager about a discount and reply by Monday."
+  },
+  {
+   "side": "them",
+   "text": "אחלה. Can your system export reports to Excel?",
+   "name": "Avi"
+  },
+  {
+   "side": "me",
+   "text": "כן, יש export לאקסל. I will send you a sample report tomorrow."
+  },
+  {
+   "side": "them",
+   "text": "We decided to start with the monthly plan for two months.",
+   "name": "Avi"
+  },
+  {
+   "side": "them",
+   "text": "איך עובד התשלום, by card or by invoice?",
+   "name": "Avi"
+  },
+  {
+   "side": "me",
+   "text": "Both work. Invoice is monthly."
+  },
+  {
+   "side": "them",
+   "text": "I worry the training will take too long for the staff.",
+   "name": "Avi"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 3,
+    "who": "me",
+    "what": "check with the manager about a discount and reply by Monday",
+    "keys": [
+     "manager",
+     "monday"
+    ]
+   },
+   {
+    "line": 5,
+    "who": "me",
+    "what": "send a sample report tomorrow",
+    "keys": [
+     "sample report"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 4,
+    "asker": "Avi",
+    "text": "can the system export reports to Excel",
+    "keys": [
+     "export"
+    ]
+   },
+   {
+    "line": 7,
+    "asker": "Avi",
+    "text": "איך עובד התשלום, by card or by invoice",
+    "keys": [
+     "התשלום"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 1,
+    "what": "yearly plan price",
+    "value": "8400",
+    "who": "me",
+    "keys": [
+     "yearly plan"
+    ]
+   },
+   {
+    "line": 2,
+    "what": "Avi budget this year",
+    "value": "7000",
+    "who": "Avi",
+    "keys": [
+     "budget"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 6,
+    "text": "start with the monthly plan for two months",
+    "keys": [
+     "monthly plan"
+    ]
+   }
+  ],
+  "objections": [
+   {
+    "line": 9,
+    "who": "Avi",
+    "text": "the training will take too long for the staff",
+    "keys": [
+     "training"
+    ]
+   }
+  ]
+ }
+}

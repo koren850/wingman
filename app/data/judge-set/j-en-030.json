@@ -1,0 +1,30 @@
+{
+ "id": "j-en-030",
+ "lang": "en",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "Annual billing gives 15 percent off"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Mor",
+   "text": "Is there an annual discount?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "15"
+  ]
+ }
+}

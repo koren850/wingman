@@ -1,0 +1,23 @@
+{
+ "id": "j-he-053",
+ "lang": "he",
+ "tags": [
+  "jargon",
+  "mixed"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "יעל",
+   "text": "האם הכלי מטפל ב-DPA בהקשר של GDPR?"
+  }
+ ],
+ "expected": {
+  "tag": "TERM",
+  "accept": [
+   "ANS"
+  ]
+ }
+}

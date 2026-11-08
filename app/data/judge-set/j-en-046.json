@@ -1,0 +1,34 @@
+{
+ "id": "j-en-046",
+ "lang": "en",
+ "tags": [
+  "date-conflict"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "decisions": [
+    {
+     "text": "Pilot starts on the 3rd of March"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Karen",
+   "text": "You said the pilot starts on the 3rd of March, right?"
+  },
+  {
+   "side": "me",
+   "text": "Yes, the 10th of March."
+  }
+ ],
+ "expected": {
+  "tag": "CHECK",
+  "mustMention": [
+   "3"
+  ]
+ }
+}

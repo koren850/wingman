@@ -1,0 +1,30 @@
+{
+ "id": "j-he-032",
+ "lang": "he",
+ "tags": [
+  "direct"
+ ],
+ "kind": "client",
+ "memory": {
+  "add": {
+   "facts": [
+    {
+     "text": "תשובה ראשונה לפנייה תוך 4 שעות עבודה"
+    }
+   ]
+  }
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "עמיר",
+   "text": "ובכמה זמן אתם בדרך כלל עונים לפנייה?"
+  }
+ ],
+ "expected": {
+  "tag": "ANS",
+  "mustMention": [
+   "4"
+  ]
+ }
+}

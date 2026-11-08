@@ -1,0 +1,26 @@
+{
+ "id": "j-en-008",
+ "lang": "en",
+ "tags": [
+  "other-person"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "team sync"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Beth",
+   "text": "Mark, can you take the notes today?"
+  },
+  {
+   "side": "them",
+   "name": "Mark",
+   "text": "Sure, I will do it."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

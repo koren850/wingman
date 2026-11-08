@@ -1,0 +1,20 @@
+{
+ "id": "j-en-051",
+ "lang": "en",
+ "tags": [
+  "jargon",
+  "mixed"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Pnina",
+   "text": "Our main concern is the SLA and the RTO, זה החשש הכי גדול."
+  }
+ ],
+ "expected": {
+  "tag": "TERM"
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "id": "j-en-001",
+ "lang": "en",
+ "tags": [
+  "smalltalk"
+ ],
+ "kind": "client",
+ "memory": {
+  "topic": "kickoff"
+ },
+ "lines": [
+  {
+   "side": "them",
+   "name": "Noa",
+   "text": "Hi everyone, can you all hear me?"
+  },
+  {
+   "side": "me",
+   "text": "Yes, loud and clear."
+  },
+  {
+   "side": "them",
+   "name": "Noa",
+   "text": "Great, give me a second to share my screen."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

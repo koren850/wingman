@@ -1,0 +1,19 @@
+{
+ "id": "j-he-044",
+ "lang": "he",
+ "tags": [
+  "timeline"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "ליאת",
+   "text": "מתי בדיוק האינטגרציה תהיה מוכנה? תן לי תאריך."
+  }
+ ],
+ "expected": {
+  "tag": "STALL"
+ }
+}

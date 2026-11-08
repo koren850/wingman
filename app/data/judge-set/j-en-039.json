@@ -1,0 +1,20 @@
+{
+ "id": "j-en-039",
+ "lang": "en",
+ "tags": [
+  "objection",
+  "hard-question"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "Doron",
+   "text": "We had an outage with your service in May. How can we trust you?"
+  }
+ ],
+ "expected": {
+  "tag": "REPLY"
+ }
+}

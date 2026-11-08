@@ -1,0 +1,29 @@
+{
+ "id": "j-he-009",
+ "lang": "he",
+ "tags": [
+  "fragment"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "גל",
+   "text": "הממ."
+  },
+  {
+   "side": "them",
+   "name": "גל",
+   "text": "כן."
+  },
+  {
+   "side": "them",
+   "name": "גל",
+   "text": "טוב, אז, אה."
+  }
+ ],
+ "expected": {
+  "tag": "SKIP"
+ }
+}

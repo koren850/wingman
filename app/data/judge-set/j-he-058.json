@@ -1,0 +1,26 @@
+{
+ "id": "j-he-058",
+ "lang": "he",
+ "tags": [
+  "commitment"
+ ],
+ "kind": "client",
+ "memory": {},
+ "lines": [
+  {
+   "side": "them",
+   "name": "רון",
+   "text": "אוקיי, אשלח לך את החוזה החתום עד יום שני."
+  },
+  {
+   "side": "me",
+   "text": "מצוין."
+  }
+ ],
+ "expected": {
+  "tag": "NOTE",
+  "accept": [
+   "SKIP"
+  ]
+ }
+}
