@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 # A new push to a pull request cancels the run in progress for it; runs on main always finish.
 concurrency:
@@ -24,7 +25,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        # While the repo is private, a push runs Linux only (macOS minutes cost 10x, Windows 2x). "Run workflow" by hand runs all three; a public repo always does.
+        os: ${{ fromJSON((github.event.repository.private && github.event_name != 'workflow_dispatch') && '["ubuntu-latest"]' || '["macos-latest", "ubuntu-latest", "windows-latest"]') }}
     env:
       # Skip the Electron download and the .app build: CI only needs the engine and the tests.
       WINGMAN_SKIP_APP: "1"
@@ -99,6 +101,7 @@ jobs:
   # The installer is a bash script for macOS: check that it still parses its flags and plans every step, without changing anything.
   install-script:
     name: install.sh smoke (macOS)
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     runs-on: macos-latest
     timeout-minutes: 10
     steps:
