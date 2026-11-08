@@ -47,7 +47,8 @@ Signs: a red bar that says the microphone is not picking up, ten seconds after l
 1. Open **Settings, Setup guide, Choose your microphone** and choose the right one.
 2. List the devices: `ffmpeg -f avfoundation -list_devices true -i ""`. Then set `audio.mic.device` (for example `":1"`), or run with `WINGMAN_MIC=":1"`.
 3. Avoid AirPods and other Bluetooth headsets. They drop to phone quality when the mic is in use. Wingman warns you. Use the built-in mic or wired headphones.
-4. If the device disappears during a call (headphones switched off), Wingman restarts that audio source by itself and falls back to the default mic after a couple of tries. A red or amber bar shows while it recovers.
+4. The setup window saves the microphone with its name (`audio.mic.device` is then like `":2|External USB Microphone"`). When a headset connects, the numbers can move; Wingman looks the name up again at every start and uses the right number. If the name is not found, it uses the default microphone and shows an amber bar. Choose the microphone again in Settings to fix it.
+5. If the device disappears during a call (headphones switched off), Wingman restarts that audio source by itself and falls back to the default mic after a couple of tries. A red or amber bar shows while it recovers.
 
 ## The Electron download failed
 

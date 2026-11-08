@@ -37,13 +37,23 @@ import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.t
 import { interviewAllowed } from "./selfcheck.ts";
 import { st } from "./state.ts";
 
-let turnSeq = 0;
-let reflexErrors = 0; // consecutive reflex failures; 2 in a row raise the "AI not answering" bar, a success clears it
-const bankShownAt = new Map<string, number>();
+// st.q: turnSeq, reflexErrors (consecutive model failures: 2 in a row raise the "AI not answering" bar, 1 for an ask by the user; a success clears it)
+// and bankShownAt (per-call state, see state.ts).
+
+/** The cancel scope of one final. A final that holds several questions opens one scope: a newer final aborts all of its parts, but a part never aborts a sibling. */
+export interface QScope {
+  ac: AbortController;
+  parts: number;
+  /** Several parts share this scope: one part finishing early (arithmetic) must not detach the scope from `st.turn.current`. */
+  shared: boolean;
+}
+/** Most parts of one final that get a turn (and a model call) at the same time. */
+export const MAX_PARTS = 3;
 
 /** One question while its card is built. `shown` is the card on screen for this question; `modelIgnored` is set when the model's answer must not be shown. */
 interface Turn {
   id: string;
+  scope: QScope;
   r: SttResult;
   reason: string;
   speechEnd: number;
@@ -75,7 +85,7 @@ const stallCardFor = (t: Turn): Card => ({
   turnId: t.id,
   badge: "stall",
   question: t.r.text,
-  say: stallSay(stall, turnSeq, t.lang),
+  say: stallSay(stall, st.q.turnSeq, t.lang),
   facts: [],
   at: Date.now(),
 });
@@ -87,16 +97,16 @@ const stallCardFor = (t: Turn): Card => ({
  *  4. AI: a stall timer (reflex.stallAfterMs) shows "buy time" if nothing is up yet; meanwhile the model streams a tag
  *     (BANK / ANS / STALL / SKIP) that can confirm, replace or withdraw the card, then the answer text, which passes the guards.
  *  A newer question aborts this one (`current`). Answers older than reflex.dropStaleMs are never shown (`fresh`). `reason` is the detector's reason string. */
-export function onQuestion(r: SttResult, reason = "") {
+export function onQuestion(r: SttResult, reason = "", scope?: QScope) {
   try {
-    onQuestionCore(r, reason);
+    onQuestionCore(r, reason, scope);
   } catch (e) {
     survived("onQuestion", e);
   }
 }
-function onQuestionCore(r: SttResult, reason = "") {
+function onQuestionCore(r: SttResult, reason = "", scope?: QScope) {
   if (skipQuestion(r, reason)) return;
-  const t = openTurn(r, reason);
+  const t = openTurn(r, reason, scope);
   pickBank(t);
   if (answerArithmetic(t)) return;
   weighBank(t);
@@ -143,11 +153,7 @@ function answerOrAsk(t: Turn, caps: typeof sup.caps, usable: string[], end: () =
   // If neither the bank nor the model has put a card up by then, show the "buy time" line so the user is never left with a blank screen.
   t.stallTimer = setTimeout(() => {
     if (t.ac.signal.aborted) return;
-    if (!t.shown && !t.noStall && fresh(t)) {
-      t.shown = stallCardFor(t);
-      emitCard(t.shown);
-      t.lat.stallAt = Date.now();
-    }
+    showStallOrError(t, "timeout");
   }, S.reflex.stallAfterMs);
 
   const reserved = usableModels(true); // takes a half-open probe slot only now, right before the request
@@ -178,14 +184,25 @@ function skipQuestion(r: SttResult, reason: string): boolean {
   return true;
 }
 
-/** Starts the turn: ids, the latency row, and aborts the answer to the previous question. */
-function openTurn(r: SttResult, reason: string): Turn {
-  const id = `q${++turnSeq}`;
+/** Opens the cancel scope for a final: aborts the answers to the previous final (all of its parts). */
+export function openScope(shared = false): QScope {
+  st.turn.current?.abort();
+  return { ac: (st.turn.current = new AbortController()), parts: 0, shared };
+}
+
+/** Starts the turn: ids, the latency row, and aborts the answer to the previous final (a part of the same final is left alone). */
+function openTurn(r: SttResult, reason: string, given?: QScope): Turn {
+  const id = `q${++st.q.turnSeq}`;
   const speechEnd = r.speechEndWall ?? r.arrivedAt;
   const lat: Record<string, number | string> = { turnId: id, speechEnd, finalAt: r.arrivedAt, text: r.text };
-  st.turn.current?.abort();
-  const ac = (st.turn.current = new AbortController());
+  const scope = given ?? openScope();
+  scope.parts++;
+  // Own controller per turn, linked to the scope: the scope's abort (a newer final) reaches every part.
+  const ac = new AbortController();
+  if (scope.ac.signal.aborted) ac.abort();
+  else scope.ac.signal.addEventListener("abort", () => ac.abort(), { once: true });
   return {
+    scope,
     id,
     r,
     reason,
@@ -229,7 +246,7 @@ function pickBank(t: Turn) {
   // A repeat shows only for a clear question at least 2 minutes after the last time.
   t.lang = getTurnLang(); // fixed for this turn: a newer question must not flip a reply that is still streaming
   if (hit && !STALL_TIER.has(hit.card.id)) {
-    if (isBankRepeat({ shownAt: bankShownAt.get(hit.card.id), now: Date.now(), clearQuestion: isClearQuestion(r.text, reason) })) {
+    if (isBankRepeat({ shownAt: st.q.bankShownAt.get(hit.card.id), now: Date.now(), clearQuestion: isClearQuestion(r.text, reason) })) {
       log.write("events", { type: "bank.repeat", turnId, bank: hit.card.id });
       hit = undefined;
     }
@@ -251,7 +268,7 @@ function answerArithmetic(t: Turn): boolean {
   t.lat.tag = "CALC";
   log.write("events", { type: "calc", turnId: t.id, expr: math.expr, result: math.result });
   recordLatency(t.lat);
-  st.turn.current = undefined;
+  if (!t.scope.shared && t.scope.parts <= 1 && st.turn.current === t.scope.ac) st.turn.current = undefined; // a sibling part may still run on this scope
   return true;
 }
 
@@ -291,7 +308,7 @@ function showBank(t: Turn, hit: BankHit) {
   emitCard(t.shown);
   t.lat.bankAt = Date.now();
   t.lat.bankId = hit.card.id;
-  bankShownAt.set(hit.card.id, Date.now());
+  st.q.bankShownAt.set(hit.card.id, Date.now());
 }
 
 /** Streams the model's answer for this question. */
@@ -409,7 +426,7 @@ function onTag(t: Turn, tagIn: Tag) {
   if (tag.kind === "STALL") {
     clearTimeout(t.stallTimer);
     if (!t.shown && !t.noStall && fresh(t)) {
-      t.shown = { ...ai, id: t.stallId, badge: "stall", say: stallSay(stall, turnSeq, t.lang), at: Date.now() };
+      t.shown = { ...ai, id: t.stallId, badge: "stall", say: stallSay(stall, st.q.turnSeq, t.lang), at: Date.now() };
       emitCard(t.shown);
     }
     return;
@@ -478,7 +495,7 @@ function onSayComplete(t: Turn, say: string) {
   } // a blocked answer on a call that is not with a customer: nothing, never a stall line
   const card: Card = g.ok
     ? { ...ai, at: Date.now() }
-    : { ...ai, id: t.stallId, badge: "stall", say: stallSay(stall, turnSeq, t.lang), facts: [], at: Date.now() };
+    : { ...ai, id: t.stallId, badge: "stall", say: stallSay(stall, st.q.turnSeq, t.lang), facts: [], at: Date.now() };
   if (meSpokeSince(t)) card.dim = true;
   clearTimeout(t.stallTimer);
   // The "buy time" line went up while the model was still deciding; the real answer replaces it (never both on screen).
@@ -511,7 +528,7 @@ function onDone(t: Turn, { usage, providerMetadata, text, model }: Parameters<Re
   // (ai 7 normally rejects the usage promise on abort, so those tokens stay an undercount in budget.maxUsdPerCall; see docs).
   if (t.ac.signal.aborted) return;
   clearTimeout(t.stallTimer);
-  reflexErrors = 0;
+  st.q.reflexErrors = 0;
   healthClear("ai");
   clearAiBar(model);
   breakers.get(model)?.success();
@@ -540,19 +557,34 @@ function onReflexError(t: Turn, e: ProviderError) {
   const { id: turnId, lat } = t;
   clearTimeout(t.stallTimer);
   lat.aborted = t.ac.signal.aborted ? 1 : 0;
-  recordLatency(lat);
-  if (t.ac.signal.aborted) return;
+  if (t.ac.signal.aborted) {
+    recordLatency(lat);
+    return;
+  }
   const kind = e?.kind ?? "unknown";
   log.write("events", { type: kind === "refusal" ? "reflex.empty" : "reflex.error", turnId, kind, error: errBrief(e) });
   console.error("reflex error:", errBrief(e));
-  // L5/L6: refusal, empty answer or timeout: show the stall line if nothing is up yet.
-  if ((kind === "refusal" || kind === "timeout") && !t.shown && !t.noStall && fresh(t)) {
-    t.shown = stallCardFor(t);
-    emitCard(t.shown);
-  }
+  showStallOrError(t, kind);
+  recordLatency(lat);
   if (kind !== "refusal") countReflexFailure(e);
 }
-/** Two failures in a row (errors, timeouts, hung requests that were replaced) raise the "AI not answering" bar. */
-function countReflexFailure(e: ProviderError) {
-  if (++reflexErrors >= 2) health("ai", "amber", ht(UI_LANG, "ai.silent"), String(e?.message ?? e));
+
+/** Error kinds that put the "buy time" line up when nothing else is on screen. Not auth, quota, spend cap or a bad request: those have their own red/amber bar and a
+ *  stall line would pretend the AI is only slow. */
+const STALL_ON = new Set(["refusal", "timeout", "network", "overload", "rate", "unknown"]);
+/** A failed model call must never leave an empty screen: the stall line, once, if no card is up for this turn. */
+function showStallOrError(t: Turn, kind: string) {
+  if (!STALL_ON.has(kind) || t.shown || t.noStall || !fresh(t)) return;
+  t.shown = stallCardFor(t);
+  emitCard(t.shown);
+  t.lat.stallAt = Date.now();
+}
+
+/** Counts a failed model call. 2 in a row raise the "AI not answering" bar; an ask by the user (`userAsk`) raises it on the first one. */
+export function countReflexFailure(e: ProviderError, userAsk = false) {
+  if (++st.q.reflexErrors >= (userAsk ? 1 : 2)) health("ai", "amber", ht(UI_LANG, "ai.silent"), String(e?.message ?? e));
+}
+/** A model call worked: the failure count starts again. */
+export function noteReflexOk() {
+  st.q.reflexErrors = 0;
 }

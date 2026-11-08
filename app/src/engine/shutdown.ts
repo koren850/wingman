@@ -159,7 +159,7 @@ export async function shutdown() {
     clearTimeout(pending[ch]?.timer);
     delete pending[ch];
   }
-  for (const s of stops) await s().catch(() => {});
+  await Promise.all(stops.map((s) => s().catch(() => {}))); // in parallel: two slow sources must not add up (each can take 3 s to drop)
   sup.stop();
   try {
     rmSync(join(log.dir, "live.jsonl"), { force: true });
@@ -302,6 +302,8 @@ export async function shutdown() {
   }
   process.exit(st.call.crashed ? 1 : 0);
 }
+/** Last-resort exit after a crash: just after shutdown()'s own 16 s limit. */
+export const CRASH_EXIT_MS = 17_000;
 /** Fatal error path: print, log, then shut down in order to save what we have (crashed=true lands in call.json). A second crash during shutdown exits at once. */
 export function crash(kind: string, e: unknown) {
   if (kind === "main" && (e as ProviderError)?.kind)
@@ -316,7 +318,8 @@ export function crash(kind: string, e: unknown) {
   }
   if (st.call.shuttingDown) process.exit(1);
   st.call.crashed = true;
-  setTimeout(() => process.exit(1), 5000).unref(); // never hang on a broken shutdown
+  // Same budget as a normal stop (shutdown() has its own 10 s and 16 s exits): a 5 s limit here cut the save when two sources were slow to stop.
+  setTimeout(() => process.exit(1), CRASH_EXIT_MS).unref(); // never hang on a broken shutdown
   void shutdown();
 }
 // During a live call stray errors must not end the call: log them and keep listening and recording. Repeated errors (more than 3 in a minute)
@@ -349,6 +352,11 @@ function stray(kind: string, e: unknown) {
 }
 /** Registers the crash and signal handlers (once, at startup). */
 export function installProcessHandlers() {
+  // Test hooks (e2e only): WINGMAN_TEST_CRASH_MS=<ms> crashes the call that long after start; WINGMAN_TEST_SLOW_STOPS=<n>x<ms> adds n sources that take <ms> to stop.
+  const slow = /^(\d+)x(\d+)$/.exec(process.env.WINGMAN_TEST_SLOW_STOPS ?? "");
+  if (slow) for (let i = 0; i < Number(slow[1]); i++) stops.push(() => new Promise<void>((r) => setTimeout(r, Number(slow[2]))));
+  const crashMs = Number(process.env.WINGMAN_TEST_CRASH_MS);
+  if (crashMs > 0) setTimeout(() => crash("test", new Error("injected crash")), crashMs).unref();
   process.on("uncaughtException", (e) => stray("uncaughtException", e));
   process.on("unhandledRejection", (e) => stray("unhandledRejection", e));
   process.on("SIGINT", () => void shutdown());

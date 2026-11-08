@@ -6,6 +6,9 @@ import type { EventEmitter } from "node:events";
 import type { ProviderError } from "../errors.ts";
 import type { SttId } from "../catalog.ts";
 
+/** One rule for every STT open or reconnect: a socket that is not open after this long is a timeout error (kind "timeout", retryable). */
+export const STT_OPEN_TIMEOUT_MS = 8000;
+
 /** "me" = the user's microphone, "them" = system audio (the other side). */
 export type Channel = "me" | "them";
 export type Word = { word: string; start: number; end: number; speaker?: number; confidence?: number };

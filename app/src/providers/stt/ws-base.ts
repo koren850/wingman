@@ -3,7 +3,7 @@
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
 import { classifySttError, ProviderError } from "../errors.ts";
-import type { SttOptions, SttStreamLike } from "./types.ts";
+import { STT_OPEN_TIMEOUT_MS, type SttOptions, type SttStreamLike } from "./types.ts";
 
 /** Base for WebSocket adapters. Subclasses supply the URL, the config frame and the message parser. */
 export abstract class WsStream extends EventEmitter implements SttStreamLike {
@@ -67,7 +67,7 @@ export abstract class WsStream extends EventEmitter implements SttStreamLike {
         } // a failed open must not leave a live socket behind
         reject(e);
       };
-      const timer = setTimeout(() => fail(new ProviderError("timeout", this.provider, `${this.provider}: open timed out`)), 10_000);
+      const timer = setTimeout(() => fail(new ProviderError("timeout", this.provider, `${this.provider}: open timed out`)), STT_OPEN_TIMEOUT_MS);
       ws.once("open", () => {
         clearTimeout(timer);
         this.connBytes = 0;

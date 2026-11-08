@@ -676,3 +676,17 @@ Date: 2026-11-08
 **Alternatives.** Keep growing the word lists. Use embeddings for the bank (a download and a native dependency).
 
 **Consequences.** The pieces exist and are tested, but the engine is not wired to them yet. The legacy `getTurnLang` and `setTurnLang` stay until the wiring package removes the last caller.
+
+## ADR 45: A failing model or network never leaves an empty screen, and every wait has a limit
+
+Date: 2026-11-09
+
+**Context.** A review of the live paths found places where Wingman went quiet: an ask by the user that failed with a 529 showed nothing; a question from the other side with a network error got no card before the stall timer; several questions in one final aborted each other; a speech-to-text open could hang for as long as TCP allowed; a crash could be cut off before the call was saved; the engine texts were Hebrew for everyone.
+
+**Decision.** One helper decides what a failed model call shows (a card for an ask by the user, the "Buy time" line for the other side when `reflex.stall` is on, nothing for auth or quota errors, which have their own bar). The bar comes after one failure for an ask by the user and after two otherwise. The parts of one final share a cancel scope. All speech-to-text opens use one 8 s limit. The crash path uses the normal stop path. Engine texts live in `htext.ts` (English and Hebrew) behind `engine/strings.ts`, and a test keeps Hebrew letters out of the engine string literals. The microphone is saved as index plus name and checked at every start.
+
+**Why.** For a live helper, silence is the worst failure: the user cannot tell "no answer" from "broken". A time limit turns a hang into a message and a retry.
+
+**Alternatives.** Always show an error card for the other side's questions (too noisy: most questions end with SKIP). A second STT timer in each adapter only (the channel-level limit also covers new adapters).
+
+**Consequences.** With `reflex.stall` off (the default) a single failed question from the other side still shows nothing; the amber bar after the second failure is the signal. The 8 s limit is a constant, not a setting.

@@ -185,6 +185,36 @@ const M = {
     (p) => ` (${p.n} משפטים הוחלפו ב-[להשלים])`,
     (p) => ` (${p.n} sentences replaced with [fill in])`,
   ),
+  "mic.gone": m(
+    (p) => `המיקרופון "${p.name}" לא מחובר. משתמש במיקרופון ברירת המחדל; אפשר לבחור מיקרופון אחר ב-Settings`,
+    (p) => `The microphone "${p.name}" is not connected. Using the default microphone; you can pick another one in Settings`,
+  ),
+  // engine cards the user reads (engine/strings.ts)
+  "ask.notsure": m("לא בטוח — נסה לנסח שוב", "Not sure. Try asking again."),
+  "ask.error": m("לא הצלחתי לקבל תשובה מה-AI — נסה שוב", "Could not get an answer from the AI. Try again."),
+  "consent.title": m("תחילת שיחה", "Start of the call"),
+  "consent.sayit": m("אפשר להגיד את זה בתחילת השיחה", "You can say this at the start of the call"),
+  "consent.stop.ctl": m("לא רוצים להקליט: עצור ומחק מהתפריט", "Do not want to record: Stop and delete from the menu"),
+  "consent.stop.tty": m("לא רוצים להקליט: Ctrl+C", "Do not want to record: Ctrl+C"),
+  "consent.start.ctl": m("להתחלת האזנה: Ctrl+Opt+Return", "To start listening: Ctrl+Opt+Return"),
+  "consent.start.tty": m("להתחלת האזנה: Enter", "To start listening: Enter"),
+  "consent.started": m("ההאזנה התחילה. התמלול פעיל.", "Listening has started. Transcription is on."),
+  "tip.long": m("התשובה עברה 90 שניות: סכם במשפט אחד ושאל אם להרחיב.", "This answer passed 90 seconds. Sum it up in one sentence and ask if they want more."),
+  "side.propose": m(
+    (p) => `נראה שזו שיחה עם ${p.name}`,
+    (p) => `This looks like a call with ${p.name}`,
+  ),
+  "side.propose.ctl": m("לאשר בתפריט למעלה (Confirm client) = ה-AI יקבל את הפרטים", "Confirm in the menu above (Confirm client) = the AI gets the details"),
+  "side.propose.tty": m("y בטרמינל = לאשר ולתת ל-AI את הפרטים", "y in the terminal = confirm and give the AI the details"),
+  "side.reminder": m("עוד לא דיברתם על:", "Not covered yet:"),
+  "side.more": m(
+    (p) => `ועוד ${p.n}`,
+    (p) => `and ${p.n} more`,
+  ),
+  "flow.speaker": m(
+    (p) => `דובר ${p.n}`,
+    (p) => `Speaker ${p.n}`,
+  ),
   // language not supported
   "lang.unsupported": m("השפה הזו עדיין לא נתמכת. Wingman מבין אנגלית ועברית.", "This language is not supported yet. Wingman understands English and Hebrew."),
 } satisfies Record<string, Msg>;

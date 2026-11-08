@@ -30,6 +30,8 @@ export const st = {
   cards: { lastThemCardAt: 0 },
   /** The running answer for the other side; a new question aborts it. */
   turn: { current: undefined as AbortController | undefined, lastAgencyTopicAt: 0 },
+  /** Per-call state of the question path (engine/question.ts): turn counter, consecutive model failures, when each prepared card was last shown. */
+  q: { turnSeq: 0, reflexErrors: 0, bankShownAt: new Map<string, number>() },
   /** Who spoke last and when (wall ms unless named Mono). */
   voice: {
     lastMeVoiced: 0,

@@ -29,6 +29,7 @@ require("../shared/permissions.cjs").install(app); // no browser permission is e
 const windowHost = require("../dashboard/window.cjs");
 const { createControlServer } = require("./control-socket.cjs");
 const { createPlanStore } = require("./plans.cjs");
+const { tt } = require("./menu-text.cjs");
 
 const ROOT = path.join(__dirname, "..");
 const userPaths = require("../shared/paths.cjs");
@@ -47,7 +48,9 @@ let plans,
   lastMenuKey = "",
   host,
   ctl,
-  controlServer;
+  controlServer,
+  allowQuit = false; // true once the user confirmed quitting (or no call runs): before-quit lets the quit through
+let uiLanguage = () => "he"; // replaced in whenReady: the interface language (ui.language) for the menu
 
 // Single-instance guard (not in snapshot mode, so snapshots can run beside a real app).
 let gotLock = true;
@@ -159,7 +162,16 @@ function quitApp() {
       isRunning: () => ctl.isRunning(),
       dialog,
       stop: () => ctl.stop(),
-      quit: () => app.quit(),
+      text: {
+        keep: tt(uiLanguage(), "quitKeep"),
+        stop: tt(uiLanguage(), "quitStop"),
+        message: tt(uiLanguage(), "quitMessage"),
+        detail: tt(uiLanguage(), "quitDetail"),
+      },
+      quit: () => {
+        allowQuit = true;
+        app.quit();
+      },
       whenStopped: () => lib.waitUntil(() => !ctl.isRunning(), 25_000),
     })
     .then((r) => {
@@ -177,15 +189,17 @@ function refresh() {
     running = ctl.isRunning();
   startKey.sync(running && s.phase === "waiting");
   const v = lib.view(s, Date.now());
+  const L = uiLanguage(); // menu language (ui.language); it is part of the menu key, so a change rebuilds the menu
+  const t = (k, p) => tt(L, k, p);
   tray.setTitle(v.title, { fontType: "monospacedDigit" });
   tray.setToolTip(v.tooltip);
   // The status line holds a ticking m:ss timer; strip it so the key changes only on real changes.
-  const key = lib.menuKey(s, running, Date.now()) + v.statusLine.replace(/\d+:\d\d/, "");
+  const key = L + lib.menuKey(s, running, Date.now()) + v.statusLine.replace(/\d+:\d\d/, "");
   if (key === lastMenuKey) return; // rebuilding an open menu every second would close it
   lastMenuKey = key;
   /** @type {Electron.MenuItemConstructorOptions[]} */
   const items = [
-    { label: "Open Wingman", click: () => openWindow({ view: "home" }) },
+    { label: t("open"), click: () => openWindow({ view: "home" }) },
     { type: "separator" },
     { label: v.statusLine, enabled: false },
     ...v.healthLines.map((h) => ({ label: h, enabled: false })),
@@ -199,60 +213,60 @@ function refresh() {
     } catch {
       /* the menu still works without the list */
     }
-    items.push({ label: "Start quick call", click: () => ctl.start({}) });
+    items.push({ label: t("quick"), click: () => ctl.start({}) });
     items.push({
-      label: "Start prepared meeting",
+      label: t("prepared"),
       enabled: meetings.length > 0,
       submenu: meetings.length
         ? meetings.map((m) => ({ label: m.label, click: () => ctl.start({ planId: m.planId }) }))
-        : [{ label: "No prepared meetings", enabled: false }],
+        : [{ label: t("noPrepared"), enabled: false }],
     });
-    items.push({ label: "Start quick call without AI (Prepared cards only)", click: () => ctl.start({ noAi: true }) });
-    items.push({ label: "Prepare a meeting\u2026", click: () => openWindow({ view: "home", focus: "plan" }) });
+    items.push({ label: t("quickNoAi"), click: () => ctl.start({ noAi: true }) });
+    items.push({ label: t("prepare"), click: () => openWindow({ view: "home", focus: "plan" }) });
     items.push({ type: "separator" });
-    items.push({ label: "Try a practice call (offline, free)", click: () => ctl.practice() });
+    items.push({ label: t("practice"), click: () => ctl.practice() });
   } else {
-    if (s.phase === "waiting") items.push({ label: "Start listening", accelerator: KEYS.consent, registerAccelerator: false, click: () => ctl.consent() });
-    if (s.proposed && !s.client) items.push({ label: `Confirm client: ${s.proposed}`, click: () => ctl.confirmClient() });
+    if (s.phase === "waiting") items.push({ label: t("startListening"), accelerator: KEYS.consent, registerAccelerator: false, click: () => ctl.consent() });
+    if (s.proposed && !s.client) items.push({ label: t("confirmClient", { name: s.proposed }), click: () => ctl.confirmClient() });
     const askLeft = s.askArmed ? askClock(s.askUntil, Date.now()) : null;
     items.push({
-      label: s.askArmed ? "Listening for your question" + (askLeft ? ` \u00b7 ${askLeft} left` : "\u2026") : "Ask Wingman: my next sentence is for you",
+      label: s.askArmed ? t("askArmed") + (askLeft ? ` \u00b7 ${t("askLeft", { left: askLeft })}` : "\u2026") : t("ask"),
       accelerator: KEYS.ask,
       registerAccelerator: false,
       enabled: s.phase === "live",
       click: () => ctl.askWingman(),
     });
     items.push({
-      label: "Add a note for the AI\u2026",
+      label: t("note"),
       accelerator: KEYS.note,
       registerAccelerator: false,
       enabled: s.phase !== "stopping",
       click: () => ask(),
     });
     items.push({
-      label: "Quiet mode (hide cards in the answer window)",
+      label: t("quiet"),
       type: "checkbox",
       checked: !!s.quiet,
       enabled: s.phase === "live",
       click: (mi) => ctl.setQuiet(mi.checked),
     });
     items.push({ type: "separator" });
-    items.push({ label: s.phase === "stopping" ? "Stopping\u2026" : "Stop call", enabled: s.phase !== "stopping", click: () => ctl.stop() });
+    items.push({ label: s.phase === "stopping" ? t("stopping") : t("stop"), enabled: s.phase !== "stopping", click: () => ctl.stop() });
     items.push({ type: "separator" });
-    items.push({ label: "Stop and delete this call\u2026", enabled: s.phase !== "stopping", click: () => confirmDelete() });
+    items.push({ label: t("stopDelete"), enabled: s.phase !== "stopping", click: () => confirmDelete() });
   }
   items.push({ type: "separator" });
   items.push({
-    label: s.doctorRunning ? "Checking\u2026" : "Run readiness check",
+    label: s.doctorRunning ? t("checking") : t("doctor"),
     enabled: !s.doctorRunning && !running,
     click: () => {
       openWindow({ view: "home" });
       ctl.runDoctor();
     },
   });
-  items.push({ label: "Show log", click: () => shell.openPath(LOGS) });
+  items.push({ label: t("log"), click: () => shell.openPath(LOGS) });
   items.push({ type: "separator" });
-  items.push({ label: running ? "Quit Wingman\u2026" : "Quit Wingman", click: () => quitApp() });
+  items.push({ label: running ? t("quitRunning") : t("quit"), click: () => quitApp() });
   tray.setContextMenu(Menu.buildFromTemplate(items));
 }
 
@@ -293,7 +307,7 @@ app.whenReady().then(() => {
   let uiLang = "he",
     uiLangAt = 0;
   const readSettings = lib.settingsReader({ execFile: require("node:child_process").execFile, root: ROOT });
-  const uiLanguage = () => {
+  uiLanguage = () => {
     if (!SNAPSHOT && Date.now() - uiLangAt > 5000) {
       uiLangAt = Date.now();
       readSettings().then((r) => {
@@ -363,7 +377,13 @@ app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   controlServer && controlServer.stop();
 });
-app.on("before-quit", () => {
+app.on("before-quit", (e) => {
+  // Cmd+Q and the Dock menu quit without the menu item: while a call runs they get the same confirmation (and the call is stopped and saved first).
+  if (!allowQuit && ctl && ctl.isRunning()) {
+    e.preventDefault();
+    quitApp();
+    return;
+  }
   clearInterval(clock);
   ctl && ctl.shutdown();
 });

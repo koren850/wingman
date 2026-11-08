@@ -612,13 +612,14 @@ async function requestQuit(o) {
     o.quit();
     return "quit";
   }
+  const x = o.text || {}; // texts in the interface language (tray/menu-text.cjs); English when not given
   const r = o.dialog.showMessageBoxSync({
     type: "warning",
-    buttons: ["Keep the call running", "Stop the call and quit"],
+    buttons: [x.keep || "Keep the call running", x.stop || "Stop the call and quit"],
     defaultId: 0,
     cancelId: 0,
-    message: "A call is running.",
-    detail: "Quitting stops the call first: it is saved and the summary is written (up to 20 seconds), then Wingman closes.",
+    message: x.message || "A call is running.",
+    detail: x.detail || "Quitting stops the call first: it is saved and the summary is written (up to 20 seconds), then Wingman closes.",
   });
   if (r !== 1) return "kept";
   o.stop();

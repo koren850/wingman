@@ -185,6 +185,7 @@ function create() {
   let hangTimer;
   const reloadSoon = (why) => {
     pageReady = false;
+    clearInterval(timer);
     logErr("page " + why + "; reloading", "");
     setTimeout(() => {
       try {
@@ -194,7 +195,10 @@ function create() {
       }
     }, gate.next());
   };
-  win.webContents.on("render-process-gone", (_e, d) => reloadSoon("process gone (" + (d && d.reason) + ")"));
+  win.webContents.on("render-process-gone", (_e, d) => {
+    clearInterval(timer); // the page is dead: the 100 ms poll must not send to it until the reload has set it up again (did-finish-load restarts it)
+    reloadSoon("process gone (" + (d && d.reason) + ")");
+  });
   win.webContents.on("did-fail-load", (_e, code, desc, _url, isMain) => {
     if (isMain && code !== -3) reloadSoon("failed to load (" + desc + ")");
   });

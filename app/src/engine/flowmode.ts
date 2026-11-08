@@ -4,11 +4,12 @@ import { type SpeakerInfo } from "../speakers.ts";
 import { runTopic, type FlowEvent } from "../flow.ts";
 import { log, flow, S, cost, notesAbort, registry, lineOf, transcript, sup, noAi, flowOn } from "./boot.ts";
 import { st } from "./state.ts";
+import { speakerName } from "./strings.ts";
 
 let flowTopic = "",
   flowTopicAt = 0,
   flowBusy = false;
-export const voiceName = (w: SpeakerInfo) => w.name ?? `דובר ${w.spk}`;
+export const voiceName = (w: SpeakerInfo) => w.name ?? speakerName(w.spk);
 /** Writes the flow rows the answer window and dashboard follow: {type:"flow", state, who, topic} and {type:"addressed", who, text}. */
 export function flowEvents(evs: FlowEvent[]) {
   for (const e of evs) {

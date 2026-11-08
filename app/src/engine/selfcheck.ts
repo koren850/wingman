@@ -6,6 +6,7 @@ import { detectCareful, looksFactual, runSelfCheck, checkFix, MIN_WORDS } from "
 import { selfGate, S, log, cost, notesAbort, background, registry, noAi, sup, interview, brief, bank, claims } from "./boot.ts";
 import { emitCard, emitSide } from "./cards.ts";
 import { st } from "./state.ts";
+import { longAnswerTip } from "./strings.ts";
 import { nextAnswerStart } from "./rules.ts";
 import { recentTranscript } from "./coach.ts";
 
@@ -37,7 +38,7 @@ function interviewSelfCheck(text: string) {
   lastMeLineAt = now;
   if (now - answerStart > 90_000 && longNudgedFor !== answerStart) {
     longNudgedFor = answerStart;
-    emitSide({ id: `long-${++selfSeq}`, badge: "tip", say: "התשובה עברה 90 שניות: סכם במשפט אחד ושאל אם להרחיב.", facts: [] });
+    emitSide({ id: `long-${++selfSeq}`, badge: "tip", say: longAnswerTip(), facts: [] });
     selfEvent("selfcheck.long", {});
   }
 }

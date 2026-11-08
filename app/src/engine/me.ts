@@ -11,6 +11,8 @@ import { log, cost, breakers, S, tracker, contextNotes, lineOf, transcript, pref
 import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.ts";
 import { emitCard, noteModel } from "./cards.ts";
 import { st } from "./state.ts";
+import { askNotSure, askError } from "./strings.ts";
+import { countReflexFailure, noteReflexOk } from "./question.ts";
 import { selfCheckLine } from "./selfcheck.ts";
 import { survived, status } from "./out.ts";
 
@@ -263,6 +265,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
       onDone({ usage, providerMetadata, text: raw, model }) {
         if (dead()) return;
         clearAiBar(model);
+        noteReflexOk();
         breakers.get(model)?.success();
         sup.noteLlmOk();
         refreshSignals();
@@ -273,11 +276,18 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
         // The user pressed the ask key (or typed `ask`) and nothing came back: say so, never leave an empty screen.
         if (forced && !cardOut && !shownOnce) {
           meLog(turnId, text, "unsure", "forced-no-answer");
-          show("לא בטוח — נסה לנסח שוב", [], "ai");
+          show(askNotSure(), [], "ai");
         }
       },
     },
   }).catch((e: ProviderError) => {
-    if (!dead()) log.write("events", { type: "me.error", turnId, kind: e?.kind ?? "unknown", error: eventError(e) });
+    if (dead()) return;
+    log.write("events", { type: "me.error", turnId, kind: e?.kind ?? "unknown", error: eventError(e) });
+    // The model call failed (network, 529, 429, timeout). The user pressed the ask key (or typed `ask`): never leave an empty screen, and raise the bar at once.
+    if (forced && !cardOut && !shownOnce) {
+      meLog(turnId, text, "unsure", "forced-error", { kind: e?.kind ?? "unknown" });
+      show(askError(), [], "ai");
+    }
+    if (e?.kind !== "refusal") countReflexFailure(e, forced);
   });
 }

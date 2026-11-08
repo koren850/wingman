@@ -33,7 +33,32 @@ export class SystemSource extends EventEmitter implements Source {
 
 /** avfoundation input spec for an audio-only device: ":default", ":1", ":BlackHole 2ch". Bare names and indexes get the ":" prefix. */
 export function avDevice(d: string): string {
+  d = d.split("|")[0]; // a saved mic can carry its name after "|" (":2|MacBook Pro Microphone"), see resolveMicSetting
   return d.startsWith(":") ? d : `:${d}`;
+}
+
+/** The mic as saved by the setup window: ":2|Name" = index 2 when it was chosen, and the name of that device. Older settings are just ":2" or a name. */
+export function parseMicSetting(v: string): { device: string; name?: string } {
+  const i = v.indexOf("|");
+  return i < 0 ? { device: v } : { device: v.slice(0, i), name: v.slice(i + 1).trim() || undefined };
+}
+const sameName = (a: string, b: string) => {
+  const x = a.toLowerCase().trim(),
+    y = b.toLowerCase().trim();
+  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+};
+/** Checks a saved mic against the devices that are plugged in now (ffmpeg's list, indexes as avfoundation numbers them today).
+ *  Indexes move when AirPods or a USB mic connect, so the name wins: same name at another index = `moved` (the new index is used);
+ *  name not there at all = `gone` (the default mic is used and the caller warns). No name saved, or an empty list (unreadable): the setting is used as it is. */
+export function resolveMicSetting(v: string, inputs: { index: number; name: string }[]): { device: string; name?: string; moved?: boolean; gone?: boolean } {
+  const { device, name } = parseMicSetting(v);
+  if (!name || !inputs.length) return { device, name };
+  const idx = /^:(\d+)$/.exec(device)?.[1];
+  const atIndex = idx === undefined ? undefined : inputs.find((d) => d.index === Number(idx));
+  if (atIndex && sameName(atIndex.name, name)) return { device, name };
+  const found = inputs.find((d) => sameName(d.name, name));
+  if (found) return { device: `:${found.index}`, name, moved: true };
+  return { device: ":default", name, gone: true };
 }
 
 /**

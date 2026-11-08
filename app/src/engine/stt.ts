@@ -4,7 +4,8 @@ import type { Channel, SttResult } from "../providers/stt/types.ts";
 import { SttChannel } from "../providers/stt/channel.ts";
 import { getSttProvider, sttChain } from "../providers/stt/index.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
-import { sttRetryDelayMs, isPermanentSttError } from "../health.ts";
+import { isPermanentSttError } from "../health.ts";
+import { SttRetryRegistry } from "./stt-retry.ts";
 import { health, chHe, healthClear, safe, errBrief } from "./out.ts";
 import { log, sup, S, keyterms, PHONE, keys, NO_KEY, phone, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
@@ -39,43 +40,39 @@ function makeChannel(ch: Channel): SttChannel {
 /** STT channel with no fallback left: keep reopening the current provider (backoff 1,2,4,8,10,10... s) until it works. A refused key / no credit
  *  (permanent) does not end the call: the other side's channel goes to rung 4 (transcript-only: your own questions still get answers), the red bar stays,
  *  and the reopen is retried slowly (every 30 s, so a top-up mid-call is picked up). "unknown" errors count as transient. */
-const sttRetrying = new Set<string>();
+const retries = new SttRetryRegistry();
 const SLOW_RETRY_MS = Number(process.env.WINGMAN_STT_SLOW_RETRY_MS) || 30_000; // (the env override exists for tests)
 function sttMarkPermanent(ch: string, e: ProviderError) {
   health(`stt-${ch}`, "red", ht(UI_LANG, "stt.refused", { ch: chHe(ch), err: describe(e), sec: Math.round(SLOW_RETRY_MS / 1000) }), e.message);
   if (ch === "them") sup.set({ themSttDown: true });
   log.write("events", { type: "stt.permanent", ch, kind: e.kind });
 }
-export async function sttRetryLoop(s: SttChannel, ch: string, permanent = false, firstDelayMs?: number) {
-  if (sttRetrying.has(ch)) return;
-  sttRetrying.add(ch);
-  try {
-    for (let n = 0; !st.call.shuttingDown; n++) {
-      await new Promise((r) => setTimeout(r, n === 0 && firstDelayMs !== undefined ? firstDelayMs : sttRetryDelayMs(n, permanent, SLOW_RETRY_MS)));
-      if (st.call.shuttingDown) return;
-      try {
-        await s.reopen();
+export function sttRetryLoop(s: SttChannel, ch: string, permanent = false, firstDelayMs?: number) {
+  return retries.run(
+    ch,
+    {
+      reopen: () => s.reopen(),
+      stopped: () => st.call.shuttingDown,
+      slowMs: SLOW_RETRY_MS,
+      onPermanent: (e) => sttMarkPermanent(ch, e as ProviderError),
+      onFail: (n, e) => {
+        const pe = e as ProviderError;
+        log.write("events", { type: "stt.retry.fail", ch, n, kind: pe.kind, error: eventError(pe) });
+      },
+      onRecovered: (attempts) => {
         healthClear(`stt-${ch}`);
         if (ch === "them") sup.set({ themSttDown: false });
-        log.write("events", { type: "stt.recovered", ch, attempts: n + 1 });
-        return;
-      } catch (e) {
-        const pe = e as ProviderError;
-        log.write("events", { type: "stt.retry.fail", ch, n: n + 1, kind: pe.kind, error: eventError(pe) });
-        if (!permanent && isPermanentSttError(pe)) {
-          permanent = true;
-          sttMarkPermanent(ch, pe);
-        }
-      }
-    }
-  } finally {
-    sttRetrying.delete(ch);
-  }
+        log.write("events", { type: "stt.recovered", ch, attempts });
+      },
+    },
+    permanent,
+    firstDelayMs,
+  );
 }
 
 /** Initial open: transient errors (timeout, network, 5xx, closed) retry with backoff 1/2/4/8 s for ~30 s with a "connecting" line; auth/quota/spend-cap throw at once.
  *  After 30 s the call goes on exactly like a mid-call outage (red bar, retry forever): starting is safe, the consent card and mic checks do not depend on STT. */
-async function openChannel(ch: SttChannel, name: string) {
+export async function openChannel(ch: SttChannel, name: string) {
   const t0 = Date.now();
   for (let n = 0; ; n++) {
     try {

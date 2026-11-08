@@ -35,6 +35,8 @@ class ScriptStream extends EventEmitter implements SttStreamLike {
     super();
   }
   async open() {
+    // Test hook: WINGMAN_STT_HANG=<channel> makes open() of that channel never answer (a dropped SYN, a captive portal): a black hole.
+    if (process.env.WINGMAN_STT_HANG === this.o.channel) await new Promise<void>(() => {});
     const inj = injectedFailure(this.o.channel);
     if (inj && Date.now() - T0 >= inj.at) throw failError(inj.status);
     if (inj) {
@@ -293,9 +295,10 @@ const usage = { inputTokens: { total: 100, noCache: 100, cacheRead: 0, cacheWrit
 const finish = { unified: "stop" as const, raw: "end_turn" };
 
 /** Factory used by ModelRegistry (spec.factory): returns modelId -> a mock model. Streaming sends the whole answer as one delta. */
-// Fault injection for tests: WINGMAN_LLM_FAIL=<n>:<http status> makes the first n reflex calls (questions from the other side) fail like a real provider.
+// Fault injection for tests: WINGMAN_LLM_FAIL=<n>:<http status | net> makes the first n reflex calls (questions from the other side) fail like a real provider.
 let llmFailsLeft = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[0]) || 0;
-const llmFailStatus = Number(String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[1]) || 401;
+const llmFailKind = String(process.env.WINGMAN_LLM_FAIL ?? "").split(":")[1] ?? ""; // an HTTP status, or "net" = a dropped connection
+const llmFailStatus = Number(llmFailKind) || 401;
 // Model "scripted:policy" serves a policy file (env WINGMAN_POLICY_FILE, written by PolicyModel.toJSON()), so a child-process engine test can use the
 // policy fake. One PolicyModel per process: rule counters (times, nth) and the call log are shared by all calls.
 let policyShared: PolicyModel | undefined;
@@ -329,6 +332,7 @@ export function createScripted() {
             const text = legacyScripted(promptText(o));
             if (llmFailsLeft > 0 && questionOf(promptText(o))) {
               llmFailsLeft--;
+              if (llmFailKind === "net") throw Object.assign(new Error("fetch failed (injected)"), { code: "ECONNRESET" });
               throw Object.assign(new Error(`HTTP ${llmFailStatus} (injected)`), { statusCode: llmFailStatus });
             }
             const parts = [

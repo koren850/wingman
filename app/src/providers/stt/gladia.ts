@@ -4,8 +4,8 @@
 //   · stop = {"type":"stop_recording"} · close code 1000 = intentional, anything else = reconnect to the same url.
 // The WsStream base reconnects (with backoff) after a close we did not ask for, when the error is network-like or retryable.
 import type WebSocket from "ws";
-import { classifyHttp, classifySttError } from "../errors.ts";
-import { speechEndWall, type SttOptions, type SttProvider, type SttResult, type Word } from "./types.ts";
+import { classifyHttp, classifySttError, ProviderError } from "../errors.ts";
+import { speechEndWall, STT_OPEN_TIMEOUT_MS, type SttOptions, type SttProvider, type SttResult, type Word } from "./types.ts";
 import { WsStream } from "./ws-base.ts";
 
 export const GLADIA_API = "https://api.gladia.io";
@@ -30,7 +30,9 @@ export class GladiaStream extends WsStream {
   protected async connectUrl() {
     if (this.url) return this.url; // reconnect resumes the same session url
     const lang = this.opts.language;
+    // The init POST is part of the open: it gets the same 8 s rule as the socket (a dropped SYN must not hang Start).
     const res = await fetch(`${this.opts.baseUrl ?? GLADIA_API}/v2/live`, {
+      signal: AbortSignal.timeout(STT_OPEN_TIMEOUT_MS),
       method: "POST",
       headers: { "x-gladia-key": this.opts.apiKey, "content-type": "application/json" },
       body: JSON.stringify({
@@ -46,6 +48,9 @@ export class GladiaStream extends WsStream {
           ? { realtime_processing: { custom_vocabulary: true, custom_vocabulary_config: { vocabulary: this.opts.keyterms.slice(0, 100) } } }
           : {}),
       }),
+    }).catch((e: unknown) => {
+      if ((e as { name?: string })?.name === "TimeoutError") throw new ProviderError("timeout", "gladia", "gladia: session init timed out");
+      throw e;
     });
     if (!res.ok) throw classifyHttp("gladia", res.status, await res.text().catch(() => ""), { "retry-after": res.headers.get("retry-after") ?? undefined });
     const j = (await res.json()) as { url?: string };

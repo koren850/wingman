@@ -1,10 +1,10 @@
 // Audio input: the replay file (--file) or the supervised mic and system-audio sources, with the echo gate for the mic.
 import { spawn } from "node:child_process";
 import { childEnv } from "../env.ts";
-import { FileSource, SupervisedSource, pickMicDevice, avDevice, peakOf } from "../audio.ts";
+import { FileSource, SupervisedSource, pickMicDevice, avDevice, peakOf, parseMicSetting, resolveMicSetting } from "../audio.ts";
 import { backendFor } from "../audio-platform.ts";
 import { resolveEchoMode, type EchoMode } from "../echo.ts";
-import { readAudioDevices, bluetoothInUse } from "../devices.ts";
+import { readAudioDevices, listInputDevices, bluetoothInUse } from "../devices.ts";
 import { stopConsentTimer } from "./consent.ts";
 import { startTapWatchdog, noteMicFrame, micBack, stopMicWatch } from "./watchdogs.ts";
 import { stops, shutdown } from "./shutdown.ts";
@@ -97,6 +97,17 @@ export async function startFileSource(file: string) {
 }
 
 /** Live capture: starts the supervised mic and system-audio sources and the watchdogs around them. */
+/** The saved mic against the microphones ffmpeg lists now (re-resolved at every start of the mic source). Logs a moved index; warns when the name is gone. */
+async function resolveMic(saved: string) {
+  const r = resolveMicSetting(saved, await listInputDevices(3000));
+  if (r.moved) log.write("events", { type: "audio.mic.moved", name: r.name, using: r.device });
+  if (r.gone) {
+    log.write("events", { type: "audio.mic.gone", name: r.name });
+    health("mic-device", "amber", ht(UI_LANG, "mic.gone", { name: r.name ?? "" }));
+  } else healthClear("mic-device");
+  return r;
+}
+
 export async function startLiveSources() {
   if (st.call.shuttingDown) return;
   if (S.system.caffeinate && process.platform === "darwin")
@@ -124,7 +135,9 @@ export async function startLiveSources() {
     stallMs: 10_000,
     make: async (failures) => {
       const devs = failures ? await readAudioDevices() : []; // asked only after a failure; system_profiler takes ~0.3 s
-      const dev = pickMicDevice(micDevice, devs, failures);
+      // A saved name is checked against what is plugged in at every start: indexes move when a headset or a USB mic connects.
+      const want = parseMicSetting(micDevice).name ? await resolveMic(micDevice) : { device: avDevice(micDevice) };
+      const dev = pickMicDevice(want.device, devs, failures);
       if (failures) {
         log.write("events", { type: "audio.mic.device", configured: micDevice, using: dev, failures });
         console.log(`mic: trying ${dev}`);

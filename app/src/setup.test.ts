@@ -121,7 +121,7 @@ test("setup IPC: microphone and one-screen settings are validated and written un
   await r.call("setup:setOneScreen", true);
   await r.call("setup:setOneScreen", false);
   assert.deepEqual(
-    r.calls.map((c) => JSON.parse(c.input!)),
+    r.calls.filter((c) => c.input).map((c) => JSON.parse(c.input!)), // (the first call without input is the microphone list)
     [{ "audio.mic.device": ":1" }, { "overlay.allowPrimary": true }, { "overlay.allowPrimary": null }],
   );
 });

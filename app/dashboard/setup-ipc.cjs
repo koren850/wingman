@@ -50,6 +50,19 @@ function cleanMic(v) {
   return v;
 }
 
+/** ":2" + the device list -> ":2|Name" (the name cleaned: no control characters, no "|", at most 80 characters). No such index in the list: ":2". */
+function withMicName(dev, devices) {
+  const d = Array.isArray(devices) ? devices.find((x) => x && ":" + x.index === dev && typeof x.name === "string") : undefined;
+  const name = d
+    ? d.name
+        .replace(/[\u0000-\u001f\u007f|]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 80)
+    : "";
+  return name ? dev + "|" + name : dev;
+}
+
 /** Folder of the user's own pack and the shipped example. env.WINGMAN_PACK_DIR redirects the user pack (tests). */
 function packDirs(root, env = process.env, home = os.homedir()) {
   return { user: env.WINGMAN_PACK_DIR || path.join(home, ".config", "wingman", "pack"), example: path.join(root, "data", "example-pack") };
@@ -135,7 +148,7 @@ function register(o) {
     if (!o.preview) {
       const s = await o.child(["src/settings-edit-cli.ts", "read"]);
       if (s && s.ok && s.values) {
-        micDevice = String(s.values["audio.mic.device"] || ":default");
+        micDevice = String(s.values["audio.mic.device"] || ":default").split("|")[0]; // the saved name after "|" is for the engine
         allowPrimary = s.values["overlay.allowPrimary"] === true;
         requireConsent = s.values["privacy.requireConsentAck"] === true;
         mipOptOut = s.values["stt.deepgram.mipOptOut"] === true;
@@ -197,7 +210,17 @@ function register(o) {
   o.handle("setup:setMic", async (v) => {
     const dev = cleanMic(v);
     if (o.preview) return preview;
-    return done(await o.child(["src/settings-edit-cli.ts", "write"], JSON.stringify({ "audio.mic.device": dev })));
+    // Save the device name next to the index (":2|Name"): indexes move when a headset or a USB mic connects, the engine re-checks the name at every start.
+    let saved = dev;
+    if (dev && /^:\d{1,2}$/.test(dev)) {
+      try {
+        const list = await o.child(["src/mics-cli.ts"]);
+        saved = withMicName(dev, list && list.ok ? list.devices : []);
+      } catch {
+        saved = dev; // the list is only a help: the index alone still works as before
+      }
+    }
+    return done(await o.child(["src/settings-edit-cli.ts", "write"], JSON.stringify({ "audio.mic.device": saved })));
   });
   o.handle("setup:setOneScreen", async (on) => {
     if (typeof on !== "boolean") throw new Error("bad argument");
@@ -214,4 +237,4 @@ function register(o) {
   });
 }
 
-module.exports = { register, LINKS, cleanProfile, cleanMic, packInfo, copyExamplePack, packDirs, PANES, PACK_FILES };
+module.exports = { register, LINKS, cleanProfile, cleanMic, withMicName, packInfo, copyExamplePack, packDirs, PANES, PACK_FILES };

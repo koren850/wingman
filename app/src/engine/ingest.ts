@@ -18,7 +18,7 @@ import { wordCount } from "../text-util.ts";
 import { survived, health, healthClear } from "./out.ts";
 import { LangWatch } from "../langwatch.ts";
 import { ht } from "../htext.ts";
-import { onQuestion } from "./question.ts";
+import { onQuestion, openScope, MAX_PARTS } from "./question.ts";
 import { handleMe } from "./me.ts";
 
 // Buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer, stt.flushFallbackMs,
@@ -96,10 +96,12 @@ function flushCore(ch: Channel) {
   const parts = d.isQuestion && !followUp ? splitMergedQuestions(joined.text, bank) : [joined.text];
   if (parts.length > 1) {
     log.write("events", { type: "split.multi", text: joined.text, parts });
-    parts.forEach((p, part) => {
+    // One cancel scope for the whole final: a newer final aborts every part, a part never aborts its sibling. At most MAX_PARTS run.
+    const scope = openScope(true);
+    parts.slice(0, MAX_PARTS).forEach((p, part) => {
       const pd = detectText(p).d;
       log.write("events", { type: "detect", text: p, part, ...pd });
-      if (pd.isQuestion && sup.caps.detect) onQuestion({ ...joined, text: p }, pd.reason);
+      if (pd.isQuestion && sup.caps.detect) onQuestion({ ...joined, text: p }, pd.reason, scope);
     });
     return;
   }

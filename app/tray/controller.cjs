@@ -146,8 +146,8 @@ function createController(o) {
       change();
     });
     c.on("exit", (code, signal) => {
-      if (lingering === c) lingering = undefined;
       finish(c, code, signal);
+      if (lingering === c) lingering = undefined; // (after finish: an exited process is not lingering)
     });
     change();
     return true;
@@ -183,13 +183,29 @@ function createController(o) {
     } catch {
       /* default */
     }
-    const wav = path.join(tmpDir, "wingman-practice.wav");
+    // Own private folder per practice call: a fixed name in the shared temp folder could be replaced by another user or another run.
+    let wavDir;
+    try {
+      wavDir = fs.mkdtempSync(path.join(tmpDir, "wingman-practice-"));
+    } catch {
+      return false;
+    }
+    const wav = path.join(wavDir, "practice.wav");
     lib.writeSilentWav(wav, Math.ceil((lines * gapMs) / 1000) + 12);
     const ok = startCall(
       ["--profile", en ? "demo-en" : "demo", "--file", wav, ...(exp ? ["--brief", exp.briefFile] : ["--no-brief"])],
       { WINGMAN_STT_SCRIPT: script, WINGMAN_SCRIPT_GAP_MS: String(gapMs), ...(exp ? { WINGMAN_ATTACH_DIR: exp.attachDir } : {}) },
       exp ? exp.meeting.id : "",
     );
+    const drop = () => {
+      try {
+        fs.rmSync(wavDir, { recursive: true, force: true });
+      } catch {
+        /* a temp folder left behind is harmless */
+      }
+    };
+    if (ok && child) child.once("exit", drop);
+    else drop();
     if (ok)
       notify(
         "Practice call",
@@ -234,10 +250,10 @@ function createController(o) {
     set({ ev: "stopping" });
     change();
     st(() => {
-      if (child === c) killGroup(c, "SIGINT");
+      if (child === c || lingering === c) killGroup(c, "SIGINT"); // (after "ended" the call lingers about 5 s: a hung one is still ended)
     }, 12000); // call.ts: graceful stop
     st(() => {
-      if (child === c) killGroup(c, "SIGKILL");
+      if (child === c || lingering === c) killGroup(c, "SIGKILL");
     }, 20000); // stuck: force everything off (mic included)
     return true;
   }

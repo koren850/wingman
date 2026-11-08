@@ -2,8 +2,8 @@
 // a failure is non-retryable (auth, quota, spend cap) or repeats (circuit: N failures in windowMs).
 // Also keeps a short audio ring while the socket is down and replays it after a reconnect. Created by src/run.ts.
 import { EventEmitter } from "node:events";
-import { classifySttError, type ProviderError } from "../errors.ts";
-import type { Channel, SttOptions, SttProvider, SttResult, SttStreamLike } from "./types.ts";
+import { classifySttError, ProviderError } from "../errors.ts";
+import { STT_OPEN_TIMEOUT_MS, type Channel, SttOptions, SttProvider, SttResult, SttStreamLike } from "./types.ts";
 
 /** Two failure events closer together than this are one socket failure. */
 const SAME_FAILURE_MS = 250;
@@ -17,6 +17,7 @@ export type ChannelOpts = {
   baseUrls?: Record<string, string>; // tests: point an adapter at a mock server
   circuit: { failures: number; windowMs: number };
   ringMs?: number; // audio kept while the socket is down, flushed on reopen (0/undefined = drop, old behaviour)
+  openTimeoutMs?: number; // one open (or reopen) attempt gives up after this long (default 8 s)
   deadAfterMs?: number; // a socket that stays disconnected this long is treated as dead (default 45 s)
   now?: () => number;
 };
@@ -38,6 +39,7 @@ export class SttChannel extends EventEmitter {
   private flushEndSec = 0; // flushed audio occupies [0, flushEndSec] of the current connection's audio clock
   private everOpened = false;
   private deadTimer?: NodeJS.Timeout;
+  private deadFor?: SttStreamLike; // the stream the dead timer is armed for
   constructor(private o: ChannelOpts) {
     super();
   }
@@ -88,9 +90,29 @@ export class SttChannel extends EventEmitter {
     const p = this.o.chain[this.idx],
       key = this.o.keyOf(p.id);
     if (!key) throw classifySttError(p.id, Object.assign(new Error("API key missing"), { statusCode: 401 }));
+    if (this.closed) return;
     const s = p.create({ ...this.o.base, apiKey: key, channel: this.o.channel, baseUrl: this.o.baseUrls?.[p.id] ?? this.o.base.baseUrl });
     this.wire(s);
-    await s.open();
+    const limit = this.o.openTimeoutMs ?? STT_OPEN_TIMEOUT_MS;
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        s.open(),
+        new Promise<never>((_, rej) => {
+          timer = setTimeout(() => rej(new ProviderError("timeout", p.id, `${p.id}: open timed out after ${Math.round(limit / 1000)} s`)), limit);
+        }),
+      ]);
+    } catch (e) {
+      void Promise.resolve(s.close()).catch(() => {}); // a failed open must not leave a half-open socket behind
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+    if (this.closed) {
+      // close() ran while this stream was opening: do not keep it.
+      void Promise.resolve(s.close()).catch(() => {});
+      return;
+    }
     this.stream = s;
     this.everOpened = true;
     this.flushRing(s);
@@ -110,9 +132,12 @@ export class SttChannel extends EventEmitter {
         sent += chunks[i].length;
         this.flushedBytes += chunks[i].length;
       } else {
-        this.ringDropped += chunks.length - i;
+        // socket went down again mid-flush: put the unsent rest back (oldest first), before anything buffered since
+        const rest = chunks.slice(i);
+        this.ring = [...rest, ...this.ring];
+        this.ringBytes += rest.reduce((n, c) => n + c.length, 0);
         break;
-      } // socket went down again mid-flush: the rest is lost
+      }
     }
     this.flushEndSec = sent / 32000;
   }
@@ -141,7 +166,7 @@ export class SttChannel extends EventEmitter {
     s.on("keyterms_off", (e) => this.emit("keyterms_off", e));
     s.on("reconnected", (d) => {
       if (s !== this.stream) return;
-      clearTimeout(this.deadTimer);
+      this.clearDead();
       this.failures = [];
       this.flushRing(s);
       this.emit("reconnected", d);
@@ -163,9 +188,18 @@ export class SttChannel extends EventEmitter {
   }
 
   /** A socket that never comes back (the adapter's own reconnect gave up silently) is treated as a terminal failure. */
-  private armDeadTimer(s: SttStreamLike, err: ProviderError) {
+  private clearDead() {
     clearTimeout(this.deadTimer);
+    this.deadTimer = undefined;
+    this.deadFor = undefined;
+  }
+  private armDeadTimer(s: SttStreamLike, err: ProviderError) {
+    if (this.deadTimer && this.deadFor === s) return; // already counting for this stream: repeated disconnects must not restart it
+    clearTimeout(this.deadTimer);
+    this.deadFor = s;
     this.deadTimer = setTimeout(() => {
+      this.deadTimer = undefined;
+      this.deadFor = undefined;
       if (this.closed || s !== this.stream || s.isOpen) return;
       void this.switchNext(err);
     }, this.o.deadAfterMs ?? 45_000);
@@ -232,6 +266,7 @@ export class SttChannel extends EventEmitter {
     await this.openCurrent().catch((e) => {
       throw classifySttError(prov, e);
     });
+    if (this.closed) return; // close() ran while reopening: openCurrent already closed the new stream
     this.failures = [];
     if (old && old !== this.stream) {
       this.seconds[prov] = (this.seconds[prov] ?? 0) + old.audioSeconds;
@@ -257,7 +292,7 @@ export class SttChannel extends EventEmitter {
   }
   async close() {
     this.closed = true;
-    clearTimeout(this.deadTimer);
+    this.clearDead();
     await this.stream?.close();
   }
 }

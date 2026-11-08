@@ -5,19 +5,16 @@ import { st, mono } from "./state.ts";
 import { setupKeys, setupControl } from "./control.ts";
 import { emitCard, type Card } from "./cards.ts";
 import { startMicWatch } from "./watchdogs.ts";
+import { consentTitle, consentSayIt, consentStop, consentStart, consentStarted } from "./strings.ts";
 
 /** Consent card: re-emitted every 20 s until confirmed (the answer window may start late and would miss a single one). */
 const consentCard = (): Card => ({
   id: "consent",
   turnId: "start",
   badge: "info",
-  question: "תחילת שיחה",
+  question: consentTitle(),
   say: CONSENT_SAY,
-  facts: [
-    "אפשר להגיד את זה בתחילת השיחה",
-    CONTROL ? "לא רוצים להקליט: עצור ומחק מהתפריט" : "לא רוצים להקליט: Ctrl+C",
-    CONTROL ? "להתחלת האזנה: Ctrl+Opt+Return" : "להתחלת האזנה: Enter",
-  ],
+  facts: [consentSayIt(), consentStop(CONTROL), consentStart(CONTROL)],
   at: Date.now(),
 });
 export let reemit: NodeJS.Timeout | undefined;
@@ -35,7 +32,7 @@ export function startConsent() {
     clearInterval(reemit);
     log.write("events", { type: needAck ? "consent.confirmed" : "listening.start" });
     if (needAck) {
-      emitCard({ ...consentCard(), id: "consent", say: "ההאזנה התחילה. התמלול פעיל.", facts: [] });
+      emitCard({ ...consentCard(), id: "consent", say: consentStarted(), facts: [] });
       console.log("\nListening started: audio is now being sent for transcription.");
     }
     status("consented", { id: log.id });

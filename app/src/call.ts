@@ -68,6 +68,12 @@ function openOverlay() {
 openOverlay();
 const runCmd = bin.binCommand("tsx", [join(ROOT, "src", "run.ts"), ...rest], ROOT);
 const run = spawn(runCmd.cmd, runCmd.args, { cwd: ROOT, stdio: "inherit", env: { ...process.env, ...(rows ? { WINGMAN_OVERLAY_SOCK: rows.path } : {}) } });
+// A failed spawn (no tsx, no permission) is an "error" event, not an exit: without a handler it is an uncaught error in this process.
+run.on("error", (e) => {
+  console.error(`\n🔴 Could not start the call engine: ${e.message}`);
+  status("ended", { crashed: true, deleted: false });
+  finalExit(1);
+});
 
 // stopping = a stop was requested; runExited = run.ts is gone (only the window lingers); exiting = finalExit() already started.
 let stopping = false,

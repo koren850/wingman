@@ -9,6 +9,7 @@ import { status } from "./out.ts";
 import { log, S, callStart, brief, transcript, cost, notesAbort, registry, sup, notesOn, contextNotes, CONTROL, spotter, speakers } from "./boot.ts";
 import { emitSide } from "./cards.ts";
 import { st } from "./state.ts";
+import { proposeClient, proposeClientHow, reminderTitle, reminderMore } from "./strings.ts";
 import { recentNotes } from "./rules.ts";
 
 /** Name speaker `spk` for the rest of the call (source "intro" = from their own introduction, "user" = the user renamed them). The
@@ -46,8 +47,8 @@ export function spotFacts(text: string) {
       emitSide({
         id: "propose-client",
         badge: "info",
-        say: `נראה שזו שיחה עם ${f.title}`,
-        facts: [CONTROL ? "לאשר בתפריט למעלה (Confirm client) = ה-AI יקבל את הפרטים" : "y בטרמינל = לאשר ולתת ל-AI את הפרטים"],
+        say: proposeClient(f.title),
+        facts: [proposeClientHow(CONTROL)],
       });
       console.log(`\nLooks like a call with ${f.title}. Press y to confirm (adds it to the AI notes).`);
       status("propose", { title: f.title });
@@ -133,7 +134,7 @@ export function reminderTick() {
   lastReminderKey = key;
   const shown = left.slice(0, 3),
     more = left.length - shown.length;
-  emitSide({ id: `reminder-${++reminderSeq}`, badge: "reminder", say: "עוד לא דיברתם על:", facts: more > 0 ? [...shown, `ועוד ${more}`] : shown });
+  emitSide({ id: `reminder-${++reminderSeq}`, badge: "reminder", say: reminderTitle(), facts: more > 0 ? [...shown, reminderMore(more)] : shown });
   console.log(`\n[⏰ reminder] not covered yet: ${left.join(", ")}`);
 }
 const lastFinals: Partial<Record<Channel, string[]>> = {};

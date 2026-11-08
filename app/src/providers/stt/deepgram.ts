@@ -2,8 +2,8 @@
 // The SDK reconnects its own socket; SttChannel (channel.ts) decides when to give up and switch provider.
 import { DeepgramClient } from "@deepgram/sdk";
 import { EventEmitter } from "node:events";
-import { classifySttError } from "../errors.ts";
-import { speechEndWall, type SttOptions, type SttResult, type SttStreamLike, type SttProvider, type Word } from "./types.ts";
+import { classifySttError, ProviderError } from "../errors.ts";
+import { speechEndWall, STT_OPEN_TIMEOUT_MS, type SttOptions, type SttResult, type SttStreamLike, type SttProvider, type Word } from "./types.ts";
 
 /** One word of a Deepgram "Results" message. */
 interface DgWord {
@@ -139,7 +139,17 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
       this.emit("close");
     });
     conn.connect();
-    await conn.waitForOpen();
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        conn.waitForOpen(),
+        new Promise<never>((_, rej) => {
+          timer = setTimeout(() => rej(new ProviderError("timeout", "deepgram", "deepgram: open timed out")), STT_OPEN_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
     clearInterval(this.keepAlive);
     this.keepAlive = setInterval(() => {
       try {

@@ -169,6 +169,8 @@ While a call ends, a separate `stopPhase` shows the steps (`wingman status` prin
 | `summary` | Writing the summary with one model call (up to `summary.timeoutMs`, 20 s). You can **Skip summary**; the call is kept and the summary can be written later with `wingman calls summary <id> --generate`. |
 | `done` | Finished. |
 
+Failures and time limits: every speech-to-text open or reopen gives up after 8 s (`STT_OPEN_TIMEOUT_MS`, one rule for all providers) and is retried; at call start the 30 s "start anyway" path then shows the red bar and the retry loop goes on (`src/engine/stt-retry.ts`; a later permanent error upgrades a running loop). A failed model call for an ask by the user shows a card and raises the bar at once; for a question from the other side it shows the "Buy time" line when `reflex.stall` is on, and the bar after two failures (`showStallOrError` and `countReflexFailure` in `engine/question.ts`). One final with several questions opens one cancel scope: a newer final aborts all of its parts, a part never aborts its sibling, at most three parts run. A crash uses the same stop path as a normal stop, with sources stopping in parallel.
+
 Other lifecycle rules: Stop and delete asks first (Cancel is the default); Quit during a call asks, and if you confirm it stops and saves the call first (up to 20 s); a stuck stop is forced off, mic included; the call stops itself after 15 minutes of silence; the Mac is kept awake with `caffeinate`; a sleep gap longer than 5 s shows a warning and triggers the recovery described under Resilience; the answer window and card files survive a full disk through the relay.
 
 ## Files on disk
