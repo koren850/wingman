@@ -60,3 +60,45 @@ export function sanitize(text: string): string {
     .replace(/[*_#`>]+/g, "")
     .trim();
 }
+
+// ---------- digit-based over-promise guard (language neutral) ----------
+// The word lists above need one file per language. A figure does not: whatever the language of the card, a number the call never said
+// (a price, a count, a percent, a day) is a promise the user did not make. These helpers only look at digits and currency/percent signs.
+const ZEROS = [0x30, 0x660, 0x6f0, 0x966, 0xff10]; // ASCII, Arabic-Indic, Persian, Devanagari, fullwidth
+/** Any Unicode decimal digit to ASCII, so "٤٥" and "45" compare equal. */
+export function asciiDigits(text: string): string {
+  return text.replace(/\p{Nd}/gu, (ch) => {
+    const c = ch.codePointAt(0)!;
+    const z = ZEROS.find((b) => c >= b && c < b + 10);
+    return z === undefined ? ch : String(c - z);
+  });
+}
+/** The numbers in a text as plain strings: "1,500" and "1.500" and "1500" are "1500" when the separator groups three digits; "4.5" stays "4.5". */
+export function numbersIn(text: string): string[] {
+  const out: string[] = [];
+  for (const m of asciiDigits(text).matchAll(/\d+(?:[.,]\d+)*/g)) {
+    let n = m[0];
+    if (/^\d{1,3}(?:[.,]\d{3})+$/.test(n)) n = n.replace(/[.,]/g, "");
+    else if (n.includes(".") && n.includes(",")) {
+      // Both signs ("12,345.67" or "12.345,67"): the last one is the decimal point, the other one groups thousands.
+      const dec = Math.max(n.lastIndexOf("."), n.lastIndexOf(","));
+      n = n.slice(0, dec).replace(/[.,]/g, "") + "." + n.slice(dec + 1);
+    } else n = n.replace(",", ".");
+    out.push(n.replace(/^0+(?=\d)/, ""));
+  }
+  return out;
+}
+/** A figure with a currency sign or a percent sign next to it: a price or a rate, in any language. */
+export const FIGURE = /[\p{Sc}]\s?\d|\d\s?[\p{Sc}]|\d\s?[%％٪]/u;
+/** Numbers in `text` that `allowed` (what was said in the call, the memory, the prepared cards) does not contain. One-digit numbers are not counted (a step number, "2 options"). */
+export function unsupportedNumbers(text: string, allowed: string): string[] {
+  const have = new Set(numbersIn(allowed));
+  return [...new Set(numbersIn(text))].filter((n) => (n.length >= 2 || n.includes(".")) && !have.has(n));
+}
+/** Digit guard for model text: a figure sign, or a number the context never had, is not allowed. Rule "number". */
+export function guardDigits(text: string, allowed: string): GuardResult {
+  const nums = unsupportedNumbers(text, allowed);
+  if (nums.length) return { ok: false, rule: "number" };
+  if (FIGURE.test(text) && !FIGURE.test(allowed)) return { ok: false, rule: "number" };
+  return { ok: true };
+}

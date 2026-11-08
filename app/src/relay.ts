@@ -38,11 +38,13 @@ export class RowRelay {
   private ring: string[] = [];
   private sink?: Pick<Writable, "write" | "writable" | "destroyed">;
   private lines = new LineSplitter();
+  private lastMemory?: string; // the newest memory view row: kept apart from the ring so a flood of card rows cannot push it out
   constructor(private keep = 300) {}
   /** A (new) window: it receives the remembered lines first. */
   attach(sink: Pick<Writable, "write" | "writable" | "destroyed">) {
     this.sink = sink;
     for (const l of this.ring) this.send(l);
+    if (this.lastMemory) this.send(this.lastMemory); // a restarted window sees the current memory view again
   }
   detach() {
     this.sink = undefined;
@@ -50,6 +52,11 @@ export class RowRelay {
   /** Bytes from the engine's pipe. */
   feed(chunk: Buffer | string) {
     for (const l of this.lines.push(chunk)) {
+      if (isMemoryRow(l)) {
+        this.lastMemory = l;
+        this.send(l);
+        continue;
+      }
       this.ring.push(l);
       if (this.ring.length > this.keep) this.ring.shift();
       this.send(l);
@@ -68,6 +75,9 @@ export class RowRelay {
     return this.ring.length;
   }
 }
+
+/** A `{type:"memory", view}` row (engine/out.ts emitMemoryView). Cheap check on the text; the window validates the content. */
+export const isMemoryRow = (line: string): boolean => /^\s*\{\s*"type"\s*:\s*"memory"/.test(line) || /"type"\s*:\s*"memory"[,}]/.test(line.slice(0, 80));
 
 /** Answer-window restart budget that heals: a window that stayed up `stableMs` starts counting from zero again. */
 export function nextRestartCount(restarts: number, upMs: number, stableMs = 10 * 60_000): number {

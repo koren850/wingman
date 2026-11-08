@@ -4,6 +4,9 @@ import { isClearQuestion } from "../detector.ts";
 import { sanitize } from "../guards.ts";
 import { st } from "./state.ts";
 import { log, tipGate, S, bank, interview, PROMPT_V } from "./boot.ts";
+import { capDecision, CardScheduler, kindOfBadge, type CardV2Extra, type CardRow, type OfferMeta, type Offered } from "./cards-v2.ts";
+import type { ScheduledMoment } from "../moments/scheduler.ts";
+import type { CtxRecord } from "../context/record.ts";
 
 /** Card kinds. "info"/"warn"/"tip" are system cards; "me" is an answer for the user's own question. */
 type Badge = "bank" | "ai" | "stall" | "info" | "warn" | "tip" | "me" | "careful" | "fix";
@@ -26,16 +29,8 @@ export type Card = {
   source?: "calc" | "ai"; // badge "me": an answer for the user (their own question). source "calc" on an "ai" card: local arithmetic, no model
   done?: boolean; // the model finished writing this answer (the answer window stops showing "Writing…")
   priority?: boolean; // "don't commit yet" bank cards (stall-price, stall-guarantee…): never hidden by the per-minute cap
-  // Card row v2 (PLAN 3.3): set by the moment engine, whose scheduler already limits the cards per minute (so emitCard's own cap does not apply to them).
-  kind?: "answer" | "prompt" | "check" | "fact";
-  value?: 0 | 1 | 2 | 3;
-  why?: string;
-  more?: string[];
-  ref?: string;
-  ctx?: { memV: number; tokens: number; parts: Record<string, number> };
-  pinned?: boolean;
-  closes?: "answered" | "topic" | "time" | "dismissed"; // an update row that closes a card
-};
+  scheduled?: boolean; // v2: the scheduler (rank, per-minute cap, topic lifetime) already decided to show this card, so the old cap does not count it again
+} & CardV2Extra;
 /** Writes a side card (fact, note, reminder, client proposal) that is not tied to a question. */
 export function emitSide(row: Record<string, unknown>) {
   // Quiet mode: "cards are kept but not shown". Fact, note and reminder cards are kept and flagged like every other card; only system cards (info: the client proposal) show.
@@ -45,6 +40,12 @@ export function emitSide(row: Record<string, unknown>) {
 /** Model that answers a turn (set when the request goes out, updated when the fallback takes over). Model cards log it with the prompt id. */
 const turnModel = new Map<string, string>();
 export const noteModel = (turnId: string, model: string) => void turnModel.set(turnId, model);
+/** What the model call of a turn saw (CtxRecord from buildContext). Rows of that turn carry it as `ctx`. */
+const turnCtx = new Map<string, CtxRecord>();
+export const noteCtx = (turnId: string, ctx: CtxRecord) => {
+  turnCtx.set(turnId, ctx);
+  if (turnCtx.size > 200) turnCtx.delete(turnCtx.keys().next().value as string);
+};
 const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay (a card keeps its first decision when it is updated, so it never flips)
 const turnsWithCard = new Set<string>();
 let lastCardAt = 0,
@@ -62,7 +63,7 @@ export function focusWorthy(text: string, reason: string): boolean {
 export function emitCard(c: Card) {
   c.say = sanitize(c.say);
   c.facts = c.facts.map(sanitize);
-  const special = c.health || c.badge === "info" || c.badge === "tip";
+  const special = (c.health || c.badge === "info" || c.badge === "tip") && !c.scheduled; // a scheduled v2 prompt/fact row uses these badges for old readers but is a real card: quiet mode hides it
   const forMe = c.badge === "me"; // answers to the user's own questions: hidden in quiet mode, but never counted against (or hidden by) the per-minute cap of cards for the other side
   let hidden = false,
     reason: string | undefined;
@@ -75,15 +76,22 @@ export function emitCard(c: Card) {
     } else {
       const now = Date.now();
       shownTimes = shownTimes.filter((s) => now - s.t < Math.max(S.cards.windowMs, capWindow()));
-      if (st.call.quiet) {
-        hidden = true;
-        reason = "quiet";
-      } else if (forMe || c.badge === "careful" || c.badge === "fix" || c.badge === "stall" || c.kind !== undefined) {
-        /* no cap, not counted */
-      } else if (shownTimes.filter((s) => now - s.t < capWindow()).length >= capMax() && !c.priority) {
-        hidden = true;
-        reason = "cap";
-      } else shownTimes.push({ id: c.id, t: now });
+      const cap = capDecision({
+        now,
+        quiet: st.call.quiet,
+        special: false,
+        forMe,
+        badge: c.badge,
+        kind: c.kind ?? kindOfBadge(c.badge),
+        priority: c.priority,
+        scheduled: c.scheduled || c.kind !== undefined, // v2 rows come from the scheduler, which has its own limit
+        capMax: capMax(),
+        capWindowMs: capWindow(),
+        shown: shownTimes,
+      });
+      hidden = cap.hidden;
+      reason = cap.reason;
+      if (cap.counted) shownTimes.push({ id: c.id, t: now });
       decided.set(c.id, { hidden, reason });
       if (!turnsWithCard.has(c.turnId)) {
         turnsWithCard.add(c.turnId);
@@ -93,7 +101,14 @@ export function emitCard(c: Card) {
     }
   }
   const model = !special && c.source !== "calc" ? turnModel.get(c.turnId) : undefined;
-  log.write("cards", { type: "card", ...c, ...(model ? { model, prompt: PROMPT_V } : {}), ...(hidden ? { hidden: true, hiddenReason: reason } : {}) });
+  const ctx = !c.ctx && !special && c.source !== "calc" ? turnCtx.get(c.turnId) : undefined; // every model card says what the model saw (memory version, tokens, parts)
+  log.write("cards", {
+    type: "card",
+    ...c,
+    ...(ctx ? { ctx } : {}),
+    ...(model ? { model, prompt: PROMPT_V } : {}),
+    ...(hidden ? { hidden: true, hiddenReason: reason } : {}),
+  });
   if (c.clear) return;
   if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall" || forMe)) tipGate.noteAnswer(Date.now()); // no tip right after an answer card
   if (!hidden && !c.withdraw && (c.badge === "bank" || c.badge === "ai" || c.badge === "stall")) st.cards.lastThemCardAt = Date.now(); // a fresh answer for the other side: answers for the user must not push it off the screen
@@ -157,4 +172,26 @@ export function speedSummary(): string {
         })`
       : ""
   }`;
+}
+
+// ---------------------------------------------------------------- card pipeline v2
+/** The scheduler of this call (rank, per-minute cap, topic lifetime, hero, feedback). Config comes from the moments.* settings once the moment engine lands. */
+export const cardSched = new CardScheduler();
+/** The scheduler's verdict on one moment, then the rows: the card (shown or chip) and the rows that close the cards it replaces. A dropped moment is only logged (with its reason). */
+export function emitMoment(m: ScheduledMoment, meta: OfferMeta & { now?: number; offline?: boolean }): Offered {
+  const now = meta.now ?? Date.now();
+  cardSched.tick(now, meta.memV, meta.offline ?? false);
+  const o = cardSched.offer(m, meta);
+  if (o.action === "drop") {
+    log.write("events", { type: "moment.dropped", tag: m.tag, value: m.value, reason: o.why, why: m.why, rank: o.decision.rank });
+    return o;
+  }
+  if (o.guarded) log.write("events", { type: "moment.guarded", rule: o.guarded, tag: m.tag });
+  emitCard(o.row as Card);
+  for (const c of o.closes) emitCard(c as Card);
+  return o;
+}
+/** Rows that close cards: expired by the topic lifetime, or answered because the memory resolved the item they point at. */
+export function closeCards(rows: CardRow[]): void {
+  for (const r of rows) emitCard(r as Card);
 }

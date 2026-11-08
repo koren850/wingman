@@ -8,7 +8,7 @@ import { childEnv, CALLS, ROOT } from "../env.ts";
 import type { Channel } from "../providers/stt/types.ts";
 import { sttChain } from "../providers/stt/index.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
-import { runSummary, formatShort, backgroundSummaryArgs } from "../summary.ts";
+import { runSummary, runWrapup, formatShort, backgroundSummaryArgs } from "../summary.ts";
 import { progress, missedMust } from "../frame.ts";
 import { errBrief, status, health, healthClear } from "./out.ts";
 import { ht } from "../htext.ts";
@@ -35,7 +35,8 @@ import {
 } from "./boot.ts";
 import { st, chans } from "./state.ts";
 import { askKey } from "./control.ts";
-import { frameRound } from "./coach.ts";
+import { frameRound, flushMemory, memoryLoop } from "./coach.ts";
+import { engineV2 } from "./memory.ts";
 import { speedSummary } from "./cards.ts";
 import { uncovered, liveNotes } from "./side.ts";
 import { sttSeconds } from "./degrade.ts";
@@ -91,7 +92,35 @@ async function postCallSummary() {
   }
   try {
     log.write("events", { type: "context.snapshot", contextNotes, aiNotes: liveNotes }); // lets `pnpm summary <id>` rebuild the same input later
-    const r = await runSummary({
+    const data = {
+      lines: transcript.map((l) => ({ ch: l.ch, text: l.text, ...(l.who ? { who: speakers.name(l.who.spk) ?? `Speaker ${l.who.spk}` } : {}) })),
+      contextNotes,
+      aiNotes: liveNotes,
+      frame: tracker.current,
+    };
+    // v2: the wrap-up reads the call memory (open loops, follow-up) and the last lines, with no second full pass over the transcript. If it cannot run
+    // (no memory, discard, crash, AI off) or cannot save, today's transcript summary below takes over.
+    const mem = engineV2(S) ? memoryLoop()?.memory : undefined;
+    let r: Awaited<ReturnType<typeof runSummary>> | undefined;
+    if (mem) {
+      r = await runWrapup({
+        dir: log.dir,
+        callId: log.id,
+        S,
+        registry,
+        cost,
+        noAi,
+        signal: summaryAbort.signal,
+        discard: discard || st.call.discardNow,
+        crashed: st.call.crashed,
+        mem,
+        lines: data.lines,
+        contextNotes,
+        write: (stream, row) => log.write(stream, row),
+      });
+      if (!r.ok && r.skipped !== "user") r = undefined; // no memory, or it could not be saved: today's path (it logs its own skip reason)
+    }
+    r ??= await runSummary({
       dir: log.dir,
       callId: log.id,
       S,
@@ -101,12 +130,7 @@ async function postCallSummary() {
       signal: summaryAbort.signal,
       discard: discard || st.call.discardNow,
       crashed: st.call.crashed,
-      data: {
-        lines: transcript.map((l) => ({ ch: l.ch, text: l.text, ...(l.who ? { who: speakers.name(l.who.spk) ?? `Speaker ${l.who.spk}` } : {}) })),
-        contextNotes,
-        aiNotes: liveNotes,
-        frame: tracker.current,
-      },
+      data,
       write: (stream, row) => log.write(stream, row),
     });
     if (summarySkipped) {
@@ -140,6 +164,7 @@ export async function shutdown() {
   st.call.closing = true;
   st.turn.current?.abort();
   notesAbort.abort();
+  void flushMemory(); // session.json is on disk before anything slow starts (also on the crash path: crash() calls shutdown())
   status("stopphase", { phase: "saving" }); // the app shows: saving, then summary, then done (tray/lib.cjs STOP_PHASES)
   const shutdownDeadline = Date.now() + 12_000;
   const hard = setTimeout(() => {
@@ -216,6 +241,12 @@ export async function shutdown() {
       /* best effort: the log itself may be what failed */
     }
   }
+  // v2: learn the last lines (a few seconds at most) and write session.json for good. The wrap-up below reads it.
+  if (!discard && !st.call.discardNow) {
+    let memTimer: NodeJS.Timeout | undefined;
+    await Promise.race([flushMemory(Math.max(0, Math.min(3000, left() - 8000))), new Promise((res) => (memTimer = setTimeout(res, 3500)))]).catch(() => {});
+    clearTimeout(memTimer);
+  } else await flushMemory(0).catch(() => {});
   // (usage was logged twice on purpose: once above so the numbers exist even if the summary hangs, again below with the summary's own cost.)
   // One last frame look so the checklist result in the review is current (a few seconds at most, never when the call is discarded or crashed).
   if (frameOn && left() > 6000 && !st.call.crashed && !discard && !st.call.discardNow && cost.llmState() !== "capped") {

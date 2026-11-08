@@ -76,7 +76,57 @@
     const out = { id, badge: r.badge, question: str(r.question, MAX_Q).trim(), say, t: Math.round(tt), dim: !!r.dim };
     if (r.source === "calc") out.source = "calc";
     if (r.badge === "tip") out.tipType = ["ask", "clarify", "term", "remind", "note"].includes(r.tipType) ? r.tipType : "note";
+    // Card row v2 (PLAN 3.3): the extra fields pass through when they are valid; a row without them is a plain legacy card.
+    if (["answer", "prompt", "check", "fact"].includes(r.kind)) out.kind = r.kind;
+    if (Number.isInteger(r.value) && r.value >= 0 && r.value <= 3) out.value = r.value;
+    const why = str(r.why, 160).trim();
+    if (why) out.why = why;
+    if (Array.isArray(r.more)) {
+      const more = r.more
+        .slice(0, 3)
+        .map((x) => str(x, 160).trim())
+        .filter(Boolean);
+      if (more.length) out.more = more;
+    }
+    const ref = str(r.ref, 16).trim();
+    if (ref) out.ref = ref;
+    if (["answered", "topic", "time", "dismissed"].includes(r.closes)) out.closes = r.closes;
+    if (r.pinned === true) out.pinned = true;
+    if (r.chip === true) out.chip = true;
     return out;
+  }
+
+  const listOf = (x, n, f) =>
+    Array.isArray(x)
+      ? x.slice(0, n).flatMap((v) => {
+          const o = f(v);
+          return o ? [o] : [];
+        })
+      : [];
+  /** A cards.jsonl row {type:"memory", view} (the call memory for the UI: topic, so far, open questions, promises, cover left, numbers). Plain strings, capped. Null when unusable. */
+  function cleanMemory(r) {
+    const v = r && r.type === "memory" && r.view && typeof r.view === "object" ? r.view : null;
+    if (!v) return null;
+    const item = (x) => {
+      const text = str(x && x.text, 200).trim();
+      return text ? { id: str(x.id, 16), text } : null;
+    };
+    return {
+      ver: Number.isFinite(v.ver) ? v.ver : 0,
+      topic: str(v.topic, 120).trim(),
+      soFar: listOf(v.soFar, 4, (x) => str(x, 200).trim() || null),
+      open: listOf(v.open, 12, item),
+      promises: listOf(v.promises, 12, (x) => {
+        const i = item(x);
+        return i ? { ...i, who: str(x.who, 40).trim() } : null;
+      }),
+      coverLeft: listOf(v.coverLeft, 12, item),
+      numbers: listOf(v.numbers, 12, (x) => {
+        const what = str(x && x.what, 80).trim(),
+          value = str(x && x.value, 80).trim();
+        return what && value ? { id: str(x.id, 16), what, value } : null;
+      }),
+    };
   }
 
   const KINDS = ["client", "support", "vendor", "team", "consult", "personal", "other"];
@@ -139,6 +189,8 @@
       names = {};
     /** @type {ReturnType<typeof cleanFrame>} */
     let frame = null;
+    /** @type {ReturnType<typeof cleanMemory>} */
+    let memory = null;
     const cards = new Map();
     const api = {
       get lines() {
@@ -148,6 +200,7 @@
         lines = [];
         cards.clear();
         frame = null;
+        memory = null;
         names = {};
       },
       get names() {
@@ -177,6 +230,18 @@
         let last = null;
         for (const r of rows) if (r && r.type === "frame") last = cleanFrame(r) || last;
         return api.setFrame(last);
+      },
+      get memory() {
+        return memory;
+      },
+      /** Newest valid memory view among raw cards.jsonl rows (type "memory"); returns it when it changed (a higher version wins), else null. */
+      addMemoryRows(rows) {
+        /** @type {ReturnType<typeof cleanMemory>} */
+        let last = null;
+        for (const r of rows) last = cleanMemory(r) || last;
+        if (!last || (memory && last.ver < memory.ver) || JSON.stringify(last) === JSON.stringify(memory)) return null;
+        memory = last;
+        return last;
       },
       setFrame(f) {
         const c = f ? cleanFrame(f) : null;
@@ -235,7 +300,7 @@
         return { items: res, loose };
       },
       snapshot() {
-        return { lines: lines.map((l) => ({ ...l })), cards: [...cards.values()], frame, names: { ...names } };
+        return { lines: lines.map((l) => ({ ...l })), cards: [...cards.values()], frame, memory, names: { ...names } };
       },
     };
     return api;
@@ -258,6 +323,7 @@
     parseJsonl,
     cleanLine,
     cleanCard,
+    cleanMemory,
     cleanSpeaker,
     applyNames,
     cleanFrame,

@@ -4,6 +4,7 @@ import { describe, type ProviderError } from "../providers/errors.ts";
 import { log, CONTROL, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { emitCard } from "./cards.ts";
+import type { MemoryView } from "../session/types.ts";
 
 /** Label for a channel in the UI language, used in health texts. */
 export const chHe = (c: string) => ht(UI_LANG, c === "me" ? "ch.me" : "ch.them");
@@ -32,6 +33,16 @@ export function healthClear(id: string) {
   log.write("events", { type: "health.clear", id });
   status("health.clear", { id });
   emitCard({ id: `health-${id}`, turnId: "health", badge: "warn", health: true, clear: true, question: "", say: "", facts: [], at: Date.now() });
+}
+
+/** The memory view for the overlay and the live feed: one `{type:"memory", view}` row on the cards stream (so it also reaches the window over the relay socket
+ *  and a restarted window finds the newest one on disk). Small by design (MemoryView caps every list). Best effort. */
+export function emitMemoryView(view: MemoryView) {
+  try {
+    log.write("cards", { type: "memory", view, at: Date.now() });
+  } catch {
+    /* the view is only a convenience */
+  }
 }
 
 /** One short, safe line for an error: a classified provider error ("authentication failed"), or "Name: message" cut to 200 chars.

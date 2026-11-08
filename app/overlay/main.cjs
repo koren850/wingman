@@ -338,6 +338,8 @@ function handleCardRow(c) {
     });
   else if (c.type === "frame") {
     if (c.frame && typeof c.frame === "object") win.webContents.send("frame", c.frame);
+  } else if (c.type === "memory") {
+    // {type:"memory", view}: the call memory for the window. Not a card; the live-UI package shows it. Until then it is ignored (it must never reach the card list).
   } else if (!c.hidden) win.webContents.send("card", c);
 }
 

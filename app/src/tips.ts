@@ -12,6 +12,7 @@ import { guard, sanitize } from "./guards.ts";
 import { dedupeNotes } from "./notes.ts";
 import { frameText, missedMust, type Frame } from "./frame.ts";
 import { callLanguage, type CallLang } from "./calllang.ts";
+import type { SessionMemory } from "./session/types.ts";
 
 /** Tip kinds: ask a question, clarify something vague, explain a term, remind of a checklist item, or a plain note. */
 export const TIP_TYPES = ["ask", "clarify", "term", "remind", "note"] as const;
@@ -195,6 +196,33 @@ export function wrapUpTip(
   let text = o.lang === "en" ? `Before you finish, you have not covered yet: ${list}` : `לפני שמסיימים, עוד לא כיסיתם: ${list}`;
   if (text.length > MAX_TIP_CHARS) text = text.slice(0, MAX_TIP_CHARS).replace(/\s+\S*$/, "");
   return { type: "remind", text };
+}
+
+/** The wrap-up nudge of the v2 path: the same one-time reminder, but the unfinished items come from the call memory (agenda items not done, open questions, open promises)
+ *  and not from the call frame. Same cue rule: a closing phrase in the latest lines, or the call has run long. */
+export function memoryWrapUpTip(
+  mem: Pick<SessionMemory, "mustCover" | "openQuestions" | "commitments">,
+  o: { latestText: string; elapsedMin: number; wrapUpAfterMin: number; alreadyNudged: boolean; lang?: CallLang },
+): Tip | undefined {
+  if (o.alreadyNudged) return undefined;
+  const todo = mem.mustCover.filter((m) => !m.done).map((m) => m.text);
+  const loops = mem.openQuestions.filter((q) => q.status === "open").map((q) => q.text);
+  const promises = mem.commitments.filter((c) => c.status === "open").map((c) => c.what);
+  const list = [...todo, ...loops, ...promises].slice(0, 3);
+  if (!list.length) return undefined;
+  if (!hasWrapCue(o.latestText) && o.elapsedMin < o.wrapUpAfterMin) return undefined;
+  const items = list.map((t) => t.replace(/\s+/g, " ").slice(0, 60)).join(" · ");
+  let text = o.lang === "en" ? `Before you finish, still open: ${items}` : `לפני שמסיימים, עדיין פתוח: ${items}`;
+  if (text.length > MAX_TIP_CHARS) text = text.slice(0, MAX_TIP_CHARS).replace(/\s+\S*$/, "");
+  return { type: "remind", text };
+}
+
+/** The words on an open-loop PROMPT card: a short label in the call language, then the memory's own wording (at most 14 words). */
+export function openLoopSay(p: { kind: "question" | "promise"; text: string }, lang: "he" | "en"): string {
+  const t = p.text.split(/\s+/).filter(Boolean).slice(0, 14).join(" ");
+  const label =
+    p.kind === "question" ? (lang === "en" ? "Still unanswered" : "עדיין בלי תשובה") : lang === "en" ? "Promised, not done yet" : "הבטחה שעוד לא בוצעה";
+  return `${label}: ${t}`;
 }
 
 // ---------- the AI tip ----------

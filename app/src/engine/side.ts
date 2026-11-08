@@ -13,6 +13,7 @@ import { proposeClient, proposeClientHow, reminderTitle, reminderMore } from "./
 import { recentNotes } from "./rules.ts";
 import { quantities, mismatches, refQuantities } from "../moments/overpromise.ts";
 import { checkNumberSay, checkNumberWhy } from "./strings.ts";
+import { engineV2 } from "./memory.ts";
 
 /** Name speaker `spk` for the rest of the call (source "intro" = from their own introduction, "user" = the user renamed them). The
  *  answer window and the dashboard follow the cards.jsonl "speaker" row; later transcript rows carry the name. */
@@ -73,6 +74,7 @@ let notesLines: string[] = [],
 const MAX_NOTES_LINES = 200; // lines waiting for the next notes round; the oldest are dropped when the AI stays down
 /** Timer job (notes.everyMs): turns the new transcript lines into up to 2 notes. Skips while busy, not consenting, AI down or budget capped; the lines are dropped (not retried) if the call fails. */
 export async function notesRound() {
+  if (engineV2(S)) return; // v2: the call memory replaces the live notes
   if (!notesOn || notesBusy || !st.call.consented || st.call.shuttingDown || !sup.caps.llm || cost.llmState() === "capped") return;
   const words = notesLines.join(" ").split(/\s+/).length;
   if (words < S.notes.minNewWords) return;
