@@ -2,6 +2,7 @@
 // They are NOT one pattern on purpose: each caller needs a different strictness (see the notes). Nothing was added or reworded when they moved.
 // No new words (round 12): the detector is frozen as an offline hint, and the model decides who a line is aimed at.
 import { nameRegex } from "../profile.ts";
+import { tokens, tokenVariants, normalize } from "../normalize.ts";
 
 /** A question head counts as aimed at the user when this matches: plural and singular "you", "can you", "possible". Used by detector.isClearQuestion (cards.focus). */
 export const YOU_GROUP = /(^|[\s,])(לכם|לך|אתם|אתה|תוכל|תוכלו|אפשר|you|your)(?![\p{L}])/iu;
@@ -28,4 +29,16 @@ export function addressesUser(text: string): boolean {
 /** A question head (the detector's weak cue) aimed at the user or the group. */
 export function headAimedAtYou(text: string): boolean {
   return YOU_GROUP.test(text);
+}
+
+// Words that open a new question when fast questions arrive as one final (multiq.ts). Moved here unchanged from multiq.ts. Matched prefix-aware ("ומה", "וכמה", "ויש").
+const OPENERS = new Set(
+  ["כמה", "מתי", "איך", "למה", "מה", "האם", "איפה", "אפשר", "יש", "מי", "how", "what", "when", "why", "can", "do", "does", "is"].map(normalize),
+);
+/** Does this word open a question (with or without a glued "ו")? */
+export function opensQuestion(w: string): boolean {
+  const t = tokens(w)[0];
+  if (!t) return false;
+  const v = [...tokenVariants(t), ...(t.length >= 3 && t[0] === "ו" ? [t.slice(1)] : [])];
+  return v.some((x) => OPENERS.has(x));
 }

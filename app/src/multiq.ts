@@ -5,18 +5,9 @@
 import { splitMulti } from "./split.ts";
 import { bankStarts, matchBank, type BankCard } from "./bank.ts";
 import { detect } from "./detector.ts";
-import { tokens, tokenVariants, normalize } from "./normalize.ts";
+import { opensQuestion } from "./lang/address.ts";
 
-// Words that open a new question. Matched prefix-aware ("ומה", "וכמה", "ויש").
-const OPENERS = new Set(
-  ["כמה", "מתי", "איך", "למה", "מה", "האם", "איפה", "אפשר", "יש", "מי", "how", "what", "when", "why", "can", "do", "does", "is"].map(normalize),
-);
-const opens = (w: string) => {
-  const t = tokens(w)[0];
-  if (!t) return false;
-  const v = [...tokenVariants(t), ...(t.length >= 3 && t[0] === "ו" ? [t.slice(1)] : [])];
-  return v.some((x) => OPENERS.has(x));
-};
+const opens = opensQuestion;
 // "ומה עם התחזוקה, כמה זה יוצא" is one question: "what about X" only introduces the topic.
 // (\b does not work next to Hebrew letters, hence the lookahead.)
 const TOPIC_INTRO = /(^|[.?!,]\s*)(ו?מה|what)\s+(עם|אם|לגבי|about)(?=\s|$)/i;

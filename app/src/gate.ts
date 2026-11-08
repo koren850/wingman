@@ -1,3 +1,4 @@
+// NOT the question gate. This is the Hebrew STT quality tool (name kept: package.json "gate", invariants.test.ts and docs use it; the question gate is detector.ts).
 // Hebrew STT quality gate (dev tool, not part of a call). Streams each recording to Deepgram in real time
 // through the same SttStream the engine uses, and reports:
 //   term recall on the gold English tech terms (pass >= 85%), endpoint-to-final p50/p95 (pass <= 600 ms),
