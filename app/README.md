@@ -224,7 +224,7 @@ Model strings are `provider:model`. Only Anthropic is installed. For others run 
 | Ctrl+Opt+A | Ask Wingman: your next sentence is a question for it. The menu shows "Listening for your question…" until it is taken or times out. |
 | Ctrl+Opt+N | Add a note for the AI. |
 | Ctrl+Opt+Return | Start listening. Registered only while a call is waiting ("Ask me before listening starts" on). |
-| Ctrl+Opt+C / P / R / K / L | Answer window: clear, pause, rewind, copy newest capture, More (checklist). The bar shows Ask AI, More and Pause; the **?** button lists all keys. |
+| Ctrl+Opt+C / P / R / K / L | Answer window: clear, pause, rewind, copy newest capture, More (checklist). The bar shows Ask Wingman, More and Pause; the **?** button lists all keys. |
 | Ctrl+Opt+1 / 2 / 3 | Answer window: copy capture chip 1, 2 or 3 (phone, email, domain). The menu-bar app never takes these. |
 
 **Stopping.** Stop call saves the call and writes the summary in steps (saving, summary, done); `wingman status` shows the step while it runs. "Stop and delete this call…" asks first (Cancel is the default). **Quit Wingman** during a call asks too; if you confirm it stops and saves the call first (up to 20 s), then closes.

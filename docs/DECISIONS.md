@@ -599,7 +599,7 @@ Date: 2026-11-07
 
 **Context.** The first answer window (ADR 26) showed the newest answer large, older answers small, and every panel at once. In practice it was too busy to read in a glance while talking, and most of what it showed (checklist, client card, notes) is needed only in pauses.
 
-**Decision.** The default layout (`overlay.layout: focus`) shows the other side's last line, one big answer and a bar with three main keys (Ask AI, More, Pause). The checklist, client card, notes and captured details sit in a **More** panel (Ctrl+Opt+L). The earlier layout stays as `overlay.layout: full`. The Settings page offers the choice.
+**Decision.** The default layout (`overlay.layout: focus`) shows the other side's last line, one big answer and a bar with three main keys (Ask Wingman, More, Pause). The checklist, client card, notes and captured details sit in a **More** panel (Ctrl+Opt+L). The earlier layout stays as `overlay.layout: full`. The Settings page offers the choice.
 
 **Why.** One thing to read at a time. The second screen is already the place for answers; the extra panels competed with them.
 
