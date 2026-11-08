@@ -1,0 +1,87 @@
+// Every v2 token budget in one place. The legacy constants (12 lines, 80 lines, 6000 chars, 300, 40k chars ...) stay where they are.
+// Token counts are estimates (no tokenizer, no dependency). The estimate leans high so a budget is never broken in reality.
+
+export type Role = "moment" | "observer" | "memory" | "compact" | "ask" | "digest" | "wrapup";
+export const ROLES: readonly Role[] = ["moment", "observer", "memory", "compact", "ask", "digest", "wrapup"];
+
+/** Estimated tokens of a text. ASCII about 3.5 characters per token; every other character (Hebrew, emoji ...) counts 0.6 token. */
+export function estimateTokens(s: string): number {
+  if (!s) return 0;
+  let ascii = 0,
+    other = 0;
+  for (let i = 0; i < s.length; i++) s.charCodeAt(i) < 128 ? ascii++ : other++;
+  return Math.ceil(ascii / 3.5 + other * 0.6);
+}
+
+/** Cuts a text so that estimateTokens(result) <= maxTokens. Cuts at a line or word end when it can. */
+export function truncateToTokens(s: string, maxTokens: number): string {
+  if (maxTokens <= 0) return "";
+  if (estimateTokens(s) <= maxTokens) return s;
+  let lo = 0,
+    hi = s.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (estimateTokens(s.slice(0, mid)) <= maxTokens) lo = mid;
+    else hi = mid - 1;
+  }
+  let cut = s.slice(0, lo);
+  const nl = cut.lastIndexOf("\n"),
+    sp = cut.lastIndexOf(" ");
+  const at = Math.max(nl, sp);
+  if (at > lo * 0.7) cut = cut.slice(0, at);
+  return cut.trimEnd();
+}
+
+export type RoleBudget = {
+  /** hard cap of the whole input (all blocks) */
+  total: number;
+  /** block A (shared, same bytes for every role) */
+  shared: number;
+  memory: number;
+  roleInstructions: number;
+  rawTail: number;
+  trigger: number;
+  /** retrieved background chunks; 0 turns retrieval off for the role */
+  retrieved: number;
+};
+
+export type Budgets = Record<Role, RoleBudget>;
+
+/** Retrieval and chunking (shared by all roles). */
+export const RETRIEVE = {
+  chunkTokens: 500,
+  topChunks: 3,
+  maxTokens: 600,
+  /** BM25 score a chunk needs before it is used at all (see retrieve.ts) */
+  minScore: 3,
+} as const;
+
+/** Defaults. Settings (memory.budgetTokens, ctx.rawTailTokens) may override memory and rawTail per call. */
+export const DEFAULT_BUDGETS: Budgets = {
+  // direct question or implied moment: fast, small. Last lines only.
+  moment: { total: 6500, shared: 3000, memory: 1800, roleInstructions: 900, rawTail: 600, trigger: 200, retrieved: 600 },
+  observer: { total: 6500, shared: 3000, memory: 1800, roleInstructions: 900, rawTail: 800, trigger: 200, retrieved: 0 },
+  // updater: the new lines since the last cursor
+  memory: { total: 7000, shared: 3000, memory: 1800, roleInstructions: 900, rawTail: 1200, trigger: 100, retrieved: 0 },
+  compact: { total: 8000, shared: 3000, memory: 1800, roleInstructions: 900, rawTail: 2400, trigger: 100, retrieved: 0 },
+  ask: { total: 12000, shared: 3000, memory: 1800, roleInstructions: 900, rawTail: 4500, trigger: 400, retrieved: 600 },
+  // digest: the pre-meeting text itself goes in `trigger`
+  digest: { total: 16000, shared: 3000, memory: 0, roleInstructions: 900, rawTail: 0, trigger: 12000, retrieved: 0 },
+  wrapup: { total: 14000, shared: 3000, memory: 1800, roleInstructions: 900, rawTail: 7000, trigger: 100, retrieved: 0 },
+};
+
+/** Never trim memory below this when it is trimmed because the whole input is too big. */
+export const MEMORY_FLOOR_TOKENS = 300;
+
+/** Budgets with the user's settings applied (memory.budgetTokens, ctx.rawTailTokens). Roles with a 0 stay 0. */
+export function withSettings(opts: { memoryTokens?: number; rawTailTokens?: number }, base: Budgets = DEFAULT_BUDGETS): Budgets {
+  const out = {} as Budgets;
+  for (const r of ROLES) {
+    const b = { ...base[r] };
+    if (opts.memoryTokens !== undefined && b.memory > 0) b.memory = Math.max(0, Math.floor(opts.memoryTokens));
+    if (opts.rawTailTokens !== undefined && b.rawTail > 0 && (r === "moment" || r === "observer" || r === "memory"))
+      b.rawTail = Math.max(0, Math.floor(opts.rawTailTokens));
+    out[r] = b;
+  }
+  return out;
+}
