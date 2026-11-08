@@ -28,7 +28,7 @@ import {
   bank,
   noAi,
 } from "./boot.ts";
-import { st } from "./state.ts";
+import { st, callKind } from "./state.ts";
 import { liveNotes } from "./side.ts";
 import { emitCard, emitMoment, closeCards, cardSched } from "./cards.ts";
 import { applyFeedback, topicChanged } from "./moments.ts";
@@ -43,10 +43,11 @@ import { CALLS, USER_DATA } from "../env.ts";
 import { renderMemory } from "../session/render.ts";
 import { isEmptyMemory, type SessionMemory } from "../session/types.ts";
 import { briefNotes } from "../brief.ts";
-import { memoryWrapUpTip, openLoopSay } from "../tips.ts";
+import { memoryWrapUpTip, openLoopSay, timeLeftTip } from "../tips.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Moment } from "../moments/types.ts";
+import { modeProfile } from "../moments/modes.ts";
 
 let frameBusy: Promise<void> | undefined,
   lastFrameAt = 0,
@@ -109,7 +110,7 @@ export function frameRound(final = false): Promise<void> {
 }
 
 /** One tip card. Guards (price / date / promise) and the repeat check run here, for every source. */
-function emitTip(tip: Tip, source: "ai" | "talk" | "wrapup"): boolean {
+function emitTip(tip: Tip, source: "ai" | "talk" | "wrapup" | "time"): boolean {
   const chk = checkTip(tip, tipsGiven);
   if (!chk.ok) {
     log.write("events", { type: "tip.dropped", source, why: chk.why, rule: chk.rule });
@@ -223,7 +224,8 @@ let loop: MemoryLoop | undefined,
   lastLocalTipAt = 0,
   lastTagsAt = 0,
   tagRowsRead = 0,
-  v2Nudged = false;
+  v2Nudged = false,
+  timeCardShown = false;
 /** The v2 memory loop of this call (created on first use), or undefined when the call is not v2, has no AI, or memory.enabled is false. */
 export function memoryLoop(): MemoryLoop | undefined {
   if (!engineV2(S) || noAi || !memCfg.enabled) return undefined;
@@ -404,6 +406,19 @@ function v2Tick() {
   if (wrap && tipGate.can(now, { quiet: st.call.quiet, ignoreGap: true })) {
     v2Nudged = true;
     emitTip(wrap, "wrapup");
+    return;
+  }
+  // The one time-left card against the planned length (settings tips.plannedMin). The mode decides how early; a standup shows it when the time is up.
+  const timeLeft = timeLeftTip({
+    plannedMin: S.tips.plannedMin,
+    elapsedMin: (now - callStart) / 60_000,
+    leadMin: modeProfile(callKind()).timeCardLeadMin,
+    alreadyShown: timeCardShown,
+    lang,
+  });
+  if (timeLeft && tipGate.can(now, { quiet: st.call.quiet, ignoreGap: true })) {
+    timeCardShown = true;
+    emitTip(timeLeft, "time");
     return;
   }
   if (!S.tips.talkRatio || now - lastTalkTipAt <= 10 * 60_000 || !tipGate.can(now, { quiet: st.call.quiet })) return;

@@ -20,7 +20,7 @@ TYPICAL FLOWS
              wingman status            phase "live" = listening ("waiting" only if the optional "Ask me before listening starts" setting is on)
   During:    wingman live [--follow]   transcript + answer cards          wingman ask "what did we say the price was?"     wingman recap
              wingman note "she is the owner"     wingman speaker 2 "Dana"     wingman quiet on|off     wingman client   (confirm the proposed client)
-  Finish:    wingman stop   (or: wingman stop --delete --yes)     wingman calls summary latest     wingman calls email latest     wingman followup latest
+  Finish:    wingman stop   (or: wingman stop --delete --yes)     wingman calls summary latest     wingman calls email latest     wingman followup latest     wingman export latest
   Review:    wingman calls list | show <id> | rate <id> <card> y|n | purge <id> --yes
 
 COMMANDS
@@ -69,6 +69,9 @@ COMMANDS
                                On a live call the engine writes it (about 1.5 s) and it is printed here. On a saved call (--id) it is read from session.json, no model.
   followup [id|latest]         The follow-up message draft of a saved call, from the call memory (or the summary email). Sentences with a price, a date or a
                                promise are replaced by [fill in: ...]. Print it, let the user read it, never send it by yourself. Exit 5 when nothing was saved.
+  export <id|latest> [--md | --json]
+                               A saved call as Markdown (default) or JSON: summary, decisions, next steps, open questions, coaching numbers, the follow-up message
+                               and a mailto link (text only: nothing is sent, the user opens it). Read-only, no model call. Exit 5 when there is nothing to export.
   live [--follow] [--last N] [--id <call>] [--timeout S]     Transcript with answer cards (NDJSON with --json --follow).
   calls list [--limit N] | show <id|latest> [--lines N] [--no-transcript] | summary <id> [--generate] | email <id>
         | rate <id> <card id> y|n|clear | purge <id> --yes

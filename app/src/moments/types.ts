@@ -29,7 +29,7 @@ export type Moment = {
   more: string[];
   /** A memory id (q12, c3). */
   ref?: string;
-  /** 2 to 4 words, the topic of the card in the language of the call ("PHP version"). Optional: the overlay derives one when it is missing. */
+  /** 2 to 4 words, the topic of the card in the language of the call ("Budget owner"). Optional: the overlay derives one when it is missing. */
   label?: string;
 };
 

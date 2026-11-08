@@ -123,6 +123,10 @@ export class Observer {
   setMonologueWords(n: number): void {
     this.cfg = { ...this.cfg, monologueWords: Math.max(0, Math.floor(n)) };
   }
+  /** The mode of the call sets the calls a minute (the caller keeps it at or under the setting). 0 is kept as 1 here: the observer is switched off by the setting, not by a mode. */
+  setPerMinute(n: number): void {
+    this.cfg = { ...this.cfg, perMinute: Math.max(1, Math.floor(n)) };
+  }
   /** The user spoke (a line that is not pushed): a question to the user is no longer waiting for an answer. */
   userSpoke(): void {
     this.askedAt = undefined;

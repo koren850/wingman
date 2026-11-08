@@ -217,6 +217,33 @@ export function memoryWrapUpTip(
   return { type: "remind", text };
 }
 
+/**
+ * The one gentle time-left card against the planned length of the call. No model call. `leadMin` is how many minutes before the end it shows
+ * (0 = when the planned length is reached; the standup mode uses 0). Without a planned length (plannedMin 0) there is no card. The caller shows it once.
+ */
+export function timeLeftTip(o: { plannedMin: number; elapsedMin: number; leadMin?: number; alreadyShown: boolean; lang?: CallLang }): Tip | undefined {
+  if (o.alreadyShown || !(o.plannedMin > 0)) return undefined;
+  const planned = Math.round(o.plannedMin);
+  // A lead that is as long as the meeting would show the card at the start: keep it under half of the planned length.
+  const lead = Math.max(0, Math.min(o.leadMin ?? 5, o.plannedMin / 2));
+  if (o.elapsedMin < o.plannedMin - lead) return undefined;
+  const left = Math.max(0, Math.ceil(o.plannedMin - o.elapsedMin));
+  const en = o.lang === "en";
+  if (left === 0)
+    return {
+      type: "remind",
+      text: en
+        ? `The planned ${planned} minutes are up. Close the open points or agree on more time.`
+        : `עברו ${planned} הדקות שתוכננו. סגרו את הנקודות הפתוחות או סכמו על עוד זמן.`,
+    };
+  return {
+    type: "remind",
+    text: en
+      ? `About ${left} min left of the planned ${planned}. A good time to close the open points.`
+      : `נשארו בערך ${left} דקות מתוך ${planned} שתוכננו. זמן טוב לסגור את הנקודות הפתוחות.`,
+  };
+}
+
 /** The words on an open-loop PROMPT card: a short label in the call language, then the memory's own wording (at most 14 words). */
 export function openLoopSay(p: { kind: "question" | "promise"; text: string }, lang: "he" | "en"): string {
   const t = p.text.split(/\s+/).filter(Boolean).slice(0, 14).join(" ");

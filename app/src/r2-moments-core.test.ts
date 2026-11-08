@@ -18,12 +18,12 @@ import { KINDS } from "./session/types.ts";
 const reply = (extra: string) => `REPLY\nVALUE: 2\nAIM: me\nSAY: Ask what they compared us with\n${extra}\nWHY: objection`;
 
 // ---------------------------------------------------------------- modes
-test("modes: interview has coaching text and a profile; every other kind is neutral", () => {
+test("modes: interview has coaching text and a profile; the kinds without a mode (vendor, other) are neutral", () => {
   const text = modeInstructions("interview");
   for (const w of [/structure/i, /too long/i, /vague/i, /not answered yet/i]) assert.match(text, w);
   assert.ok(modeProfile("interview").monologueWords! > 0);
   assert.ok(modeProfile("interview").minValue);
-  for (const k of KINDS.filter((k) => k !== "interview")) {
+  for (const k of KINDS.filter((k) => k === "vendor" || k === "other")) {
     assert.equal(modeInstructions(k), "", k);
     assert.deepEqual(modeProfile(k), {}, k);
   }
@@ -33,9 +33,10 @@ test("modes: interview has coaching text and a profile; every other kind is neut
 
 test("prompt: the interview text follows the static rules; the rules never change with the kind; LABEL is described", () => {
   const a = buildMomentPrompt({ userName: "Dan", kind: "interview" });
-  const b = buildMomentPrompt({ userName: "Dan", kind: "client" });
+  const b = buildMomentPrompt({ userName: "Dan", kind: "other" });
   const c = buildMomentPrompt({ userName: "Dan" });
   assert.ok(a.startsWith(MOMENT_RULES) && b.startsWith(MOMENT_RULES));
+  assert.ok(buildMomentPrompt({ userName: "Dan", kind: "client" }).startsWith(MOMENT_RULES), "a mode adds text after the static rules");
   assert.match(a, /practice interview/);
   assert.doesNotMatch(b, /practice interview/);
   assert.equal(b, c, "the neutral kind adds nothing");

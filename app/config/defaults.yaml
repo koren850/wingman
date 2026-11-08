@@ -165,6 +165,7 @@ tips:
   afterAnswerMs: 20000 # never within this long after an answer card
   talkRatio: true # local tip when you talk more than 75% of the last 5 minutes (no AI)
   wrapUpAfterMin: 20 # missed must-cover items are nudged once at a wrap-up phrase or after this many minutes
+  plannedMin: 0 # planned length of the call in minutes (0 = unknown). With it, one gentle time-left card shows per call (a standup shows it at the planned length)
   timeoutMs: 10000 # abort a tip call that takes longer than this (ms); no tip that time
 
 # ---- Flow: several people on the other side (needs stt.speakers) ----

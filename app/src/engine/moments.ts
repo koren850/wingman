@@ -355,6 +355,7 @@ export function noteLine(o: {
 }): void {
   if (!v2Active() || st.call.shuttingDown) return;
   try {
+    applyModeToObserver();
     const id = `l${++lineSeq}`;
     const f = o.features;
     const figure = o.hasFigure ?? (f ? f.hasDigits || f.hasCurrency : /[\p{Nd}\p{Sc}]/u.test(o.text));
@@ -384,10 +385,17 @@ export function noteLine(o: {
     survived("moments.noteLine", e);
   }
 }
+/** The mode of the call may lower the observer calls a minute (a standup or a one-to-one is calmer). It never raises them above the setting, so the cost cannot grow. */
+function applyModeToObserver(): void {
+  const want = modeProfile(callKind()).observerPerMinute;
+  if (S.moments.observerPerMinute <= 0) return;
+  observer.setPerMinute(want === undefined ? S.moments.observerPerMinute : Math.min(want, S.moments.observerPerMinute));
+}
 /** A line from the user. A question to the user is no longer waiting. In a coaching mode (practice interview) the line also goes into the observer window, and a long answer makes a look. */
 export function noteMeLine(o: { text: string; at: number }): void {
   if (!v2Active() || st.call.shuttingDown) return;
   try {
+    applyModeToObserver();
     observer.userSpoke();
     const words = modeProfile(callKind()).monologueWords ?? 0;
     observer.setMonologueWords(words);

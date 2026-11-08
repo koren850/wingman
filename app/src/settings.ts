@@ -157,6 +157,7 @@ export const schema = z.strictObject({
     afterAnswerMs: int(0, 120000),
     talkRatio: z.boolean(),
     wrapUpAfterMin: int(5, 240),
+    plannedMin: int(0, 600),
     timeoutMs: int(2000, 30000),
   }),
   attachments: z.strictObject({ maxChars: int(0, 40000) }),

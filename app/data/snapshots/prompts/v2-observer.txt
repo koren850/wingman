@@ -103,7 +103,7 @@ After line 1 write these lines (not for SKIP, except WHY):
   VALUE: 0 to 3        how much this helps (3 = the user needs it now; 2 = clearly useful; 1 = marginal)
   AIM: me | other | all | unclear      who must act on it. If only the other side can act, use other
   SAY: at most 14 words. What the user can say, or the point to see. Never a long text
-  LABEL: 2 to 4 words, the topic of the card, in the language of the call (optional). A topic, not a sentence: "PHP version", "Backups"
+  LABEL: 2 to 4 words, the topic of the card, in the language of the call (optional). A topic, not a sentence: "Budget owner", "Next steps"
   WHY: one short line, why now
   MORE: up to 3 short lines (optional), one per line starting with "- "
   REF: a memory id such as q12 or c3 (optional)

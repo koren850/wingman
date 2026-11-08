@@ -222,7 +222,7 @@ test("practice interview: an unanswered part of the question can be shown as a P
     JSON.stringify(e.screen()),
   );
   await e.reset();
-  e.st.m.mem = { ...e.st.m.mem, kind: "client" };
+  e.st.m.mem = { ...e.st.m.mem, kind: "other" };
   e.pm.reply({ role: "observer" }, reply("PROMPT", "You have not said what the result was", 1), { ms: 200 });
   e.say("them", "We spoke about the rollout plan for the whole region and who owns it");
   await e.vc.advance(3000);

@@ -26,6 +26,7 @@ import { parseFrame, missedMust, frameText, isAgencyKind, type Frame, type Kind 
 import { errText, eventError } from "./errtext.ts";
 import { ht, type UiLang } from "./htext.ts";
 import { callLanguage, type CallLang } from "./calllang.ts";
+import { coachingForCall, type Coaching } from "./session/coaching.ts";
 
 // System prompt for the summary call. Product behaviour: the no-prices/no-dates/no-promises rules are enforced again in code by guardEmail().
 export const summarySystem = (lang: CallLang = "he"): string => {
@@ -85,6 +86,8 @@ export type CallSummary = {
   costUsd: number;
   /** "memory" when it was built from the call memory (session.json) and not from the transcript. Absent = the transcript path. */
   from?: "memory";
+  /** Talk share, longest monologue, questions, pace and interruptions, worked out from the transcript with no model call (session/coaching.ts). Absent when the call had too little speech. */
+  coaching?: Coaching;
 };
 type Fields = Pick<CallSummary, "summary" | "decisions" | "nextSteps" | "openQuestions" | "followUpEmail">;
 
@@ -465,6 +468,7 @@ export async function runSummary(o: RunOpts): Promise<RunResult> {
       followUpEmail: g.text,
       guard: { replaced: g.replaced, rules: g.rules },
       costUsd: c.usd,
+      ...coachingField(o.dir),
     };
     const file = join(o.dir, "summary.json");
     writeFileSync(file, JSON.stringify(summary, null, 2) + "\n", { mode: 0o600 });
@@ -480,6 +484,16 @@ export async function runSummary(o: RunOpts): Promise<RunResult> {
     const error = String((e as Error)?.message ?? e).slice(0, 300);
     o.write("events", { type: "summary.error", error: eventError(e), ms: Date.now() - t0 });
     return { ok: false, error };
+  }
+}
+
+/** `{ coaching }` for a summary file, or nothing. Never throws: the numbers are a bonus. */
+function coachingField(dir: string): { coaching?: Coaching } {
+  try {
+    const c = coachingForCall(dir);
+    return c ? { coaching: c } : {};
+  } catch {
+    return {};
   }
 }
 
@@ -827,6 +841,7 @@ export async function runWrapup(o: WrapupOpts): Promise<RunResult> {
     guard: { replaced: g.replaced, rules: g.rules },
     costUsd: usd,
     from: "memory",
+    ...coachingField(o.dir),
   };
   try {
     const file = join(o.dir, "summary.json");
