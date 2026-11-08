@@ -25,7 +25,6 @@
   };
   const num = (id) => Number(String(id).slice(1)) || 0;
   /** The call kinds (the list is in src/session/types.ts; a test keeps both equal) and the shape of a custom mode id (pack modes.yaml). */
-  const KINDS = ["client", "support", "vendor", "team", "consult", "personal", "interview", "other"];
   const MODE_ID = /^[a-z0-9][a-z0-9-]{0,23}$/;
   const arr = (v) => (Array.isArray(v) ? v : []);
   const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
