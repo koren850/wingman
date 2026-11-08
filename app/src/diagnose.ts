@@ -58,7 +58,7 @@ function deviceWord(w: string): string {
   if (!poss && (DEVICE_WORDS.has(bare.toLowerCase()) || MODEL_CODE.test(bare))) return w;
   return poss ? "<name>'s" : "<name>";
 }
-/** A device name without the owner's name. Known product words stay ("AirPods Pro", "Built-in Microphone"); any other word becomes <name>. */
+/** A device name without the user's name. Known product words stay ("AirPods Pro", "Built-in Microphone"); any other word becomes <name>. */
 export const scrubDevice = (s: string): string =>
   scrub(s)
     .split(/\s+/)

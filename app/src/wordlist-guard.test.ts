@@ -1,5 +1,5 @@
 // No NEW Hebrew or English word list (a list of words as an array, a Set, or a regex with many alternatives) outside src/lang/.
-// Word lists were the owner's concern: the model decides meaning now, and the legacy lists stay only as an offline hint.
+// Word lists were a design concern: the model decides meaning now, and the legacy lists stay only as an offline hint.
 // Existing lists are counted per file in LEGACY below. A file may not get more lists than its number. When a list is removed, lower the number.
 // To add words for a new language, put them in src/lang/. Do not raise a number to make this test pass.
 import { test } from "node:test";

@@ -6,7 +6,7 @@ import { isInterview, briefCardsFile, briefNotes, briefKind } from "./brief.ts";
 import { guardInterview, guard } from "./guards.ts";
 import { buildPrefix, interviewBlock } from "./reflex.ts";
 
-const b = { who: "Alex (Acme)", notes: ["Call kind: interview", "Topic: round 2", "Prepared cards: /tmp/cards.yaml", "Speaks fast"] };
+const b = { who: "Alex (Acme)", notes: ["Call kind: interview", "Topic: second interview", "Prepared cards: /tmp/cards.yaml", "Speaks fast"] };
 
 test("an interview plan is recognised and its cards file is read from the notes", () => {
   assert.equal(briefKind(b), "interview");

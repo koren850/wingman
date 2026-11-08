@@ -26,7 +26,7 @@ them@Eli: my turn i am waiting for the new dashboard numbers and i am not sure w
 me: i will confirm in the channel which churn metric is final
 them@Eli: thanks also can you review my query today ## m: answer || reviews || direct || Yes, after this standup; I have the churn model reviews waiting. || Direct request.
 me: yes i will review it after standup
-them@Hana: the security scan came back with one critical finding on the upload service ## m: prompt || critical || blocker || Ask for the ticket and the owner of the critical finding. || A critical finding needs an owner.
+them@Hana: the security scan came back with one critical finding on the upload service ## m: prompt || critical || blocker || Ask for the ticket and an owner of the critical finding. || A critical finding needs an owner.
 me: who owns that ticket
 .. 60
 them@Zoe: so the churn model accuracy is at ninety two percent but i think we can get more ## quiet

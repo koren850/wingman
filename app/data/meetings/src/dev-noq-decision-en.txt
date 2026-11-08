@@ -18,9 +18,9 @@ likely: Who owns the vendor contract?
 me: Thanks both. We need three decisions today, scope, payment vendor and date.
 them@Tessa: I have been through the design backlog and it is too much for one release.
 me: Understood. Tessa, give me your view on the cuts.
-them@Tessa: I am cutting the scope to two features, the order flow and the profile page, so we can ship on time. ## m: prompt || two features;owner || noq,decision || Scope cut to two features; confirm the owner who tells stakeholders. || A decision stated as a fact.
+them@Tessa: I am cutting the scope to two features, the order flow and the profile page, so we can ship on time. ## m: prompt || two features;owner || noq,decision || Scope cut to two features; confirm an owner who tells stakeholders. || A decision stated as a fact.
 me: That is a big cut. I will take it to the sponsors.
-them@Marco: For payments we will go with Birch Pay, since it has the longer warranty and the cheaper fee. ## m: fact || Birch Pay || noq,decision || Decision logged: Birch Pay. Name the owner of the contract. || Vendor decision.
+them@Marco: For payments we will go with Birch Pay, since it has the longer warranty and the cheaper fee. ## m: fact || Birch Pay || noq,decision || Decision logged: Birch Pay. Name an owner of the contract. || Vendor decision.
 me: Fine, I will note Birch Pay as the choice.
 .. 25
 them@Marco: The launch moves to the twentieth of March because the store review takes two weeks. ## m: check || 6 March;20 || noq,decision,number-conflict || Launch was 6 March, now the 20th. Tell the sponsors in writing. || A date decision that changes the plan.

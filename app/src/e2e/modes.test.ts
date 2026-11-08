@@ -24,7 +24,7 @@ for (const kind of MODES) {
     await e.reset();
     setKind(kind);
     e.pm.reply({ role: "moment" }, reply("ANS", "The contract owner is the finance lead", 3), { ms: 300 });
-    e.say("them", "Who is the owner of the contract on your side?");
+    e.say("them", "Who owns the contract on your side?");
     await e.vc.advance(1500);
     assert.equal(calls("moment").length, 1);
     assert.ok(calls("moment")[0].view.system.includes(modeInstructions(kind)), "mode text in the moment prompt");

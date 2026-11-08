@@ -1,7 +1,7 @@
 // r3 gate: early start latency on the virtual clock. Each question is "spoken" as growing partials; the speech ends at SPEECH_END_MS after the first partial
 // and the final arrives FINAL_LAG_MS later. The measured time is from the end of speech to the first card on screen, with moments.earlyStart off and on, over
 // QUESTIONS different questions, with the same scripted model delay (MODEL_MS) in both runs. SCRIPTED: the STT lag and the model delay are assumptions,
-// not recordings; the real gain is measured by the owner's morning run. What this proves is the mechanism: the gain is positive, it is not larger than the
+// not recordings; the real gain is measured by the maintainer's morning run. What this proves is the mechanism: the gain is positive, it is not larger than the
 // time the call started early, nothing is asked twice, and every card is the same as without early start.
 import "../test-setup.ts";
 import { test, before, after } from "node:test";

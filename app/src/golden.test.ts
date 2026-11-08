@@ -368,7 +368,7 @@ test("script: every moment has a reply in the moment reply format; quiet lines g
 });
 
 test("denylist: no real person, company or client name in the golden data or its sources", () => {
-  // Well-known companies plus the owner's private list (WINGMAN_DENYLIST or data/private/denylist.txt, never in the repo).
+  // Well-known companies plus the maintainer's private list (WINGMAN_DENYLIST or data/private/denylist.txt, never in the repo).
   const files = [
     ...readSplitFiles("dev").map((f) => f.text),
     ...readSplitFiles("test").map((f) => f.text),

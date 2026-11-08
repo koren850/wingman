@@ -28,7 +28,7 @@ export const SUITES = ["dev", "test", "test-b", "test-c"] as const;
 export type Suite = (typeof SUITES)[number];
 
 export type Deps = {
-  /** "mock" records the policy fake (tests); "real" records the provider (the owner's run). */
+  /** "mock" records the policy fake (tests); "real" records the provider (a maintainer's run). */
   transport: "mock" | "real";
   log: (line: string) => void;
   /** Where the baseline for the estimate lives. */
@@ -107,7 +107,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
   if (typeof a === "string") return err(a);
   // 1. the refusals come before anything else is read or started
   if (env.CI && env.CI !== "false" && env.CI !== "0")
-    return err("refusing to record in CI. Recording calls the real model and costs money; the owner runs it by hand.");
+    return err("refusing to record in CI. Recording calls the real model and costs money; a maintainer runs it by hand.");
   if (env.GITHUB_ACTIONS) return err("refusing to record in CI (GITHUB_ACTIONS is set).");
   if (deps.transport === "real" && !env.ANTHROPIC_API_KEY)
     return err("no ANTHROPIC_API_KEY in the environment. Set it for this one command; nothing reads the key from a file.");
@@ -211,7 +211,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
 }
 
 const mockJudgeTransport: JudgeTransport = async () => ({ text: "VERDICT: good\nREASON: mock judge", ms: 1 });
-/** The real judge: one short call per card on the judge model. Only the owner's command gets here (a key in the environment, never in CI). */
+/** The real judge: one short call per card on the judge model. Only the maintainer's command gets here (a key in the environment, never in CI). */
 function realJudgeTransport(apiKey: string): JudgeTransport {
   return async ({ model, system, user }) => {
     const { ModelRegistry } = await import("../src/providers/llm.ts");

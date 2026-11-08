@@ -9,7 +9,7 @@
 // The rules (housekeeping, order, "next", "due now") are in shared/plans.js. A call uses a meeting only when it is started with it
 // explicitly. A plan is never used up and never expires: markLive() records that a call went live with it, confirmUsed() records that the
 // call saved its first memory. Nothing is deleted at either point, so a crash after Start loses nothing, and the same plan
-// can start the next call. Only the owner deleting it (or 180 days of no use) removes a plan.
+// can start the next call. Only the user deleting it (or 180 days of no use) removes a plan.
 // The old single Plan (latest.yaml plus flat attachments/) is turned into one meeting the first time the store is opened (migrate()).
 // No Electron import: unit-tested in src/plans.test.ts. Content is never logged.
 const fs = require("node:fs");

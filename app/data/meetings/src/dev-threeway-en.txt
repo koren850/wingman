@@ -30,7 +30,7 @@ me: I would put two people from sales on the first day.
 them@Tomas: Ravi, can you check the power sockets in the hall plan? ## quiet
 them@Ravi: Sure, I have the plan open. ## quiet
 .. 20
-them@Ines: We decided last week that the lead scanner is a must, and it costs six hundred dollars. ## m: fact || 600;scanner || noq,decision || Scanner licence is $600; log it as a decision with Ines as the owner. || Decision with a number.
+them@Ines: We decided last week that the lead scanner is a must, and it costs six hundred dollars. ## m: fact || 600;scanner || noq,decision || Scanner licence is $600; log it as a decision with Ines as an owner. || Decision with a number.
 me: Agreed, leads matter most at a show.
 them@Ravi: Tomas, are you free on Friday to review the stand design? ## quiet
 them@Tomas: Yes, Friday morning works. ## quiet

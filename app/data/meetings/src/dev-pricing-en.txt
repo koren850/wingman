@@ -4,7 +4,7 @@ lang: en
 type: pricing
 variant: clean
 user: Dan
-context: Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from the owner.
+context: Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from an owner.
 roster: Omar Katz | them | operations manager
 roster: Dana | them | finance
 agenda: why the renewal price changed
@@ -59,8 +59,8 @@ them@Omar: Okay, back to the renewal. If we sign this month, will you keep the p
 me: I would like to offer that, but I need to check it first.
 them@Omar: I will talk to our CFO and get back to you by Thursday. ## mem: c:Omar>talk to the CFO and get back>Thursday / c:Dan>review discount options / n:last year price=$1,500 / n:renewal quote=$2,100 / q:Omar>How long do you keep the backups
 me: Perfect. And I will send you the options and the SLA after this call.
-them@Omar: Also, who signs on your side if we want changes to the contract? ## m: answer || owner || direct || The owner signs contract changes; I can take your request to him. || Direct question about who approves.
-me: The owner signs any contract change. I will bring your request to him.
+them@Omar: Also, who signs on your side if we want changes to the contract? ## m: answer || owner || direct || Our owner signs contract changes; I can take your request to him. || Direct question about who approves.
+me: Our owner signs any contract change. I will bring your request to him.
 them@Omar: Good. I also want a written summary of everything today, with the dates. ## m: check || summary || promise || A written summary is a new promise; add it to your list. || New commitment from the user.
 me: Yes, I will write a short summary for you.
 them@Omar: By the way, we are planning a new warehouse portal next year. Maybe you can help with that. ## m: prompt || warehouse portal || topic-shift || New topic: a warehouse portal. Note it as a separate opportunity. || Topic shift to a new project.

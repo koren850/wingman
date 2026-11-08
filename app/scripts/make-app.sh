@@ -72,12 +72,6 @@ function stop(title, detail) {
 const isExec = (f) => { try { fs.accessSync(f, fs.constants.X_OK); return fs.statSync(f).isFile(); } catch { return false; } };
 const major = (node) => { try { return Number(execFileSync(node, ["-p", "process.versions.node"], { encoding: "utf8", timeout: 5000 }).trim().split(".")[0]); } catch { return 0; } };
 
-// Backward compatibility: this folder was called "stage0" before it was renamed to "app". An app built before the rename has
-// the old path baked in; after an update the code lives in the sibling "app" folder, so follow it there.
-if (path.basename(APP_DIR) === "stage0" && !fs.existsSync(path.join(APP_DIR, "tray", "main.cjs"))) {
-  const renamed = path.join(path.dirname(APP_DIR), "app");
-  if (fs.existsSync(path.join(renamed, "tray", "main.cjs"))) APP_DIR = renamed;
-}
 // 1. The checkout this app was built from must still be there.
 if (!fs.existsSync(path.join(APP_DIR, "tray", "main.cjs"))) {
   stop("Wingman's folder moved", `Wingman starts from the folder it was installed from, and that folder is gone:\n${APP_DIR}\n\nOpen the new Wingman folder in Terminal and run:  ./install.sh\nThat rebuilds this app for the new place.`);

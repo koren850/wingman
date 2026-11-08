@@ -5,7 +5,7 @@
  "type": "vendor",
  "variant": "clean",
  "scripted": true,
- "context": "Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. The owner must approve any contract.",
+ "context": "Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. Our owner must approve any contract.",
  "profile": {
   "userName": "Dan"
  },
@@ -535,7 +535,7 @@
   {
    "role": "digest",
    "whenLastLine": "start",
-   "reply": "{\"roster\":[{\"name\":\"Sam Reed\",\"side\":\"them\",\"role\":\"sales rep\"},{\"name\":\"Priya\",\"side\":\"them\",\"role\":\"solutions engineer\"}],\"agenda\":[\"uptime and backups\",\"price and contract length\"],\"facts\":[{\"text\":\"Need uptime of at least 99.95\",\"src\":\"brief\"},{\"text\":\"Budget is $400 per month\",\"src\":\"brief\"},{\"text\":\"Backups kept 30 days\",\"src\":\"brief\"},{\"text\":\"Owner must approve any contract\",\"src\":\"brief\"}],\"likelyQuestions\":[\"What traffic do you expect?\",\"Are you talking to other vendors?\"],\"chunks\":[\"Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. The owner must approve any contract.\"]}",
+   "reply": "{\"roster\":[{\"name\":\"Sam Reed\",\"side\":\"them\",\"role\":\"sales rep\"},{\"name\":\"Priya\",\"side\":\"them\",\"role\":\"solutions engineer\"}],\"agenda\":[\"uptime and backups\",\"price and contract length\"],\"facts\":[{\"text\":\"Need uptime of at least 99.95\",\"src\":\"brief\"},{\"text\":\"Budget is $400 per month\",\"src\":\"brief\"},{\"text\":\"Backups kept 30 days\",\"src\":\"brief\"},{\"text\":\"Owner must approve any contract\",\"src\":\"brief\"}],\"likelyQuestions\":[\"What traffic do you expect?\",\"Are you talking to other vendors?\"],\"chunks\":[\"Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. Our owner must approve any contract.\"]}",
    "ms": 1800
   },
   {
@@ -659,7 +659,7 @@
   {
    "role": "moment",
    "whenLastLine": "l43",
-   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: The owner must approve the contract; the twentieth may be too early.\nWHY: Your promise needs owner approval first.",
+   "reply": "TAG: CHECK\nVALUE: 2\nAIM: me\nSAY: Our owner must approve the contract; the twentieth may be too early.\nWHY: Your promise needs owner approval first.",
    "ms": 1500
   },
   {

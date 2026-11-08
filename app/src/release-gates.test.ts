@@ -95,7 +95,7 @@ test("budgets: the whole call fails over the $0.25 per hour release gate even wh
 });
 
 // ---------------------------------------------------------------- the committed numbers
-test("budgets.json: has a scripted section with every number above zero, a cost per hour under the gate, and no recorded section until the owner records one", () => {
+test("budgets.json: has a scripted section with every number above zero, a cost per hour under the gate, and no recorded section until a recorded run is made", () => {
   const b = readBudgets();
   assert.ok(b.scripted, "scripted section");
   assert.equal(b.scripted!.basis, "scripted");
@@ -275,7 +275,7 @@ test(
   },
 );
 
-// Why static (kept): this is a security rule about the file text, not a behaviour. A snapshot tool that steals focus is dangerous on the owner's machine.
+// Why static (kept): this is a security rule about the file text, not a behaviour. A snapshot tool that steals focus is dangerous on a user's machine.
 test("snapshot-check.sh never names a command that steals focus", () => {
   assert.doesNotMatch(readFileSync(join(ROOT, "scripts", "snapshot-check.sh"), "utf8"), /osascript|open -a|activate/);
 });

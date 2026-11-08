@@ -82,7 +82,7 @@ test("morning --estimate prints the one-page cost estimate first and needs no ke
   assert.match(text, /held-out steps .* ask for a yes each/);
   const p = plan({ transport: "mock", log: () => {} }, [...STEP_ORDER], stubs([], { missing: ["test-c"] }));
   assert.equal(p.find((x) => x.step === "test-c")?.skip, "no test-c split in this build");
-  assert.ok(p.find((x) => x.step === "dev")!.usd > 0 && p.find((x) => x.step === "dev")!.usd < 5, "dev alone fits the owner's cap");
+  assert.ok(p.find((x) => x.step === "dev")!.usd > 0 && p.find((x) => x.step === "dev")!.usd < 5, "dev alone fits the maintainer's cap");
 });
 
 test("morning runs every step in order, asks before each held-out read, reads them once, writes the baseline and the one-page report", async () => {

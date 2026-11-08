@@ -19,7 +19,7 @@ TYPICAL FLOWS
              wingman start --practice = offline pretend client, free (uses the next prepared meeting, or --plan <id>, or none with --quick)
              wingman status            phase "live" = listening ("waiting" only if the optional "Ask me before listening starts" setting is on)
   During:    wingman live [--follow]   transcript + answer cards          wingman ask "what did we say the price was?"     wingman recap
-             wingman note "she is the owner"     wingman speaker 2 "Dana"     wingman quiet on|off     wingman client   (confirm the proposed client)
+             wingman note "she is the lead"     wingman speaker 2 "Dana"     wingman quiet on|off     wingman client   (confirm the proposed client)
   Finish:    wingman stop   (or: wingman stop --delete --yes)     wingman calls summary latest     wingman calls email latest     wingman followup latest     wingman export latest
   Review:    wingman calls list | show <id> | rate <id> <card> y|n | purge <id> --yes
 

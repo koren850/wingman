@@ -5,7 +5,7 @@
  "type": "pricing",
  "variant": "clean",
  "scripted": true,
- "context": "Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from the owner.",
+ "context": "Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from an owner.",
  "profile": {
   "userName": "Dan"
  },
@@ -288,7 +288,7 @@
    "id": "l43",
    "t": 363597,
    "side": "me",
-   "text": "The owner signs any contract change. I will bring your request to him."
+   "text": "Our owner signs any contract change. I will bring your request to him."
   },
   {
    "id": "l44",
@@ -564,7 +564,7 @@
   {
    "role": "digest",
    "whenLastLine": "start",
-   "reply": "{\"roster\":[{\"name\":\"Omar Katz\",\"side\":\"them\",\"role\":\"operations manager\"},{\"name\":\"Dana\",\"side\":\"them\",\"role\":\"finance\"}],\"agenda\":[\"why the renewal price changed\",\"renewal decision\"],\"facts\":[{\"text\":\"Current plan is $1,800 per year with 3 support hours per month\",\"src\":\"brief\"},{\"text\":\"Renewal quote is $2,100 and adds monitoring and security updates\",\"src\":\"brief\"},{\"text\":\"Any discount needs owner approval\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can you match the competitor?\",\"What changed in the plan?\"],\"chunks\":[\"Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from the owner.\"]}",
+   "reply": "{\"roster\":[{\"name\":\"Omar Katz\",\"side\":\"them\",\"role\":\"operations manager\"},{\"name\":\"Dana\",\"side\":\"them\",\"role\":\"finance\"}],\"agenda\":[\"why the renewal price changed\",\"renewal decision\"],\"facts\":[{\"text\":\"Current plan is $1,800 per year with 3 support hours per month\",\"src\":\"brief\"},{\"text\":\"Renewal quote is $2,100 and adds monitoring and security updates\",\"src\":\"brief\"},{\"text\":\"Any discount needs owner approval\",\"src\":\"brief\"}],\"likelyQuestions\":[\"Can you match the competitor?\",\"What changed in the plan?\"],\"chunks\":[\"Prep note. Customer: Brightline Logistics, contact Omar Katz. Current plan: hosting and maintenance, $1,800 per year, 3 support hours per month. Renewal quote sent: $2,100 per year because of added monitoring and security updates. Uptime was 99.95, so almost no downtime. Goal of the call: renew without a big discount. Any discount needs approval from an owner.\"]}",
    "ms": 1800
   },
   {
@@ -683,7 +683,7 @@
   {
    "role": "moment",
    "whenLastLine": "l42",
-   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: The owner signs contract changes; I can take your request to him.\nWHY: Direct question about who approves.",
+   "reply": "TAG: ANS\nVALUE: 3\nAIM: me\nSAY: Our owner signs contract changes; I can take your request to him.\nWHY: Direct question about who approves.",
    "ms": 900
   },
   {

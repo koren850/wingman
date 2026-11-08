@@ -212,11 +212,11 @@ test("socket: start/stop drive the app's controller (one call, no second engine)
     const q = await r.run("ask", "what", "is", "the", "price?", "--no-wait", "--json");
     assert.equal(q.code, 0, q.out);
     assert.equal(typeof q.json.engineSupportsAsk, "boolean");
-    assert.equal((await r.run("note", "she is the owner", "--json")).code, 0);
+    assert.equal((await r.run("note", "she is the lead", "--json")).code, 0);
     assert.equal((await r.run("note", "x".repeat(301), "--json")).code, 2);
     assert.equal((await r.run("ask", "-", "--no-wait", "--json")).code, 0, "stdin text");
     assert.equal((await r.run("ask", "--listen", "--json")).code, 0);
-    assert.deepEqual(c.written.slice(1), ["ask what is the price?\n", "note she is the owner\n", "ask from stdin\n", "ask\n"]);
+    assert.deepEqual(c.written.slice(1), ["ask what is the price?\n", "note she is the lead\n", "ask from stdin\n", "ask\n"]);
     assert.equal((await r.run("speaker", "2", "Dana", "Levi", "--json")).code, 0);
     assert.equal((await r.run("speaker", "2", "--clear", "--json")).code, 0);
     for (const bad of [

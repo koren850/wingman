@@ -24,7 +24,7 @@ export const BRIEFS: string = paths.briefsDir();
 export const ENTITIES_FILE: string = paths.entitiesFile();
 /** A path from settings: "data/private/x" means USER_DATA/x, "~/" the home folder, other relative paths are relative to the app folder. */
 export const resolveUserPath = (p: string): string => paths.resolveUserPath(p);
-// One-time copy of data from the old in-repo folders (calls/ and data/private/ in the app folder, or in its former name "stage0") to USER_DATA. Skipped when tests/QA redirect the data.
+// One-time copy of data from the old in-repo folders (calls/ and data/private/ in the app folder) to USER_DATA. Skipped when tests/QA redirect the data.
 const migration = migrate.ensureUserData({});
 export { migration };
 

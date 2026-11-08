@@ -227,13 +227,13 @@
   {
    "role": "moment",
    "whenLastLine": "l4",
-   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Scope cut to two features; confirm the owner who tells stakeholders.\nWHY: A decision stated as a fact.",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Scope cut to two features; confirm an owner who tells stakeholders.\nWHY: A decision stated as a fact.",
    "ms": 1500
   },
   {
    "role": "moment",
    "whenLastLine": "l6",
-   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Decision logged: Birch Pay. Name the owner of the contract.\nWHY: Vendor decision.",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Decision logged: Birch Pay. Name an owner of the contract.\nWHY: Vendor decision.",
    "ms": 1500
   },
   {

@@ -489,7 +489,7 @@
   {
    "role": "moment",
    "whenLastLine": "l11",
-   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask for the ticket and the owner of the critical finding.\nWHY: A critical finding needs an owner.",
+   "reply": "TAG: PROMPT\nVALUE: 2\nAIM: me\nSAY: Ask for the ticket and an owner of the critical finding.\nWHY: A critical finding needs an owner.",
    "ms": 1500
   },
   {

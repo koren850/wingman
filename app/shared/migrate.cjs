@@ -1,9 +1,9 @@
-// One-time move of the user's data from the repo folder (app/calls, app/data/private; before the rename: stage0/calls, stage0/data/private) to the data folder (shared/paths.cjs).
-// COPY, never move: the old folders stay where they are, the owner deletes them later. Never overwrites a user's file in the new folder (copyOne explains the rule).
+// One-time move of the user's data from the repo folder (app/calls, app/data/private) to the data folder (shared/paths.cjs).
+// COPY, never move: the old folders stay where they are, you can delete them later. Never overwrites a user's file in the new folder (copyOne explains the rule).
 // Safe to run twice (a marker file ends it) and safe to be interrupted (a half-done copy resumes, files already copied are kept).
 //   <app>/calls/<id>/...         -> <data>/calls/<id>/...       (the "latest" link and tray.log are not copied)
 //   <app>/data/private/<x>       -> <data>/<x>                  (briefs/, entities.json, ...; denylist.txt and node_modules are not user data)
-// <app> is the app folder or its former name "stage0" (see paths.legacyCandidates): existing checkouts still have their data in stage0/.
+// <app> is the app folder (see paths.legacyCandidates).
 const fs = require("node:fs");
 const path = require("node:path");
 const paths = require("./paths.cjs");
@@ -82,7 +82,7 @@ function isTruncatedCopy(src, dst, srcSize, dstSize) {
  *   "repaired" (only while resuming) dst was a truncated earlier copy and was completed;
  *   "kept"    dst exists and is left alone.
  * The ownership rule: a file in the data folder is overwritten ONLY if it is provably our own unfinished copy (shorter, and a byte-prefix of the
- * source). Anything else that differs (the app or the owner changed it after the first copy) belongs to the user: it is never touched, and it
+ * source). Anything else that differs (the app or the user changed it after the first copy) belongs to the user: it is never touched, and it
  * does not count against the verification, so one rewritten file can never make the migration fail on every launch.
  */
 function copyOne(src, dst, mtimeMs, size, resuming) {
@@ -214,7 +214,7 @@ function ensureUserData(o = {}) {
   const env = o.env || process.env;
   try {
     if (paths.isRedirected(env) && !o.force) return { status: "redirected", files: 0, bytes: 0, copied: 0 };
-    // Existing checkouts keep their data in the old "stage0" folder; take the first candidate that has any.
+    // Take the first old folder that has any data.
     const candidates = paths.legacyCandidates(o.appDir);
     const old = candidates.find((c) => fs.existsSync(c.calls) || fs.existsSync(c.private)) || candidates[candidates.length - 1];
     return migrateUserData({ dataDir: paths.dataDir(env, o.home), oldCalls: old.calls, oldPrivate: old.private, log: o.log || ((m) => console.error(m)) });

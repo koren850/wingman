@@ -208,18 +208,18 @@ export function bankStarts(text: string, bank: BankCard[]): { id: string; at: nu
   return out;
 }
 
-// ---- price stall: only for a price of the owner's own services ----
-/** Words that mean the question is about what the owner sells. */
+// ---- price stall: only for a price of the user's own services ----
+/** Words that mean the question is about what the user sells. */
 const SERVICE_WORDS =
   /(אתר|אתרים|אחסון|דומיין|וורדפרס|תחזוקה|חנות|עיצוב|פיתוח|הצעה|שירות|שרת|חבילה|מייל|העברה|שדרוג|בנייה|בניית|קמפיין|wordpress|woocommerce|hosting|domain|website|\bsite\b|maintenance|package|\bplan\b|\bssl\b|cloudflare|migration|retainer|your (service|price|rate)|שלכם|אצלכם)/i;
-/** Things whose price has nothing to do with the owner's work. */
+/** Things whose price has nothing to do with the user's work. */
 const GENERAL_PRICE =
   /(דולר|יורו|אירו|ביטקוין|בנזין|דלק|זהב|קפה|טיסה|טיסות|מלון|אייפון|מניה|מניות|חשמל|\bdollar|\beuro|bitcoin|\bgas\b|petrol|coffee|flight|hotel|iphone|\bstock|share price|exchange rate|שער)/i;
 /** How much memory / time / space: "how much" without money. */
 const RESOURCE_HOW_MUCH =
   /how much (memory|storage|space|bandwidth|traffic|ram|disk|cpu|time|data|load|power|water|sleep)|כמה (זיכרון|מקום|זמן|נפח|רוחב פס)(?! זה (יעלה|עולה))/i;
 
-/** Why a price/stall-price match should be ignored: arithmetic ("כמה זה 36 ועוד 42") or a price that is not for the owner's services. undefined = it is a real price question. */
+/** Why a price/stall-price match should be ignored: arithmetic ("כמה זה 36 ועוד 42") or a price that is not for the user's services. undefined = it is a real price question. */
 export function priceOffTopic(text: string): "arithmetic" | "general" | undefined {
   if (looksArithmetic(text)) return "arithmetic";
   if (SERVICE_WORDS.test(text)) return undefined;
@@ -228,7 +228,7 @@ export function priceOffTopic(text: string): "arithmetic" | "general" | undefine
 }
 
 /**
- * matchBank, except that stall-price is dropped when the question is arithmetic or clearly not about a price for the owner's services.
+ * matchBank, except that stall-price is dropped when the question is arithmetic or clearly not about a price for the user's services.
  * `lang` is the language of this turn. Without it the old behaviour stays: the language comes from the text and is remembered for stallSay / localizeCard.
  */
 export function matchBankFor(text: string, bank: BankCard[], lang?: "he" | "en"): BankHit | undefined {

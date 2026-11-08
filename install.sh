@@ -71,8 +71,7 @@ if [ "$MODE" = uninstall ]; then
     if [ "$(bundle_id "$APP_DST")" = "com.wingman.app" ]; then run rm -rf "$APP_DST" && ok "removed $APP_DST"; else warn "$APP_DST is not Wingman (bundle id differs): left alone"; fi
   else say "no $APP_DST"; fi
   if [ -d "$APP_DIR/.app" ]; then run rm -rf "$APP_DIR/.app" && ok "removed $APP_DIR/.app"; else say "no built app in the repo"; fi
-  # (a link made before the folder was renamed from stage0/ to app/ points into stage0/: remove that one too)
-  if [ -L "$LINK" ] && [[ "$(readlink "$LINK")" == "$APP_DIR/"* || "$(readlink "$LINK")" == "$ROOT/stage0/"* ]]; then run rm -f "$LINK" && ok "removed $LINK"
+  if [ -L "$LINK" ] && [[ "$(readlink "$LINK")" == "$APP_DIR/"* ]]; then run rm -f "$LINK" && ok "removed $LINK"
   elif [ -e "$LINK" ]; then warn "$LINK is not a link into this folder: left alone"; else say "no $LINK"; fi
   if [ "$PURGE" = 1 ]; then
     step "Purge your data"
@@ -80,7 +79,7 @@ if [ "$MODE" = uninstall ]; then
     say "  $DATA_DIR      (all calls, transcripts, summaries, prepared meetings, attachments)"
     say "  $CONFIG_DIR   (settings, profile, your pack, keys.env)"
     say "  the Wingman API keys in the macOS Keychain (service \"wingman\")"
-    say "The old copy inside this repo folder (calls/ and data/private/ in app/, or in its former name stage0/), if you still have one, is NOT touched."
+    say "The old copy inside this repo folder (calls/ and data/private/ in app/), if you still have one, is NOT touched."
     # Safety check first (also in --dry-run, so it can be tested): both folders are resolved with `cd -P` (symlinks followed) before anything
     # is judged, and a path containing ".." is refused outright, even with --force.
     purge_refuse() { echo "install.sh: refusing to delete $1: $2" >&2; exit 1; }

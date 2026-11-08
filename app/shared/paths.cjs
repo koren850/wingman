@@ -6,7 +6,6 @@
 //   WINGMAN_CALLS_DIR  replaces only the calls folder;  WINGMAN_BRIEFS_DIR only the prepared-meetings folder
 // Layout inside the data folder:  calls/  briefs/ (briefs/attachments/)  entities.json  (same shape as the old <app>/calls and
 // <app>/data/private in the repo folder). Settings, keys, profile and pack stay in ~/.config/wingman. app/data/ is for shipped data only.
-// Backward compatibility: the app folder used to be called "stage0", and older checkouts keep their data there (see legacyDirs).
 const os = require("node:os");
 const path = require("node:path");
 
@@ -47,10 +46,9 @@ function legacyDirs(appDir = APP_DIR) {
   return { calls: path.join(appDir, "calls"), private: path.join(appDir, "data", "private") };
 }
 
-/** Every folder that may still hold old in-repo data, most likely first: the sibling "stage0" folder (the app folder's former name,
- *  where existing checkouts keep their calls and meetings after updating) and the app folder itself. */
+/** Every folder that may still hold old in-repo data (the app folder itself). */
 function legacyCandidates(appDir = APP_DIR) {
-  return [legacyDirs(path.join(appDir, "..", "stage0")), legacyDirs(appDir)];
+  return [legacyDirs(appDir)];
 }
 
 /** A path from settings (facts.file): the old default "data/private/..." now lives in the data folder; "~/" is the home folder;

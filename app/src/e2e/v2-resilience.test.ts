@@ -1,4 +1,4 @@
-// Resilience matrix of the v2 engine. Every case asserts the three things the owner cares about:
+// Resilience matrix of the v2 engine. Every case asserts the three things a user cares about:
 //   1. no empty screen   a question that needs help ends in a card (an answer, a prepared card, the stall line or a plain error line)
 //   2. bar raised        when something is wrong the user is told, in one calm bar (health row), and the bar clears when it is over
 //   3. no crash          the process survives, no handler error escapes, the call files stay readable

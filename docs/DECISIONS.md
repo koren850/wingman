@@ -951,7 +951,7 @@ Date: 2026-11-09
 
 **Context.** Every quality number so far came from fixture replies of the model. Such a number proves the plumbing, the timing and the grader. It says nothing about whether the model's judgement is good, and a reader can easily take one for the other.
 
-**Decision.** (1) Every number in the docs, the README and the reports is labelled **scripted** or **recorded**, and says which set it came from and whether that set was used for tuning. (2) The public repo stays delayed. The release gate needs: the recorded run made by the morning command (ADR 55) passes the ship thresholds of ADR 61, the memory and judgement floors hold, the cost check is within 15 percent, and a maintainer has rated a real low-risk call with `pnpm tag`. (3) The morning command (`pnpm morning --cap 5`, one page in [MORNING-KIT.md](MORNING-KIT.md)) is the only route to a recorded number. An agent never runs it, and CI refuses it.
+**Decision.** (1) Every number in the docs, the README and the reports is labelled **scripted** or **recorded**, and says which set it came from and whether that set was used for tuning. (2) Quality claims need a recorded run. The gate needs: the recorded run made by the morning command (ADR 55) passes the ship thresholds of ADR 61, the memory and judgement floors hold, the cost check is within 15 percent, and a maintainer has rated a real low-risk call with `pnpm tag`. (3) The morning command (`pnpm morning --cap 5`, one page in [RECORDING-EVALS.md](RECORDING-EVALS.md)) is the only route to a recorded number. An agent never runs it, and CI refuses it.
 
 **Why.** A reader who sees "recall 85%" should know in one word what kind of 85 it is. A release gate that a fixture can pass is no gate.
 

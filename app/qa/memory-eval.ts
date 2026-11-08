@@ -1,8 +1,8 @@
 // Memory-quality eval: does the call memory catch what a person would write down?
 //
 // 24 invented calls (10 English, 9 Hebrew, 5 mixed) in data/memory-eval/*.json, among them noisy speech-to-text, two voices on the user's side and one long
-// call whose early promise has to survive a compaction. Each one has labels for the FINAL memory: promises (with the owner), questions still
-// open at the end, numbers (with the owner), decisions and objections. runMemoryEval() plays a call through the real memory loop (the same code path as a live call:
+// call whose early promise has to survive a compaction. Each one has labels for the FINAL memory: promises (with who owns it), questions still
+// open at the end, numbers (with who owns it), decisions and objections. runMemoryEval() plays a call through the real memory loop (the same code path as a live call:
 // buildContext, the model runner, parseJsonObject, applyPatch) and scores the memory it ends with: precision and recall per class.
 //
 //   mode "fake"      the policy fake model answers with the labelled items, with seeded noise (some dropped, one wrong owner, one extra). Tests the pipeline and the
@@ -13,7 +13,7 @@
 // A grader that lets a control through is broken: CONTROL_LIMITS are checked by the tests and by scripts/eval-memory.ts.
 //
 // Matching uses no word list: a label has `keys` (stems of its own words, any language); an extracted item matches when every word of every key appears in
-// its text, the owner fits and (for numbers) the digits are equal. One extracted item matches at most one label.
+// its text, who owns it fits and (for numbers) the digits are equal. One extracted item matches at most one label.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "../src/env.ts";
@@ -109,7 +109,7 @@ export function toScore(tp: number, extracted: number, expected: number): ClassS
   return { tp, extracted, expected, precision, recall, f1: precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0 };
 }
 const digits = (s: unknown) => String(s ?? "").replace(/[^\d.]/g, "");
-/** Does the owner in the memory fit the label? "me" also fits "I" and "אני"; a name fits when one contains the other. */
+/** Does the person named in the memory fit the label? "me" also fits "I" and "אני"; a name fits when one contains the other. */
 export function ownerFits(label: string, got: string | undefined): boolean {
   const a = label.trim().toLowerCase(),
     b = (got ?? "").trim().toLowerCase();

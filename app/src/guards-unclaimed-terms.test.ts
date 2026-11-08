@@ -7,7 +7,7 @@ import { addressesYou } from "./detector.ts";
 
 test("briefTerms: names from who and title, no filler words", () => {
   assert.deepEqual(briefTerms({ who: "Dana Levi (Acme HR)", title: "Acme HR call" }), ["Dana", "Levi", "Acme"]);
-  assert.deepEqual(briefTerms({ who: "דנה לוי, ראש צוות", title: "Acme round 2" }), ["דנה", "לוי", "Acme"]);
+  assert.deepEqual(briefTerms({ who: "דנה לוי, ראש צוות", title: "Acme 2" }), ["דנה", "לוי", "Acme"]);
   assert.deepEqual(briefTerms(undefined), []);
 });
 

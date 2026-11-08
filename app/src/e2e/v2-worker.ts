@@ -39,7 +39,7 @@ async function main() {
   const obs = observeModel(e, { legacyLayout: opts.legacyLayout });
   if (opts.record) {
     // Record mode: every model call goes through the cassette recorder. The inner model is the observed policy fake ("mock" transport, used by the
-    // tests) or the real provider ("real", the owner's command only: needs ANTHROPIC_API_KEY in the environment and WINGMAN_LLM_MODE unset).
+    // tests) or the real provider ("real", the maintainer's command only: needs ANTHROPIC_API_KEY in the environment and WINGMAN_LLM_MODE unset).
     const cassette = new Cassette(opts.record.cassette);
     const observed = e.boot.registry.resolve as unknown as (ref: string, role?: string) => Promise<unknown>;
     const real = opts.record.transport === "real" ? new ModelRegistry({ anthropic: process.env.ANTHROPIC_API_KEY } as never) : undefined;

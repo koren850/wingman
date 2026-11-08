@@ -287,7 +287,7 @@ app.on("second-instance", () => {
 app.whenReady().then(() => {
   if (!gotLock) return;
   if (!SNAPSHOT) {
-    // One-time copy of data from the old in-repo folders; the old folders stay (the owner deletes them). Never in snapshot mode.
+    // One-time copy of data from the old in-repo folders; the old folders stay (you can delete them). Never in snapshot mode.
     const mig = ensureUserData({
       log: (m) => {
         try {

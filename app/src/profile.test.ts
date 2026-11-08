@@ -386,7 +386,7 @@ test("repo guard: no tracked source, data or config file contains a word from th
 
 /** Markdown files anywhere in the repo (root, docs/, app/, brand/) plus LICENSE, as paths relative to the REPO root (this test runs with cwd app/). */
 const REPO_URL = /https:\/\/github\.com\/koren850\/wingman(?:\.git|\/actions\/workflows\/ci\.yml(?:\/badge\.svg)?)?(?![\w/.-])/g;
-/** The README credits the owner by public GitHub handle once, as a profile link. */
+/** The README credits the maintainer by public GitHub handle once, as a profile link. */
 const PROFILE_LINK = "[koren850](https://github.com/koren850)";
 function trackedDocs(): string[] {
   const top = join(ROOT, "..");
@@ -412,9 +412,9 @@ test("repo guard: no tracked Markdown file or LICENSE contains a word from the p
     } catch {
       continue;
     }
-    // The LICENSE copyright holder is the owner's public GitHub handle on purpose: allow exactly that word, in LICENSE only.
+    // The LICENSE copyright holder is the maintainer's public GitHub handle on purpose: allow exactly that word, in LICENSE only.
     if (rel === "LICENSE") text = text.replace(/koren850/g, "");
-    // Any doc may name the public repo (clone URL, CI badge). Only the README may link the owner's profile (credit).
+    // Any doc may name the public repo (clone URL, CI badge). Only the README may link the maintainer's profile (credit).
     text = text.replace(REPO_URL, "");
     if (rel === "README.md") text = text.replaceAll(PROFILE_LINK, "");
     text.split("\n").forEach((l, i) => {

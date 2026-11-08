@@ -4,7 +4,7 @@ lang: en
 type: vendor
 variant: clean
 user: Dan
-context: Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. The owner must approve any contract.
+context: Prep note. Dan is buying hosting for a client project. Vendor: Cloudmark Hosting, rep Sam Reed. Needs: uptime of at least 99.95, daily backups kept for 30 days, EU data center. Budget: $400 per month. Current setup: one virtual server with 2 CPUs and nightly backups. Expected traffic: about 40,000 visits per month. Our owner must approve any contract.
 roster: Sam Reed | them | sales rep
 roster: Priya | them | solutions engineer
 agenda: uptime and backups
@@ -62,7 +62,7 @@ me: Yes please, send it with the SLA.
 them@Priya: And what RPO do you need for the database? ## m: fact || RPO || jargon || RPO is how much data you can afford to lose, measured in time. || Technical term from the engineer.
 me: A day is acceptable, nightly backups are fine for now.
 them@Sam: I will send the SLA and a migration plan by Tuesday. ## mem: c:Sam>send the SLA and a migration plan>Tuesday / q:Dan>backup retention days / n:business tier=$520 per month / n:setup fee=$300 / n:uptime offered=99.9
-me: Good. I can give you an answer by the twentieth. ## m: check || twentieth;owner || promise || The owner must approve the contract; the twentieth may be too early. || Your promise needs owner approval first.
+me: Good. I can give you an answer by the twentieth. ## m: check || twentieth;owner || promise || Our owner must approve the contract; the twentieth may be too early. || Your promise needs owner approval first.
 them@Sam: Great. Do you also need DDoS protection? It is included in the business tier. ## m: fact || DDoS || jargon || DDoS protection filters floods of fake traffic that can take a site down. || Term explained.
 me: Probably yes. Before we finish, what was the answer on backup retention? ## m: prompt || retention || unanswered || You asked about backup retention twice; they still did not answer. || Open question to the vendor.
 them@Priya: Thirty days by default, and ninety days is available as an add-on.

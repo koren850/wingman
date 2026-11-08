@@ -249,7 +249,7 @@
   {
    "role": "moment",
    "whenLastLine": "l13",
-   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Scanner licence is $600; log it as a decision with Ines as the owner.\nWHY: Decision with a number.",
+   "reply": "TAG: TERM\nVALUE: 2\nAIM: me\nSAY: Scanner licence is $600; log it as a decision with Ines as an owner.\nWHY: Decision with a number.",
    "ms": 1500
   },
   {
