@@ -93,16 +93,16 @@ export function packgenSystem(lang: Lang, houseStyle: string): string {
     lang === "he"
       ? "spoken Hebrew (English tech terms the way people say them; gender-neutral: plural or impersonal forms, never 'you' in the singular)"
       : "plain spoken English";
-  return `${PACKGEN_MARK} for Wingman, a live-call assistant. The user reads a card aloud on a call when the other side asks something. You get the user's own notes (FAQ, policies, product facts). Turn them into answer cards.
+  return `${PACKGEN_MARK} for Wingman, a live-call assistant. The user reads a card aloud on a call when the other side asks something. You get the user's own notes (FAQ, policies, product facts). Turn them into answer cards. Think answer first: what would the other side really ask, and what is the short true answer in the notes.
 Language: ${lang}
 
 Answer with ONE JSON object and nothing else: {"cards": [ ... ]}. Each card has:
 - "id": short, lower case, ASCII, dashes (backups, working-hours).
-- "title": a short name in the card language.
-- "triggers": 5 to 10 words or phrases the other side might actually say. Several words count for more than one. Add common English terms and the ways speech to text may spell them${lang === "he" ? " (for example a term written in Hebrew letters)" : ""}.
+- "title": the question as a person would ask it, in the card language. Wingman reads the titles to pick the right card by meaning, so make each title clear and different from the others.
 - "say": what the user can say out loud. ${L}. One or two short sentences, 25 words at most, first person.
 - "facts": 2 to 4 short bullets (optional).
 - "alts": other ways to say it (optional).
+- "triggers": optional hints, 0 to 5 short words or phrases the other side might say. Leave it out when the title is enough. Wingman does not need them to find the card.
 - "sensitive": "price", "date" or "promise" when the notes answer this question with a price, a date or deadline, or a promise or guarantee. Otherwise leave it out.${lang === "he" ? '\n- "en": the same card in English: {"say": ..., "facts": [...], "alts": [...]}. Natural English, not a word-for-word copy.' : ""}
 
 Rules:
@@ -213,10 +213,6 @@ export function finalizeDraft(raw: RawCard[], lang: Lang, base: BankCard[] = bas
       notes.push({ id, action: "dropped", why: "no answer text" });
       continue;
     }
-    if (!triggers.length) {
-      notes.push({ id, action: "dropped", why: "no triggers, so it could never be picked" });
-      continue;
-    }
     // A price, date or promise: the guard decides, and so does the model's own flag. Either way the card becomes a stall.
     const flagged = (["price", "date", "promise"] as const).find((k) => k === clean(r.sensitive).toLowerCase());
     // Only the answer itself decides. A fact or an alternative with a price is just left out (below).
@@ -224,7 +220,7 @@ export function finalizeDraft(raw: RawCard[], lang: Lang, base: BankCard[] = bas
     const hitRule = hit && !hit.ok && hit.rule && hit.rule in STALL_FOR ? (hit.rule as Rule) : undefined;
     const rule: Rule | undefined = flagged ?? hitRule ?? (hit ? "promise" : undefined);
     if (rule) {
-      addTriggers(rule, triggers);
+      addTriggers(rule, triggers.length ? triggers : title.length <= 60 ? [title] : []);
       notes.push({
         id,
         action: "stalled",
@@ -248,7 +244,12 @@ export function finalizeDraft(raw: RawCard[], lang: Lang, base: BankCard[] = bas
     notes.push({
       id,
       action: "kept",
-      why: facts.dropped + alts.dropped ? `${facts.dropped + alts.dropped} extra line(s) with a price, date or promise were left out` : "ok",
+      why:
+        facts.dropped + alts.dropped
+          ? `${facts.dropped + alts.dropped} extra line(s) with a price, date or promise were left out`
+          : triggers.length
+            ? "ok"
+            : "ok, no trigger hints (found by its title)",
     });
   }
   if (!bank.some((c) => !c.id.startsWith("stall"))) warnings.push("No usable cards came out of these notes. Try a clearer FAQ with questions and answers.");
@@ -258,7 +259,7 @@ export function finalizeDraft(raw: RawCard[], lang: Lang, base: BankCard[] = bas
 // ---------- writing the draft ----------
 const oneLine = (t: string) => t.replace(/[\r\n\u2028\u2029]+/g, " ");
 const HEADER = (src: string, model: string) =>
-  `# DRAFT bank, written by "wingman pack from-notes" from ${oneLine(src)} (model ${oneLine(model)}).\n# Read every card before you use it. Edit the words, triggers and facts. Cards are shown as written, so check each one is true.\n`;
+  `# DRAFT bank, written by "wingman pack from-notes" from ${oneLine(src)} (model ${oneLine(model)}).\n# Read every card before you use it. Cards are shown as written, so check that each answer is true. The title is the question; Wingman picks a card by its meaning.\n# "triggers" are optional hints (words the other side may say). A card works without them.\n`;
 /** The two files' text: bank.yaml (card language) and bank.en.yaml (English, keyed by id). */
 export function renderDraft(d: Draft, src: string, model: string): { bank: string; en: string } {
   const bank = d.bank.map(({ en: _en, ...c }) => c);
@@ -270,4 +271,28 @@ export function renderDraft(d: Draft, src: string, model: string): { bank: strin
     bank: HEADER(src, model) + YAML.stringify(bank, opt),
     en: HEADER(src, model) + "# English text of the cards, keyed by card id (shown when the other side speaks English).\n" + YAML.stringify(en, opt),
   };
+}
+
+// ---------- questions and answers (shared with the pre-meeting digest) ----------
+/** A likely question with an optional draft answer. */
+export type Qa = { q: string; a?: string };
+/**
+ * Model output -> likely questions. Same guard as the cards: an answer with a price, a date or a promise is dropped (the question stays,
+ * so the user sees it and can prepare). At most `max` pairs; every text is one clean line.
+ */
+export function cleanQa(raw: unknown, max = 8): Qa[] {
+  const out: Qa[] = [];
+  for (const x of Array.isArray(raw) ? raw : []) {
+    const o = (typeof x === "string" ? { q: x } : x) as { q?: unknown; a?: unknown; question?: unknown; answer?: unknown } | null;
+    const q = clean(o?.q ?? o?.question).slice(0, 200);
+    if (!q || out.some((p) => p.q.toLowerCase() === q.toLowerCase())) continue;
+    const a = clean(o?.a ?? o?.answer).slice(0, 300);
+    out.push({ q, ...(a && guard(a).ok && guard(q).ok ? { a } : {}) });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+/** Likely questions with an answer -> raw cards for finalizeDraft, so a digest can also become a pack draft. */
+export function qaToRawCards(qs: Qa[]): RawCard[] {
+  return qs.filter((p) => p.a).map((p, i) => ({ id: slug(p.q) || `q-${i + 1}`, title: p.q, say: p.a }));
 }

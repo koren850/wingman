@@ -6,6 +6,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { call, appStatus, needApp, NO_APP_HINT, appProcessRunning } from "./client.ts";
 import { CliError, EXIT, parse, usage, type Ctx, type Result } from "./common.ts";
+import { waitForEvent } from "./recall.ts";
 
 const APP_PATH = "/Applications/Wingman.app";
 const PHASE_TEXT: Record<string, string> = {
@@ -192,7 +193,7 @@ function engineHasAsk(ctx: Ctx): boolean {
 }
 
 export async function ask(ctx: Ctx, args: string[]): Promise<Result> {
-  const { values, positionals } = parse(args, { listen: { type: "boolean" } });
+  const { values, positionals } = parse(args, { listen: { type: "boolean" }, "no-wait": { type: "boolean" }, wait: { type: "string" } });
   if (values.listen) {
     // the Ctrl+Opt+A key: the user's next spoken sentence is a question for Wingman
     if (positionals.length) throw usage("--listen takes no question; it arms the microphone for the user's next sentence.");
@@ -203,13 +204,29 @@ export async function ask(ctx: Ctx, args: string[]): Promise<Result> {
     };
   }
   const t = await text(ctx, positionals, "ask");
+  const app = await needApp(ctx);
+  const callId = (app.state?.callId as string) || "";
+  const since = Date.now();
   await call(ctx, "ask", { text: t });
   const supported = engineHasAsk(ctx);
+  const warn = supported ? "" : "\nWarning: this version of the call engine has no `ask` command yet, so the question may be ignored.";
+  if (values["no-wait"] || !callId)
+    return {
+      data: { sent: true, kind: "ask", engineSupportsAsk: supported },
+      text: "Question sent to the live call (the answer appears as a card; read it with: wingman live)." + warn,
+    };
+  // The engine answers from the call memory and the transcript and writes `ask.done`; wait for it so the caller gets the answer.
+  const waitMs = values.wait === undefined ? 20_000 : Math.max(1, Number(values.wait) || 20) * 1000;
+  const norm = (x: string) => x.replace(/\s+/g, " ").trim().slice(0, 300);
+  const ev = await waitForEvent(ctx, callId, since, (e) => e.type === "ask.done" && norm(String(e.question ?? "")) === norm(t).slice(0, 300), waitMs);
+  if (!ev)
+    return {
+      data: { sent: true, kind: "ask", engineSupportsAsk: supported, answered: false },
+      text: "Question sent to the live call, but no answer has been written yet (the model may be slow). Read it with: wingman live" + warn,
+    };
   return {
-    data: { sent: true, kind: "ask", engineSupportsAsk: supported },
-    text:
-      "Question sent to the live call (the answer appears as a card; read it with: wingman live)." +
-      (supported ? "" : "\nWarning: this version of the call engine has no `ask` command yet, so the question may be ignored."),
+    data: { sent: true, kind: "ask", engineSupportsAsk: supported, answered: true, answer: ev.text, source: ev.source, ai: !!ev.ai },
+    text: String(ev.text ?? ""),
   };
 }
 

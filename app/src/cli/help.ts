@@ -18,9 +18,9 @@ TYPICAL FLOWS
   Run:       wingman doctor (readiness check)            then   wingman start --plan <id>   (a prepared meeting)   or   wingman start --quick   (no Plan)
              wingman start --practice = offline pretend client, free (uses the next prepared meeting, or --plan <id>, or none with --quick)
              wingman status            phase "live" = listening ("waiting" only if the optional "Ask me before listening starts" setting is on)
-  During:    wingman live [--follow]   transcript + answer cards          wingman ask "what did we say the price was?"
+  During:    wingman live [--follow]   transcript + answer cards          wingman ask "what did we say the price was?"     wingman recap
              wingman note "she is the owner"     wingman speaker 2 "Dana"     wingman quiet on|off     wingman client   (confirm the proposed client)
-  Finish:    wingman stop   (or: wingman stop --delete --yes)     wingman calls summary latest     wingman calls email latest
+  Finish:    wingman stop   (or: wingman stop --delete --yes)     wingman calls summary latest     wingman calls email latest     wingman followup latest
   Review:    wingman calls list | show <id> | rate <id> <card> y|n | purge <id> --yes
 
 COMMANDS
@@ -59,8 +59,16 @@ COMMANDS
   quiet on|off                 Quiet mode: hide cards in the answer window (they are still saved).
   note "<text>"                Add a context note for the AI (max 300 characters; \`-\` reads stdin).
   speaker <n> "<name>"         Name the other side's voice n (1-20, the "Speaker n" in the live view); \`speaker <n> --clear\` removes the name. Needs a running call.
-  ask "<question>"             Type a question to Wingman during a live call; the answer appears as a card (read it with \`wingman live\`). Needs phase "live".
+  ask "<question>" [--no-wait] [--wait S]
+                               Ask the live call. Wingman answers from what it learned in the call (its memory first, then the transcript), or from general
+                               knowledge when the question is not about the call. The answer appears as a card and is printed here (waits up to 20 s;
+                               --no-wait returns at once). If the AI is down it answers from the notes and says "AI offline: from notes". Needs phase "live".
   ask --listen                 Same as the Ctrl+Opt+A key: the user's next spoken sentence is the question.
+  recap [--id <call>] [--no-wait] [--wait S]
+                               "Catch me up" (the Ctrl+Opt+U key): five lines: where we are, decided, open, you promised, they asked of you.
+                               On a live call the engine writes it (about 1.5 s) and it is printed here. On a saved call (--id) it is read from session.json, no model.
+  followup [id|latest]         The follow-up message draft of a saved call, from the call memory (or the summary email). Sentences with a price, a date or a
+                               promise are replaced by [fill in: ...]. Print it, let the user read it, never send it by yourself. Exit 5 when nothing was saved.
   live [--follow] [--last N] [--id <call>] [--timeout S]     Transcript with answer cards (NDJSON with --json --follow).
   calls list [--limit N] | show <id|latest> [--lines N] [--no-transcript] | summary <id> [--generate] | email <id>
         | rate <id> <card id> y|n|clear | purge <id> --yes
@@ -75,6 +83,9 @@ COMMANDS
                                Drafts answer cards from the user's own FAQ or notes with one model call (a few cents). Writes bank.yaml and bank.en.yaml into <folder>
                                (default ./pack-draft) as a DRAFT, never into the live pack, and never over existing files without --force (exit 4). Cards with a price, date
                                or promise become stalls and are listed in the output. The user must read every card. PDF needs pdftotext. --model default: summary.model.
+  digest [<file>...] [--text ".."] [--stdin] [--out <digest.json>] [--model provider:model]
+                               The pre-meeting digest: one small model call turns pasted notes and files into people, agenda, facts (each with its source line) and likely
+                               questions. Optional: a call works without it. Without a key or when the model fails, the raw text is kept as plain background.
   keys status                  Present or missing for each API key. Nothing else: keys are never printed, set or moved from here
                                (use \`pnpm keys\` in a terminal or the app's Settings > Keys).
   app status | app open        Is the app running / open /Applications/Wingman.app (only when you run it explicitly).

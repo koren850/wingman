@@ -8,7 +8,8 @@ export type DigestChunk = { id?: string; source?: string; text: string };
 export type Digest = {
   roster: { name: string; side?: "me" | "them"; role?: string; stance?: string }[];
   agenda: string[];
-  facts: (string | { text: string; who?: string })[];
+  /** `source` = the line of the pre-meeting text the fact came from (shown next to the fact; not put in the memory) */
+  facts: (string | { text: string; who?: string; source?: string })[];
   likelyQuestions: { q: string; a?: string }[];
   chunks: DigestChunk[];
   kind?: MemoryKind;

@@ -139,6 +139,7 @@ function registerKeys() {
   )
     bad.push(KEYS.note);
   if (!globalShortcut.register(KEYS.ask, () => ctl.askWingman())) bad.push(KEYS.ask);
+  if (!globalShortcut.register(KEYS.recap, () => ctl.recap())) bad.push(KEYS.recap);
   if (bad.length) logLine(`could not register ${bad.join(", ")}`);
 }
 
@@ -235,6 +236,13 @@ function refresh() {
       registerAccelerator: false,
       enabled: s.phase === "live",
       click: () => ctl.askWingman(),
+    });
+    items.push({
+      label: t("recap"),
+      accelerator: KEYS.recap,
+      registerAccelerator: false,
+      enabled: s.phase === "live",
+      click: () => ctl.recap(),
     });
     items.push({
       label: t("note"),

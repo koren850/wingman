@@ -15,6 +15,7 @@ const T = {
   askArmed: ["Listening for your question", "מאזין לשאלה שלך"],
   askLeft: ["{left} left", "נשארו {left}"],
   ask: ["Ask Wingman: my next sentence is for you", "שאל את Wingman: המשפט הבא שלי הוא אליו"],
+  recap: ["Catch me up: where we are", "עדכן אותי: איפה אנחנו"],
   note: ["Add a note for the AI…", "הוסף הערה ל-AI…"],
   quiet: ["Quiet mode (hide cards in the answer window)", "מצב שקט (הסתר כרטיסים בחלון התשובות)"],
   stopping: ["Stopping…", "עוצר…"],

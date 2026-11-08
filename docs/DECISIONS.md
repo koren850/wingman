@@ -718,3 +718,18 @@ Date: 2026-11-09
 **Alternatives.** A new path next to the old one (two ways to show a bank card, more bugs). Replacing the old path at once (no fallback).
 
 **Consequences.** `question.ts` has two model calls for one question, chosen per turn. The observer is not fast: a card comes about 1 to 3 s after the sentence. The interview mode needs its own moment prompt before it can use `v2`.
+
+## ADR 48: Ask the call answers from memory first; the model decides who a question is for
+
+Date: 2026-11-08
+
+**Context.** Wingman only showed cards for detected questions. The user also needs to ask the call something ("what did they promise?") and to catch up after looking away. Phrase lists decided whom a question was for, which fails for any wording they do not list.
+
+**Decision.** (1) Ask and Catch me up are one role, `ask`. The prompt holds the call memory and the transcript: all of it under 30k tokens, else the memory plus the best BM25 hits and the last lines. (2) Catch me up is Ctrl+Opt+U (R is rewind). (3) A call answer may not contain a number the call never said. (4) The model decides who a card is for; the phrase lists run only when the AI is off. (5) A failed ask or recap always shows a card, labelled "AI offline: from notes" when it comes from local search. (6) The digest keeps a fact only if its source line is in the pasted text.
+
+**Why.** The memory is small and always fresh, so most answers need little context and stream fast. Local fallbacks mean no empty screen.
+
+**Alternatives.** Embeddings for transcript search (a dependency and a download). Always sending the whole transcript (cost grows with the call).
+
+**Consequences.** One extra model call per ask or recap (about a cent per ten uses). The overlay opens the sheet on `view` rows with `showRecap`; wiring the digest to the Prepare screen is left to the live UI package.
+

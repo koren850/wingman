@@ -12,7 +12,7 @@ import { main } from "./cli/index.ts";
 import { HELP } from "./cli/help.ts";
 import { loadBank } from "./bank.ts";
 import { guard } from "./guards.ts";
-import { detectLang, finalizeDraft, renderDraft, readNotes, packgenSystem, packgenPrompt, parseCards, NotesError } from "./packgen.ts";
+import { cleanQa, qaToRawCards, detectLang, finalizeDraft, renderDraft, readNotes, packgenSystem, packgenPrompt, parseCards, NotesError } from "./packgen.ts";
 import { scriptedPackgen } from "./providers/scripted.ts";
 import { FAKE_BIN } from "./test-platform.ts";
 
@@ -75,7 +75,8 @@ test("finalizeDraft: ids, missing parts, extra lines and the English text", () =
   );
   const ids = d.bank.map((c) => c.id);
   assert.ok(ids.includes("backups") && ids.includes("backups-2") && ids.includes("note-stall-x"));
-  assert.ok(!ids.includes("empty-one") && !ids.includes("no-say"));
+  // triggers are optional hints now: a card without them is kept (the AI finds it by its title); a card without an answer is not
+  assert.ok(ids.includes("empty-one") && !ids.includes("no-say"));
   const b = d.bank.find((c) => c.id === "backups")!;
   assert.deepEqual(b.triggers, ["backup", "restore"]);
   assert.deepEqual(b.facts, ["Daily copy"]); // the fact with a price is left out
@@ -85,7 +86,7 @@ test("finalizeDraft: ids, missing parts, extra lines and the English text", () =
       .filter((n) => n.action === "dropped")
       .map((n) => n.id)
       .sort(),
-    ["empty-one", "no-say"],
+    ["no-say"],
   );
   // A Hebrew draft without an English version warns about it.
   const he = finalizeDraft([{ id: "hours", triggers: ["שעות"], say: "אנחנו זמינים בשעות העבודה." }], "he");
@@ -251,4 +252,43 @@ test("pack from-notes: --force allows a notes file outside home, but never a sec
   writeFileSync(join(h, ".ssh", "notes.txt"), NOTES_EN);
   const sec = await run(h, "pack", "from-notes", join(h, ".ssh", "notes.txt"), "--out", join(h, "o3"), "--model", "scripted:packgen", "--force");
   assert.equal(sec.code, 4, sec.err);
+});
+
+test("answer first: the prompt asks for the question as title and treats triggers as optional hints", () => {
+  const s = packgenSystem("en", "style");
+  assert.match(s, /Think answer first/);
+  assert.match(s, /"triggers": optional hints/);
+  assert.doesNotMatch(s, /"triggers": 5 to 10/);
+});
+
+test("answer first: a sensitive card without triggers still gives its stall line a hook (the title)", () => {
+  const d = finalizeDraft([{ id: "pricing", title: "How much is a plan?", say: "It depends.", sensitive: "price" }], "en");
+  const stall = d.bank.find((c) => c.id === "stall-price")!;
+  assert.ok(stall.triggers.includes("How much is a plan?"));
+  assert.equal(d.notes.find((n) => n.id === "pricing")?.action, "stalled");
+});
+
+test("shared question code: cleanQa guards answers, qaToRawCards makes a pack draft from digest questions", () => {
+  const qs = cleanQa([
+    { q: "Do you keep backups?", a: "Yes, a nightly copy." },
+    { q: "What does it cost?", a: "It costs 300 dollars." },
+    { q: "do you keep backups?", a: "dup" },
+    "Where is the data kept?",
+    { q: "", a: "x" },
+  ]);
+  assert.deepEqual(
+    qs.map((x) => x.q),
+    ["Do you keep backups?", "What does it cost?", "Where is the data kept?"],
+  );
+  assert.equal(qs[1].a, undefined);
+  const d = finalizeDraft(qaToRawCards(qs), "en");
+  assert.ok(d.bank.some((c) => c.title === "Do you keep backups?" && c.triggers.length === 0));
+  assert.ok(!d.bank.some((c) => /300/.test(c.say)));
+});
+
+test("the draft header no longer teaches triggers as the main thing", () => {
+  const d = finalizeDraft([{ id: "a", title: "A?", say: "Yes." }], "en");
+  const r = renderDraft(d, "notes.md", "m");
+  assert.match(r.bank, /optional hints/);
+  assert.doesNotMatch(r.bank, /Edit the words, triggers and facts/);
 });

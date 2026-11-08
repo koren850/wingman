@@ -7,13 +7,16 @@ import { EventEmitter } from "node:events";
 import { createRequire } from "node:module";
 import net from "node:net";
 import { spawn } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, statSync, existsSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, statSync, existsSync, rmSync, symlinkSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
 import { writeWav } from "./audio.ts";
 import { main } from "./cli/index.ts";
 import { HELP } from "./cli/help.ts";
+import { applyPatch } from "./session/patch.ts";
+import { saveMemory } from "./session/store.ts";
+import { emptyMemory } from "./session/types.ts";
 import { assertMode, tsx, POSIX, SYMLINK, ENGINE_CHILD } from "./test-platform.ts";
 
 const req = createRequire(import.meta.url);
@@ -206,12 +209,12 @@ test("socket: start/stop drive the app's controller (one call, no second engine)
     assert.deepEqual(c.written, ["consent\n"]);
     assert.equal(r.asked.consent, 1, "the socket consent asks in the app first");
     c.say("consented");
-    const q = await r.run("ask", "what", "is", "the", "price?", "--json");
+    const q = await r.run("ask", "what", "is", "the", "price?", "--no-wait", "--json");
     assert.equal(q.code, 0, q.out);
     assert.equal(typeof q.json.engineSupportsAsk, "boolean");
     assert.equal((await r.run("note", "she is the owner", "--json")).code, 0);
     assert.equal((await r.run("note", "x".repeat(301), "--json")).code, 2);
-    assert.equal((await r.run("ask", "-", "--json")).code, 0, "stdin text");
+    assert.equal((await r.run("ask", "-", "--no-wait", "--json")).code, 0, "stdin text");
     assert.equal((await r.run("ask", "--listen", "--json")).code, 0);
     assert.deepEqual(c.written.slice(1), ["ask what is the price?\n", "note she is the owner\n", "ask from stdin\n", "ask\n"]);
     assert.equal((await r.run("speaker", "2", "Dana", "Levi", "--json")).code, 0);
@@ -969,4 +972,158 @@ test("status: shows the stop step while a call is being saved, and the listening
   } finally {
     await r.done();
   }
+});
+
+// ---- recap, ask (waits for the answer) and followup ----
+const ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+async function liveCall(r: Awaited<ReturnType<typeof rig>>) {
+  assert.equal((await r.run("start", "--json", "--no-wait")).code, 0);
+  const c = r.f.spawned[0];
+  c.say("waiting", { id: ID });
+  assert.equal((await r.run("consent", "--yes", "--json")).code, 0);
+  c.say("consented");
+  const dir = join(r.dir, "calls", ID);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "call.json"), JSON.stringify({ id: ID, startedAt: new Date().toISOString() }));
+  return { c, dir };
+}
+const later = (ms: number, fn: () => void) => setTimeout(fn, ms);
+
+test("cli: recap on a live call sends 'recap' to the engine and prints what the engine wrote", async () => {
+  const r = await rig();
+  try {
+    const { c, dir } = await liveCall(r);
+    const text = "Where we are: Planning\nYou promised: send the plan";
+    later(120, () =>
+      appendFileSync(
+        join(dir, "events.jsonl"),
+        JSON.stringify({
+          type: "recap.done",
+          at: Date.now(),
+          recap: { where: "Planning", decided: [], open: [], promised: ["send the plan"], asked: [] },
+          text,
+          source: "ai",
+          ai: true,
+        }) + "\n",
+      ),
+    );
+    const out = await r.run("recap", "--json");
+    assert.equal(out.code, 0, out.out + out.err);
+    assert.ok(c.written.includes("recap\n"), "the engine got the recap command");
+    assert.equal(out.json.ai, true);
+    assert.deepEqual(out.json.recap.promised, ["send the plan"]);
+    const plain = await r.run("recap", "--no-wait");
+    assert.match(plain.out, /requested/);
+    // nothing written in time: a timeout, not an invented answer
+    const slow = await r.run("recap", "--wait", "1", "--json");
+    assert.equal(slow.code, 9);
+  } finally {
+    await r.done();
+  }
+});
+
+test("cli: ask waits for ask.done with the same question and prints the answer; --no-wait and a slow engine do not hang", async () => {
+  const r = await rig();
+  try {
+    const { c, dir } = await liveCall(r);
+    later(120, () =>
+      appendFileSync(
+        join(dir, "events.jsonl"),
+        JSON.stringify({ type: "ask.done", at: Date.now(), question: "who owns the domain?", text: "Noa does.", source: "call", ai: true }) + "\n",
+      ),
+    );
+    const a = await r.run("ask", "who owns the domain?", "--json");
+    assert.equal(a.code, 0, a.out + a.err);
+    assert.equal(a.json.answered, true);
+    assert.equal(a.json.answer, "Noa does.");
+    assert.ok(c.written.includes("ask who owns the domain?\n"));
+    const slow = await r.run("ask", "another one?", "--wait", "1", "--json");
+    assert.equal(slow.code, 0);
+    assert.equal(slow.json.answered, false);
+    assert.equal((await r.run("ask", "x?", "--no-wait", "--json")).json.answered, undefined);
+  } finally {
+    await r.done();
+  }
+});
+
+test("cli: recap and followup of a saved call read session.json (no app, no model)", async () => {
+  const calls = tmp("calls");
+  const dir = join(calls, ID);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "call.json"), JSON.stringify({ id: ID, startedAt: new Date().toISOString() }));
+  const mem = applyPatch(
+    emptyMemory(1, "client"),
+    {
+      topic: "Hosting move",
+      add: {
+        decisions: [{ text: "Move in two steps" }],
+        commitments: [{ who: "me", what: "send the plan", due: "Friday" }],
+        openQuestions: [{ asker: "Noa", text: "Can the old site stay up?" }],
+      },
+    },
+    { now: 2 },
+  ).mem;
+  saveMemory(dir, mem);
+  const r = await rig({ callsDir: calls });
+  try {
+    const rc = await r.run("recap", "--id", ID, "--json");
+    assert.equal(rc.code, 0, rc.out + rc.err);
+    assert.equal(rc.json.ai, false);
+    assert.deepEqual(rc.json.recap.promised, ["send the plan (Friday)"]);
+    assert.match((await r.run("recap", "--id", ID)).out, /AI offline: from notes/);
+    const fu = await r.run("followup", ID, "--json");
+    assert.equal(fu.code, 0, fu.out + fu.err);
+    assert.equal(fu.json.source, "memory");
+    assert.match(fu.json.text, /Move in two steps/);
+    assert.doesNotMatch(fu.json.text, /Friday/);
+    // a call with no saved memory: not found, with a hint
+    const empty = join(calls, "01ARZ3NDEKTSV4RRFFQ69G5FAW");
+    mkdirSync(empty, { recursive: true });
+    writeFileSync(join(empty, "call.json"), JSON.stringify({ id: "01ARZ3NDEKTSV4RRFFQ69G5FAW", startedAt: new Date().toISOString() }));
+    assert.equal((await r.run("followup", "01ARZ3NDEKTSV4RRFFQ69G5FAW", "--json")).code, 5);
+  } finally {
+    await r.done();
+  }
+});
+
+test("cli: digest keeps the raw text as plain background without a key, saves digest.json (mode 600), and refuses a bad file", async () => {
+  const h = tmp("digest");
+  const out = join(h, "digest.json");
+  writeFileSync(join(h, "notes.txt"), "Agenda: hosting move.\nNoa asked about downtime.\n");
+  // the keys file is a path inside the temp folder (settings key keys.file), so the real ~/.config/wingman/keys.env is never read
+  writeFileSync(join(h, "settings.yaml"), `keys:\n  file: ${JSON.stringify(join(h, "nokeys.env"))}\n`);
+  const run = async (...argv: string[]) => {
+    let o = "",
+      e = "";
+    const code = await main(argv, {
+      env: { ...process.env, HOME: h, WINGMAN_USER_SETTINGS: join(h, "settings.yaml"), ANTHROPIC_API_KEY: "" },
+      home: h,
+      keychain: { get: () => null, set: () => true, remove: () => false }, // a stub: the test never touches the real Keychain
+      out: (s) => (o += s),
+      err: (s) => (e += s),
+      stdin: async () => "from stdin",
+    });
+    return {
+      code,
+      out: o,
+      err: e,
+      json: (() => {
+        try {
+          return JSON.parse(o.trim().split("\n")[0]);
+        } catch {
+          return undefined;
+        }
+      })(),
+    };
+  };
+  const r = await run("digest", join(h, "notes.txt"), "--text", "Meeting with Noa on Monday", "--out", out, "--json");
+  assert.equal(r.code, 0, r.out + r.err);
+  assert.equal(r.json.source, "raw");
+  assert.equal(r.json.why, "no-ai");
+  assert.ok(r.json.digest.chunks.some((c: { source: string }) => c.source === "notes.txt"));
+  assert.equal(JSON.parse(readFileSync(out, "utf8")).digest.chunks.length, 2);
+  if (POSIX) assertMode(out, 0o600);
+  assert.equal((await run("digest", "--stdin", "--json")).json.source, "raw");
+  assert.equal((await run("digest", "--json")).code, 2, "nothing to digest is a usage error");
+  assert.equal((await run("digest", join(h, "missing.txt"), "--json")).code, 5);
 });

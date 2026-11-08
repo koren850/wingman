@@ -407,7 +407,8 @@ function writeSilentWav(file, seconds) {
 // ---- Global keys and confirmations (pure: Electron objects are injected so these are unit-tested) ----
 
 /** Keys the menu-bar app owns. The answer window owns Ctrl+Opt+C/P/R/K/L and Ctrl+Opt+1-3 (copy capture chip 1-3): never register those here. */
-const KEYS = { consent: "Control+Alt+Return", note: "Control+Alt+N", ask: "Control+Alt+A" };
+// recap = "Catch me up". Ctrl+Opt+R is the answer window's rewind key, so the sheet has its own key here.
+const KEYS = { consent: "Control+Alt+Return", note: "Control+Alt+N", ask: "Control+Alt+A", recap: "Control+Alt+U" };
 const OVERLAY_KEYS = ["Control+Alt+C", "Control+Alt+P", "Control+Alt+R", "Control+Alt+K", "Control+Alt+L", "Control+Alt+1", "Control+Alt+2", "Control+Alt+3"];
 
 /** The Start listening key exists only while a call is waiting. sync(true/false) registers or unregisters it; it never throws. */

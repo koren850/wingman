@@ -73,7 +73,8 @@ test("e2e: answers for Dan's own questions, the ask key, math is not a price, fo
     // a question for the other person: no card, decision logged
     assert.ok(!me.some((c) => /התקציב/.test(c.question)), "no card for a question asked to the other person");
     assert.ok(
-      decisions.some((d) => /התקציב/.test(d.text) && d.decision === "skip" && /^other:/.test(d.why)),
+      // the model decides who the question is for (the phrase lists are only the offline fallback): "classifier:other", or "model:SKIP" when the call was solo
+      decisions.some((d) => /התקציב/.test(d.text) && d.decision === "skip" && /^(classifier:(other|neither)|model:SKIP|other:)/.test(d.why)),
       `skipped as other: ${JSON.stringify(decisions)}`,
     );
     // a general-knowledge question: AI card

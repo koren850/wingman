@@ -139,13 +139,17 @@ const PRICEY = /^(מה|כמה)\s+זה\s+(עולה|יעלה|עלות|יוצא|י�
 /**
  * Local, free first pass: which side is this question for? Rule order matters: hotkey, spoken name, math and "words about words"
  * beat the "you" cues, because "how do you say X" is for the assistant although it contains "you".
- * `ignoreOther`: nobody else has spoken lately (solo call, or the only-you state), so "you / can you / your" is addressed to Wingman, not to a person. */
-export function audienceByCues(text: string, o: { forced?: boolean; ignoreOther?: boolean } = {}): AudienceResult {
+ * `ignoreOther`: nobody else has spoken lately (solo call, or the only-you state), so "you / can you / your" is addressed to Wingman, not to a person.
+ * `useLists` (default true): use the hand-written phrase lists below. The live engine passes false while a model can be asked: the model decides
+ * who the question is for (classify, or the moment prompt's AIM) and only the language-free cues stay (hotkey, spoken name, arithmetic).
+ * The lists are the offline fallback for the user's own channel. */
+export function audienceByCues(text: string, o: { forced?: boolean; ignoreOther?: boolean; useLists?: boolean } = {}): AudienceResult {
   if (o.forced) return { audience: "assistant", reason: "hotkey" };
   const raw = String(text ?? "").trim();
   const low = raw.toLowerCase();
   if (ADDRESS.some((a) => low.includes(a))) return { audience: "assistant", reason: "addressed" };
   if (evalMath(raw)) return { audience: "assistant", reason: "math" };
+  if (o.useLists === false) return { audience: "unsure", reason: "model" };
   // Words-about-words are for the assistant even when they contain "you" ("how do you say invoice in Hebrew").
   if (STRONG_ASSIST.some((p) => containsPhrase(raw, p)) || /what does .+ mean/i.test(raw)) return { audience: "assistant", reason: "assist:words" };
   const t = tokens(raw);

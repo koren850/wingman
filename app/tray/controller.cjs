@@ -8,14 +8,14 @@ const defaultLib = require("./lib.cjs");
 const Plans = require("../shared/plans.js");
 
 /** The complete list of things that can ever be written to a call's stdin. Notes are cleaned and capped before they get here. */
-const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "ask", "stop", "stop-delete", "stop-no-summary", "skip-summary"]);
+const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "ask", "recap", "stop", "stop-delete", "stop-no-summary", "skip-summary"]);
 
 /**
  * Builds the controller. o: { root, spawn (child_process.spawn-like), lib?, fs?, path?, bin?, logPath?, tmpDir?, env?, plans?,
  * notify?(title, body), onChange?(), setTimeout?, kill?, doctorTimeoutMs? } (fs/spawn/timers are injectable for tests).
  * State lives in lib.reduce; every change calls onChange so the tray and window can redraw. Only one call child at a time.
  * @param {any} o Options as listed above.
- * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, confirmClient, note, ask, speaker,
+ * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, recap, confirmClient, note, ask, speaker,
  *   stop, stopDelete, stopNoSummary, skipSummary, briefSaved, briefCleared, boot, refreshPlans, runDoctor, shutdown, logLine.
  */
 function createController(o) {
@@ -295,6 +295,8 @@ function createController(o) {
     setQuiet: (on) => !!child && state.phase === "live" && send(on ? "quiet on" : "quiet off"),
     /** "The next thing I say is for you": Ctrl+Opt+A. Works whenever the call is listening. */
     askWingman: () => !!child && state.phase === "live" && send("ask"),
+    /** "Catch me up" (Ctrl+Opt+U, `wingman recap`): the engine writes the five-line recap sheet. Only while the call is live. */
+    recap: () => !!child && state.phase === "live" && send("recap"),
     /** Confirms the client Wingman has proposed. False when nothing is proposed or one is already confirmed. */
     confirmClient: () => !!child && !!state.proposed && !state.client && send("client"),
     /** Adds a note (cleaned, at most 300 characters) to the live call. */

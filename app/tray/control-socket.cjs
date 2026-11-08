@@ -315,6 +315,12 @@ function createControlServer(o) {
         need(ctl.getState().phase === "live", "A question can only be asked while a call is live (wingman status shows the phase).") ||
         done(ctl.ask(a.text), "The question was empty or not accepted."),
     },
+    recap: {
+      args: noArgs,
+      run: () =>
+        need(ctl.getState().phase === "live", "Catch me up works only while a call is live (wingman status shows the phase).") ||
+        done(ctl.recap(), "Could not ask for the recap."),
+    },
     ask_listen: {
       args: noArgs,
       run: () => need(ctl.getState().phase === "live", "Only while a call is live.") || done(ctl.askWingman(), "Could not arm the ask window."),

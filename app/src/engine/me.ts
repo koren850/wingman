@@ -11,7 +11,7 @@ import { log, cost, breakers, S, tracker, contextNotes, lineOf, transcript, pref
 import { refreshSignals, llmFailed, usableModels, clearAiBar } from "./degrade.ts";
 import { emitCard, noteModel } from "./cards.ts";
 import { st } from "./state.ts";
-import { askNotSure, askError } from "./strings.ts";
+import { askTheCall } from "./askcall.ts";
 import { countReflexFailure, noteReflexOk } from "./question.ts";
 import { selfCheckLine } from "./selfcheck.ts";
 import { survived, status } from "./out.ts";
@@ -51,18 +51,16 @@ function disarmAsk(why: string) {
   if (why === "timeout") log.write("events", { type: "ask.expired" });
 }
 
-/** `ask <question>` on the control channel (the wingman CLI): a typed question, handled like a spoken one that followed the ask key. */
+/** `ask <question>` on the control channel (the wingman CLI and the typed box): "ask the call". It is answered from the call memory first and the
+ *  transcript second (src/session/ask.ts), or from general knowledge when the question is not about the call. Always ends in a card. */
 export function askTyped(q: string) {
   if (st.call.shuttingDown || !st.call.consented) {
     console.log("\n(ask ignored: listening has not started yet)");
     return;
   }
-  const text = q.replace(/\s+/g, " ").trim().slice(0, 300),
-    now = Date.now();
+  const text = q.replace(/\s+/g, " ").trim().slice(0, 300);
   log.write("events", { type: "me.detect", text, forced: true, reason: "typed" });
-  void onMeQuestion({ channel: "me", text, isFinal: true, speechFinal: true, words: [], arrivedAt: now, speechEndWall: now } as SttResult, true).catch((e) =>
-    log.write("events", { type: "me.error", error: eventError(e).slice(0, 200) }),
-  );
+  void askTheCall(text).catch((e) => log.write("events", { type: "me.error", error: eventError(e).slice(0, 200) }));
 }
 /** A "me" utterance has ended. Decide whether it is a question for Wingman and answer it. */
 export function handleMe(joined: SttResult) {
@@ -103,7 +101,8 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
 
   // 1. Is it for Wingman or for the other person?
   const ignoreOther = Date.now() - st.voice.lastThemSpeech > 60_000; // nobody else spoke lately: "you / can you" is for Wingman
-  const cue = audienceByCues(text, { forced, ignoreOther });
+  // The model decides who the question is for. The phrase lists in assist.ts are only the fallback when no model can be asked.
+  const cue = audienceByCues(text, { forced, ignoreOther, useLists: !canMeAi() });
   let verdict: "ASSIST" | "OTHER" | "NEITHER" | undefined;
   // Speculative: when the rules are unsure and others are talking, the classifier and the answer run in PARALLEL; the card waits for the verdict.
   let verdictP: Promise<void> | undefined;
@@ -172,7 +171,9 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
       } // classifier still out: hold the card
       if (!dec.answer) return;
       const g = meGate.check(now, { forced, lastThemCardAt: st.cards.lastThemCardAt, calc: source === "calc", solo: isSolo() }); // arithmetic is instant and tiny: it ignores the protect-them window
-      if (!g.ok) {
+      if (!g.ok && g.why === "protect-them" && forced && now + g.waitMs >= giveUpAt) {
+        meLog(turnId, text, "override", g.why); // asked for and waited long enough: show it
+      } else if (!g.ok) {
         if (g.why === "protect-them" && forced && now + g.waitMs < giveUpAt) {
           meLog(turnId, text, "defer", g.why, { waitMs: Math.round(g.waitMs) });
           const t = setTimeout(() => {
@@ -221,6 +222,8 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
   // 2b. everything else needs the model
   if (!canMeAi()) {
     meLog(turnId, text, "skip", noAi ? "no-ai" : "ai-unavailable");
+    // The user pressed the ask key: an answer from the notes (or a line that says so) beats an empty screen.
+    if (forced && !dead()) await askTheCall(text, { offline: true });
     return;
   }
   const reserved = usableModels(true),
@@ -276,7 +279,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
         // The user pressed the ask key (or typed `ask`) and nothing came back: say so, never leave an empty screen.
         if (forced && !cardOut && !shownOnce) {
           meLog(turnId, text, "unsure", "forced-no-answer");
-          show(askNotSure(), [], "ai");
+          void askTheCall(text); // memory and transcript next; it always ends in a card
         }
       },
     },
@@ -286,7 +289,7 @@ async function onMeQuestion(r: SttResult, forced: boolean) {
     // The model call failed (network, 529, 429, timeout). The user pressed the ask key (or typed `ask`): never leave an empty screen, and raise the bar at once.
     if (forced && !cardOut && !shownOnce) {
       meLog(turnId, text, "unsure", "forced-error", { kind: e?.kind ?? "unknown" });
-      show(askError(), [], "ai");
+      void askTheCall(text, { offline: true }); // the model just failed: answer from the notes at once, labelled as offline
     }
     if (e?.kind !== "refusal") countReflexFailure(e, forced);
   });

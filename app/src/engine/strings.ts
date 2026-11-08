@@ -19,3 +19,7 @@ export const speakerName = (n: number | string) => ht(UI_LANG, "flow.speaker", {
 export const aiPaused = (why: "cap" | "down" | "net") => ht(UI_LANG, "ai.paused", { why: ht(UI_LANG, `ai.paused.${why}`) });
 export const checkNumberSay = (said: string, ref: string) => ht(UI_LANG, "moment.check", { said, ref });
 export const checkNumberWhy = () => ht(UI_LANG, "moment.check.why");
+export const askOffline = () => ht(UI_LANG, "ask.offline");
+export const askNoCall = () => ht(UI_LANG, "ask.nocall");
+export const askNothing = () => ht(UI_LANG, "ask.nothing");
+export const recapEmpty = () => ht(UI_LANG, "recap.empty");

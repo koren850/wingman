@@ -194,6 +194,14 @@ The window uses plain words. Some older docs, file names and settings keep the i
 | Brief, plan, prepared meeting | Plan, prepared meeting | The notes for one specific call. |
 | Doctor | Readiness check | Tests the microphone, system audio, keys and services. |
 
+## Ask the call and Catch me up
+
+- **Catch me up** (Ctrl+Opt+U): a sheet with five lines: where we are, decided, open, you promised, they asked of you. It fills in about two seconds. `wingman recap` prints the same in the terminal.
+- **Ask the call**: type `ask what did they say about the deadline?` or run `wingman ask "..."`. Wingman looks in what it learned in the call, then in the transcript, then uses general knowledge. If the call does not say, it says so. It never invents a number.
+- **Follow-up**: `wingman followup` prints a draft message for the other side from the saved call. Prices, dates and promises show as `[fill in]` for you to complete.
+- **Pre-meeting digest**: `wingman digest` reads pasted notes and files and finds people, agenda, facts and likely questions. This is optional. With no AI, the raw text is kept as background.
+- When the AI is offline, answers come from your notes and are labelled "AI offline: from notes".
+
 ## Command line
 
 ```bash

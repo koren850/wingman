@@ -16,6 +16,8 @@ import { live } from "./live.ts";
 import { profile } from "./profile-cmd.ts";
 import { diagnose } from "./diagnose.ts";
 import { pack } from "./pack-cmd.ts";
+import { recap, followup } from "./recall.ts";
+import { digest } from "./digest-cmd.ts";
 
 type Cmd = (ctx: Ctx, args: string[]) => Promise<Result>;
 const COMMANDS: Record<string, Cmd> = {
@@ -33,6 +35,9 @@ const COMMANDS: Record<string, Cmd> = {
   note,
   speaker,
   ask,
+  recap,
+  followup,
+  digest,
   live,
   calls,
   settings,

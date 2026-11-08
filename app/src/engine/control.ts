@@ -1,7 +1,7 @@
 // Input from the user: terminal keys (Enter, q, a, n, y, Ctrl+C) and the menu-bar app's line commands on stdin (WINGMAN_CONTROL=1).
 //
 // IPC contract with the tray app (WINGMAN_CONTROL=1):
-//   stdin  lines: consent | quiet [on|off] | client | ask [text] | note <text> | stop | stop-no-summary | skip-summary | stop-delete
+//   stdin  lines: consent | quiet [on|off] | client | ask [text] | recap | note <text> | stop | stop-no-summary | skip-summary | stop-delete
 //   stdout "@@wingman {json}" lines (see out.ts). Stop sequence: {ev:"stopphase",phase:"saving"} -> "summary" -> "done", then {ev:"ended"}.
 //   call.json in the call folder also carries phase ("starting"|"waiting"|"live"|"ended") and liveAt for the answer window.
 //   The tray escalates a stop with SIGINT at 12 s and SIGKILL at 20 s, so shutdown() must finish inside that.
@@ -11,8 +11,10 @@ import { shutdown, skipSummaryNow } from "./shutdown.ts";
 import { st } from "./state.ts";
 import { nameSpeaker, confirmClient, clientProposed } from "./side.ts";
 import { armAsk, askTyped } from "./me.ts";
+import { catchMeUp } from "./askcall.ts";
 import { ORPHAN_IDLE_MIN, log, contextNotes, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
+import { eventError } from "../errtext.ts";
 
 // Single-key input (terminal mode only; with WINGMAN_CONTROL the tray uses stdin lines instead): Enter = consent, q = quiet, a = ask, n = note, y = confirm client, Ctrl+C = stop.
 let keyWaiter: ((k: string) => void) | undefined;
@@ -114,7 +116,10 @@ export function setupControl(onConsent: () => void) {
         if (q) askTyped(q);
         else armAsk();
       } // "ask" = the hotkey; "ask <text>" = a typed question (wingman CLI)
-      else if (cmd === "note") addNote(rest.join(" "));
+      else if (cmd === "recap") {
+        // "Catch me up" (Ctrl+Opt+U, `wingman recap`): the five-line sheet from the call memory
+        void catchMeUp().catch((e) => log.write("events", { type: "recap.error", error: eventError(e).slice(0, 200) }));
+      } else if (cmd === "note") addNote(rest.join(" "));
       else if (cmd === "speaker") {
         const n = Number(rest[0]);
         if (Number.isInteger(n)) nameSpeaker(n, rest.slice(1).join(" "), "user");
