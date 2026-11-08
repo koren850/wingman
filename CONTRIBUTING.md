@@ -24,6 +24,8 @@ pnpm 11 comes through corepack (`corepack enable`). The version is fixed in `app
 
 More detail: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
+**Good first contributions.** A new language (one file in `app/src/lang/`), a new speech or AI provider (one line in `app/src/providers/catalog.ts` plus an adapter), a Windows or Linux `AudioBackend`. The steps are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#extending). Run `pnpm check` before you open a pull request.
+
 ## Run the checks
 
 From `app/`:

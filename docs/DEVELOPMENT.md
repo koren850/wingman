@@ -17,7 +17,7 @@ For code work only (no Electron download, no app):
 cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
-pnpm test                               # all tests (680+, about 5 minutes)
+pnpm test                               # all tests (750+, about 5 minutes)
 pnpm demo                               # the offline demo call, no keys (about 90 seconds)
 pnpm eval                               # detector, bank and guard quality numbers, no keys
 ```
@@ -116,7 +116,7 @@ Scenarios are in `qa/scenarios/*.json` (32 of them) and use invented clients onl
 Used for UX checks and for the images in `docs/ux/`. They need the Electron runtime, so install without `WINGMAN_SKIP_APP=1` (or run `node node_modules/electron/install.js` once). In snapshot mode the app creates a hidden window, no tray, no global shortcuts, and never starts a call. Run snapshots one at a time.
 
 - Window: set `WINGMAN_DASHBOARD_SNAPSHOT=<out.png>` and optionally `_VIEW=home|inbox|settings`, `_THEME`, `_SIZE`, `_OPEN`, `_FOCUS`, `_SCROLL`, `_EVAL`; `WINGMAN_DASHBOARD_FAKE_CALL=waiting|live|live-warn|stopping|ended`; `WINGMAN_DASHBOARD_FAKE_DOCTOR=ready|notready`. Use `WINGMAN_CALLS_DIR`, `WINGMAN_BRIEFS_DIR` (or `WINGMAN_DATA_DIR`) and `WINGMAN_USER_SETTINGS` to point at fixtures so real data is never shown.
-- Answer window: `overlay/snapshot.sh <outDir> [scenario:keys ...]` (scenarios such as full, empty, listening, waiting, overflow, quiet, foryou, flow, flowyou, speakers; keys such as rewind, pause). Fixtures are in `overlay/fixtures.cjs`. For your own cards, write a `cards.jsonl` in a temp folder and run `WINGMAN_CALLS_DIR=<temp> WINGMAN_OVERLAY_SNAPSHOT=<out.png> app/node_modules/.bin/electron app/overlay/main.cjs`.
+- Answer window: `overlay/snapshot.sh <outDir> [scenario:keys ...]` (scenarios such as full, empty, listening, waiting, overflow, quiet, foryou, flow, flowyou, speakers; keys such as rewind, pause, checklist). The labels are Hebrew unless you set `WINGMAN_OVERLAY_LANG=en`. `full` has Hebrew call content; the English version of the same screen is `fullEn` (not in the default list, so name it: `WINGMAN_OVERLAY_LANG=en overlay/snapshot.sh <outDir> fullEn fullEn:checklist`). The key that opens the More panel is `checklist` (`full:more` does nothing). Fixtures are in `overlay/fixtures.cjs`. For your own cards, write a `cards.jsonl` in a temp folder and run `WINGMAN_CALLS_DIR=<temp> WINGMAN_OVERLAY_SNAPSHOT=<out.png> app/node_modules/.bin/electron app/overlay/main.cjs`.
 - Use only invented data in anything you publish.
 
 ## Building the app (.dmg)

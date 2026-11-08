@@ -198,11 +198,11 @@ cd wingman
 
 The installer checks the Mac, installs the dependencies, builds `app/.app/Wingman.app` and offers to copy it to `/Applications` and add the `wingman` command. It never uses sudo. Safe to run again.
 
-You also need a second screen for the answer window. With one screen the answer window refuses to open, so it cannot end up in a screen share. See [Troubleshooting](TROUBLESHOOTING.md#the-answer-window-does-not-open).
+You also need a second screen for the answer window. With one screen the answer window stays closed by default, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it). See [Troubleshooting](TROUBLESHOOTING.md#the-answer-window-does-not-open).
 
 ### 3. Put the keys in
 
-Open **Wingman**. The first window is a guided setup. Step 1 asks for the two keys. Paste them there. They are stored in the macOS Keychain (service `wingman`), not in a file and not in the repo.
+Open **Wingman**. The first window is a guided setup. The **Connect** step (step 2) asks for the two keys. Paste them there. They are stored in the macOS Keychain (service `wingman`), not in a file and not in the repo.
 
 From a terminal you can do the same. The key is typed at a hidden prompt, never as an argument:
 
@@ -217,7 +217,7 @@ pnpm keys status
 
 ### 4. Finish the setup guide
 
-The guided setup has three steps: **Try it** (a practice call), **Connect** (your keys) and **Allow** (microphone, System Audio Recording and your screens; quit and reopen Wingman after you allow System Audio Recording). Below them, **Make it yours (optional)** has your name, your privacy choices (ask before listening starts, Deepgram model-training opt-out), the microphone, starter answers and the Readiness check. Details are in the [User guide](USER-GUIDE.md#first-run).
+The guided setup has three steps: **Try it** (a practice call), **Connect** (your keys) and **Allow** (microphone, System Audio Recording and your screens; quit and reopen Wingman after you allow System Audio Recording). Below them, **Make it yours (optional)** has your name, your privacy choices (ask before listening starts, Deepgram model-training opt-out), the microphone, starter answers and the Readiness check. The Wingman window is in English only; `ui.language` sets the language of the answer window labels. Details are in the [User guide](USER-GUIDE.md#first-run).
 
 The Readiness check tests the mic, the system audio, the keys, the speech service and the AI. It ends with `READY`, `READY WITH WARNINGS` or `NOT READY`, and tells you what to fix. The full check costs a few cents. From the terminal, `pnpm run doctor --offline` runs the free part only.
 
@@ -258,6 +258,8 @@ In the app: **Settings, Setup guide, Starter answers**. Pick a starter (sales, c
 mkdir -p ~/.config/wingman/pack
 cp -R app/data/example-pack/. ~/.config/wingman/pack/     # run from the repository root
 ```
+
+Instead of writing cards by hand, you can let a model draft them from your own FAQ or notes. In `app/`, run `pnpm run pack:from-notes <file.txt|.md|.pdf>` (one model call, a few cents). It writes a draft folder; every card goes through the guards, and a card with a price, date or promise becomes a stall line. Nothing is written into your live pack: read the draft and copy what you want. Details: [PACK-FORMAT.md](PACK-FORMAT.md).
 
 Wingman looks in `~/.config/wingman/pack/` first (or in the folder named by `WINGMAN_PACK_DIR`), then in the example pack, file by file. Copy all five files so none of the invented example text mixes in.
 

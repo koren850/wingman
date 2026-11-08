@@ -14,6 +14,8 @@ Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup wi
 
 Then it says "You're ready". Press **Quick call**, or **Start** on a prepared meeting.
 
+The Wingman window itself is in English only. The setting `ui.language` (Settings, Audio and screens) sets the language of the labels in the answer window: `auto` shows Hebrew unless the speech language is English; `he` and `en` force one.
+
 Below the three steps is **Make it yours (optional)**. Nothing in it is needed to start, and each item can be skipped:
 
 - **About you.** Your name and how to address you. (Also in Settings later.)

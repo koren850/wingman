@@ -13,7 +13,8 @@ For anyone who wants to know how finished Wingman is, what has and has not been 
 - Answers for you, local math, call frame and checklist, tips, fact cards (with your own snapshot), capture chips, summary and follow-up draft.
 - Health ladder, reconnect buffer, cost caps, idle stop, sleep recovery, disk-space warning.
 - The `wingman` CLI over an owner-only socket.
-- A test suite of 680+ tests in 70+ files; a CI workflow (type check, tests and `pnpm eval` on macOS and Linux, Windows experimental); a synthetic QA harness with 32 invented scenarios; a UX review of the window and answer window with the findings fixed.
+- A self-contained app and .dmg build (unsigned), `wingman diagnose`, bilingual starter packs and `wingman pack from-notes`, a Focus layout for the answer window, language modules for the detector and guards.
+- A test suite of 750+ tests in 80+ files; a CI workflow (type check, tests and `pnpm eval` on macOS and Linux, Windows experimental); a synthetic QA harness with 32 invented scenarios; a UX review of the window and answer window with the findings fixed.
 - A deep test round (real Deepgram and Haiku, a 60-minute soak, failure injection, a 166-utterance answer-quality judge) on synthetic voices. Measured numbers: question recall 98 percent, right card about 86 percent on replay, Prepared first card p50 0.57 s and p95 1.9 s, math 0.43 s, AI answer for you 1.65 s, AI answer for them 1.4 s, 0 guard leaks, AI cost about 20 cents an hour in the longest test (roughly 5 to 20 cents an hour in normal use). Synthetic voices are cleaner than real speech, so treat these as optimistic.
 
 ## Verification status: not yet checked on real audio
@@ -30,6 +31,8 @@ Everything above ran on synthetic voices and hidden-window snapshots. Not yet ch
 - The 40-sentence Hebrew gate on a real recording (so far only the synthetic voice).
 - The installer and the guided setup on a clean Mac (real macOS permission prompts, a real Electron download).
 - The one-time migration with a real, large set of old calls.
+- The .dmg on a clean Mac, and the release workflow (it has not run yet).
+- `pack from-notes` with a real model and a real notes file (tests use a scripted double).
 - Audio restart after a real device change (AirPods off, a USB mic unplugged) and after a real lid close.
 
 ## Known limits
@@ -39,7 +42,7 @@ Everything above ran on synthetic voices and hidden-window snapshots. Not yet ch
 - Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.50 an hour (an estimate): about $1.40 for speech with Deepgram add-ons plus roughly 5 to 20 cents for AI. Prices in the config are estimates.
 - Not a recording or consent tool; the user is responsible for telling participants (see [PRIVACY-AND-SECURITY.md](PRIVACY-AND-SECURITY.md)).
 - Call files are not encrypted at rest.
-- No signed or notarised build (only ad hoc signed); the app runs the repo's code and needs Node 24 at launch. Permissions attach to the app or terminal that runs it.
+- No signed or notarised build (only ad hoc signed). The app built by `install.sh` runs the repo's code and needs Node 24 at launch; the .dmg from `pnpm dist` carries its own engine and needs neither. Permissions attach to the app or terminal that runs it.
 - Answer quality gaps seen in testing: slow-site, talk-over and vendor-hosting scenarios pick the right card less often than the baseline (speech garble and model choices); a Hebrew-English mix misses "גרסה של PHP"; team-call tech questions may get no card.
 - The question detector is rule-based and needs upkeep.
 - Soniox, Gladia and non-Anthropic AI models are tested only with mocks.
@@ -61,7 +64,7 @@ Everything above ran on synthetic voices and hidden-window snapshots. Not yet ch
 - Encrypted call storage with a retention sweeper.
 - A second STT or AI vendor proven on real Hebrew calls.
 - A signed, notarised installer.
-- Windows and Linux support for the live app (engine and replay first). Help wanted.
+- Windows and Linux support for the live app (engine and replay first). The `AudioBackend` interface exists; win32 and linux backends are stubs. Help wanted.
 - Optional ring-buffer polish after STT reconnects and connection keep-warm.
 
 Next: [Architecture](ARCHITECTURE.md) · [Development](DEVELOPMENT.md) · [Decisions](DECISIONS.md)

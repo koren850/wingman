@@ -41,6 +41,8 @@ Most people start calls from the app (Home, **Quick call**). `pnpm start` runs t
 | `pnpm settings` | Prints the effective settings, each value tagged with the layer it came from (never prints keys) |
 | `pnpm run doctor` / `--offline` | Tests the configured providers and their fallbacks, settings and the checklist. Ends with READY / NOT READY. `--offline` makes no audio, network or paid calls |
 | `pnpm diagnose [call id]` | Writes one file for a bug report: versions, changed settings, health and error events, device names, model and prompt ids, counts. No transcript or card text. Read it before you share it |
+| `pnpm run pack:from-notes <file>` | Drafts answer cards from your own notes (`.txt`, `.md`, `.pdf`) into a draft folder; every card goes through the guards. One model call; nothing is written into your live pack |
+| `pnpm dist` | Builds a self-contained, unsigned `Wingman.app` and `.dmg` (see [DEVELOPMENT.md](../docs/DEVELOPMENT.md#building-the-app-dmg)) |
 | `pnpm test` | Unit tests |
 
 ## Your profile and pack
@@ -111,7 +113,7 @@ Everything tunable is a setting; providers are swapped by setting, not by editin
 
 Invalid settings stop the start with the file, the key and the allowed values, exit code 2. `pnpm settings` shows what is in force and where each value came from. API keys are never settings. Other environment variables: `WINGMAN_DATA_DIR`, `WINGMAN_CALLS_DIR`, `WINGMAN_BRIEFS_DIR` (where your data lives), `WINGMAN_PACK_DIR` (your pack), `WINGMAN_PROFILE_FILE` (your profile file), `WINGMAN_APPS_DIR` and `WINGMAN_BIN_DIR` (where `install.sh` puts the app and the `wingman` link; defaults `/Applications` and `~/.local/bin`), `WINGMAN_SKIP_APP=1` (install without Electron and the app: CI and tests). Keys load in this order: process env, then the macOS Keychain (Deepgram, Anthropic), then the legacy `~/.config/wingman/keys.env` (`DEEPGRAM_API_KEY`, `ANTHROPIC_API_KEY`, and optionally `SONIOX_API_KEY`, `GLADIA_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`).
 
-**The Settings page.** The app's Settings page has these 25 options. Everything else is in the Advanced list (read-only) or in `~/.config/wingman/settings.yaml`. `config/defaults.yaml` documents all 139 values. Two are shown inverted in the app: "Use the AI at all" is the opposite of `run.noAi`, and "Show answer window in screen share" is the opposite of `overlay.contentProtection`.
+**The Settings page.** The app's Settings page has these 29 options. Everything else is in the Advanced list (read-only) or in `~/.config/wingman/settings.yaml`. `config/defaults.yaml` documents every value. Two are shown inverted in the app: "Use the AI at all" is the opposite of `run.noAi`, and "Show answer window in screen share" is the opposite of `overlay.contentProtection`.
 
 **Call**
 
@@ -119,6 +121,7 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 |---|---|---|
 | Language the call is heard in | `stt.language` | multi |
 | Ask me before listening starts | `privacy.requireConsentAck` | off |
+| Keep my audio out of Deepgram's model training | `stt.deepgram.mipOptOut` | off |
 | Ask before a call started from the command line starts listening | `privacy.askBeforeCliStart` | on |
 | Stop by itself after silence | `budget.idleStopMin` | 15 minutes |
 | Important cards only | `cards.focus` | on |
@@ -133,6 +136,7 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 | Use the AI at all | `run.noAi` | on |
 | AI answers to the other side's questions | `reflex.allowAns` | on |
 | Start every call in quiet mode | `cards.quiet` | off |
+| “Buy time” lines | `reflex.stall` | off |
 | Work out what the call is about | `frame.enabled` | on |
 | Live tips | `tips.enabled` | on |
 | Tell me when I talk too much | `tips.talkRatio` | on |
@@ -156,6 +160,7 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 |---|---|---|
 | Warn me about AirPods and Bluetooth | `audio.warnBluetooth` | on |
 | Answer window goes to | `overlay.display` | secondary |
+| Language of the answer window labels | `ui.language` | auto |
 | Answer window layout | `overlay.layout` | focus |
 | Show what the other side just said | `overlay.showLastLine` | on |
 | Size of the live text | `overlay.liveTextPt` | 22 pt |
@@ -165,7 +170,6 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 
 | Label in the app | Setting | Default |
 |---|---|---|
-| Wait before a “Buy time” line | `reflex.stallAfterMs` | 1.8 seconds |
 | How often to re-check the call | `frame.everyMs` | 60 seconds |
 | Time between tips, at least | `tips.minGapMs` | 120 seconds |
 | Background text the AI may read | `attachments.maxChars` | 40000 characters |
@@ -173,6 +177,8 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 
 Notes on a few of them:
 - `cards.focus` ("Important cards only"): a card only for a clear question to you (a question mark, a direct request, your name), at most 2 every 2 minutes. Price and date cards and the cards about what you said always show. Off: every likely question gets a card, up to `cards.maxPerMinute` (3). Interview mode ignores the limit.
+- `reflex.stall` (“Buy time” lines): off by default. Price, timeline and guarantee cards always show. `reflex.stallAfterMs` (1.8 s) is the wait before a stall line when `reflex.stall` is on; it is not on the Settings page.
+- `ui.language`: language of the answer window labels. `auto` shows Hebrew unless the speech language is English. The Wingman window itself is English only.
 - `privacy.askBeforeCliStart`: a call started with `wingman start` first asks you in a window in the app. Without your click the start is refused (exit 4). Practice calls never ask. Stopping a call with `--delete` always asks.
 - `privacy.requireConsentAck`: the call waits for **Start listening** before any audio is sent.
 - `overlay.allowPrimary`: lets the answer window open on the only screen. Never share that screen.

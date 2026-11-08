@@ -22,9 +22,9 @@ It works in English and in Hebrew, including calls that mix the two. Hebrew is a
 
 <p align="center"><sub>
 <a href="#the-hard-parts">Hard parts</a> ·
-<a href="#examples">Examples</a> ·
 <a href="#how-it-works">How it works</a> ·
 <a href="#evaluation">Evaluation</a> ·
+<a href="#examples">Examples</a> ·
 <a href="#quick-start">Quick start</a> ·
 <a href="#try-it-without-keys">Offline demo</a> ·
 <a href="#privacy-and-security">Privacy</a> ·
@@ -36,14 +36,15 @@ It works in English and in Hebrew, including calls that mix the two. Hebrew is a
 
 Latency figures come from the project's own synthetic-voice test rounds, so real calls with room noise will be slower. Everything else can be checked in this repository.
 
-- **Latency budget.** Prepared answers from a local bank appear about 0.6 s after the speaker stops (p95 about 1.9 s, including about 0.4 s of speech-to-text lag). Only questions the bank cannot answer go to Claude Haiku, behind a stall line forced at 1.8 s; answers to questions older than 4 s are dropped. See [the latency budget](docs/ARCHITECTURE.md#latency-budget-and-cost-model).
+- **Latency budget.** Prepared answers from a local bank appear about 0.6 s after the speaker stops (p95 about 1.9 s, including about 0.4 s of speech-to-text lag). Questions the bank cannot answer go to Claude Haiku, behind a stall line forced at 1.8 s; answers to questions older than 4 s are dropped. See [the latency budget](docs/ARCHITECTURE.md#latency-budget-and-cost-model).
 - **Guards are code, not prompts** ([ADR 13](docs/DECISIONS.md#adr-13-guards-are-code-not-prompts)). Deterministic filters for prices, dates and promises sit between the model and the screen. A hit becomes a "buy time" line instead of an invented number.
 - **A degrade ladder for live audio that goes wrong.** Two audio channels, so the speaker is always known. A ring buffer replays the last 2 s after a reconnect. A circuit breaker and a six-rung ladder (full, reduced AI, provider switch, bank only, transcript only, off) keep the call useful when a provider fails ([ADR 24](docs/DECISIONS.md#adr-24-a-degrade-ladder-and-cost-caps)). A per-call spend cap drops the model while prepared cards keep working.
 
 Also:
 
-- **Tested without a live call.** 680+ tests in 70+ files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 89% (84% branch) over the `src/`, `shared/` and `tray/` files the tests load (`pnpm test:coverage`); the Electron window code is exercised by snapshot tools, not unit tests.
-- **Private by design, decided in writing.** No telemetry, no cloud account, audio never stored on your Mac (it does go to Deepgram to be transcribed, see [Privacy and security](#privacy-and-security)). [docs/DECISIONS.md](docs/DECISIONS.md) holds 37 design records with context, alternatives and consequences, including what was left out on purpose ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [ADR 36](docs/DECISIONS.md#adr-36-web-lookup-is-not-built)).
+- **Built to grow.** One module per language (`src/lang/`, [ADR 38](docs/DECISIONS.md#adr-38-one-module-per-language-and-a-call-language)), one provider catalog, an `AudioBackend` interface for other platforms, and "never use X" rules enforced by ESLint instead of tests.
+- **Tested without a live call.** 750+ tests in 80+ files, an offline end-to-end replay with scripted speech and AI, and a synthetic QA harness with 32 invented scenarios rendered to audio. Quality gates use numbers ([ADR 3](docs/DECISIONS.md#adr-3-numeric-gates-instead-of-opinions)); see [Evaluation](#evaluation). Line coverage is about 91% (84% branch) over the `src/`, `shared/` and `tray/` files the unit tests load (`pnpm test:coverage` also runs the end-to-end tests, which add a little); the Electron window code is exercised by snapshot tools, not unit tests.
+- **Private by design, decided in writing.** No telemetry, no cloud account, audio never stored on your Mac (it does go to Deepgram to be transcribed, see [Privacy and security](#privacy-and-security)). [docs/DECISIONS.md](docs/DECISIONS.md) holds 42 design records with context, alternatives and consequences, including what was left out on purpose ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [ADR 36](docs/DECISIONS.md#adr-36-web-lookup-is-not-built)).
 
 ## Screenshots
 
@@ -56,6 +57,41 @@ Also:
 | <img src="docs/ux/answer-window-more.png" alt="The answer window with the More panel open: captured details, a checklist, a client card and AI notes" width="400"> | <img src="docs/ux/for-you-card.png" alt="The answer window with a Hebrew card, right-to-left" width="400"> |
 
 A guided tour of every part of the windows: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#tour-of-the-windows). All screenshots use invented data. The Hebrew card answers "What is the difference between a CDN and DNS?": a CDN spreads copies of the site to servers near the visitor, and DNS only translates a domain name into the server's address.
+
+## How it works
+
+```mermaid
+flowchart LR
+  mic["Microphone (you)"] --> stt
+  sys["System audio (them)<br/>AudioTee, Core Audio tap"] --> stt
+  stt["Deepgram Nova-3<br/>one stream per channel"] --> det["Question detector<br/>(local, English and Hebrew)"]
+  det --> bank["Prepared bank<br/>(local, about 0.6 s)"]
+  det --> llm["Claude Haiku<br/>skip, stall, bank pick or AI answer<br/>(about 1-2 s)"]
+  bank --> guards["Guards<br/>price, date, promise"]
+  llm --> guards
+  guards --> win["Answer window<br/>(second screen)"]
+  health["Health supervisor<br/>degrade ladder + cost cap"] -. "full, reduced AI,<br/>provider switch, bank only,<br/>transcript only" .-> llm
+  health -.-> stt
+```
+
+Two audio channels go to the speech service, one per side, so Wingman always knows who said what. A local detector decides whether a line from the other side is a question. The bank is tried first because it is fast, free and written by you. A small AI model decides whether to skip, stall, pick a bank card or write an answer, and every AI line passes the code guards before it can be shown. If a provider fails or the spend cap is reached, the health supervisor steps down a rung between questions, and steps back up when things are stable. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Evaluation
+
+Everything below runs offline, with no API keys and no private data.
+
+| Component | Test set | Result |
+|---|---|---|
+| Question detector (Hebrew, local) | 60 labelled lines (30 question, 30 not) | precision 100%, recall 100% |
+| Question detector on call scenarios | 217 labelled turns from 32 synthetic calls | precision 97.0%, recall 100% (4 false positives, 0 misses) |
+| Answer-bank matcher | 40 held-out utterances | top-1 93% (37/40), wrong card 3% (1/40), no card 5% (2/40) |
+| Guards (price / date / promise) | 76 must-block, 53 must-pass sentences (technical ones such as "TLS 1.3" and "nginx 1.5", invoice numbers) | 76/76 blocked with the right rule, 0/53 false positives |
+| Practice-mode salary guard | 12 must-block, 6 must-pass | 12/12, 0/6 |
+| Whole suite | 750+ tests (730+ unit, 21 end-to-end) in 80+ files | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
+
+Reproduce: `cd app && pnpm eval` prints these numbers and fails if one drops below `qa/eval-baseline.json`. CI runs it on every push.
+
+Caveats: the sets are small and were used while tuning, so treat them as regression gates, not as generalisation estimates. Most of them are Hebrew, so English coverage is thinner. The live model is only called by `pnpm qa`, which needs paid keys.
 
 ## Examples
 
@@ -137,46 +173,12 @@ More worked examples: [docs/EXAMPLES.md](docs/EXAMPLES.md).
 | **About the call, tips and checklist** | Detects what kind of call it is, keeps a checklist of what it should cover and shows at most one tip every two minutes. |
 | **Group call mode** | Tells several speakers apart. When they talk among themselves, cards wait; when someone turns to you, an alert shows who. |
 | **Practice and mock-interview mode** | A practice coach: rehearse with a pretend client or a mock interview, using your own notes, then review. Not for live use in real interviews. See [Responsible use](#responsible-use). |
+| **Starter packs** and `pack from-notes` | Pick a starter (sales, support, interview practice, or empty; Hebrew and English) in the setup, or run `wingman pack from-notes <file>` to draft cards from your own notes. Every draft passes the guards; a card with a price, date or promise becomes a stall line. Nothing goes live until you copy it. |
 | **Summary** | Summary, decisions, next steps, open questions and a follow-up email draft. Prices and promises become placeholders for you to fill in. |
 | **Health and fallbacks** | A visible bar when something degrades, and a ladder that keeps the call going. See [How it works](#how-it-works). |
-| **Menu-bar app and CLI** | Home, Calls and Settings in an Electron app, a guided first-run setup, a readiness check and a `wingman` command line. |
+| **Menu-bar app, CLI and diagnose** | Home, Calls and Settings in an Electron app, a three-step guided setup (Try it, Connect, Allow), a readiness check, the **Focus** answer window (one big card, a More panel) and a `wingman` command line, including `wingman diagnose` for a bug report with no call text. |
 
 More in the [user guide](docs/USER-GUIDE.md).
-
-## How it works
-
-```mermaid
-flowchart LR
-  mic["Microphone (you)"] --> stt
-  sys["System audio (them)<br/>AudioTee, Core Audio tap"] --> stt
-  stt["Deepgram Nova-3<br/>one stream per channel"] --> det["Question detector<br/>(local, English and Hebrew)"]
-  det --> bank["Prepared bank<br/>(local, about 0.6 s)"]
-  det --> llm["Claude Haiku<br/>skip, stall, bank pick or AI answer<br/>(about 1-2 s)"]
-  bank --> guards["Guards<br/>price, date, promise"]
-  llm --> guards
-  guards --> win["Answer window<br/>(second screen)"]
-  health["Health supervisor<br/>degrade ladder + cost cap"] -. "full, reduced AI,<br/>provider switch, bank only,<br/>transcript only" .-> llm
-  health -.-> stt
-```
-
-Two audio channels go to the speech service, one per side, so Wingman always knows who said what. A local detector decides whether a line from the other side is a question. The bank is tried first because it is fast, free and written by you. A small AI model decides whether to skip, stall, pick a bank card or write an answer, and every AI line passes the code guards before it can be shown. If a provider fails or the spend cap is reached, the health supervisor steps down a rung between questions, and steps back up when things are stable. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Evaluation
-
-Everything below runs offline, with no API keys and no private data.
-
-| Component | Test set | Result |
-|---|---|---|
-| Question detector (Hebrew, local) | 60 labelled lines (30 question, 30 not) | precision 100%, recall 100% |
-| Question detector on call scenarios | 217 labelled turns from 32 synthetic calls | precision 97.0%, recall 100% (4 false positives, 0 misses) |
-| Answer-bank matcher | 40 held-out utterances | top-1 93% (37/40), wrong card 3% (1/40), no card 5% (2/40) |
-| Guards (price / date / promise) | 76 must-block, 53 must-pass sentences (technical ones such as "TLS 1.3" and "nginx 1.5", invoice numbers) | 76/76 blocked with the right rule, 0/53 false positives |
-| Practice-mode salary guard | 12 must-block, 6 must-pass | 12/12, 0/6 |
-| Whole suite | 680+ tests (660+ unit, 21 end-to-end) in 70+ files | all pass: unit in about 40 s (`pnpm test:unit`), end-to-end in about 4 min (`pnpm test:e2e`) |
-
-Reproduce: `cd app && pnpm eval` prints these numbers and fails if one drops below `qa/eval-baseline.json`. CI runs it on every push.
-
-Caveats: the sets are small and were used while tuning, so treat them as regression gates, not as generalisation estimates. Most of them are Hebrew, so English coverage is thinner. The live model is only called by `pnpm qa`, which needs paid keys.
 
 ## Tech stack
 
@@ -186,6 +188,7 @@ Caveats: the sets are small and were used while tuning, so treat them as regress
 | Speech to text | Deepgram Nova-3 (Soniox and Gladia adapters, experimental) | Streaming, per-channel, handles Hebrew with English terms |
 | AI | Claude Haiku through the Vercel AI SDK | Low time to first token; prompt prefix cached |
 | System audio | AudioTee (Core Audio tap), ffmpeg for the microphone | No virtual audio driver needed |
+| Packaging | electron-builder, esbuild | Self-contained unsigned .dmg (`pnpm dist`); no Node needed |
 | App, tests | Electron; Node test runner, GitHub Actions (macOS, Linux) | Content protection and second-screen placement; offline end-to-end replay |
 
 ## Quick start
@@ -194,7 +197,7 @@ Caveats: the sets are small and were used while tuning, so treat them as regress
 
 - macOS 14.2 or newer (system audio uses a Core Audio tap)
 - Node 24 or newer (the installer does not install it), `ffmpeg` for the microphone (the installer offers `brew install ffmpeg`), pnpm 11 (comes with corepack)
-- A second screen: with one screen the answer window refuses to open, so it cannot end up in a screen share
+- A second screen: with one screen the answer window stays closed by default, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it)
 - For live calls, a Deepgram key and an Anthropic key. Cost is about $1.50 per hour of call (an estimate, see [Cost](#cost))
 
 Optional: `poppler` to attach PDF files to a meeting. Other systems: see [Platforms](#platforms).
@@ -207,9 +210,9 @@ cd wingman && ./install.sh                 # checks the Mac, installs, builds Wi
 
 `./install.sh --check` shows what is present and changes nothing; `--dry-run` shows every step; `--uninstall` removes it. The installer never uses sudo and asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg`. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`).
 
-**Download (coming soon, unsigned builds for now).** A ready-made `Wingman.app` in a `.dmg` (no Node, no `git clone`) can be built with `pnpm dist` today. No download is published yet, and the first builds will not be signed by Apple, so macOS will ask you to confirm the first start. Details: [Building the app](docs/DEVELOPMENT.md#building-the-app-dmg).
+**Download (coming soon, unsigned builds for now).** A self-contained `Wingman.app` in a `.dmg` (no Node, no `git clone`) can be built with `pnpm dist` today. No download is published yet, and the first builds will not be signed by Apple, so macOS will ask you to confirm the first start. Details: [Building the app](docs/DEVELOPMENT.md#building-the-app-dmg).
 
-Then open **Wingman**. A guided setup starts with a free **practice call** (a pretend client; offline, no keys needed), then walks you through keys, your privacy choices, your name, permissions, microphone, screens, the answer pack and a readiness check. Full steps: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#first-run). Problems: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+Then open **Wingman**. A guided setup has three required steps: **Try it** (a free practice call with a pretend client, offline, no keys), **Connect** (paste your two keys) and **Allow** (microphone, System Audio Recording, your screens). After that, **Make it yours** is optional: your name, privacy choices, microphone, starter answers and a readiness check. The main window is in English; `ui.language` sets the language of the answer window. Full steps: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#first-run). Problems: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ### Languages
 
@@ -239,7 +242,7 @@ Live calls need two keys, both paid services billed to you by the provider:
 1. **Deepgram** (speech to text): sign up at [console.deepgram.com/signup](https://console.deepgram.com/signup). New accounts have usually received free starting credit; check their pricing page. Create an API key in the console.
 2. **Anthropic** (the AI): create an account at [platform.claude.com](https://platform.claude.com) (the old console.anthropic.com address redirects there), add a few dollars of credit under Billing, and create a key under [Settings, API keys](https://platform.claude.com/settings/keys).
 
-Paste both keys into the first-run setup (step 1, "Keys") or later in **Settings, Keys**. They are stored in the macOS Keychain. From a terminal you can use `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never put keys in the repo.
+Paste both keys into the first-run setup (step 2, "Connect") or later in **Settings, Keys**. They are stored in the macOS Keychain. From a terminal you can use `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never put keys in the repo.
 
 #### Cost
 
@@ -280,7 +283,7 @@ The docs also have a "What leaves your Mac" table and a "Known gaps" list: [docs
 Tell the other people on the call that you use Wingman, and follow the recording and privacy laws that apply to you (some places require everyone's consent). It is not a recording or consent tool and gives no legal advice.
 
 - **Consent default.** Listening starts with the call: there is no consent step by default ([ADR 29](docs/DECISIONS.md#adr-29-consent-step-removed-optional-ask-me-before-listening-starts)). If you want a pause first, turn on **Ask me before listening starts** in Settings: nothing is sent to the cloud until you press Start listening. Who to tell, and how, is your decision and your responsibility.
-- **Answer window and screen sharing.** The answer window sits on a second screen and asks the system to hide it from screen capture (`overlay.contentProtection`, on by default). That is so your own notes do not show up in a share. It has not been tested with Zoom, Meet or Teams yet (see the [roadmap](docs/ROADMAP.md)), so check it before you rely on it. With one screen the window refuses to open.
+- **Answer window and screen sharing.** The answer window sits on a second screen and asks the system to hide it from screen capture (`overlay.contentProtection`, on by default). That is so your own notes do not show up in a share. It has not been tested with Zoom, Meet or Teams yet (see the [roadmap](docs/ROADMAP.md)), so check it before you rely on it. With one screen it stays closed unless you allow it in the setup (then never share that screen).
 - **Practice and mock-interview mode is a practice coach.** You rehearse with your own notes and get suggested answers in your own words, then review. It is not for live use in a real job interview or an exam: do not use Wingman where outside help is forbidden ([ADR 35](docs/DECISIONS.md#adr-35-scope-no-real-job-interviews-or-exams), [user guide](docs/USER-GUIDE.md#practice-and-prep-mode)). The rule is social, not technical; the tool cannot enforce it.
 
 ## Platforms
@@ -289,7 +292,7 @@ Tell the other people on the call that you use Wingman, and follow the recording
 |---|---|
 | macOS 14.2+ | Supported: the full app, live calls and the installer. |
 | Linux | Engine, file replay (`--file`), command line and offline demo run and are tested in CI. No live system-audio capture, menu-bar app or installer. |
-| Windows | Planned. The engine and unit tests pass in CI. System audio capture and an installer are not done yet. **Help wanted**, see [CONTRIBUTING.md](CONTRIBUTING.md). |
+| Windows | Planned. The engine and unit tests pass in CI, and audio capture sits behind an `AudioBackend` interface whose Windows backend is still a stub. System audio capture and an installer are not done yet. **Help wanted**, see [CONTRIBUTING.md](CONTRIBUTING.md). |
 
 Limits: Wingman needs the internet and both keys for live calls, and its answers are hints, not facts. More in the [roadmap](docs/ROADMAP.md).
 
@@ -304,13 +307,13 @@ Limits: Wingman needs the internet and both keys for live calls, and its answers
 | Fix no sound, permissions, install or slow-AI problems | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
 | Set up the code, run tests, the QA harness and snapshot tools | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Understand the components, data flow, latency and cost | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| See why it is built this way (37 decision records) | [docs/DECISIONS.md](docs/DECISIONS.md) |
+| See why it is built this way (42 decision records) | [docs/DECISIONS.md](docs/DECISIONS.md) |
 | Check what data goes where, and how to report a vulnerability | [docs/PRIVACY-AND-SECURITY.md](docs/PRIVACY-AND-SECURITY.md), [SECURITY.md](SECURITY.md) |
 | Know what is verified, what is not, and what comes next | [docs/ROADMAP.md](docs/ROADMAP.md) |
 | Look up settings, hotkeys and commands | [app/README.md](app/README.md) |
 | Read release notes or about the logo | [CHANGELOG.md](CHANGELOG.md), [brand/README.md](brand/README.md) |
 
-Layout: `install.sh` (installer), `app/` (engine in `src/`, menu-bar app in `tray/`, main window in `dashboard/`, answer window in `overlay/`, QA in `qa/`, settings in `config/`, shipped data in `data/`), `docs/`, `brand/`, `.github/`.
+Layout: `install.sh` (installer), `app/` (engine in `src/`, menu-bar app in `tray/`, main window in `dashboard/`, answer window in `overlay/`, QA in `qa/`, settings in `config/`, shipped data in `data/`, one module per language in `src/lang/`), `docs/`, `brand/`, `.github/`.
 
 ## Contributing
 

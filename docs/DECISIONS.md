@@ -43,6 +43,11 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [35](#adr-35-scope-no-real-job-interviews-or-exams) | Scope: no real job interviews or exams |
 | [36](#adr-36-web-lookup-is-not-built) | Web lookup is not built (on purpose) |
 | [37](#adr-37-quick-call-and-several-prepared-meetings) | Quick call and several prepared meetings |
+| [38](#adr-38-one-module-per-language-and-a-call-language) | One module per language, and a call language |
+| [39](#adr-39-focus-layout-is-the-default-answer-window) | Focus layout is the default answer window |
+| [40](#adr-40-a-self-contained-unsigned-app-bundle) | A self-contained, unsigned app bundle |
+| [41](#adr-41-setup-is-three-steps-and-practice-comes-first) | Setup is three steps, and practice comes first |
+| [42](#adr-42-pack-drafts-from-notes-pass-the-guards-and-never-touch-the-live-pack) | Pack drafts from notes pass the guards and never touch the live pack |
 
 ---
 
@@ -58,7 +63,7 @@ Date: 2026-11-03
 
 **Alternatives.** A full cross-platform product from day one (the original plan).
 
-**Consequences.** macOS only. Run from a terminal or the local app, no signed build. The bank and house style in the repo are an invented example pack; replace them with your own pack.
+**Consequences.** macOS only. Run from a terminal or the local app, no signed build. A self-contained, still unsigned, .dmg build exists (ADR 40). The bank and house style in the repo are an invented example pack; replace them with your own pack.
 
 ## ADR 2: A first version before the big structure
 
@@ -368,19 +373,21 @@ Date: 2026-11-03
 
 **Consequences.** Fallback providers are only tested with mocks. Other LLM vendors need an extra package install. A fallback is never tried after an answer has started streaming.
 
+**Update (2026-11-08).** Provider ids and key variables are listed once, in `providers/catalog.ts`; audio capture sits behind `AudioBackend` (macOS only, win32 and linux are stubs).
+
 ## ADR 24: A degrade ladder and cost caps
 
 Date: 2026-11-03
 
 **Context.** Slow or failing services must never block the call, and silence is the failure we cannot afford.
 
-**Decision.** A health supervisor moves between: full, reduced AI (bank plus stall only), provider switch, bank only, transcript only, off. It changes only between questions and recovers after a calm minute. A persistent bar shows the current state. The AI spend per call is capped (default $2): at the cap Wingman drops to Prepared-only. Speech spend is shown but not capped. A speech outage retries forever instead of ending the call; only a rejected key or no credit ends it. The call stops itself after 15 minutes of silence.
+**Decision.** A health supervisor moves between: full, reduced AI (the AI is slow: answers keep coming and a late one is dropped), provider switch, bank only (Prepared cards and stall lines), transcript only, off. It changes only between questions and recovers after a calm minute. A persistent bar shows the current state. The AI spend per call is capped (default $2): at the cap Wingman drops to Prepared-only. Speech spend is shown but not capped. A speech outage retries forever instead of ending the call; only a rejected key or no credit ends it. The call stops itself after 15 minutes of silence.
 
 **Why.** Rule 1: a failure never produces a wrong card. Rule 2: a failure is always visible. Rule 3: the fallback is always "carry on without Wingman".
 
 **Alternatives.** Fail hard and stop the call.
 
-**Consequences.** More states to test.
+**Consequences.** More states to test. Rung 1 keeps the model on while it is only slow, so a slow model costs some cards, not all of them (changed in round 8; the first version dropped to bank plus stall at once).
 
 ## ADR 25: An Electron menu-bar app
 
@@ -396,19 +403,23 @@ Date: 2026-11-03
 
 **Consequences.** A larger install. No signed or notarised build yet; macOS permissions attach to the app that runs it.
 
+**Update (2026-11-07).** A self-contained app and .dmg can now be built (see ADR 40); the launcher that loads repo code is still the dev route.
+
 ## ADR 26: The answer window design
 
 Date: 2026-11-03
 
 **Context.** The user reads it in a glance while talking, on a second screen, mostly in Hebrew with English words.
 
-**Decision.** A frameless always-on-top window that never takes focus. The newest answer is the hero: large, fixed font size (`overlay.fontPt`, default 30), right-to-left with isolated Latin runs. Older answers are small. Colour is reserved for state: red and amber only for problems. Pause hides the window's content but keeps collecting cards, so unpausing shows what was missed. Clear, pause, rewind ("what did they say", last 30 s as text), copy and checklist are global hotkeys, because a non-focusable window cannot take key presses. Content protection is on. With a single screen the window refuses to open, so it cannot be shared by accident.
+**Decision.** A frameless always-on-top window that never takes focus. The newest answer is the hero: large, fixed font size (`overlay.fontPt`, default 30), right-to-left with isolated Latin runs. Older answers are small. Colour is reserved for state: red and amber only for problems. Pause hides the window's content but keeps collecting cards, so unpausing shows what was missed. Clear, pause, rewind ("what did they say", last 30 s as text), copy and checklist are global hotkeys, because a non-focusable window cannot take key presses. Content protection is on. With a single screen the window refuses to open by default, so it cannot be shared by accident; `overlay.allowPrimary` (a setup toggle) lets a user who accepts the risk open it on the main screen.
 
 **Why.** Fixed sizes mean no jumping text while speaking; big text for a glance; protection from accidental screen share.
 
 **Alternatives.** Auto-sizing text; a window on the main screen; three visual "skins" (built, tried, then deleted in the UX audit).
 
 **Consequences.** Content protection is untested with Zoom: the second screen is the real protection. Never share the primary screen with the window on it.
+
+**Update (2026-11-07).** The default layout is now Focus (see ADR 39). The description above is the `full` layout (`overlay.layout: full`).
 
 ## ADR 27: The window hides the live conversation
 
@@ -508,6 +519,8 @@ Date: 2026-11-03
 
 **Consequences.** The script is fixed, so it shows the bank and stall paths, not live AI.
 
+**Update (2026-11-08).** The practice call is bilingual and is the first of three setup steps (ADR 41).
+
 ## ADR 34: A small user-visible glossary
 
 Date: 2026-11-03
@@ -565,3 +578,73 @@ Date: 2026-11-03
 **Alternatives.** Keep one Plan and add a Quick button (does not allow two meetings in one day). Pick the next meeting automatically on plain `start` (guesses wrong when two meetings are close). Delete a used meeting at once (loses which Plan a call had).
 
 **Consequences.** `wingman plan set` without `--id` edits only when exactly one meeting exists (it creates the first one when none exist, and refuses with several). `plan clear` works only with one meeting. The control socket `start` and `practice` commands take `quick` / `planId`; `brief_refresh` keeps its name and now re-reads the meetings.
+
+## ADR 38: One module per language, and a call language
+
+Date: 2026-11-08
+
+**Context.** The detector cues and the guard patterns were Hebrew lists spread over several files, with English added on the side. Adding a language meant finding every list, and a language without guard patterns would have passed price and date text unchecked. The helper prompts (summary, notes, tips, frame) always answered in Hebrew.
+
+**Decision.** Each spoken language is one `Language` module in `src/lang/` (question heads and cues, request cues, fillers, number words, and the price, date, promise and salary patterns). The type has no optional fields, so a language cannot compile without its guard patterns, and `lang.test.ts` fails if a family is empty. Helper prompts use `callLanguage(text, stt.language)`: `en` when `stt.language` is `en`, otherwise by the share of Hebrew letters in the call text (25 percent or more is Hebrew). With no text, or too little to judge, it stays Hebrew.
+
+**Why.** A new language is one file and cannot skip the guards (ADR 13). Keeping Hebrew as the default means a Hebrew call never changes behaviour. The move was checked with the eval: the numbers are byte-identical, and 23,000 test strings gave identical results before and after.
+
+**Alternatives.** A per-call language setting only (users forget it, and mixed calls break it). Language detection by a model (a cost and a delay on every call).
+
+**Consequences.** About 700 Hebrew lines (normalisation, some fact-card words) are still outside `src/lang/`. A call with a few English words in Hebrew speech stays Hebrew by design. Languages other than English and Hebrew are still not supported; the engine shows a notice (ADR 8).
+
+## ADR 39: Focus layout is the default answer window
+
+Date: 2026-11-07
+
+**Context.** The first answer window (ADR 26) showed the newest answer large, older answers small, and every panel at once. In practice it was too busy to read in a glance while talking, and most of what it showed (checklist, client card, notes) is needed only in pauses.
+
+**Decision.** The default layout (`overlay.layout: focus`) shows the other side's last line, one big answer and a bar with three main keys (Ask AI, More, Pause). The checklist, client card, notes and captured details sit in a **More** panel (Ctrl+Opt+L). The earlier layout stays as `overlay.layout: full`. The Settings page offers the choice.
+
+**Why.** One thing to read at a time. The second screen is already the place for answers; the extra panels competed with them.
+
+**Alternatives.** Keep the full layout and add a quiet mode (it hides everything, not just the extras). Auto-hide panels after a few seconds (text that moves is hard to read).
+
+**Consequences.** Two layouts to test and photograph (the screenshots in `docs/ux/` show Focus). The font-size setting `overlay.fontPt` applies to the answer; `overlay.liveTextPt` applies to the other side's line.
+
+## ADR 40: A self-contained, unsigned app bundle
+
+Date: 2026-11-07
+
+**Context.** The installer builds an app that loads the checkout and needs Node 24 at launch (ADR 25). That is fine for a developer and wrong for a person who only wants to try it. There is no Apple Developer account yet.
+
+**Decision.** `pnpm dist` builds a self-contained `Wingman.app` and `.dmg` with electron-builder. esbuild bundles the engine into `src/*.mjs`. The app starts its own executable for each tool (`Wingman --wingman-tool <name>`, `Wingman --wingman-overlay`); only names in the allow-list `shared/bin.cjs` run, and no path from the command line is loaded. There is no asar, because the engine runs child processes and the audiotee binary from the app folder. The `RunAsNode` fuse stays off. The build is ad hoc signed, not notarised; signing and notarising are switched on by environment variables when an account exists. A release workflow builds the .dmg on a `v*` tag.
+
+**Why.** One config for the .dmg, signing and the update files. The tool allow-list keeps the closed-down app from becoming a free Node runtime, which is the reason the fuse is off.
+
+**Alternatives.** Electron Forge (a separate maker for each target). Bundling a Node binary next to a thin launcher (works, but leaves the fuse question open). Waiting for a signed build before publishing anything (delays real use by weeks).
+
+**Consequences.** macOS asks the user to confirm the first start, and the microphone and system-audio permissions again after each build, because an ad hoc signature changes with every build. The `wingman` command line stays a dev feature. `ffmpeg` is found on the PATH. The release workflow has not run yet.
+
+## ADR 41: Setup is three steps, and practice comes first
+
+Date: 2026-11-08
+
+**Context.** The first-run setup had about ten items in a row (keys, privacy, name, permissions, microphone, screens, pack, readiness check). New users met paid keys before they had seen the product work.
+
+**Decision.** Three required steps: **Try it** (a free practice call with a pretend client, offline, no keys), **Connect** (the two keys, with a Test button and the cost shown), **Allow** (microphone, System Audio Recording, screens). Everything else moves under **Make it yours (optional)**: About you, privacy choices, microphone, starter answers, readiness check. Each can be skipped and reopened from Settings. The main window uses plain names (Quick call, Prepared meetings) and a small glossary (ADR 34).
+
+**Why.** Show the product first, ask for money and permissions second. The privacy choices are real but have safe defaults (ADR 29), so they should not block a first call.
+
+**Alternatives.** One long wizard (the first version). A video before setup.
+
+**Consequences.** A user can reach "You're ready" without choosing a microphone, and the answer pack is the example one until they pick a starter (ADR 42). System Audio Recording has no live status in macOS, so Allow asks the user to confirm and restart.
+
+## ADR 42: Pack drafts from notes pass the guards and never touch the live pack
+
+Date: 2026-11-08
+
+**Context.** Writing a bank by hand is the biggest cost of using Wingman. A model can draft cards from a user's FAQ or notes, but a drafted answer that states a price or a date would put an invented number into the fastest, most trusted path (Prepared cards, no AI label).
+
+**Decision.** `wingman pack from-notes <file.txt|.md|.pdf>` makes one model call and writes a draft folder. Every draft card goes through `guard()`. A card whose answer states a price, a date or a promise is not kept as an answer: its triggers move to `stall-price`, `stall-timeline` or `stall-guarantee`, and the report says so. Nothing is written into the live pack; the user reads the draft and copies what they want. The notes file follows the same checks as `plan attach` (no links, no key files, inside the home folder unless forced). Starter packs (sales, support, interview practice, empty) ship in Hebrew and English as plain files the setup copies.
+
+**Why.** Guards are code, not prompts (ADR 13): the same rule applies to drafts. A draft the user must read keeps a person responsible for what Wingman will say.
+
+**Alternatives.** Let the model write the pack straight into place (fast, but an invented number can go live). Only starter packs (no help for a user's own business).
+
+**Consequences.** Drafts need a human pass, and the model only sees the notes. The dashboard has no button for it yet; it is a CLI command. Tests use a scripted model double, so the real quality of drafts is unmeasured.
