@@ -40,6 +40,7 @@ import { runMoment, type MomentDone, type MomentRole } from "../moments/run.ts";
 import type { ParsedMoment } from "../moments/parse.ts";
 import type { ObserverWindow } from "../moments/observer.ts";
 import { seedFromDigest } from "../session/seed.ts";
+import { isEmptyMemory } from "../session/types.ts";
 import { guard } from "../guards.ts";
 import { leakedTag, resolveBankId, wrongLanguage } from "../reflex.ts";
 import { stallSay, STALL_TIER, type BankCard } from "../bank.ts";
@@ -73,6 +74,7 @@ let seeded = false;
 export function ensureSeeded(): void {
   if (seeded) return;
   seeded = true;
+  if (st.m.mem.ver > 0 || !isEmptyMemory(st.m.mem)) return; // the memory loop already set it (a resumed call, or a patch came first)
   try {
     const facts = [...contextNotes];
     if (!facts.length && !brief?.mustCover?.length) return;

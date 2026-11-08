@@ -108,6 +108,21 @@ New model-driven features are tested with these tools, all in `app/src/testkit/`
 - **Golden helpers** (`e2e/helpers.ts`). `replayOnVClock` plays `Golden.lines` in this process. `runGolden` plays them into the real engine (`src/run.ts`) with scripted speech and the policy fake (profile `e2e-policy`) and returns the card timeline: id, kind, text, and ms after the line. The engine is one process per call and keeps its real clock, so `runGolden` runs in real time (use `speed` to compress the gaps between lines).
 - `legacyScripted` (also exported as `scriptedAnswer`) is the old keyword fake. It stays until the v2 engine is in; do not use it in new tests.
 
+## v2 gate tests (`app/src/e2e/v2-*.test.ts`)
+
+Six files prove the v2 engine as a whole. They use no network and no key. Run one with `./node_modules/.bin/tsx --import ./src/test-setup.ts --test src/e2e/v2-<name>.test.ts`; all six together take about two minutes.
+
+| File | What it proves |
+|---|---|
+| `v2-latency` | Time to the first card on the virtual clock: a model answer (p50 1.5 s, p95 2.5 s), a bank hit (0.6 s, 1.9 s), the stall line by 1.8 s, a late observer card (more than 6 s) dropped, a hung memory updater adds no delay. |
+| `v2-cost` | Price per call and per role from `usage.jsonl`, replayed over the golden dev meetings, against the PLAN table. Fails at +20 percent per role. Also dollars per hour (gate: $0.25) and a what-if for the cache layout. |
+| `v2-golden` | The golden dev meetings through the real engine modules with the memory loop on, graded by `qa/grade-golden.ts`, with the null control, the noise control and the noisy-transcript delta. |
+| `v2-resilience` | The failure matrix: model down, slow, 429 storm, truncated and garbage replies, STT down, both down, corrupt `session.json`, a real SIGKILL during a save, clock jump, no brief, a 5 MB brief. Each case: no empty screen, a bar when something is wrong, no crash. |
+| `v2-soak` | A 3-hour call on the virtual clock with faults (disk full for the memory, a corrupt `session.json`, a 5-minute model outage, a clock jump). Calls per hour, cost per hour and memory size stay bounded. |
+| `v2-prompts` | Prompt snapshots for moment, observer, memory, compact and wrap-up, the block layout, and a check that the memory reaches the moment and observer prompts. |
+
+How they work: `v2-kit.ts` wraps the policy fake so that every call reports the usage of its real prompt, with a simulated prompt cache (a marked prefix is cached from 1024 tokens, read at the cache-read price, written at the cache-write price). `v2-worker.ts` plays one golden meeting in a child process, because the engine is one call per process. Scripted replies prove plumbing, timing, budgets and state logic. They do not prove model judgement or Hebrew quality; that needs a recorded run (`pnpm cassette:record`).
+
 ## QA harness
 
 ```bash

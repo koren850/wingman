@@ -733,3 +733,16 @@ Date: 2026-11-08
 
 **Consequences.** One extra model call per ask or recap (about a cent per ten uses). The overlay opens the sheet on `view` rows with `showRecap`; wiring the digest to the Prepare screen is left to the live UI package.
 
+## ADR 49: The v2 engine is proven by gate tests on the virtual clock, and prompts are snapshots
+
+Date: 2026-11-08
+
+**Context.** The v2 engine has many parts (hint, observer, scheduler, memory loop, cards, ask, wrap-up). Unit tests of each part passed while the whole did not work: the moment and observer calls never saw the memory the loop built. Only a snapshot of the real prompt showed it.
+
+**Decision.** (1) Six e2e files (`app/src/e2e/v2-*.test.ts`) test the whole engine: latency, cost, golden meetings, a failure matrix, a 3-hour soak, and prompts. (2) The policy fake reports usage computed from the real prompt, with a simulated prompt cache, so cost rows in `usage.jsonl` are honest even without a key. (3) Every role has a prompt snapshot in `data/snapshots/prompts/`, taken from a real call, with the cache marker of each block. A prompt change is a reviewed diff. (4) Prompt tuning uses the dev split only. With scripted replies it can fix structure, size, cache layout and parse robustness. It cannot fix model judgement.
+
+**Why.** A reviewed text diff is the cheapest way to see what the model gets. A simulated cache makes cost regressions visible before a bill.
+
+**Alternatives.** Only recorded cassettes (need a key and money for each run). Only unit tests (they missed the memory bug).
+
+**Consequences.** The scripted scores are marked provisional. The release gate still needs a recorded run on the dev and test splits. The cache simulation assumes a 1024-token minimum for a cached prefix; a model with a larger minimum would cache less.

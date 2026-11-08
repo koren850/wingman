@@ -244,6 +244,7 @@ export function memoryLoop(): MemoryLoop | undefined {
       log: (stream, row) => log.write(stream, row),
       allowed: () => st.call.consented && !st.call.shuttingDown && sup.caps.llm && cost.llmState() !== "capped",
       onChange: (m, prev) => {
+        st.m.mem = m; // the moment and observer calls read st.m.mem: they must see what the call has taught the memory
         // A resolved item closes the cards that point at it.
         const open = new Set([
           ...m.openQuestions.filter((q) => q.status === "open").map((q) => q.id),
@@ -259,6 +260,7 @@ export function memoryLoop(): MemoryLoop | undefined {
     memCfg,
     mem,
   );
+  st.m.mem = mem;
   try {
     saveMemory(log.dir, mem); // the seed is on disk from the first second
   } catch (e) {
