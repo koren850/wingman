@@ -10,6 +10,8 @@ const lib = require("../tray/lib.cjs");
 const catalog = require("../tray/settings-catalog.cjs");
 const data = require("./lib.cjs");
 const { createLiveTail } = require("./livetail.cjs");
+const memLib = require("./memlib.cjs");
+const prepareLib = require("./prepare.cjs");
 const liveFixture = require("./livefixture.cjs");
 const attachments = require("../tray/attachments.cjs");
 const Plans = require("../shared/plans.js");
@@ -252,7 +254,29 @@ function create(ctx) {
 
   // ---- calls (review) ----
   handle("calls:list", () => data.listCallsAsync(CALLS));
-  handle("calls:get", (id) => data.getCall(CALLS, id));
+  // The user's own names (profile), so the after-call notes can tell "my promises" from "theirs". Read once a minute at most; no profile = roster and the word "me" only.
+  /** @type {{ at: number, names: string[] }} */
+  let meCache = { at: 0, names: [] };
+  const meNames = async () => {
+    if (fake || SNAP) return ["Dan", "דן"]; // the invented user of the snapshot fixtures
+    if (Date.now() - meCache.at < 60_000) return meCache.names;
+    /** @type {string[]} */
+    let names = [];
+    try {
+      const r = await spawnTool(["src/profile-edit-cli.ts", "read"]);
+      if (r && r.ok && r.profile)
+        names = [r.profile.name, ...(Array.isArray(r.profile.spellings) ? r.profile.spellings : [])].filter((x) => typeof x === "string" && x);
+    } catch {
+      /* no profile */
+    }
+    meCache = { at: Date.now(), names };
+    return names;
+  };
+  handle("calls:get", async (id) => {
+    const d = data.getCall(CALLS, id);
+    if (d && d.memory) d.memory = memLib.afterCall(CALLS, id, { meNames: await meNames() });
+    return d;
+  });
   // "Write summary" for a saved call that has none: the same tool as `wingman calls summary <id> --generate` (one small AI call, up to 3 min). Output is dropped: it contains call content.
   const writing = new Set();
   handle(
@@ -405,17 +429,69 @@ function create(ctx) {
     const pid = planArg(id);
     return pid ? plans.getContext(pid) : "";
   });
-  // Prepare: wave 2 (digest) replaces this. Until then it reports that nothing was digested and the page shows the saved text as plain background.
-  handle("plans:prepare", (id) => {
+  // Prepare: the digest of the meeting context (one small model call in a child process, src/prepare-cli.ts). The result is kept next to the plan's brief as digest.json
+  // (the engine reads it at the start of a call). With no digest module, no key or a model error the text stays plain background and the page says so.
+  const digestFileOf = (pid) => {
+    const eb = plans.exportBrief(pid);
+    return eb ? { file: path.join(path.dirname(eb.briefFile), "digest.json"), attachDir: eb.attachDir, meeting: eb.meeting } : null;
+  };
+  const preparing = new Set();
+  handle("plans:prepare", async (id, lang) => {
     const pid = planArg(id);
     const m = pid ? plans.get(pid) : null;
-    return { ok: true, digest: false, reason: "no-digest", id: pid, chars: m ? m.contextChars + m.fileChars : 0 };
+    const chars = m ? m.contextChars + m.fileChars : 0;
+    if (!pid || !m) return { ok: true, digest: false, reason: "empty", id: pid, chars };
+    if (fake || SNAP) return { ok: true, digest: false, reason: "no-digest", id: pid, chars };
+    if (preparing.has(pid)) return { ok: true, digest: false, reason: "busy", id: pid, chars };
+    const d = digestFileOf(pid);
+    if (!d) return { ok: true, digest: false, reason: "empty", id: pid, chars };
+    preparing.add(pid);
+    try {
+      const r = await prepareLib.runPrepare({
+        exec: execTsx,
+        cwd: ROOT,
+        env: process.env,
+        plan: d.meeting,
+        attachDir: d.attachDir,
+        out: d.file,
+        lang: lang === "he" ? "he" : "en",
+      });
+      const model = r.digest ? prepareLib.readDigestModel(d.file) : null;
+      return { ...r, digest: !!model, ...(r.digest && !model ? { reason: "raw" } : {}), id: pid, chars, model };
+    } finally {
+      preparing.delete(pid);
+    }
   });
-  // "What Wingman knows": the call memory view for a running call. Wave 1 has only the fixture (snapshots and previews); a real call shows an empty panel until wave 2.
-  handle("knows:get", (mode, lang) => {
+  // "What Wingman knows": before a call, from the saved digest of the plan; during a call, from the call memory (session.json); in previews, a fixture.
+  handle("knows:get", (mode, lang, planId) => {
     if (mode !== "before" && mode !== "live") throw new Error("bad mode");
     const K = require("./knowslib.js");
-    return { ok: true, model: fake || SNAP ? K.fixture(mode, lang === "he" ? "he" : "en") : null };
+    const L = lang === "he" ? "he" : "en";
+    if (fake || SNAP) {
+      // previews: the golden-run memory when WINGMAN_DASHBOARD_KNOWS says so (golden | golden-paused | golden-offline | empty), else the small fixture
+      const kind = process.env.WINGMAN_DASHBOARD_KNOWS || "";
+      if (mode === "live" && /^(golden|golden-paused|golden-offline|empty)$/.test(kind))
+        return { ok: true, ...require("./snapshot-fixtures.cjs").knowsFixture(kind, L) };
+      return { ok: true, model: K.fixture(mode, L), ai: "ok" };
+    }
+    if (mode === "before") {
+      const pid = planArg(planId);
+      const d = pid && plans.get(pid) ? digestFileOf(pid) : null;
+      return { ok: true, model: d ? prepareLib.readDigestModel(d.file) : null, ai: "ok" };
+    }
+    const id = live.active;
+    if (!id) return { ok: true, model: null, ai: "ok" };
+    /** @type {any} */
+    const snap = live.snapshot(id);
+    const r = memLib.knowsLive(CALLS, id);
+    return { ok: true, model: r.model, ver: r.ver, ai: (snap.memory && snap.memory.ai) || "ok" };
+  });
+  // The user changes what Wingman knows during a call: edit, remove or add one line. Validated here (shared/memedit.cjs) and again by the engine, which is the only writer of session.json.
+  handle("knows:edit", (edit) => {
+    if (fake || SNAP) return { ok: false, error: "preview" };
+    const id = live.active;
+    if (!id) return { ok: false, error: "no call" };
+    return memLib.editMemory(CALLS, id, edit);
   });
   // Recent plans (same private folder, owner-only file): so a repeat call can reuse the text of an earlier one.
   const RECENT = path.join(BRIEFS, "recent.json");
@@ -451,6 +527,13 @@ function create(ctx) {
     for (const k of ["title", "who", "goal", "notes", "mustCover", "at", "context"]) if (d[k] !== undefined) f[k] = d[k];
     const r = d.id ? plans.update(d.id, f) : plans.create(f, { adoptDraft: true });
     if (!r.ok) return { ok: false, error: r.error };
+    try {
+      // the saved text may have changed: an old digest of it is stale (Prepare makes a new one)
+      const dg = digestFileOf(r.meeting.id);
+      if (dg) fs.rmSync(dg.file, { force: true });
+    } catch {
+      /* nothing to remove */
+    }
     try {
       writeRecent(data.recentAdd(readRecent(), { title: "", at: "", who: "", goal: "", notes: "", mustCover: "", ...d }));
     } catch {

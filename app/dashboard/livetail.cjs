@@ -5,8 +5,11 @@
 const nodeFs = require("node:fs");
 const nodePath = require("node:path");
 const feedLib = require("./livefeed.js");
+const MV = require("../shared/memview.js");
+const K = require("./knowslib.js");
 
 const ID_RE = /^[0-9A-Za-z_-]{8,40}$/;
+const MAX_MEM = 512 * 1024;
 const MAX_READ = 512 * 1024,
   MAX_DELTA = 200;
 
@@ -27,7 +30,12 @@ function createLiveTail(o) {
   let timer = null;
 
   /** @param {string} id */
-  const fresh = (id) => ({ id, feed: feedLib.create(), files: { transcript: { off: 0, carry: Buffer.alloc(0) }, cards: { off: 0, carry: Buffer.alloc(0) } } });
+  const fresh = (id) => ({
+    id,
+    feed: feedLib.create(),
+    /** @type {any} */ mem: { sig: "", ver: -1, ai: "ok", bars: new Map(), model: undefined },
+    files: { transcript: { off: 0, carry: Buffer.alloc(0) }, cards: { off: 0, carry: Buffer.alloc(0) } },
+  });
 
   /** New complete JSONL rows of <name>.jsonl since the last read (st = { off, carry }); at most MAX_READ bytes per call. [] on any error. */
   function readNew(dir, name, st) {
@@ -76,6 +84,45 @@ function createLiveTail(o) {
     return dir;
   }
 
+  /**
+   * The call memory (session.json), when it changed: { model, ver, ai }. The model is the live "What Wingman knows" lines (ids are memory ids).
+   * ai follows the engine's health bars in cards.jsonl ("ok" | "paused" | "offline"). Returns null when nothing changed. Never throws.
+   */
+  function readMemory(dir, cardRows, m) {
+    let aiChanged = false;
+    for (const r of cardRows) {
+      if (!r || !r.health || typeof r.id !== "string" || !MV.AI_BARS[r.id]) continue;
+      if (r.clear) m.bars.delete(r.id);
+      else m.bars.set(r.id, r.level === "red" ? "red" : "amber");
+      const next = MV.aiState(m.bars);
+      if (next !== m.ai) {
+        m.ai = next;
+        aiChanged = true;
+      }
+    }
+    let mem = null;
+    try {
+      const f = path.join(dir, "session.json"),
+        ls = fs.lstatSync(f);
+      const sig = `${ls.mtimeMs}:${ls.size}`;
+      if (ls.isFile() && ls.size <= MAX_MEM && sig !== m.sig) {
+        m.sig = sig;
+        const j = MV.parseMemory(fs.readFileSync(f, "utf8"));
+        if (!j) m.sig = ""; // torn or unreadable: try again on the next poll
+        if (j && (Number(j.ver) || 0) >= m.ver) {
+          m.ver = Number(j.ver) || 0;
+          mem = j;
+        }
+      }
+    } catch {
+      /* no memory yet, or a torn write: the next poll tries again */
+    }
+    if (!mem && !aiChanged) return null;
+    if (!mem) m.model = m.model || null;
+    else m.model = K.fromMemory(mem);
+    return { model: m.model || null, ver: m.ver, ai: m.ai };
+  }
+
   /** One poll: read new rows, update the feed, send a delta (or a full reset when a burst is too big). */
   function tick() {
     if (!cur) return;
@@ -87,16 +134,18 @@ function createLiveTail(o) {
     } // not created yet
     const lr = readNew(dir, "transcript", cur.files.transcript),
       cr = readNew(dir, "cards", cur.files.cards);
-    if (!lr.length && !cr.length) return;
+    const memory = readMemory(dir, cr, cur.mem);
+    if (!lr.length && !cr.length && !memory) return;
     const lines = cur.feed.addLines(lr),
       cards = cur.feed.addCards(cr),
       frame = cur.feed.addFrameRows(cr),
       names = cur.feed.addSpeakerRows(cr);
-    if (!lines.length && !cards.length && !frame && !names) return;
+    if (!lines.length && !cards.length && !frame && !names && !memory) return;
+    const mem = memory ? { memory } : {};
     if (lines.length > MAX_DELTA) {
       const s = cur.feed.snapshot();
-      send({ callId: cur.id, reset: true, lines: s.lines, cards: s.cards, frame: s.frame, names: s.names });
-    } else send({ callId: cur.id, reset: false, lines, cards, ...(frame ? { frame } : {}), ...(names ? { names } : {}) });
+      send({ callId: cur.id, reset: true, lines: s.lines, cards: s.cards, frame: s.frame, names: s.names, ...mem });
+    } else send({ callId: cur.id, reset: false, lines, cards, ...(frame ? { frame } : {}), ...(names ? { names } : {}), ...mem });
   }
 
   const api = {
@@ -122,7 +171,14 @@ function createLiveTail(o) {
     },
     /** Full current content for a window that was (re)opened mid-call. */
     snapshot(id) {
-      return cur && cur.id === id ? { callId: id, reset: true, ...cur.feed.snapshot() } : { callId: "", reset: true, lines: [], cards: [] };
+      return cur && cur.id === id
+        ? {
+            callId: id,
+            reset: true,
+            ...cur.feed.snapshot(),
+            ...(cur.mem.model !== undefined ? { memory: { model: cur.mem.model || null, ver: cur.mem.ver, ai: cur.mem.ai } } : {}),
+          }
+        : { callId: "", reset: true, lines: [], cards: [] };
     },
     get active() {
       return cur ? cur.id : "";

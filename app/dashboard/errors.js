@@ -26,6 +26,8 @@
     { code: "file-limit", match: /background limit|at most \d+ background|remove a file/i, action: "files" },
     { code: "plan-empty", match: /fill in at least one|cannot be empty|add some text/i, action: "paste" },
     { code: "plan-limit", match: /at most \d+ (plans|prepared meetings)|delete one/i, action: "home" },
+    { code: "digest-failed", match: /digest|prepare.*(failed|timed out)|could not read your text/i, action: "retry" },
+    { code: "memory-edit", match: /memory edit|too many memory edits|notes (could not|not) (be )?saved/i, action: "retry" },
     { code: "plan-save", match: /could not save|not saved|did not start/i, action: "retry" },
     { code: "call-start", match: /did not work right now|could not start|could not be started/i, action: "check" },
     { code: "call-problem", match: /ended with a problem|crash/i, action: "calls" },

@@ -4,34 +4,100 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createPlanStore } = require("../tray/plans.cjs");
+const K = require("./knowslib.js");
 
-const dir = process.argv[2];
-if (!dir) {
-  console.error("usage: node snapshot-fixtures.cjs <dataDir>");
-  process.exit(2);
+/** The golden-run set (src/testkit/fixtures/live-golden.json): memory, cards and lines of a invented support call, English and Hebrew. Null when the file is missing. */
+function golden(lang) {
+  try {
+    return require("../src/testkit/fixtures/live-golden.json")[lang === "he" ? "dev-support-he" : "dev-support-en"];
+  } catch {
+    return null;
+  }
 }
-fs.mkdirSync(path.join(dir, "calls"), { recursive: true, mode: 0o700 });
-const briefs = path.join(dir, "briefs");
-fs.mkdirSync(briefs, { recursive: true, mode: 0o700 });
-const store = createPlanStore({ dir: briefs, pdftotext: "" });
-const soon = Date.now() + 90 * 60_000;
-const a = store.create({
-  title: "Hosting move with Dana",
-  who: "Dana Levi, Noam Bar",
-  goal: "Agree a move date",
-  mustCover: ["Price", "Downtime window"],
-  at: soon,
-  context:
-    "Dana runs Levi Studio, 12 WordPress sites on one old server. The contract renews in March and the price rises 4% each year. She prefers WhatsApp. Ask about daily backups and who handles the security certificate.",
-});
-store.create({
-  title: "פגישת היכרות עם נועה",
-  who: "נועה כהן",
-  goal: "להבין מה היא צריכה",
-  context: "נועה מנהלת חנות אונליין לנעליים. היא רוצה אתר מהיר יותר ותמיכה בעברית.",
-});
-store.create({ who: "Beta Ltd, Ron Katz", context: "A short check-in. Invented example data only." });
-const m = store.get(a.meeting.id);
-store.markLive(m.id, "01SNAPSHOTCALL");
-store.confirmUsed(m.id, "01SNAPSHOTCALL");
-console.log(dir);
+/** The live "What Wingman knows" model and AI state for a snapshot: kind "golden" | "golden-paused" | "golden-offline" | "empty". */
+function knowsFixture(kind, lang) {
+  const g = golden(lang);
+  if (!g || kind === "empty") return { model: null, ai: "ok" };
+  return { model: K.fromMemory(g.mem), ai: kind === "golden-paused" ? "paused" : kind === "golden-offline" ? "offline" : "ok" };
+}
+/** A finished call folder from the golden run: transcript, v2 cards, the call memory (session.json), and optionally a summary. Returns the call id. */
+function writeCall(dataDir, lang, o = {}) {
+  const g = golden(lang);
+  if (!g) return "";
+  const id = ("01SNAPGOLDEN" + lang.toUpperCase() + (o.summary ? "B" : "A") + "0".repeat(26)).slice(0, 26);
+  const d = path.join(dataDir, "calls", id);
+  fs.mkdirSync(d, { recursive: true, mode: 0o700 });
+  const t0 = Date.now() - 3600_000;
+  const w = (f, rows) => fs.writeFileSync(path.join(d, f), rows.map((r) => JSON.stringify(r)).join("\n") + "\n", { mode: 0o600 });
+  fs.writeFileSync(
+    path.join(d, "call.json"),
+    JSON.stringify({ mode: "live", startedAt: new Date(t0).toISOString(), endedAt: new Date(t0 + 480_000).toISOString(), profile: "" }),
+    { mode: 0o600 },
+  );
+  w(
+    "transcript.jsonl",
+    g.lines.map((l) => ({ t: t0 + l.t, ch: l.ch, text: l.text, ...(l.name ? { name: l.name } : {}) })),
+  );
+  w(
+    "cards.jsonl",
+    g.cards.map((c) => ({ ...c, at: t0 + c.at })),
+  );
+  w("events.jsonl", [{ type: "start", t: t0 }]);
+  fs.writeFileSync(path.join(d, "session.json"), JSON.stringify(g.mem), { mode: 0o600 });
+  if (o.summary) {
+    const he = lang === "he";
+    fs.writeFileSync(
+      path.join(d, "summary.json"),
+      JSON.stringify({
+        v: 1,
+        generatedAt: new Date(t0 + 500_000).toISOString(),
+        model: "fixture",
+        summary: [he ? "שגיאת קופה אחרי עדכון של תוסף התשלום." : "A checkout error after a payment plugin update."],
+        decisions: [he ? "החזרנו את הגרסה הקודמת על העותק." : "Rolled the plugin back on the copy."],
+        nextSteps: [{ who: "אני", what: he ? "להחיל את החזרה על האתר החי." : "Apply the rollback to the live site." }],
+        openQuestions: [],
+        followUpEmail: he ? "שלום לנה,\nהחזרנו את התוסף לגרסה הקודמת על העותק.\nתודה, דן" : "Hi Lena,\nWe rolled the plugin back on the copy.\nThanks, Dan",
+      }),
+      { mode: 0o600 },
+    );
+  }
+  return id;
+}
+
+if (require.main === module) {
+  const dir = process.argv[2];
+  if (!dir) {
+    console.error("usage: node snapshot-fixtures.cjs <dataDir>");
+    process.exit(2);
+  }
+  fs.mkdirSync(path.join(dir, "calls"), { recursive: true, mode: 0o700 });
+  const briefs = path.join(dir, "briefs");
+  fs.mkdirSync(briefs, { recursive: true, mode: 0o700 });
+  const store = createPlanStore({ dir: briefs, pdftotext: "" });
+  const soon = Date.now() + 90 * 60_000;
+  const a = store.create({
+    title: "Hosting move with Dana",
+    who: "Dana Levi, Noam Bar",
+    goal: "Agree a move date",
+    mustCover: ["Price", "Downtime window"],
+    at: soon,
+    context:
+      "Dana runs Levi Studio, 12 WordPress sites on one old server. The contract renews in March and the price rises 4% each year. She prefers WhatsApp. Ask about daily backups and who handles the security certificate.",
+  });
+  store.create({
+    title: "פגישת היכרות עם נועה",
+    who: "נועה כהן",
+    goal: "להבין מה היא צריכה",
+    context: "נועה מנהלת חנות אונליין לנעליים. היא רוצה אתר מהיר יותר ותמיכה בעברית.",
+  });
+  store.create({ who: "Beta Ltd, Ron Katz", context: "A short check-in. Invented example data only." });
+  const m = store.get(a.meeting.id);
+  store.markLive(m.id, "01SNAPSHOTCALL");
+  store.confirmUsed(m.id, "01SNAPSHOTCALL");
+  console.log(dir);
+  for (const lang of ["en", "he"]) {
+    writeCall(dir, lang);
+    writeCall(dir, lang, { summary: true });
+  }
+}
+module.exports = { golden, knowsFixture, writeCall };

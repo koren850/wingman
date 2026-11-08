@@ -403,6 +403,19 @@ test("snapshots: the buttons on the hero send the right IPC messages from the re
   ]);
 });
 
+test("snapshots: card controls and Catch me up work from the keyboard events, and an unknown key does nothing", SNAP, () => {
+  const { results } = snap("en", ["v2-live-keys"]);
+  const r = results[0]!;
+  assert.equal(r.issues.length, 0);
+  const acts = r.ipc.map(([ch, p]) => [ch, (p as { kind?: string; name?: string; rating?: string }).name ?? (p as { rating?: string }).rating]);
+  assert.deepEqual(acts, [
+    ["act", "pin"],
+    ["act", "useful"],
+    ["act", "not_useful"],
+    ["act", "recap"],
+  ]);
+});
+
 for (const lang of ["en", "he"] as const) {
   test(`snapshots (${lang}): every v2 scenario passes the clipping, contrast, font and dir checks in dark M and light L`, SNAP, () => {
     const names: string[] = fx.ALL;

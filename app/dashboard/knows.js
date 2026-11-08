@@ -1,7 +1,8 @@
 "use strict";
 // "What Wingman knows" panel and the "So far" card (renderer). The data and the pure edit functions are in knowslib.js.
 // Each line can be edited or removed. In wave 1 the lines come from a fixture or from the saved meeting context; changes are kept in the page only.
-// Wave 2 gives onChange a real handler that writes a "user" patch to the call memory. The panel shows the text the model reads (toModelText).
+// In a live call (model.source "memory") onChange also gets an `op` ({ op: "edit"|"remove"|"add", ... }): home.js sends it to the main process, which queues a "user" edit for the engine.
+// The panel shows the text the model reads (toModelText).
 // All text goes in with textContent. Classic script, loaded after app.js (uses h, ico, btn, chip, T, tip, dirOf, langOf, announce).
 
 const KN = window.WingmanKnows;
@@ -28,13 +29,17 @@ function knowsPanel(model, o = {}) {
     if (model && model.source === "saved") sec.append(h("p", { class: "sub" }, T("knows.plainBackground")));
     return sec;
   }
+  if (o.ai && o.ai !== "ok")
+    sec.append(
+      h("p", { class: "sub kn-paused", id: id + "-paused", role: "status" }, ico("warning"), T(o.ai === "offline" ? "knows.aiOffline" : "knows.aiPaused")),
+    );
   sec.append(h("p", { class: "sub" }, T(live ? "knows.sub.live" : "knows.sub.before")));
   if (model.topic)
     sec.append(h("p", { class: "kn-topic" }, h("b", {}, T("knows.topic") + ": "), h("span", { dir: "auto", lang: langOf(model.topic) }, model.topic)));
   if (model.source === "saved") sec.append(h("p", { class: "sub" }, T("knows.plainBackground")));
 
-  const change = (next, msg, focusId) => {
-    if (o.onChange) o.onChange(next, focusId);
+  const change = (next, msg, focusId, op) => {
+    if (o.onChange) o.onChange(next, focusId, op);
     else {
       const fresh = knowsPanel(next, o);
       sec.replaceWith(fresh);
@@ -88,7 +93,7 @@ function knowsPanel(model, o = {}) {
               title: T("knows.removeShort"),
               onclick: () => {
                 const nextId = list[i + 1] ? `${id}-r-${key}-${list[i + 1].id}` : list[i - 1] ? `${id}-r-${key}-${list[i - 1].id}` : hid;
-                change(KN.removeItem(model, key, x.id), T("knows.removed"), nextId);
+                change(KN.removeItem(model, key, x.id), T("knows.removed"), nextId, { op: "remove", id: x.id });
               },
             }),
           ),
@@ -112,7 +117,7 @@ function knowsPanel(model, o = {}) {
             inp.focus();
             return;
           }
-          change(r.model, T("knows.saved"), `${id}-e-${key}-${x.id}`);
+          change(r.model, T("knows.saved"), `${id}-e-${key}-${x.id}`, { op: "edit", id: x.id, text: KN.clean(inp.value) });
         };
         inp.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
@@ -159,7 +164,7 @@ function knowsPanel(model, o = {}) {
       });
       const go = () => {
         const r = KN.addItem(model, key, inp.value);
-        if (r.ok) change(r.model, T("knows.added"), `${id}-a-${key}`);
+        if (r.ok) change(r.model, T("knows.added"), `${id}-a-${key}`, { op: "add", sec: key, text: KN.clean(inp.value) });
       };
       inp.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -184,8 +189,8 @@ function knowsPanel(model, o = {}) {
   return sec;
 }
 
-/** The "So far" card for the live Home: the topic, up to four lines, and counts of open questions and promises. model null: a calm waiting line. */
-function soFarCard(model) {
+/** The "So far" card for the live Home (ai: "ok" | "paused" | "offline", from the engine; the last notes stay on screen when it is not ok): the topic, up to four lines, and counts of open questions and promises. model null: a calm waiting line. */
+function soFarCard(model, ai) {
   const sec = h("section", { class: "card-big sofar", id: "sofar", "aria-labelledby": "sofar-h" });
   sec.append(
     h(
@@ -193,6 +198,7 @@ function soFarCard(model) {
       { class: "rhead" },
       h("h2", { id: "sofar-h" }, T("sofar.title")),
       h("span", { class: "grow" }),
+      ai && ai !== "ok" ? chip(T(ai === "offline" ? "knows.aiOffline.short" : "knows.aiPaused.short"), "warn", { dot: true }) : null,
       model && model.source === "fixture" ? chip(T("knows.source.fixture"), "warn") : null,
     ),
   );

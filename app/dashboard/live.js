@@ -24,6 +24,7 @@ function liveApply(p) {
   const arr = (a, n) => (Array.isArray(a) ? a.slice(-n) : []);
   LV.feed.addLines(arr(p.lines, WingmanLive.MAX_LINES));
   LV.feed.addCards(arr(p.cards, 200));
+  if (p.memory && typeof knowsPush === "function") knowsPush(p.memory); // the call memory changed (What Wingman knows, So far)
   liveSchedule();
 }
 // At most one pending redraw per frame, however many payloads arrive.

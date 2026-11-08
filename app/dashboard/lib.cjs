@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const feedLib = require("./livefeed.js");
+const memLib = require("./memlib.cjs");
 const ID_RE = /^[0-9A-Z]{26}$/;
 // JSONL file -> array of parsed rows; missing file or bad lines give []/skipped, never throw.
 const read = (dir, f) => {
@@ -293,6 +294,7 @@ function getCall(callsDir, id) {
     meta: readJson(dir, "call.json"),
     callSummary: readSummary(dir),
     callFrame: readFrame(read(dir, "events.jsonl")),
+    memory: memLib.afterCall(callsDir, id), // open loops and decisions from the call memory (null when the call has none)
     transcript: read(dir, "transcript.jsonl").map((r) => ({
       t: r.t,
       ch: r.ch,

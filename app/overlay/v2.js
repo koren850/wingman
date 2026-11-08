@@ -14,7 +14,7 @@
   const MAX_CHIPS = 4; // waiting cards (not counting checks); older ones go to history
   const MAX_HISTORY = 20;
   const RATINGS = ["useful", "not_useful", "none"];
-  const EVENTS = ["pin", "unpin", "dismiss"];
+  const EVENTS = ["pin", "unpin", "dismiss", "recap"];
 
   const isObj = (x) => x && typeof x === "object";
   const str = (x) => (typeof x === "string" ? x : "");
@@ -159,6 +159,7 @@
     }
     /** Best waiting card for the hero seat: not a fact, not dim; a pinned card first, then check, then value, then newest. */
     _best() {
+      /** @type {any} */
       let best = null;
       const score = (e) => e.rank + (e.pinned ? 100 : 0);
       for (const e of this.cards.values()) {
@@ -286,6 +287,7 @@
       rate: (cardId, rating) => send("rate", { cardId: String(cardId), rating: RATINGS.includes(rating) ? rating : "none" }),
       pin: (cardId, on) => send("event", { name: on ? "pin" : "unpin", cardId: String(cardId) }),
       dismiss: (cardId) => send("event", { name: "dismiss", cardId: String(cardId) }),
+      recap: () => send("event", { name: "recap", cardId: "recap" }), // asks the engine for a fresh Catch me up (it answers with recap rows)
       copy: (text) => copy(String(text)),
     };
   }

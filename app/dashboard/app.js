@@ -1001,7 +1001,7 @@ function renderCall(tab) {
   }
   const tabs = h(
     "div",
-    { class: "tabs", role: "tablist", "aria-label": "Call sections", id: "tabs" },
+    { class: "tabs", role: "tablist", "aria-label": T("tab.aria"), id: "tabs" },
     TABS.map(([k, t, ic], i) =>
       h(
         "button",
@@ -1017,7 +1017,7 @@ function renderCall(tab) {
           onclick: () => setTab(k, {}, true),
         },
         ico(ic),
-        h("span", {}, t),
+        h("span", {}, T("tab." + k)),
         h("span", { class: "n", "aria-hidden": "true" }),
       ),
     ),
@@ -1246,6 +1246,7 @@ function tFollowup(pane, d) {
           copyBtn("Copy", () => "wingman calls summary " + state.id + " --generate", { cls: "ghost sm", what: "Command", aria: "Copy command" }),
         ),
       ),
+      typeof afterMemory === "function" ? afterMemory(d) : null, // the open loops and a draft from the call notes, even when no summary was written
     );
   } else {
     const list = (items) =>
@@ -1332,6 +1333,7 @@ function tFollowup(pane, d) {
           "div",
           { class: "fu-main" },
           frameSection(d),
+          typeof afterMemory === "function" ? afterMemory(d) : null,
           sec("Summary", s.summary.length ? list(s.summary) : none("None")),
           h(
             "section",

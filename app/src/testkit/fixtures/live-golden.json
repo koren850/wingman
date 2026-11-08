@@ -1,0 +1,1242 @@
+{
+  "dev-support-en": {
+    "id": "dev-support-en",
+    "lang": "en",
+    "cards": [
+      {
+        "type": "card",
+        "id": "dev-support-en-l8",
+        "turnId": "t-l8",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "The ticket says the update was on Tuesday, not Monday.",
+        "why": "Date conflicts with the ticket.",
+        "more": [],
+        "facts": [],
+        "at": 52772
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l10",
+        "turnId": "t-l10",
+        "badge": "ai",
+        "kind": "answer",
+        "value": 3,
+        "question": "Oh, maybe Tuesday then. It was a crazy week. First of all, is my data safe?",
+        "say": "Your data is safe; the nightly backup can restore it.",
+        "why": "Direct reassurance question.",
+        "more": [],
+        "facts": [],
+        "at": 65335
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l10",
+        "closes": "answered",
+        "at": 73585
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l12",
+        "turnId": "t-l12",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "Acknowledge it, and offer to confirm the fix with a test order together.",
+        "why": "Trust objection from a past failure.",
+        "more": [],
+        "facts": [],
+        "at": 83454
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l12",
+        "closes": "answered",
+        "at": 90822
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l14",
+        "turnId": "t-l14",
+        "badge": "ai",
+        "kind": "answer",
+        "value": 3,
+        "question": "Okay. So what is the cause?",
+        "say": "Likely the payment plugin update; I am reading the error log now.",
+        "why": "Direct request for the cause; label as likely.",
+        "more": [],
+        "facts": [],
+        "at": 94849
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l14",
+        "closes": "answered",
+        "at": 102515
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l17",
+        "turnId": "t-l17",
+        "badge": "info",
+        "kind": "fact",
+        "value": 2,
+        "question": "",
+        "say": "PHP is the language the site runs on; plugins must support its version.",
+        "why": "Jargon about PHP and plugin versions.",
+        "more": [],
+        "facts": [],
+        "at": 142384
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l19",
+        "turnId": "t-l19",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "The log shows 5 failed orders, not three.",
+        "why": "Her count conflicts with the log.",
+        "more": [],
+        "facts": [],
+        "at": 154449
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l24",
+        "turnId": "t-l24",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "Do not promise a time before the log test is finished.",
+        "why": "Over-promise risk on timing.",
+        "more": [],
+        "facts": [],
+        "at": 203864
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l26",
+        "turnId": "t-l26",
+        "badge": "ai",
+        "kind": "answer",
+        "value": 3,
+        "question": "Fine. Do I need to pay extra for this work?",
+        "say": "This is covered by your support hours; I will confirm the total after.",
+        "why": "Direct cost question; no prices.",
+        "more": [],
+        "facts": [],
+        "at": 216315
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l26",
+        "closes": "answered",
+        "at": 223389
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l28",
+        "turnId": "t-l28",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "Email is a separate problem; log it and finish the checkout first.",
+        "why": "Topic shift to a second issue.",
+        "more": [],
+        "facts": [],
+        "at": 229782
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l28",
+        "closes": "answered",
+        "at": 235194
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l32",
+        "turnId": "t-l32",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "Offer a short notice she can post: checkout is being fixed.",
+        "why": "Implied request for customer wording.",
+        "more": [],
+        "facts": [],
+        "at": 257184
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l32",
+        "closes": "answered",
+        "at": 263912
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l34",
+        "turnId": "t-l34",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "The ticket says PHP 8.1, not 7.4.",
+        "why": "Version conflicts with the ticket.",
+        "more": [],
+        "facts": [],
+        "at": 270199
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l36",
+        "turnId": "t-l36",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "The half-hour update is your promise; set a reminder to keep it.",
+        "why": "New commitment from the user.",
+        "more": [],
+        "facts": [],
+        "at": 283010
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l37",
+        "turnId": "t-l37",
+        "badge": "ai",
+        "kind": "answer",
+        "value": 3,
+        "question": "And one more question, will we lose the orders that failed?",
+        "say": "The failed orders are in the log, so you can contact those customers.",
+        "why": "Direct worry about lost orders.",
+        "more": [],
+        "facts": [],
+        "at": 307374
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l37",
+        "closes": "answered",
+        "at": 315317
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l44",
+        "turnId": "t-l44",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "Mention the nightly backup as the safety net before you continue.",
+        "why": "Fallback plan for a failed rollback.",
+        "more": [],
+        "facts": [],
+        "at": 373534
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l44",
+        "closes": "answered",
+        "at": 379290
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l48",
+        "turnId": "t-l48",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "Suggest waiting for a plugin version that supports PHP 8.1.",
+        "why": "Next step after the fix.",
+        "more": [],
+        "facts": [],
+        "at": 400752
+      },
+      {
+        "type": "card",
+        "id": "dev-support-en-l48",
+        "closes": "answered",
+        "at": 407064
+      }
+    ],
+    "view": {
+      "type": "view",
+      "at": 0,
+      "now": "checkout error 500",
+      "kind": "other",
+      "soFar": ["Rolled back PayFlow to 3.9 on the copy", "payment plugin updated from 3.9 to 4.2"],
+      "open": ["Will I lose orders"],
+      "promises": ["Lena: send a screenshot of the error", "Dan: apply the rollback to the live site and test together"],
+      "cover": ["find the cause of the checkout error", "protect the orders"],
+      "recap": {
+        "where": "checkout error 500",
+        "decided": ["Rolled back PayFlow to 3.9 on the copy"],
+        "open": ["find the cause of the checkout error", "protect the orders"],
+        "promised": ["apply the rollback to the live site and test together"],
+        "asked": ["Will I lose orders"]
+      },
+      "ai": "ok"
+    },
+    "recap": {
+      "where": "checkout error 500",
+      "decided": ["Rolled back PayFlow to 3.9 on the copy"],
+      "open": ["find the cause of the checkout error", "protect the orders"],
+      "promised": ["apply the rollback to the live site and test together"],
+      "asked": ["Will I lose orders"]
+    },
+    "mem": {
+      "v": 1,
+      "updatedAt": 386445,
+      "ver": 2,
+      "kind": "other",
+      "topic": {
+        "now": "checkout error 500",
+        "history": [
+          {
+            "label": "checkout error 500",
+            "from": 242025
+          }
+        ]
+      },
+      "roster": [
+        {
+          "id": "p1",
+          "name": "Lena Brook",
+          "side": "them",
+          "role": "bakery owner"
+        },
+        {
+          "id": "p2",
+          "name": "Tom",
+          "side": "them",
+          "role": "Lena's assistant"
+        }
+      ],
+      "facts": [
+        {
+          "id": "f1",
+          "text": "Checkout error started after Tuesday update",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f2",
+          "text": "PayFlow plugin updated from 3.9 to 4.2",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f3",
+          "text": "Nightly backup at 3 AM",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f4",
+          "text": "5 failed orders in the log",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f5",
+          "text": "payment plugin updated from 3.9 to 4.2",
+          "at": 242025,
+          "src": "call"
+        }
+      ],
+      "numbers": [
+        {
+          "id": "n1",
+          "what": "failed orders",
+          "value": "5",
+          "at": 242025
+        }
+      ],
+      "commitments": [
+        {
+          "id": "c1",
+          "who": "Lena",
+          "what": "send a screenshot of the error",
+          "due": "ten minutes",
+          "at": 242025,
+          "status": "open"
+        },
+        {
+          "id": "c2",
+          "who": "Dan",
+          "what": "apply the rollback to the live site and test together",
+          "at": 386445,
+          "status": "open"
+        }
+      ],
+      "openQuestions": [
+        {
+          "id": "q1",
+          "asker": "Lena",
+          "text": "Will I lose orders",
+          "at": 242025,
+          "status": "open"
+        }
+      ],
+      "decisions": [
+        {
+          "id": "d1",
+          "text": "Rolled back PayFlow to 3.9 on the copy",
+          "at": 386445
+        }
+      ],
+      "objections": [],
+      "mustCover": [
+        {
+          "id": "m1",
+          "text": "find the cause of the checkout error",
+          "done": false
+        },
+        {
+          "id": "m2",
+          "text": "protect the orders",
+          "done": false
+        }
+      ],
+      "summary": "",
+      "seq": {
+        "p": 2,
+        "m": 2,
+        "f": 5,
+        "c": 2,
+        "q": 1,
+        "n": 1,
+        "d": 1
+      }
+    },
+    "midMem": {
+      "v": 1,
+      "updatedAt": 386445,
+      "ver": 2,
+      "kind": "other",
+      "topic": {
+        "now": "checkout error 500",
+        "history": [
+          {
+            "label": "checkout error 500",
+            "from": 242025
+          }
+        ]
+      },
+      "roster": [
+        {
+          "id": "p1",
+          "name": "Lena Brook",
+          "side": "them",
+          "role": "bakery owner"
+        },
+        {
+          "id": "p2",
+          "name": "Tom",
+          "side": "them",
+          "role": "Lena's assistant"
+        }
+      ],
+      "facts": [
+        {
+          "id": "f1",
+          "text": "Checkout error started after Tuesday update",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f2",
+          "text": "PayFlow plugin updated from 3.9 to 4.2",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f3",
+          "text": "Nightly backup at 3 AM",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f4",
+          "text": "5 failed orders in the log",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f5",
+          "text": "payment plugin updated from 3.9 to 4.2",
+          "at": 242025,
+          "src": "call"
+        }
+      ],
+      "numbers": [
+        {
+          "id": "n1",
+          "what": "failed orders",
+          "value": "5",
+          "at": 242025
+        }
+      ],
+      "commitments": [
+        {
+          "id": "c1",
+          "who": "Lena",
+          "what": "send a screenshot of the error",
+          "due": "ten minutes",
+          "at": 242025,
+          "status": "open"
+        },
+        {
+          "id": "c2",
+          "who": "Dan",
+          "what": "apply the rollback to the live site and test together",
+          "at": 386445,
+          "status": "open"
+        }
+      ],
+      "openQuestions": [
+        {
+          "id": "q1",
+          "asker": "Lena",
+          "text": "Will I lose orders",
+          "at": 242025,
+          "status": "open"
+        }
+      ],
+      "decisions": [
+        {
+          "id": "d1",
+          "text": "Rolled back PayFlow to 3.9 on the copy",
+          "at": 386445
+        }
+      ],
+      "objections": [],
+      "mustCover": [
+        {
+          "id": "m1",
+          "text": "find the cause of the checkout error",
+          "done": false
+        },
+        {
+          "id": "m2",
+          "text": "protect the orders",
+          "done": false
+        }
+      ],
+      "summary": "",
+      "seq": {
+        "p": 2,
+        "m": 2,
+        "f": 5,
+        "c": 2,
+        "q": 1,
+        "n": 1,
+        "d": 1
+      }
+    },
+    "lines": [
+      {
+        "t": 393799,
+        "ch": "me",
+        "text": "Perfect. Then I will apply the same rollback on the live site and we test together."
+      },
+      {
+        "t": 399252,
+        "ch": "them",
+        "text": "Please. And tell me what we do about the new version later.",
+        "name": "Lena"
+      },
+      {
+        "t": 406264,
+        "ch": "me",
+        "text": "We should wait for a plugin release that works with PHP 8.1 before updating again."
+      },
+      {
+        "t": 411035,
+        "ch": "them",
+        "text": "Sounds right. Call me when it is live.",
+        "name": "Lena"
+      },
+      {
+        "t": 417745,
+        "ch": "me",
+        "text": "I will call you as soon as it is live. Thanks Lena."
+      },
+      {
+        "t": 419954,
+        "ch": "them",
+        "text": "Thank you Dan.",
+        "name": "Lena"
+      }
+    ],
+    "memView": {
+      "ver": 2,
+      "topic": "checkout error 500",
+      "soFar": ["Rolled back PayFlow to 3.9 on the copy", "payment plugin updated from 3.9 to 4.2"],
+      "open": [
+        {
+          "id": "q1",
+          "text": "Will I lose orders"
+        }
+      ],
+      "promises": [
+        {
+          "id": "c1",
+          "who": "Lena",
+          "text": "send a screenshot of the error"
+        },
+        {
+          "id": "c2",
+          "who": "Dan",
+          "text": "apply the rollback to the live site and test together"
+        }
+      ],
+      "coverLeft": [
+        {
+          "id": "m1",
+          "text": "find the cause of the checkout error"
+        },
+        {
+          "id": "m2",
+          "text": "protect the orders"
+        }
+      ],
+      "numbers": [
+        {
+          "id": "n1",
+          "what": "failed orders",
+          "value": "5"
+        }
+      ]
+    }
+  },
+  "dev-support-he": {
+    "id": "dev-support-he",
+    "lang": "he",
+    "cards": [
+      {
+        "type": "card",
+        "id": "dev-support-he-l8",
+        "turnId": "t-l8",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "בפנייה כתוב שהעדכון היה ביום שלישי, לא ביום שני.",
+        "why": "התאריך סותר את הפנייה.",
+        "more": [],
+        "facts": [],
+        "at": 42192
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l10",
+        "turnId": "t-l10",
+        "badge": "ai",
+        "kind": "answer",
+        "value": 3,
+        "question": "אה, אולי שלישי. היה שבוע מטורף. קודם כול, המידע שלי בטוח?",
+        "say": "המידע שלך בטוח; אפשר לשחזר מהגיבוי הלילי.",
+        "why": "שאלת הרגעה ישירה.",
+        "more": [],
+        "facts": [],
+        "at": 52515
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l10",
+        "closes": "answered",
+        "at": 58925
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l12",
+        "turnId": "t-l12",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "להכיר בזה, ולהציע לאשר את התיקון יחד בהזמנת בדיקה.",
+        "why": "התנגדות של אמון בגלל כישלון קודם.",
+        "more": [],
+        "facts": [],
+        "at": 66734
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l12",
+        "closes": "answered",
+        "at": 71882
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l14",
+        "turnId": "t-l14",
+        "badge": "ai",
+        "kind": "answer",
+        "value": 3,
+        "question": "אוקיי. אז מה הסיבה?",
+        "say": "כנראה עדכון תוסף התשלום; אני קורא עכשיו את יומן השגיאות.",
+        "why": "בקשה ישירה לסיבה; לסמן כ\"כנראה\".",
+        "more": [],
+        "facts": [],
+        "at": 75309
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l14",
+        "closes": "answered",
+        "at": 82315
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l17",
+        "turnId": "t-l17",
+        "badge": "info",
+        "kind": "fact",
+        "value": 2,
+        "question": "",
+        "say": "PHP היא השפה שהאתר רץ עליה; התוספים צריכים לתמוך בגרסה.",
+        "why": "מונח על PHP וגרסאות תוסף.",
+        "more": [],
+        "facts": [],
+        "at": 119644
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l19",
+        "turnId": "t-l19",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "ביומן יש 5 הזמנות שנכשלו, לא שלוש.",
+        "why": "הספירה שלה סותרת את היומן.",
+        "more": [],
+        "facts": [],
+        "at": 131029
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l24",
+        "turnId": "t-l24",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "לא להבטיח זמן לפני שבדיקת העותק הסתיימה.",
+        "why": "סיכון להבטחת יתר על זמן.",
+        "more": [],
+        "facts": [],
+        "at": 175244
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l26",
+        "turnId": "t-l26",
+        "badge": "ai",
+        "kind": "answer",
+        "value": 3,
+        "question": "בסדר. אני צריכה לשלם משהו נוסף על העבודה הזאת?",
+        "say": "העבודה כלולה בשעות התמיכה שלך; אאשר את הסכום בסוף.",
+        "why": "שאלה ישירה על עלות; בלי מחירים.",
+        "more": [],
+        "facts": [],
+        "at": 187395
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l26",
+        "closes": "answered",
+        "at": 192589
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l28",
+        "turnId": "t-l28",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "מיילים זו בעיה נפרדת; לרשום אותה ולסיים קודם את הקופה.",
+        "why": "סטייה לבעיה שנייה.",
+        "more": [],
+        "facts": [],
+        "at": 198582
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l28",
+        "closes": "answered",
+        "at": 203594
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l32",
+        "turnId": "t-l32",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "להציע הודעה קצרה לפרסום: הקופה בתיקון.",
+        "why": "בקשה משתמעת לניסוח ללקוחות.",
+        "more": [],
+        "facts": [],
+        "at": 221124
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l32",
+        "closes": "answered",
+        "at": 226732
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l34",
+        "turnId": "t-l34",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "בפנייה כתוב PHP 8.1, לא 7.4.",
+        "why": "הגרסה סותרת את הפנייה.",
+        "more": [],
+        "facts": [],
+        "at": 233499
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l36",
+        "turnId": "t-l36",
+        "badge": "careful",
+        "kind": "check",
+        "value": 2,
+        "question": "",
+        "say": "עדכון כל חצי שעה הוא ההבטחה שלך; כדאי להגדיר תזכורת.",
+        "why": "התחייבות חדשה של המשתמש.",
+        "more": [],
+        "facts": [],
+        "at": 244370
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l37",
+        "turnId": "t-l37",
+        "badge": "ai",
+        "kind": "answer",
+        "value": 3,
+        "question": "ועוד שאלה, נאבד את ההזמנות שנכשלו?",
+        "say": "ההזמנות שנכשלו שמורות ביומן, אז אפשר ליצור קשר עם הלקוחות.",
+        "why": "דאגה ישירה מאובדן הזמנות.",
+        "more": [],
+        "facts": [],
+        "at": 287074
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l37",
+        "closes": "answered",
+        "at": 293637
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l44",
+        "turnId": "t-l44",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "להזכיר את הגיבוי הלילי כרשת ביטחון לפני שממשיכים.",
+        "why": "תוכנית חלופית אם החזרה נכשלת.",
+        "more": [],
+        "facts": [],
+        "at": 359234
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l44",
+        "closes": "answered",
+        "at": 365130
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l48",
+        "turnId": "t-l48",
+        "badge": "tip",
+        "kind": "prompt",
+        "value": 2,
+        "question": "",
+        "say": "להציע לחכות לגרסת תוסף שתומכת ב-PHP 8.1.",
+        "why": "צעד הבא אחרי התיקון.",
+        "more": [],
+        "facts": [],
+        "at": 382012
+      },
+      {
+        "type": "card",
+        "id": "dev-support-he-l48",
+        "closes": "answered",
+        "at": 387664
+      }
+    ],
+    "view": {
+      "type": "view",
+      "at": 0,
+      "now": "שגיאת קופה 500",
+      "kind": "other",
+      "soFar": ["החזרנו את PayFlow לגרסה 3.9 על העותק", "תוסף התשלום עודכן מ-3.9 ל-4.2"],
+      "open": ["האם נאבד הזמנות"],
+      "promises": ["לנה: לשלוח צילום מסך של השגיאה", "דן: להחיל את החזרה על האתר החי ולבדוק יחד"],
+      "cover": ["למצוא את הסיבה לשגיאת הקופה", "להגן על ההזמנות"],
+      "recap": {
+        "where": "שגיאת קופה 500",
+        "decided": ["החזרנו את PayFlow לגרסה 3.9 על העותק"],
+        "open": ["למצוא את הסיבה לשגיאת הקופה", "להגן על ההזמנות"],
+        "promised": ["להחיל את החזרה על האתר החי ולבדוק יחד"],
+        "asked": ["האם נאבד הזמנות"]
+      },
+      "ai": "ok"
+    },
+    "recap": {
+      "where": "שגיאת קופה 500",
+      "decided": ["החזרנו את PayFlow לגרסה 3.9 על העותק"],
+      "open": ["למצוא את הסיבה לשגיאת הקופה", "להגן על ההזמנות"],
+      "promised": ["להחיל את החזרה על האתר החי ולבדוק יחד"],
+      "asked": ["האם נאבד הזמנות"]
+    },
+    "mem": {
+      "v": 1,
+      "updatedAt": 369945,
+      "ver": 2,
+      "kind": "other",
+      "topic": {
+        "now": "שגיאת קופה 500",
+        "history": [
+          {
+            "label": "שגיאת קופה 500",
+            "from": 209385
+          }
+        ]
+      },
+      "roster": [
+        {
+          "id": "p1",
+          "name": "לנה ברק",
+          "side": "them",
+          "role": "בעלת המאפייה"
+        },
+        {
+          "id": "p2",
+          "name": "תום",
+          "side": "them",
+          "role": "עוזר של לנה"
+        }
+      ],
+      "facts": [
+        {
+          "id": "f1",
+          "text": "שגיאת הקופה התחילה אחרי העדכון ביום שלישי",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f2",
+          "text": "תוסף PayFlow עודכן מ-3.9 ל-4.2",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f3",
+          "text": "גיבוי לילי בשלוש",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f4",
+          "text": "5 הזמנות שנכשלו ביומן",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f5",
+          "text": "תוסף התשלום עודכן מ-3.9 ל-4.2",
+          "at": 209385,
+          "src": "call"
+        }
+      ],
+      "numbers": [
+        {
+          "id": "n1",
+          "what": "הזמנות שנכשלו",
+          "value": "5",
+          "at": 209385
+        }
+      ],
+      "commitments": [
+        {
+          "id": "c1",
+          "who": "לנה",
+          "what": "לשלוח צילום מסך של השגיאה",
+          "due": "עשר דקות",
+          "at": 209385,
+          "status": "open"
+        },
+        {
+          "id": "c2",
+          "who": "דן",
+          "what": "להחיל את החזרה על האתר החי ולבדוק יחד",
+          "at": 369945,
+          "status": "open"
+        }
+      ],
+      "openQuestions": [
+        {
+          "id": "q1",
+          "asker": "לנה",
+          "text": "האם נאבד הזמנות",
+          "at": 209385,
+          "status": "open"
+        }
+      ],
+      "decisions": [
+        {
+          "id": "d1",
+          "text": "החזרנו את PayFlow לגרסה 3.9 על העותק",
+          "at": 369945
+        }
+      ],
+      "objections": [],
+      "mustCover": [
+        {
+          "id": "m1",
+          "text": "למצוא את הסיבה לשגיאת הקופה",
+          "done": false
+        },
+        {
+          "id": "m2",
+          "text": "להגן על ההזמנות",
+          "done": false
+        }
+      ],
+      "summary": "",
+      "seq": {
+        "p": 2,
+        "m": 2,
+        "f": 5,
+        "c": 2,
+        "q": 1,
+        "n": 1,
+        "d": 1
+      }
+    },
+    "midMem": {
+      "v": 1,
+      "updatedAt": 369945,
+      "ver": 2,
+      "kind": "other",
+      "topic": {
+        "now": "שגיאת קופה 500",
+        "history": [
+          {
+            "label": "שגיאת קופה 500",
+            "from": 209385
+          }
+        ]
+      },
+      "roster": [
+        {
+          "id": "p1",
+          "name": "לנה ברק",
+          "side": "them",
+          "role": "בעלת המאפייה"
+        },
+        {
+          "id": "p2",
+          "name": "תום",
+          "side": "them",
+          "role": "עוזר של לנה"
+        }
+      ],
+      "facts": [
+        {
+          "id": "f1",
+          "text": "שגיאת הקופה התחילה אחרי העדכון ביום שלישי",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f2",
+          "text": "תוסף PayFlow עודכן מ-3.9 ל-4.2",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f3",
+          "text": "גיבוי לילי בשלוש",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f4",
+          "text": "5 הזמנות שנכשלו ביומן",
+          "at": 0,
+          "src": "brief"
+        },
+        {
+          "id": "f5",
+          "text": "תוסף התשלום עודכן מ-3.9 ל-4.2",
+          "at": 209385,
+          "src": "call"
+        }
+      ],
+      "numbers": [
+        {
+          "id": "n1",
+          "what": "הזמנות שנכשלו",
+          "value": "5",
+          "at": 209385
+        }
+      ],
+      "commitments": [
+        {
+          "id": "c1",
+          "who": "לנה",
+          "what": "לשלוח צילום מסך של השגיאה",
+          "due": "עשר דקות",
+          "at": 209385,
+          "status": "open"
+        },
+        {
+          "id": "c2",
+          "who": "דן",
+          "what": "להחיל את החזרה על האתר החי ולבדוק יחד",
+          "at": 369945,
+          "status": "open"
+        }
+      ],
+      "openQuestions": [
+        {
+          "id": "q1",
+          "asker": "לנה",
+          "text": "האם נאבד הזמנות",
+          "at": 209385,
+          "status": "open"
+        }
+      ],
+      "decisions": [
+        {
+          "id": "d1",
+          "text": "החזרנו את PayFlow לגרסה 3.9 על העותק",
+          "at": 369945
+        }
+      ],
+      "objections": [],
+      "mustCover": [
+        {
+          "id": "m1",
+          "text": "למצוא את הסיבה לשגיאת הקופה",
+          "done": false
+        },
+        {
+          "id": "m2",
+          "text": "להגן על ההזמנות",
+          "done": false
+        }
+      ],
+      "summary": "",
+      "seq": {
+        "p": 2,
+        "m": 2,
+        "f": 5,
+        "c": 2,
+        "q": 1,
+        "n": 1,
+        "d": 1
+      }
+    },
+    "lines": [
+      {
+        "t": 375839,
+        "ch": "me",
+        "text": "מצוין. אז אחיל את אותה החזרה על האתר החי ונבדוק יחד."
+      },
+      {
+        "t": 380512,
+        "ch": "them",
+        "text": "בבקשה. ותגיד לי מה עושים עם הגרסה החדשה בהמשך.",
+        "name": "לנה"
+      },
+      {
+        "t": 386864,
+        "ch": "me",
+        "text": "כדאי לחכות לגרסה של התוסף שעובדת עם PHP 8.1 לפני שמעדכנים שוב."
+      },
+      {
+        "t": 391115,
+        "ch": "them",
+        "text": "נשמע נכון. תתקשר אליי כשזה חי.",
+        "name": "לנה"
+      },
+      {
+        "t": 396205,
+        "ch": "me",
+        "text": "אתקשר אליך ברגע שזה חי. תודה לנה."
+      },
+      {
+        "t": 398114,
+        "ch": "them",
+        "text": "תודה דן.",
+        "name": "לנה"
+      }
+    ],
+    "memView": {
+      "ver": 2,
+      "topic": "שגיאת קופה 500",
+      "soFar": ["החזרנו את PayFlow לגרסה 3.9 על העותק", "תוסף התשלום עודכן מ-3.9 ל-4.2"],
+      "open": [
+        {
+          "id": "q1",
+          "text": "האם נאבד הזמנות"
+        }
+      ],
+      "promises": [
+        {
+          "id": "c1",
+          "who": "לנה",
+          "text": "לשלוח צילום מסך של השגיאה"
+        },
+        {
+          "id": "c2",
+          "who": "דן",
+          "text": "להחיל את החזרה על האתר החי ולבדוק יחד"
+        }
+      ],
+      "coverLeft": [
+        {
+          "id": "m1",
+          "text": "למצוא את הסיבה לשגיאת הקופה"
+        },
+        {
+          "id": "m2",
+          "text": "להגן על ההזמנות"
+        }
+      ],
+      "numbers": [
+        {
+          "id": "n1",
+          "what": "הזמנות שנכשלו",
+          "value": "5"
+        }
+      ]
+    }
+  }
+}

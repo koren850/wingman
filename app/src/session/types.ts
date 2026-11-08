@@ -30,6 +30,8 @@ export type SessionMemory = {
   summary: string; // rolling, at most 250 words
   /** Next number per id prefix ("f", "n", "c", "q", "d", "o", "m", "p"). Ids are never reused, even after an item is dropped by a cap. Optional: derived from the items when missing. */
   seq?: Record<string, number>;
+  /** Lines the user removed ("list:normalised text"). The updater cannot add them back. At most 40. */
+  vetoed?: string[];
 };
 
 /** The lists that a patch can add to (the keys of `MemoryPatch.add`). */

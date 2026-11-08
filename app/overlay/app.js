@@ -780,7 +780,8 @@ window.wingman.onSpeaker((s) => {
   if (lastBox._line && lastBox._line.ch === "them" && lastBox._line.spk === s.spk) lastWho.textContent = whoLabel(lastBox._line); // the strip on screen follows at once
 });
 window.wingman.onRewind(showRewind);
-window.wingman.onRecap(() => v2.toggleRecap());
+window.wingman.onRecap((p) => (p ? v2.handleRecap(p) : v2.hotkeyRecap()));
+window.wingman.onCtl((c) => v2.control(c && c.name));
 const caps = new Map(); // value -> chip, newest first (same order as main.cjs: chip N = Ctrl+Opt+N)
 const numberChips = () =>
   [...capBox.children].forEach((el, i) => {
@@ -827,8 +828,15 @@ let keysOpen = false,
   keysTimer;
 function drawKeys() {
   const focus = LAYOUT === "focus";
-  const names = ["ask", "rewind", "checklist", "pause", "clear"].filter((k) => HK[k]);
-  const label = (k) => tr(focus && k === "checklist" ? "keys.more" : "keys." + k);
+  const names = [
+    "ask",
+    "rewind",
+    "checklist",
+    "pause",
+    "clear",
+    ...(!focus || keysOpen ? ["recap", "more", "pin", "useful", "notUseful", "dismiss"] : []),
+  ].filter((k) => HK[k]);
+  const label = (k) => tr(k === "more" ? "keys.cardmore" : focus && k === "checklist" ? "keys.more" : "keys." + k);
   let items = names.map((k) => [k, fmtKey(HK[k]).split("+"), label(k)]);
   if (focus && !keysOpen) items = items.filter(([k]) => ["ask", "checklist", "pause"].includes(k));
   else items.splice(Math.min(3, items.length), 0, ["copy", ["Ctrl", "Opt", "1-3"], tr("keys.copy")]); // chip keys (fixed in main.cjs); Ctrl+Opt+K = chip 1, so it has no row of its own

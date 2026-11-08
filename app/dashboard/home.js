@@ -27,6 +27,8 @@ const H = {
   prepared: null,
   prepNote: "",
   knows: undefined, // the live "What Wingman knows" model: undefined = not asked yet, null = nothing to show
+  kai: "ok", // the engine's AI state for the notes: ok | paused | offline
+  kPending: null, // a newer model that arrived while a line was being edited (shown when the edit ends)
   compose: "note",
   autoChecked: false,
   quickAt: 0,
@@ -73,6 +75,8 @@ function onCallState(s) {
   if (!!was !== !!s.running) {
     H.showConv = false; // the live conversation is hidden again at the start of every call
     H.knows = undefined; // and what Wingman knows is asked for again
+    H.kai = "ok";
+    H.kPending = null;
   }
   H.stopAt = s.running && s.phase === "stopping" ? H.stopAt || Date.now() : 0;
   if (was && !s.running)
@@ -223,8 +227,9 @@ function renderSide() {
     side.textContent = "";
     slot.textContent = "";
     if (isRunning()) {
-      const onKnows = (m, focusId) => {
+      const onKnows = (m, focusId, op) => {
         H.knows = m;
+        if (op && m && m.source === "memory") sendKnowsEdit(op); // a real call: the engine learns the change (a preview or a saved model only changes the page)
         renderSide();
         const f = (focusId && document.getElementById(focusId)) || document.getElementById("knows-live-h");
         if (f) {
@@ -232,7 +237,7 @@ function renderSide() {
           f.focus();
         }
       };
-      side.append(soFarCard(H.knows), knowsPanel(H.knows, { id: "knows-live", onChange: onKnows }), liveFeedPanel());
+      side.append(soFarCard(H.knows, H.kai), knowsPanel(H.knows, { id: "knows-live", onChange: onKnows, ai: H.kai }), liveFeedPanel());
       if (H.knows === undefined) loadKnows();
       return;
     }
@@ -242,17 +247,61 @@ function renderSide() {
     side.append(waitingCard());
   });
 }
-/** Asks the main process for the live "What Wingman knows" model (a fixture in previews; nothing yet in a real call until wave 2). */
+/** Asks the main process for the live "What Wingman knows" model (the call memory; a fixture in previews). Later changes arrive by themselves with the live feed (knowsPush). */
 function loadKnows() {
   H.knows = null; // set at once, so one request is made
   api
     .knowsGet("live", WingmanI18n.lang)
     .then((r) => {
       H.knows = r && r.ok ? r.model : null;
+      H.kai = r && r.ai ? r.ai : "ok";
       if (state.view === "home" && isRunning()) renderSide();
     })
     .catch(() => {
       H.knows = null;
+    });
+}
+/** A new memory from the live feed ({ model, ver, ai }). Not drawn while the user is typing in the panel: it waits until the edit ends. */
+function knowsPush(m) {
+  if (!m || typeof m !== "object") return;
+  if (m.ai) H.kai = m.ai === "paused" || m.ai === "offline" ? m.ai : "ok";
+  if (m.model !== undefined && m.model !== null) {
+    const editing =
+      document.activeElement && document.activeElement.closest && document.activeElement.closest("#knows-live") && document.activeElement.tagName === "INPUT";
+    if (editing) H.kPending = m.model;
+    else {
+      H.knows = m.model;
+      H.kPending = null;
+    }
+  }
+  if (state.view === "home" && isRunning() && !H.kPending) renderSide();
+}
+/** The edit ends (focus leaves the notes): show the newest memory that waited. */
+document.addEventListener("focusout", () => {
+  if (!H.kPending) return;
+  setTimeout(() => {
+    const a = document.activeElement;
+    if (H.kPending && !(a && a.closest && a.closest("#knows-live") && a.tagName === "INPUT")) {
+      H.knows = H.kPending;
+      H.kPending = null;
+      if (state.view === "home" && isRunning()) renderSide();
+    }
+  }, 0);
+});
+/** Sends one edit of the notes to the main process. A refusal is shown with a button, and the notes are asked for again so the page shows what the engine has. */
+function sendKnowsEdit(op) {
+  const edit = KN.toEdit(op);
+  if (!edit) return;
+  api
+    .knowsEdit(edit)
+    .then((r) => {
+      if (r && r.ok) return;
+      showError(r && r.error === "too many changes" ? "too many memory edits" : "memory edit failed", { retry: () => loadKnows() });
+      loadKnows();
+    })
+    .catch(() => {
+      showError("memory edit failed", { retry: () => loadKnows() });
+      loadKnows();
     });
 }
 /** The effective AI mode for the Start card, read from the current settings (the same read the Settings page uses). */

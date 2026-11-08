@@ -55,6 +55,8 @@ export function checkMemory(raw: unknown): { ok: true; mem: SessionMemory } | { 
   }
   if (raw.seq !== undefined && (!isObj(raw.seq) || Object.values(raw.seq).some((n) => !Number.isInteger(n) || (n as number) < 0 || (n as number) > 999990)))
     return { ok: false, reason: "bad seq" };
+  if (raw.vetoed !== undefined && (!Array.isArray(raw.vetoed) || raw.vetoed.length > 40 || raw.vetoed.some((x) => !str(x))))
+    return { ok: false, reason: "bad vetoed" };
   return { ok: true, mem: raw as unknown as SessionMemory };
 }
 

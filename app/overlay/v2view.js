@@ -2,7 +2,7 @@
 // Answer window v2 view: draws the hero card, the WATCHING chips, the idle view, the Catch me up sheet and the AI bars.
 // Classic script (loaded before app.js). app.js calls createV2View(deps) once and routes rows to it. Text is always set with textContent / text nodes (card text comes from the call).
 // The model (which card is hero, lifetime, controls) lives in v2.js; this file only draws it.
-/* global WingmanV2 */
+/* global WingmanV2, WingmanMemView */
 function createV2View(d) {
   const { tr, mixed, div, span } = d;
   const V = WingmanV2;
@@ -249,7 +249,21 @@ function createV2View(d) {
   }
 
   // ---- Catch me up sheet ----
+  // The sheet shows, in this order: the streamed recap from the engine (when it came), else the recap made from the notes (view.recap).
+  // recapLive: null = nothing asked; { phase: start | delta | done | error, text, recap, offline, notes } = the engine's answer so far.
+  let recapLive = null;
   const recapOpen = () => recapBox.style.display === "flex";
+  const liveRecap = () => {
+    if (!recapLive) return { recap: view.recap, status: "" };
+    if (recapLive.recap) return { recap: recapLive.recap, status: recapLive.offline || recapLive.notes ? "notes" : "" };
+    if (recapLive.text) {
+      const p = WingmanMemView.parseRecapText(recapLive.text);
+      if (p.labels) return { recap: p.recap, status: recapLive.phase === "delta" || recapLive.phase === "start" ? "loading" : "" };
+    }
+    if (recapLive.phase === "error") return { recap: view.recap, status: "error" };
+    if (recapLive.offline || recapLive.notes) return { recap: view.recap, status: "notes" };
+    return { recap: view.recap, status: "loading" };
+  };
   function toggleRecap(on) {
     const open = on === undefined ? !recapOpen() : on;
     clearTimeout(recapTimer);
@@ -262,7 +276,14 @@ function createV2View(d) {
       button("b x", tr("v2.recap.close"), () => toggleRecap(false)),
     );
     recapBox.append(h);
-    const rc = view.recap;
+    const { recap: rc, status } = liveRecap();
+    if (status) {
+      const st = div("rstatus " + status, "auto");
+      st.setAttribute("role", "status");
+      st.append(span("", tr(status === "loading" ? "v2.recap.loading" : status === "notes" ? "v2.recap.notes" : "v2.recap.error")));
+      if (status === "error") st.append(button("b retry", tr("v2.recap.retry"), () => requestRecap()));
+      recapBox.append(st);
+    }
     const sec = (key, content) => {
       const s = div("rs", "auto");
       s.append(span("rk", tr(key)));
@@ -278,7 +299,7 @@ function createV2View(d) {
         }
         body.append(ul);
       } else if (typeof content === "string" && content) mixed(body, content);
-      else body.textContent = tr("v2.recap.none");
+      else body.textContent = status === "loading" ? "…" : tr("v2.recap.none");
       s.append(body);
       recapBox.append(s);
     };
@@ -289,7 +310,17 @@ function createV2View(d) {
     sec("v2.recap.asked", rc.asked);
     recapTimer = setTimeout(() => toggleRecap(false), 45000);
   }
-  recapBox.addEventListener("click", () => toggleRecap(false));
+  /** Opens the sheet (from notes at once) and asks the engine for a fresh recap. */
+  function requestRecap() {
+    recapLive = { phase: "start", text: "", recap: null, offline: false, notes: false };
+    d.controls.recap();
+    toggleRecap(true);
+  }
+  recapBox.addEventListener("click", (ev) => {
+    if (ev.target.closest && ev.target.closest(".retry")) return;
+    toggleRecap(false);
+  });
+  const CONTROL_CLASS = { more: "more", pin: "pin", useful: "up", notuseful: "down", dismiss: "x" };
 
   // ---- one draw ----
   function draw() {
@@ -330,6 +361,23 @@ function createV2View(d) {
     },
     drawIdle,
     toggleRecap,
+    requestRecap,
+    /** The hotkey: closes the sheet when it is open, else opens it and asks for a fresh recap. */
+    hotkeyRecap: () => (recapOpen() ? toggleRecap(false) : requestRecap()),
+    /** A { phase, text, recap } payload from the engine's recap rows. */
+    handleRecap(p) {
+      if (!p || typeof p !== "object") return;
+      if (p.phase === "start") recapLive = { phase: "start", text: "", recap: null, offline: false, notes: false };
+      else recapLive = { phase: p.phase, text: p.text || (recapLive && recapLive.text) || "", recap: p.recap || null, offline: !!p.offline, notes: !!p.notes };
+      toggleRecap(true);
+    },
+    /** A card control pressed on the keyboard (the window never takes focus): does what the button on the hero does. */
+    control(name) {
+      const cls = CONTROL_CLASS[name];
+      const b = cls && heroBox.querySelector(".hctl .b." + cls);
+      if (b) b.click();
+      return !!b;
+    },
     redraw: draw,
     hasContent: () => !!board.hero || board.chips.length > 0,
     reset() {
@@ -340,6 +388,7 @@ function createV2View(d) {
       expanded.clear();
       drawnHero = "";
       recapBox.style.display = "none";
+      recapLive = null;
       draw();
     },
   };

@@ -46,8 +46,10 @@ contextBridge.exposeInMainWorld("wingman", {
     return ipcRenderer.invoke("plans:save", o);
   },
   planContext: (id) => ipcRenderer.invoke("plans:context", String(id || "")),
-  preparePlan: (id) => ipcRenderer.invoke("plans:prepare", String(id || "")),
-  knowsGet: (mode, lang) => ipcRenderer.invoke("knows:get", String(mode), String(lang || "en")),
+  preparePlan: (id, lang) => ipcRenderer.invoke("plans:prepare", String(id || ""), String(lang || "en")),
+  knowsGet: (mode, lang, planId) => ipcRenderer.invoke("knows:get", String(mode), String(lang || "en"), String(planId || "")),
+  // One edit of what Wingman knows: { op: "edit", id, text } | { op: "remove", id } | { op: "add", list, text }. Checked again in main and by the engine.
+  knowsEdit: (e) => ipcRenderer.invoke("knows:edit", e && typeof e === "object" ? { ...e } : null),
   deletePlan: (id) => ipcRenderer.invoke("plans:delete", String(id)),
   discardDraft: () => ipcRenderer.invoke("plans:discardDraft"),
   recentPlans: () => ipcRenderer.invoke("brief:recent"),

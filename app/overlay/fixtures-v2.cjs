@@ -140,12 +140,100 @@ const SCENARIOS = {
   "v2-firstrun": () => ({ rows: [], lines: [], phase: "starting" }),
   "v2-nolines": (T) => ({ rows: [view(T), answer(T)], lines: [] }),
 };
+// ---- live-shaped scenarios: rows from a golden meeting run (src/testkit/live-golden.ts writes the JSON; a test keeps it current) ----
+const liveSet = () => {
+  try {
+    return require("../src/testkit/fixtures/live-golden.json");
+  } catch {
+    return null;
+  }
+};
+/** The golden run for this UI language, with times moved so the newest card is 3 s old. */
+function liveRun(lang, until) {
+  const set = liveSet();
+  const f = set && set[lang === "he" ? "dev-support-he" : "dev-support-en"];
+  if (!f) return null;
+  let cards = f.cards;
+  if (until) {
+    const i = cards.findIndex((c) => c.kind === until);
+    cards = cards.slice(0, i + 1);
+  }
+  const last = Math.max(...cards.map((c) => c.at));
+  const shift = now - 3000 - last;
+  const rows = [{ ...f.view, at: now }, ...cards.map((c) => ({ ...c, at: c.at + shift }))];
+  const text = (r) =>
+    [
+      "WHERE: " + (r.where || (lang === "he" ? "מחיר החידוש והגיבויים" : "Renewal price and backups")),
+      "DECIDED: " + r.decided.join(" | "),
+      "OPEN: " + r.open.join(" | "),
+      "PROMISED: " + r.promised.join(" | "),
+      "ASKED: " + r.asked.join(" | "),
+    ].join("\n");
+  return { rows, lines: f.lines.slice(-2).map((l, i) => ({ ...l, t: now - 4000 + i * 1000 })), recapText: text(f.recap) };
+}
+const live = (name, f) => {
+  SCENARIOS[name] = (T, lang) => {
+    const r = liveRun(lang);
+    if (!r) return { rows: [], lines: [] };
+    return f(r, lang);
+  };
+};
+live("v2-live", (r) => ({ rows: r.rows, lines: r.lines }));
+SCENARIOS["v2-live-check"] = (T, lang) => {
+  const r = liveRun(lang, "check");
+  return r ? { rows: r.rows, lines: r.lines } : { rows: [], lines: [] };
+};
+SCENARIOS["v2-live-prompt"] = (T, lang) => {
+  const r = liveRun(lang, "prompt");
+  return r ? { rows: r.rows, lines: r.lines } : { rows: [], lines: [] };
+};
+SCENARIOS["v2-live-fact"] = (T, lang) => {
+  const r = liveRun(lang, "fact");
+  return r ? { rows: r.rows, lines: r.lines } : { rows: [], lines: [] };
+};
+live("v2-live-stream", (r) => ({
+  rows: r.rows,
+  lines: r.lines,
+  steps: [
+    { send: ["recap", { phase: "start", text: "", recap: null, offline: false, notes: false }] },
+    { send: ["recap", { phase: "delta", text: r.recapText.split("\n").slice(0, 3).join("\n"), recap: null, offline: false, notes: false }] },
+  ],
+}));
+live("v2-live-recapdone", (r) => ({
+  rows: r.rows,
+  lines: r.lines,
+  steps: [{ send: ["recap", { phase: "done", text: r.recapText, recap: null, offline: false, notes: false }] }],
+}));
+live("v2-live-recapnotes", (r) => ({
+  rows: r.rows,
+  lines: r.lines,
+  steps: [{ send: ["recap", { phase: "done", text: "", recap: null, offline: true, notes: true }] }],
+}));
+live("v2-live-recaperror", (r) => ({
+  rows: r.rows,
+  lines: r.lines,
+  steps: [{ send: ["recap", { phase: "error", text: "", recap: null, offline: false, notes: false }] }],
+}));
+// the keyboard path: the global keys reach the hero as "ctl" events (the window never takes focus), and the recap key as a "recap" event with no payload
+live("v2-live-keys", (r) => ({
+  rows: r.rows,
+  lines: r.lines,
+  steps: [
+    { send: ["ctl", { name: "more" }] },
+    { send: ["ctl", { name: "pin" }] },
+    { send: ["ctl", { name: "useful" }] },
+    { send: ["ctl", { name: "notuseful" }] },
+    { send: ["ctl", { name: "bogus" }] },
+    { key: "recap" },
+  ],
+}));
+live("v2-live-aipaused", (r) => ({ rows: [{ ...r.rows[0], ai: "paused" }, ...r.rows.slice(1)], lines: r.lines }));
 const ALL = Object.keys(SCENARIOS);
 /** Build a scenario for a UI language ("en" | "he"). */
 function build(name, lang) {
   const f = SCENARIOS[name];
   if (!f) throw new Error("unknown v2 scenario " + name);
-  const sc = f(TXT[lang] || TXT.en);
-  return sc.forceContent ? f(TXT[sc.forceContent]) : sc; // forceContent: the call is in another language than the window (RTL text in an English window)
+  const sc = f(TXT[lang] || TXT.en, lang);
+  return sc.forceContent ? f(TXT[sc.forceContent], sc.forceContent) : sc; // forceContent: the call is in another language than the window (RTL text in an English window)
 }
 module.exports = { ALL, build, SCENARIOS, TXT };

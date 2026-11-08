@@ -1528,6 +1528,21 @@ body.paused #watch {
   font-size: inherit;
   color: inherit;
 }
+/* Catch me up status line: "Catching up", "From notes, no AI", or an error with a Try again button. */
+#recap .rstatus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--r-md);
+  background: var(--card2);
+  color: var(--text);
+  font-size: max(12px, calc(14px * var(--ui)));
+}
+#recap .rstatus.error {
+  border: 1px solid var(--t-careful);
+}
 
 /* ======== Light theme ========
    Tokens (shared/tokens.css) already switch for light; this block re-tints the answer window's own denser neutrals and the few fixed colours. */

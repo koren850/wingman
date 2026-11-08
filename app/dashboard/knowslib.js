@@ -103,6 +103,81 @@
     };
   }
 
+  /**
+   * The live model from a full call memory (calls/<id>/session.json). Lines keep the memory ids (f3, q2, c1), so an edit or a remove can name the line.
+   * soFar = what was said on the call (facts that did not come from the brief), oldest first; the card shows the newest four.
+   */
+  function fromMemory(mem) {
+    const m = mem && typeof mem === "object" ? mem : {};
+    const arr = (v) => (Array.isArray(v) ? v : []);
+    const line = (id, text, extra) => item(String(id), clean(text), extra);
+    return {
+      mode: "live",
+      source: "memory",
+      ver: Number(m.ver) || 0,
+      topic: clean(m.topic && m.topic.now),
+      sections: {
+        soFar: arr(m.facts)
+          .filter((f) => f && f.src !== "brief")
+          .map((f) => line(f.id, f.text, f.who ? { who: clean(f.who) } : undefined)),
+        decisions: arr(m.decisions).map((d) => line(d.id, d.text)),
+        open: arr(m.openQuestions)
+          .filter((q) => q && q.status === "open")
+          .map((q) => line(q.id, q.text, q.asker ? { who: clean(q.asker) } : undefined)),
+        promises: arr(m.commitments)
+          .filter((c) => c && c.status === "open")
+          .map((c) => line(c.id, c.what, c.who ? { who: clean(c.who) } : undefined)),
+        mustCover: arr(m.mustCover).map((x) => line(x.id, x.text, { done: !!x.done })),
+      },
+    };
+  }
+
+  /** The "before the call" model from a digest ({ roster, agenda, facts, ... }, see src/session/seed.ts). Ids are the ones the memory will get (p1, f1, m1), so they stay stable. */
+  function fromDigest(d) {
+    const g = d && typeof d === "object" ? d : {};
+    const arr = (v) => (Array.isArray(v) ? v : []);
+    const text = (x) => clean(typeof x === "string" ? x : x && x.text);
+    return {
+      mode: "before",
+      source: "digest",
+      ver: 1,
+      topic: clean(arr(g.agenda)[0] && text(g.agenda[0])),
+      sections: {
+        roster: arr(g.roster)
+          .filter((p) => p && clean(p.name))
+          .map((p, i) => item("p" + (i + 1), clean(p.name), p.role ? { role: clean(p.role) } : undefined)),
+        agenda: arr(g.agenda)
+          .map(text)
+          .filter(Boolean)
+          .map((t, i) => item("m" + (i + 1), t)),
+        facts: arr(g.facts)
+          .map(text)
+          .filter(Boolean)
+          .map((t, i) => item("f" + (i + 1), t, { src: "brief" })),
+        mustCover: [],
+      },
+    };
+  }
+
+  /** Which memory list a window section writes to when the user adds a line (the same table as shared/memedit.cjs SECTION_LIST). */
+  const SECTION_LIST = {
+    soFar: "facts",
+    decisions: "decisions",
+    open: "openQuestions",
+    promises: "commitments",
+    mustCover: "mustCover",
+    facts: "facts",
+    agenda: "mustCover",
+  };
+  /** The edit message for the main process: from what the user did. ops: { op: "edit", id, text } | { op: "remove", id } | { op: "add", sec, text }. Null when the section cannot take a new line. */
+  function toEdit(o) {
+    if (!o) return null;
+    if (o.op === "add") return SECTION_LIST[o.sec] ? { op: "add", list: SECTION_LIST[o.sec], text: o.text } : null;
+    if (o.op === "edit") return { op: "edit", id: o.id, text: o.text };
+    if (o.op === "remove") return { op: "remove", id: o.id };
+    return null;
+  }
+
   const order = (model) => SECTIONS[model && model.mode === "live" ? "live" : "before"];
   /** Total lines in the model. */
   const count = (model) => order(model).reduce((a, k) => a + ((model.sections && model.sections[k]) || []).length, 0);
@@ -160,7 +235,23 @@
     return out.join("\n");
   }
 
-  const api = { SECTIONS, MAX_TEXT, clean, fixture, fromSaved, count, removeItem, editItem, addItem, toModelText, order };
+  const api = {
+    SECTIONS,
+    MAX_TEXT,
+    SECTION_LIST,
+    clean,
+    fixture,
+    fromSaved,
+    fromMemory,
+    fromDigest,
+    toEdit,
+    count,
+    removeItem,
+    editItem,
+    addItem,
+    toModelText,
+    order,
+  };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.WingmanKnows = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -96,6 +96,7 @@ async function one(spec) {
   for (const st of sc.steps || []) {
     if (st.click) await wc.executeJavaScript(`(() => { const e = document.querySelector(${JSON.stringify(st.click)}); if (e) e.click(); return !!e; })()`);
     else if (st.key) send(st.key);
+    else if (st.send) send(st.send[0], st.send[1]);
     else if (st.wait) await sleep(st.wait);
     await sleep(250);
   }

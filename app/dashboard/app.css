@@ -4371,3 +4371,42 @@ button.chip.spk-btn:focus-visible,
 .startmore {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
 }
+
+/* ---- Round 12, wave 2: AI paused note, after-call open loops ---- */
+.kn-paused {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--warn, var(--line2));
+  border-radius: var(--r-md, 8px);
+  background: var(--s2, var(--s1));
+  color: var(--text);
+}
+.after-loops {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.after-loops .al-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+.after-loops .al-list {
+  margin: 0;
+}
+.after-loops .after-draft {
+  position: static;
+  margin-top: 8px;
+}
+.after-loops .after-draft-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+.after-loops .after-draft .btn {
+  margin: 0 16px 12px;
+}

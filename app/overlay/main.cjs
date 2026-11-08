@@ -7,6 +7,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { callPhase, pushCapture, registerCaptureKeys, unregisterCaptureKeys } = require("./lib.cjs");
 const { readNewRows, rowKey, Seen, StdinRows, Backlog, ReloadGate } = require("./resilient.cjs");
+const { createMemoryFeed } = require("./memfeed.cjs");
+const { applyAct } = require("./act.cjs");
 
 // A crash in this process must never raise Electron's error dialog (it could appear on a shared screen): log one line and carry on.
 const logErr = (what, e) => {
@@ -47,7 +49,9 @@ const CFG = Object.assign(
     liveTextPt: 22,
     maxCards: 4,
     rewindSeconds: 30,
-    hotkeys: { clear: "Control+Alt+C", pause: "Control+Alt+P", rewind: "Control+Alt+R", copy: "Control+Alt+K", checklist: "Control+Alt+L" },
+    theme: "dark", // dark | light | auto
+    textSize: "m", // s | m | l
+    hotkeys: {},
   },
   (() => {
     try {
@@ -57,10 +61,30 @@ const CFG = Object.assign(
     }
   })(),
 );
+// Hotkeys: the settings may name only some; the rest keep these defaults. The last six reach the hero card from the keyboard (the window never takes focus, so Tab cannot).
+const DEFAULT_HOTKEYS = {
+  clear: "Control+Alt+C",
+  pause: "Control+Alt+P",
+  rewind: "Control+Alt+R",
+  copy: "Control+Alt+K",
+  checklist: "Control+Alt+L",
+  recap: "Control+Alt+U", // Catch me up
+  more: "Control+Alt+M",
+  pin: "Control+Alt+S", // S = stay
+  useful: "Control+Alt+H", // H = helpful
+  notUseful: "Control+Alt+X",
+  dismiss: "Control+Alt+D",
+};
+CFG.hotkeys = { ...DEFAULT_HOTKEYS, ...(CFG.hotkeys && typeof CFG.hotkeys === "object" ? CFG.hotkeys : {}) };
+const THEME = ["dark", "light", "auto"].includes(process.env.WINGMAN_OVERLAY_THEME || CFG.theme) ? process.env.WINGMAN_OVERLAY_THEME || CFG.theme : "dark";
+const TEXT_SIZE = ["s", "m", "l"].includes(process.env.WINGMAN_OVERLAY_SIZE || CFG.textSize) ? process.env.WINGMAN_OVERLAY_SIZE || CFG.textSize : "m";
 // UI language of the window: "he" (default, existing behaviour) or "en". src/overlay.ts resolves ui.language=auto before it spawns the window; WINGMAN_OVERLAY_LANG overrides it (snapshots).
 const LANGUAGE = (process.env.WINGMAN_OVERLAY_LANG || CFG.language) === "en" ? "en" : "he";
 // Layout: "focus" (default) or "full". WINGMAN_OVERLAY_LAYOUT overrides it (snapshots).
 const LAYOUT = (process.env.WINGMAN_OVERLAY_LAYOUT || CFG.layout) === "full" ? "full" : "focus";
+const mem = createMemoryFeed({ send: (row) => win && !win.isDestroyed() && win.webContents.send("card", row) });
+let currentDir = "",
+  memAt = 0;
 let win,
   timer,
   lastCapture,
@@ -157,13 +181,15 @@ function create() {
   // Content protection is ON but UNTESTED with Zoom; the second screen is the real protection.
   // overlay.contentProtection: false (WINGMAN_SHOW_IN_CAPTURE=1) turns it off for the Zoom share test.
   if (CFG.contentProtection) win.setContentProtection(true);
-  win.loadFile(path.join(__dirname, "index.html"), { query: { lang: LANGUAGE, layout: LAYOUT } }); // ?lang= and ?layout= let the page draw its first frame right (no inline script: CSP)
+  win.loadFile(path.join(__dirname, "index.html"), { query: { lang: LANGUAGE, layout: LAYOUT, theme: THEME, size: TEXT_SIZE } }); // ?lang= and ?layout= let the page draw its first frame right (no inline script: CSP)
   // Poll only after the page has its listeners; a reload replays the call files from the start.
   win.webContents.on("did-finish-load", () => {
     win.webContents.send("config", {
       language: LANGUAGE,
       maxCards: CFG.maxCards,
       layout: LAYOUT,
+      theme: THEME,
+      textSize: TEXT_SIZE,
       fontPt: CFG.fontPt,
       showLastLine: CFG.showLastLine !== false,
       liveTextPt: CFG.liveTextPt,
@@ -175,6 +201,8 @@ function create() {
     tails.live = { file: undefined, offset: 0 };
     capList = [];
     phaseKey = "";
+    mem.reset();
+    memAt = 0;
     pageReady = true;
     replayBacklog(); // rows that only came by the pipe come back after a reload
     clearInterval(timer);
@@ -234,11 +262,28 @@ function create() {
           .join(", ") +
         ").",
     );
+  // Card controls and Catch me up from the keyboard. Each one only tells the page; the page does what its button does.
+  for (const [name, evt] of [
+    ["more", "more"],
+    ["pin", "pin"],
+    ["useful", "useful"],
+    ["notUseful", "notuseful"],
+    ["dismiss", "dismiss"],
+  ]) {
+    if (CFG.hotkeys[name]) globalShortcut.register(CFG.hotkeys[name], () => win && win.webContents.send("ctl", { name: evt }));
+  }
+  if (CFG.hotkeys.recap) globalShortcut.register(CFG.hotkeys.recap, () => win && win.webContents.send("recap"));
   // Ctrl+Opt+1..3 copy chip N (newest first). Tray registers Return/N/A only, so no collision.
   captureKeys.push(...registerCaptureKeys(globalShortcut, () => capList, copyValue, Object.values(CFG.hotkeys)));
   // Click on a captured item copies it (the window never takes focus).
   ipcMain.on("copy", (_e, text) => {
     if (typeof text === "string" && text.length < 200) copyValue(text);
+  });
+  // Card controls from the page (rate, pin, dismiss, recap). Validated again; saved to the call folder; a failure is logged, never shown over the call.
+  ipcMain.on("act", (_e, m) => {
+    if (!currentDir) return;
+    const r = applyAct(currentDir, m, Date.now());
+    if (!r.ok) logErr("act", r.error);
   });
 }
 
@@ -338,9 +383,14 @@ function handleCardRow(c) {
     });
   else if (c.type === "frame") {
     if (c.frame && typeof c.frame === "object") win.webContents.send("frame", c.frame);
-  } else if (c.type === "memory") {
-    // {type:"memory", view}: the call memory for the window. Not a card; the live-UI package shows it. Until then it is ignored (it must never reach the card list).
-  } else if (!c.hidden) win.webContents.send("card", c);
+  } else if (c.type === "memory") mem.fromRow(c);
+  else if (c.type === "recap") {
+    const p = mem.recap(c);
+    if (p) win.webContents.send("recap", p);
+  } else if (!c.hidden) {
+    if (c.health) mem.health(c); // the AI paused / offline pill follows the engine's health bars
+    win.webContents.send("card", c);
+  }
 }
 
 /** One 100 ms tick: follows calls/latest (a new call dir resets the page), forwards new cards/captures/lines, and checks call.json at most once a second. */
@@ -367,11 +417,18 @@ function pollOnce() {
     capList = [];
     phaseKey = "";
     endedSent = false;
+    currentDir = dir;
+    mem.reset();
+    memAt = 0;
     win.webContents.send("reset");
     replayBacklog();
   }
   for (const c of readNewRows(tails.cards)) {
     if (seen.add(rowKey(c))) handleCardRow(c);
+  }
+  if (Date.now() - memAt > 1000) {
+    memAt = Date.now();
+    mem.fromDir(dir); // session.json: the call memory, once a second
   }
   const partials = readNewRows(tails.live);
   const p = partials[partials.length - 1]; // only the newest words matter

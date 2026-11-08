@@ -261,6 +261,12 @@ function micRow() {
   );
 }
 
+/** Label, help and option words of a setting in the window's language. The catalog (tray/settings-catalog.cjs) is English; a key "set.<key>.label|help|opt.<value>" in the strings wins. */
+function SL(i, field, value) {
+  const k = value === undefined ? `set.${i.key}.${field}` : `set.${i.key}.${field}.${value}`;
+  const v = T(k);
+  return v === k ? undefined : v;
+}
 /** One setting row from a catalog item (kind bool / select / number): label, help, control, changed chip, reset button. */
 function settingRow(i) {
   const id = "set-" + i.key.replace(/\./g, "-");
@@ -281,13 +287,13 @@ function settingRow(i) {
         onclick: () => save(i, !i.value),
       },
       h("span", { class: "knob", "aria-hidden": "true" }),
-      h("span", { class: "sl" }, i.value ? "On" : "Off"),
+      h("span", { class: "sl" }, i.value ? T("set.on") : T("set.off")),
     );
   } else if (i.kind === "select") {
     control = h(
       "select",
       { id, "aria-describedby": id + "-h", disabled: saving, onchange: (e) => save(i, e.target.value) },
-      i.options.map(([v, t]) => h("option", { value: v, selected: v === i.value }, t)),
+      i.options.map(([v, t]) => h("option", { value: v, selected: v === i.value }, SL(i, "opt", v) || t)),
     );
   } else {
     const inp = h("input", {
@@ -317,8 +323,8 @@ function settingRow(i) {
     h(
       "div",
       { class: "txt" },
-      h("label", { class: "lab", for: id }, i.label),
-      h("p", { class: "help", id: id + "-h" }, i.help),
+      h("label", { class: "lab", for: id }, SL(i, "label") || i.label),
+      h("p", { class: "help", id: id + "-h" }, SL(i, "help") || i.help),
       warn ? h("p", { class: "warnline" }, ico("warning"), i.warn) : null,
       err ? h("p", { class: "errline", role: "alert" }, ico("x"), err) : null,
     ),
@@ -326,7 +332,7 @@ function settingRow(i) {
     h(
       "div",
       { class: "st" },
-      i.changed ? chip("changed", "warn", { dot: true }) : null,
+      i.changed ? chip(T("set.changed"), "warn", { dot: true }) : null,
       !i.changed
         ? null
         : h(

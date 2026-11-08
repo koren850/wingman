@@ -23,12 +23,13 @@ const EVENTS = [
   ["clear", "onClear", false],
   ["ask", "onAsk", true],
   ["pause", "onPause", false],
-  ["recap", "onRecap", false], // Catch me up sheet (hotkey is wired by main.cjs in wave 2)
+  ["recap", "onRecap", true], // Catch me up: no payload = open the sheet; { phase, text, recap } = the streamed recap
+  ["ctl", "onCtl", true], // a card control pressed on the keyboard: { name: more | pin | useful | notuseful | dismiss }
 ];
 
 /** Card controls back to main on the "act" channel: { kind: "rate", cardId, rating } and { kind: "event", cardId, name }. Same rule as cleanAct in v2.js (a sandboxed preload cannot require it); anything else is dropped. */
 const RATINGS = ["useful", "not_useful", "none"];
-const ACT_EVENTS = ["pin", "unpin", "dismiss"];
+const ACT_EVENTS = ["pin", "unpin", "dismiss", "recap"];
 function cleanAct(kind, payload) {
   const p = payload && typeof payload === "object" ? payload : {};
   const cardId = typeof p.cardId === "string" ? p.cardId.slice(0, 200) : "";

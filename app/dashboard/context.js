@@ -156,17 +156,20 @@ async function prepareContext() {
     }
     let r = null;
     try {
-      r = await api.preparePlan(plan.id);
+      r = await api.preparePlan(plan.id, WingmanI18n.lang);
     } catch {
       r = null;
     }
     const model = r && r.digest && r.model ? r.model : KN.fromSaved(plan);
     H.prepared = model;
-    H.prepNote = r && r.digest ? T("ctx.prepared") : T("ctx.preparedNoDigest");
+    const why = r && !r.digest ? r.reason : "";
+    H.prepNote = r && r.digest ? T("ctx.prepared") : why && T("ctx.prep." + why) !== "ctx.prep." + why ? T("ctx.prep." + why) : T("ctx.preparedNoDigest");
+    const failed = !r || why === "failed" || why === "timeout"; // a real failure gets a box with a button; "no digest yet" is only a note
     const slot = $("ctx-prepared");
     if (slot) {
       slot.textContent = "";
       slot.append(h("p", { class: "sub", id: "ctx-prep-done", role: "status" }, H.prepNote), knowsPanel(model, { id: "knows-before" }));
+      if (failed) slot.prepend(errorBox("digest failed", { retry: () => prepareContext() }));
     }
     announce(H.prepNote);
     const f = $("knows-before-h");
@@ -345,6 +348,17 @@ function editorCard() {
   if (H.prepared)
     prepared.append(h("p", { class: "sub", id: "ctx-prep-done", role: "status" }, H.prepNote || ""), knowsPanel(H.prepared, { id: "knows-before" }));
   else if (cur && model && KN.count(model)) prepared.append(knowsPanel(model, { id: "knows-before" }));
+  // A digest saved by an earlier Prepare is shown too (not only the one made in this window session).
+  if (cur && !H.prepared)
+    api
+      .knowsGet("before", WingmanI18n.lang, cur.id)
+      .then((r) => {
+        if (r && r.ok && r.model && r.model.source === "digest" && !H.prepared && prepared.isConnected) {
+          prepared.textContent = "";
+          prepared.append(knowsPanel(r.model, { id: "knows-before" }));
+        }
+      })
+      .catch(() => {});
 
   const form = h(
     "form",

@@ -258,6 +258,8 @@ const key = (list: AddList, f: Rec): string => {
   }
 };
 const keyOfItem = (list: AddList, it: Rec): string => key(list, it);
+/** The veto key of an item (the user removed it; the updater must not add it again). */
+export const vetoKey = (list: AddList, it: Rec): string => `${list}:${keyOfItem(list, it)}`;
 
 /** Validates a patch (an unknown value, for example parsed model JSON) and applies it to a memory. Pure: the input is never changed. */
 export function applyPatch(mem: SessionMemory, patch: unknown, ctx: ApplyCtx): ApplyResult {
@@ -306,6 +308,10 @@ export function applyPatch(mem: SessionMemory, patch: unknown, ctx: ApplyCtx): A
   for (const { list, f } of p.add) {
     const arr = next[list] as unknown as Rec[];
     const k = key(list, f);
+    if (mem.vetoed?.includes(`${list}:${k}`)) {
+      notes.push(`${list} item was removed by the user, skipped`);
+      continue;
+    }
     if (arr.some((it) => keyOfItem(list, it) === k && (list !== "openQuestions" || it.status === "open"))) {
       notes.push(`duplicate ${list} item skipped`);
       continue;
