@@ -140,7 +140,7 @@ test("t(): placeholders, unknown language falls back to Hebrew, direction follow
 });
 
 test("healthText: English when the UI language is en, Hebrew by default", () => {
-  assert.match(text.healthText("health-only-you", "x", "Ctrl+Opt+A", "en"), /^Hearing only you\..* Ask AI: Ctrl\+Opt\+A$/);
+  assert.match(text.healthText("health-only-you", "x", "Ctrl+Opt+A", "en"), /^Hearing only you\..* Ask Wingman: Ctrl\+Opt\+A$/);
   assert.match(text.healthText("health-only-you", "x", "", "he"), /^שומע רק אותך/);
   assert.equal(text.healthText("health-mic", "המיקרופון לא קולט. בדוק הרשאה"), "המיקרופון לא קולט. בדוק הרשאה"); // default language: unchanged
   assert.match(

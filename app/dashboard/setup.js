@@ -403,6 +403,12 @@ function permsPanel() {
           { class: "faint st-w" },
           "Lets Wingman hear the other side of the call. macOS does not tell apps whether this is on, so the readiness check tests it for real.",
         ),
+        h(
+          "div",
+          { class: "st-w" },
+          h("b", {}, "After you allow it, quit and reopen Wingman."),
+          " macOS only applies the new permission to an app that starts again.",
+        ),
       ),
       SU.acks.audio ? chip("You said it is on", "good", { dot: true }) : null,
       btn("Open System Audio Recording settings", {

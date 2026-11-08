@@ -239,9 +239,9 @@ const ITEMS = [
     key: "ui.language",
     main: true,
     group: "audio",
-    label: "Language of the answer window labels",
+    label: "Answer window language (the Wingman window is English only)",
     kind: "select",
-    help: "Automatic uses Hebrew, unless the call language is English only. Only the labels change (status, badges, hotkey bar); the answers themselves keep the language of the call.",
+    help: "Automatic uses Hebrew, unless the call language is English only. Only the answer window labels change (status, badges, hotkey bar); this Wingman window stays in English; the answers themselves keep the language of the call.",
     options: [
       ["auto", "Automatic"],
       ["he", "Hebrew"],

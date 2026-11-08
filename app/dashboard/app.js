@@ -580,10 +580,10 @@ function waitingChips(c) {
   if (!c.crashed && c.hasSummary)
     out.push(
       linkChip(
-        "Summary",
+        "Follow-up ready",
         "info",
         stop(() => openCall(c.id, { tab: "followup" })),
-        "Summary ready, open Follow-up",
+        "Follow-up ready: summary and email, open the Follow-up tab",
       ),
     );
   return out.length ? out : [h("span", { class: "faint" }, "–")];
@@ -668,7 +668,7 @@ function nextUpCard() {
         "div",
         { class: "why" },
         p ? chip(`${plural(p, "card")} to rate`, "warn", { dot: true }) : null,
-        c.hasSummary ? chip("Summary ready", "info", { dot: true }) : null,
+        c.hasSummary ? chip("Follow-up ready", "info", { dot: true }) : null,
       ),
     ),
     h("button", { type: "button", class: "btn primary", onclick: go }, "Review", ico("chevron")),
@@ -742,7 +742,7 @@ function viewInbox(restoreFocus) {
   main.append(
     h("div", { class: "page-head" }, h("h1", {}, "Calls")),
     nextUpCard(),
-    gateStrip(),
+    ...(gateStats().ph == null ? [] : [gateStrip()]), // shown after the first rating
     h(
       "div",
       { class: "bar" },
@@ -944,7 +944,7 @@ function renderCall(tab) {
   const chips = h(
     "span",
     { class: "chips" },
-    chip(s.mode === "live" ? "Live" : "Practice", s.mode === "live" ? "good" : "", { dot: true }),
+    chip(s.mode === "live" ? "Real call" : "Practice", s.mode === "live" ? "good" : "", { dot: true }),
     s.profile ? chip(s.profile, "", { mono: true }) : null,
     s.noAi ? chip("No AI") : null,
   );

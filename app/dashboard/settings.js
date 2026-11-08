@@ -130,6 +130,8 @@ function drawSettingsBody(body) {
     ),
   );
   jump.push(["g-main", "Main settings"]);
+  main.append(aboutBlock());
+  jump.push(["g-about", "About you"]);
   main.append(setupGuideBlock());
   jump.push(["g-setup", "Setup guide"]);
   main.append(advancedBlock(r));
@@ -511,13 +513,12 @@ function keysBlock(r) {
   );
 }
 
-/* ---- Advanced: one fold, closed by default (remembered). Holds About you, every other setting, the settings file and the read-only list ---- */
+/* ---- Advanced: one fold, closed by default (remembered). Holds every other setting, the settings file and the read-only list ---- */
 let advLoaded = false;
 function advancedBlock(r) {
   advLoaded = false;
   const body = h("div", { class: "advbody advmain" });
   if (r && r.ok) {
-    body.append(aboutBlock());
     for (const g of r.groups) {
       const rows = r.items.filter((i) => i.group === g.id && !i.main);
       if (!rows.length) continue;
@@ -573,7 +574,7 @@ function advancedBlock(r) {
   const d = h(
     "details",
     { class: "collapsed adv", id: "adv", open: SET.advOpen || !!SU.acks.advOpen },
-    h("summary", {}, ico("chevron"), "Advanced", h("span", { class: "faint" }, "\u00b7 about you, tuning, the settings file")),
+    h("summary", {}, ico("chevron"), "Advanced", h("span", { class: "faint" }, "\u00b7 tuning, the settings file")),
     body,
   );
   d.addEventListener("toggle", () => {

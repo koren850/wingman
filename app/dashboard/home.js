@@ -611,7 +611,7 @@ function afterCard(s, kind) {
     h(
       "div",
       { class: "grow" },
-      h("b", {}, s.summaryOk ? "Summary ready." : s.endedCleanly ? "Call saved." : "The call ended with a problem."),
+      h("b", {}, s.summaryOk ? "Follow-up ready." : s.endedCleanly ? "Call saved." : "The call ended with a problem."),
       " ",
       s.summaryOk
         ? "The follow-up email is ready to copy."
@@ -1380,7 +1380,9 @@ function waitingCard() {
             "span",
             { class: "wait" },
             p ? linkChip([h("span", { class: "ctr" }, p), " to rate"], "warn", () => go({ tab: "rate", filter: "unrated" }), `${p} to rate, open Rate`) : null,
-            c.hasSummary ? linkChip("Follow-up email", "info", () => go({ tab: "followup" }), "Summary ready, open Follow-up") : null,
+            c.hasSummary
+              ? linkChip("Follow-up ready", "info", () => go({ tab: "followup" }), "Follow-up ready: summary and email, open the Follow-up tab")
+              : null,
           ),
         );
       }),
