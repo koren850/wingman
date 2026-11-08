@@ -108,6 +108,7 @@ ${SHARED_RULES}`;
 
 export const COMPACTOR_INSTRUCTIONS = `You tidy the memory of a live call. You get the memory and the recent transcript. Return a JSON patch with:
 - summary: what happened so far, at most ${CAPS.summaryWords} words, plain sentences. Keep names, numbers, promises and open questions.
+  The lists have size limits and the oldest items are dropped first. Put what the oldest facts and numbers say into the summary before they go.
 - resolve: ids of items that the transcript shows are finished.
 - update: [{id, fields}] to merge or sharpen items that say the same thing, or to fix a wrong detail.
 Do not add new facts here. Do not drop anything that is still open.

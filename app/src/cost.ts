@@ -3,7 +3,10 @@
 // STT spend (base price + the add-ons that are on: speaker labels, keyterms) is tracked and shown, never capped. STT minutes only raise a warning (budget.maxMinutesPerCall),
 // and so does the total of the call (budget.warnUsdPerCall).
 // run.ts feeds it after every model call and reads llmState()/minutesState() in its guards and its 1 s health tick.
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import type { Settings } from "./settings.ts";
+import { DRIFT_WARN } from "./context/budget.ts";
 
 export type LlmUsage = {
   inputTokens?: number;
@@ -12,6 +15,81 @@ export type LlmUsage = {
 };
 export type RoleTotals = { calls: number; usd: number; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number };
 export type CostState = "ok" | "warn" | "capped";
+
+/** Token counts of one call as the provider reported them. A NaN or negative count is read as 0. `inputTokens` is the total, cache reads and writes included. */
+export type UsageTokens = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; noCacheTokens: number };
+export function usageTokens(usage: unknown, providerMetadata?: unknown): UsageTokens {
+  const u = (usage ?? {}) as LlmUsage,
+    d = u.inputTokenDetails ?? {};
+  const pm = ((providerMetadata as { anthropic?: object } | undefined)?.anthropic ?? {}) as { cacheCreationInputTokens?: number };
+  // A NaN/negative count from a provider must not poison the running total (NaN >= cap is false: the budget cap would never trip).
+  const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x > 0 ? x : 0);
+  const inputTokens = n(u.inputTokens),
+    outputTokens = n(u.outputTokens);
+  const cacheReadTokens = n(d.cacheReadTokens),
+    cacheWriteTokens = d.cacheWriteTokens !== undefined ? n(d.cacheWriteTokens) : n(pm.cacheCreationInputTokens);
+  const noCacheTokens = d.noCacheTokens !== undefined ? n(d.noCacheTokens) : Math.max(0, inputTokens - cacheReadTokens - cacheWriteTokens);
+  return { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, noCacheTokens };
+}
+/** The fields every usage row carries next to the raw `usage`: input, output, cache_read and cache_write tokens of the call. */
+export function usageFields(
+  usage: unknown,
+  providerMetadata?: unknown,
+): { input_tokens: number; output_tokens: number; cache_read: number; cache_write: number } {
+  const t = usageTokens(usage, providerMetadata);
+  return { input_tokens: t.inputTokens, output_tokens: t.outputTokens, cache_read: t.cacheReadTokens, cache_write: t.cacheWriteTokens };
+}
+
+/** One line of the cache report: a role over some calls. `hitPct` is the share of input tokens read from the cache; `writePct` the share written. */
+export type CacheReportRow = {
+  role: string;
+  calls: number;
+  input: number;
+  read: number;
+  write: number;
+  hitPct: number;
+  writePct: number;
+  usd: number;
+  drift?: number;
+};
+/** Cache report from usage rows (usage.jsonl rows of one or more calls). Rows without token fields are read from `usage` the same way addLlm does.
+ *  Roles are listed by input tokens, biggest first. `drift` is the mean of (estimate - actual) / actual over the rows that carry `est_tokens`. */
+export function cacheReport(rows: readonly Record<string, unknown>[]): CacheReportRow[] {
+  const by = new Map<string, CacheReportRow & { dsum: number; dn: number }>();
+  for (const r of rows) {
+    const role = typeof r.role === "string" ? r.role : "";
+    if (!role || role === "stt" || role === "summary" || (r.usage === undefined && r.input_tokens === undefined)) continue;
+    const f = typeof r.input_tokens === "number" ? { input: r.input_tokens, read: Number(r.cache_read) || 0, write: Number(r.cache_write) || 0 } : null;
+    const t =
+      f ?? (({ inputTokens: input, cacheReadTokens: read, cacheWriteTokens: write }) => ({ input, read, write }))(usageTokens(r.usage, r.providerMetadata));
+    const o = by.get(role) ?? { role, calls: 0, input: 0, read: 0, write: 0, hitPct: 0, writePct: 0, usd: 0, dsum: 0, dn: 0 };
+    o.calls++;
+    o.input += t.input;
+    o.read += t.read;
+    o.write += t.write;
+    o.usd += Number(r.usd) || 0;
+    if (typeof r.drift_pct === "number" && Number.isFinite(r.drift_pct)) {
+      o.dsum += r.drift_pct;
+      o.dn++;
+    }
+    by.set(role, o);
+  }
+  return [...by.values()]
+    .map(({ dsum, dn, ...o }) => ({
+      ...o,
+      hitPct: o.input ? Math.round((o.read / o.input) * 1000) / 10 : 0,
+      writePct: o.input ? Math.round((o.write / o.input) * 1000) / 10 : 0,
+      ...(dn ? { drift: Math.round((dsum / dn) * 10) / 10 } : {}),
+    }))
+    .sort((a, b) => b.input - a.input);
+}
+/** The report as text lines for the terminal and `wingman doctor`. */
+export function formatCacheReport(rep: readonly CacheReportRow[]): string[] {
+  return rep.map(
+    (r) =>
+      `${r.role.padEnd(9)} ${String(r.calls).padStart(5)} calls  input ${String(r.input).padStart(8)}  cache read ${String(r.hitPct).padStart(5)}%  cache write ${String(r.writePct).padStart(5)}%  $${r.usd.toFixed(4)}${r.drift !== undefined ? `  estimate off by ${r.drift > 0 ? "+" : ""}${r.drift}%` : ""}`,
+  );
+}
 
 /** Usage roles (usage.jsonl). `reflex`, `notes`, `assist`... are the older jobs; the last seven are the moment engine's (PLAN 3.5). */
 export const MOMENT_ROLES = ["moment", "observer", "memory", "compact", "ask", "digest", "wrapup"] as const;
@@ -39,16 +117,12 @@ export class CostMeter {
 
   /** Cost of one LLM call in USD (also added to the role total). Unknown models cost 0 and are listed in `unpriced`. */
   addLlm(role: string, modelRef: string, usage: unknown, providerMetadata?: unknown): { usd: number; tokens: Omit<RoleTotals, "calls" | "usd"> } {
-    const u = (usage ?? {}) as LlmUsage,
-      d = u.inputTokenDetails ?? {};
-    const pm = ((providerMetadata as { anthropic?: object } | undefined)?.anthropic ?? {}) as { cacheCreationInputTokens?: number };
-    // A NaN/negative count from a provider must not poison the running total (NaN >= cap is false: the budget cap would never trip).
-    const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x > 0 ? x : 0);
-    const input = n(u.inputTokens),
-      output = n(u.outputTokens);
-    const read = n(d.cacheReadTokens),
-      write = d.cacheWriteTokens !== undefined ? n(d.cacheWriteTokens) : n(pm.cacheCreationInputTokens);
-    const plain = d.noCacheTokens !== undefined ? n(d.noCacheTokens) : Math.max(0, input - read - write);
+    const t = usageTokens(usage, providerMetadata);
+    const input = t.inputTokens,
+      output = t.outputTokens,
+      read = t.cacheReadTokens,
+      write = t.cacheWriteTokens,
+      plain = t.noCacheTokens;
     const p = this.prices.llm[modelRef];
     if (!p) this.unpriced.add(modelRef);
     const usd = p
@@ -121,6 +195,22 @@ export class CostMeter {
     const input = rs.reduce((a, r) => a + r.inputTokens, 0);
     return input > 0 ? Math.round((rs.reduce((a, r) => a + r.cacheReadTokens, 0) / input) * 1000) / 10 : undefined;
   }
+  /** The cache report of this call from the running totals, one row per role. */
+  cacheReport(): CacheReportRow[] {
+    return Object.entries(this.roles)
+      .filter(([, r]) => r.inputTokens > 0)
+      .map(([role, r]) => ({
+        role,
+        calls: r.calls,
+        input: r.inputTokens,
+        read: r.cacheReadTokens,
+        write: r.cacheWriteTokens,
+        hitPct: Math.round((r.cacheReadTokens / r.inputTokens) * 1000) / 10,
+        writePct: Math.round((r.cacheWriteTokens / r.inputTokens) * 1000) / 10,
+        usd: r.usd,
+      }))
+      .sort((a, b) => b.input - a.input);
+  }
   /** Cache hit % per role, for the usage summary row. */
   get cacheHitByRole(): Record<string, number> {
     const out: Record<string, number> = {};
@@ -158,4 +248,49 @@ export class CostMeter {
   line() {
     return `AI $${this.llmUsd.toFixed(3)} of $${this.budget.maxUsdPerCall} · STT $${this.sttUsd.toFixed(2)} · total $${this.totalUsd.toFixed(2)}`;
   }
+}
+
+/** What the cache report says is wrong, in plain words (empty = nothing to say). `minTokens(role)`: the model's cache minimum for that role. Roles with fewer than 8 calls are not judged. */
+export function cacheAdvice(rep: readonly CacheReportRow[], minTokens: (role: string) => number): string[] {
+  const out: string[] = [];
+  for (const r of rep) {
+    if (r.calls < 8) continue;
+    const avg = r.input / r.calls;
+    if (r.hitPct < 10 && r.writePct < 10 && avg < minTokens(r.role))
+      out.push(`${r.role}: ${Math.round(avg)} input tokens a call is under the model's cache minimum (${minTokens(r.role)}): nothing is cached`);
+    else if (r.writePct >= 30 && r.hitPct < 10)
+      out.push(`${r.role}: ${r.writePct}% of the input is written to the cache and only ${r.hitPct}% is read: the cached part changes too often`);
+    if (r.drift !== undefined && Math.abs(r.drift) > DRIFT_WARN * 100)
+      out.push(
+        `${r.role}: the token estimate is off by ${r.drift > 0 ? "+" : ""}${r.drift}% (limit ${DRIFT_WARN * 100}%): budgets for this role are ${r.drift > 0 ? "tighter" : "looser"} than they look`,
+      );
+  }
+  return out;
+}
+
+/** The usage rows of the newest `n` call folders under `callsDir`, oldest first. Unreadable folders and rows are skipped. */
+export function recentUsageRows(callsDir: string, n = 5): Record<string, unknown>[] {
+  if (!existsSync(callsDir)) return [];
+  const dirs = readdirSync(callsDir)
+    .map((d) => join(callsDir, d))
+    .filter((d) => {
+      try {
+        return statSync(d).isDirectory() && !statSync(d).isSymbolicLink() && existsSync(join(d, "usage.jsonl"));
+      } catch {
+        return false;
+      }
+    })
+    .sort()
+    .slice(-n);
+  const rows: Record<string, unknown>[] = [];
+  for (const d of dirs)
+    for (const line of readFileSync(join(d, "usage.jsonl"), "utf8").split("\n")) {
+      if (!line) continue;
+      try {
+        rows.push(JSON.parse(line) as Record<string, unknown>);
+      } catch {
+        /* a row that is not valid JSON is skipped */
+      }
+    }
+  return rows;
 }

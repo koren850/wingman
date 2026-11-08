@@ -1,0 +1,123 @@
+{
+ "id": "mem-en-2",
+ "lang": "en",
+ "title": "Support call: wrong charge on an invoice",
+ "kind": "support",
+ "lines": [
+  {
+   "side": "them",
+   "text": "Hi, I was charged twice for the same order and nobody has answered my emails.",
+   "name": "Ben"
+  },
+  {
+   "side": "me",
+   "text": "I am sorry about that Ben. Can you give me the order number?"
+  },
+  {
+   "side": "them",
+   "text": "Yes, it is order 77120. The card was charged on the third and again on the fifth.",
+   "name": "Ben"
+  },
+  {
+   "side": "me",
+   "text": "I can see both charges. The duplicate one is 85 dollars and it was not meant to happen."
+  },
+  {
+   "side": "me",
+   "text": "I will escalate this to the billing team today and write down your case number."
+  },
+  {
+   "side": "them",
+   "text": "How long will the refund take to show on my card?",
+   "name": "Ben"
+  },
+  {
+   "side": "me",
+   "text": "That depends on your bank, I will find out what the usual time is."
+  },
+  {
+   "side": "them",
+   "text": "Also my card reader at the shop keeps freezing. Is that connected?",
+   "name": "Ben"
+  },
+  {
+   "side": "me",
+   "text": "No, that is a separate device problem. Which model is it?"
+  },
+  {
+   "side": "them",
+   "text": "It is the older grey one from two years ago.",
+   "name": "Ben"
+  },
+  {
+   "side": "me",
+   "text": "In that case we should replace the card terminal, I will not try to repair it."
+  },
+  {
+   "side": "them",
+   "text": "Fine, replace it.",
+   "name": "Ben"
+  },
+  {
+   "side": "me",
+   "text": "I will email you the return label for the old terminal after this call."
+  },
+  {
+   "side": "them",
+   "text": "Thanks, that is all.",
+   "name": "Ben"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 4,
+    "who": "me",
+    "what": "escalate to the billing team today",
+    "keys": [
+     "escalate",
+     "billing"
+    ]
+   },
+   {
+    "line": 12,
+    "who": "me",
+    "what": "email the return label for the old terminal",
+    "keys": [
+     "return label"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 5,
+    "asker": "Ben",
+    "text": "How long will the refund take to show on my card",
+    "keys": [
+     "refund"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 3,
+    "what": "duplicate charge",
+    "value": "85",
+    "who": "me",
+    "keys": [
+     "duplicate"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 10,
+    "text": "replace the card terminal",
+    "keys": [
+     "replace",
+     "terminal"
+    ]
+   }
+  ]
+ }
+}

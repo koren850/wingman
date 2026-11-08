@@ -1,0 +1,126 @@
+{
+ "id": "mem-en-6",
+ "lang": "en",
+ "title": "Personal: talking to a landlord about the flat",
+ "kind": "personal",
+ "lines": [
+  {
+   "side": "me",
+   "text": "Hello, I am calling about the heater in the flat, it stopped working last week."
+  },
+  {
+   "side": "them",
+   "text": "Yes, I got your message. It is an old unit.",
+   "name": "Mr Hale"
+  },
+  {
+   "side": "me",
+   "text": "I pay 2300 a month, so I would like the heater working before the cold weeks."
+  },
+  {
+   "side": "them",
+   "text": "I will send a technician to fix the heater by next week.",
+   "name": "Mr Hale"
+  },
+  {
+   "side": "me",
+   "text": "If the technician says it must be replaced, who pays for the new one?"
+  },
+  {
+   "side": "them",
+   "text": "I would need to see the report first.",
+   "name": "Mr Hale"
+  },
+  {
+   "side": "me",
+   "text": "I will send you photos of the damage tonight so you have them."
+  },
+  {
+   "side": "them",
+   "text": "Good. By the way your lease ends in two months.",
+   "name": "Mr Hale"
+  },
+  {
+   "side": "me",
+   "text": "I know. My deposit is 4600 and I want to be sure it stays safe if I extend."
+  },
+  {
+   "side": "them",
+   "text": "Of course. Would you like to stay longer?",
+   "name": "Mr Hale"
+  },
+  {
+   "side": "me",
+   "text": "Yes, I would like to extend the lease for six months with the same rent."
+  },
+  {
+   "side": "them",
+   "text": "That is fine for me, I will not raise the rent this time.",
+   "name": "Mr Hale"
+  },
+  {
+   "side": "me",
+   "text": "Thank you, that is a relief."
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 3,
+    "who": "Mr Hale",
+    "what": "send a technician to fix the heater by next week",
+    "keys": [
+     "technician"
+    ]
+   },
+   {
+    "line": 6,
+    "who": "me",
+    "what": "send photos of the damage tonight",
+    "keys": [
+     "photos"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 4,
+    "asker": "me",
+    "text": "who pays for the new heater if it must be replaced",
+    "keys": [
+     "who pays"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 2,
+    "what": "monthly rent",
+    "value": "2300",
+    "who": "me",
+    "keys": [
+     "month"
+    ]
+   },
+   {
+    "line": 8,
+    "what": "deposit",
+    "value": "4600",
+    "who": "me",
+    "keys": [
+     "deposit"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 10,
+    "text": "extend the lease for six months at the same rent",
+    "keys": [
+     "extend",
+     "lease"
+    ]
+   }
+  ]
+ }
+}

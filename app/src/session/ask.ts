@@ -5,7 +5,7 @@
 // the models and the callbacks. Both jobs never throw. When the model is slow, down or answers garbage, the result is an offline answer built from
 // the memory and a local search of the transcript, and it says so ("AI offline: from notes").
 import { streamText } from "ai";
-import { buildContext, type RawLine, type SharedContext, type Block } from "../context/build.ts";
+import { buildContext, modelMessages, type RawLine, type SharedContext, type Block } from "../context/build.ts";
 import { DEFAULT_BUDGETS, estimateTokens, type Budgets } from "../context/budget.ts";
 import type { CtxRecord } from "../context/record.ts";
 import { buildIndex, search, type Chunk } from "../context/retrieve.ts";
@@ -293,7 +293,7 @@ async function stream1(env: AskEnv, ctx: ReturnType<typeof buildContext>, onDelt
           streamError = error;
         },
         instructions: toInstructions(ctx.system, ref),
-        messages: ctx.messages,
+        messages: modelMessages(ctx),
       } as never);
       // A request that ignores the abort must not hold the card: the stream is raced against the signal.
       const STOP = Symbol("stop");

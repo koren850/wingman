@@ -13,7 +13,7 @@ import { policyModel } from "../testkit/policy-model.ts";
 import { registerRole } from "../testkit/prompt.ts";
 import { runDigest } from "../digest.ts";
 import { runWrapup } from "../summary.ts";
-import { CostMeter } from "../cost.ts";
+import { CostMeter, cacheReport, formatCacheReport } from "../cost.ts";
 import { loadSettings } from "../settings.ts";
 import type { ModelRegistry } from "../providers/llm.ts";
 import type { SessionMemory } from "../session/types.ts";
@@ -134,21 +134,48 @@ test("cost: a replayed call books every priced row in usage.jsonl with the model
     }
 });
 
-test("what-if (not in the product): the static role rules cached for 1 h right after block A would make moment and observer calls cheaper", async () => {
-  // Today the role block (rules + per-call data) comes after the memory block and carries no cache marker, so about 700 tokens of unchanging rules are paid
-  // in full on every moment and observer call. The simulation moves the rules to their own cached block and the data behind the memory block.
+test("usage rows carry input_tokens, cache_read and cache_write per role, and the cache report adds them up", () => {
+  const rows = runs.flatMap((r) => r.usage) as Record<string, unknown>[];
+  for (const role of ["moment", "observer", "memory", "compact", "ask"]) {
+    const rr = rows.filter((x) => x.role === role);
+    assert.ok(rr.length, role);
+    for (const x of rr) {
+      assert.equal(typeof x.input_tokens, "number", `${role}: input_tokens`);
+      assert.equal(typeof x.cache_read, "number", `${role}: cache_read`);
+      assert.equal(typeof x.cache_write, "number", `${role}: cache_write`);
+      assert.ok((x.cache_read as number) + (x.cache_write as number) <= (x.input_tokens as number), `${role}: cache tokens are part of the input`);
+    }
+  }
+  const rep = cacheReport(rows);
+  console.log("CACHE REPORT (golden dev calls, simulated provider cache)\n" + formatCacheReport(rep).join("\n"));
+  const by = Object.fromEntries(rep.map((r) => [r.role, r]));
+  assert.ok(by.moment.read > 0 && by.observer.read > 0, "moment and observer read the cache");
+  assert.ok(by.moment.hitPct > 30, `moment hit ${by.moment.hitPct}%`);
+  assert.ok(rep.every((r) => r.hitPct + r.writePct <= 100));
+});
+
+test("cache layout: the round 12 layout (rules and memory cached by role) costs less per hour than the layout before it, on the same calls", async () => {
+  // Before: A (1 h), the memory block (5 min) for every role, then the rules and the per-call facts as one block with no marker.
+  // After: A (1 h), the role's fixed rules (1 h), the memory block (5 min, only moment and observer), the per-call facts last. The calls are the same;
+  // only the cache markers and the block order differ (the simulator in v2-kit.ts prices what the provider would bill).
   const ids = ["dev-sales-en", "dev-support-he", "dev-vendor-en"];
-  const now = await pool(ids, 3, (id) => runMeeting(id, { asks: false }));
-  const alt = await pool(ids, 3, (id) => runMeeting(id, { asks: false, roleFirst: true }));
+  const after = await pool(ids, 3, (id) => runMeeting(id, { asks: false }));
+  const before = await pool(ids, 3, (id) => runMeeting(id, { asks: false, legacyLayout: true }));
   const per = (rs: MeetingRun[], role: string) => avg(rs.flatMap((r) => r.usage).filter((x) => x.role === role));
+  const hour = (rs: MeetingRun[]) =>
+    (rs.flatMap((r) => r.usage).reduce((a, x) => a + (x.usd ?? 0), 0) / (rs.reduce((a, r) => a + r.lengthMs, 0) / 60_000)) * 60;
   const share = (rs: MeetingRun[]) => {
     const c = rs.flatMap((r) => r.calls);
     return c.reduce((a, x) => a + x.read, 0) / c.reduce((a, x) => a + x.read + x.write + x.plain, 0);
   };
-  for (const role of ["moment", "observer"])
+  for (const role of ["moment", "observer", "memory", "compact"])
     console.log(
-      `WHAT-IF ${role}: $${per(now, role).toFixed(6)} now, $${per(alt, role).toFixed(6)} with the rules cached (${((1 - per(alt, role) / per(now, role)) * 100).toFixed(0)}% less)`,
+      `LAYOUT ${role.padEnd(8)} $${per(before, role).toFixed(6)} before, $${per(after, role).toFixed(6)} after (${((1 - per(after, role) / per(before, role)) * 100).toFixed(0)}% less)`,
     );
-  console.log(`WHAT-IF cache read share of input tokens: ${(share(now) * 100).toFixed(0)}% now, ${(share(alt) * 100).toFixed(0)}% with the rules cached`);
-  assert.ok(per(alt, "moment") < per(now, "moment") && per(alt, "observer") < per(now, "observer"));
+  console.log(`LAYOUT cost per hour: $${hour(before).toFixed(3)} before, $${hour(after).toFixed(3)} after`);
+  console.log(`LAYOUT cache read share of input tokens: ${(share(before) * 100).toFixed(0)}% before, ${(share(after) * 100).toFixed(0)}% after`);
+  assert.ok(per(after, "moment") < per(before, "moment") && per(after, "observer") < per(before, "observer"), "moment and observer calls are cheaper");
+  assert.ok(hour(after) < hour(before), "the whole call is cheaper");
+  assert.ok(per(after, "memory") <= per(before, "memory") * 1.02, "the memory updater does not get dearer");
+  assert.ok(hour(after) <= 0.25);
 });

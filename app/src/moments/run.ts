@@ -5,7 +5,7 @@
 // and fallbacks are tried in order until the first tag was seen (a half answer is never followed by a second model's answer).
 import { streamText } from "ai";
 import type { LanguageModel } from "ai";
-import type { ContextOutput } from "../context/build.ts";
+import { modelMessages, type ContextOutput } from "../context/build.ts";
 import { cacheOptionsFor, providerOptionsFor, temperatureFor, withFallbacks } from "../providers/llm.ts";
 import { classifyFinish, classifyLlmError, ProviderError } from "../providers/errors.ts";
 import { parseMomentStream, type ParsedMoment } from "./parse.ts";
@@ -43,7 +43,7 @@ export type MomentRun = {
   registry: { resolve(ref: string, role?: string): Promise<LanguageModel> };
   models: string[];
   role: MomentRole;
-  ctx: Pick<ContextOutput, "system" | "messages">;
+  ctx: Pick<ContextOutput, "system" | "messages" | "parts">;
   cfg: MomentRunCfg;
   signal: AbortSignal;
   h: MomentRunHandlers;
@@ -118,7 +118,7 @@ async function runOne(o: MomentRun, ref: string, h: MomentRunHandlers): Promise<
       streamError = error;
     },
     instructions: instructionsFor(ref, o.ctx, o.cfg.cache),
-    messages: o.ctx.messages,
+    messages: modelMessages(o.ctx),
   } as never);
 
   let buf = "";

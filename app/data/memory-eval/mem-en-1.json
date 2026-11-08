@@ -1,0 +1,134 @@
+{
+ "id": "mem-en-1",
+ "lang": "en",
+ "title": "Sales call: quote for a delivery company",
+ "kind": "client",
+ "lines": [
+  {
+   "side": "them",
+   "text": "Thanks for making time today. We run about three thousand five hundred parcels a month across two depots.",
+   "name": "Dana"
+  },
+  {
+   "side": "them",
+   "text": "Our monthly volume is 3500 parcels, and it grows every quarter.",
+   "name": "Dana"
+  },
+  {
+   "side": "me",
+   "text": "That fits our standard plan well. Let me walk you through how the routing module works."
+  },
+  {
+   "side": "them",
+   "text": "Does the setup fee include training for the depot staff?",
+   "name": "Dana"
+  },
+  {
+   "side": "me",
+   "text": "Good question, I need to check that with our onboarding team before I promise anything."
+  },
+  {
+   "side": "me",
+   "text": "The one time setup fee is 1200 dollars, and the monthly price depends on volume."
+  },
+  {
+   "side": "them",
+   "text": "That is a bit higher than the other offer we saw, but the routing looks better.",
+   "name": "Dana"
+  },
+  {
+   "side": "me",
+   "text": "I will send you a revised quote by Friday with the volume discount included."
+  },
+  {
+   "side": "them",
+   "text": "Great. I will share our depot shipping volumes by Wednesday so you can size it properly.",
+   "name": "Dana"
+  },
+  {
+   "side": "me",
+   "text": "Perfect, that helps a lot. Anything about the integration with your warehouse system?"
+  },
+  {
+   "side": "them",
+   "text": "It is an old system, we will need an export file once a day.",
+   "name": "Dana"
+  },
+  {
+   "side": "them",
+   "text": "Let us start with a pilot in March at the north depot only, and decide on the second depot after that.",
+   "name": "Dana"
+  },
+  {
+   "side": "me",
+   "text": "Agreed, a pilot at the north depot in March."
+  },
+  {
+   "side": "them",
+   "text": "Talk to you Friday then.",
+   "name": "Dana"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 7,
+    "who": "me",
+    "what": "send a revised quote by Friday",
+    "keys": [
+     "revised",
+     "quote"
+    ]
+   },
+   {
+    "line": 8,
+    "who": "Dana",
+    "what": "share depot shipping volumes by Wednesday",
+    "keys": [
+     "shipping volumes",
+     "wednesday"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 3,
+    "asker": "Dana",
+    "text": "Does the setup fee include training for the depot staff",
+    "keys": [
+     "training"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 1,
+    "what": "monthly volume",
+    "value": "3500",
+    "who": "Dana",
+    "keys": [
+     "volume"
+    ]
+   },
+   {
+    "line": 5,
+    "what": "setup fee",
+    "value": "1200",
+    "who": "me",
+    "keys": [
+     "setup fee"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 11,
+    "text": "start with a pilot in March at the north depot",
+    "keys": [
+     "pilot",
+     "march"
+    ]
+   }
+  ]
+ }
+}

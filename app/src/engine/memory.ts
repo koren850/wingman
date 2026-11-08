@@ -7,19 +7,22 @@
 //
 // When the updater runs (see tick):
 //   periodic  every memory.everySeconds (20) when at least memory.minNewWords (25) new words came in
-//   event     at once, but not within minGapSeconds (8) of the last run: a number, a new name, a question open for 20 s,
-//             a topic-shift hint from a moment call, a pause of more than 4 s after long speech
-//   compact   every memory.compactEveryMinutes (6), or when the render goes over its budget
+//   event     at once, but not within minGapSeconds (8) of the last run: a digit, a "?" from the STT, a new token after a speaker change,
+//             a long line, a question open for 20 s, a topic-shift hint from a moment call, a pause of more than 4 s after long speech.
+//             These hints use no word list and no capital letters, so they work the same in Hebrew and English. They only wake the updater;
+//             what the call means is the model's job.
+//   compact   every memory.compactEveryMinutes (6), or when the render goes over its budget, or when a list is nearly full (once a minute at most)
 // Cost guard: at most memory.maxPerHour updater calls an hour (240 is about $0.05 at the PLAN price of $0.0002 a call).
 // Fallback: after 3 failures in a row the updater rests for a minute and tries again. The memory keeps its last good state, the file stays valid.
-import { buildContext, type ContextOutput, type RawLine, type SharedContext } from "../context/build.ts";
+import { buildContext, modelMessages, type ContextOutput, type RawLine, type SharedContext } from "../context/build.ts";
 import { withSettings, type Budgets } from "../context/budget.ts";
 import { applyPatch } from "../session/patch.ts";
 import { MEMORY_UPDATER_INSTRUCTIONS, COMPACTOR_INSTRUCTIONS } from "../session/prompt.ts";
 import { renderMemoryDetailed } from "../session/render.ts";
+import { CAPS } from "../session/caps.ts";
 import { toView } from "../session/view.ts";
 import type { MemoryView, SessionMemory } from "../session/types.ts";
-import { spokenNumbers } from "../claims.ts";
+import { spokenNumbers } from "../claims.ts"; // only for interview calls (deps.localNumbers); the v2 path does not use its unit list
 import { generateOnce, providerOptionsFor, cacheOptionsFor, temperatureFor, type ModelRegistry } from "../providers/llm.ts";
 import type { generateText } from "ai";
 
@@ -84,8 +87,10 @@ export const engineV2 = (settings: unknown): boolean => (settings as { moments?:
 export type MemRole = "memory" | "compact";
 export type MemoryRequest = { role: MemRole; ctx: ContextOutput; signal: AbortSignal; timeoutMs: number };
 export type MemoryReply = { text: string; usage?: unknown };
-export type TriggerKind = "number" | "name" | "question" | "topic" | "pause" | "manual";
+export type TriggerKind = "number" | "name" | "question" | "topic" | "pause" | "length" | "turn" | "manual";
 export type MemLine = { side: "me" | "them"; text: string; name?: string; at: number };
+/** One transcript line for the loop. `final`: the STT marked the end of the speaker's turn (Deepgram speech_final), when the source knows it. */
+export type MemInput = { side: "me" | "them"; text: string; name?: string; final?: boolean };
 export type MemoryDeps = {
   /** Wall ms. */
   now: () => number;
@@ -96,12 +101,16 @@ export type MemoryDeps = {
   /** Sends {type:"memory", view} to the relay. */
   sendView: (view: MemoryView) => void;
   log: (stream: "events" | "usage", row: Record<string, unknown>) => void;
-  /** Cost cap and health: false stops a model call (the loop then waits). */
-  allowed?: (role: MemRole) => boolean;
+  /** Cost cap and health: false stops a model call (the loop then waits). `final` is the last pass at shutdown: it must be allowed while the call is closing. */
+  allowed?: (role: MemRole | "final") => boolean;
   shared?: () => SharedContext | undefined;
   budgets?: Budgets;
+  /** Interview and legacy calls only: numbers with a unit are also written into the memory without a model call (claims.ts word list). Off by default. */
+  localNumbers?: boolean;
   /** After every applied patch (also the local number patch). */
   onChange?: (mem: SessionMemory, prev: SessionMemory) => void;
+  /** The topic label changed from one real label to another (not the first label). The moment engine makes the observer look at the call now. */
+  onTopicChange?: (now: string, prev: string) => void;
 };
 
 const MAX_TAIL = 200;
@@ -111,8 +120,15 @@ const FAILS_BEFORE_REST = 3;
 const HOUR = 3_600_000;
 
 const wc = (s: string) => s.split(/\s+/).filter(Boolean).length;
-/** A capitalised word inside a sentence (not the first word): a name we have not met. Scripts without capitals (Hebrew) never match; the speaker label and the model's roster cover those. */
-const NAME_RE = /(?<=[\p{L}\p{N},;:] )\p{Lu}\p{Ll}{2,}/gu;
+/** Words of a line, lower case, letters and digits only. Works for any script (no word list, no capitals). */
+const tokensOf = (s: string): string[] => s.toLowerCase().match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) ?? [];
+/** A hint line is a "long line" for the updater when it has this many words. */
+const LONG_LINE_WORDS = 45;
+/** A new-token hint needs a token of at least this many letters, this many tokens already heard, and this long since the last such hint. */
+const NEW_TOKEN_MIN_LEN = 3;
+const NEW_TOKEN_WARMUP = 80;
+const NEW_TOKEN_GAP_MS = 30_000;
+const SEEN_MAX = 4000;
 
 export class MemoryLoop {
   private mem: SessionMemory;
@@ -131,7 +147,10 @@ export class MemoryLoop {
   private readonly compactRuns: number[] = [];
   private fails = 0;
   private restUntil = 0;
-  private readonly known = new Set<string>();
+  private readonly rosterTokens = new Set<string>();
+  private readonly seen = new Set<string>(); // every token heard so far (bounded)
+  private lastSpeaker = "";
+  private lastNewTokenAt = -Infinity;
   private localNumbers: { what: string; value: string; who: string }[] = [];
   private readonly prompted = new Set<string>();
   private lastPromptAt = 0;
@@ -146,7 +165,10 @@ export class MemoryLoop {
   ) {
     this.mem = start;
     this.lastCompactAt = deps.now();
-    for (const p of start.roster) this.known.add(p.name.toLowerCase());
+    for (const p of start.roster) this.learnName(p.name);
+  }
+  private learnName(n: string): void {
+    for (const t of tokensOf(n)) this.rosterTokens.add(t);
   }
 
   // ------------------------------------------------------------ reading
@@ -176,7 +198,7 @@ export class MemoryLoop {
 
   // ------------------------------------------------------------ input
   /** One transcript line (final). Both sides. */
-  addLine(line: { side: "me" | "them"; text: string; name?: string }): void {
+  addLine(line: MemInput): void {
     const text = line.text.replace(/\s+/g, " ").trim();
     if (!text || this.stopped) return;
     const now = this.deps.now();
@@ -188,25 +210,41 @@ export class MemoryLoop {
       const gone = this.unread.shift()!;
       this.unreadWords -= wc(gone.text);
     }
-    this.unreadWords += wc(text);
+    const words = wc(text);
+    this.unreadWords += words;
     this.lastLineAt = now;
-    if (line.name) this.known.add(line.name.toLowerCase());
-    // Events that need no word list: a digit, a capitalised unknown name, a question mark.
+    if (line.name) this.learnName(line.name);
+    this.hints(line, text, words, now);
+    // Interview and legacy only: claims.ts numbers (a number with its unit) go into `numbers` without a model call.
+    if (this.deps.localNumbers)
+      for (const s of spokenNumbers(text)) this.localNumbers.push({ what: s.unit, value: String(s.n), who: line.side === "me" ? "me" : (line.name ?? "them") });
+  }
+  /** Wake-up hints. None of them reads a word list or a capital letter, so Hebrew and English behave alike. The updater decides what the line means. */
+  private hints(line: MemInput, text: string, words: number, now: number): void {
     if (/\d/.test(text)) this.events.add("number");
-    for (const m of text.matchAll(NAME_RE)) {
-      const n = m[0].toLowerCase();
-      if (!this.known.has(n)) {
-        this.known.add(n);
-        this.events.add("name");
-      }
+    if (/[?？؟]\s*$/.test(text) && !this.questionAt) this.questionAt = now;
+    if (words >= LONG_LINE_WORDS) this.events.add("length");
+    if (line.final && this.unreadWords >= Math.ceil(this.cfg.minNewWords / 2)) this.events.add("turn");
+    // A token that is new to the call (not in the roster, never heard) right after the speaker changed: a name, a product, a place.
+    const speaker = `${line.side}:${line.name ?? ""}`;
+    const changed = this.lastSpeaker !== "" && speaker !== this.lastSpeaker;
+    this.lastSpeaker = speaker;
+    const toks = tokensOf(text);
+    let fresh = false;
+    if (changed && this.seen.size >= NEW_TOKEN_WARMUP && now - this.lastNewTokenAt >= NEW_TOKEN_GAP_MS)
+      fresh = toks.some((t) => t.length >= NEW_TOKEN_MIN_LEN && !/^\d+$/.test(t) && !this.rosterTokens.has(t) && !this.seen.has(t));
+    for (const t of toks) {
+      this.seen.add(t);
+      if (this.seen.size > SEEN_MAX) this.seen.delete(this.seen.values().next().value as string);
     }
-    if (/[?？]\s*$/.test(text) && !this.questionAt) this.questionAt = now;
-    // claims.ts numbers (a number with its unit) go into `numbers` without a model call.
-    for (const s of spokenNumbers(text)) this.localNumbers.push({ what: s.unit, value: String(s.n), who: line.side === "me" ? "me" : (line.name ?? "them") });
+    if (fresh) {
+      this.lastNewTokenAt = now;
+      this.events.add("name");
+    }
   }
   /** A hint from outside: a topic shift in a moment call, a new speaker name, a manual wake. */
   noteEvent(kind: TriggerKind): void {
-    if (kind === "name" || kind === "topic" || kind === "manual" || kind === "number" || kind === "question" || kind === "pause") this.events.add(kind);
+    this.events.add(kind);
   }
 
   // ------------------------------------------------------------ the clock
@@ -253,8 +291,10 @@ export class MemoryLoop {
     if (this.mem.ver === this.lastCompactVer) return false; // nothing changed since the last compaction
     if (this.compactRuns.filter((t) => now - t < HOUR).length >= this.cfg.maxCompactPerHour) return false;
     if (now - this.lastCompactAt >= this.cfg.compactEveryMinutes * 60_000) return true;
-    // Over budget: the render had to cut something. At most once a minute.
+    // Over budget (the render had to cut something) or a list is nearly full (its oldest items are dropped next, and the summary is where they live on).
+    // At most once a minute.
     if (now - this.lastCompactAt < 60_000) return false;
+    if (nearCap(this.mem)) return true;
     return renderMemoryDetailed(this.mem, this.cfg.budgetTokens).trimmed.length > 0;
   }
 
@@ -280,6 +320,16 @@ export class MemoryLoop {
       this.deps.onChange?.(this.mem, prev);
     } catch (e) {
       this.deps.log("events", { type: "error.survived", where: "memory.onChange", error: String((e as Error)?.message ?? e).slice(0, 160) });
+    }
+    const was = prev.topic.now.trim(),
+      is = this.mem.topic.now.trim();
+    if (was && is && was.toLowerCase() !== is.toLowerCase()) {
+      this.deps.log("events", { type: "memory.topic", from: was.slice(0, 80), to: is.slice(0, 80) });
+      try {
+        this.deps.onTopicChange?.(is, was);
+      } catch (e) {
+        this.deps.log("events", { type: "error.survived", where: "memory.onTopicChange", error: String((e as Error)?.message ?? e).slice(0, 160) });
+      }
     }
     return { applied: true };
   }
@@ -405,7 +455,7 @@ export class MemoryLoop {
   }
   /** One last updater run for the lines that were not learned yet (shutdown has a few seconds). Returns when it is done or the time is up. */
   async finalPass(maxMs: number): Promise<void> {
-    if (this.stopped || !this.cfg.enabled || !this.unread.length || this.unreadWords < 8 || (this.deps.allowed && !this.deps.allowed("memory"))) return;
+    if (this.stopped || !this.cfg.enabled || !this.unread.length || this.unreadWords < 8 || (this.deps.allowed && !this.deps.allowed("final"))) return;
     const until = this.deps.now() + maxMs;
     while (this.busy && this.deps.now() < until) await new Promise((r) => setTimeout(r, 50));
     if (this.busy) return;
@@ -420,6 +470,29 @@ export class MemoryLoop {
     this.stopped = true;
     this.abort.abort();
   }
+}
+
+/** What `MemoryDeps.allowed` looks at. Plain values, so the rule is testable without the engine. */
+export type MemoryGateState = { consented: boolean; shuttingDown: boolean; discarding: boolean; llmUp: boolean; capped: boolean };
+/** May the memory loop make a model call now? The final pass is the one call that runs while the call is closing (shuttingDown is true from the first
+ *  second of Stop); it still respects the cost cap, a missing consent, a model that is down and a call that is being thrown away. */
+export function memoryGate(role: MemRole | "final", s: MemoryGateState): boolean {
+  if (!s.consented || !s.llmUp || s.capped) return false;
+  if (role === "final") return !s.discarding;
+  return !s.shuttingDown;
+}
+
+/** True when a list of the memory has room for fewer than 3 more items (CAPS in session/caps.ts). */
+export function nearCap(mem: SessionMemory): boolean {
+  const lists = {
+    facts: mem.facts,
+    numbers: mem.numbers,
+    commitments: mem.commitments,
+    openQuestions: mem.openQuestions,
+    decisions: mem.decisions,
+    objections: mem.objections,
+  };
+  return (Object.keys(lists) as (keyof typeof lists)[]).some((k) => lists[k].length >= CAPS[k] - 2);
 }
 
 export type OpenLoopPrompt = { id: string; kind: "question" | "promise"; text: string; who: string; at: number };
@@ -452,7 +525,7 @@ export type RunnerOpts = {
   model: string;
   compactModel?: string;
   /** Adds the cost to the meter and writes the usage row (role "memory" or "compact"). */
-  onUsage: (role: MemRole, model: string, usage: unknown, providerMetadata: unknown) => void;
+  onUsage: (role: MemRole, model: string, usage: unknown, providerMetadata: unknown, record: ContextOutput["record"]) => void;
   generate?: typeof generateText;
 };
 /** Turns a built context into one model call. System blocks keep their cache markers (A 1 h, B 5 min); the text answer is the patch. */
@@ -472,9 +545,9 @@ export function makeModelRunner(o: RunnerOpts): MemoryDeps["run"] {
       providerOptions: providerOptionsFor(ref, { effort: "low", thinking: false }),
       ...(temperatureFor(ref) !== undefined ? { temperature: temperatureFor(ref) } : {}),
       instructions,
-      messages: req.ctx.messages,
+      messages: modelMessages(req.ctx),
     });
-    o.onUsage(req.role, ref, r.usage ?? r.totalUsage, r.providerMetadata);
+    o.onUsage(req.role, ref, r.usage ?? r.totalUsage, r.providerMetadata, req.ctx.record);
     return { text: r.text ?? "", usage: r.usage };
   };
 }

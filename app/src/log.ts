@@ -7,6 +7,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ulid } from "ulid";
 import { CALLS, USER_DATA } from "./env.ts";
+import { usageFields } from "./cost.ts";
+import { DriftTracker, DRIFT_WARN } from "./context/budget.ts";
 
 /** Cap on rows kept in memory for the rescue copy (about 3 hours of a busy call). */
 const MAX_UNSAVED_BYTES = 16 * 1024 * 1024;
@@ -77,7 +79,8 @@ export class CallLog {
   }
   /** Appends one JSON line (with a `t` epoch-ms timestamp) to <stream>.jsonl. Never throws. */
   write(stream: "events" | "transcript" | "cards" | "latency" | "usage" | "live", row: Record<string, unknown>) {
-    const full = { t: Date.now(), ...row };
+    const full: Record<string, unknown> = { t: Date.now(), ...row };
+    if (stream === "usage") this.enrichUsage(full);
     if (stream === "cards" && this.onCardRow) {
       try {
         this.onCardRow(full);
@@ -103,6 +106,26 @@ export class CallLog {
       }
     }
   }
+
+  /** Every usage row that carries the provider's `usage` also gets input_tokens, output_tokens, cache_read and cache_write, and (when the row has the context
+   *  record `ctx`) est_tokens and drift_pct: the estimate against the real count. A role that is off by more than 25 percent is logged once in a while. */
+  private enrichUsage(row: Record<string, unknown>): void {
+    try {
+      if (row.usage === undefined || row.input_tokens !== undefined) return;
+      Object.assign(row, usageFields(row.usage, row.providerMetadata));
+      const est = (row.ctx as { tokens?: unknown } | undefined)?.tokens;
+      const actual = Number(row.input_tokens);
+      if (typeof est === "number" && est > 0 && actual > 0) {
+        const d = this.drift.note(String(row.role), est, actual, Date.now());
+        row.est_tokens = est;
+        if (d.pct !== undefined) row.drift_pct = d.pct;
+        if (d.warn) this.write("events", { type: "tokens.drift", role: row.role, estimate: est, actual, pct: d.pct, limit: DRIFT_WARN * 100 });
+      }
+    } catch {
+      /* the usage row is written as it is */
+    }
+  }
+  private readonly drift = new DriftTracker();
 
   /** One append. A vanished folder is created again and the append retried once. Returns undefined on success, else the error. */
   private tryAppend(stream: string, line: string): Error | undefined {

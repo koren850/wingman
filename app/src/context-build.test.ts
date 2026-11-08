@@ -68,22 +68,26 @@ const core = (r: ReturnType<typeof buildContext>) => r.record.trimmed.filter((t)
 const total = (r: ReturnType<typeof buildContext>) =>
   r.system.reduce((n, b) => n + estimateTokens(b.text), 0) + r.messages.reduce((n, m) => n + estimateTokens(m.content), 0);
 
-test("three layers: A shared (1 h), B memory (breakpoint), role text, then the user message", () => {
-  const r = buildContext(input("moment"));
+test("layers: A shared (1 h), the role's fixed rules (1 h), B memory (5 min), per-call data, then the user message", () => {
+  const r = buildContext(
+    input("moment", { roleInstructions: "Role moment: do the job.\n\n<call_facts>\nUser: Sam\n</call_facts>\n\nCall frame (made by a small model): sales" }),
+  );
   assert.deepEqual(
     r.system.map((b) => [b.name, b.cache]),
     [
       ["shared", "1h"],
+      ["role", "1h"],
       ["memory", "5m"],
-      ["role", undefined],
+      ["data", undefined],
     ],
   );
   assert.match(r.system[0].text, /Rules: be short\./);
   assert.match(r.system[0].text, /House style:/);
   assert.match(r.system[0].text, /price: Pricing/);
   assert.match(r.system[0].text, /How much does it cost\? -> From 2,000 per month/);
-  assert.ok(r.system[1].text.startsWith("<call_memory>"));
-  assert.equal(r.system[2].text, "Role moment: do the job.");
+  assert.equal(r.system[1].text, "Role moment: do the job.");
+  assert.ok(r.system[2].text.startsWith("<call_memory>"));
+  assert.match(r.system[3].text, /^<call_facts>[\s\S]*Call frame/);
   assert.equal(r.messages.length, 1);
   assert.equal(r.messages[0].role, "user");
   const c = r.messages[0].content;
@@ -91,6 +95,68 @@ test("three layers: A shared (1 h), B memory (breakpoint), role text, then the u
   assert.match(c, /<trigger>Can you start in March\?<\/trigger>/);
   assert.match(c, /them \(Dana\): line 29 /);
   assert.match(c, /me: line 27 /);
+});
+
+test("cache markers follow the role policy: memory is cached only where two calls fall between patches; ask, digest and wrapup mark block A only", () => {
+  const marks = (role: Role) =>
+    buildContext(input(role))
+      .system.filter((b) => b.cache)
+      .map((b) => `${b.name}:${b.cache}`)
+      .join(" ");
+  assert.equal(marks("moment"), "shared:1h role:1h memory:5m");
+  assert.equal(marks("observer"), "shared:1h role:1h memory:5m");
+  assert.equal(marks("memory"), "shared:1h role:1h", "its own patch changes the memory block before its next call: a write nobody reads");
+  assert.equal(marks("compact"), "shared:1h role:1h");
+  assert.equal(marks("ask"), "shared:1h");
+  assert.equal(marks("wrapup"), "shared:1h");
+  assert.equal(
+    buildContext(input("ask", { cache: { memory: "5m" } }))
+      .system.filter((b) => b.cache)
+      .map((b) => b.name)
+      .join(),
+    "shared,memory",
+    "a caller can override",
+  );
+});
+
+test("the rules and the per-call facts are separate blocks: the facts never sit inside a cached block", () => {
+  const facts = (n: number) => `Rules of the job.\n\n<call_facts>\nUser: Sam\nBank candidates: ${n}\n</call_facts>`;
+  const a = buildContext(input("moment", { roleInstructions: facts(1) }));
+  const b = buildContext(input("moment", { roleInstructions: facts(2) }));
+  const marked = (r: typeof a) => r.system.filter((x) => x.cache).map((x) => x.text);
+  assert.deepEqual(marked(a), marked(b), "everything with a marker is the same bytes when only the facts change");
+  assert.notEqual(a.system.at(-1)!.text, b.system.at(-1)!.text);
+  assert.ok(!marked(a).join("").includes("Bank candidates"));
+});
+
+test("tail chunks: with tailChunk the closed chunks keep the same bytes while the window grows; the last closed chunk carries the marker", () => {
+  const all = lines(60);
+  const mk = (n: number) => buildContext(input("moment", { rawLines: all.slice(0, n), cache: { tailChunk: 4 }, memory: emptyMemory() }));
+  const parts = (n: number) => mk(n).parts!;
+  const p1 = parts(40),
+    p3 = parts(45);
+  assert.ok(p1.length >= 2, "at least one closed chunk and the rest");
+  const marked = (p: typeof p1) => p.map((x, i) => (x.providerOptions ? i : -1)).filter((i) => i >= 0);
+  assert.deepEqual(marked(p1), [p1.length - 2], "marker on the last closed chunk, not on the rest");
+  // one more line each time: the closed chunks of the new call extend the old ones byte for byte, except when the window start moves on by whole chunks
+  const closed = (p: typeof p1) => p.slice(0, -1).map((x) => x.text);
+  const startsWith = (a: string[], b: string[]) => b.length <= a.length && b.every((t, i) => t === a[i]);
+  let extended = 0,
+    steps = 0;
+  for (let n = 30; n < 59; n++) {
+    const was = closed(parts(n)),
+      now = closed(parts(n + 1));
+    steps++;
+    if (startsWith(now, was)) extended++;
+    else assert.notEqual(now[0], was[0], `n=${n}: the cached prefix changed without the window start moving`); // a whole chunk left the window: a new prefix
+  }
+  assert.ok(extended / steps >= 0.6, `${extended} of ${steps} steps kept the whole cached prefix`);
+  // the text is the same as the plain message plus the dropped older lines
+  const full = mk(45);
+  assert.equal(full.parts!.map((x) => x.text).join(""), full.messages[0].content);
+  assert.ok(p3.length >= p1.length - 1);
+  // without tailChunk there are no parts
+  assert.equal(buildContext(input("moment")).parts, undefined);
 });
 
 test("same prefix bytes across roles for the same profile and brief", () => {

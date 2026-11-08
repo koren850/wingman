@@ -250,6 +250,24 @@ section("Budget and data hygiene");
   missingPrice.length ? warn(`no price in budget.prices.llm for ${missingPrice.join(", ")}: cost shows $0`) : ok("price table covers the configured models");
 }
 
+section("Prompt cache (usage of the last 5 calls)");
+{
+  const { recentUsageRows, cacheReport, formatCacheReport, cacheAdvice } = await import("./cost.ts");
+  const { cacheMinTokens } = await import("./context/cache.ts");
+  const rep = cacheReport(recentUsageRows(CALLS, 5));
+  const modelOf = (role: string) => (role === "memory" || role === "compact" ? S.memory.model : S.llm.reflex.model);
+  if (!rep.length) ok("no saved calls with token counts yet: the report shows after the first call");
+  else {
+    for (const l of formatCacheReport(rep)) console.log(`     ${l}`);
+    const adv = cacheAdvice(rep, (role) => cacheMinTokens(modelOf(role)));
+    adv.length ? adv.forEach((a) => warn(a)) : ok("cache reads and the token estimate look right");
+  }
+  for (const m of [...new Set([S.llm.reflex.model, S.memory.model])]) {
+    const min = cacheMinTokens(m);
+    console.log(`     ${m}: caches prompts of ${min === Infinity ? "no size (this provider has no prompt cache here)" : `${min} tokens or more`}`);
+  }
+}
+
 section("Screens and audio devices");
 {
   const { readAudioDevices, bluetoothInUse } = await import("./devices.ts");

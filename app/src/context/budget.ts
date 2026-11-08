@@ -85,3 +85,31 @@ export function withSettings(opts: { memoryTokens?: number; rawTailTokens?: numb
   }
   return out;
 }
+
+// ---------------------------------------------------------------- drift between the estimate and the provider's count
+/** The estimate is warned about when it is off by more than this share of the real count. */
+export const DRIFT_WARN = 0.25;
+/** (estimate - actual) / actual, in percent with one decimal, or undefined when a side is missing. Positive = the estimate is too high (safe), negative = too low (a budget could be broken). */
+export function driftPct(estimate: number, actual: number): number | undefined {
+  if (!(estimate > 0) || !(actual > 0)) return undefined;
+  return Math.round(((estimate - actual) / actual) * 1000) / 10;
+}
+/** Keeps the drift per role. `note` says when to write a warning: the first time a role is off by more than DRIFT_WARN, then at most once every `everyMs` for that role. */
+export class DriftTracker {
+  private last = new Map<string, number>();
+  readonly samples = new Map<string, { n: number; sum: number; worst: number }>();
+  note(role: string, estimate: number, actual: number, now: number, everyMs = 300_000): { pct?: number; warn: boolean } {
+    const pct = driftPct(estimate, actual);
+    if (pct === undefined) return { warn: false };
+    const s = this.samples.get(role) ?? { n: 0, sum: 0, worst: 0 };
+    s.n++;
+    s.sum += pct;
+    if (Math.abs(pct) > Math.abs(s.worst)) s.worst = pct;
+    this.samples.set(role, s);
+    const off = Math.abs(pct) > DRIFT_WARN * 100;
+    const prev = this.last.get(role);
+    if (!off || (prev !== undefined && now - prev < everyMs)) return { pct, warn: false };
+    this.last.set(role, now);
+    return { pct, warn: true };
+  }
+}

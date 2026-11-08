@@ -31,7 +31,7 @@ async function main() {
   const g = loadSplit(split, { final: split !== "dev" }).find((x) => x.id === id);
   if (!g) throw new Error(`no ${split} meeting ${id}`);
   const e = await setupEngine({ "llm.reflex.model": "anthropic:claude-haiku-5-5", ...(opts.sets ?? {}) });
-  const obs = observeModel(e, { roleFirst: opts.roleFirst });
+  const obs = observeModel(e, { roleFirst: opts.roleFirst, legacyLayout: opts.legacyLayout });
   if (opts.record) {
     // Record mode: every model call goes through the cassette recorder. The inner model is the observed policy fake ("mock" transport, used by the
     // tests) or the real provider ("real", the owner's command only: needs ANTHROPIC_API_KEY in the environment and WINGMAN_LLM_MODE unset).

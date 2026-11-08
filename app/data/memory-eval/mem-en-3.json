@@ -1,0 +1,137 @@
+{
+ "id": "mem-en-3",
+ "lang": "en",
+ "title": "Vendor negotiation: software seats",
+ "kind": "vendor",
+ "lines": [
+  {
+   "side": "them",
+   "text": "We can offer your team forty seats on the annual plan.",
+   "name": "Omar"
+  },
+  {
+   "side": "them",
+   "text": "The list price is 18 dollars per seat per month.",
+   "name": "Omar"
+  },
+  {
+   "side": "me",
+   "text": "We were hoping for something lower since we are a long term customer."
+  },
+  {
+   "side": "them",
+   "text": "For a two year commitment I can give you a discount of 10 percent.",
+   "name": "Omar"
+  },
+  {
+   "side": "me",
+   "text": "What happens to the price if we need more seats in the second year?"
+  },
+  {
+   "side": "them",
+   "text": "I would have to ask my manager about that.",
+   "name": "Omar"
+  },
+  {
+   "side": "them",
+   "text": "I will send you the draft contract on Monday with both options.",
+   "name": "Omar"
+  },
+  {
+   "side": "me",
+   "text": "Good. We need to count the people who really need access first."
+  },
+  {
+   "side": "me",
+   "text": "I will confirm our final headcount to you by the end of this week."
+  },
+  {
+   "side": "me",
+   "text": "Right now my best guess is 40 seats, maybe a few more."
+  },
+  {
+   "side": "them",
+   "text": "That works for me.",
+   "name": "Omar"
+  },
+  {
+   "side": "me",
+   "text": "We will go with the two year term if the draft shows the discount in writing."
+  },
+  {
+   "side": "them",
+   "text": "It will. I will make sure of that.",
+   "name": "Omar"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 6,
+    "who": "Omar",
+    "what": "send the draft contract on Monday",
+    "keys": [
+     "draft contract",
+     "monday"
+    ]
+   },
+   {
+    "line": 8,
+    "who": "me",
+    "what": "confirm the final headcount by the end of the week",
+    "keys": [
+     "headcount"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 4,
+    "asker": "me",
+    "text": "What happens to the price if we need more seats in the second year",
+    "keys": [
+     "more seats"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 1,
+    "what": "price per seat per month",
+    "value": "18",
+    "who": "Omar",
+    "keys": [
+     "per seat"
+    ]
+   },
+   {
+    "line": 3,
+    "what": "two year discount percent",
+    "value": "10",
+    "who": "Omar",
+    "keys": [
+     "discount"
+    ]
+   },
+   {
+    "line": 9,
+    "what": "seats needed",
+    "value": "40",
+    "who": "me",
+    "keys": [
+     "seats"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 11,
+    "text": "take the two year term if the discount is in writing",
+    "keys": [
+     "two year",
+     "writing"
+    ]
+   }
+  ]
+ }
+}

@@ -30,8 +30,10 @@ import {
 import { st } from "./state.ts";
 import { liveNotes } from "./side.ts";
 import { emitCard, emitMoment, closeCards, cardSched } from "./cards.ts";
+import { applyFeedback, topicChanged } from "./moments.ts";
+import { parseTags } from "./cards-v2.ts";
 import { recentWindow, capTail, frameDue } from "./rules.ts";
-import { MemoryLoop, engineV2, makeModelRunner, memoryConfigFrom } from "./memory.ts";
+import { MemoryLoop, engineV2, makeModelRunner, memoryConfigFrom, memoryGate } from "./memory.ts";
 import { emitMemoryView, safe } from "./out.ts";
 import { loadMemory, saveMemory } from "../session/store.ts";
 import { seedFromDigest } from "../session/seed.ts";
@@ -217,6 +219,7 @@ let loop: MemoryLoop | undefined,
   v2Timer: NodeJS.Timeout | undefined,
   lastLocalTipAt = 0,
   lastTagsAt = 0,
+  tagRowsRead = 0,
   v2Nudged = false;
 /** The v2 memory loop of this call (created on first use), or undefined when the call is not v2, has no AI, or memory.enabled is false. */
 export function memoryLoop(): MemoryLoop | undefined {
@@ -230,19 +233,28 @@ export function memoryLoop(): MemoryLoop | undefined {
   const run = makeModelRunner({
     registry,
     model: memCfg.model,
-    onUsage: (role, model, usage, pm) => {
+    onUsage: (role, model, usage, pm, record) => {
       const c = cost.addLlm(role, model, usage, pm);
-      log.write("usage", { role, model, usage, usd: c.usd });
+      log.write("usage", { role, model, usage, providerMetadata: pm, usd: c.usd, ctx: record });
     },
   });
   loop = new MemoryLoop(
     {
       now: () => Date.now(),
       run,
+      localNumbers: interview,
+      onTopicChange: () => topicChanged(),
       save: (m) => saveMemory(log.dir, m),
       sendView: emitMemoryView,
       log: (stream, row) => log.write(stream, row),
-      allowed: () => st.call.consented && !st.call.shuttingDown && sup.caps.llm && cost.llmState() !== "capped",
+      allowed: (role) =>
+        memoryGate(role, {
+          consented: st.call.consented,
+          shuttingDown: st.call.shuttingDown,
+          discarding: st.call.discardNow || st.call.crashed,
+          llmUp: sup.caps.llm,
+          capped: cost.llmState() === "capped",
+        }),
       onChange: (m, prev) => {
         st.m.mem = m; // the moment and observer calls read st.m.mem: they must see what the call has taught the memory
         // A resolved item closes the cards that point at it.
@@ -326,8 +338,14 @@ function v2Tick() {
   if (now - lastTagsAt > 10_000) {
     lastTagsAt = now;
     try {
-      const n = cardSched.feedback(readFileSync(join(log.dir, "tags.jsonl"), "utf8"));
+      const text = readFileSync(join(log.dir, "tags.jsonl"), "utf8");
+      const n = cardSched.feedback(text);
       if (n) log.write("events", { type: "cards.feedback", rows: n, boost: cardSched.tagBoost() });
+      // The moment engine's own scheduler (observer and direct cards) learns from the same rows. Only rows it has not seen yet.
+      const rows = parseTags(text);
+      const fresh = rows.slice(tagRowsRead);
+      tagRowsRead = rows.length;
+      if (fresh.length) applyFeedback(fresh);
     } catch {
       /* no ratings yet */
     }

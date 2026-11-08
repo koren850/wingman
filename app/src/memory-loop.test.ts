@@ -13,12 +13,15 @@ import {
   DEFAULT_MEMORY_CONFIG,
   makeModelRunner,
   memoryConfigFrom,
+  memoryGate,
+  nearCap,
   openLoops,
   parseJsonObject,
   type MemoryConfig,
   type MemoryDeps,
 } from "./engine/memory.ts";
 import { openLoopSay } from "./tips.ts";
+import { applyPatch } from "./session/patch.ts";
 import { emptyMemory, type MemoryView, type SessionMemory } from "./session/types.ts";
 import { loadMemory, saveMemory } from "./session/store.ts";
 import { buildContext } from "./context/build.ts";
@@ -189,31 +192,40 @@ test("an event runs the updater at once, but never closer than 8 seconds to the 
   });
 });
 
-test("events: a new name, a topic hint, a long pause and a question that stays open", async () => {
+test("events: a new token after a speaker change, a topic hint, a long pause and a question that stays open", async () => {
   await withVClock(async (vc) => {
     const r = rig(vc);
     await vc.advance(60_000);
-    r.loop.addLine({ side: "them", text: "we talked with Yossi about it" });
+    // the call has been going for a while: about a hundred different words have been heard
+    const vocab = Array.from({ length: 100 }, (_, i) => `word${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + ((i / 26) | 0))}`);
+    r.loop.addLine({ side: "them", text: vocab.join(" ") });
+    r.loop.tick();
+    await vc.advance(25_000);
     r.loop.tick();
     await vc.advance(10);
-    assert.equal(r.pm.callsFor("memory").length, 1, "capitalised unknown name");
-    r.loop.addLine({ side: "them", text: "we talked with Yossi again" });
+    const base = r.pm.callsFor("memory").length;
+    r.loop.addLine({ side: "me", text: "we talked with yossi about it" }); // no capital letter: the hint is the new token after the speaker change
+    r.loop.tick();
+    await vc.advance(10);
+    assert.equal(r.pm.callsFor("memory").length, base + 1, "unknown token after a speaker change");
+    r.loop.addLine({ side: "them", text: "we talked with yossi again" });
     await vc.advance(9000);
     r.loop.tick();
     await vc.advance(10);
-    assert.equal(r.pm.callsFor("memory").length, 1, "the same name is not new");
+    assert.equal(r.pm.callsFor("memory").length, base + 1, "the same token is not new");
     r.loop.noteEvent("topic");
     r.loop.tick();
     await vc.advance(10);
-    assert.equal(r.pm.callsFor("memory").length, 2, "topic hint from a moment call");
+    assert.equal(r.pm.callsFor("memory").length, base + 2, "topic hint from a moment call");
     await vc.advance(9000);
-    r.loop.addLine({ side: "them", text: words(45) });
+    r.loop.addLine({ side: "them", text: words(23) });
+    r.loop.addLine({ side: "them", text: words(23) });
     r.loop.tick();
-    assert.equal(r.pm.callsFor("memory").length, 2);
+    assert.equal(r.pm.callsFor("memory").length, base + 2);
     await vc.advance(4100);
     r.loop.tick();
     await vc.advance(10);
-    assert.equal(r.pm.callsFor("memory").length, 3, "long speech then 4 seconds of quiet");
+    assert.equal(r.pm.callsFor("memory").length, base + 3, "long speech then 4 seconds of quiet");
     await vc.advance(9000);
     r.loop.addLine({ side: "them", text: "so what do you think" });
     r.loop.addLine({ side: "them", text: "what is the plan?" });
@@ -221,11 +233,11 @@ test("events: a new name, a topic hint, a long pause and a question that stays o
       await vc.advance(1000);
       r.loop.tick();
     }
-    assert.equal(r.pm.callsFor("memory").length, 3, "question open for 19 seconds");
+    assert.equal(r.pm.callsFor("memory").length, base + 3, "question open for 19 seconds");
     await vc.advance(1100);
     r.loop.tick();
     await vc.advance(10);
-    assert.equal(r.pm.callsFor("memory").length, 4, "question open for 20 seconds");
+    assert.equal(r.pm.callsFor("memory").length, base + 4, "question open for 20 seconds");
   });
 });
 
@@ -384,9 +396,14 @@ test("the hourly cap sheds updater runs and says so", async () => {
   });
 });
 
-test("claims.ts numbers go into numbers without a model call", async () => {
+test("interview calls: claims.ts numbers go into numbers without a model call (off for the v2 default path)", async () => {
   await withVClock(async (vc) => {
-    const r = rig(vc);
+    const off = rig(vc);
+    off.loop.addLine({ side: "me", text: "I have worked 12 years with stores" });
+    await vc.advance(1000);
+    off.loop.tick();
+    assert.equal(off.loop.memory.numbers.length, 0, "no unit word list on the v2 path");
+    const r = rig(vc, { deps: { localNumbers: true } });
     r.loop.addLine({ side: "me", text: "I have worked 12 years with stores" });
     await vc.advance(1000);
     r.loop.tick();
@@ -434,6 +451,54 @@ test("flush writes the memory; finalPass learns the last lines", async () => {
     r.loop.stop();
     r.loop.addLine({ side: "them", text: "after stop" });
     assert.equal(r.loop.contextFor().unread.length, 0, "a stopped loop takes no more lines");
+  });
+});
+
+test("final pass runs while the call is closing (shuttingDown is true); the old gate made it dead code", async () => {
+  await withVClock(async (vc) => {
+    const base = { consented: true, shuttingDown: false, discarding: false, llmUp: true, capped: false };
+    const state = { ...base };
+    const r = rig(vc, { deps: { allowed: (role) => memoryGate(role, state) } });
+    r.pm.reply({ role: "memory" }, JSON.stringify({ add: { commitments: [{ what: "send the contract", who: "me", due: "Friday" }] } }));
+    r.loop.addLine({ side: "me", text: "I will send the contract by Friday, you have my word on that" });
+    state.shuttingDown = true; // Stop was pressed: shutdown() sets this before anything else
+    // the ordinary periodic and event runs are off while closing
+    await vc.advance(25_000);
+    assert.equal(r.loop.tick().started, undefined, "no ordinary run while closing");
+    const p = r.loop.finalPass(3000);
+    await vc.advance(50);
+    await p;
+    assert.equal(r.pm.calls.length, 1, "the final pass made its one model call");
+    assert.equal(r.loop.memory.commitments[0]?.what, "send the contract", "the last words are in the memory");
+    assert.equal(ev(r, "memory.run").at(-1)?.why, "final");
+  });
+});
+
+test("memoryGate: the final pass still respects consent, the cost cap, a down model and a discarded call", () => {
+  const ok = { consented: true, shuttingDown: true, discarding: false, llmUp: true, capped: false };
+  assert.equal(memoryGate("final", ok), true);
+  assert.equal(memoryGate("memory", ok), false);
+  assert.equal(memoryGate("compact", ok), false);
+  assert.equal(memoryGate("memory", { ...ok, shuttingDown: false }), true);
+  for (const bad of [{ consented: false }, { llmUp: false }, { capped: true }, { discarding: true }])
+    assert.equal(memoryGate("final", { ...ok, ...bad }), false, JSON.stringify(bad));
+  assert.equal(memoryGate("memory", { ...ok, shuttingDown: false, capped: true }), false);
+});
+
+test("a list that is nearly full wakes the compactor within a minute, so the summary takes what the oldest items say before they are dropped", async () => {
+  await withVClock(async (vc) => {
+    let mem = emptyMemory(vc.now());
+    for (let i = 0; i < 28; i++) mem = applyPatch(mem, { add: { facts: [{ text: `Fact number ${i}` }] } }, { now: vc.now() }).mem;
+    const r = rig(vc, { start: mem, cfg: { compactEveryMinutes: 600 } });
+    await vc.advance(30_000);
+    assert.equal(r.loop.tick().started, undefined, "28 of 30: not yet, and not within the first minute");
+    mem = applyPatch(mem, { add: { facts: [{ text: "Fact number 28" }] } }, { now: vc.now() }).mem; // 29 of 30
+    const r2 = rig(vc, { start: mem, cfg: { compactEveryMinutes: 600 } });
+    assert.equal(nearCap(mem), true);
+    await vc.advance(61_000);
+    assert.equal(r2.loop.tick().started, "compact");
+    await vc.advance(10);
+    assert.equal(r2.pm.callsFor("compact").length, 1);
   });
 });
 

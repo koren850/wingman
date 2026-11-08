@@ -46,11 +46,12 @@ const textOf = (c: Content) => (typeof c === "string" ? c : c.map((p) => p.text 
  */
 export function observePolicy(
   pm: PolicyModel,
-  o: { keepText?: boolean; minCacheTokens?: number; roleFirst?: boolean } = {},
+  o: { keepText?: boolean; minCacheTokens?: number; legacyLayout?: boolean } = {},
 ): { calls: CallRecord[]; cacheReadRatio: () => number; wrap: (role?: string) => unknown } {
   const calls: CallRecord[] = [];
-  // Providers cache a prefix only above a minimum length (1024 tokens for most models, more for the smallest). Assumed here; a shorter marked prefix is not cached.
-  const minCache = o.minCacheTokens ?? 1024;
+  // Providers cache a prefix only above a minimum length. 512 tokens for Haiku 5.5 and Sonnet 5.5 (Anthropic prompt caching docs, checked 2026-11-08;
+  // 1024 for Sonnet 5, 4096 for Haiku 4.5). A shorter marked prefix is not cached.
+  const minCache = o.minCacheTokens ?? 512;
   const cache = new Map<string, number>(); // prefix hash -> expires at (virtual wall ms)
   const inner = pm.model as unknown as {
     doStream: (c: unknown) => Promise<{ stream: ReadableStream<{ type: string; delta?: string; usage?: unknown }> }>;
@@ -60,24 +61,18 @@ export function observePolicy(
   const account = (role: string, c: { prompt?: Msg[] }, outText: () => string) => {
     const prompt = c.prompt ?? [];
     let sys = prompt.filter((m) => m.role === "system");
-    if (o.roleFirst && sys.length >= 2) {
-      // What-if layout: the static rules of the role go right after block A with a 1 h marker; the memory block follows; the per-call data (user, roster,
-      // bank candidates) comes last, not cached. Today the rules and the data are one block after the memory block, so nothing of it is cached.
-      const roleBlock = sys[sys.length - 1];
-      if (!roleBlock.providerOptions?.anthropic?.cacheControl) {
-        const marker = { anthropic: { cacheControl: { ttl: "1h" as const } } };
-        const full = textOf(roleBlock.content);
-        const cut = full.indexOf("\n\n<call_facts>");
-        const rules = cut >= 0 ? full.slice(0, cut) : full;
-        const data = cut >= 0 ? full.slice(cut) : "";
-        const head = sys.length >= 3 ? 1 : 0; // block A first when there is one besides memory and role
-        sys = [
-          ...sys.slice(0, head),
-          { role: "system", content: rules, providerOptions: marker },
-          ...sys.slice(head, -1),
-          ...(data ? [{ role: "system", content: data }] : []),
-        ];
-      }
+    if (o.legacyLayout && sys.length >= 2) {
+      // The layout before round 12: A (1 h), the memory block (5 min, every role), then the role rules and the per-call facts as one block with no marker.
+      const marker = (ttl: "5m" | "1h") => ({ anthropic: { cacheControl: { ttl } } });
+      const isMem = (m: Msg) => textOf(m.content).startsWith("<call_memory>");
+      const a = sys.length >= 3 && !isMem(sys[0]) ? sys[0] : undefined;
+      const mem = sys.find(isMem);
+      const role = sys.filter((m) => m !== a && m !== mem);
+      sys = [
+        ...(a ? [{ ...a, providerOptions: marker("1h") }] : []),
+        ...(mem ? [{ ...mem, providerOptions: marker("5m") }] : []),
+        { role: "system", content: role.map((m) => textOf(m.content)).join("\n\n") },
+      ];
     }
     const rest = prompt.filter((m) => m.role !== "system");
     const blocks: Block[] = sys.map((m) => ({
@@ -235,6 +230,8 @@ export type WorkerOptions = {
   /** record every model call into a cassette. "mock" records the policy fake (tests); "real" the provider (owner only). `pace` > 0 runs the virtual clock at
    *  that many times real time; `capUsd` stops the meeting when the booked cost passes it. */
   record?: { cassette: string; transport: "mock" | "real"; pace?: number; capUsd?: number };
+  /** price the calls with the cache layout of before round 12 (A, memory for every role, rules and facts last with no marker) */
+  legacyLayout?: boolean;
 };
 
 /** Plays one dev meeting through the engine (child process). Times out after `timeoutMs`. */

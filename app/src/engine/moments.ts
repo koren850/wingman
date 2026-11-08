@@ -167,6 +167,18 @@ export function applyFeedback(rows: readonly unknown[]): number {
   }
 }
 
+/** New rows of tags.jsonl (already parsed: {id, rating}). Each one goes to noteFeedback; rows for cards this engine did not show are skipped. Returns how many counted.
+ *  The caller (coach.ts) reads the file every few seconds and passes only the rows it has not passed before. */
+export function applyFeedback(rows: readonly { id: string; rating: "useful" | "not-useful" }[]): number {
+  let n = 0;
+  for (const r of rows) {
+    if (!tagOfCard.has(r.id)) continue;
+    noteFeedback(r.id, r.rating);
+    n++;
+  }
+  return n;
+}
+
 // ---------------------------------------------------------------- cards
 const KIND: Record<MomentTag, NonNullable<Card["kind"]>> = {
   SKIP: "fact",

@@ -1,0 +1,128 @@
+{
+ "id": "mem-en-4",
+ "lang": "en",
+ "title": "Team planning: release freeze",
+ "kind": "team",
+ "lines": [
+  {
+   "side": "me",
+   "text": "Let us look at where we are before the release."
+  },
+  {
+   "side": "them",
+   "text": "We still have 12 open bugs, three of them are blockers.",
+   "name": "Lee"
+  },
+  {
+   "side": "me",
+   "text": "Which ones are the blockers?"
+  },
+  {
+   "side": "them",
+   "text": "The login loop on mobile, the export crash and the wrong totals on the dashboard.",
+   "name": "Lee"
+  },
+  {
+   "side": "them",
+   "text": "I will fix the login bug by Thursday, it is almost done.",
+   "name": "Lee"
+  },
+  {
+   "side": "them",
+   "text": "Who owns the migration script for the old accounts?",
+   "name": "Priya"
+  },
+  {
+   "side": "me",
+   "text": "Nobody wrote it down. We should decide that today."
+  },
+  {
+   "side": "me",
+   "text": "The sprint ends in 2 weeks, so the script has to be ready inside that time."
+  },
+  {
+   "side": "them",
+   "text": "I can review it but I cannot write it this sprint.",
+   "name": "Priya"
+  },
+  {
+   "side": "me",
+   "text": "I will write the release notes tomorrow morning and share them with everyone."
+  },
+  {
+   "side": "me",
+   "text": "So we freeze new features until the release is out, only bug fixes go in."
+  },
+  {
+   "side": "them",
+   "text": "Agreed.",
+   "name": "Lee"
+  },
+  {
+   "side": "them",
+   "text": "Agreed from me too.",
+   "name": "Priya"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 4,
+    "who": "Lee",
+    "what": "fix the login bug by Thursday",
+    "keys": [
+     "login bug",
+     "thursday"
+    ]
+   },
+   {
+    "line": 9,
+    "who": "me",
+    "what": "write the release notes tomorrow morning",
+    "keys": [
+     "release notes"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 5,
+    "asker": "Priya",
+    "text": "Who owns the migration script for the old accounts",
+    "keys": [
+     "migration script"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 1,
+    "what": "open bugs",
+    "value": "12",
+    "who": "Lee",
+    "keys": [
+     "open bugs"
+    ]
+   },
+   {
+    "line": 7,
+    "what": "weeks left in the sprint",
+    "value": "2",
+    "who": "me",
+    "keys": [
+     "sprint"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 10,
+    "text": "freeze new features until the release",
+    "keys": [
+     "freeze",
+     "features"
+    ]
+   }
+  ]
+ }
+}

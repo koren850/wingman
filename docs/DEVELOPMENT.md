@@ -61,6 +61,7 @@ What `pnpm install` does in `app/`:
 |---|---|
 | `pnpm demo` | The offline demo: a scripted, invented English call (`--he` for Hebrew) through the real engine. No keys, no network. |
 | `pnpm eval` | Offline quality numbers for the detector, the bank matcher and the guards. Fails if one drops below `qa/eval-baseline.json`. |
+| `pnpm eval:memory` | Memory-quality eval (`qa/memory-eval.ts`): precision and recall of the final call memory on 12 labelled calls, with a null and a copy-all control. Offline with the policy fake; `WINGMAN_LLM_MODE=replay` reads a cassette. |
 | `pnpm check` | Type check, lint, format check, unit tests and `pnpm eval`. |
 | `pnpm start` | The call engine (`src/run.ts`) in the terminal. Flags: `--file x.wav` (replay a stereo WAV, left = me, right = them), `--no-ai`, `--discard`, `--profile`, `--set key=value`. |
 | `pnpm call` | Starts a call and opens the answer window. Ctrl+C stops and saves. |

@@ -40,6 +40,7 @@
     "diagnose": "tsx src/cli/index.ts diagnose",
     "test": "tsx --import ./src/test-setup.ts --test --test-concurrency=1 src/*.test.ts src/e2e/*.test.ts",
     "eval": "tsx scripts/eval.ts",
+    "eval:memory": "tsx scripts/eval-memory.ts",
     "demo": "tsx scripts/demo.ts",
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.cjs.json",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:unit && pnpm eval",

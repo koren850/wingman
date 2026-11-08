@@ -1,0 +1,127 @@
+{
+ "id": "mem-en-5",
+ "lang": "en",
+ "title": "Consulting: planning three workshops",
+ "kind": "consult",
+ "lines": [
+  {
+   "side": "them",
+   "text": "We would like to run workshops for our regional managers this autumn.",
+   "name": "Priya"
+  },
+  {
+   "side": "them",
+   "text": "The budget we have approved is 15000 for the whole programme.",
+   "name": "Priya"
+  },
+  {
+   "side": "me",
+   "text": "That is workable. How many sessions are you thinking of?"
+  },
+  {
+   "side": "them",
+   "text": "3 workshops, each one half a day, with about 20 people.",
+   "name": "Priya"
+  },
+  {
+   "side": "them",
+   "text": "Can we record the sessions for the people who cannot join?",
+   "name": "Priya"
+  },
+  {
+   "side": "me",
+   "text": "Recording changes how open people are, I want to think about it before I answer."
+  },
+  {
+   "side": "me",
+   "text": "I will send you a draft agenda for all three workshops by next Tuesday."
+  },
+  {
+   "side": "them",
+   "text": "Perfect. We also need a room that fits twenty people.",
+   "name": "Priya"
+  },
+  {
+   "side": "them",
+   "text": "I will book the room in the main office and send you the address.",
+   "name": "Priya"
+  },
+  {
+   "side": "me",
+   "text": "Thank you. Do you want the workshops in the same week or spread out?"
+  },
+  {
+   "side": "them",
+   "text": "Spread out, one workshop each Tuesday, so people can do the homework between sessions.",
+   "name": "Priya"
+  },
+  {
+   "side": "me",
+   "text": "Good, Tuesdays it is."
+  },
+  {
+   "side": "them",
+   "text": "Then we are set for now.",
+   "name": "Priya"
+  }
+ ],
+ "expected": {
+  "promises": [
+   {
+    "line": 6,
+    "who": "me",
+    "what": "send a draft agenda for the three workshops by next Tuesday",
+    "keys": [
+     "draft agenda"
+    ]
+   },
+   {
+    "line": 8,
+    "who": "Priya",
+    "what": "book the room in the main office",
+    "keys": [
+     "book the room"
+    ]
+   }
+  ],
+  "openQuestions": [
+   {
+    "line": 4,
+    "asker": "Priya",
+    "text": "Can we record the sessions for people who cannot join",
+    "keys": [
+     "record"
+    ]
+   }
+  ],
+  "numbers": [
+   {
+    "line": 1,
+    "what": "approved budget",
+    "value": "15000",
+    "who": "Priya",
+    "keys": [
+     "budget"
+    ]
+   },
+   {
+    "line": 3,
+    "what": "number of workshops",
+    "value": "3",
+    "who": "Priya",
+    "keys": [
+     "workshops"
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "line": 10,
+    "text": "one workshop each Tuesday",
+    "keys": [
+     "tuesday"
+    ]
+   }
+  ]
+ }
+}

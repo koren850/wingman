@@ -761,3 +761,16 @@ Date: 2026-11-08
 
 **Consequences.** A socket that died silently during sleep is found by the keep-alive and the dead-socket timer, not by the wake. Failback closes the fallback socket; finals still in flight on it at that moment are dropped (once per failback, at most about a second).
 
+## ADR 51: Wake hints without word lists, a final memory pass, and a cache layout that follows how often a block changes
+
+Date: 2026-11-08
+
+**Context.** Three weak points of the call memory. (1) The final memory pass never ran: it asked the same gate as the periodic runs, and that gate is closed from the first second of Stop. The last 20 seconds of a call were missing from the wrap-up. (2) The updater was woken by a capital-letter regex and a unit word list, which do nothing in Hebrew. (3) The prompt cache was designed but not measured: the fixed rules of a role were not marked, the memory block was marked for roles that never read it again, and no usage row showed a cache read.
+
+**Decision.** (1) The gate has a role `final`: allowed while closing, still bound by consent, the cost cap, a down model and a discarded call. (2) Wake hints use a digit, a question mark, a long line, the end of a turn, a pause, and a new word after a speaker change. No word list, no capitals. The unit list stays for practice interviews and the old engine only. (3) The system blocks are ordered shared, fixed role rules, memory, per-call facts, and each role has its own markers (`CACHE_POLICY`). Usage rows carry `cache_read`, `cache_write` and the estimate drift; `wingman doctor` prints the cache report. (4) The memory loop calls `topicChanged()` and the ratings reach the moment engine. (5) A memory-quality eval with two controls.
+
+**Why.** A model reads the call better than a regex does, so the code only decides when to ask. A block earns a cache marker only if it is read again before it expires; the numbers (a write is 1.25 or 2 times, a read 0.1 times) make that easy to check per role on the fixtures.
+
+**Alternatives.** A name regex per language (the same list problem). A cached transcript tail (built, measured, off: the memory block before it changes every patch). One marker for everything (the memory role would pay a write for a block nobody reads).
+
+**Consequences.** Every prompt snapshot changed in order, not in text. The simulated cache assumes a 512-token minimum (the models in use). `CostMeter` prices every cache write at the 1 h rate, so the 5 minute writes of the memory block are over-estimated. The eval with the fake model tests the pipeline and the scorer only; a real score needs a recorded run.
