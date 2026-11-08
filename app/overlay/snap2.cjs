@@ -3,6 +3,8 @@
 // It loads index.html in a hidden window with the real preload and sends the scenario rows on the same channels main.cjs uses.
 // --check also runs qa-check.js in the page (clipping, contrast, minimum font, dir) and prints one JSON line per spec; exit code 1 when any issue is found.
 const { app, BrowserWindow, ipcMain } = require("electron");
+// When the test that started this stops early, our output pipe closes: quit quietly instead of showing an error dialog.
+for (const s of [process.stdout, process.stderr]) s.on("error", (e) => (e && e.code === "EPIPE" ? app.exit(0) : undefined));
 const fs = require("node:fs");
 const path = require("node:path");
 const { build, ALL } = require("./fixtures-v2.cjs");
