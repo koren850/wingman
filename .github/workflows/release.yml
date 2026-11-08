@@ -1,7 +1,8 @@
 name: Release
 
-# A tag like v0.0.1 builds the macOS app (unsigned for now) and attaches the .dmg to a DRAFT release. Nothing is published
-# until someone reviews the draft and clicks "Publish release".
+# A tag like v0.0.1 builds the macOS app (unsigned for now) and attaches the .dmg to the release of that tag.
+# The publish script creates the release first (with the notes); if there is none, a DRAFT is created and nothing is
+# published until someone reviews it and clicks "Publish release".
 on:
   push:
     tags: ["v*"]
@@ -62,7 +63,12 @@ jobs:
       - name: Draft release with the .dmg
         env:
           GH_TOKEN: ${{ github.token }}
+        # The release may already exist: the publish script creates it (and so the tag) with the notes. Then only the .dmg is added.
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Wingman $GITHUB_REF_NAME" \
-            --notes "Unsigned build for Apple Silicon Macs (macOS 14.2 or newer). macOS asks you to confirm the first start: see the README." \
-            dist/Wingman-*-arm64.dmg
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" --clobber dist/Wingman-*-arm64.dmg
+          else
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Wingman $GITHUB_REF_NAME" \
+              --notes "Unsigned build for Apple Silicon Macs (macOS 14.2 or newer). macOS asks you to confirm the first start: see the README." \
+              dist/Wingman-*-arm64.dmg
+          fi
