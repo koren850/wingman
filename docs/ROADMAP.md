@@ -75,7 +75,7 @@ Everything above ran on scripted replies, synthetic voices and hidden-window sna
 
 ## Known limits
 
-- **macOS only** for the full app (system audio capture needs macOS 14.2 or newer). The engine and file replay run on Linux (tested in CI) and pass unit tests on Windows in CI; system audio capture and an installer are not done, and the live app does not run there. Help wanted.
+- **macOS first.** macOS needs 14.2 or newer for system audio. On Windows the app records the microphone and the system audio itself (Electron loopback) and an unsigned installer is built by CI, but this has been tested with fakes only and has not run on a real Windows machine. The engine and file replay run on Linux (tested in CI).
 - **English and Hebrew** (and calls that mix them). Other languages are not supported yet: a call in one shows a one-time notice. More languages are possible later; see the roadmap below.
 - Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.50 an hour (an estimate): about $1.40 for speech with Deepgram add-ons plus roughly 5 to 20 cents for AI (modelled at about $0.03). Prices in the config are estimates.
 - Not a recording or consent tool; the user is responsible for telling participants (see [PRIVACY-AND-SECURITY.md](PRIVACY-AND-SECURITY.md)).
@@ -106,8 +106,8 @@ Everything above ran on scripted replies, synthetic voices and hidden-window sna
 - Embedding-based bank, cue and memory matching. It needs a dependency or an API call. The local word-plus-3-gram score gains little on this bank (held-out bank accuracy 40 of 41, as before). The decision waits for a cost number.
 - Encrypted call storage with a retention sweeper.
 - A second STT or AI vendor proven on real Hebrew calls.
-- A signed, notarised installer.
-- Windows and Linux support for the live app (engine and replay first). The `AudioBackend` interface exists; win32 and linux backends are stubs. Help wanted.
+- A signed, notarised macOS installer and a signed Windows installer (SmartScreen warns on the unsigned one).
+- Verify the Windows live app on real machines, and Linux support for the live app (engine and replay first). Linux has no audio backend yet. Help wanted.
 - Optional ring-buffer polish after STT reconnects and connection keep-warm.
 
 Next: [Architecture](ARCHITECTURE.md) · [Development](DEVELOPMENT.md) · [Decisions](DECISIONS.md)

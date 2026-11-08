@@ -10,7 +10,7 @@ Launched from the app or the terminal. Audio goes to Deepgram (and text to Anthr
 
 ## Setup (once)
 1. Install with `./install.sh` at the repo root (see the [root README](../README.md#quick-start)). Then open Wingman. The first window is a guided setup with three steps (Try it, Connect, Allow), then optional items: About you, privacy, microphone, starter answers, readiness check. You can reopen it from **Settings, Setup guide**.
-2. Keys: in the setup, or **Settings, Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; each key is written to the Keychain and read back before its line is removed; no backup copy is made). Never put keys in this repo.
+2. Keys: in the setup, or **Settings, Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`), or on Windows encrypted for your Windows account (`keys.enc.json` in the data folder). Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; each key is written to the Keychain and read back before its line is removed; no backup copy is made). Never put keys in this repo.
 3. Permissions: allow **Microphone** and **System Audio Recording** for Wingman. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it.
    When you run from a terminal instead of the app, the permission belongs to the terminal. Use Terminal.app. In iTerm/Warp/IDE terminals add the app by hand under Privacy & Security > Screen & System Audio Recording > System Audio Recording Only.
 4. `pnpm run doctor` (the app calls it "Readiness check") checks keys, mic, system audio, Deepgram and Haiku (incl. prompt cache).
@@ -42,7 +42,7 @@ Most people start calls from the app (Home, **Quick call**). `pnpm start` runs t
 | `pnpm run doctor` / `--offline` | Tests the configured providers and their fallbacks, settings and the checklist. Ends with READY / READY WITH WARNINGS / NOT READY. `--offline` makes no audio, network or paid calls; without keys it still ends NOT READY, because missing keys are errors |
 | `pnpm diagnose [call id]` | Writes one file for a bug report: versions, changed settings, health and error events, device names, model and prompt ids, counts. No transcript or card text. Read it before you share it |
 | `pnpm run pack:from-notes <file>` | Drafts answer cards from your own notes (`.txt`, `.md`, `.pdf`) into a draft folder; every card goes through the guards. One model call; nothing is written into your live pack |
-| `pnpm dist` | Builds a self-contained, unsigned `Wingman.app` and `.dmg` (see [DEVELOPMENT.md](../docs/DEVELOPMENT.md#building-the-app-dmg)) |
+| `pnpm dist` | Builds a self-contained, unsigned `Wingman.app` and `.dmg` (macOS) or Windows installer (see [DEVELOPMENT.md](../docs/DEVELOPMENT.md#building-the-app-dmg-and-windows-installer)) |
 | `pnpm test` | All tests: unit plus end-to-end (a full run can take about half an hour on a busy machine) |
 | `pnpm test:unit` | Unit tests only, the quick option |
 | `pnpm test:e2e` | End-to-end tests only |

@@ -44,7 +44,7 @@ Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN
 | Your pack (answer cards, house style, word lists) | `~/.config/wingman/pack/` | Until you delete it | Never in the repo |
 | Menu-bar app log | `<data folder>/calls/tray.log` | Until you delete it | Status lines, short error text and the matched client name; no transcript, no keys |
 | Rescue copy (only if a call folder could not be written) | `<data folder>/rescue/<call id>/`, else `<temp folder>/wingman-rescue/<call id>/` | Until you delete it (`pnpm purge --all` removes it) | Folder 700, files 600; a shared or linked temp folder is refused |
-| API keys | macOS Keychain, service `wingman` | Until you remove them | Keychain |
+| API keys | macOS Keychain, service `wingman`; on Windows `%APPDATA%\Wingman\keys.enc.json`, encrypted for your Windows account (Electron `safeStorage`, DPAPI) | Until you remove them | Keychain, or encrypted file |
 
 The data folder is also where Electron keeps its own files (cache, local storage). Wingman does not put call content there.
 
@@ -60,6 +60,7 @@ Important: the transcript and the summary of a real call can contain personal da
 
 - Stored in the macOS Keychain (service `wingman`). A legacy `~/.config/wingman/keys.env` is still read if present; **Settings, Keys, Move to Keychain** (or `pnpm keys migrate`) moves it: each key is written to the Keychain and read back, and only then is its line removed from `keys.env`. No backup copy is made (it would be one more plaintext copy of the key); if the Keychain write fails, `keys.env` is left untouched.
 - **What the Keychain does and does not protect.** Items are created through `/usr/bin/security`, so `security` itself is the trusted program in the item's access list. Any other program you run as the same macOS user can run `security find-generic-password -s wingman ...` and read a key **without a prompt** while your login keychain is unlocked. The threat model: this protects against copies of files, backups, synced folders, screenshots and keys leaking into the repo. It does **not** protect against malware or a malicious script that runs as you. Run only code you trust, and set spend limits in the Deepgram and Anthropic consoles.
+- **Windows.** The keys are encrypted with the Windows user account (DPAPI, through Electron `safeStorage`) and saved in `keys.enc.json` in the data folder. A copy of that file does not open on another account or computer. Like the Keychain, it does not protect against a program that runs as you.
 - All Keychain access goes through one module that runs `/usr/bin/security` without a shell. Keys are written through stdin, so they never show in the process list or the environment, and each write is read back.
 - Keys are held in memory only. They are never written to call folders, logs, settings, events or snapshots. The engine removes key variables from its own environment after loading and starts the answer window, ffmpeg and caffeinate without them.
 - The window only ever receives the last 4 characters of a key. The key box is write-only. The main window is the only one allowed to use the key IPC, with a provider allow-list, format checks and a rate limit (5 Save or Test per minute).

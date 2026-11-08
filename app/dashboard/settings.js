@@ -668,7 +668,7 @@ function keysBlock(r) {
         h(
           "p",
           { class: "help" },
-          "Keys are stored in the macOS Keychain (item \u201cwingman\u201d), set here. Wingman never shows them: only the last 4 characters.",
+          "Keys are stored in the secure key store of this computer (macOS Keychain, or encrypted for your account on Windows), set here. Wingman never shows them: only the last 4 characters.",
           // Only for keys still in the old plain-text file; most users never had one.
           anyInFile ? h("span", {}, " ") : null,
           anyInFile ? h("button", { type: "button", class: "linkbtn", onclick: () => api.reveal("keys") }, "Show the old keys file in Finder") : null,

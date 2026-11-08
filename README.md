@@ -37,7 +37,12 @@ A **moment** is a point in the call where a short, private nudge would help: a q
 
 ## Quick start
 
-Needs macOS 14.2 or newer (Node 24 only to build from source; the app itself needs no Node, no ffmpeg and no Homebrew), a second screen for the answer window, and (for live calls) a Deepgram key and an Anthropic key.
+Download the app from the [latest release](https://github.com/koren850/wingman/releases/latest). You need a second screen for the answer window and, for live calls, a Deepgram key and an Anthropic key. Nothing else is installed: no Node, no Homebrew.
+
+- **macOS 14.2 or newer (Apple Silicon):** open the `.dmg`, drag Wingman to Applications. The build is not signed yet, so macOS asks you to confirm the first start (System Settings, Privacy & Security, Open Anyway).
+- **Windows 10 or 11 (64-bit):** run `Wingman-Setup-<version>-x64.exe`. It installs for your user only and asks for no administrator rights. The installer is not signed yet, so SmartScreen may show "Windows protected your PC": choose **More info**, then **Run anyway**. Your keys are kept encrypted for your Windows account. The app records the microphone and the system audio itself on Windows; this has been tested with fakes only and not yet on a real Windows machine.
+
+To build from source (needs macOS, Node 24 and git; Windows steps are in [DEVELOPMENT.md](docs/DEVELOPMENT.md)):
 
 ```bash
 git clone https://github.com/koren850/wingman.git
@@ -85,7 +90,7 @@ Audio goes to Deepgram to be transcribed. Call text goes to Anthropic for cards 
 
 ## Platforms
 
-macOS 14.2 or newer is supported. The engine and the offline demo also run on Linux (CI); Windows records the microphone and the system audio inside the app (Electron loopback); this path is tested with fakes only and has not run on a real Windows machine yet. Help wanted.
+macOS 14.2 or newer (Apple Silicon) and Windows 10 or 11 (64-bit) have a downloadable app. Both are unsigned for now. The engine and the offline demo also run on Linux (CI). Windows records the microphone and the system audio inside the app (Electron loopback); this path is tested with fakes only and has not run on a real Windows machine yet. Help wanted.
 
 ## Languages
 

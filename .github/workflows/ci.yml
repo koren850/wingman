@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      os:
+        description: Which system to run (default all). Windows also runs the packaging smoke job.
+        type: choice
+        options: [all, macos, linux, windows]
+        default: all
 
 # A new push to a pull request cancels the run in progress for it; runs on main always finish.
 concurrency:
@@ -25,8 +31,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # While the repo is private, a push runs Linux only (macOS minutes cost 10x, Windows 2x). "Run workflow" by hand runs all three; a public repo always does.
-        os: ${{ fromJSON((github.event.repository.private && github.event_name != 'workflow_dispatch') && '["ubuntu-latest"]' || '["macos-latest", "ubuntu-latest", "windows-latest"]') }}
+        # While the repo is private, a push runs Linux only (macOS minutes cost 10x, Windows 2x). "Run workflow" by hand runs all three, or the one
+        # picked in the "os" input; a public repo always runs all three.
+        os: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.os != 'all') && format('["{0}"]', fromJSON('{"macos":"macos-latest","linux":"ubuntu-latest","windows":"windows-latest"}')[inputs.os]) || ((github.event.repository.private && github.event_name != 'workflow_dispatch') && '["ubuntu-latest"]' || '["macos-latest", "ubuntu-latest", "windows-latest"]')) }}
     env:
       # Skip the Electron download and the .app build: CI only needs the engine and the tests.
       WINGMAN_SKIP_APP: "1"
@@ -101,7 +108,7 @@ jobs:
   # The installer is a bash script for macOS: check that it still parses its flags and plans every step, without changing anything.
   install-script:
     name: install.sh smoke (macOS)
-    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    if: ${{ (!github.event.repository.private || github.event_name == 'workflow_dispatch') && (github.event_name != 'workflow_dispatch' || inputs.os == 'all' || inputs.os == 'macos') }}
     runs-on: macos-latest
     timeout-minutes: 10
     steps:
@@ -125,3 +132,45 @@ jobs:
         env:
           WINGMAN_DATA_DIR: ${{ runner.temp }}/wingman-data
         run: ./install.sh --dry-run
+
+  # Builds the Windows installer and checks it the way a user meets it: fuses, `Wingman.exe --wingman-smoke` (files, key store, a bundled tool),
+  # silent per-user install, Start menu shortcut, tray start, silent uninstall (.github/scripts/windows-smoke.ps1). Costs Windows minutes, so it
+  # runs only when started by hand (any "os" choice except macos and linux) or in a public repository.
+  windows-package:
+    name: Windows packaging smoke
+    if: ${{ (!github.event.repository.private || github.event_name == 'workflow_dispatch') && (github.event_name != 'workflow_dispatch' || inputs.os == 'all' || inputs.os == 'windows') }}
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: app
+        shell: bash
+    env:
+      WINGMAN_SKIP_APP: "1"
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Enable pnpm for Node 24
+        run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the installer
+        run: pnpm dist
+
+      - name: Check the installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/Wingman-Setup-*-x64.exe | Select-Object -First 1
+          ../.github/scripts/windows-smoke.ps1 -Unpacked dist/win-unpacked -Installer $installer.FullName

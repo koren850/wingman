@@ -77,7 +77,7 @@ const sttIds = sttChain(S);
 const srcLabel = (n: KeyName) => (({ keychain: "Keychain", file: "file", env: "environment" }) as const)[sources[n]!];
 const keyFix = (name: KeyName) =>
   IS_APP
-    ? "Wingman → Settings → Keys: paste the key (it is stored in the macOS Keychain)"
+    ? "Wingman → Settings → Keys: paste the key (it is stored in the secure key store of this computer)"
     : `pnpm keys set ${name} (stored in the Keychain), or Wingman → Settings → Keys`;
 const need = (name: KeyName, why: string, required: boolean) =>
   keys[name]

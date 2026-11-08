@@ -1,9 +1,11 @@
 "use strict";
-// Builds the self-contained Wingman.app and .dmg into app/dist (`pnpm dist`). Needs a normal `pnpm install` (esbuild, electron-builder).
+// Builds the self-contained Wingman.app and .dmg (macOS) or the Windows installer into app/dist (`pnpm dist`). Needs a normal `pnpm install` (esbuild, electron-builder).
 //   1. .stage/   the app folder as the packaged app sees it: tray, dashboard, overlay, shared, config, the example pack, the demo data,
 //                the engine (src/*.ts bundled with esbuild into src/*.mjs, run by the app's own Electron: see tray/app-entry.cjs), audiotee.
-//   2. electron-builder packs .stage into dist/mac-arm64/Wingman.app and dist/Wingman-<version>-arm64.dmg (electron-builder.cjs).
-//   --stage-only   stop after step 1 (to look at or test the stage).     --dir   build the .app only, no .dmg.
+//   2. electron-builder packs .stage into dist/mac-arm64/Wingman.app and dist/Wingman-<version>-arm64.dmg, or on Windows into
+//      dist/win-unpacked/ and dist/Wingman-Setup-<version>-x64.exe (electron-builder.cjs).
+//   --stage-only   stop after step 1 (to look at or test the stage).     --dir   build the app folder only, no .dmg / installer.
+//   --win / --mac  the platform to stage for (default: this one; building needs the matching system, see scripts/build-target.cjs).
 // The dev setup (pnpm, tsx, install.sh) does not use any of this.
 const fs = require("node:fs");
 const path = require("node:path");
@@ -13,6 +15,7 @@ const APP = path.join(__dirname, "..");
 const STAGE = path.join(APP, ".stage");
 const pkg = JSON.parse(fs.readFileSync(path.join(APP, "package.json"), "utf8"));
 const { PACKED_TOOLS } = require("../shared/bin.cjs");
+const { targetPlatform, planFor } = require("./build-target.cjs");
 const argv = process.argv.slice(2);
 
 const copy = (rel, filter) => fs.cpSync(path.join(APP, rel), path.join(STAGE, rel), { recursive: true, dereference: true, filter });
@@ -80,6 +83,7 @@ async function bundleEngine() {
 }
 
 async function main() {
+  const plan = planFor(targetPlatform(argv), argv);
   fs.rmSync(STAGE, { recursive: true, force: true });
   fs.mkdirSync(STAGE, { recursive: true });
   for (const d of ["tray", "dashboard", "overlay", "shared", "config"]) copy(d, skip);
@@ -101,11 +105,13 @@ async function main() {
   // Loaded by path at run time (createRequire), so esbuild does not see it.
   fs.mkdirSync(path.join(STAGE, "src"), { recursive: true });
   copy(path.join("src", "keychain.cjs"));
-  // audiotee finds its binary at ../bin/audiotee from the bundled code.
-  const tee = packageDir("audiotee");
-  fs.mkdirSync(path.join(STAGE, "bin"));
-  fs.copyFileSync(path.join(tee, "bin", "audiotee"), path.join(STAGE, "bin", "audiotee"));
-  fs.chmodSync(path.join(STAGE, "bin", "audiotee"), 0o755);
+  if (plan.audiotee) {
+    // audiotee finds its binary at ../bin/audiotee from the bundled code. macOS only: Windows has no such helper.
+    const tee = packageDir("audiotee");
+    fs.mkdirSync(path.join(STAGE, "bin"));
+    fs.copyFileSync(path.join(tee, "bin", "audiotee"), path.join(STAGE, "bin", "audiotee"));
+    fs.chmodSync(path.join(STAGE, "bin", "audiotee"), 0o755);
+  }
   await bundleEngine();
   // The menu-bar code reads YAML with the yaml package; it is the only package the stage carries.
   const yamlDir = packageDir("yaml");
@@ -131,18 +137,14 @@ async function main() {
     ) + "\n",
   );
   console.log(`staged ${path.relative(process.cwd(), STAGE) || STAGE}`);
-  if (argv.includes("--stage-only")) return;
+  if (plan.stageOnly) return;
 
   const cli = require.resolve("electron-builder/cli.js", { paths: [APP] });
-  const r = spawnSync(
-    process.execPath,
-    [cli, "--mac", argv.includes("--dir") ? "dir" : "dmg", "--arm64", "--config", path.join(APP, "electron-builder.cjs"), "--projectDir", APP],
-    {
-      cwd: APP,
-      stdio: "inherit",
-      env: process.env,
-    },
-  );
+  const r = spawnSync(process.execPath, [cli, ...plan.builderArgs, "--config", path.join(APP, "electron-builder.cjs"), "--projectDir", APP], {
+    cwd: APP,
+    stdio: "inherit",
+    env: process.env,
+  });
   process.exit(r.status ?? 1);
 }
 

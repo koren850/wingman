@@ -332,7 +332,7 @@ test("first-run readiness lines read in Hebrew (keys, microphone, system audio, 
   const lines: Array<[string, string]> = [
     ["DEEPGRAM_API_KEY missing (STT primary deepgram)", "חסר מפתח Deepgram"],
     ["ANTHROPIC_API_KEY missing (LLM reflex anthropic:claude-haiku)", "חסר מפתח Anthropic"],
-    ["Wingman → Settings → Keys: paste the key (it is stored in the macOS Keychain)", "הדבק את המפתח"],
+    ["Wingman → Settings → Keys: paste the key (it is stored in the secure key store of this computer)", "הדבק את המפתח"],
     ["no sound from the microphone: it looks blocked", "אין קול מהמיקרופון"],
     ["System Settings → Privacy & Security → Microphone: allow Wingman, then restart Wingman (or choose another device in Settings)", "מיקרופון"],
     ["audio.system.source is off: the client cannot be heard (transcript-only)", "שמע המערכת כבוי"],

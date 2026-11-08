@@ -16,15 +16,17 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { app } = require("electron");
 const { PACKED_TOOLS } = require("../shared/bin.cjs");
+const { appPath } = require("../shared/platform.cjs");
 
 const ROOT = path.join(__dirname, "..");
 const argv = process.argv.slice(1);
 const toolAt = argv.indexOf("--wingman-tool");
 const overlay = argv.includes("--wingman-overlay");
+const smoke = argv.includes("--wingman-smoke");
 
-// Finder gives apps only /usr/bin:/bin. ffmpeg (microphone) and pdftotext (optional) are looked up on the PATH, so add the usual places.
-// Children (the engine, the answer window) inherit this.
-process.env.PATH = [...new Set([...(process.env.PATH || "").split(":"), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"].filter(Boolean))].join(":");
+// Finder gives apps only /usr/bin:/bin. ffmpeg (microphone) and pdftotext (optional) are looked up on the PATH, so add the usual places
+// (macOS only: see shared/platform.cjs). Children (the engine, the answer window) inherit this.
+process.env.PATH = appPath(process.env.PATH);
 process.env.WINGMAN_APP = "1";
 // Tools and the answer window run only for the menu-bar app (or a tool it started): see shared/entry-guard.cjs. The menu-bar app makes a secret
 // for this run; its children inherit it.
@@ -103,14 +105,39 @@ if (toolAt >= 0) {
     const file = path.join(ROOT, "src", name + ".mjs");
     process.argv = [process.execPath, file, ...afterDash(argv.slice(toolAt + 2))]; // what the tool would see under node
     const toolArgs = afterDash(argv.slice(toolAt + 2));
-    import(pathToFileURL(file).href).then(
-      () => ONE_SHOT.has(name) && exitWhenIdle(STDIN_TOOLS.has(name) && toolArgs[0] === "write"),
-      (e) => {
-        console.error(`wingman: ${name} failed to start: ${String((e && e.stack) || e).slice(0, 2000)}`);
-        finish(1);
-      },
-    );
+    // Windows safeStorage (the key store) works only after Electron is ready; the tools read keys at start.
+    const ready = process.platform === "win32" ? app.whenReady() : Promise.resolve();
+    ready
+      .then(() => import(pathToFileURL(file).href))
+      .then(
+        () => ONE_SHOT.has(name) && exitWhenIdle(STDIN_TOOLS.has(name) && toolArgs[0] === "write"),
+        (e) => {
+          console.error(`wingman: ${name} failed to start: ${String((e && e.stack) || e).slice(0, 2000)}`);
+          finish(1);
+        },
+      );
   }
+} else if (smoke) {
+  // Install check for CI and for support: no window, no tray, no network. See shared/smoke.cjs.
+  backgroundProcess("smoke");
+  quietCrashes();
+  const { runSmoke } = require("../shared/smoke.cjs");
+  const kc = require("../src/keychain.cjs");
+  app.whenReady().then(async () => {
+    const r = await runSmoke({
+      root: ROOT,
+      resources: process.resourcesPath,
+      version: app.getVersion(),
+      makeKeychain: (dir) => (process.platform === "win32" ? kc.platformKeychain({ file: path.join(dir, kc.SECURE_KEYS_FILE) }) : null),
+      execFile: require("node:child_process").execFile,
+      execPath: process.execPath,
+      env: process.env,
+      newToken: guard.newToken,
+    });
+    console.log("WINGMAN-SMOKE " + JSON.stringify(r));
+    require("../shared/smoke.cjs").writeReport(r);
+    finish(r.ok ? 0 : 1);
+  });
 } else if (overlay) {
   backgroundProcess("overlay");
   process.argv = [process.argv[0], path.join(ROOT, "overlay", "main.cjs"), ...afterDash(argv)];

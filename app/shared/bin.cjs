@@ -41,7 +41,11 @@ function isPackaged(root, fs = nodeFs) {
 function packedCommand(name, list, o) {
   const cmd = o.execPath || process.execPath;
   if (name === "electron") return { cmd, args: ["--wingman-overlay", "--", ...list.slice(1)] };
-  const tool = nodePath.basename(String(list[0] || "")).replace(/\.ts$/, "");
+  const tool =
+    String(list[0] || "")
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/\.ts$/, "") ?? ""; // a Windows path has backslashes
   if (name !== "tsx" || !PACKED_TOOLS.includes(tool)) throw new Error(`"${tool || name}" is not part of the packaged app`);
   return { cmd, args: ["--wingman-tool", tool, "--", ...list.slice(1)] };
 }

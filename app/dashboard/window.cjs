@@ -76,7 +76,10 @@ const FAKE_DOCTOR = {
     ok: false,
     verdict: "NOT READY",
     failing: [
-      { text: "DEEPGRAM_API_KEY missing (speech to text)", fix: "Wingman → Settings → Keys: paste the key (it is stored in the macOS Keychain)" },
+      {
+        text: "DEEPGRAM_API_KEY missing (speech to text)",
+        fix: "Wingman → Settings → Keys: paste the key (it is stored in the secure key store of this computer)",
+      },
       { text: "no sound from the microphone: it looks blocked", fix: "System Settings → Privacy & Security → Microphone: allow Wingman, then restart Wingman" },
     ],
     warnings: [],

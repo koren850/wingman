@@ -1,7 +1,8 @@
-// Flips Electron fuses in a built Wingman.app, with no dependency (@electron/fuses is not installed): the fuse wire is a sentinel
+// Flips Electron fuses in a built Wingman.app or Wingman.exe, with no dependency (@electron/fuses is not installed): the fuse wire is a sentinel
 // string followed by [version, count, one ASCII byte per fuse: "1" on, "0" off, "r" removed] inside the Electron Framework binary.
 // Turned OFF: RunAsNode (ELECTRON_RUN_AS_NODE turns the app into a free node), EnableNodeOptionsEnvironmentVariable (NODE_OPTIONS),
-// EnableNodeCliInspectArguments (--inspect). Must run BEFORE the ad hoc codesign. Usage: node set-fuses.cjs <path to .app> [--check]
+// EnableNodeCliInspectArguments (--inspect). Must run BEFORE the ad hoc codesign.
+// On Windows the wire is inside the executable itself. Usage: node set-fuses.cjs <path to .app | Wingman.exe | unpacked folder> [--check]
 const fs = require("node:fs");
 const path = require("node:path");
 const SENTINEL = Buffer.from("dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX");
@@ -28,16 +29,22 @@ function state(buf) {
 }
 const frameworkOf = (app) => path.join(app, "Contents", "Frameworks", "Electron Framework.framework", "Versions", "A", "Electron Framework");
 
-module.exports = { flip, state, frameworkOf, OFF, FUSES };
+/** The file that holds the fuse wire: the framework binary of a .app, or the .exe (a folder means <folder>/Wingman.exe). */
+function binaryOf(target) {
+  if (target.endsWith(".app")) return frameworkOf(target);
+  return target.toLowerCase().endsWith(".exe") ? target : path.join(target, "Wingman.exe");
+}
+
+module.exports = { flip, state, frameworkOf, binaryOf, OFF, FUSES };
 
 if (require.main === module) {
   const app = process.argv[2],
     check = process.argv.includes("--check");
   if (!app) {
-    console.error("usage: set-fuses.cjs <Wingman.app> [--check]");
+    console.error("usage: set-fuses.cjs <Wingman.app | Wingman.exe | folder> [--check]");
     process.exit(2);
   }
-  const f = frameworkOf(app);
+  const f = binaryOf(app);
   try {
     const buf = fs.readFileSync(f);
     if (!check) {

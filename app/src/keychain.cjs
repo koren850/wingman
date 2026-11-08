@@ -17,6 +17,7 @@
 // write is verified by reading the value back and comparing in memory.
 const fs = require("node:fs");
 const os = require("node:os");
+const nodePath = require("node:path");
 // eslint-disable-next-line no-redeclare -- CommonJS module scope; deliberately shadows the global `crypto` with the node: module
 const crypto = require("node:crypto");
 const { spawnSync } = require("node:child_process");
@@ -119,6 +120,117 @@ function createKeychain(run = realRunner) {
   return { get, set, remove };
 }
 
+// ---- Windows: Electron safeStorage (DPAPI) ----
+/** Name of the file with the encrypted keys, inside the data folder. Same two keys as the Keychain; each value is base64 of the encrypted bytes. */
+const SECURE_KEYS_FILE = "keys.enc.json";
+
+/**
+ * Same get / set / remove as createKeychain, for Windows, where there is no `security`. Electron's safeStorage encrypts with the Windows
+ * user account (DPAPI), so a copied file is useless on another account or machine. The encrypted values sit in one small JSON file.
+ * `safeStorage` and `fs` are injectable. Without Electron (plain node, a dev checkout) `safeStorage` is null: get() finds nothing and
+ * set() fails, so the key lookup falls back to the environment and keys.env, as on Linux.
+ * @param {{ safeStorage: any, file: string, fs?: any }} o
+ */
+function createSecureFileKeychain({ safeStorage, file, fs: fsImpl = fs }) {
+  const acct = (p) => {
+    if (!PROVIDERS.includes(p)) throw new KeychainError("Unknown provider.");
+    return ACCOUNTS[p];
+  };
+  const usable = () => {
+    try {
+      return !!safeStorage && safeStorage.isEncryptionAvailable();
+    } catch {
+      return false;
+    }
+  };
+  const readAll = () => {
+    try {
+      const o = JSON.parse(fsImpl.readFileSync(file, "utf8"));
+      return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+    } catch {
+      return {};
+    }
+  };
+  const writeAll = (o) => {
+    fsImpl.mkdirSync(pathOf(file).dirname(file), { recursive: true, mode: 0o700 });
+    const tmp = `${file}.tmp-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
+    try {
+      fsImpl.writeFileSync(tmp, JSON.stringify(o), { mode: 0o600, flag: "wx" });
+      fsImpl.renameSync(tmp, file);
+    } catch (e) {
+      try {
+        fsImpl.unlinkSync(tmp);
+      } catch {
+        /* nothing to clean */
+      }
+      throw e;
+    }
+  };
+  function get(provider) {
+    const account = acct(provider);
+    if (!usable()) return null;
+    const b64 = readAll()[account];
+    if (typeof b64 !== "string" || !b64) return null;
+    try {
+      return safeStorage.decryptString(Buffer.from(b64, "base64")) || null;
+    } catch {
+      return null; // another Windows account, or a damaged file: counts as "not there"
+    }
+  }
+  function set(provider, value) {
+    const account = acct(provider);
+    assertSafeSecret(value);
+    if (!usable()) throw new KeychainError("Windows could not encrypt the key. Nothing was saved.");
+    try {
+      writeAll({ ...readAll(), [account]: safeStorage.encryptString(value).toString("base64") });
+    } catch {
+      throw new KeychainError("The key could not be saved.");
+    }
+    if (get(provider) !== value) throw new KeychainError("The saved key did not read back. Nothing was changed in keys.env.");
+    return true;
+  }
+  function remove(provider) {
+    const account = acct(provider);
+    const all = readAll();
+    if (!(account in all)) return false;
+    delete all[account];
+    try {
+      writeAll(all);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return { get, set, remove };
+}
+/** The path module that fits a file name (a Windows path with a drive letter or backslashes is handled by path.win32 on any host). */
+const pathOf = (file) => (/^[A-Za-z]:|\\/.test(file) ? nodePath.win32 : nodePath);
+
+/** Electron's safeStorage when this code runs inside Electron's main process, else null (plain node: `require("electron")` is a path string). */
+function electronSafeStorage() {
+  try {
+    const e = require("electron");
+    return e && typeof e === "object" && e.safeStorage ? e.safeStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The key store of this platform: macOS Keychain through `security`; Windows safeStorage in the data folder; other systems use the
+ * macOS runner, which finds nothing (keys then come from the environment or keys.env). A `run` (tests) always selects the runner store.
+ * @param {{ platform?: string, run?: any, safeStorage?: any, file?: string, fs?: any }} [o]
+ */
+function platformKeychain({ platform = process.platform, run, safeStorage, file, fs: fsImpl } = {}) {
+  if (platform === "win32" && !run)
+    return createSecureFileKeychain({
+      safeStorage: safeStorage === undefined ? electronSafeStorage() : safeStorage,
+      file: file || nodePath.win32.join(require("../shared/paths.cjs").dataDir(), SECURE_KEYS_FILE),
+      fs: fsImpl,
+    });
+  return createKeychain(run || realRunner);
+}
+
 // ---- keys.env helpers (legacy file) ----
 /** Parses KEY=value lines (optional quotes) of the legacy keys.env. Lines with an empty value are ignored. */
 function parseKeysFile(text) {
@@ -143,7 +255,7 @@ function readKeysFile(file) {
 
 /**
  * The one lookup order for an API key, used by the engine (env.ts) and by Settings (keyStatus), so both always agree:
- * the macOS Keychain first (it is where Settings saves, so a saved key always wins), then the process environment, then the legacy keys.env.
+ * the platform key store first (macOS Keychain, Windows safeStorage; it is where Settings saves, so a saved key always wins), then the process environment, then the legacy keys.env.
  * `provider` is set only for the two providers that can live in the Keychain; `account` is the env var / keys.env name.
  * Returns the value and where it came from; a missing key is { value: null, source: "missing" }. A Keychain error counts as "not there".
  */
@@ -300,6 +412,9 @@ module.exports = {
   childEnv,
   realRunner,
   createKeychain,
+  createSecureFileKeychain,
+  platformKeychain,
+  SECURE_KEYS_FILE,
   checkKeyFormat,
   assertSafeSecret,
   KeychainError,

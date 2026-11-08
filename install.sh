@@ -1,5 +1,7 @@
 #!/bin/bash
-# Wingman installer (macOS). Safe to run again; never uses sudo; never installs Node for you.
+# Wingman installer for developers (macOS). Safe to run again; never uses sudo; never installs Node for you.
+# Windows has no script: download Wingman-Setup-<version>-x64.exe from the GitHub release (a per-user installer, no admin rights, no Node).
+# To build from source on Windows see docs/DEVELOPMENT.md.
 #
 #   ./install.sh              check the machine, install dependencies, build Wingman.app, offer /Applications and the `wingman` command
 #   ./install.sh --check      only report what is present and what is missing (changes nothing)
@@ -144,7 +146,16 @@ fi
 [ -d "$APP_DIR" ] && [ -f "$APP_DIR/package.json" ] || { bad "app/package.json not found next to install.sh. Run it from a complete Wingman folder."; exit 1; }
 
 # macOS and CPU
-if [ "$(uname -s)" != Darwin ]; then bad "Wingman runs on macOS only (found $(uname -s))."; exit 1; fi
+case "$(uname -s)" in
+  Darwin) ;;
+  MINGW* | MSYS* | CYGWIN*)
+    bad "This script is for macOS. On Windows, download Wingman-Setup-<version>-x64.exe from https://github.com/koren850/wingman/releases and run it."
+    say "  It installs for your user only (no administrator rights) and needs no Node, no ffmpeg and no other tools."
+    say "  Building from source on Windows: see docs/DEVELOPMENT.md."
+    exit 1
+    ;;
+  *) bad "install.sh runs on macOS only (found $(uname -s)). Windows has an installer on the releases page."; exit 1 ;;
+esac
 MACOS="$(sw_vers -productVersion 2>/dev/null || echo 0)"
 if version_ge "$MACOS" 14.2; then ok "macOS $MACOS (14.2 or newer needed for system audio)"; else bad "macOS $MACOS is too old: Wingman needs 14.2 or newer"; FAILED=1; fi
 ARCH="$(uname -m)"

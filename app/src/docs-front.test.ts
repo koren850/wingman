@@ -97,5 +97,5 @@ test("front docs agree on the numbers of the fact sheet", () => {
   assert.ok(!/\b65 architecture decision/.test(all));
   assert.ok(!/29 options/.test(all));
   assert.ok(!/English only/.test(read("app/README.md")));
-  assert.ok(read("CHANGELOG.md").includes("67 architecture decision records"));
+  assert.ok(read("CHANGELOG.md").includes("68 architecture decision records"));
 });

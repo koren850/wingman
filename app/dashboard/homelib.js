@@ -187,7 +187,7 @@
       (m) => `חסר מפתח ${PROVIDER_HE[m[1]] || "של ספק"} (${/STT|speech/i.test(m[2]) ? "תמלול" : "תשובות"}, גיבוי). הגיבוי לא יעבוד`,
     ],
     [/^(\w+_API_KEY) missing \((.*?)\)/, (m) => `חסר מפתח ${PROVIDER_HE[m[1]] || "של ספק"} (${/STT|speech/i.test(m[2]) ? "תמלול הדיבור" : "תשובות ה-AI"})`],
-    [/^Wingman → Settings → Keys: paste the key/, () => "Wingman ← הגדרות ← מפתחות: הדבק את המפתח (הוא נשמר ב-Keychain של macOS)"],
+    [/^Wingman → Settings → Keys: paste the key/, () => "Wingman ← הגדרות ← מפתחות: הדבק את המפתח (הוא נשמר באחסון המפתחות המאובטח של המחשב)"],
     [/^no sound from the microphone/, () => "אין קול מהמיקרופון: נראה שהוא חסום"],
     [
       /^System Settings → Privacy & Security → Microphone/,

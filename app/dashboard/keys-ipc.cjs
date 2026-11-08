@@ -26,7 +26,7 @@ const FAKE = {
  * o: { handle, getWin, dialog, keysFile: () => Promise<string>, fake: "keychain"|"file"|"missing"|"" , run?, fetch?, env?, now? }
  * (run/fetch/env/now are test seams). */
 function register(o) {
-  const keychain = kc.createKeychain(o.run || kc.realRunner);
+  const keychain = kc.platformKeychain({ run: o.run });
   const limit = kc.createRateLimiter(5, 60000, o.now);
   const limitAdmin = kc.createRateLimiter(5, 60000, o.now); // remove + migrate: stops a looping page from spamming dialogs or file rewrites
   const env = o.env || process.env;

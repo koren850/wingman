@@ -1,8 +1,9 @@
 name: Release
 
-# A tag like v0.0.1 builds the macOS app (unsigned for now) and attaches the .dmg to the release of that tag.
-# The publish script creates the release first (with the notes); if there is none, a DRAFT is created and nothing is
-# published until someone reviews it and clicks "Publish release".
+# A tag like v0.0.1 builds the macOS app (.dmg, Apple Silicon) and the Windows installer (.exe, x64), both unsigned for now, and attaches
+# both to the release of that tag. The publish script creates the release first (with the notes); if there is none, a DRAFT is created
+# and nothing is published until someone reviews it and clicks "Publish release".
+# A public repository has free minutes for the macOS and Windows runners; a private one pays 10x and 2x.
 on:
   push:
     tags: ["v*"]
@@ -11,12 +12,31 @@ permissions:
   contents: read
 
 jobs:
+  # Makes sure the release exists once, so the two build jobs below do not both try to create it.
+  release:
+    name: release for the tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Create a draft release if there is none
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Wingman $GITHUB_REF_NAME" \
+              --notes "Unsigned builds. macOS (Apple Silicon, macOS 14.2 or newer): open the .dmg, drag Wingman to Applications, and confirm the first start. Windows 10 or 11 (64-bit): run the .exe; if SmartScreen shows 'Windows protected your PC', choose More info, then Run anyway. See the README."
+          fi
+
   dmg:
     name: build the .dmg (macOS, arm64)
+    needs: release
     runs-on: macos-latest
     timeout-minutes: 30
     permissions:
-      contents: write # create the draft release and upload the .dmg
+      contents: write # upload the .dmg
     defaults:
       run:
         working-directory: app
@@ -60,15 +80,66 @@ jobs:
       - name: Check the fuses of the built app
         run: node scripts/set-fuses.cjs dist/mac-arm64/Wingman.app --check
 
-      - name: Draft release with the .dmg
+      - name: Attach the .dmg to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        # The release may already exist: the publish script creates it (and so the tag) with the notes. Then only the .dmg is added.
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "$GITHUB_REF_NAME" --clobber dist/Wingman-*-arm64.dmg
+
+  exe:
+    name: build the installer (Windows, x64)
+    needs: release
+    runs-on: windows-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write # upload the installer
+    defaults:
+      run:
+        working-directory: app
+        shell: bash
+    env:
+      # No Electron download in postinstall (electron-builder downloads the Windows files itself) and no dev launcher build.
+      WINGMAN_SKIP_APP: "1"
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      # Signing is OFF. SmartScreen warns on the first start of an unsigned installer; the release notes say how to continue.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Enable pnpm for Node 24
+        run: corepack enable
+
+      - name: Check that the tag matches the version
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" --clobber dist/Wingman-*-arm64.dmg
-          else
-            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Wingman $GITHUB_REF_NAME" \
-              --notes "Unsigned build for Apple Silicon Macs (macOS 14.2 or newer). macOS asks you to confirm the first start: see the README." \
-              dist/Wingman-*-arm64.dmg
-          fi
+          version="$(node -p 'require("./package.json").version')"
+          [ "$GITHUB_REF_NAME" = "v$version" ] || { echo "Tag $GITHUB_REF_NAME does not match app/package.json version $version"; exit 1; }
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The unit tests gate the release on macOS (the dmg job). Windows runs only the checks that are about Windows.
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Build the installer
+        run: pnpm dist
+
+      - name: Check the installer (fuses, smoke, install, tray, uninstall)
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/Wingman-Setup-*-x64.exe | Select-Object -First 1
+          ../.github/scripts/windows-smoke.ps1 -Unpacked dist/win-unpacked -Installer $installer.FullName
+
+      - name: Attach the installer to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release upload "$GITHUB_REF_NAME" --clobber dist/Wingman-Setup-*-x64.exe

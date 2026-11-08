@@ -19,7 +19,14 @@ Before a meeting you can give it context (an invite, an email, notes). That is o
 
 ## Part 1: Install the app
 
-You need:
+**Most people: download the app.** Open the [latest release](https://github.com/koren850/wingman/releases/latest).
+
+- Mac (Apple Silicon, macOS 14.2 or newer): open the `.dmg` and drag Wingman to Applications. macOS asks you to confirm the first start because the app is not signed yet (System Settings, Privacy & Security, Open Anyway).
+- Windows 10 or 11 (64-bit): run `Wingman-Setup-<version>-x64.exe`. It installs for your user only, with no administrator rights, and adds a Start menu shortcut. SmartScreen may say "Windows protected your PC" because the installer is not signed yet: choose **More info**, then **Run anyway**. To remove it, use Settings, Apps, Wingman. Your calls and notes stay in `%APPDATA%\Wingman` until you delete that folder.
+
+You need no Node, no Homebrew and no ffmpeg for the downloaded app. Then go to Part 2. The rest of this part is for people who build from source.
+
+**Build from source.** You need:
 
 - macOS 14.2 or newer, Node 24 or newer (the installer does not install it), `ffmpeg` only if you run from a terminal (the app records the microphone itself and does not need it), pnpm 11 (comes with corepack; run pnpm from `app/` so it uses the pinned version).
 - A second screen. With one screen the answer window stays closed, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it).

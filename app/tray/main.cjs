@@ -37,7 +37,8 @@ const { pt } = require("./prompt-text.js");
 const ROOT = path.join(__dirname, "..");
 const userPaths = require("../shared/paths.cjs");
 const { ensureUserData } = require("../shared/migrate.cjs");
-const ICON = path.join(ROOT, "..", "brand", "png", "trayTemplate.png");
+const TRAY = require("../shared/platform.cjs").trayIcon(path.join(ROOT, "..", "brand")); // { file, template }: a tinted template image on macOS, the .ico on Windows
+const ICON = TRAY.file;
 const CALLS_DIR = userPaths.callsDir();
 const LOGS = path.join(CALLS_DIR, "tray.log");
 const BRIEFS_DIR = userPaths.briefsDir();
@@ -396,7 +397,7 @@ app.whenReady().then(() => {
   }
   if (!SNAPSHOT) {
     const img = fs.existsSync(ICON) ? nativeImage.createFromPath(ICON) : nativeImage.createEmpty();
-    img.setTemplateImage(true);
+    img.setTemplateImage(TRAY.template);
     tray = new Tray(img);
     if (img.isEmpty()) tray.setTitle("Wingman");
     refresh();

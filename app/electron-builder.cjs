@@ -1,8 +1,10 @@
 "use strict";
-// electron-builder config for the packaged Wingman.app and .dmg. Run it with `pnpm dist` (scripts/package-app.cjs stages the files first).
+// electron-builder config for the packaged Wingman: Wingman.app and .dmg on macOS, the NSIS installer (.exe) on Windows. Run it with
+// `pnpm dist` (scripts/package-app.cjs stages the files first and picks the platform).
 //
 // Unsigned by default: no Apple Developer account is needed to build. The app is only ad hoc signed (scripts/after-pack.cjs), so macOS asks
-// the user to confirm the first start (see docs/DEVELOPMENT.md, "Building the app").
+// the user to confirm the first start (see docs/DEVELOPMENT.md, "Building the app"). The Windows installer is not signed either: SmartScreen
+// shows "Windows protected your PC" and the user picks "More info", "Run anyway". Windows signing is not prepared yet.
 //
 // Signing and notarizing are prepared but OFF. To switch them on, set WINGMAN_SIGN=1 and give electron-builder the usual variables:
 //   CSC_LINK, CSC_KEY_PASSWORD      the "Developer ID Application" certificate (.p12, or a base64 string) and its password
@@ -21,7 +23,15 @@ const electronDir = path.join(__dirname, "node_modules", "electron");
 const electron = {
   electronVersion: process.env.WINGMAN_ELECTRON_VERSION || JSON.parse(fs.readFileSync(path.join(electronDir, "package.json"), "utf8")).version,
 };
-if (fs.existsSync(path.join(electronDir, "dist", "Electron.app"))) electron.electronDist = path.join(electronDir, "dist");
+// The downloaded Electron of this machine (Electron.app on macOS, electron.exe on Windows); without it electron-builder downloads its own.
+// Only when it is the build's own platform: a Windows build on a Mac downloads the Windows files instead of copying Electron.app.
+const OWN_ELECTRON = { darwin: "Electron.app", win32: "electron.exe" }[process.platform];
+if (
+  OWN_ELECTRON &&
+  fs.existsSync(path.join(electronDir, "dist", OWN_ELECTRON)) &&
+  !process.argv.some((a) => (process.platform === "darwin" ? a === "--win" : a === "--mac"))
+)
+  electron.electronDist = path.join(electronDir, "dist");
 
 module.exports = {
   ...electron,
@@ -40,7 +50,11 @@ module.exports = {
   buildDependenciesFromSource: false,
   afterPack: path.join(__dirname, "scripts", "after-pack.cjs"),
   // The window and the tray read their icons from ../brand/png (next to the app folder).
-  extraResources: [{ from: "../brand/png", to: "brand/png", filter: ["icon-512.png", "trayTemplate.png", "trayTemplate@2x.png"] }],
+  // Windows uses the multi-size wingman.ico for the tray (shared/platform.cjs trayIcon).
+  extraResources: [
+    { from: "../brand/png", to: "brand/png", filter: ["icon-512.png", "trayTemplate.png", "trayTemplate@2x.png"] },
+    { from: "../brand", to: "brand", filter: ["wingman.ico"] },
+  ],
   mac: {
     target: [{ target: "dmg", arch: ["arm64"] }],
     category: "public.app-category.productivity",
@@ -58,6 +72,22 @@ module.exports = {
       NSMicrophoneUsageDescription: "Wingman listens to your microphone during a call to follow what you say. Audio is not stored.",
       NSAudioCaptureUsageDescription: "Wingman listens to the other side of your call (system audio) to follow the conversation. Audio is not stored.",
     },
+  },
+  win: {
+    target: [{ target: "nsis", arch: ["x64"] }],
+    icon: path.join(__dirname, "..", "brand", "wingman.ico"), // the .exe, the installer and the shortcuts
+    artifactName: "Wingman-Setup-${version}-${arch}.${ext}",
+  },
+  nsis: {
+    // One click, no wizard, no administrator rights: it installs for the current user only (%LOCALAPPDATA%\Programs\Wingman).
+    oneClick: true,
+    perMachine: false,
+    allowElevation: false,
+    runAfterFinish: true,
+    createDesktopShortcut: false,
+    createStartMenuShortcut: true,
+    shortcutName: "Wingman",
+    deleteAppDataOnUninstall: false, // calls and notes in %APPDATA%\Wingman are the user's: the uninstaller keeps them
   },
   dmg: { title: "Wingman ${version}", icon: path.join(__dirname, "..", "brand", "Wingman.icns") },
 };

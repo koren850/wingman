@@ -17,7 +17,7 @@ A **moment** is a point in the call where a short private nudge would help: a qu
 Open **Wingman** (Spotlight or Launchpad). The first window is a guided setup with three steps. The chip at the top shows your progress, for example "2 of 3".
 
 1. **Try it.** A practice call: a pretend client plays through the real call loop and the real answer window. Free, no keys, and nothing leaves your Mac.
-2. **Connect.** Paste your Deepgram and Anthropic keys. They go into the macOS Keychain. Press **Test** to check each one. The step shows the cost: about $1.40 per hour of call for Deepgram plus roughly 5 to 20 cents an hour for Anthropic.
+2. **Connect.** Paste your Deepgram and Anthropic keys. They are stored safely: in the macOS Keychain, or on Windows encrypted for your Windows account. Press **Test** to check each one. The step shows the cost: about $1.40 per hour of call for Deepgram plus roughly 5 to 20 cents an hour for Anthropic.
 3. **Allow.** Allow the microphone and System Audio Recording. After you allow System Audio Recording, **quit and reopen Wingman**: macOS gives no live status for it. Then choose your screens. Wingman shows its answers in a small window on a second screen, because that window must never be in your screen share. With one screen the answer window stays closed (the call still works, and every answer is saved in the Wingman window). You can allow the window on your one screen, but then never share that whole screen.
 
 Then it says "You're ready". Press **Quick call**, or **Start** on a saved meeting. The way to your first real card is three steps on screen: Connect (keys), Allow (microphone and system audio, then quit and open Wingman once) and Try it (a free practice call).
@@ -186,7 +186,7 @@ Nothing about you is stored in this repository.
 |---|---|
 | `~/Library/Application Support/Wingman/` | Your data: `calls/` (transcripts, cards, summaries), `briefs/` (prepared meetings, with `briefs/attachments/`), `entities.json` (optional client snapshot). Override with `WINGMAN_DATA_DIR`. |
 | `~/.config/wingman/` | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
-| macOS Keychain, service `wingman` | Your API keys. |
+| macOS Keychain, service `wingman` (Windows: `%APPDATA%\Wingman\keys.enc.json`, encrypted) | Your API keys. |
 
 If you used an older version that kept calls in the repo folder (`calls/` and `data/private/` inside the repo folder), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
 

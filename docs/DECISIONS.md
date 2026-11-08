@@ -73,6 +73,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [65](#adr-65-web-lookup-is-opt-in-with-a-source-and-a-cap-replaces-adr-36) | Web lookup is opt-in, with a source and a cap (replaces ADR 36) |
 | [66](#adr-66-measured-token-budgets-name-matching-and-a-compaction-check-what-shipped-for-adrs-63-and-64) | Measured token budgets, name matching and a compaction check |
 | [67](#adr-67-a-socket-that-hears-nothing-is-dead-and-readers-use-call-wide-indexes) | A socket that hears nothing is dead; readers use call-wide indexes |
+| [68](#adr-68-the-app-records-audio-so-users-need-no-ffmpeg) | The app records audio, so users need no ffmpeg |
+| [69](#adr-69-a-windows-installer-built-and-checked-on-windows) | A Windows installer, built and checked on Windows |
 
 ---
 
@@ -1042,3 +1044,17 @@ Date: 2026-11-08
 **Alternatives.** A native module for WASAPI and Core Audio (a build step per platform, harder to sign). Bundling an ffmpeg binary (about 70 MB per platform, and device names still differ per system). Capturing in the engine process with a Node library (the engine is not a Chromium process, so there is none that works without native code).
 
 **Consequences.** The hidden window needs "media" permission; it is granted to its own session only (`grantSession` in `shared/permissions.cjs`), every other window still says no. A terminal run has no app, so it uses the ffmpeg backend as before; `WINGMAN_MIC_ENGINE=ffmpeg` forces that under the app too. Windows loopback captures everything that plays on the default output, including music, and Wingman's own sound (it plays none). The capture page was checked with Chromium's fake audio device (`scripts/capture-selftest.cjs`); real microphones, real loopback and the Windows build were not tried.
+
+## ADR 69: A Windows installer, built and checked on Windows
+
+Date: 2026-11-08
+
+**Context.** The first release targets macOS and Windows with the same promise: download, paste two keys, go. ADR 21 puts the keys in the macOS Keychain, which Windows does not have. The packaged app also assumed macOS in four places: the audiotee helper, the PATH fix for Finder, a template tray icon and a parent check with `/bin/ps`.
+
+**Decision.** `pnpm dist` builds for the system it runs on. Windows gets one NSIS installer for x64: one click, current user only, no administrator rights, unsigned. The release workflow builds the .dmg on a macOS runner and the installer on a Windows runner and attaches both to the release. Keys on Windows use Electron `safeStorage` (DPAPI) with one JSON file in the data folder, behind the same `get`, `set` and `remove` as the Keychain (`platformKeychain`). The parent check uses `tasklist` and compares image names. The tray uses the multi-size `.ico`. `Wingman --wingman-smoke` is a no-window install check that CI runs on the unpacked app and on the installed app. Anything that differs by platform is a small function that takes the platform as a parameter, so it is unit-tested on a Mac with `path.win32`.
+
+**Why.** Cross-building the installer from macOS needs Wine and cannot run the installer; a Windows runner can build it, install it and start it. DPAPI is the platform's secret store, so a stolen file is useless on another account. No new dependency is needed. Per-user install avoids an administrator prompt, which many work laptops do not allow.
+
+**Alternatives.** A native credential store module (a native dependency and a compile step on every build). Plain `keys.env` on Windows (a plaintext key). A machine-wide installer (needs administrator rights). Cross-building on a Mac (cannot be checked).
+
+**Consequences.** The installer is unsigned, so SmartScreen warns on first use until a certificate is bought. `safeStorage` works only after Electron is ready, so tools wait for it on Windows. The pid reuse risk in the parent check is the same as before. The Windows packaging path has been run on a Mac up to the unpacked folder; the first full run is the Windows CI job.

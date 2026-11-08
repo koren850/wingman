@@ -34,6 +34,8 @@ const m = createRequire(import.meta.url)("./keychain.cjs") as {
   childEnv(env?: NodeJS.ProcessEnv): NodeJS.ProcessEnv;
   realRunner: Runner;
   createKeychain(run?: Runner): Keychain;
+  platformKeychain(o?: { platform?: string; run?: Runner; safeStorage?: unknown; file?: string; fs?: unknown }): Keychain;
+  SECURE_KEYS_FILE: string;
   checkKeyFormat(p: string, v: unknown): string | null;
   scrub(t: unknown, secrets?: string[]): string;
   last4(v: unknown): string;
@@ -53,6 +55,8 @@ export const {
   childEnv,
   realRunner,
   createKeychain,
+  platformKeychain,
+  SECURE_KEYS_FILE,
   checkKeyFormat,
   scrub,
   last4,
@@ -61,5 +65,5 @@ export const {
   migrateKeysToKeychain,
   testKey,
 } = m;
-/** The real macOS Keychain. Only the CLI, the app and the call tools use this; tests inject a mock runner instead. */
-export const realKeychain = (): Keychain => createKeychain(realRunner);
+/** The real key store of this platform (macOS Keychain, Windows safeStorage). Only the CLI, the app and the call tools use this; tests inject a mock runner instead. */
+export const realKeychain = (): Keychain => platformKeychain();
