@@ -221,8 +221,6 @@ export type WorkerOptions = {
   asks?: boolean;
   /** memory snapshot lag after the check line, ms */
   lagMs?: number;
-  /** what-if cache layout for the usage rows: role instructions right after block A, cached for 1 h */
-  roleFirst?: boolean;
   /** which split the meeting is in (default dev); the held-out splits check their lock file in the child */
   split?: "dev" | "test" | "test-b";
   /** a deliberately bad model instead of the scripted replies (qa/controls.ts) */
