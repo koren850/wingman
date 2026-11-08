@@ -56,7 +56,7 @@ for (const kind of MODES) {
   });
 }
 
-test("mode profiles: a value 1 PROMPT is a card in client and support calls, a chip elsewhere; a one-to-one needs value 3", async () => {
+test("mode profiles: a value 1 PROMPT is only a chip in every mode (the precision rule); a one-to-one needs value 3 for a card", async () => {
   const shown = async (kind: MemoryKind, tag: string, value: number) => {
     await e.reset();
     setKind(kind);
@@ -67,8 +67,9 @@ test("mode profiles: a value 1 PROMPT is a card in client and support calls, a c
     setKind("other");
     return !!c && !c.chip && !c.dim;
   };
-  assert.equal(await shown("client", "PROMPT", 1), true);
-  assert.equal(await shown("support", "PROMPT", 1), true);
+  assert.equal(await shown("client", "PROMPT", 1), false, "the client mode lets value 1 through the minimum, but VALUE 1 never takes the hero");
+  assert.equal(await shown("support", "PROMPT", 1), false);
+  assert.equal(await shown("client", "PROMPT", 2), true);
   assert.equal(await shown("team", "PROMPT", 1), false);
   assert.equal(await shown("other", "PROMPT", 1), false);
   assert.equal(await shown("personal", "PROMPT", 2), false);

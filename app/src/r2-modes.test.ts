@@ -20,7 +20,11 @@ import { ModelRegistry } from "./providers/llm.ts";
 import { CostMeter } from "./cost.ts";
 import { loadSettings } from "./settings.ts";
 import { main } from "./cli/index.ts";
-import { DATA, ROOT } from "./env.ts";
+import { DATA } from "./env.ts";
+import net from "node:net";
+import http from "node:http";
+import https from "node:https";
+import childProcess from "node:child_process";
 
 const tmp = (n: string) => mkdtempSync(join(tmpdir(), `wm-r2modes-${n}-`));
 const NEW_MODES: MemoryKind[] = ["client", "support", "team", "personal", "consult"];
@@ -87,9 +91,13 @@ const mom = (tag: ScheduledMoment["tag"], value: 0 | 1 | 2 | 3): ScheduledMoment
 
 test("modes: the scheduler applies the profile of the kind (policy table)", () => {
   const at = (kind: MemoryKind | undefined) => ({ ...newSchedulerState(1000), kind });
-  const show = (kind: MemoryKind | undefined, tag: ScheduledMoment["tag"], v: 0 | 1 | 2 | 3) =>
-    decide(mom(tag, v), at(kind), DEFAULT_SCHEDULER).action === "show";
-  // discovery and support: a missing topic or a small ticket fact (value 1) is worth a card; elsewhere it is not
+  // "show" here means: the mode's minimum VALUE lets it through. A VALUE 1 card that passes is still only a chip (precision rule of round 3), checked once below.
+  const show = (kind: MemoryKind | undefined, tag: ScheduledMoment["tag"], v: 0 | 1 | 2 | 3) => {
+    const d = decide(mom(tag, v), at(kind), DEFAULT_SCHEDULER);
+    return d.action !== "drop" && d.reason !== "below-min-value";
+  };
+  assert.equal(decide(mom("PROMPT", 1), at("client"), DEFAULT_SCHEDULER).reason, "value-1");
+  // discovery and support: a missing topic or a small ticket fact (value 1) is worth a look; elsewhere it is not
   assert.equal(show("client", "PROMPT", 1), true);
   assert.equal(show("support", "NOTE", 1), true);
   assert.equal(show("support", "PROMPT", 1), true);
@@ -209,9 +217,20 @@ test("coaching: too little speech gives no numbers; word times are used when a r
   assert.equal(c.talkSharePct, 63, "20 s of 32 s");
 });
 
-test("coaching: no filler-word counting in the code", () => {
-  const src = readFileSync(join(ROOT, "src", "session", "coaching.ts"), "utf8");
-  assert.doesNotMatch(src, /filler|\buh\b|\bum\b|you know|אהה|כאילו/i);
+test("coaching: filler words are not counted: the numbers do not change when the words are fillers, and there is no filler field", () => {
+  const fillers = ["um", "uh", "you", "know", "אהה", "כאילו", "like", "so"];
+  const filler = (n: number, q = false) => Array.from({ length: n }, (_, i) => fillers[i % fillers.length]).join(" ") + (q ? "?" : ".");
+  const mk = (t: (n: number, q?: boolean) => string) =>
+    computeCoaching([
+      { ch: "them", text: t(25), t: T0 + 10_000 },
+      { ch: "me", text: t(40, true), t: T0 + 30_000 },
+      { ch: "them", text: t(10), t: T0 + 40_000 },
+    ])!;
+  const plain = mk(text),
+    full = mk(filler);
+  assert.deepEqual(full, plain, "a call made only of filler words has the same numbers as one made of plain words");
+  const keys = (o: unknown): string[] => (o && typeof o === "object" ? Object.entries(o).flatMap(([k, v]) => [k, ...keys(v)]) : []);
+  assert.ok(!keys(full).some((k) => /filler|um|uh/i.test(k)), `no filler field: ${keys(full).join(",")}`);
 });
 
 // ---------------------------------------------------------------- a fixture call folder
@@ -429,9 +448,44 @@ test("mailto: a link is built as text with a subject and a body, cut to a safe l
   assert.match(decodeURIComponent(long), /…$/);
   assert.match(mailtoLink("s", "b", "noa@example.com"), /^mailto:noa@example\.com\?/);
   assert.match(mailtoLink("s", "b", "noa@example.com?cc=x@y.z&bcc=a@b.c"), /^mailto:\?/, "a recipient with extra header fields is dropped");
-  // the module only builds text: it has no network, process or mail code
-  const src = readFileSync(join(ROOT, "src", "session", "export.ts"), "utf8") + readFileSync(join(ROOT, "src", "cli", "export-cmd.ts"), "utf8");
-  assert.doesNotMatch(src, /node:(http|https|net|child_process|dns|tls)|fetch\(|sendMail|smtp|webhook|\bopen\(/i);
+});
+
+test("export: building an export and a mailto link makes no network call and starts no process", () => {
+  // The module only builds text. Behaviour check: with fetch, sockets, http and child processes replaced by counters, an export and a mail link still work and the counters stay at zero.
+  const hits: string[] = [];
+  const g = globalThis as { fetch?: unknown };
+  const realFetch = g.fetch;
+  g.fetch = () => {
+    hits.push("fetch");
+    throw new Error("network is off");
+  };
+  const patches: (() => void)[] = [];
+  const trap = (obj: object, name: string, label: string) => {
+    const o = obj as Record<string, unknown>;
+    const orig = o[name];
+    o[name] = () => {
+      hits.push(label);
+      throw new Error(`${label} is off`);
+    };
+    patches.push(() => (o[name] = orig));
+  };
+  trap(net.Socket.prototype, "connect", "net.connect");
+  trap(http, "request", "http.request");
+  trap(https, "request", "https.request");
+  trap(childProcess, "spawn", "spawn");
+  trap(childProcess, "exec", "exec");
+  trap(childProcess, "execFile", "execFile");
+  const f = fixtureCall();
+  try {
+    const x = buildExport(f.dir);
+    assert.ok(x.summary.length > 0);
+    assert.match(mailtoLink("Follow-up", "Hi,\nthanks", "noa@example.com"), /^mailto:/);
+  } finally {
+    for (const undo of patches) undo();
+    g.fetch = realFetch;
+    rmSync(f.calls, { recursive: true, force: true });
+  }
+  assert.deepEqual(hits, [], "no network call and no process");
 });
 
 // ---------------------------------------------------------------- the CLI

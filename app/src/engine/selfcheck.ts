@@ -9,6 +9,7 @@ import { st } from "./state.ts";
 import { longAnswerTip } from "./strings.ts";
 import { nextAnswerStart } from "./rules.ts";
 import { recentTranscript } from "./coach.ts";
+import { currentPause, v2Active } from "./degrade.ts";
 
 const claimShown = new Set<string>();
 let answerStart = 0,
@@ -74,7 +75,9 @@ export function selfCheckLine(text: string) {
   if (!sc.enabled || interview || !st.call.consented || st.call.shuttingDown) return; // interview: a false red card mid-answer costs more than it saves (a misheard employer name became a red card in practice)
   if (text.split(/\s+/).filter(Boolean).length < MIN_WORDS) return;
   const now = Date.now();
-  if (sc.careful) {
+  // Live reading: the model's CHECK cards and the number check (moments.checkPromises) replace this word-list card. It stays as the floor while the AI is paused, and in the classic engine.
+  const wordListCard = sc.careful && (!v2Active() || !!currentPause());
+  if (wordListCard) {
     const c = detectCareful(text, S.stt.language);
     if (c) {
       if (selfGate.canCareful(now)) {

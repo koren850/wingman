@@ -21,7 +21,7 @@ export type Moment = {
   stall?: StallKind;
   value: Value;
   aim: Aim;
-  /** The line to say or the point to see. At most 14 words. Empty for SKIP and for BANK/STALL (the code supplies the card text). */
+  /** The line to say or the point to see. At most 14 words (the prompt asks for 12). Empty for SKIP and for BANK/STALL (the code supplies the card text). */
   say: string;
   /** One short line, shown small. */
   why: string;
@@ -31,7 +31,16 @@ export type Moment = {
   ref?: string;
   /** 2 to 4 words, the topic of the card in the language of the call ("Budget owner"). Optional: the overlay derives one when it is missing. */
   label?: string;
+  /** How sure the model is. `low` never takes the hero: the scheduler shows it as a chip. Missing = high. */
+  conf?: Conf;
+  /** At most 8 words: the question or topic the card answers ("PHP version"). Shown as a one-line tag on an old card. */
+  about?: string;
+  /** Fact cards: the value itself, at most 4 words ("WooCommerce 8.2"). */
+  val?: string;
+  /** `false` when the SAY text had to be cut at a clause end (the rest is in `more`). The overlay then shows "More". Missing = it fit. */
+  fit?: boolean;
 };
+export type Conf = "high" | "low";
 
 /** A row for the call log when the parser had to fall back to SKIP. Same family as the other error.survived rows. */
 export type SurvivedRow = { type: "error.survived"; where: "moments.parse"; reason: string; sample: string };
@@ -57,8 +66,17 @@ export type MomentMeta = {
 
 /** Limits in one place. */
 export const LIMITS = {
+  /** The parser accepts this many words in SAY. */
   sayWords: 14,
+  /** The prompt asks for this many. */
+  sayAskWords: 12,
+  /** A SAY longer than this is not a long line but garbage (the reply is dropped as SKIP); between sayWords and this it is cut at a clause end. */
+  sayCutWords: 40,
   sayChars: 160,
+  aboutWords: 8,
+  aboutChars: 60,
+  valWords: 4,
+  valChars: 30,
   whyChars: 120,
   moreLines: 3,
   moreChars: 120,

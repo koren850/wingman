@@ -12,10 +12,11 @@ import type { MomentTag } from "./moments/types.ts";
 const req = createRequire(import.meta.url);
 const F = req("../dashboard/livefeed.js");
 
+let sayN = 0; // a card with the same words as a recent one is a repeat: every default card says something else
 const mom = (o: Partial<ScheduledMoment> & { tag: MomentTag }): ScheduledMoment => ({
   value: 2,
   aim: "me",
-  say: "Say it plainly",
+  say: `Say it plainly, version ${(++sayN).toString(26).replace(/\d/g, (d) => "abcdefghij"[+d])}`, // letters, not digits: a number in a model answer is checked
   why: "they asked",
   more: [],
   source: "direct",
@@ -81,7 +82,7 @@ test("old tools still read v2 rows: the dashboard feed keeps the card and passes
   s.tick(T0, 1);
   const a = shown(s.offer(mom({ tag: "ANS", more: ["detail"], ref: "q1" }), meta()));
   const c = F.cleanCard({ type: "card", ...a });
-  assert.equal(c.say, "Say it plainly");
+  assert.match(c.say, /^Say it plainly, version /);
   assert.equal(c.badge, "ai");
   assert.equal(c.kind, "answer");
   assert.equal(c.value, 2);

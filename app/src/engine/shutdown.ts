@@ -36,6 +36,7 @@ import {
 import { st, chans } from "./state.ts";
 import { askKey } from "./control.ts";
 import { frameRound, flushMemory, memoryLoop } from "./coach.ts";
+import { endCallLearning } from "./moments.ts";
 import { engineV2 } from "./memory.ts";
 import { speedSummary } from "./cards.ts";
 import { uncovered, liveNotes } from "./side.ts";
@@ -196,6 +197,7 @@ export async function shutdown() {
   st.turn.current?.abort();
   notesAbort.abort();
   void flushMemory(); // session.json is on disk before anything slow starts (also on the crash path: crash() calls shutdown())
+  endCallLearning(); // the ratings of this call go to learn.json (counts only)
   status("stopphase", { phase: "saving" }); // the app shows: saving, then summary, then done (tray/lib.cjs STOP_PHASES)
   const startedAt = Date.now();
   const shutdownDeadline = startedAt + SUMMARY_BUDGET_MS;

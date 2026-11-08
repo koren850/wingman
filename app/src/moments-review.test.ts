@@ -22,7 +22,7 @@ test("parser: CRLF, tag with colon, markdown fence, lower case", () => {
 });
 
 test("parser: repeated SAY line keeps the first; huge say is SKIP", () => {
-  const r = parseMoment("ANS\nVALUE: 3\nAIM: me\nSAY: " + "word ".repeat(40));
+  const r = parseMoment("ANS\nVALUE: 3\nAIM: me\nSAY: " + "word ".repeat(45));
   assert.equal(r.moment.tag, "SKIP");
 });
 

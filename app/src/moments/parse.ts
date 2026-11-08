@@ -1,9 +1,25 @@
 // Tag-first parser for the moment reply (PLAN.md 3.2). Line 1 is the verdict (TAG), then labelled lines in any order:
-//   VALUE: 0..3   AIM: me|other|all|unclear   SAY: <= 14 words   LABEL: 2-4 word topic (optional)   WHY: one line   MORE: up to 3 short lines   REF: memory id
+//   VALUE: 0..3   AIM: me|other|all|unclear   CONF: high|low   SAY: <= 12 words (up to 14 accepted)   LABEL: 2-4 word topic   ABOUT: <= 8 words   VAL: <= 4 words
+//   WHY: one line   MORE: up to 3 short lines   REF: memory id
+// CONF, LABEL, ABOUT and VAL are optional for the parser (the prompt asks for LABEL). CONF comes before SAY in the prompt, so the scheduler knows it when the say-line completes.
 // Rules: the verdict can be read as soon as line 1 is complete (parseMomentStream, MomentStream); anything that is not a clean moment
-// (unknown tag, missing field, over-long say-line, garbage, a tag word inside the text) becomes SKIP plus an error.survived row.
+// (unknown tag, missing field, garbage, a tag word inside the text) becomes SKIP plus an error.survived row.
+// A SAY of 15 to 40 words is not garbage: it is cut at a clause end (fitSay), `fit` is false, the rest goes first into `more`, and `long` tells the caller (the observer asks once for a
+// shorter one). A SAY over 40 words, or one that has no word break and is long, is garbage: SKIP.
 // Nothing here throws and nothing returns raw model text beyond the capped fields. Text from the model is data: it is never used as an instruction.
-import { AIMS, LIMITS, MOMENT_TAGS, SKIP_MOMENT, type Aim, type Moment, type MomentTag, type StallKind, type SurvivedRow, type Value } from "./types.ts";
+import {
+  AIMS,
+  LIMITS,
+  MOMENT_TAGS,
+  SKIP_MOMENT,
+  type Aim,
+  type Conf,
+  type Moment,
+  type MomentTag,
+  type StallKind,
+  type SurvivedRow,
+  type Value,
+} from "./types.ts";
 
 /** The verdict from line 1. */
 export type TagInfo = { tag: MomentTag; bankId?: string; stall?: StallKind };
@@ -12,15 +28,17 @@ export type ParsedMoment = {
   /** Known once line 1 is complete (or the reply is final). */
   tag?: TagInfo;
   /** Fields read so far (streaming view). `say` may still grow while `sayComplete` is false. */
-  fields: Partial<Pick<Moment, "value" | "aim" | "say" | "why" | "more" | "ref" | "label">>;
+  fields: Partial<Pick<Moment, "value" | "aim" | "say" | "why" | "more" | "ref" | "label" | "conf" | "about" | "val" | "fit">>;
   sayComplete: boolean;
+  /** The SAY had more than 14 words and was cut by fitSay (`fields.say` is the cut text). The observer holds such a card back and asks once for a shorter one. */
+  long?: boolean;
   /** Only when `final`: the validated moment, always valid, SKIP when anything was wrong. */
   moment?: Moment;
   errors: SurvivedRow[];
 };
 
 const TAG_RE = new RegExp(`^(?:TAG\\s*[:=]\\s*)?(${MOMENT_TAGS.join("|")})(?![A-Za-z0-9])\\s*[:\\-–]?\\s*(.*)$`, "i");
-const FIELD_RE = /^(VALUE|AIM|SAY|LABEL|WHY|MORE|REF)\s*[:=]\s*(.*)$/i;
+const FIELD_RE = /^(VALUE|AIM|CONF|SAY|LABEL|ABOUT|VAL|WHY|MORE|REF)\s*[:=]\s*(.*)$/i;
 const CONTROL_WORD = /(^|[^A-Za-z])(SKIP|STALL|BANK|ANS|REPLY|CHECK|PROMPT)(?![A-Za-z])/;
 const STALL_KINDS: readonly StallKind[] = ["price", "guarantee", "timeline", "other"];
 /** Characters that never belong in a card: C0/C1 controls (not newline), bidi overrides, zero-width marks. */
@@ -62,6 +80,67 @@ export function cleanLabel(raw: string): string {
       .replace(/\s+\S*$/, "")
       .trim();
   return CONTROL_WORD.test(t) ? "" : t; // a label is a topic, never a verdict word
+}
+
+/** Characters at the end of a clause that are not part of the text when the line is cut there. */
+const CLAUSE_PUNCT = /[,;:،؛]+$/;
+const SENTENCE_END = /[.!?…]$/;
+const DASH = /^[-–—]+$/;
+/** Connectors that start a new clause in English. The Hebrew ones are found by punctuation only (no word list for Hebrew). */
+const CLAUSE_OPENER = /^(and|but)$/i;
+
+/** Cuts `say` to a line that fits: at most `maxWords` words and `maxChars` characters, ending where a clause ends (a comma, colon, semicolon, dash, full stop, or just before "and" or "but").
+ *  With no clause end in the first words, it cuts at `hardWords` words. Never adds an ellipsis. `rest` is what was cut off (for `more`). `fit` is true when nothing was cut. */
+export function fitSay(
+  say: string,
+  maxWords: number = LIMITS.sayWords,
+  maxChars: number = LIMITS.sayChars,
+  hardWords: number = LIMITS.sayAskWords,
+): { say: string; rest: string; fit: boolean } {
+  const t = String(say ?? "").trim();
+  const w = t.split(/\s+/).filter(Boolean);
+  if (w.length <= maxWords && t.length <= maxChars) return { say: t, rest: "", fit: true };
+  const clauseEnd = (k: number): boolean => {
+    // the head is w[0..k): it ends at a clause end when its last word carries punctuation, the next word opens a clause, or the last word is a dash
+    const last = w[k - 1];
+    return !!last && (CLAUSE_PUNCT.test(last) || SENTENCE_END.test(last) || DASH.test(last) || (k < w.length && CLAUSE_OPENER.test(w[k])));
+  };
+  const lengthOf = (k: number) => w.slice(0, k).join(" ").length;
+  let k = 0;
+  for (let c = Math.min(maxWords, w.length - 1); c >= 3; c--)
+    if (clauseEnd(c) && lengthOf(c) <= maxChars) {
+      k = c;
+      break;
+    }
+  if (!k) {
+    k = Math.max(1, Math.min(hardWords, maxWords, w.length - 1));
+    while (k > 1 && lengthOf(k) > maxChars) k--;
+  }
+  let head = w.slice(0, k);
+  while (head.length > 1 && DASH.test(head[head.length - 1])) head = head.slice(0, -1);
+  const text = head
+    .join(" ")
+    .replace(CLAUSE_PUNCT, "")
+    .replace(/[\s\-–—]+$/, "");
+  const rest = w
+    .slice(k)
+    .join(" ")
+    .replace(/^[\s,;:\-–—،؛]+/, "")
+    .trim();
+  return { say: text, rest, fit: false };
+}
+/** A short free-text field (ABOUT, VAL): cleaned, cut to `maxWords` words and `maxChars` characters, empty when it holds a verdict word. */
+function cleanShort(raw: string, maxWords: number, maxChars: number): string {
+  let t = strip(raw).replace(/^[-–—:;,.\s]+/, "");
+  const w = t.split(/\s+/).filter(Boolean);
+  if (w.length > maxWords) t = w.slice(0, maxWords).join(" ");
+  if (t.length > maxChars)
+    t = t
+      .slice(0, maxChars)
+      .replace(/\s+\S*$/, "")
+      .trim();
+  t = t.replace(/[\s.!?…:;,\-–—]+$/, "").trim();
+  return CONTROL_WORD.test(t) ? "" : t;
 }
 
 const needsSay = (t: MomentTag) => t !== "SKIP" && t !== "BANK" && t !== "STALL";
@@ -157,7 +236,30 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
   if (partial.trim()) feed(partial, false);
 
   out.sayComplete = lines.some((l) => /^[\s>#]*SAY\s*[:=]/i.test(l)); // the SAY line is among the finished lines
-  if ("SAY" in f) out.fields.say = strip(f.SAY);
+  const done = (name: string) => name in f && lines.some((l) => new RegExp(`^[\\s>#]*${name}\\s*[:=]`, "i").test(l)); // a half-streamed line is not read
+  let sayRest = "";
+  if ("SAY" in f) {
+    const say = strip(f.SAY);
+    if (needsSay(tag.tag) && (words(say) > LIMITS.sayWords || say.length > LIMITS.sayChars)) {
+      const fit = fitSay(say);
+      out.fields.say = fit.say;
+      out.fields.fit = false;
+      out.long = true;
+      sayRest = fit.rest;
+    } else out.fields.say = say;
+  }
+  if (done("CONF")) {
+    const c = f.CONF.toLowerCase().match(/[a-z]+/)?.[0];
+    if (c === "high" || c === "low") out.fields.conf = c as Conf;
+  }
+  if (done("ABOUT")) {
+    const a = cleanShort(f.ABOUT, LIMITS.aboutWords, LIMITS.aboutChars);
+    if (a) out.fields.about = a;
+  }
+  if (done("VAL")) {
+    const v = cleanShort(f.VAL, LIMITS.valWords, LIMITS.valChars);
+    if (v) out.fields.val = v;
+  }
   if ("VALUE" in f && lines.some((l) => /^[\s>#]*VALUE\s*[:=]/i.test(l))) {
     const n = Number(f.VALUE.match(/^\s*([0-3])(?!\d)/)?.[1]);
     if (Number.isInteger(n)) out.fields.value = n as Value;
@@ -171,11 +273,11 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
     if (l) out.fields.label = l;
   }
   if ("WHY" in f) out.fields.why = cut(strip(f.WHY), LIMITS.whyChars);
-  if (more.length)
-    out.fields.more = more
-      .map((m) => cut(strip(m), LIMITS.moreChars))
-      .filter(Boolean)
-      .slice(0, LIMITS.moreLines);
+  const moreAll = [...(sayRest ? [sayRest] : []), ...more]
+    .map((m) => cut(strip(m), LIMITS.moreChars))
+    .filter(Boolean)
+    .slice(0, LIMITS.moreLines);
+  if (moreAll.length) out.fields.more = moreAll;
   if ("REF" in f) {
     const r = f.REF.trim().match(/^[a-z]{1,2}\d{1,6}$/i)?.[0];
     if (r) out.fields.ref = r.toLowerCase().slice(0, LIMITS.refChars);
@@ -195,10 +297,9 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
   if (out.fields.value === undefined) return skip("missing:VALUE");
   if (out.fields.aim === undefined) return skip("missing:AIM");
   const say = out.fields.say ?? "";
-  if (needsSay(tag.tag)) {
-    if (!say) return skip("missing:SAY");
-    if (words(say) > LIMITS.sayWords || say.length > LIMITS.sayChars) return skip("say-too-long");
-  } else if (words(say) > LIMITS.sayWords || say.length > LIMITS.sayChars) return skip("say-too-long");
+  if (needsSay(tag.tag) && !say) return skip("missing:SAY");
+  // A runaway SAY is garbage, not a long line: more than sayCutWords words, or text far over the character limit.
+  if (rawSayGarbage(f.SAY) || say.length > LIMITS.sayChars) return skip("say-too-long"); // the second test: one long word with no break to cut at
   if (say && CONTROL_WORD.test(say)) return skip("leaked-tag"); // the model talking about its own verdict
   out.moment = {
     tag: tag.tag,
@@ -211,8 +312,39 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
     more: out.fields.more ?? [],
     ...(out.fields.ref ? { ref: out.fields.ref } : {}),
     ...(out.fields.label ? { label: out.fields.label } : {}),
+    ...(out.fields.conf ? { conf: out.fields.conf } : {}),
+    ...(out.fields.about ? { about: out.fields.about } : {}),
+    ...(out.fields.val ? { val: out.fields.val } : {}),
+    ...(out.fields.fit === false ? { fit: false } : {}),
   };
   return out;
+}
+
+/** True when the raw SAY text is not a long line but garbage: over sayCutWords words, or over 2.5 times the character limit. */
+function rawSayGarbage(raw: string | undefined): boolean {
+  if (!raw) return false;
+  const t = strip(raw);
+  return words(t) > LIMITS.sayCutWords || t.length > LIMITS.sayChars * 2.5;
+}
+
+/** A moment from the verdict and the fields read so far (what the card path needs when it shows the card at the say-line). */
+export function momentFromParsed(tag: TagInfo, f: ParsedMoment["fields"]): Moment {
+  return {
+    tag: tag.tag,
+    ...(tag.bankId ? { bankId: tag.bankId } : {}),
+    ...(tag.stall ? { stall: tag.stall } : {}),
+    value: f.value ?? 0,
+    aim: f.aim ?? "unclear",
+    say: f.say ?? "",
+    why: f.why ?? "",
+    more: f.more ?? [],
+    ...(f.ref ? { ref: f.ref } : {}),
+    ...(f.label ? { label: f.label } : {}),
+    ...(f.conf ? { conf: f.conf } : {}),
+    ...(f.about ? { about: f.about } : {}),
+    ...(f.val ? { val: f.val } : {}),
+    ...(f.fit === false ? { fit: false } : {}),
+  };
 }
 
 /** Convenience for a complete reply: always a valid moment. */

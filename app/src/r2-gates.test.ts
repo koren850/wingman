@@ -246,7 +246,7 @@ test(
       let n = 0;
       const lines: string[] = [];
       const code = await recordMain(
-        ["--suite", "dev", "--cap", "5", "--only", "dev-silence-en", "--judge"],
+        ["--suite", "dev", "--cap", "5", "--only", "dev-sales-en", "--judge"],
         {},
         {
           transport: "mock",

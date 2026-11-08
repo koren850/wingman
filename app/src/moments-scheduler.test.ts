@@ -32,7 +32,8 @@ test("scheduler: SKIP, aim other and a low value are dropped; value just below t
   assert.equal(decide(M({ value: 0 }), s).action, "drop");
   assert.equal(decide(M({ value: 1 }), s).action, "chip");
   assert.equal(decide(M({ value: 2 }), s).action, "show");
-  assert.equal(decide(M({ tag: "STALL", stall: "price", value: 1 }), s).action, "show"); // stalls and checks have a lower default
+  assert.equal(decide(M({ tag: "STALL", stall: "price", value: 1 }), s).action, "chip"); // a stall has a lower default, but VALUE 1 is only ever a chip
+  assert.equal(decide(M({ tag: "STALL", stall: "price", value: 2 }), s).action, "show");
 });
 
 test("scheduler: per-tag min value from the setting", () => {
@@ -43,7 +44,8 @@ test("scheduler: per-tag min value from the setting", () => {
   assert.equal(mv.default, 2);
   const cfg = { ...DEFAULT_SCHEDULER, minValue: mv };
   assert.equal(decide(M({ tag: "TERM", value: 2 }), newSchedulerState(), cfg).action, "chip");
-  assert.equal(decide(M({ tag: "ANS", value: 1 }), newSchedulerState(), cfg).action, "show");
+  assert.equal(decide(M({ tag: "ANS", value: 1 }), newSchedulerState(), cfg).reason, "value-1"); // the setting lets it through the minimum, VALUE 1 stays a chip
+  assert.equal(decide(M({ tag: "ANS", value: 2 }), newSchedulerState(), cfg).action, "show");
 });
 
 test("scheduler: rank is value x urgency x freshness, lower for an old line and for an unclear aim", () => {

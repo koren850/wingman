@@ -62,7 +62,7 @@ import {
   ensureSeeded,
 } from "./moments.ts";
 import { runMoment, type MomentDone } from "../moments/run.ts";
-import type { ParsedMoment } from "../moments/parse.ts";
+import { momentFromParsed, type ParsedMoment } from "../moments/parse.ts";
 import type { Moment } from "../moments/types.ts";
 import type { BankCandidate } from "../moments/prompt.ts";
 import type { ContextOutput } from "../context/build.ts";
@@ -480,18 +480,7 @@ function onMomentPartial(t: Turn, p: ParsedMoment, final: boolean) {
     textTag = p.tag.tag !== "BANK" && p.tag.tag !== "STALL";
   if (f.value === undefined || f.aim === undefined || (textTag && !p.sayComplete && !final)) return;
   if (textTag && !f.say) return;
-  presentMoment(t, {
-    tag: p.tag.tag,
-    ...(p.tag.bankId ? { bankId: p.tag.bankId } : {}),
-    ...(p.tag.stall ? { stall: p.tag.stall } : {}),
-    value: f.value,
-    aim: f.aim,
-    say: f.say ?? "",
-    why: f.why ?? "",
-    more: f.more ?? [],
-    ...(f.ref ? { ref: f.ref } : {}),
-    ...(f.label ? { label: f.label } : {}),
-  });
+  presentMoment(t, momentFromParsed(p.tag, f));
 }
 
 /** The model stays silent: the stall line (if one was shown) and a weak local card go away, the reason is logged. */
@@ -635,6 +624,9 @@ function onMomentDone(t: Turn, d: MomentDone) {
       more: d.moment.more,
       ref: d.moment.ref ?? t.mshown.ref,
       ...((d.moment.label ?? t.mshown.label) ? { label: d.moment.label ?? t.mshown.label } : {}),
+      ...((d.moment.about ?? t.mshown.about) ? { about: d.moment.about ?? t.mshown.about } : {}),
+      ...((d.moment.val ?? t.mshown.val) ? { val: d.moment.val ?? t.mshown.val } : {}),
+      ...((t.mshown.conf ?? d.moment.conf) ? { conf: t.mshown.conf ?? d.moment.conf } : {}),
     };
     const up = {
       ...momentCard(fin, { id: t.mcard.id, turnId: t.id, question: t.r.text, ctx: t.ctxRec, dim: t.mcard.dim, done: true }),

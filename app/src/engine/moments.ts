@@ -34,9 +34,11 @@ import {
 } from "./boot.ts";
 import { userName, nameRegex } from "../profile.ts";
 import { buildContext, type ContextOutput, type RawLine } from "../context/build.ts";
-import { buildMomentPrompt, type BankCandidate } from "../moments/prompt.ts";
+import { buildMomentPrompt, SHORTER, type BankCandidate } from "../moments/prompt.ts";
 import { decide, recordShown, clearHero, type Decision, type ScheduledMoment } from "../moments/scheduler.ts";
-import { normalizeTagRows, type CardSrc } from "./cards-v2.ts";
+import { normalizeTagRows, parseTags, pickLabel, type CardSrc } from "./cards-v2.ts";
+import { learnedOffsets, noteCallEnd } from "../moments/learn.ts";
+import { momentFromParsed } from "../moments/parse.ts";
 import { modeInstructions, modeProfile } from "../moments/modes.ts";
 import { estimateTokens } from "../context/budget.ts";
 import { localCue } from "../moments/cue.ts";
@@ -49,6 +51,7 @@ import type { ObserverWindow } from "../moments/observer.ts";
 import { seedForCall } from "../session/callseed.ts";
 import { PEOPLE_FILE } from "../session/people.ts";
 import { CALLS, USER_DATA } from "../env.ts";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isEmptyMemory } from "../session/types.ts";
 import { guard } from "../guards.ts";
@@ -152,7 +155,14 @@ export function decideMoment(m: Moment, o: DecideInput): Decision {
     ...(o.hint ? { hint: o.hint } : {}),
   };
   const sm: ScheduledMoment = { ...m, ...meta };
-  const base = { ...st.m.sched, now: Date.now(), memVer: st.m.mem.ver, kind: callKind(), currentTurnId: o.source === "observer" ? st.m.obs : st.m.direct };
+  const base = {
+    ...st.m.sched,
+    now: Date.now(),
+    memVer: st.m.mem.ver,
+    kind: callKind(),
+    currentTurnId: o.source === "observer" ? st.m.obs : st.m.direct,
+    ...(st.m.sched.learn ? {} : { learn: learnedOffsets() }), // what earlier calls learned about this user, read once per call
+  };
   // A direct question (a strong hint) is the job: it may take the screen from an observer card and is not held back by the per-minute cap
   // (its card still counts for the observer cards that follow, so a busy minute stays calm).
   const state = o.sibling || o.source === "direct" ? clearHero(base) : base;
@@ -161,9 +171,9 @@ export function decideMoment(m: Moment, o: DecideInput): Decision {
   if (d.action !== "drop") cardSched.know(o.cardId, m.tag); // a rating on this card (shown or small) finds its kind
   return d;
 }
-/** The user rated a card (useful or not useful). Three "not useful" in a row for one kind raise that kind's minimum VALUE for the rest of the call, for direct,
- *  observer and open-loop cards alike (one scheduler state). */
-export function noteFeedback(cardId: string, rating: "useful" | "not-useful"): void {
+/** The user rated a card (useful, not useful or "fewer like this"). Three "not useful" in a row for one kind raise that kind's minimum VALUE for the rest of the call, for direct,
+ *  observer and open-loop cards alike (one scheduler state). A "fewer" rating raises it at once. */
+export function noteFeedback(cardId: string, rating: "useful" | "not-useful" | "fewer"): void {
   applyFeedback([{ id: cardId, rating }]);
 }
 /** Rows of tags.jsonl (the whole file or only new rows; objects as the overlay writes them, `{id|cardId, rating|useful}`, or already normalised). A rating already applied is skipped,
@@ -178,6 +188,26 @@ export function applyFeedback(rows: readonly unknown[]): number {
   } catch (e) {
     survived("moments.feedback", e);
     return 0;
+  }
+}
+
+/** The call is over: the negative ratings of this call (per kind of card) go to learn.json (counts only), once. Safe to call twice. */
+let learnedThisCall = false;
+export function endCallLearning(): void {
+  if (learnedThisCall) return;
+  learnedThisCall = true;
+  try {
+    // Ratings given in the last seconds were not read by the coach tick yet.
+    try {
+      applyFeedback(parseTags(readFileSync(join(log.dir, "tags.jsonl"), "utf8")));
+    } catch {
+      /* no ratings file */
+    }
+    const counts = cardSched.negatives();
+    const state = noteCallEnd(counts);
+    log.write("events", { type: "learn.call", negatives: counts, calls: state.calls, raised: Object.keys(learnedOffsets()) });
+  } catch (e) {
+    survived("moments.learn", e);
   }
 }
 
@@ -208,8 +238,13 @@ export const cardKindOf = (t: MomentTag) => KIND[t];
 const clean = (s: string) => s.replace(/\s+/g, " ").trim();
 
 /** The card row for a moment (a text card: ANS, REPLY, CHECK, TERM, PROMPT, NOTE). Bank and stall cards are made by the caller from the bank. */
-export function momentCard(m: Moment, o: { id: string; turnId: string; question: string; ctx?: ContextOutput["record"]; dim?: boolean; done?: boolean }): Card {
+export function momentCard(
+  m: Moment,
+  o: { id: string; turnId: string; question: string; ctx?: ContextOutput["record"]; dim?: boolean; done?: boolean; bankTitle?: string },
+): Card {
   const more = m.more.map(clean).filter(Boolean);
+  const label = pickLabel({ label: m.label, bankTitle: o.bankTitle, topic: st.m.mem.topic.now });
+  const val = KIND[m.tag] === "fact" ? (m.val ?? valOfRef(m.ref)) : undefined;
   return {
     id: o.id,
     turnId: o.turnId,
@@ -223,7 +258,11 @@ export function momentCard(m: Moment, o: { id: string; turnId: string; question:
     ...(m.why ? { why: clean(m.why) } : {}),
     ...(more.length ? { more } : {}),
     ...(m.ref ? { ref: m.ref } : {}),
-    ...(m.label ? { label: m.label } : {}),
+    ...(label ? { label } : {}),
+    ...(m.about ? { about: m.about } : {}),
+    ...(val ? { val } : {}),
+    ...(m.conf ? { conf: m.conf } : {}),
+    ...(m.fit === false ? { fit: false } : {}),
     ...(srcOfRef(m.ref) ? { src: srcOfRef(m.ref) } : {}),
     ...(o.ctx ? { ctx: { memV: o.ctx.memV, tokens: o.ctx.tokens, parts: o.ctx.parts } } : {}),
     ...(o.dim ? { dim: true } : {}),
@@ -240,10 +279,17 @@ export function srcOfRef(ref: string | undefined): CardSrc | undefined {
   if ([...m.numbers, ...m.commitments, ...m.openQuestions, ...m.decisions, ...m.objections].some((x) => x.id === ref)) return "call";
   return undefined;
 }
+/** The value of a number the memory holds (a fact card that points at it shows the value on its chip), at most 4 words. */
+export function valOfRef(ref: string | undefined): string | undefined {
+  if (!ref) return undefined;
+  const n = st.m.mem.numbers.find((x) => x.id === ref);
+  const v = n?.value.replace(/\s+/g, " ").trim().split(" ").slice(0, 4).join(" ").slice(0, 30);
+  return v || undefined;
+}
 /** The same for a card from the bank (the model said BANK <id>, or the local scorer found it). */
 export function bankMomentCard(c: BankCard, m: Moment, o: { id: string; turnId: string; question: string; ctx?: ContextOutput["record"] }): Card {
   return {
-    ...momentCard({ ...m, say: c.say, more: [] }, { ...o }),
+    ...momentCard({ ...m, say: c.say, more: [] }, { ...o, bankTitle: c.title }),
     badge: "bank",
     say: c.say,
     facts: c.facts,
@@ -264,7 +310,7 @@ export function sayAllowed(m: Moment, question: string): { ok: boolean; why?: st
 // ---------------------------------------------------------------- logs and cost
 /** A SKIP (or a drop) with its reason, so a miss can be measured later. */
 export function logMomentRow(
-  type: "moment.skip" | "moment.drop" | "moment.chip" | "moment.invalid",
+  type: "moment.skip" | "moment.drop" | "moment.chip" | "moment.invalid" | "moment.retry",
   turnId: string,
   source: MomentSource,
   why: string,
@@ -490,7 +536,8 @@ async function runObserver(w: ObserverWindow): Promise<void> {
   lat.reqAt = Date.now();
   noteModel(turnId, models[0]);
   let shown = false,
-    skipped = false;
+    skipped = false,
+    allowLong = false; // true on the retry: a SAY that is still long is taken as cut
   const cardId = `${turnId}-m`;
   const fail = (e: ProviderError) => {
     if (ac.signal.aborted) return;
@@ -516,41 +563,51 @@ async function runObserver(w: ObserverWindow): Promise<void> {
     const f = p.fields;
     const textTag = p.tag.tag !== "BANK" && p.tag.tag !== "STALL";
     if (f.value === undefined || f.aim === undefined || (textTag && !p.sayComplete && !final)) return;
-    const m: Moment = {
-      tag: p.tag.tag,
-      ...(p.tag.bankId ? { bankId: p.tag.bankId } : {}),
-      ...(p.tag.stall ? { stall: p.tag.stall } : {}),
-      value: f.value,
-      aim: f.aim,
-      say: f.say ?? "",
-      why: f.why ?? "",
-      more: f.more ?? [],
-      ...(f.ref ? { ref: f.ref } : {}),
-      ...(f.label ? { label: f.label } : {}),
-    };
+    // A SAY over 14 words waits for the end of the reply: one retry asks for a shorter one (an observer card is not in a hurry). On the retry the cut text is taken as it is.
+    if (textTag && p.long && !allowLong && !final) return;
+    const m: Moment = momentFromParsed(p.tag, f);
     if (textTag && !m.say) return;
     shown = true;
     presentObserver(m, { turnId, cardId, question, lineAt, ctx: ctx.record, lat, hintText: last?.text ?? "" });
   };
-  try {
-    await runMoment({
+  const env: FinishEnv = { turnId, ctx, lat, tryShow, shown: () => shown, skipped: () => skipped, aborted: () => ac.signal.aborted, question, cardId };
+  const attempt = (c: ContextOutput, retry: boolean) =>
+    runMoment({
       registry,
       models,
       role: "observer",
-      ctx,
+      ctx: c,
       cfg: { ...S.llm.reflex, timeoutMs: Math.min(S.llm.reflex.timeoutMs, 5000) },
-      maxTokens: 160,
+      maxTokens: 200,
       signal,
       onFail: (m, e) => noteMomentFail(m, e),
       onSwitch: (a, b, e) => noteMomentSwitch(turnId, a, b, e),
       onHung: (m, e) => noteMomentFail(m, e),
       h: {
         onPartial: (p) => tryShow(p, false),
-        onDone: (d) =>
-          finishObserver(d, { turnId, ctx, lat, tryShow, shown: () => shown, skipped: () => skipped, aborted: () => ac.signal.aborted, question, cardId }),
+        onDone: (d) => {
+          if (!retry && wantsShorter(d, shown, skipped)) return void (tooLong = d); // the retry runs after this call is closed
+          finishObserver(d, env);
+        },
         onAbortedUsage: (u) => bookMomentUsage("observer", turnId, u, undefined, true),
       },
     });
+  let tooLong: MomentDone | undefined;
+  try {
+    await attempt(ctx, false);
+    if (tooLong && !ac.signal.aborted) {
+      // The card text had more than 14 words. One more call, with a short "shorter" instruction. Its cost is booked; the first reply is never shown.
+      bookMomentUsage("observer", turnId, tooLong, ctx.record);
+      logMomentRow("moment.retry", turnId, "observer", "say-too-long", { tag: tooLong.moment.tag });
+      allowLong = true;
+      try {
+        await attempt({ ...ctx, system: [...ctx.system, { name: "data", text: SHORTER }] }, true);
+      } catch (e) {
+        // The retry failed (slow or down): the first reply, cut at a clause end, is better than nothing.
+        if (ac.signal.aborted) throw e;
+        finishObserver({ ...tooLong, usage: undefined, providerMetadata: undefined }, env);
+      }
+    }
   } catch (e) {
     fail(e as ProviderError);
   } finally {
@@ -559,6 +616,10 @@ async function runObserver(w: ObserverWindow): Promise<void> {
     recordLatency(lat);
   }
 }
+
+/** An observer reply whose SAY was cut because it had more than 14 words, and no card is up yet: ask once for a shorter one. */
+export const wantsShorter = (d: Pick<MomentDone, "long" | "moment">, shown: boolean, skipped: boolean): boolean =>
+  d.long && !shown && !skipped && d.moment.tag !== "SKIP" && d.moment.tag !== "BANK" && d.moment.tag !== "STALL";
 
 type FinishEnv = {
   turnId: string;
@@ -579,7 +640,7 @@ function finishObserver(d: MomentDone, e: FinishEnv) {
   const cutOff = d.truncated && !e.shown() && d.moment.tag !== "SKIP";
   if ((d.errors.length && d.moment.tag === "SKIP") || cutOff) {
     // Garbage or a cut-off reply: logged with the reason. An observer card is never an emergency, so there is no stall line.
-    logMomentRow("moment.invalid", e.turnId, "observer", cutOff ? "truncated" : d.errors[0].reason, { sample: d.errors[0]?.sample });
+    logMomentRow("moment.invalid", e.turnId, "observer", cutOff ? "truncated" : (d.errors[0]?.reason ?? "invalid"), { sample: d.errors[0]?.sample });
     countFailure(new ProviderError("unknown", "moment", "unusable reply"));
     return;
   }
@@ -597,7 +658,16 @@ function finishObserver(d: MomentDone, e: FinishEnv) {
   lastShown.delete(e.cardId);
   if (!done || d.moment.tag === "SKIP" || done.card.badge === "bank" || done.card.badge === "stall") return;
   const up = momentCard(
-    { ...done.m, why: d.moment.why, more: d.moment.more, ref: d.moment.ref ?? done.m.ref, ...labelOf(d.moment.label ?? done.m.label) },
+    {
+      ...done.m,
+      why: d.moment.why,
+      more: d.moment.more,
+      ref: d.moment.ref ?? done.m.ref,
+      ...labelOf(d.moment.label ?? done.m.label),
+      ...((d.moment.about ?? done.m.about) ? { about: d.moment.about ?? done.m.about } : {}),
+      ...((d.moment.val ?? done.m.val) ? { val: d.moment.val ?? done.m.val } : {}),
+      ...((done.m.conf ?? d.moment.conf) ? { conf: done.m.conf ?? d.moment.conf } : {}),
+    },
     { id: e.cardId, turnId: e.turnId, question: e.question, ctx: e.ctx.record, dim: done.dim, done: true },
   );
   emitCard({ ...up, say: done.card.say, at: done.card.at });
@@ -690,4 +760,5 @@ export const _resetMoments = () => {
   lastShown.clear();
   cardSched.reset();
   stopObserver();
+  learnedThisCall = false;
 };

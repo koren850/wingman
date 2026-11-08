@@ -30,6 +30,8 @@ export type MomentDone = {
   model: string;
   /** The provider stopped at the token limit: the last line may be cut. */
   truncated: boolean;
+  /** The SAY had more than 14 words and was cut at a clause end (the moment has fit=false). The observer asks once for a shorter one. */
+  long: boolean;
 };
 export type MomentRunHandlers = {
   /** After every chunk, with what the parser can read so far. The caller decides when it has enough to show a card. */
@@ -164,6 +166,7 @@ async function runOne(o: MomentRun, ref: string, h: MomentRunHandlers): Promise<
     text: buf,
     model: ref,
     truncated: finish === "length",
+    long: !!fin.long,
   });
   return ref;
 }

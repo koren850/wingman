@@ -23,6 +23,8 @@ export type SchedulerConfig = {
   minValue: { default: number } & Partial<Record<MomentTag, number>>;
   maxPerMinute: number;
   noveltyMs: number;
+  /** The same words again inside this time are a repeat (two turns answering one question). A shorter window than noveltyMs: a user who asks the same thing again later gets the answer again. */
+  sameTextMs: number;
   /** How long a shown card stays the hero (nothing of lower or equal rank replaces it). */
   topicLifetimeMs: number;
   /** An observer moment older than this (since its line) is dropped. */
@@ -36,6 +38,7 @@ export const DEFAULT_SCHEDULER: SchedulerConfig = {
   minValue: { default: 2, STALL: 1, CHECK: 1 },
   maxPerMinute: 3,
   noveltyMs: 120_000,
+  sameTextMs: 20_000,
   topicLifetimeMs: 60_000,
   lateObserverMs: 6_000,
   feedbackStreak: 3,
@@ -63,6 +66,8 @@ export type ShownRecord = {
   topic?: string;
   /** Memory version when it was shown (novelty compares with the current one). */
   memVer: number;
+  /** The text of the card with only letters and digits left (see textKey). A card with the same text is a repeat, whatever its id, ref or topic. */
+  key?: string;
   rank: number;
   exempt: boolean;
 };
@@ -79,11 +84,21 @@ export type SchedulerState = {
   hero?: { id: string; rank: number; at: number };
   /** Raised minimum VALUE per tag, from feedback. */
   boost: Readonly<Partial<Record<MomentTag, number>>>;
+  /** What earlier calls learned about this user (learn.ts): +1 on the minimum VALUE of a tag they rated down again and again. Set once at the start of a call. Never lowers a threshold. */
+  learn?: Readonly<Partial<Record<MomentTag, number>>>;
   /** Not-useful ratings in a row per tag. */
   streak: Readonly<Partial<Record<MomentTag, number>>>;
 };
 
 export const newSchedulerState = (now = 0): SchedulerState => ({ now, memVer: 0, shown: [], boost: {}, streak: {} });
+
+/** The card text reduced to lower case letters and digits (first 80), so "Yes, Tuesday works." and "yes tuesday works" are the same card. Empty for a card with no text of its own (BANK). */
+export const textKey = (say: string | undefined): string =>
+  String(say ?? "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .slice(0, 80);
 
 const URGENCY: Record<MomentTag, number> = { SKIP: 0, STALL: 1.3, REPLY: 1.2, ANS: 1.1, BANK: 1.1, CHECK: 1.0, PROMPT: 0.9, TERM: 0.8, NOTE: 0.6 };
 const AIM_FACTOR = { me: 1, all: 1, unclear: 0.7, other: 0 } as const;
@@ -111,7 +126,8 @@ const round = (n: number) => Math.round(n * 1000) / 1000;
 export function thresholdFor(tag: MomentTag, state: SchedulerState, cfg: SchedulerConfig = DEFAULT_SCHEDULER): number {
   const prof = modeProfile(state.kind).minValue;
   const base = prof ? (prof[tag] ?? prof.default ?? cfg.minValue[tag] ?? cfg.minValue.default) : (cfg.minValue[tag] ?? cfg.minValue.default);
-  return Math.min(3, Math.max(base, state.boost[tag] ?? 0));
+  const learned = Math.max(0, Math.min(1, state.learn?.[tag] ?? 0)); // one step at most, and never down
+  return Math.min(3, Math.max(base + learned, state.boost[tag] ?? 0));
 }
 
 export function decide(m: ScheduledMoment, state: SchedulerState, cfg: SchedulerConfig = DEFAULT_SCHEDULER): Decision {
@@ -125,6 +141,9 @@ export function decide(m: ScheduledMoment, state: SchedulerState, cfg: Scheduler
   if (m.source === "observer" && m.lineAt !== undefined && state.now - m.lineAt > cfg.lateObserverMs) return d("drop", "late");
 
   const topic = m.topic?.toLowerCase();
+  const key = textKey(m.say);
+  // The same words again are a repeat, even if the memory moved on. The same ref, bank card or topic is a repeat until the memory changes.
+  if (key.length >= 8 && state.shown.some((r) => state.now - r.at < cfg.sameTextMs && r.key === key)) return d("drop", "same-text");
   const prior = state.shown.find(
     (r) =>
       state.now - r.at < cfg.noveltyMs &&
@@ -133,6 +152,11 @@ export function decide(m: ScheduledMoment, state: SchedulerState, cfg: Scheduler
   if (prior && state.memVer <= prior.memVer) return d("drop", "not-novel");
 
   if (m.value < threshold) return d(m.value >= 1 && m.value === threshold - 1 ? "chip" : "drop", "below-min-value");
+  // Precision before recall: a guess (CONF low) and a marginal note (VALUE 1) are a small chip, never the hero. A check keeps its exemption from the per-minute cap, not from this rule.
+  // A coaching mode (practice interview) asks for marginal tips on purpose: there VALUE 1 may still show.
+  const coaching = (modeProfile(state.kind).monologueWords ?? 0) > 0;
+  if (m.conf === "low") return d("chip", "low-confidence");
+  if (m.value <= 1 && !coaching) return d("chip", "value-1");
 
   const exempt = isExempt(m);
   const recent = state.shown.filter((r) => state.now - r.at < 60_000 && !r.exempt).length;
@@ -156,6 +180,7 @@ export function recordShown(state: SchedulerState, m: ScheduledMoment, id: strin
     ...(m.bankId ? { bankId: m.bankId } : {}),
     ...(m.ref ? { ref: m.ref } : {}),
     ...(m.topic ? { topic: m.topic.toLowerCase() } : {}),
+    ...(textKey(m.say) ? { key: textKey(m.say) } : {}),
     memVer: state.memVer,
     rank: decision.rank,
     exempt: isExempt(m),
@@ -171,14 +196,13 @@ export function clearHero(state: SchedulerState, id?: string): SchedulerState {
   return rest;
 }
 
-/** Feedback on a card of this tag. Three "not useful" in a row raise that tag's minimum VALUE by one for the rest of the call; "useful" resets the streak. */
-export function recordFeedback(
-  state: SchedulerState,
-  tag: MomentTag,
-  rating: "useful" | "not-useful",
-  cfg: SchedulerConfig = DEFAULT_SCHEDULER,
-): SchedulerState {
+export type Rating = "useful" | "not-useful" | "fewer";
+/** Feedback on a card of this tag. Three "not useful" in a row raise that tag's minimum VALUE by one for the rest of the call; "useful" resets the streak.
+ *  "fewer" ("fewer like this") is a strong not-useful: the minimum VALUE of that tag rises by one at once. */
+export function recordFeedback(state: SchedulerState, tag: MomentTag, rating: Rating, cfg: SchedulerConfig = DEFAULT_SCHEDULER): SchedulerState {
   if (rating === "useful") return { ...state, streak: { ...state.streak, [tag]: 0 } };
+  if (rating === "fewer")
+    return { ...state, streak: { ...state.streak, [tag]: 0 }, boost: { ...state.boost, [tag]: Math.min(3, thresholdFor(tag, state, cfg) + 1) } };
   const n = (state.streak[tag] ?? 0) + 1;
   if (n < cfg.feedbackStreak) return { ...state, streak: { ...state.streak, [tag]: n } };
   const next = Math.min(3, thresholdFor(tag, state, cfg) + 1);
