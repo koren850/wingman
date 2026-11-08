@@ -1,4 +1,9 @@
-<h1 align="center">Wingman</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/png/lockup-dark.png">
+    <img src="brand/png/lockup.png" alt="Wingman" width="420">
+  </picture>
+</h1>
 
 <p align="center"><b>A live agent for your meetings. It listens, builds context as the meeting goes, and shows short help cards from what happens.</b><br>A macOS app for English and Hebrew calls, built with Electron and TypeScript.</p>
 
