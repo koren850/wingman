@@ -9,7 +9,7 @@ import { stopConsentTimer } from "./consent.ts";
 import { startTapWatchdog, stopTapWatchdog, noteMicFrame, micBack, stopMicWatch, micStarted } from "./watchdogs.ts";
 import { startSources } from "./start-sources.ts";
 import { eventError } from "../errtext.ts";
-import { stops, shutdown } from "./shutdown.ts";
+import { stops, lifecycle } from "./lifecycle.ts";
 import { sup, log, PHONE, gate, phone, S, ECHO, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { chans, st } from "./state.ts";
@@ -94,7 +94,7 @@ export async function startFileSource(file: string) {
     });
     f.on("pcm-me", (b) => chans.me.send(gateMic(b)));
   }
-  f.on("end", () => setTimeout(() => void shutdown(), 4000));
+  f.on("end", () => setTimeout(() => void lifecycle.shutdown(), 4000));
   await f.start();
   const stop = () => f.stop();
   stops.push(stop);

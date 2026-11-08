@@ -6,7 +6,7 @@ import { detectGap } from "../clock.ts";
 import { freeBytes, diskLevel, diskText } from "../diskspace.ts";
 import { describeRung, type Rung } from "../health.ts";
 import { ht } from "../htext.ts";
-import { shutdown } from "./shutdown.ts";
+import { lifecycle } from "./lifecycle.ts";
 import { health, healthClear, status, safe } from "./out.ts";
 import {
   sup,
@@ -178,7 +178,7 @@ export function tickHealth() {
     if (idle >= idleMin * 60_000) {
       log.write("events", { type: "idle.stop", minutes: idleMin, orphaned: st.call.orphaned });
       console.log(`\nNobody spoke for ${idleMin} minutes: stopping the call.`);
-      void shutdown();
+      void lifecycle.shutdown();
     } else if (idle >= Math.max(1, idleMin - 2) * 60_000 && !idleWarned) {
       idleWarned = true;
       health("idle", "amber", ht(UI_LANG, "idle", { min: Math.round(idle / 60_000) }));
@@ -218,7 +218,7 @@ export function renderRung({ from, to, reasons }: { from: Rung; to: Rung; reason
   if (to === 5) {
     console.log("Wingman is OFF: " + reasons.join(", "));
     status("off", { reasons });
-    void shutdown();
+    void lifecycle.shutdown();
   }
 }
 

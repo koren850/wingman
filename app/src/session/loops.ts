@@ -42,10 +42,6 @@ export function openLoops(mem: SessionMemory): Loops {
   };
 }
 
-/** True when there is anything to say about open loops. */
-export const hasLoops = (l: Loops): boolean =>
-  !!(l.youPromised.length || l.theyPromised.length || l.askedOfYou.length || l.otherOpen.length || l.objections.length || l.coverLeft.length);
-
 const dueText = (c: Commitment) => (c.due ? ` (${c.due})` : "");
 /** One short line per promise, e.g. "send the plan (Friday)". */
 export const promiseLine = (c: Commitment): string => `${c.what}${dueText(c)}`;

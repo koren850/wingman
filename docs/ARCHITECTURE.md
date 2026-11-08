@@ -75,7 +75,7 @@ The tray app starts one call at a time through the controller, which runs `call.
 | Tips and notes | `tips.ts`, `notes.ts`, `brief.ts` | At most one small tip every two minutes (AI or local: "you talk more than 75 percent"). Live notes every 30 s. Must-cover reminders from the Plan. |
 | Fact cards | `entities.ts`, `facts-check.ts` | Matches client and domain names in the call against a local snapshot (`entities.json` in the data folder). No network lookup during a call. Off in practice and prep mode. |
 | Capture | `capture.ts` | Finds phone numbers, emails and domains, including spoken Hebrew digit words. |
-| Summary | `summary.ts` | When a call ends: one model call over the saved transcript. Writes `summary.json` (summary, decisions, next steps, open questions, follow-up email draft). The email passes through the guards, so prices, dates and promises become `[להשלים: ...]`. |
+| Summary | `summary.ts`, `summary-email.ts`, `summary-wrapup.ts` | When a call ends: one model call over the call memory and the last lines (`summary-wrapup.ts`), or over the saved transcript (`summary.ts`) when there is no memory. Writes `summary.json` (summary, decisions, next steps, open questions, follow-up email draft). The email passes through the guards, so prices, dates and promises become `[להשלים: ...]`. |
 | Reliability rules | `audio.ts`, `engine/shutdown.ts`, `engine/strays.ts`, `engine/control.ts`, `providers/stt/channel.ts` | Every spawned audio source is watched, also while down. Stop writes `endedAt` and phase `ended` first. Stray errors are logged, never fatal before the 16 s guard. The stdin reader starts first; `stop` runs at once. STT events are wired before the sockets open. The STT channel goes back to the primary after 60 s. Speaker numbers restart per STT connection (`SpeakerBook.rebase`). One shutdown deadline (`engine/shutdown-deadline.ts`) is counted from the start of shutdown. See ADR 50. |
 | Health | `health.ts` | A supervisor that turns signals (STT lag, LLM errors, audio silence, cost) into the degrade ladder: full, reduced AI (the AI is slow: answers keep coming and a late one is dropped), provider switch, bank only, transcript only, off. A dead speech channel for the other side is "transcript only" (rung 4) and is retried slowly, never "off". "Off" is only for a user stop. |
 | Resilience | `run.ts`, `clock.ts`, `diskspace.ts`, `errtext.ts` | Core handlers (`onResult`, `acceptResult`, `flush`, `onQuestion`, `handleMe`) are wrapped: an error is logged as `error.survived` and the call goes on (repeated errors still end it). `clock.ts` tells a sleep from a clock change by comparing wall time with the monotonic clock; after wake the idle timer starts again, both audio sources are rebuilt and the speech sockets reopen. `diskspace.ts` checks free space on the data folder (amber under 500 MB, red under 100 MB). `errtext.ts` turns an error into one safe line (raw error objects can contain prompts). |
@@ -129,12 +129,14 @@ The capybara logo with a yuzu on its head, icons and the build script. `scripts/
 
 ## Module map
 
-The engine folder is flat on purpose: one process, one call, many small files. This map shows where to look first. The component table above says what each piece does.
+`src/` has a few folders with one job each and a flat top level of small files. The top level stays flat on purpose: one process, one call, many small files, and most files have one export that one other file uses. This map shows where to look first. The component table above says what each piece does.
+
+### Folders
 
 | Folder | What lives there |
 |---|---|
-| `src/` (top level) | The call loop (`run.ts`), audio, the detector and bank, guards, calc, settings, cost, health, summary, profile and pack, and small tools such as `tag.ts` (rate cards), `purge.ts` and `diagnose.ts`. |
-| `src/engine/` | The parts of `run.ts`, each with one job: boot, ingest (every final line), the card exit (`cards.ts`, `cards-v2.ts`), the question path and the "me" path, the moment engine glue (`moments.ts`, `rules.ts`), the memory loop (`memory.ts`), the shutdown and the speech channel wiring (`stt.ts`, `stt-retry.ts`), the health ladder wiring (`degrade.ts`) and the shared call state (`state.ts`). |
+| `src/` (top level) | Entry points (`run.ts`, `call.ts`, `doctor.ts`, `synth.ts`, the `*-cli.ts` child processes) and the small shared files listed in the next table. |
+| `src/engine/` | The parts of `run.ts`, each with one job. See "Engine folder" below. |
 | `src/moments/` | The moment engine's pure decision pieces: parse the model reply, intake, hint, floor, observer, scheduler, learning from ratings, modes. No globals, no network. |
 | `src/session/` | The call memory (`session.json`): its types and caps, patches, the compaction safety check, open loops, people from earlier calls, search of past calls, ask and Catch me up, follow-up draft, export, opt-in lookup. |
 | `src/context/` | What a model call sees: the prompt builder with its token budgets and cache layout, local search over context files, names, the `ctx` record on each card. |
@@ -144,6 +146,58 @@ The engine folder is flat on purpose: one process, one call, many small files. T
 | `src/testkit/`, `src/e2e/`, `src/fixtures/` | The policy fake model, the virtual clock, golden-meeting helpers, and the end-to-end tests. |
 | `tray/`, `dashboard/`, `overlay/`, `shared/` | The Electron side: the menu-bar process, the window, the answer window and the code both share. |
 | `qa/`, `scripts/`, `data/`, `config/` | The synthetic QA harness and the evals, build and install scripts, shipped data, and the documented defaults. |
+
+### Top-level files by area
+
+| Area | Files |
+|---|---|
+| Settings, paths, keys | `settings.ts`, `settings-edit.ts`, `env.ts`, `keychain.ts` (+ `keychain.cjs`), `keys-cli.ts`, `profile.ts`, `pack.ts` |
+| Audio and devices | `audio.ts`, `audio-platform.ts`, `devices.ts`, `echo.ts`, `phone.ts`, `callapp.ts`, `mic-check.ts` |
+| Question gate and bank (the Classic path and the offline floor) | `detector.ts`, `split.ts`, `multiq.ts`, `normalize.ts`, `bank.ts`, `bank-score.ts`, `guards.ts`, `calc.ts`, `reflex.ts`, `claims.ts`, `selfcheck.ts`, `assist.ts` |
+| Call context | `brief.ts`, `brief-ics.ts`, `attachments.ts`, `digest.ts`, `frame.ts`, `entities.ts`, `capture.ts`, `speakers.ts`, `flow.ts`, `calllang.ts`, `langwatch.ts`, `lang.ts` |
+| Live notes and tips (Classic) | `notes.ts`, `tips.ts` |
+| After the call | `summary.ts` (transcript summary, shared types), `summary-email.ts` (email guards), `summary-wrapup.ts` (summary from the call memory), `tag.ts`, `purge.ts`, `diagnose.ts` |
+| Health and cost | `health.ts`, `htext.ts`, `cost.ts`, `clock.ts`, `diskspace.ts`, `errtext.ts` |
+| Logs and the answer window | `log.ts`, `relay.ts`, `overlay.ts`, `call.ts` |
+| Tools | `doctor.ts`, `synth.ts`, `stt-gate.ts` (and `gate.ts`, the old name of it), `packgen.ts`, `facts-check.ts`, `text-util.ts` |
+
+### Engine folder (`src/engine/`)
+
+| Group | Files |
+|---|---|
+| Boot and shared state | `boot.ts` (settings, models, log, supervisors: built once at load), `state.ts` (the one mutable call state, grouped by topic), `capped.ts` (bounds for per-call maps and sets), `out.ts` (status and health lines), `strings.ts` (texts of the engine's own cards) |
+| Lifecycle | `shutdown.ts`, `shutdown-deadline.ts`, `strays.ts`, `lifecycle.ts` (the hooks other modules use to ask for a stop), `control.ts` (stdin commands), `consent.ts` |
+| Audio and speech wiring | `audio-sources.ts`, `start-sources.ts`, `watchdogs.ts`, `mic-watch.ts`, `stt.ts`, `stt-retry.ts` |
+| Every final line | `ingest.ts` (entry), `rules.ts` (routing and gating rules, pure), `flowmode.ts`, `vertical.ts` (the product-vertical hook for topic words) |
+| A question from the other side | `question.ts` (skip, turn, bank, calc, rung), `turn.ts` (the `Turn` record, the cancel scope, the stall line, the failure count), `question-moment.ts` (Live reading model call), `question-classic.ts` (Classic model call), `tail.ts` (what a call without a memory loop reads) |
+| Moment engine glue | `moments.ts` (context, scheduler, cards, usage rows, routing, seed), `moments-observer.ts` (the observer path), `cards-v2.ts`, `memory.ts` (the memory loop) |
+| Cards out | `cards.ts` |
+| The user's own words | `me.ts`, `askcall.ts` (ask the call, Catch me up), `selfcheck.ts` |
+| Side jobs | `side.ts` (fact cards, live notes, reminders, capture box), `coach.ts` (tips, call mode, memory flush), `degrade.ts` (health tick, AI pause) |
+
+### Dependency rules
+
+These are checked by `src/architecture.test.ts`. A change that breaks one fails the unit tests.
+
+1. No import cycles between source files. A module that is imported by `shutdown.ts` or `ingest.ts` must not import them back. Two ways to avoid that are used: a function is passed in as an argument (`wireChannels(onResult, tickHealth)`, `startConsent(listen)`), or the module calls a hook in `engine/lifecycle.ts` (`lifecycle.shutdown()`), which `shutdown.ts` fills in when it loads.
+2. The library folders `lang/`, `providers/`, `context/`, `moments/` and `session/` never import `engine/`, `cli/` or an entry point. They know nothing about a running call.
+3. `engine/` never imports `cli/`. Nothing imports `run.ts`, `call.ts`, `doctor.ts` and the other entry points; they run code when loaded.
+4. Type-only imports do not count: they are erased at build time.
+
+### The Classic path
+
+`moments.engine: legacy` (shown as Classic) is a documented rollback, kept while the setting exists. It is the path used when the AI is paused and in a practice interview. Its code is easy to find:
+
+| Part | Where |
+|---|---|
+| Question gate | `detector.ts`, `split.ts`, `multiq.ts`, `lang/` |
+| The model call and its tag handlers | `reflex.ts`, `engine/question-classic.ts` |
+| Live notes (off in Live reading: the call memory replaces them) | `notes.ts`, `engine/side.ts` (`notesRound`) |
+| Tips from the notes | `tips.ts`, `engine/coach.ts` |
+| Self-check cards | `selfcheck.ts`, `engine/selfcheck.ts` |
+| Client facts | `entities.ts`, `facts-check.ts` |
+
+The shared parts (bank, guards, calc, stall line, cards) are used by both paths.
 
 ## Moment core
 
@@ -166,8 +220,8 @@ For every final line from the other side (`engine/ingest.ts`): intake drops nois
 
 | Route | When | What happens |
 |---|---|---|
-| direct | strong hint | The old question path runs (`engine/question.ts`): the bank or calc card shows at once, the stall timer runs (1.8 s). The model call is a `moment` call (`moments/run.ts`), not a reflex call. |
-| observer | weak hint, no hint but 6+ words or a figure | The line waits in the observer window (`moments/observer.ts`). A due window is one `observer` call (`engine/moments.ts`). At most `moments.observerPerMinute` (6) a minute. |
+| direct | strong hint | The question path runs (`engine/question.ts`): the bank or calc card shows at once, the stall timer runs (1.8 s). The model call is a `moment` call (`moments/run.ts`), not a reflex call. |
+| observer | weak hint, no hint but 6+ words or a figure | The line waits in the observer window (`moments/observer.ts`). A due window is one `observer` call (`engine/moments-observer.ts`). At most `moments.observerPerMinute` (6) a minute. |
 | local | the AI is paused | No model call. Bank, calc and the stall line only. |
 | drop | slow model (rung 1), observer off, observer shed by the hourly cap | The line is only context. |
 
@@ -260,7 +314,7 @@ While a call ends, a separate `stopPhase` shows the steps (`wingman status` prin
 | `summary` | Writing the summary with one model call (up to `summary.timeoutMs`, 20 s). You can **Skip summary**; the call is kept and the summary can be written later with `wingman calls summary <id> --generate`. |
 | `done` | Finished. |
 
-Failures and time limits: every speech-to-text open or reopen gives up after 8 s (`STT_OPEN_TIMEOUT_MS`, one rule for all providers) and is retried; at call start the 30 s "start anyway" path then shows the red bar and the retry loop goes on (`src/engine/stt-retry.ts`; a later permanent error upgrades a running loop). A failed model call for an ask by the user shows a card and raises the bar at once; for a question from the other side it shows the "Buy time" line when `reflex.stall` is on, and the bar after two failures (`showStallOrError` and `countReflexFailure` in `engine/question.ts`). One final with several questions opens one cancel scope: a newer final aborts all of its parts, a part never aborts its sibling, at most three parts run. A crash uses the same stop path as a normal stop, with sources stopping in parallel.
+Failures and time limits: every speech-to-text open or reopen gives up after 8 s (`STT_OPEN_TIMEOUT_MS`, one rule for all providers) and is retried; at call start the 30 s "start anyway" path then shows the red bar and the retry loop goes on (`src/engine/stt-retry.ts`; a later permanent error upgrades a running loop). A failed model call for an ask by the user shows a card and raises the bar at once; for a question from the other side it shows the "Buy time" line when `reflex.stall` is on, and the bar after two failures (`showStallOrError` and `countReflexFailure` in `engine/turn.ts`). One final with several questions opens one cancel scope: a newer final aborts all of its parts, a part never aborts its sibling, at most three parts run. A crash uses the same stop path as a normal stop, with sources stopping in parallel.
 
 Other lifecycle rules: Stop and delete asks first (Cancel is the default); Quit during a call asks, and if you confirm it stops and saves the call first (up to 20 s); a stuck stop is forced off, mic included; the call stops itself after 15 minutes of silence; the Mac is kept awake with `caffeinate`; a sleep gap longer than 5 s shows a warning and triggers the recovery described under Resilience; the answer window and card files survive a full disk through the relay.
 

@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { callLanguage, type CallLang } from "../calllang.ts";
 import { ht, type UiLang } from "../htext.ts";
-import { guardEmail, placeholders } from "../summary.ts";
+import { guardEmail, placeholders } from "../summary-email.ts";
 import type { Commitment } from "./types.ts";
 import { openLoops } from "./loops.ts";
 import { loadMemory } from "./store.ts";

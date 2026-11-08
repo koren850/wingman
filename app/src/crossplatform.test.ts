@@ -14,7 +14,7 @@ import bin from "../shared/bin.cjs";
 import permissions from "../shared/permissions.cjs";
 import { ROOT, securePerms } from "./env.ts";
 import { ownSocket } from "./cli/client.ts";
-import { guardEmail, neutralizeLinks } from "./summary.ts";
+import { guardEmail, neutralizeLinks } from "./summary-email.ts";
 
 const req = createRequire(import.meta.url);
 const tmp = () => mkdtempSync(join(tmpdir(), "wm-xp-"));

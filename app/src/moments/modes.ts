@@ -141,8 +141,6 @@ let customLayer: CustomMode | undefined;
 export function setCustomMode(m: CustomMode | undefined): void {
   customLayer = m;
 }
-/** The active custom mode, if any. */
-export const activeCustomMode = (): CustomMode | undefined => customLayer;
 
 /** Extra instructions for this kind of call. Empty for every kind without its own mode (the neutral default). A custom mode adds its text last. */
 export function modeInstructions(kind: MemoryKind | undefined): string {

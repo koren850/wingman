@@ -13,7 +13,7 @@ import { emitCard, noteModel } from "./cards.ts";
 import { capTail } from "./capped.ts";
 import { st } from "./state.ts";
 import { askTheCall } from "./askcall.ts";
-import { countReflexFailure, noteReflexOk } from "./question.ts";
+import { countReflexFailure, noteReflexOk } from "./turn.ts";
 import { selfCheckLine } from "./selfcheck.ts";
 import { survived, status } from "./out.ts";
 

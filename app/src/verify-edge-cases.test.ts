@@ -1,4 +1,4 @@
-// Edge cases of the rubric judge and verdict parser found in review. No network.
+// Edge cases of the rubric judge and verdict parser. No network.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

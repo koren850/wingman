@@ -1,4 +1,4 @@
-// Reliability review: edge cases found while trying to break the package.
+// Edge cases of the small engine parts: speaker numbering across reconnects, bounded transcript, mic watch and the shutdown deadline.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

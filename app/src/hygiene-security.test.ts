@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { neutralizeLinks } from "./summary.ts";
+import { neutralizeLinks } from "./summary-email.ts";
 import { TMP_OUTSIDE_HOME } from "./test-platform.ts";
 import { errStack } from "./errtext.ts";
 

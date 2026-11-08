@@ -10,8 +10,6 @@ import { health, chHe, healthClear, safe, errBrief } from "./out.ts";
 import { log, sup, S, keyterms, PHONE, keys, NO_KEY, phone, UI_LANG, speakers } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { st, chans } from "./state.ts";
-import { tickHealth } from "./degrade.ts";
-import { onResult } from "./ingest.ts";
 
 /** Channels that moved to the fallback STT provider (the ladder treats this as degraded). */
 export const sttSwitchedCh = new Set<Channel>();
@@ -117,8 +115,9 @@ export async function openBothChannels() {
   if (failed) throw failed.reason;
 }
 
-/** STT events -> transcript handling, health bars and the retry loops. */
-export function wireChannels() {
+/** STT events -> transcript handling, health bars and the retry loops. `onResult` (ingest.ts) takes each result, `tickHealth` (degrade.ts) re-reads
+ *  the health after a provider switch; they are passed in so that stt.ts does not import them back (that would be an import cycle). */
+export function wireChannels(onResult: (r: SttResult) => void, tickHealth: () => void) {
   for (const s of [chans.me, chans.them]) {
     const ch = s === chans.me ? "me" : "them";
     s.on(

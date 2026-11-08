@@ -27,6 +27,7 @@ import type { MemoryView, SessionMemory } from "../session/types.ts";
 import { spokenNumbers } from "../claims.ts"; // only for interview calls (deps.localNumbers); the v2 path does not use its unit list
 import { generateOnce, providerOptionsFor, cacheOptionsFor, temperatureFor, type ModelRegistry } from "../providers/llm.ts";
 import type { generateText } from "ai";
+import { wordCount } from "../text-util.ts";
 
 // ---------------------------------------------------------------- settings
 export type MemoryConfig = {
@@ -121,7 +122,6 @@ const FAIL_REST_MS = 60_000;
 const FAILS_BEFORE_REST = 3;
 const HOUR = 3_600_000;
 
-const wc = (s: string) => s.split(/\s+/).filter(Boolean).length;
 /** Words of a line, lower case, letters and digits only. Works for any script (no word list, no capitals). */
 const tokensOf = (s: string): string[] => s.toLowerCase().match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) ?? [];
 /** A hint line is a "long line" for the updater when it has this many words. */
@@ -219,9 +219,9 @@ export class MemoryLoop {
     this.unread.push(l);
     if (this.unread.length > MAX_UNREAD) {
       const gone = this.unread.shift()!;
-      this.unreadWords -= wc(gone.text);
+      this.unreadWords -= wordCount(gone.text);
     }
-    const words = wc(text);
+    const words = wordCount(text);
     this.unreadWords += words;
     this.lastLineAt = now;
     if (line.name) this.learnName(line.name);
@@ -476,7 +476,7 @@ export class MemoryLoop {
     if (outcome === "failed" && !this.stopped) {
       // The lines were not learned: put them back in front of what came in meanwhile.
       this.unread = [...batch, ...this.unread].slice(-MAX_UNREAD);
-      this.unreadWords = this.unread.reduce((n, l) => n + wc(l.text), 0);
+      this.unreadWords = this.unread.reduce((n, l) => n + wordCount(l.text), 0);
       if (hadQuestion && !this.questionAt) this.questionAt = hadQuestion;
     }
     this.deps.log("events", { type: "memory.run", why, outcome, words: batchWords, ms: this.deps.now() - t0 });

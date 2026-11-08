@@ -14,7 +14,6 @@ export type Calibration = {
 export const DEFAULT_CALIBRATION: Calibration = { asciiCharsPerToken: 3.5, hebrewTokensPerChar: 0.6, otherTokensPerChar: 0.6, fitted: false };
 
 let current: Calibration = DEFAULT_CALIBRATION;
-export const getCalibration = (): Calibration => current;
 /** Test hook and the way to apply a fitted table. Undefined restores the defaults. */
 export function setCalibration(c: Calibration | undefined): void {
   current = c ?? DEFAULT_CALIBRATION;

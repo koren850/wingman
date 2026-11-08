@@ -127,5 +127,3 @@ export function pausedReason(o: {
   if (o.usable === 0 || !o.llmAllowed) return o.lastFailKind === "network" ? "net" : "down";
   return undefined;
 }
-/** A stream from turn `id` may show a card only while it is the newest turn of its kind. */
-export const isCurrentTurn = (newest: number, id: number) => id === newest;

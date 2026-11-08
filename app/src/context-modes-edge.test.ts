@@ -1,4 +1,4 @@
-// Review edge cases for context-modes: mode switching, custom mode parsing, the local tail, name matching limits. Offline and pure.
+// Edge cases for context modes: mode switching, custom mode parsing, the local tail, name matching limits. Offline and pure.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

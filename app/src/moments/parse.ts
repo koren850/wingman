@@ -20,6 +20,7 @@ import {
   type SurvivedRow,
   type Value,
 } from "./types.ts";
+import { wordCount } from "../text-util.ts";
 
 /** The verdict from line 1. */
 export type TagInfo = { tag: MomentTag; bankId?: string; stall?: StallKind };
@@ -55,7 +56,6 @@ const strip = (s: string) =>
   clean(s)
     .replace(/^["'“”‘’«»]+|["'“”‘’«»]+$/g, "")
     .trim();
-const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n).trimEnd() : s);
 const sample = (s: string) => s.replace(JUNK, "").replace(/\s+/g, " ").trim().slice(0, LIMITS.sampleChars);
 
@@ -240,7 +240,7 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
   let sayRest = "";
   if ("SAY" in f) {
     const say = strip(f.SAY);
-    if (needsSay(tag.tag) && (words(say) > LIMITS.sayWords || say.length > LIMITS.sayChars)) {
+    if (needsSay(tag.tag) && (wordCount(say) > LIMITS.sayWords || say.length > LIMITS.sayChars)) {
       const fit = fitSay(say);
       out.fields.say = fit.say;
       out.fields.fit = false;
@@ -324,7 +324,7 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
 function rawSayGarbage(raw: string | undefined): boolean {
   if (!raw) return false;
   const t = strip(raw);
-  return words(t) > LIMITS.sayCutWords || t.length > LIMITS.sayChars * 2.5;
+  return wordCount(t) > LIMITS.sayCutWords || t.length > LIMITS.sayChars * 2.5;
 }
 
 /** A moment from the verdict and the fields read so far (what the card path needs when it shows the card at the say-line). */

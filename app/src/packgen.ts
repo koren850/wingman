@@ -13,6 +13,7 @@ import { loadBank, type BankCard } from "./bank.ts";
 import { guard } from "./guards.ts";
 import { generateOnce, providerOptionsFor, type ModelRegistry } from "./providers/llm.ts";
 import { stripTag } from "./reflex.ts";
+import { wordCount } from "./text-util.ts";
 
 const attachments = createRequire(import.meta.url)("../tray/attachments.cjs") as {
   readSourceFile(file: string, o?: { force?: boolean; home?: string }): Buffer;
@@ -166,7 +167,6 @@ const slug = (s: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
-const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 const safeList = (l: unknown, lim: number): { kept: string[]; dropped: number } => {
   const all = (Array.isArray(l) ? l : []).map(clean).filter(Boolean);
   const kept = all.filter((t) => guard(t).ok).slice(0, lim);
@@ -232,7 +232,7 @@ export function finalizeDraft(raw: RawCard[], lang: Lang, base: BankCard[] = bas
     const facts = safeList(r.facts, 5),
       alts = safeList(r.alts, 3);
     const card: BankCard = { id, title, triggers, say, facts: facts.kept, ...(alts.kept.length ? { alts: alts.kept } : {}) };
-    if (words(say) > MAX_WORDS) warnings.push(`${id}: the answer has ${words(say)} words. Shorten it so it is easy to say.`);
+    if (wordCount(say) > MAX_WORDS) warnings.push(`${id}: the answer has ${wordCount(say)} words. Shorten it so it is easy to say.`);
     if (lang === "he") {
       const es = clean(r.en?.say);
       if (es)

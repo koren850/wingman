@@ -25,10 +25,12 @@ import { wordCount } from "../text-util.ts";
 import { survived, health, healthClear } from "./out.ts";
 import { LangWatch } from "../langwatch.ts";
 import { ht } from "../htext.ts";
-import { onQuestion, openScope, MAX_PARTS } from "./question.ts";
+import { onQuestion, openScope } from "./question.ts";
+import { MAX_PARTS } from "./turn.ts";
 import { handleMe } from "./me.ts";
 import { v2Active, currentPause } from "./degrade.ts";
-import { keepFeatures, noteLine, noteMeLine, routeThem, speedOf, speedCtx } from "./moments.ts";
+import { keepFeatures, routeThem } from "./moments.ts";
+import { noteLine, noteMeLine, speedOf, speedCtx } from "./moments-observer.ts";
 import type { HintLevel } from "../moments/types.ts";
 
 // Buffer is_final segments per channel and handle the joined utterance on speech_final (or a short fallback timer, stt.flushFallbackMs,

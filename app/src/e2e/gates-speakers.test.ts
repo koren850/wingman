@@ -1,4 +1,4 @@
-// r3 gate: speaker numbers across a reconnect, through the real engine. The speech service numbers voices from 0 again on every new connection; the engine
+// Gate test: speaker numbers across a reconnect, through the real engine. The speech service numbers voices from 0 again on every new connection; the engine
 // must not read "speaker 0" after a reconnect as the person who was speaker 0 before. Real parts: SttChannel (reconnect, provider switch), engine/stt.ts
 // wiring, ingest, the speaker book, the call log. Faked parts: the provider streams. Virtual clock, no network.
 import "../test-setup.ts";
@@ -23,7 +23,7 @@ before(async () => {
   them = mk("them", [fakeProvider("deepgram", themStreams), fakeProvider("soniox", fallbackStreams)]);
   chans.them = them;
   chans.me = mk("me", [fakeProvider("deepgram", [])]);
-  stt.wireChannels();
+  stt.wireChannels((await import("../engine/ingest.ts")).onResult, (await import("../engine/degrade.ts")).tickHealth);
   await them.open();
 });
 after(async () => {

@@ -8,7 +8,7 @@
 //   The tray escalates a stop with SIGINT at 12 s and SIGKILL at 20 s, so shutdown() must finish inside that.
 import { createInterface } from "node:readline";
 import { safe, health, healthClear, status } from "./out.ts";
-import { shutdown, skipSummaryNow } from "./shutdown.ts";
+import { lifecycle } from "./lifecycle.ts";
 import { st } from "./state.ts";
 import { nameSpeaker, confirmClient, clientProposed } from "./side.ts";
 import { armAsk, askTyped } from "./me.ts";
@@ -33,7 +33,7 @@ export function setupKeys(onEnter: () => void) {
         continue;
       }
       if (ch === "\u0003") {
-        void shutdown();
+        void lifecycle.shutdown();
         return;
       }
       if (noteBuf !== undefined) {
@@ -95,7 +95,7 @@ function onControlClosed() {
   if (st.call.shuttingDown || st.call.orphaned) return;
   if (!st.call.consented) {
     log.write("events", { type: "control.closed", live: false });
-    void shutdown();
+    void lifecycle.shutdown();
     return;
   }
   st.call.orphaned = true;
@@ -153,17 +153,17 @@ function runControlCommand(line: string, onConsent?: () => void) {
     const n = Number(rest[0]);
     if (Number.isInteger(n)) nameSpeaker(n, rest.slice(1).join(" "), "user");
   } // "speaker 2 Dana": the user renamed a voice
-  else if (cmd === "stop") void shutdown();
+  else if (cmd === "stop") void lifecycle.shutdown();
   else if (cmd === "stop-no-summary") {
-    skipSummaryNow();
-    void shutdown();
+    lifecycle.skipSummaryNow();
+    void lifecycle.shutdown();
   } // `wingman stop --no-summary`: keep the call, skip the summary
   else if (cmd === "skip-summary") {
-    if (st.call.shuttingDown) skipSummaryNow();
+    if (st.call.shuttingDown) lifecycle.skipSummaryNow();
   } // the "Skip summary" button while the summary is being written
   else if (cmd === "stop-delete") {
     st.call.discardNow = true;
-    void shutdown();
+    void lifecycle.shutdown();
   }
 }
 // Typed context note state (terminal key `n`): undefined = not typing.

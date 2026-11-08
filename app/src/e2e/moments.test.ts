@@ -148,7 +148,7 @@ test("a topic label change fires an observer window now (virtual clock)", async 
   await e.vc.advance(300);
   assert.equal(calls("observer").length, 0);
   e.st.m.mem = { ...e.st.m.mem, ver: e.st.m.mem.ver + 1, topic: { now: "rollout plan", history: [{ label: "pricing", from: Date.now() }] } };
-  e.moments.topicChanged();
+  e.observer.topicChanged();
   await e.vc.advance(1000);
   assert.equal(calls("observer").length, 1);
   assert.equal(calls("observer")[0].view.messages.join("\n").includes("OK, so next."), true);
@@ -164,7 +164,7 @@ test("never more than 6 observer calls in any minute, with cues, long lines and 
       "them",
       kind === 0 ? `It costs ${100 + i} dollars.` : kind === 1 ? `We talked about the rollout plan for region number ${i} and the people involved` : "OK.",
     );
-    if (i % 10 === 0) e.moments.topicChanged();
+    if (i % 10 === 0) e.observer.topicChanged();
     await e.vc.advance(1500);
   }
   await e.vc.advance(3000);
@@ -327,7 +327,7 @@ test("checks: at most 3 open, same ref merges, they close with the topic and aft
   check("k5", "c3"); // same ref as k3: merged into k3
   assert.equal(screen().length, 3);
   assert.equal(screen().find((c) => c.id === "k3")!.say, "Check k5", "the newest text on the open card");
-  e.moments.topicChanged();
+  e.observer.topicChanged();
   await e.vc.advance(10);
   assert.equal(screen().length, 0, "closed with the topic");
   check("k6");

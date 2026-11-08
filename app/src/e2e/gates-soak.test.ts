@@ -122,7 +122,7 @@ test(
     const them = mk("them", [fakeProvider("deepgram", made.dg), fakeProvider("soniox", made.sx)]);
     chans.them = them;
     chans.me = mk("me", [fakeProvider("deepgram", made.me)]);
-    stt.wireChannels();
+    stt.wireChannels((await import("../engine/ingest.ts")).onResult, (await import("../engine/degrade.ts")).tickHealth);
     await them.open();
     await chans.me.open();
     const switched: string[] = [];

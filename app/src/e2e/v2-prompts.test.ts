@@ -19,7 +19,7 @@ import { DEFAULT_BUDGETS } from "../context/budget.ts";
 import { MOMENT_RULES } from "../moments/prompt.ts";
 import { MEMORY_UPDATER_INSTRUCTIONS, COMPACTOR_INSTRUCTIONS } from "../session/prompt.ts";
 import { parseMoment } from "../moments/parse.ts";
-import { runWrapup } from "../summary.ts";
+import { runWrapup } from "../summary-wrapup.ts";
 import { applyPatch } from "../session/patch.ts";
 import { emptyMemory } from "../session/types.ts";
 import { CostMeter } from "../cost.ts";

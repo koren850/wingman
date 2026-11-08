@@ -72,7 +72,7 @@ const LEGACY: Record<string, number> = {
   "echo.ts": 1,
   // cards-v2.ts and observer.ts: string-literal union types (CardBadge, Trigger, ...), not word lists
   "engine/cards-v2.ts": 1,
-  "engine/question.ts": 1,
+  "engine/turn.ts": 1,
   "entities.ts": 3,
   "langwatch.ts": 1,
   "moments/observer.ts": 2,
@@ -93,7 +93,8 @@ const LEGACY: Record<string, number> = {
   "session/useredit.ts": 2,
   "settings.ts": 2,
   "speakers.ts": 4,
-  "summary.ts": 3,
+  "summary-email.ts": 2,
+  "summary.ts": 1,
   "tips.ts": 3,
 };
 

@@ -2,7 +2,6 @@
 import { log, CONTROL, fileArg, S, CONSENT_SAY, confirmContext } from "./boot.ts";
 import { setPhase, status } from "./out.ts";
 import { st, mono } from "./state.ts";
-import { setupKeys, setupControl } from "./control.ts";
 import { emitCard, type Card } from "./cards.ts";
 import { startMicWatch } from "./watchdogs.ts";
 import { consentTitle, consentSayIt, consentStop, consentStart, consentStarted } from "./strings.ts";
@@ -22,8 +21,9 @@ export function stopConsentTimer() {
   clearInterval(reemit);
 }
 
-/** Waits for "Start listening" when privacy.requireConsentAck is on; otherwise listening starts at once. Wires the keyboard / control channel. */
-export function startConsent() {
+/** Waits for "Start listening" when privacy.requireConsentAck is on; otherwise listening starts at once. `listen` wires the keyboard or the control
+ *  channel (control.ts) to the function it is given; it is passed in so that this file does not import control.ts back (an import cycle). */
+export function startConsent(listen: (startForwarding: () => void) => void) {
   // privacy.requireConsentAck ("Ask me before listening starts", default off): wait for Start listening before any audio leaves the Mac.
   const needAck = S.privacy.requireConsentAck && !fileArg && (process.stdin.isTTY || CONTROL);
   const startForwarding = () => {
@@ -47,8 +47,7 @@ export function startConsent() {
     if (!st.call.consented && !st.call.shuttingDown && needAck) emitCard(consentCard());
   }, 20_000);
   if (!needAck) startForwarding();
-  if (CONTROL) setupControl(startForwarding);
-  else setupKeys(startForwarding);
+  listen(startForwarding);
   if (!st.call.consented) {
     console.log(
       `\nWaiting for you to start listening: nothing is sent to the cloud until you ${CONTROL ? 'click "Start listening" in the menu bar' : "press Enter"}.`,

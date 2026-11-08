@@ -12,7 +12,7 @@ import { runMeeting, pool, observePolicy, costByRole, type MeetingRun } from "./
 import { policyModel } from "../testkit/policy-model.ts";
 import { registerRole } from "../testkit/prompt.ts";
 import { runDigest } from "../digest.ts";
-import { runWrapup } from "../summary.ts";
+import { runWrapup } from "../summary-wrapup.ts";
 import { CostMeter, cacheReport, formatCacheReport } from "../cost.ts";
 import { loadSettings } from "../settings.ts";
 import type { ModelRegistry } from "../providers/llm.ts";

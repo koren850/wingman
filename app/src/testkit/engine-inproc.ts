@@ -17,6 +17,7 @@ export async function setupEngine(sets: Record<string, string | number | boolean
   const ingest = await import("../engine/ingest.ts");
   const state = await import("../engine/state.ts");
   const moments = await import("../engine/moments.ts");
+  const observer = await import("../engine/moments-observer.ts");
   const question = await import("../engine/question.ts");
   const sched = await import("../moments/scheduler.ts");
   const vc: VClock = createVClock({ start: 1_800_000_000_000 });
@@ -43,6 +44,8 @@ export async function setupEngine(sets: Record<string, string | number | boolean
     boot,
     st: state.st,
     moments,
+    /** The observer path (engine/moments-observer.ts): noteLine, topicChanged, ... */
+    observer,
     question,
     /** A final line. `side` them = the other side. Returns the wall time it was fed at. */
     say(side: "me" | "them", text: string): number {
@@ -94,6 +97,7 @@ export async function setupEngine(sets: Record<string, string | number | boolean
       (boot.cost as unknown as { spend: unknown[] }).spend = []; // the rolling hourly spend
       boot.transcript.length = 0;
       moments._resetMoments();
+      observer.resetObserver();
     },
     stop() {
       vc.uninstall();

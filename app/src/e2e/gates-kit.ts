@@ -1,4 +1,4 @@
-// Shared fakes of the r3 gate tests: a speech-to-text stream that can be told to open, hang, drop and reconnect, a provider that makes them, and a
+// Shared fakes of the gate tests: a speech-to-text stream that can be told to open, hang, drop and reconnect, a provider that makes them, and a
 // result builder with speaker numbers. Nothing here touches the network, a key, audio hardware or a real screen.
 import { EventEmitter } from "node:events";
 import type { SttProvider, SttResult, SttStreamLike, Word, Channel } from "../providers/stt/types.ts";

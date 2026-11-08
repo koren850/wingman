@@ -1,4 +1,4 @@
-// r3 gate: no audio is lost before the first open of a speech channel. The real SttChannel and the engine's own open loop (engine/stt.ts openChannel) run on
+// Gate test: no audio is lost before the first open of a speech channel. The real SttChannel and the engine's own open loop (engine/stt.ts openChannel) run on
 // the virtual clock; the stream is a fake whose open() can be a black hole (it never answers). A feeder sends one 100 ms chunk every 100 ms from the first
 // moment, as a microphone would, and every chunk carries its number. Nothing here touches the network or audio hardware.
 import "../test-setup.ts";

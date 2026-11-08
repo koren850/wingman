@@ -76,6 +76,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [68](#adr-68-the-app-records-audio-so-users-need-no-ffmpeg) | The app records audio, so users need no ffmpeg |
 | [69](#adr-69-a-windows-installer-built-and-checked-on-windows) | A Windows installer, built and checked on Windows |
 | [70](#adr-70-first-run-is-two-keys-one-key-store-per-platform-and-a-cheap-check) | First run is two keys, one key store per platform, and a cheap check |
+| [71](#adr-71-the-import-layers-are-a-unit-test) | The import layers are a unit test |
 
 ---
 
@@ -1073,3 +1074,17 @@ Date: 2026-11-08
 **Alternatives.** Electron `safeStorage` (main process only; the engine could not read it). The `keytar` package (a native build per platform). A plain file on Windows (a leak path ADR 21 closed on the Mac). Checking the Anthropic key with the free model list (cannot see the balance). Making the person press Test (a step that is easy to skip).
 
 **Consequences.** The Windows store is tested with a fake PowerShell and has not run on a real Windows machine in this round. Each key read on Windows starts PowerShell once per process (about half a second); a decrypted value is remembered for the rest of the process. On Linux the store is a file, which is weaker, and the guide says so. A pasted key whose check failed for a network reason is kept in the page's memory so that Try again needs no second paste; it is never stored.
+
+## ADR 71: The import layers are a unit test
+
+Date: 2026-11-09
+
+**Context.** The engine is many small modules that share one call state. Over time they imported each other in a ring: `shutdown.ts` imports almost every engine module, and some of those imported it back. A ring makes load order matter, makes a file hard to read alone and hides what depends on what. Two files were also too big because they did two jobs (`question.ts` held routing, the Live reading call and the Classic call; `summary.ts` held the summary, the email guards and the wrap-up from memory).
+
+**Decision.** (1) `src/architecture.test.ts` reads the imports of every source file with the TypeScript compiler API (no new dependency) and fails on an import cycle, on a library folder (`lang`, `providers`, `context`, `moments`, `session`) that imports the engine, the CLI or an entry point, and on the engine importing the CLI. (2) The ring is broken without changing behaviour: `engine/lifecycle.ts` holds hooks (`shutdown`, `skipSummaryNow`) that `shutdown.ts` fills in at load, and `wireChannels` and `startConsent` take their callbacks as arguments. (3) The big files are split along their seams: `question.ts` into routing, `question-moment.ts`, `question-classic.ts` and `turn.ts`; `moments.ts` into shared glue and `moments-observer.ts`; `summary.ts` into the transcript summary, `summary-email.ts` and `summary-wrapup.ts`.
+
+**Why.** A rule that a test checks stays true; a rule in a document does not. Passing a function in as an argument makes the dependency visible at the call site, and a hook object is the smallest tool when many modules need the same entry point.
+
+**Alternatives.** An ESLint import-boundary plugin (a new dependency, and it does not find cycles through several files). Moving the flat top level into folders now (a very large diff with no change in behaviour; the area table in ARCHITECTURE.md gives the same map). Removing the Classic path now (it is still a documented setting; see ADR 47).
+
+**Consequences.** A new cross-module call that would close a ring fails the unit tests with the list of files in the ring. The top level of `src/` is still flat.

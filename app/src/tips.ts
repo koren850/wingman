@@ -13,6 +13,7 @@ import { dedupeNotes } from "./notes.ts";
 import { frameText, missedMust, type Frame } from "./frame.ts";
 import { callLanguage, type CallLang } from "./calllang.ts";
 import type { SessionMemory } from "./session/types.ts";
+import { wordCount } from "./text-util.ts";
 
 /** Tip kinds: ask a question, clarify something vague, explain a term, remind of a checklist item, or a plain note. */
 export const TIP_TYPES = ["ask", "clarify", "term", "remind", "note"] as const;
@@ -137,14 +138,13 @@ export class TipGate {
 
 // ---------- local tips (no AI) ----------
 export type TimedLine = { ch: "me" | "them"; text: string; at: number };
-const wc = (s: string) => s.split(/\s+/).filter(Boolean).length;
 /** Share of the words of the last `windowMs` that the user said. undefined = too little speech to judge. */
 export function talkRatio(lines: TimedLine[], now: number, windowMs = 5 * 60_000, minWords = 80): { me: number; total: number; ratio: number } | undefined {
   let me = 0,
     total = 0;
   for (const l of lines) {
     if (now - l.at > windowMs) continue;
-    const n = wc(l.text);
+    const n = wordCount(l.text);
     total += n;
     if (l.ch === "me") me += n;
   }

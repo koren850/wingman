@@ -9,6 +9,7 @@
 // only `t` and the length of each row are used to place a row on the call's time line.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { wordCount } from "../text-util.ts";
 
 export type Coaching = {
   talkSharePct: number;
@@ -30,11 +31,10 @@ const SHORT_REPLY_WORDS = 2;
 const OVER_MS = 400;
 const STILL_TALKING_MS = 700;
 
-const wordsIn = (s: string) => s.split(/\s+/).filter(Boolean).length;
 const questions = (s: string) => (s.match(/[?？؟]+/g) ?? []).length;
 
 export function spanOf(r: Row): Span | undefined {
-  const n = wordsIn(r.text);
+  const n = wordCount(r.text);
   if (!n || !Number.isFinite(r.t)) return undefined;
   const w = r.words ?? [];
   const first = w.find((x) => typeof x.start === "number")?.start;

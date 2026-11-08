@@ -7,7 +7,7 @@ import { basename, join } from "node:path";
 import { callLanguage, type CallLang } from "../calllang.ts";
 import { modeSummaryShape } from "../moments/modes.ts";
 import { ME_LABEL } from "../profile.ts";
-import { localWrapFields } from "../summary.ts";
+import { localWrapFields } from "../summary-wrapup.ts";
 import { coachingForCall, type Coaching } from "./coaching.ts";
 import { followupForCall } from "./followup.ts";
 import { loadMemory } from "./store.ts";

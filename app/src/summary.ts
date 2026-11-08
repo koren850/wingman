@@ -15,13 +15,9 @@ import { fileURLToPath } from "node:url";
 import { ModelRegistry, generateOnce, providerOptionsFor, parseModelRef } from "./providers/llm.ts";
 import { untag } from "./reflex.ts";
 import { getProfile, userName, genderNote, isMeLabel, ME_LABEL } from "./profile.ts";
-import { guard, guardDigits } from "./guards.ts";
-import { buildContext } from "./context/build.ts";
-import { DEFAULT_BUDGETS, type Budgets } from "./context/budget.ts";
-import { renderMemory } from "./session/render.ts";
-import { isEmptyMemory, type SessionMemory } from "./session/types.ts";
 import type { CostMeter } from "./cost.ts";
 import type { Settings } from "./settings.ts";
+import { guardEmail } from "./summary-email.ts";
 import { parseFrame, missedMust, frameText, isAgencyKind, type Frame, type Kind } from "./frame.ts";
 import { errText, eventError } from "./errtext.ts";
 import { ht, type UiLang } from "./htext.ts";
@@ -89,10 +85,10 @@ export type CallSummary = {
   /** Talk share, longest monologue, questions, pace and interruptions, worked out from the transcript with no model call (session/coaching.ts). Absent when the call had too little speech. */
   coaching?: Coaching;
 };
-type Fields = Pick<CallSummary, "summary" | "decisions" | "nextSteps" | "openQuestions" | "followUpEmail">;
+export type Fields = Pick<CallSummary, "summary" | "decisions" | "nextSteps" | "openQuestions" | "followUpEmail">;
 
 // Loose on purpose: a strict schema makes generateText throw (and drop the usage) on a small deviation; parseSummary cleans up.
-const fieldsSchema = (lang: CallLang) => {
+export const fieldsSchema = (lang: CallLang) => {
   const L = lang === "en" ? "English" : "Hebrew";
   return z.object({
     summary: z.array(z.string()).describe(`3-5 ${L} bullet lines`),
@@ -195,135 +191,6 @@ export function fixGreeting(email: string, transcript: string, notes: string[]):
   const count = transcript.split(name).length - 1;
   if (inNotes || count >= 2) return email;
   return email.replace(m[0], `${m[1].trim()}${m[4]}`);
-}
-
-// Guard rule name -> the visible gap the user must fill by hand before sending.
-const PH_HE = {
-  price: "[להשלים: מחיר]",
-  date: "[להשלים: תאריך]",
-  promise: "[להשלים: התחייבות]",
-  link: "[להשלים: קישור]",
-  email: "[להשלים: אימייל]",
-  phone: "[להשלים: טלפון]",
-  other: "[להשלים]",
-};
-const PH_EN: typeof PH_HE = {
-  price: "[fill in: price]",
-  date: "[fill in: date]",
-  promise: "[fill in: promise]",
-  link: "[fill in: link]",
-  email: "[fill in: email]",
-  phone: "[fill in: phone]",
-  other: "[fill in]",
-};
-/** The gap marks the user must fill in by hand, in the language of the email. */
-export const placeholders = (lang: CallLang = "he"): typeof PH_HE => (lang === "en" ? PH_EN : PH_HE);
-
-// File extensions that look like a TLD ("notes.md", "deck.pdf", "index.ts") and must not be treated as a host. Real abusable TLDs
-// that double as file types (.zip, .mov, .sh, .py, .rs) are deliberately NOT listed: "evil.zip" is neutralised.
-const FILE_EXT = new Set(
-  "ts tsx js jsx mjs cjs json md txt pdf doc docx xls xlsx ppt pptx csv tsv png jpg jpeg gif svg webp heic html htm css rb go java yml yaml xml log mp3 mp4 wav rtf pages key numbers gz tar tgz lock toml ini env bak tmp".split(
-    " ",
-  ),
-);
-// A scheme URL, a "www." host, or a bare dotted host on ANY TLD of 2-24 letters ("login.evil.ru/x", "evil.tk"), with an optional path.
-const URL_RE = /(?<![@\w.-])(?:(?:https?:\/\/|www\.)[^\s<>"')\]]+|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.([a-z]{2,24})(?:\/[^\s<>"')\]]*)?(?![\w@-]))/gi;
-const EMAIL_RE = /(?<![\w.+-])[a-z0-9][a-z0-9._%+-]*@(?:[a-z0-9-]+\.)+[a-z]{2,24}(?![\w-])/gi;
-const PHONE_RE = /(?<![\w.@])\+?\d[\d\s().-]{5,}\d(?![\w@])/g;
-// Other things that open as links: scheme:// of any kind, javascript:/data:/file:/mailto:, a bare IPv4 address with an optional port and path.
-const SCHEME_RE = /(?<![\w.-])(?:[a-z][a-z0-9+.-]{1,15}:\/\/|(?:javascript|vbscript|data|file|mailto):)[^\s<>"')\]]*/gi;
-const IPV4_RE = /(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.]*\d)(?::\d{1,5})?(?:\/[^\s<>"')\]]*)?/g;
-/** Undoes tricks that hide a host from the patterns but not from a mail app or browser: zero-width characters inside a host, ideographic and
- *  fullwidth dots, fullwidth Latin letters and "@". Only touches runs next to ASCII host characters, so Hebrew text and emoji are left alone. */
-function unhide(t: string): string {
-  return t
-    .replace(/(?<=[a-z0-9.@-])[\u200b-\u200d\u2060\ufeff\u00ad]+(?=[a-z0-9.@/-])/gi, "")
-    .replace(/(?<=[a-z0-9])[\u3002\uff0e\uff61](?=[a-z0-9])/gi, ".")
-    .replace(/[\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff20\uff0e\uff0f\uff1a]+/g, (m) => String.fromCharCode(...[...m].map((c) => c.charCodeAt(0) - 0xfee0)));
-}
-const trimUrl = (u: string) => u.replace(/[.,;:!?]+$/, "");
-/**
- * Link neutraliser, the last defence on the follow-up email draft (prompt injection: the other side can say "send the invoice to
- * billing@evil.com" or "confirm at evil.tk" and the model may write it into the email). Layers: (1) the card guards in guards.ts
- * (prices, dates, promises); (2) this function, which replaces every link, bare domain (any TLD, unless it is a file extension),
- * email address and phone number that is NOT in `trusted` (the user's own text: brief, typed notes) with a visible placeholder the
- * user must fill in by hand; (3) the user reads the draft before sending. Summary, decisions and next-steps fields are display only
- * and are not neutralised. Returns the new text and which kinds were replaced.
- */
-export function neutralizeLinks(email: string, trusted: string, lang: CallLang = "he"): { text: string; kinds: string[] } {
-  const kinds: string[] = [];
-  const ph = placeholders(lang);
-  const t = trusted.toLowerCase(),
-    tDigits = trusted.replace(/\D/g, "");
-  const known = (u: string) => {
-    const x = trimUrl(u)
-      .toLowerCase()
-      .replace(/^https?:\/\//, "")
-      .replace(/^www\./, "")
-      .replace(/\/$/, "");
-    return x.length > 0 && t.includes(x);
-  };
-  let text = unhide(email).replace(SCHEME_RE, (u) => {
-    if (known(u)) return u;
-    kinds.push("url");
-    return ph.link + (/[.,;:!?]$/.test(u) ? u.slice(-1) : "");
-  });
-  text = text.replace(IPV4_RE, (ip) => {
-    if (known(ip)) return ip;
-    kinds.push("url");
-    return ph.link;
-  });
-  text = text.replace(URL_RE, (u, tld?: string) => {
-    if (tld && FILE_EXT.has(tld.toLowerCase())) return u;
-    if (known(u)) return u;
-    kinds.push("url");
-    return ph.link + (/[.,;:!?]$/.test(u) ? u.slice(-1) : "");
-  });
-  text = text.replace(EMAIL_RE, (e) => {
-    if (t.includes(e.toLowerCase())) return e;
-    kinds.push("email");
-    return ph.email;
-  });
-  text = text.replace(PHONE_RE, (n) => {
-    const d = n.replace(/\D/g, "");
-    if (d.length < 7 || d.length > 15 || /^\d{4}-\d{2}-\d{2}$/.test(n) || (/^\d+$/.test(n) && d.length < 9 && !n.startsWith("+"))) return n;
-    if (tDigits.includes(d) || tDigits.includes(d.replace(/^(972|00972)/, "0"))) return n;
-    kinds.push("phone");
-    return ph.phone;
-  });
-  return { text, kinds };
-}
-
-/** Runs the card guards over every sentence of the email; a flagged sentence is replaced by a placeholder for the user to fill in.
- *  With `trusted` (the user's own notes) links and phone numbers that are not in it are replaced too (neutralizeLinks). */
-export function guardEmail(email: string, trusted?: string, lang: CallLang = "he", figures?: string): { text: string; replaced: number; rules: string[] } {
-  let replaced = 0;
-  const rules: string[] = [];
-  const PH = placeholders(lang);
-  const text = email
-    .split("\n")
-    .map((line) => {
-      if (!line.trim()) return line;
-      const parts = line.split(/(?<=[.!?…])\s+/);
-      const out: string[] = [];
-      for (const s of parts) {
-        // With `figures` (the call memory and the tail), a number that nobody said is a promise too: any language, digits only (guards.ts guardDigits).
-        const g = guard(s).ok && figures !== undefined ? guardDigits(s, figures) : guard(s);
-        if (g.ok) {
-          out.push(s);
-          continue;
-        }
-        replaced++;
-        rules.push(g.rule ?? "?");
-        const mark = (PH[g.rule as "price" | "date" | "promise"] ?? (g.rule === "number" ? PH.price : PH.other)) as string;
-        if (out.at(-1) !== mark) out.push(mark);
-      }
-      return out.join(" ");
-    })
-    .join("\n");
-  if (trusted === undefined) return { text, replaced, rules };
-  const n = neutralizeLinks(text, trusted, lang);
-  return { text: n.text, replaced: replaced + n.kinds.length, rules: [...rules, ...n.kinds] };
 }
 
 // ---------- inputs ----------
@@ -488,7 +355,7 @@ export async function runSummary(o: RunOpts): Promise<RunResult> {
 }
 
 /** `{ coaching }` for a summary file, or nothing. Never throws: the numbers are a bonus. */
-function coachingField(dir: string): { coaching?: Coaching } {
+export function coachingField(dir: string): { coaching?: Coaching } {
   try {
     const c = coachingForCall(dir);
     return c ? { coaching: c } : {};
@@ -654,215 +521,3 @@ if (process.argv[1] === fileURLToPath(import.meta.url))
     console.error("summary failed:", errText(e));
     process.exit(1);
   });
-
-// ---------- wrap-up from the call memory ----------
-// The memory (calls/<id>/session.json) already holds what the call was about, who promised what and what is still open. The wrap-up reads that, with
-// the last lines of the call, instead of the whole transcript. Open questions, open promises and uncovered agenda items come from the memory in code,
-// so they are in the summary even when the model forgets them. The follow-up email goes through the same guards as before, plus the digit guard.
-const WRAP_TAIL_LINES = 40;
-const norm = (t: string) =>
-  t
-    .toLowerCase()
-    .replace(/[\s.,!?;:"'()-]+/g, " ")
-    .trim();
-const addUnique = (list: string[], item: string, max: number): string[] => {
-  const n = norm(item);
-  if (!n || list.some((x) => norm(x) === n || norm(x).includes(n) || n.includes(norm(x)))) return list;
-  return list.length >= max ? list : [...list, item];
-};
-const isMe = (who: string) => /^(me|i|אני|אני\.)$/i.test(who.trim()) || isMeLabel(who);
-
-/** What the memory alone says: decisions, next steps (open promises) and open questions (open questions and agenda items not covered). Code, no model. */
-export function memoryOpenLoops(mem: SessionMemory, lang: CallLang): Pick<Fields, "decisions" | "nextSteps" | "openQuestions"> {
-  const decisions = mem.decisions.map((d) => d.text);
-  const nextSteps: NextStep[] = mem.commitments
-    .filter((c) => c.status === "open")
-    .map((c) => ({ who: isMe(c.who) ? ME_LABEL : c.who, what: c.what, ...(c.due ? { when: c.due } : {}) }));
-  const label = lang === "en" ? "Not covered in the call" : "לא כוסה בשיחה";
-  const openQuestions = [
-    ...mem.openQuestions.filter((q) => q.status === "open").map((q) => q.text),
-    ...mem.objections.filter((o) => !o.handled).map((o) => o.text),
-    ...mem.mustCover.filter((m) => !m.done).map((m) => `${label}: ${m.text}`),
-  ];
-  return { decisions, nextSteps, openQuestions };
-}
-
-/** Summary fields from the memory with no model call (the model is down, capped or too slow). The email is a short template made of memory items. */
-export function localWrapFields(mem: SessionMemory, lang: CallLang): Fields {
-  const loops = memoryOpenLoops(mem, lang);
-  const sentences = mem.summary
-    .split(/(?<=[.!?])\s+/)
-    .map((x) => x.trim())
-    .filter(Boolean);
-  let bullets = sentences.slice(0, 5);
-  if (!bullets.length) bullets = [mem.topic.now, ...mem.facts.filter((f) => f.src === "call").map((f) => f.text)].filter(Boolean).slice(0, 4);
-  const en = lang === "en";
-  const lines = [
-    en ? "Hi," : "שלום,",
-    "",
-    en ? "Thank you for the call. A short recap:" : "תודה על השיחה. סיכום קצר:",
-    ...bullets.slice(0, 3).map((b) => `- ${b}`),
-    ...(loops.decisions.length ? ["", en ? "Agreed:" : "הוסכם:", ...loops.decisions.slice(0, 4).map((d) => `- ${d}`)] : []),
-    ...(loops.nextSteps.length
-      ? [
-          "",
-          en ? "Next steps:" : "הצעדים הבאים:",
-          ...loops.nextSteps.slice(0, 5).map((n) => `- ${n.who === ME_LABEL ? (en ? "Me" : ME_LABEL) : n.who}: ${n.what}`),
-        ]
-      : []),
-    ...(loops.openQuestions.length ? ["", en ? "Still open:" : "עוד פתוח:", ...loops.openQuestions.slice(0, 4).map((q) => `- ${q}`)] : []),
-    "",
-    en ? "Best regards" : "בברכה",
-  ];
-  return {
-    summary: bullets,
-    decisions: loops.decisions.slice(0, 12),
-    nextSteps: loops.nextSteps.slice(0, 12),
-    openQuestions: loops.openQuestions.slice(0, 12),
-    followUpEmail: bullets.length || loops.nextSteps.length ? lines.join("\n") : "",
-  };
-}
-
-/** Model fields plus the memory's open loops. The memory items are added by code, without duplicates. */
-export function mergeWrapFields(model: Fields | undefined, mem: SessionMemory, lang: CallLang): Fields {
-  const base = model ?? localWrapFields(mem, lang);
-  const loops = memoryOpenLoops(mem, lang);
-  let decisions = base.decisions,
-    openQuestions = base.openQuestions;
-  for (const d of loops.decisions) decisions = addUnique(decisions, d, 12);
-  for (const q of loops.openQuestions) openQuestions = addUnique(openQuestions, q, 12);
-  const nextSteps = [...base.nextSteps];
-  for (const n of loops.nextSteps)
-    if (
-      nextSteps.length < 12 &&
-      !nextSteps.some((x) => norm(x.what) === norm(n.what) || norm(x.what).includes(norm(n.what)) || norm(n.what).includes(norm(x.what)))
-    )
-      nextSteps.push(n);
-  return { ...base, decisions, nextSteps, openQuestions };
-}
-
-export type WrapupOpts = Omit<RunOpts, "data"> & {
-  mem: SessionMemory;
-  /** The last lines of the call (the caller passes the whole list, only the tail is used). */
-  lines: CallData["lines"];
-  contextNotes?: string[];
-};
-const wrapBudgets: Budgets = { ...DEFAULT_BUDGETS, wrapup: { ...DEFAULT_BUDGETS.wrapup, roleInstructions: 1800 } };
-
-/** Why the wrap-up from memory cannot run (the caller then uses the transcript summary): undefined = go. */
-export function wrapupSkipReason(o: Pick<WrapupOpts, "mem" | "S" | "noAi" | "discard" | "crashed" | "force">): string | undefined {
-  if (o.discard) return "discard";
-  if (o.crashed) return "crashed";
-  if (o.noAi) return "no-ai";
-  if (isEmptyMemory(o.mem) && o.mem.ver === 0) return "no-memory";
-  if (!o.force && !o.S.summary.enabled) return "disabled";
-  return undefined;
-}
-
-/**
- * The post-call summary built from the call memory. One model call with the memory and the last lines (not the whole transcript). Never throws.
- * When the model is down, capped or too slow, the summary is made from the memory alone (localWrapFields), so open loops and a follow-up draft are still there.
- * Result `skipped: "no-memory"` (or discard, crashed, no-ai, disabled) means: nothing was written, use runSummary.
- */
-export async function runWrapup(o: WrapupOpts): Promise<RunResult> {
-  const why = wrapupSkipReason(o);
-  if (why) return { ok: false, skipped: why };
-  const { model, timeoutMs } = o.S.summary;
-  const t0 = Date.now();
-  const tail = o.lines.slice(-WRAP_TAIL_LINES);
-  const memText = renderMemory(o.mem, 2400);
-  const lang = callLanguage([memText, ...tail.map((l) => l.text)].join("\n"), o.S.stt.language);
-  let fields: Fields | undefined;
-  let usd = 0;
-  let modelFailed: string | undefined;
-  if (o.cost.llmState() === "capped") modelFailed = "cost-cap";
-  else {
-    try {
-      const kind = o.mem.kind === "interview" ? "other" : o.mem.kind;
-      const ctx = buildContext({
-        role: "wrapup",
-        roleInstructions: summarySystem(lang) + kindGuidance(kind),
-        memory: o.mem,
-        rawLines: tail.map((l) => ({ side: l.ch, text: l.text, ...(l.who ? { name: l.who } : {}) })),
-        trigger: "The call is over. Write the JSON object now.",
-        budgets: wrapBudgets,
-      });
-      const resolved = await o.registry.resolve(model, "wrapup");
-      const abort = AbortSignal.any([o.signal ?? new AbortController().signal, AbortSignal.timeout(timeoutMs)]);
-      let hardTimer: NodeJS.Timeout | undefined;
-      const hard = new Promise<never>((_, rej) => {
-        hardTimer = setTimeout(() => rej(new Error(`wrap-up timed out after ${timeoutMs} ms`)), timeoutMs + 300);
-        hardTimer.unref?.();
-      });
-      try {
-        const call = generateOnce(o.generate, {
-          model: resolved,
-          maxOutputTokens: 2000,
-          maxRetries: 0,
-          abortSignal: abort,
-          providerOptions: providerOptionsFor(model, { effort: "low", thinking: false }),
-          output: Output.object({ schema: fieldsSchema(lang), name: "call_summary" }),
-          instructions: ctx.system.map((b) => ({ role: "system" as const, content: b.text })),
-          messages: ctx.messages,
-        });
-        call.catch(() => {});
-        const r = await Promise.race([call, hard]);
-        fields = parseSummary(r.output) ?? parseSummary(r.text);
-        if (!fields) modelFailed = "unusable-output";
-        const c = o.cost.addLlm("wrapup", model, r.usage ?? r.totalUsage, r.providerMetadata);
-        usd = c.usd;
-        o.write("usage", { role: "wrapup", model, usage: r.usage ?? r.totalUsage, usd: c.usd });
-      } finally {
-        clearTimeout(hardTimer);
-      }
-    } catch (e) {
-      if (o.signal?.aborted) return { ok: false, skipped: "user" };
-      modelFailed = String((e as Error)?.message ?? e).slice(0, 200);
-    }
-  }
-  if (o.signal?.aborted) return { ok: false, skipped: "user" };
-  if (modelFailed) o.write("events", { type: "wrapup.model-failed", reason: modelFailed });
-  const merged = mergeWrapFields(fields, o.mem, lang);
-  const notes = o.contextNotes ?? [];
-  const trusted = [...notes, memText].join("\n");
-  const tailText = tail.map((l) => l.text).join("\n");
-  merged.followUpEmail = fixGreeting(merged.followUpEmail, tailText + "\n" + o.mem.roster.map((p) => `${p.name} ${p.name}`).join("\n"), [
-    ...notes,
-    ...o.mem.roster.map((p) => p.name),
-  ]);
-  const g = guardEmail(merged.followUpEmail, trusted, lang, `${memText}\n${tailText}\n${notes.join("\n")}`);
-  const summary: CallSummary = {
-    v: 1,
-    callId: o.callId,
-    generatedAt: new Date().toISOString(),
-    model: modelFailed ? "memory" : model,
-    ...merged,
-    followUpEmail: g.text,
-    guard: { replaced: g.replaced, rules: g.rules },
-    costUsd: usd,
-    from: "memory",
-    ...coachingField(o.dir),
-  };
-  try {
-    const file = join(o.dir, "summary.json");
-    writeFileSync(file, JSON.stringify(summary, null, 2) + "\n", { mode: 0o600 });
-    try {
-      chmodSync(file, 0o600);
-    } catch {
-      /* best effort */
-    }
-  } catch (e) {
-    const error = String((e as Error)?.message ?? e).slice(0, 300);
-    o.write("events", { type: "summary.error", error: eventError(e), ms: Date.now() - t0 });
-    return { ok: false, error };
-  }
-  o.write("events", {
-    type: "summary.done",
-    from: "memory",
-    ms: Date.now() - t0,
-    usd,
-    emailGuardReplaced: g.replaced,
-    openLoops: merged.openQuestions.length + merged.nextSteps.length,
-  });
-  return { ok: true, summary };
-}

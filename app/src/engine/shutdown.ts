@@ -8,7 +8,8 @@ import { childEnv, CALLS, ROOT } from "../env.ts";
 import type { Channel } from "../providers/stt/types.ts";
 import { sttChain } from "../providers/stt/index.ts";
 import { describe, type ProviderError } from "../providers/errors.ts";
-import { runSummary, runWrapup, formatShort, backgroundSummaryArgs } from "../summary.ts";
+import { runSummary, formatShort, backgroundSummaryArgs } from "../summary.ts";
+import { runWrapup } from "../summary-wrapup.ts";
 import { errBrief, status, health, healthClear } from "./out.ts";
 import { ht } from "../htext.ts";
 import { strayCounter, strayAction, STRAY_WINDOW_MS, STRAY_WARN_ABOVE } from "./strays.ts";
@@ -33,6 +34,7 @@ import {
 } from "./boot.ts";
 import { st, chans } from "./state.ts";
 import { askKey } from "./control.ts";
+import { lifecycle, stops } from "./lifecycle.ts";
 import { flushMemory, memoryLoop } from "./coach.ts";
 import { endCallLearning } from "./moments.ts";
 import { engineV2 } from "./memory.ts";
@@ -62,9 +64,6 @@ const cacheLine = () => {
   const p = cost.cacheHitPct();
   return p === undefined ? "" : `\nPrompt cache: ${p}% of AI input tokens were cache hits`;
 };
-
-/** Audio source stoppers, run first in shutdown(). */
-export const stops: (() => Promise<void>)[] = [];
 
 /** Skip the summary for this stop: aborts the model call if it is running, and shutdown() moves on. The call stays saved (write it later with `wingman calls summary <id> --generate`). */
 let summarySkipped = false,
@@ -427,3 +426,7 @@ export function installProcessHandlers() {
   process.on("SIGTERM", () => void shutdown());
   process.on("SIGHUP", () => void shutdown());
 }
+
+// Hand the entry points to the modules that may only ask for a stop (see lifecycle.ts).
+lifecycle.shutdown = shutdown;
+lifecycle.skipSummaryNow = skipSummaryNow;

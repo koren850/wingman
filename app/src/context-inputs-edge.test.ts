@@ -1,4 +1,4 @@
-// Edge cases found while trying to break the readers. No network.
+// Edge cases of the context readers (calendar, repeating events, lookups). No network.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";

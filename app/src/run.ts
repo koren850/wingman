@@ -11,12 +11,13 @@ import { ht } from "./htext.ts";
 import { setPhase, status, health, safe } from "./engine/out.ts";
 import { crash, installProcessHandlers } from "./engine/shutdown.ts";
 import { createChannels, openBothChannels, wireChannels } from "./engine/stt.ts";
-import { resolveReflexModels, startHealthTick, checkDisk, v2Active } from "./engine/degrade.ts";
+import { resolveReflexModels, startHealthTick, tickHealth, checkDisk, v2Active } from "./engine/degrade.ts";
 import { notesRound, reminderTick } from "./engine/side.ts";
 import { tipsTick } from "./engine/coach.ts";
+import { onResult } from "./engine/ingest.ts";
 import { flowTick } from "./engine/flowmode.ts";
 import { startConsent } from "./engine/consent.ts";
-import { startControlReader } from "./engine/control.ts";
+import { startControlReader, setupControl, setupKeys } from "./engine/control.ts";
 import { startFileSource, startLiveSources } from "./engine/audio-sources.ts";
 
 // A card row that cannot be saved (disk full) still raises the health bar; the call goes on.
@@ -73,7 +74,7 @@ function printBanner() {
 /** Startup: open both STT channels, start timers, wire STT events to health bars, handle consent, then start the audio sources (or the replay file). */
 async function main() {
   createChannels();
-  wireChannels(); // before opening: a terminal failure of the first channel while the second is still opening must reach the retry loop
+  wireChannels(onResult, tickHealth); // before opening: a terminal failure of the first channel while the second is still opening must reach the retry loop
   await resolveReflexModels();
   await openBothChannels();
   startTimers();
@@ -82,7 +83,7 @@ async function main() {
   sup.tick();
   printBanner();
   if (st.call.shuttingDown) return; // Stop came during startup: shutdown() is already closing the call, so start nothing new
-  startConsent();
+  startConsent(CONTROL ? setupControl : setupKeys);
   if (fileArg) await startFileSource(fileArg);
   else await startLiveSources();
 }

@@ -6,7 +6,6 @@ import { st, callKind } from "./state.ts";
 import { log, tipGate, S, bank, interview, PROMPT_V, schedCfg } from "./boot.ts";
 import { capDecision, CardScheduler, CheckBook, kindOfBadge, type CardV2Extra, type CardRow, type OfferMeta, type Offered } from "./cards-v2.ts";
 import type { ScheduledMoment } from "../moments/scheduler.ts";
-import type { CtxRecord } from "../context/record.ts";
 import { capSize, capTail } from "./capped.ts";
 
 /** Card kinds. "info"/"warn"/"tip" are system cards; "me" is an answer for the user's own question. */
@@ -43,12 +42,6 @@ const turnModel = new Map<string, string>();
 export const noteModel = (turnId: string, model: string) => {
   turnModel.set(turnId, model);
   capSize(turnModel);
-};
-/** What the model call of a turn saw (CtxRecord from buildContext). Rows of that turn carry it as `ctx`. */
-const turnCtx = new Map<string, CtxRecord>();
-export const noteCtx = (turnId: string, ctx: CtxRecord) => {
-  turnCtx.set(turnId, ctx);
-  if (turnCtx.size > 200) turnCtx.delete(turnCtx.keys().next().value as string);
 };
 const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay (a card keeps its first decision when it is updated, so it never flips)
 const turnsWithCard = new Set<string>();
@@ -112,11 +105,9 @@ export function emitCard(c: Card) {
     }
   }
   const model = !special && c.source !== "calc" ? turnModel.get(c.turnId) : undefined;
-  const ctx = !c.ctx && !special && c.source !== "calc" ? turnCtx.get(c.turnId) : undefined; // every model card says what the model saw (memory version, tokens, parts)
   log.write("cards", {
     type: "card",
     ...c,
-    ...(ctx ? { ctx } : {}),
     ...(model ? { model, prompt: PROMPT_V } : {}),
     ...(hidden ? { hidden: true, hiddenReason: reason } : {}),
   });

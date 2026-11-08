@@ -3,7 +3,6 @@
 import { ht } from "../htext.ts";
 import { UI_LANG } from "./boot.ts";
 
-export const askNotSure = () => ht(UI_LANG, "ask.notsure");
 export const askError = () => ht(UI_LANG, "ask.error");
 export const consentTitle = () => ht(UI_LANG, "consent.title");
 export const consentSayIt = () => ht(UI_LANG, "consent.sayit");

@@ -1,4 +1,4 @@
-// r3 gate: the AI-paused floor, through the real engine. The model is marked down for the whole run (the same state the ladder reaches after repeated
+// Gate test: the AI-paused floor, through the real engine. The model is marked down for the whole run (the same state the ladder reaches after repeated
 // failures), then golden dev meetings are replayed line by line on the virtual clock. What must hold: no model call is made, every call keeps running
 // without a crash, question lines that the floor catches get their card (prepared bank card or buy-time line) inside the latency budget, and a
 // statement-only stretch stays quiet. The numbers are printed and quoted in the report as SCRIPTED (golden dev is the tuning set, so they are in-sample).

@@ -22,13 +22,13 @@ import {
   speakers,
   brief,
   briefArg,
-  bank,
   noAi,
 } from "./boot.ts";
 import { st, callKind } from "./state.ts";
 import { liveNotes } from "./side.ts";
 import { emitCard, emitMoment, closeCards, cardSched } from "./cards.ts";
-import { applyFeedback, topicChanged } from "./moments.ts";
+import { applyFeedback } from "./moments.ts";
+import { topicChanged } from "./moments-observer.ts";
 import { parseTags } from "./cards-v2.ts";
 import { recentWindow, capTail } from "./rules.ts";
 import { MemoryLoop, engineV2, makeModelRunner, memoryConfigFrom, memoryGate } from "./memory.ts";
@@ -37,7 +37,6 @@ import { loadMemory, saveMemory } from "../session/store.ts";
 import { seedForCall } from "../session/callseed.ts";
 import { PEOPLE_FILE } from "../session/people.ts";
 import { CALLS, USER_DATA } from "../env.ts";
-import { renderMemory } from "../session/render.ts";
 import { toView } from "../session/view.ts";
 import { isEmptyMemory, type SessionMemory } from "../session/types.ts";
 import { briefNotes, briefKind } from "../brief.ts";
@@ -283,15 +282,6 @@ export function memoryLoop(): MemoryLoop | undefined {
     log.write("events", { type: "memory.save.error", error: eventError(e).slice(0, 160) });
   }
   return loop;
-}
-/** For a direct question: the memory as it is now plus the lines the updater has not read yet. Never waits for the updater. */
-export function memoryContext() {
-  return memoryLoop()?.contextFor();
-}
-/** The text that card figures may come from: the rendered memory, the raw tail of the call and the prepared cards. Used by the digit guard. */
-export function allowedFigures(): string {
-  const m = memoryLoop()?.memory;
-  return [m ? renderMemory(m, 1800) : "", recentTranscript(10), ...bank.flatMap((c) => [c.say, ...c.facts]), background].join("\n");
 }
 function startV2Timer() {
   if (v2Timer || !memoryLoop()) return;

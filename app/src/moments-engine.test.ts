@@ -460,7 +460,7 @@ test("topic change from the memory makes the observer look at the call now", asy
   e.say("them", "OK, so next");
   await e.vc.advance(300);
   assert.equal(e.pm.callsFor("observer").length, 0, "a two word line is not worth a call");
-  e.moments.topicChanged();
+  e.observer.topicChanged();
   await e.vc.advance(1500);
   assert.equal(e.pm.callsFor("observer").length, 1);
 });

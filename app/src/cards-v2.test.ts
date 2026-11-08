@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { CardScheduler, capDecision, parseTags, validateRowV2, kindOfBadge, type CapInput, type CardRow } from "./engine/cards-v2.ts";
 import { DEFAULT_SCHEDULER, type ScheduledMoment } from "./moments/scheduler.ts";
 import { asciiDigits, numbersIn, unsupportedNumbers, guardDigits, FIGURE } from "./guards.ts";
-import { guardEmail } from "./summary.ts";
+import { guardEmail } from "./summary-email.ts";
 import type { MomentTag } from "./moments/types.ts";
 
 const req = createRequire(import.meta.url);

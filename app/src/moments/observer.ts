@@ -7,6 +7,7 @@
 // (words, weak, topic) may use only the rest. The clock is passed in, so a virtual clock drives it in tests.
 import type { HintLevel } from "./types.ts";
 import type { Side } from "./intake.ts";
+import { wordCount } from "../text-util.ts";
 
 export type ObserverLine = {
   id: string;
@@ -62,7 +63,6 @@ const RESERVED = new Set<Trigger>(["ask", "strong", "silence", "monologue", "cue
 
 /** Priority order of the triggers. */
 const ORDER: readonly Trigger[] = ["ask", "strong", "silence", "monologue", "topic", "cue", "words", "weak"];
-const wordsIn = (t: string) => t.split(/\s+/).filter(Boolean).length;
 
 export class Observer {
   private pending: ObserverLine[] = [];
@@ -92,10 +92,10 @@ export class Observer {
     this.pending.push(line);
     if (this.pending.length > this.cfg.maxPending) this.pending.shift();
     this.lastLineAt = Math.max(this.lastLineAt, line.at);
-    if (!line.asked && !line.quiet && line.side === "them") this.newWords += wordsIn(line.text); // the user's own words never make a general look
+    if (!line.asked && !line.quiet && line.side === "them") this.newWords += wordCount(line.text); // the user's own words never make a general look
     this.askedAt = line.asked ? line.at : undefined; // anyone speaking after the question ends the silence
     if (line.side === "me") {
-      this.meWords += wordsIn(line.text);
+      this.meWords += wordCount(line.text);
       if (this.cfg.monologueWords > 0 && this.meWords >= this.cfg.monologueWords && !this.monologue) {
         this.monologue = true;
         this.heldTriggers++;

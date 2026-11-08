@@ -8,7 +8,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   parseSummary,
-  guardEmail,
   skipReason,
   runSummary,
   generateSummary,
@@ -19,6 +18,7 @@ import {
   formatShort,
   type CallData,
 } from "./summary.ts";
+import { guardEmail } from "./summary-email.ts";
 import { SCRIPTED_SUMMARY } from "./providers/scripted.ts";
 import { ModelRegistry } from "./providers/llm.ts";
 import { CostMeter } from "./cost.ts";
