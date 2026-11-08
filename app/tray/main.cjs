@@ -30,6 +30,7 @@ const windowHost = require("../dashboard/window.cjs");
 const { createControlServer } = require("./control-socket.cjs");
 const { createPlanStore } = require("./plans.cjs");
 const { tt } = require("./menu-text.cjs");
+const { pt } = require("./prompt-text.js");
 
 const ROOT = path.join(__dirname, "..");
 const userPaths = require("../shared/paths.cjs");
@@ -106,14 +107,14 @@ function ask() {
     minimizable: false,
     maximizable: false,
     alwaysOnTop: true,
-    title: "Wingman · note for the AI",
-    backgroundColor: "#FEF7EC",
+    title: pt(uiLanguage(), "window"),
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#1D1710" : "#FEF7EC",
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   promptWin.setContentProtection(true);
   promptWin.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   promptWin.webContents.on("will-navigate", (e) => e.preventDefault());
-  promptWin.loadFile(path.join(__dirname, "prompt.html"), { query: { kind: "note" } });
+  promptWin.loadFile(path.join(__dirname, "prompt.html"), { query: { kind: "note", lang: uiLanguage() } });
   promptWin.on("closed", () => {
     promptWin = undefined;
   });

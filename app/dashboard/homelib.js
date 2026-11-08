@@ -80,6 +80,7 @@
     const next = Plans.nextMeeting(ready, now);
     const rows = ready.map((m) => ({
       id: m.id,
+      kind: typeof m.kind === "string" ? m.kind : "",
       name: Plans.label(m),
       sub: m.title ? m.who || m.goal || "" : m.who ? m.goal || "" : "",
       time: m.at ? formatWhen(m.at, now, t, lang) : "",
@@ -137,14 +138,61 @@
   /** The "Skip summary" control shows while the summary is the step in progress (not before, not after, not twice). */
   const canSkipSummary = (call) => !!call && call.phase === "stopping" && call.stopPhase === "summary" && !call.summarySkipped && !call.summaryOk;
 
+  /** Setting and variable names are for developers. Say what they are in plain words: "ANTHROPIC_API_KEY" is "the Anthropic key". Nothing user-facing may show an upper-case name with underscores. */
+  const ENV_NAMES = {
+    DEEPGRAM_API_KEY: "the Deepgram key",
+    ANTHROPIC_API_KEY: "the Anthropic key",
+    OPENAI_API_KEY: "the OpenAI key",
+    GOOGLE_GENERATIVE_AI_API_KEY: "the Google key",
+    MISTRAL_API_KEY: "the Mistral key",
+    GROQ_API_KEY: "the Groq key",
+    SONIOX_API_KEY: "the Soniox key",
+    GLADIA_API_KEY: "the Gladia key",
+  };
+  const ENV_LIKE = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
+  function plainText(t) {
+    const out = String(t || "")
+      .replace(ENV_LIKE, (m) => ENV_NAMES[m] || (/_API_KEY$|_KEY$|_TOKEN$/.test(m) ? "a key" : "a setting"))
+      .replace(/\bthe the\b/gi, "the");
+    return /^\s*[A-Z][A-Z0-9]*_[A-Z0-9_]+/.test(String(t || "")) ? out.replace(/^\s*[a-z]/, (c) => c.toUpperCase()) : out;
+  }
   /** Doctor lines are written for the command line. Say where things are now: keys in the Keychain (Settings, Keys), permissions for Wingman. */
   function niceFix(t) {
-    return String(t || "")
-      .replace(/add it to ~?\/?[\w./-]*keys\.env/gi, "add it in Settings, Keys")
-      .replace(/~?\/?[\w./-]*keys\.env/gi, "Settings, Keys")
-      .replace(/\b(your )?terminal( app)?\b/gi, "Wingman")
-      .replace(/\bdoctor\b/gi, "readiness check");
+    return plainText(
+      String(t || "")
+        .replace(/add it to ~?\/?[\w./-]*keys\.env/gi, "add it in Settings, Keys")
+        .replace(/~?\/?[\w./-]*keys\.env/gi, "Settings, Keys")
+        .replace(/\b(your )?terminal( app)?\b/gi, "Wingman")
+        .replace(/\bdoctor\b/gi, "readiness check"),
+    );
   }
+  /**
+   * Can the person press Start now? { ready, disabled, why, code, raw }. `missing` = names of providers with no key. `doctor` = the last readiness result.
+   * A key problem or a failed readiness check disables Start and gives the reason (plain words, from the first failing line) and a code for the Fix it button.
+   * "Not checked yet" and "busy" never block. why is a catalog key when it needs no data; otherwise raw holds the plain text of the first problem.
+   */
+  function startState(doctor, missing) {
+    const miss = Array.isArray(missing) ? missing : [];
+    if (miss.length)
+      return { ready: false, disabled: true, why: "start.why.keys", code: "key-" + (/anthropic/i.test(miss[0]) ? "anthropic" : "deepgram"), raw: "" };
+    const d = blockedBy(doctor);
+    if (!d) return { ready: true, disabled: false, why: "", code: "", raw: "" };
+    const first = (d.failing && d.failing[0]) || {};
+    return {
+      ready: false,
+      disabled: true,
+      why: "start.why.check",
+      code: "",
+      raw: niceFix(first.text || ""),
+      rawSource: String(first.text || "") + " " + String(first.fix || ""),
+    };
+  }
+  /** A key name for the screen: symbols on macOS (control, option, return), words elsewhere. */
+  const MAC_SYMS = { Ctrl: "⌃", Opt: "⌥", Cmd: "⌘", Shift: "⇧", Return: "↩", Esc: "⎋" };
+  const keySym = (k, mac) => (mac && MAC_SYMS[k]) || k;
+  /** The word for a key (the tooltip next to a symbol). */
+  const KEY_NAMES = { Ctrl: "Control", Opt: "Option", Cmd: "Command", Return: "Return", Esc: "Escape" };
+  const keyName = (k) => KEY_NAMES[k] || k;
   const keyRelated = (x) => /api_key|\bkeys?\b|deepgram|anthropic/i.test(String(x && x.text) + " " + String((x && x.fix) || ""));
 
   /** Keep keyboard focus across a re-render: remember the focused element by id (or data-fk) and its caret, give it back to the new element. */
@@ -167,6 +215,10 @@
     askStatus,
     canSkipSummary,
     niceFix,
+    plainText,
+    startState,
+    keySym,
+    keyName,
     keyRelated,
     focusKey,
   };

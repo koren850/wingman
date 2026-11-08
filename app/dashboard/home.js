@@ -213,6 +213,8 @@ async function viewHome(focus) {
       f.scrollIntoView({ block: "center" });
       f.focus({ preventScroll: true });
     }
+  } else if (focus === "review" && H.plans.length) {
+    startFlow({ planId: H.plans[0].id }); // screenshot aid: the review step of the first meeting
   } else if (focus === "keys") {
     openKeysSheet(); // screenshot aid and the "Add keys" link from the tray
   } else if (focus === "edit" && H.plans.length)
@@ -285,6 +287,7 @@ function loadKnows() {
     .knowsGet("live", WingmanI18n.lang)
     .then((r) => {
       H.knows = r && r.ok ? r.model : null;
+      sendReviewOps(H.knows);
       H.kai = r && r.ai ? r.ai : "ok";
       if (state.view === "home" && isRunning()) renderSide();
     })
@@ -297,6 +300,7 @@ function knowsPush(m) {
   if (!m || typeof m !== "object") return;
   if (m.ai) H.kai = m.ai === "paused" || m.ai === "offline" ? m.ai : "ok";
   if (m.model !== undefined && m.model !== null) {
+    sendReviewOps(m.model);
     const editing =
       document.activeElement && document.activeElement.closest && document.activeElement.closest("#knows-live") && document.activeElement.tagName === "INPUT";
     if (editing) H.kPending = m.model;
@@ -374,6 +378,14 @@ function updateCallPanel(force) {
 }
 
 /* ---- idle: the Start card is step 3 ---- */
+/** Shortcut keys: symbols on macOS (control, option), words elsewhere. The word stays as the tooltip. */
+const IS_MAC = /Mac/i.test((typeof navigator !== "undefined" && (navigator.platform || navigator.userAgent)) || "");
+const kbdCombo = (key) =>
+  h(
+    "span",
+    { class: "kbs" },
+    ["Ctrl", "Opt", key].map((k, i) => [i ? " " : null, h("kbd", { title: HL.keyName(k) }, HL.keySym(k, IS_MAC))]),
+  );
 const shortcutsBtn = () =>
   h(
     "button",
@@ -400,17 +412,51 @@ const stepHead = (n, id, title, why, ...rest) =>
     ...rest,
   );
 
+/** Can the person press Start now? Keys and the last readiness check decide (homelib startState). Checking never blocks. */
+const startNow = () => HL.startState(checking() ? null : doc(), keysMissing());
+/** The line under Start when it is disabled: the reason in plain words, the Fix it button, and (for a failed check only) a way to start anyway. */
+function startWhy(ss, t) {
+  if (!ss.disabled) return null;
+  const code = ss.code || WingmanErrors.classify(ss.rawSource || ss.raw).code;
+  const text = ss.raw ? T("start.why.check", { why: ss.raw }) : T(ss.why);
+  return h(
+    "div",
+    { class: "startwhy", id: "start-why", role: "status" },
+    ico("warning"),
+    h("span", { class: "grow" }, text),
+    fixControl(ss.code ? ss.code : code, {}) || btn(T("gate.check"), { id: "gate-check", icon: "refresh", cls: "sm", onclick: () => runCheck(false) }),
+    ss.raw ? h("button", { type: "button", class: "linkbtn", id: "gate-anyway", onclick: () => startFlow(t, true) }, T("gate.anyway")) : null,
+  );
+}
+
+/** True once the person has at least one saved call. Until then the practice call sits next to Start. */
+const firstCallDone = () => state.calls.length > 0;
+
 /** The Start card: one primary button (Start a call), the keys line when keys are missing, the prepared meetings, and the other ways to start folded below. */
 function idleCard() {
   const now = Date.now(),
     paths = HL.startPaths(H.plans, now, T, WingmanI18n.lang);
+  const ss = startNow();
   const quick = h(
     "button",
-    { type: "button", class: "btn lg primary", id: "start-call", onclick: () => startFlow({ noAi: false }) },
+    {
+      type: "button",
+      class: "btn lg primary",
+      id: "start-call",
+      disabled: ss.disabled,
+      "aria-describedby": ss.disabled ? "start-why" : null,
+      onclick: () => startFlow({ noAi: false }),
+    },
     ico("phone"),
     h("span", {}, T("home.quickCall")),
   );
-  const noAi = btn(T("home.quickNoAi"), { icon: "play", cls: "", id: "start-noai", onclick: () => startFlow({ noAi: true }) });
+  const noAi = btn(T("home.quickNoAi"), {
+    icon: "play",
+    cls: "",
+    id: "start-noai",
+    disabled: ss.disabled && ss.code !== "key-anthropic", // without the Anthropic key a call can still run without AI
+    onclick: () => startFlow({ noAi: true }),
+  });
   const target = HL.practiceTarget(H.plans, now);
   const prac = btn(HL.practiceLabel(target, T), {
     icon: "play",
@@ -422,17 +468,19 @@ function idleCard() {
   const row = (r) =>
     h(
       "li",
-      { class: "pm" + (r.isNext ? " next" : ""), "data-id": r.id },
+      { class: "pm" + (r.isNext ? " next" : ""), "data-id": r.id, id: r.isNext ? "next-meeting" : null },
       h(
         "div",
         { class: "pm-main" },
         h("b", { class: "pm-t", ...nm(r) }, r.name),
+        r.isNext ? chip(T("home.nextTag"), "warn") : null,
         r.sub ? h("span", { class: "faint pm-s", dir: dirOf(r.sub), lang: langOf(r.sub) }, r.sub) : null,
       ),
       h(
         "div",
         { class: "pm-meta" },
         r.time ? chip(r.time, r.isNext ? "warn" : "info") : chip(T("home.noTime"), ""),
+        KN.KINDS.includes(r.kind) ? chip(T("kind." + r.kind), "", { title: T("knows.kindNote") }) : null,
         r.must ? chip(WingmanI18n.plural(WingmanI18n.lang, "home.mustChip", r.must), "") : null,
         r.files ? chip(WingmanI18n.plural(WingmanI18n.lang, "home.fileChip", r.files), "") : null,
         r.uses ? chip(WingmanI18n.plural(WingmanI18n.lang, "home.usedChip", r.uses), "") : null,
@@ -441,7 +489,7 @@ function idleCard() {
       h(
         "div",
         { class: "pm-act" },
-        btn(T("home.start"), { id: "pm-start-" + r.id, cls: "sm", aria: r.startLabel, onclick: () => startFlow({ planId: r.id }) }),
+        btn(T("home.start"), { id: "pm-start-" + r.id, cls: "sm", aria: r.startLabel, disabled: ss.disabled, onclick: () => startFlow({ planId: r.id }) }),
         btn("", {
           id: "pm-edit-" + r.id,
           icon: "pencil",
@@ -460,33 +508,23 @@ function idleCard() {
         }),
       ),
     );
-  const nextBar = paths.next
-    ? h(
-        "div",
-        { class: "nextbar", id: "next-meeting", role: "group", "aria-label": T("home.nextGroup") },
-        ico("clock"),
-        h("div", { class: "grow" }, h("b", { ...nm(paths.next) }, HL.nextText(paths.next, T))),
-        btn(T("home.start"), { id: "next-start", cls: "", aria: paths.next.startLabel, onclick: () => startFlow({ planId: paths.next.id }) }),
-      )
-    : null;
   const missing = keysMissing();
   return h(
     "section",
     { class: "card-big startcard", "aria-labelledby": "start-h" },
     h("div", { class: "rhead" }, h("h2", { id: "start-h" }, T("home.start")), tip(T("home.startTip"))),
     h("p", { class: "briefnote faint" }, T("home.quickNote")),
-    quick,
-    nextBar,
-    missing.length
-      ? h(
-          "div",
-          { class: "keysline", id: "keys-line" },
-          btn(T("keys.add"), { id: "add-keys", icon: "key", onclick: () => openKeysSheet() }),
-          h("p", { class: "faint" }, T("keys.addWhy")),
-        )
-      : null,
-    h("div", { id: "start-gate" }),
-    H.ai
+    h("div", { class: "startrow" }, quick, firstCallDone() ? null : prac),
+    // One readiness area: why Start is off (with Fix it), or the one-line AI status.
+    h(
+      "div",
+      { id: "start-gate" },
+      startWhy(ss, {}),
+      !ss.disabled && missing.length
+        ? h("div", { class: "keysline", id: "keys-line" }, btn(T("keys.add"), { id: "add-keys", icon: "key", onclick: () => openKeysSheet() }))
+        : null,
+    ),
+    !ss.disabled && H.ai
       ? h(
           "p",
           { class: "aimode" + (H.ai.on ? "" : " off"), id: "ai-mode" },
@@ -519,19 +557,9 @@ function idleCard() {
         "div",
         { class: "startmore" },
         h("div", { class: "opt" }, noAi, h("p", {}, T("home.noAiNote"))),
-        h("div", { class: "opt" }, prac, h("p", {}, target ? T("home.practiceNoteWith") : T("home.practiceNote"))),
+        firstCallDone() ? h("div", { class: "opt" }, prac, h("p", {}, target ? T("home.practiceNoteWith") : T("home.practiceNote"))) : null,
       ),
-      h(
-        "p",
-        { class: "briefnote faint" },
-        T("home.listenHint1"),
-        h("kbd", {}, "Ctrl"),
-        " ",
-        h("kbd", {}, "Opt"),
-        " ",
-        h("kbd", {}, "A"),
-        T("home.listenHint2"),
-      ),
+      h("p", { class: "briefnote faint" }, T("home.listenHint1"), kbdCombo("A"), T("home.listenHint2")),
     ),
   );
 }
@@ -573,10 +601,13 @@ async function savePlanFirst(planId) {
 }
 const blockedBy = () => HL.blockedBy(doc());
 const setStartBusy = (on) => {
-  for (const b of document.querySelectorAll("#start-call, #start-noai, #next-start, .pm-act .primary")) b.disabled = on;
+  const ss = startNow(); // a blocked Start stays off when the busy state ends
+  for (const b of document.querySelectorAll("#start-call, #start-noai, #next-start, .pm-act .primary"))
+    b.disabled = on || (ss.disabled && !(b.id === "start-noai" && ss.code === "key-anthropic"));
 };
 /** Start. t: { planId?, noAi? }: no planId is a quick call (no Plan). Warns when the last readiness check failed (Start anyway is always there). Practice never goes through here. */
 async function startFlow(t, anyway) {
+  H.reviewOps = null; // edits from an earlier, unfinished start must not reach this call
   const g = $("start-gate");
   if (g) g.textContent = "";
   setStartBusy(true);
@@ -587,11 +618,45 @@ async function startFlow(t, anyway) {
       showStartGate(d, t);
       return;
     }
+    if (t.planId && !t.reviewed) {
+      const rv = await reviewBeforeStart(t.planId);
+      if (!rv.go) return;
+      H.reviewOps = rv.ops;
+    }
     const m = t.planId ? H.plans.find((x) => x.id === t.planId) : null;
     const what = t.planId ? T("home.startNamed", { name: m ? m.title || m.who || "" : "" }) : t.noAi ? T("home.quickNoAi") : T("home.quickCall");
     await act(() => (t.noAi ? api.startNoAi(t.planId) : api.start(t.planId)), what);
   } finally {
     setStartBusy(false);
+  }
+}
+/**
+ * The review step: what Wingman knows about this meeting, before the call. Opens only when there is context (a prepared digest or saved text);
+ * no context, or any problem reading it, goes straight to Start. Resolves to { go, ops }.
+ */
+async function reviewBeforeStart(planId) {
+  let model = null;
+  try {
+    const r = await api.knowsGet("before", WingmanI18n.lang, planId);
+    model = r && r.ok ? r.model : null;
+  } catch {
+    model = null;
+  }
+  if (!KN.hasContext(model)) return { go: true, ops: [] };
+  return prestartReview(model);
+}
+/** The edits made in the review step go to the call as soon as its notes exist (the ids are the ones the notes will get). A refusal is ignored: the line simply stays as the engine has it. */
+function sendReviewOps(m) {
+  if (!H.reviewOps || !H.reviewOps.length || !m || m.source !== "memory") return;
+  const ops = H.reviewOps;
+  H.reviewOps = null;
+  // ids come from the digest; if the live line with that id has other text, the ids drifted: leave that line alone rather than change the wrong one
+  const live = {};
+  for (const list of Object.values(m.sections || {})) for (const x of list) live[x.id] = x.text;
+  for (const o of ops) {
+    if (o.was && live[o.id] != null && live[o.id] !== o.was) continue;
+    const edit = KN.toEdit(o);
+    if (edit) api.knowsEdit(edit).catch(() => {});
   }
 }
 /** Warning under Start when the last readiness check failed: run it again, or start anyway. */
@@ -668,8 +733,8 @@ function afterCard(s, kind) {
               : T("after.check"),
     ),
     s.summaryOk
-      ? btn(T("after.openFollow"), { cls: "positive", icon: "follow", onclick: go("followup") })
-      : btn(known || s.endedCleanly ? T("after.openCall") : T("after.openCalls"), { cls: "positive", onclick: go(undefined) }),
+      ? btn(T("after.openSummary"), { id: "open-summary", cls: "positive", icon: "follow", onclick: go("followup") })
+      : btn(known || s.endedCleanly ? T("after.openCall") : T("after.openCalls"), { id: "open-call", cls: "positive", onclick: go(undefined) }),
     dismiss,
   );
 }
@@ -719,18 +784,7 @@ function livePanel(s) {
           ico("check"),
           h("span", {}, T("live.startListening")),
         ),
-        h(
-          "p",
-          { class: "sub" },
-          h("kbd", {}, "Ctrl"),
-          " ",
-          h("kbd", {}, "Opt"),
-          " ",
-          h("kbd", {}, "Return"),
-          T("live.sameFromAnyApp"),
-          h("span", { class: "ltr", id: "wait-timer" }, "00:00"),
-          ".",
-        ),
+        h("p", { class: "sub" }, kbdCombo("Return"), T("live.sameFromAnyApp"), h("span", { class: "ltr", id: "wait-timer" }, "00:00"), "."),
       ),
     );
   }
@@ -762,7 +816,7 @@ function livePanel(s) {
       composerEl(s),
     );
   }
-  // Stop is the normal button. Deleting the call is a separate, quiet link at the very bottom (it keeps its own confirmation).
+  // Stop is the only button here. A call is deleted afterwards, from Calls (it keeps its own confirmation).
   if (ph !== "starting")
     wrap.append(
       h(
@@ -778,20 +832,6 @@ function livePanel(s) {
     fillStopSteps(sv, s);
     wrap.append(sv);
   }
-  if (ph !== "starting")
-    wrap.append(
-      h(
-        "div",
-        { class: "deleterow" },
-        h(
-          "button",
-          { type: "button", id: "stop-del", class: "linkbtn danger-link", onclick: () => act(api.stopDelete, T("live.deleteCall")) },
-          ico("trash"),
-          T("live.deleteCall"),
-        ),
-        h("span", { class: "faint" }, T("live.deleteNote")),
-      ),
-    );
   return wrap;
 }
 /** One input for the live call with two clear modes: a Note for the AI (background it keeps) or a question for Wingman (it answers in the answer window). The voice way to ask is armed by Ctrl+Opt+A or the button. */
@@ -863,18 +903,8 @@ function composerEl(s) {
       h(
         "span",
         { class: "keyhint" },
-        h(
-          "span",
-          { class: "kh" },
-          h("span", { class: "kbs" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "N")),
-          h("span", {}, T("compose.keyNote")),
-        ),
-        h(
-          "span",
-          { class: "kh" },
-          h("span", { class: "kbs" }, h("kbd", {}, "Ctrl"), " ", h("kbd", {}, "Opt"), " ", h("kbd", {}, "A")),
-          h("span", {}, T("compose.keyAsk")),
-        ),
+        h("span", { class: "kh" }, kbdCombo("N"), h("span", {}, T("compose.keyNote"))),
+        h("span", { class: "kh" }, kbdCombo("A"), h("span", {}, T("compose.keyAsk"))),
       ),
     ),
   );
@@ -944,10 +974,8 @@ function patchLive(s) {
   patchAsk(s);
   const av = $("ask-voice");
   if (av) av.disabled = !!s.askArmed;
-  const st = $("stop"),
-    sd = $("stop-del");
+  const st = $("stop");
   if (st) st.disabled = ph === "stopping";
-  if (sd) sd.disabled = ph === "stopping";
   if (st) st.querySelector("span").textContent = ph === "stopping" ? T("live.stopping") : T("live.stop");
   const sv = $("saving");
   if (sv && ph === "stopping") {
@@ -1285,7 +1313,7 @@ function openShortcuts(where) {
     h(
       "span",
       { class: "kbs" },
-      ks.map((k, i) => [i ? " " : null, h("kbd", {}, k)]),
+      ks.map((k, i) => [i ? " " : null, h("kbd", { title: HL.keyName(k) }, HL.keySym(k, IS_MAC))]),
     );
   const groups = shortcuts().map(([title, rows]) =>
     h(

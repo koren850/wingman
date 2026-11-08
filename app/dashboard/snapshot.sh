@@ -9,7 +9,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # then snapcheck.cjs reads every result and exits 1 on any clipping, wrapped pill, duplicate waiting row, extra primary button or stray Sample badge.
 if [ "$1" = "--check" ]; then
   OUT="${2:-$(mktemp -d)}"; mkdir -p "$OUT"; GOLD="-:-:-:-:golden"
-  WINGMAN_SNAP_DOCTOR=ready sh "$0" "$OUT" \
+  WINGMAN_DASHBOARD_FAKE_KEYS=file WINGMAN_SNAP_DOCTOR=ready sh "$0" "$OUT" \
     idle-en-light:en:light:home:-:- idle-en-dark:en:dark:home:-:- idle-he-light:he:light:home:-:- idle-he-dark:he:dark:home:-:- \
     keys-en-light:en:light:home:-:keys keys-he-dark:he:dark:home:-:keys \
     live-en-dark:en:dark:home:live:- live-he-light:he:light:home:live:- live-en-light:en:light:home:live:- live-he-dark:he:dark:home:live:- \
@@ -17,9 +17,15 @@ if [ "$1" = "--check" ]; then
     ended-en-light:en:light:home:ended:- ended-he-dark:he:dark:home:ended:- waiting-en-light:en:light:home:waiting:- waiting-he-light:he:light:home:waiting:- \
     settings-en-light:en:light:settings:-:- settings-he-dark:he:dark:settings:-:- \
     edit-en-light:en:light:home:-:edit edit-he-dark:he:dark:home:-:edit \
+    settings-keys-en-light:en:light:settings:-:tab-keys settings-engine-he-dark:he:dark:settings:-:tab-engine settings-privacy-en-dark:en:dark:settings:-:tab-privacy \
+    settings-adv-en-light:en:light:settings:-:tab-advanced settings-adv-he-light:he:light:settings:-:tab-advanced \
+    revstart-en-light:en:light:home:-:review revstart-he-dark:he:dark:home:-:review revstart-en-dark:en:dark:home:-:review revstart-he-light:he:light:home:-:review \
+    revconf-en-light:en:light:home:-:review:-:-:conflict revconf-he-dark:he:dark:home:-:review:-:-:conflict \
     review-en-light:en:light:home:-:-:01SNAPGOLDENENB00000000000:details review-he-dark:he:dark:home:-:-:01SNAPGOLDENHEB00000000000:details >/dev/null || exit 1
-  WINGMAN_SNAP_DOCTOR=notready sh "$0" "$OUT" error-en-light:en:light:home:-:- error-he-dark:he:dark:home:-:- >/dev/null || exit 1
-  WINGMAN_DASHBOARD_SIZE=900x900 WINGMAN_SNAP_DOCTOR=ready sh "$0" "$OUT" narrow-idle-en-light:en:light:home:-:- narrow-live-en-dark:en:dark:home:live:- narrow-live-he-light:he:light:home:live:- narrow-ended-en-dark:en:dark:home:ended:- >/dev/null || exit 1
+  WINGMAN_DASHBOARD_FAKE_KEYS=file WINGMAN_SNAP_DOCTOR=notready sh "$0" "$OUT" error-en-light:en:light:home:-:- error-he-dark:he:dark:home:-:- >/dev/null || exit 1
+  # first run: no keys saved. Start is off with the reason and a Fix it button; the practice call sits next to it.
+  WINGMAN_SNAP_NOCALLS=1 WINGMAN_DASHBOARD_FAKE_KEYS=missing WINGMAN_SNAP_DOCTOR=ready sh "$0" "$OUT" nokeys-en-light:en:light:home:-:- nokeys-he-dark:he:dark:home:-:- >/dev/null || exit 1
+  WINGMAN_DASHBOARD_SIZE=900x900 WINGMAN_DASHBOARD_FAKE_KEYS=file WINGMAN_SNAP_DOCTOR=ready sh "$0" "$OUT" narrow-idle-en-light:en:light:home:-:- narrow-live-en-dark:en:dark:home:live:- narrow-live-he-light:he:light:home:live:- narrow-ended-en-dark:en:dark:home:ended:- >/dev/null || exit 1
   node "$HERE/snapcheck.cjs" "$OUT"; exit $?
 fi
 OUT="${1:-/tmp/wingman-dashboard-snaps}"; shift

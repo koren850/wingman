@@ -3027,11 +3027,13 @@ select:active {
   gap: 4px;
 }
 .lf-card.tipc {
+  border-color: var(--line);
   border-inline-start-color: var(--t-tip);
   background: transparent;
   padding: 5px 10px 6px;
   opacity: 0.92;
-  border-style: dashed;
+  /* solid, not dashed: a dashed border with a rounded corner and a thick start edge looks cut off */
+  border-style: solid;
 }
 .lf-card.tipc .lf-say {
   font-size: 14px;
@@ -3150,7 +3152,6 @@ select:active {
 }
 .lf-card.dim {
   opacity: 0.7;
-  border-style: dashed;
 }
 .lf-say {
   font-size: 15px;
@@ -3495,19 +3496,6 @@ select:active {
 /* ---------- live call: stop, delete, progress, problems ---------- */
 .stoprow {
   align-items: center;
-}
-.deleterow {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  flex-wrap: wrap;
-  padding-top: 12px;
-  margin-top: 8px;
-  border-top: 1px dashed var(--line);
-  font-size: 12px;
-}
-.deleterow .faint {
-  font-size: 12px;
 }
 .linkbtn.danger-link {
   color: var(--bad);
@@ -4654,4 +4642,91 @@ button.chip.spk-btn:focus-visible,
 .rev-stats dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- round 12, r3: Start with a reason, review step, settings tabs, call kind ---- */
+.startrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.startwhy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  background: var(--warn-soft, var(--s2));
+  border-radius: var(--r-card);
+}
+.startwhy .grow {
+  flex: 1 1 220px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.kn-kind,
+.ps-kind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+.ps-sheet {
+  width: min(680px, 100%);
+}
+.ps-body h3 {
+  margin: 16px 0 6px;
+}
+.ps-item {
+  align-items: flex-start;
+}
+.ps-item.off .kn-text {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.ps-item input[type="checkbox"] {
+  margin-top: 3px;
+  flex: none;
+}
+.ps-item input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ps-warn {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent);
+  background: var(--warn-soft, var(--s2));
+  border-radius: var(--r-card);
+}
+.ps-warn .sg-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ps-warn ul {
+  margin: 6px 0 0;
+  padding-inline-start: 20px;
+}
+.ps-actions {
+  position: sticky;
+  bottom: -20px;
+  margin-top: 16px;
+  padding-block: 12px 4px;
+  background: var(--s1);
+}
+.settabs {
+  margin-top: 8px;
+}
+.settab {
+  outline: none;
 }

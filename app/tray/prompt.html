@@ -1,28 +1,30 @@
 <!doctype html>
-<!-- Small always-on-top input window (opened by tray/main.cjs): a quick note for the AI, plus an unused-by-main "brief" form. Hebrew, RTL. Script is prompt.js. Strict CSP: no network, no inline script or style. -->
-<html lang="he" dir="rtl">
+<!-- Small always-on-top input window (opened by tray/main.cjs): a quick note for the AI, plus an unused-by-main "brief" form. English or Hebrew (?lang=), light or dark. Script is prompt.js. Strict CSP: no network, no inline script or style. -->
+<html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'" />
     <title>Wingman</title>
     <link rel="stylesheet" href="prompt.css" />
   </head>
   <body>
     <form id="note" hidden>
-      <h1>הערה ל-AI</h1>
-      <p>על מה השיחה? למשל: "זה לקוח של החנות, מדברים על מעבר שרת"</p>
+      <h1 data-t="note.title"></h1>
+      <p data-t="note.help"></p>
+      <label for="noteText" class="sr" data-t="note.title"></label>
       <input id="noteText" maxlength="300" autocomplete="off" />
-      <div class="row"><button class="primary" type="submit">הוסף</button><button type="button" class="cancel">ביטול</button></div>
+      <div class="row"><button class="primary" type="submit" data-t="add"></button><button type="button" class="cancel" data-t="cancel"></button></div>
     </form>
     <form id="brief" hidden>
-      <h1>תדריך לשיחה הבאה</h1>
-      <p>דקה אחת. אפשר לדלג על כל שדה. נשמר לשיחה הבאה ב-6 השעות הקרובות.</p>
-      <label for="who">מי בשיחה?</label><input id="who" maxlength="120" autocomplete="off" /> <label for="goal">מטרת השיחה?</label
-      ><input id="goal" maxlength="200" autocomplete="off" /> <label for="notes">הערות ל-AI (מופרדות ב-;)</label
-      ><textarea id="notes" maxlength="600"></textarea> <label for="mustCover">חייב לכסות (מופרד ב-;) למשל: תקציב; לוח זמנים</label
-      ><input id="mustCover" maxlength="600" autocomplete="off" />
-      <div class="row"><button class="primary" type="submit">שמור</button><button type="button" class="cancel">ביטול</button></div>
+      <h1 data-t="brief.title"></h1>
+      <p data-t="brief.help"></p>
+      <label for="who" data-t="brief.who"></label><input id="who" maxlength="120" autocomplete="off" /> <label for="goal" data-t="brief.goal"></label
+      ><input id="goal" maxlength="200" autocomplete="off" /> <label for="notes" data-t="brief.notes"></label><textarea id="notes" maxlength="600"></textarea>
+      <label for="mustCover" data-t="brief.must"></label><input id="mustCover" maxlength="600" autocomplete="off" />
+      <div class="row"><button class="primary" type="submit" data-t="save"></button><button type="button" class="cancel" data-t="cancel"></button></div>
     </form>
+    <script src="prompt-text.js"></script>
     <script src="prompt.js"></script>
   </body>
 </html>

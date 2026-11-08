@@ -4,7 +4,7 @@
 // Also the Keys section (write-only API key entry, see keys-ipc.cjs) and the read-only Advanced list. Loaded after home.js; viewSettings is called from boot.js.
 
 // SET: settings state (data from main, in-flight keys, per-row errors, "Saved" timestamps). Rows are drawn from the catalog sent by main, not hard-coded.
-const SET = { query: "", data: null, busy: new Set(), errors: {}, savedAt: {}, tuneOpen: false, advOpen: false };
+const SET = { tab: "basics", query: "", data: null, busy: new Set(), errors: {}, savedAt: {}, tuneOpen: false, advOpen: false };
 // The few choices shown by default (catalog items marked main), in this order. The microphone row sits after the spend cap.
 const MAIN_ORDER = window.WingmanSettings.MAIN_ORDER;
 
@@ -30,6 +30,7 @@ async function viewSettings(focus) {
   if (state.view !== "settings") return;
   SET.data = r;
   SET.errors = {};
+  if (focus) SET.tab = window.WingmanSettings.tabFromFocus(focus);
   drawSettings();
   loadKeyState();
   loadSetup()
@@ -190,32 +191,44 @@ function drawSettingsBody(body) {
     body.append(main);
     return;
   }
-  main.append(windowLanguageBlock());
-  main.append(keysBlock(r));
-  jump.push(["g-keys", "Keys"]); // keys first: nothing works without them
-  const rows = SS.normalKeys(r.items, MAIN_ORDER)
-    .map((k) => (k === "@mic" ? micRow() : settingRowFor(r, k)))
-    .filter(Boolean);
-  main.append(
+  const tab = SS.TAB_IDS.includes(SET.tab) ? SET.tab : "basics";
+  main.append(tabsBar(tab));
+  const rowsFor = (id) =>
+    SS.tabKeys(id, r.items)
+      .map((k) => (k === "@mic" ? micRow() : settingRowFor(r, k)))
+      .filter(Boolean);
+  const group = (id, title, rows, extra) =>
     h(
       "section",
-      { class: "setgroup", "aria-labelledby": "g-main" },
-      h("h2", { id: "g-main", class: "label", tabindex: "-1" }, "Main settings"),
-      h("div", { class: "setlist" }, rows),
-    ),
-  );
-  jump.push(["g-main", "Main settings"]);
-  main.append(aboutBlock());
-  jump.push(["g-about", "About you"]);
-  main.append(setupGuideBlock());
-  jump.push(["g-setup", "Setup guide"]);
-  main.append(advancedBlock(r));
-  jump.push(["adv", "Advanced"]);
+      { class: "setgroup", "aria-labelledby": id },
+      h("h2", { id, class: "label", tabindex: "-1" }, title),
+      extra || null,
+      rows.length ? h("div", { class: "setlist" }, rows) : null,
+    );
+  const panel = h("div", { class: "settab", id: "tabpanel-" + tab, role: "tabpanel", "aria-labelledby": "tab-" + tab, tabindex: "-1" });
+  if (tab === "basics") {
+    panel.append(windowLanguageBlock(), group("g-main", T("set.tab.basics"), rowsFor("basics")), aboutBlock(), setupGuideBlock());
+    jump.push(["g-lang", T("lang.title")], ["g-main", T("set.tab.basics")], ["g-about", "About you"], ["g-setup", "Setup guide"]);
+  } else if (tab === "keys") {
+    panel.append(keysBlock(r));
+    jump.push(["g-keys", T("set.tab.keys")]);
+  } else if (tab === "engine") {
+    panel.append(group("g-engine", T("set.tab.engine"), rowsFor("engine"), h("p", { class: "help" }, T("set.engine.note"))));
+    jump.push(["g-engine", T("set.tab.engine")]);
+  } else if (tab === "privacy") {
+    panel.append(group("g-privacy", T("set.tab.privacy"), rowsFor("privacy"), h("p", { class: "help", id: "privacy-note" }, T("set.privacy.note"))));
+    jump.push(["g-privacy", T("set.tab.privacy")]);
+  } else {
+    const adv = advancedBlock(r);
+    adv.open = true; // under its own tab, the fold is already open
+    panel.append(adv);
+  }
+  main.append(panel);
   // The right side is a short "On this page" list (sticky), so a wide window has no empty third.
   const nav = h(
     "nav",
-    { class: "setnav", "aria-label": "On this page" },
-    h("div", { class: "label" }, "On this page"),
+    { class: "setnav", "aria-label": T("set.onPage") },
+    h("div", { class: "label" }, T("set.onPage")),
     jump.map(([id, t]) =>
       h(
         "button",
@@ -235,7 +248,54 @@ function drawSettingsBody(body) {
       ),
     ),
   );
+  if (!jump.length) {
+    body.append(main);
+    return;
+  }
   body.append(main, nav);
+}
+
+/** The tab bar of Settings: Basics, Keys, Help engine, Privacy, Advanced. Left and Right (mirrored in Hebrew) move between tabs; Home and End go to the first and last. */
+function tabsBar(cur) {
+  const ids = window.WingmanSettings.TAB_IDS;
+  const rtl = document.documentElement.dir === "rtl";
+  const bar = h("div", { class: "tabs settabs", role: "tablist", "aria-label": T("set.tabs") });
+  const go = (id, focus) => {
+    SET.tab = id;
+    drawSettings();
+    if (focus) {
+      const b = $("tab-" + id);
+      if (b) b.focus();
+    }
+  };
+  ids.forEach((id, i) => {
+    const b = h(
+      "button",
+      {
+        type: "button",
+        id: "tab-" + id,
+        class: "settab-btn",
+        role: "tab",
+        "aria-selected": id === cur ? "true" : "false",
+        "aria-controls": "tabpanel-" + id,
+        tabindex: id === cur ? "0" : "-1",
+        onclick: () => go(id, false),
+      },
+      T("set.tab." + id),
+    );
+    b.addEventListener("keydown", (e) => {
+      const step = e.key === "ArrowRight" ? (rtl ? -1 : 1) : e.key === "ArrowLeft" ? (rtl ? 1 : -1) : 0;
+      let j = -1;
+      if (step) j = (i + step + ids.length) % ids.length;
+      else if (e.key === "Home") j = 0;
+      else if (e.key === "End") j = ids.length - 1;
+      if (j < 0) return;
+      e.preventDefault();
+      go(ids[j], true);
+    });
+    bar.append(b);
+  });
+  return bar;
 }
 
 /** The row for one catalog key, or null when the catalog does not have it. */

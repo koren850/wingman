@@ -11,6 +11,24 @@ function rules(name, r) {
   for (const p of r.problems || []) out.push(p);
   if (r.dir !== (he ? "rtl" : "ltr")) out.push(`direction is ${r.dir}, expected ${he ? "rtl" : "ltr"}`);
   if (r.lang !== (he ? "he" : "en")) out.push(`language is ${r.lang}`);
+  if (r.envNames > 0) out.push(`${r.envNames} env var names or keys.env show in the window text`);
+  if (r.rawKeys && r.rawKeys.length) out.push(`a text key shows instead of its text: ${r.rawKeys.join(", ")}`);
+  if (r.pendingPill) out.push("the permanent 'cards to rate' pill is back in the header");
+  if (r.lowContrast && r.lowContrast.length) out.push(`low contrast: ${r.lowContrast.slice(0, 3).join("; ")}`);
+  if (/^(live|golden|waiting)-/.test(base) && r.liveDelete) out.push("Delete this call is on the live card (it belongs in Calls)");
+  if (/^idle-/.test(base) && r.startDisabled) out.push("Start is disabled on a ready Home");
+  if (/^error-/.test(base) && !(r.startDisabled && r.startWhy)) out.push("Start is not disabled with a reason when the check failed");
+  if (/^error-/.test(base) && !r.fixIt) out.push("Start has no Fix it button beside the reason");
+  if (/^nokeys-/.test(base) && !(r.startDisabled && r.startWhy && r.fixIt)) out.push("without keys, Start is not disabled with a reason and a Fix it button");
+  if (/^nokeys-/.test(base) && !r.practiceBesideStart) out.push("the practice call is not next to Start on a first run");
+  if (/^ended-/.test(base) && !r.openSummary) out.push("the ended banner has no Open summary button");
+  if (/^settings-/.test(base) && r.settingsTabs !== 5)
+    out.push(`Settings has ${r.settingsTabs} tabs, expected 5 (Basics, Keys, Help engine, Privacy, Advanced)`);
+  if (/^settings-/.test(base) && r.classicNew) out.push("Classic / New engine switch shows outside Advanced");
+  if (/^revstart-/.test(base) && !(r.reviewStep && r.reviewRows > 0 && r.reviewKind && r.reviewSources > 0 && r.reviewSkip))
+    out.push("the review step is missing roster, kind, sources or Start without review");
+  if (/^revconf-/.test(base) && !r.reviewWarn) out.push("the review step shows no conflict warning for conflicting facts");
+  if (/^revstart-/.test(base) && r.reviewWarn) out.push("the review step warns although the facts do not conflict");
   if (/^idle-/.test(base) && r.primaries !== 1) out.push(`idle Home has ${r.primaries} primary buttons, expected 1`);
   if (/^idle-|^waiting-/.test(base) && r.dupWait > 0) out.push(`${r.dupWait} duplicate rows in Waiting for you`);
   if (/^edit-/.test(base) && !r.understood) out.push("the Wingman understood line is not in the context editor");

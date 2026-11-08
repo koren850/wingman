@@ -71,6 +71,76 @@
     if (el.matches(".kh") ? linesOf(el) > 1 : linesOf(el) > 1) problems.push(`${name(el)} wraps to ${linesOf(el)} lines`);
     else if (el.scrollWidth > el.clientWidth + 1 && !/(visible)/.test(cs.overflowX)) problems.push(`${name(el)} overflows its pill`);
   }
+  // Contrast: the text of every visible leaf element against the colour behind it (WCAG: 4.5, or 3 for large text). Disabled controls are exempt.
+  const rgba = (c) => {
+    const m = String(c).match(/-?[\d.]+%?/g);
+    if (!m) return null;
+    const n = (v, i) => (/%$/.test(v) ? parseFloat(v) * 2.55 : parseFloat(v) * (/^color\(/.test(c) ? 255 : 1));
+    if (m.length < 3) return null;
+    return { r: n(m[0]), g: n(m[1]), b: n(m[2]), a: m.length > 3 ? (/%$/.test(m[3]) ? parseFloat(m[3]) / 100 : parseFloat(m[3])) : 1 };
+  };
+  const over = (top, under) => ({
+    r: top.r * top.a + under.r * (1 - top.a),
+    g: top.g * top.a + under.g * (1 - top.a),
+    b: top.b * top.a + under.b * (1 - top.a),
+    a: 1,
+  });
+  const bgBehind = (el) => {
+    const stack = [];
+    for (let e = el; e; e = e.parentElement) {
+      const c = rgba(getComputedStyle(e).backgroundColor);
+      if (c && c.a > 0) stack.push(c);
+      if (c && c.a >= 1) break;
+    }
+    let acc = { r: 255, g: 255, b: 255, a: 1 };
+    const page = rgba(getComputedStyle(document.body).backgroundColor);
+    if (page && page.a > 0) acc = over(page, acc);
+    for (const c of stack.reverse()) acc = over(c, acc);
+    return acc;
+  };
+  const lum = (c) => {
+    const f = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+  };
+  const ratio = (a, b) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+  const lowContrast = [];
+  for (const el of document.querySelectorAll("main *, header *, .sheet *")) {
+    if (el.children.length && ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+    if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden" || el.closest("[hidden], .sr, :disabled, [disabled]")) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    const fg = rgba(cs.color);
+    if (!fg) continue;
+    const bg = bgBehind(el);
+    let op = 1;
+    for (let e = el; e && e !== document.body; e = e.parentElement) op *= parseFloat(getComputedStyle(e).opacity);
+    const c = ratio(over({ ...fg, a: fg.a * op }, bg), bg);
+    const size = parseFloat(cs.fontSize),
+      bold = parseInt(cs.fontWeight, 10) >= 700;
+    const need = size >= 24 || (size >= 18.66 && bold) ? 3 : 4.5;
+    if (c < need) lowContrast.push(`${name(el)} ${c.toFixed(2)} < ${need} "${el.textContent.trim().slice(0, 24)}"`);
+  }
+  const visible = (sel) => [...document.querySelectorAll(sel)].some((b) => b.offsetParent !== null);
+  const shown = (id) => {
+    const e = document.getElementById(id);
+    return !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== "hidden"; // a fixed sheet has no offsetParent
+  };
+  const textOfMain = (document.querySelector("main") || document.body).innerText || "";
+  // A catalog key on screen instead of its text means T() did not find it.
+  const prefixes = new Set(Object.keys((window.WingmanCatalogs && window.WingmanCatalogs.en) || {}).map((k) => k.split(".")[0]));
+  const rawKeys = [...document.querySelectorAll("main *, header *, .sheet *")]
+    .filter(
+      (e) =>
+        e.children.length === 0 &&
+        e.offsetParent !== null &&
+        /^[a-z][a-zA-Z0-9]*(\.[A-Za-z0-9_-]+)+$/.test(e.textContent.trim()) &&
+        prefixes.has(e.textContent.trim().split(".")[0]),
+    )
+    .map((e) => e.textContent.trim())
+    .slice(0, 10);
+  const envNames = (textOfMain.match(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b|keys\.env/g) || []).length;
   const primaries = [...document.querySelectorAll("main .btn.primary")].filter((b) => b.offsetParent !== null).length;
   const sample = [...document.querySelectorAll("main .chip")].filter((c) => c.offsetParent !== null && c.textContent.trim() === "Sample").length;
   const pills = [...document.querySelectorAll(".seg button, .tabs [role=tab]")].filter((b) => b.offsetParent !== null).length;
@@ -89,6 +159,30 @@
     sources: !!document.getElementById("ctx-url") && !!document.getElementById("ctx-cal-use"),
     review: !!document.getElementById("rev-moments") && !!document.getElementById("rev-coaching") && !!document.getElementById("rev-export"),
     reviewCounts: (document.getElementById("rev-moments-sum") || {}).textContent || "",
+    // round 12, r3: what the plain-words, Start, live, ended, settings and review rules look at
+    lowContrast: lowContrast.slice(0, 20),
+    envNames,
+    rawKeys,
+    pendingPill: !!document.getElementById("pending-slot") || [...document.querySelectorAll("header .chip")].some((c) => /to rate|לדירוג/.test(c.textContent)),
+    liveDelete:
+      shown("stop-del") ||
+      [...document.querySelectorAll("#livecard button, #livecard .linkbtn")].some((b) => /delete this call|מחק את השיחה/i.test(b.textContent)),
+    startDisabled: !!document.getElementById("start-call") && document.getElementById("start-call").disabled,
+    startWhy: shown("start-why"),
+    practiceBesideStart: !!document.querySelector(".startrow #start-call") && !!document.querySelector(".startrow #practice"),
+    fixIt: visible("#start-why .fixit, #start-why #gate-check"),
+    openSummary: shown("open-summary"),
+    settingsTabs: [...document.querySelectorAll("#set-body [role=tab]")].filter((b) => b.offsetParent !== null).length,
+    classicNew: [...document.querySelectorAll("#set-body .setrow, #set-body .setlist > *")].some(
+      (r) => r.offsetParent !== null && !r.closest("#adv") && /moments\.engine|Classic|New engine|המנוע הקלאסי/.test(r.textContent),
+    ),
+    reviewStep: shown("prestart-sheet"),
+    reviewRows: document.querySelectorAll("#prestart-sheet .ps-item").length,
+    reviewKind: shown("ps-kind"),
+    reviewSources: document.querySelectorAll("#prestart-sheet .kn-src").length,
+    reviewWarn: shown("ps-warn"),
+    reviewSkip: shown("ps-skip"),
+    kindChip: shown("sofar") && !!document.querySelector("#sofar .chip.info"),
     problems: problems.slice(0, 40),
     lang: doc.lang,
     dir: doc.dir,

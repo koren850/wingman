@@ -13,6 +13,10 @@
     live: ["soFar", "past", "decisions", "open", "promises", "mustCover"],
   };
   const MAX_TEXT = 200;
+  /** The call kinds the engine knows (src/session/memory.ts MemoryKind). Anything else shows as nothing, never as a guess. */
+  const KINDS = ["client", "support", "vendor", "team", "consult", "personal", "interview", "other"];
+  /** The kind of a model, or "" when it has none or an unknown one. Read only: the person cannot change it here yet. */
+  const kindOf = (model) => (model && KINDS.includes(model.kind) ? model.kind : "");
   const clean = (t) =>
     String(t == null ? "" : t)
       .replace(/[\u0000-\u001f\u007f‪-‮⁦-⁩]+/g, " ")
@@ -28,6 +32,7 @@
       return {
         mode: "live",
         source: "fixture",
+        kind: "client",
         ver: 7,
         topic: he ? "מחיר החידוש ומועד ההעברה" : "Renewal price and the move date",
         sections: {
@@ -58,6 +63,7 @@
     return {
       mode: "before",
       source: "fixture",
+      kind: "client",
       ver: 1,
       topic: he ? "העברת אחסון" : "Hosting move",
       sections: {
@@ -69,13 +75,38 @@
           ? [item("a1", "מצב האתר היום"), item("a2", "מחיר ותנאים"), item("a3", "תאריך ההעברה")]
           : [item("a1", "Where the site is today"), item("a2", "Price and terms"), item("a3", "Move date")],
         facts: he
-          ? [item("f1", "12 אתרי וורדפרס על שרת אחד.", { src: "brief" }), item("f2", "החוזה הנוכחי מתחדש במרץ.", { src: "brief" })]
-          : [item("f1", "12 WordPress sites on one server.", { src: "brief" }), item("f2", "The current contract renews in March.", { src: "brief" })],
+          ? [
+              item("f1", "12 אתרי וורדפרס על שרת אחד.", { src: "brief", source: "כרגע יש לנו 12 אתרי וורדפרס על שרת אחד" }),
+              item("f2", "החוזה הנוכחי מתחדש במרץ.", { src: "brief", source: "החוזה מתחדש במרץ" }),
+            ]
+          : [
+              item("f1", "12 WordPress sites on one server.", { src: "brief", source: "We run 12 WordPress sites on one server" }),
+              item("f2", "The current contract renews in March.", { src: "brief", source: "The contract renews in March" }),
+            ],
         mustCover: he
           ? [item("m1", "מחיר", { done: false }), item("m2", "מועד השבתה", { done: false })]
           : [item("m1", "Price", { done: false }), item("m2", "Downtime window", { done: false })],
       },
     };
+  }
+
+  /** The small "before" fixture plus two facts that disagree (a price and a yes/no), for the warning in the review step: snapshots and tests. */
+  function fixtureConflict(lang) {
+    /** @type {any} */
+    const m = fixture("before", lang);
+    const he = lang === "he";
+    m.sections.facts = [
+      ...(m.sections.facts || []),
+      item("f3", he ? "המחיר החודשי הוא 400 שקלים." : "The monthly price is 400 dollars.", {
+        src: "brief",
+        source: he ? "המחיר החודשי הוא 400 שקלים" : "Monthly price: 400 dollars",
+      }),
+      item("f4", he ? "המחיר החודשי הוא 450 שקלים." : "The monthly price is 450 dollars.", {
+        src: "brief",
+        source: he ? "בהצעה: 450 שקלים לחודש" : "The offer says 450 dollars a month",
+      }),
+    ];
+    return m;
   }
 
   /**
@@ -120,6 +151,7 @@
       mode: "live",
       source: "memory",
       ver: Number(m.ver) || 0,
+      ...(KINDS.includes(m.kind) ? { kind: m.kind } : {}),
       topic: clean(m.topic && m.topic.now),
       sections: {
         soFar: arr(m.facts)
@@ -152,15 +184,18 @@
     const past = arr(g.past)
       .map((x) => ({ text: text(x), who: x && typeof x === "object" ? clean(x.who) : "", at: x && typeof x === "object" ? Number(x.at) || 0 : 0 }))
       .filter((x) => x.text)
+      .filter((x, i, all) => all.findIndex((y) => y.text.toLowerCase() === x.text.toLowerCase()) === i) // the memory keeps one line per text, so ids line up
       .slice(0, 5);
     return {
       mode: "before",
       source: "digest",
       ver: 1,
+      ...(KINDS.includes(g.kind) ? { kind: g.kind } : {}),
       topic: clean(arr(g.agenda)[0] && text(g.agenda[0])),
       sections: {
         roster: arr(g.roster)
           .filter((p) => p && clean(p.name))
+          .filter((p, i, all) => all.findIndex((q) => clean(q.name).toLowerCase() === clean(p.name).toLowerCase()) === i) // the memory keeps one person per name, so ids line up
           .map((p, i) => item("p" + (i + 1), clean(p.name), p.role ? { role: clean(p.role) } : undefined)),
         agenda: arr(g.agenda)
           .map(text)
@@ -264,13 +299,97 @@
     return { ...o, empty: !people.length && !o.topic && !o.agenda && !o.facts && !o.past };
   }
 
+  // ---- local conflict check (no AI, no network) ----
+  // Two facts that talk about the same thing but give different numbers, or one says it and the other denies it. A warning only: the person decides.
+  // The negation words are a short list on purpose. This is a hint for a warning line, not a gate: a miss costs nothing, a false hit is one dismissable line.
+  const NEGATORS = new Set(["not", "no", "never", "cannot", "cant", "isnt", "wont", "dont", "doesnt", "without", "לא", "אין", "בלי", "אינו", "אינה"]);
+  const wordsOf = (t) =>
+    String(t || "")
+      .toLowerCase()
+      .replace(/['’]/g, "")
+      .match(/[\p{L}\p{N}]+(?:[.,][\p{N}]+)?/gu) || [];
+  const isNum = (w) => /^\p{N}/u.test(w);
+  const jaccard = (a, b) => {
+    const A = new Set(a),
+      B = new Set(b);
+    let n = 0;
+    for (const x of A) if (B.has(x)) n++;
+    return { n, j: A.size + B.size - n ? n / (A.size + B.size - n) : 0 };
+  };
+  /** Pairs of facts (sections facts, past, soFar) that may disagree: [{ kind: "number" | "negation", a: {sec,id,text}, b: {sec,id,text}, label }]. At most 5, in reading order. */
+  function conflicts(model) {
+    const s = (model && model.sections) || {};
+    const rows = [];
+    for (const sec of ["facts", "past", "soFar"]) for (const x of s[sec] || []) rows.push({ sec, id: x.id, text: x.text, w: wordsOf(x.text) });
+    const out = [];
+    for (let i = 0; i < rows.length && out.length < 5; i++)
+      for (let k = i + 1; k < rows.length && out.length < 5; k++) {
+        const A = rows[i],
+          B = rows[k];
+        const nA = A.w.filter(isNum),
+          nB = B.w.filter(isNum);
+        const lA = A.w.filter((w) => !isNum(w) && !NEGATORS.has(w) && w.length > 1),
+          lB = B.w.filter((w) => !isNum(w) && !NEGATORS.has(w) && w.length > 1);
+        const { n, j } = jaccard(lA, lB);
+        const ref = (r) => ({ sec: r.sec, id: r.id, text: r.text });
+        const label = lA
+          .filter((w) => lB.includes(w))
+          .slice(0, 4)
+          .join(" ");
+        const sameNums = nA.length === nB.length && nA.every((w) => nB.includes(w));
+        if (nA.length && nB.length && !sameNums && n >= 2 && j >= 0.5) {
+          out.push({ kind: "number", a: ref(A), b: ref(B), label });
+          continue;
+        }
+        const negA = A.w.some((w) => NEGATORS.has(w)),
+          negB = B.w.some((w) => NEGATORS.has(w));
+        if (negA !== negB && sameNums && n >= 2 && j >= 0.75) out.push({ kind: "negation", a: ref(A), b: ref(B), label });
+      }
+    return out;
+  }
+
+  /**
+   * The review step before Start: the model with the unticked lines taken out and the edits applied, plus the edit messages for the call
+   * (ids are the ones the memory will get, so the same ids work once the call runs). state: { off: {<id>: true}, text: {<id>: "new text"} }.
+   * Returns { model, ops }; ops are { op: "remove", id } and { op: "edit", id, text } for the main process (knows:edit).
+   */
+  function applyReview(model, state) {
+    const off = (state && state.off) || {},
+      text = (state && state.text) || {};
+    const ops = [];
+    const sections = {};
+    for (const [sec, list] of Object.entries((model && model.sections) || {})) {
+      sections[sec] = [];
+      for (const x of list) {
+        if (off[x.id]) {
+          ops.push({ op: "remove", id: x.id, was: x.text });
+          continue;
+        }
+        const t = text[x.id] != null ? clean(text[x.id]) : "";
+        if (t && t !== x.text) {
+          ops.push({ op: "edit", id: x.id, text: t, was: x.text });
+          sections[sec].push({ ...x, text: t });
+        } else sections[sec].push(x);
+      }
+    }
+    return { model: model ? { ...model, sections } : model, ops };
+  }
+  /** True when the review step has something to show: the meeting has context lines (a digest or saved text). No context is a normal state and skips it. */
+  const hasContext = (model) => !!model && count(model) > 0;
+
   const api = {
+    KINDS,
+    kindOf,
+    conflicts,
+    applyReview,
+    hasContext,
     understood,
     SECTIONS,
     MAX_TEXT,
     SECTION_LIST,
     clean,
     fixture,
+    fixtureConflict,
     fromSaved,
     fromMemory,
     fromDigest,

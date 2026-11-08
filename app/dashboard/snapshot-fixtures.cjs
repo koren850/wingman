@@ -121,7 +121,8 @@ if (require.main === module) {
   console.log(dir);
   // Calls only in the window language of the snapshot (argv[3]); without it both languages, as before.
   const only = process.argv[3] === "he" || process.argv[3] === "en" ? [process.argv[3]] : ["en", "he"];
-  for (const lang of only) {
+  // WINGMAN_SNAP_NOCALLS=1: a first launch, nothing saved yet (the practice call then sits next to Start).
+  for (const lang of process.env.WINGMAN_SNAP_NOCALLS === "1" ? [] : only) {
     writeCall(dir, lang);
     writeCall(dir, lang, { summary: true });
   }

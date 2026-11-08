@@ -303,8 +303,8 @@ test("strings: every key exists in EN and HE, the v2 settings labels are complet
   const ph = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort().join();
   for (const k of Object.keys(EN).filter((k) => /^(set\.|tab\.|after\.(loops|draft)|knows\.ai|ctx\.prep|err\.(digest|memory))/.test(k)))
     assert.equal(ph(EN[k]), ph(HE[k]), k);
-  assert.equal(HE["tab.followup"], "מעקב");
-  assert.equal(EN["tab.followup"], "Follow-up");
+  assert.equal(HE["tab.followup"], "סיכום");
+  assert.equal(EN["tab.followup"], "Summary");
 });
 
 // ---- Electron snapshots (opt-in, macOS): live notes, AI paused, after-call, EN/HE, light/dark ----

@@ -83,6 +83,8 @@ function knowsPanel(model, o = {}) {
   sec.append(h("p", { class: "sub" }, T(live ? "knows.sub.live" : "knows.sub.before")));
   if (model.topic)
     sec.append(h("p", { class: "kn-topic" }, h("b", {}, T("knows.topic") + ": "), h("span", { dir: "auto", lang: langOf(model.topic) }, model.topic)));
+  if (KN.kindOf(model))
+    sec.append(h("p", { class: "kn-kind", id: id + "-kind" }, h("b", {}, T("knows.kind") + ": "), chip(T("kind." + KN.kindOf(model)), "info")));
   if (model.source === "saved") sec.append(h("p", { class: "sub" }, T("knows.plainBackground")));
 
   const change = (next, msg, focusId, op) => {
@@ -246,6 +248,7 @@ function soFarCard(model, ai) {
       "div",
       { class: "rhead" },
       h("h2", { id: "sofar-h" }, T("sofar.title")),
+      KN.kindOf(model) ? chip(T("kind." + KN.kindOf(model)), "info", { title: T("knows.kindNote") }) : null,
       h("span", { class: "grow" }),
       ai && ai !== "ok" ? chip(T(ai === "offline" ? "knows.aiOffline.short" : "knows.aiPaused.short"), "warn", { dot: true }) : null,
       model && model.source === "fixture" ? chip(T("knows.source.fixture"), "warn") : null,
@@ -269,11 +272,15 @@ function soFarCard(model, ai) {
     );
   const chips = [];
   const n = (k) => (s[k] || []).length;
-  if (n("decisions")) chips.push(chip(T("sofar.decided", { n: n("decisions") }), "info"));
-  if (n("open")) chips.push(chip(T("sofar.open", { n: n("open") }), "warn"));
-  if (n("promises")) chips.push(chip(T("sofar.promises", { n: n("promises") }), "warn"));
+  const tipped = (el, key) => {
+    el.setAttribute("title", T(key)); // plain words for the short label
+    return el;
+  };
+  if (n("decisions")) chips.push(tipped(chip(T("sofar.decided", { n: n("decisions") }), "info"), "sofar.decided.tip"));
+  if (n("open")) chips.push(tipped(chip(T("sofar.open", { n: n("open") }), "warn"), "sofar.open.tip"));
+  if (n("promises")) chips.push(tipped(chip(T("sofar.promises", { n: n("promises") }), "warn"), "sofar.promises.tip"));
   const left = (s.mustCover || []).filter((x) => !x.done).length;
-  if (left) chips.push(chip(T("sofar.cover", { n: left }), ""));
+  if (left) chips.push(tipped(chip(T("sofar.cover", { n: left }), ""), "sofar.cover.tip"));
   if (chips.length) sec.append(h("div", { class: "chips" }, chips));
   return sec;
 }

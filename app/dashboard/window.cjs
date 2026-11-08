@@ -214,7 +214,7 @@ function create(ctx) {
     const v = SNAP ? process.env.WINGMAN_DASHBOARD_VIEW : o.view;
     if (/^(home|calls|inbox|settings|system)$/.test(v || "")) query.view = v;
     if (SNAP && /^(he|en)$/.test(process.env.WINGMAN_DASHBOARD_LANG || "")) query.lang = process.env.WINGMAN_DASHBOARD_LANG; // window language for screenshots
-    if (/^(plan|edit|advanced|keys)$/.test((SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus) || ""))
+    if (/^(plan|edit|advanced|keys|review|tab-[a-z]+)$/.test((SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus) || ""))
       query.focus = SNAP ? process.env.WINGMAN_DASHBOARD_FOCUS : o.focus;
     if (!SNAP && o.id) {
       query.call = o.id;
@@ -486,6 +486,7 @@ function create(ctx) {
       const kind = process.env.WINGMAN_DASHBOARD_KNOWS || "";
       if (mode === "live" && /^(golden|golden-paused|golden-offline|empty)$/.test(kind))
         return { ok: true, ...require("./snapshot-fixtures.cjs").knowsFixture(kind, L) };
+      if (mode === "before" && kind === "conflict") return { ok: true, model: K.fixtureConflict(L), ai: "ok" };
       return { ok: true, model: K.fixture(mode, L), ai: "ok" };
     }
     if (mode === "before") {

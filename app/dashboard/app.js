@@ -140,7 +140,7 @@ function ico(name, cls) {
 const chip = (text, variant, opts = {}) =>
   h(
     "span",
-    { class: "chip" + (variant ? " " + variant : "") + (opts.mono ? " mono" : "") },
+    { class: "chip" + (variant ? " " + variant : "") + (opts.mono ? " mono" : ""), title: opts.title },
     opts.dot ? h("span", { class: "dot" }) : null,
     opts.icon ? ico(opts.icon) : null,
     text,
@@ -151,7 +151,15 @@ const linkChip = (kids, variant, onclick, aria, title) =>
 const btn = (label, o = {}) =>
   h(
     "button",
-    { type: "button", class: "btn" + (o.cls ? " " + o.cls : ""), onclick: o.onclick, title: o.title, "aria-label": o.aria, id: o.id },
+    {
+      type: "button",
+      class: "btn" + (o.cls ? " " + o.cls : ""),
+      onclick: o.onclick,
+      title: o.title,
+      "aria-label": o.aria,
+      id: o.id,
+      disabled: o.disabled ? true : null,
+    },
     o.icon ? ico(o.icon) : null,
     label ? h("span", {}, label) : null,
   );
@@ -408,31 +416,9 @@ function setNav() {
     else b.removeAttribute("aria-current");
   }
 }
-/** Header chip: total cards still to rate across saved calls (crashed calls excluded). Click opens the first one. */
-function renderPendingChip() {
-  const slot = $("pending-slot");
-  slot.textContent = "";
-  const WH = window.WingmanHome,
-    fresh = (c) => Date.now() - c.startedAt <= WH.WAIT_DAYS * 86400000; // an old call does not nag from the header
-  const n = state.calls.reduce((a, c) => a + (c.crashed || !fresh(c) ? 0 : pendingOf(c)), 0);
-  if (!n) return;
-  slot.append(
-    linkChip(
-      [h("span", { class: "dot" }), h("span", { class: "ctr" }, n), " " + T(n === 1 ? "pend.one" : "pend.other")],
-      "warn",
-      () => {
-        const c = state.calls.find((x) => !x.crashed && fresh(x) && pendingOf(x) > 0);
-        if (c) openCall(c.id, { tab: "rate", filter: "unrated" });
-      },
-      T("pend.aria", { n }),
-      T("pend.title"),
-    ),
-  );
-}
 /** Reload the call list from disk. Callers redraw; a rejection means the list could not be read. */
 async function loadList() {
   state.calls = await api.listCalls();
-  renderPendingChip();
 }
 // body[data-ready] is for snapshot tests: window.cjs waits for "1" before taking the picture.
 const ready = () => {
@@ -864,7 +850,7 @@ function viewInbox(restoreFocus) {
 // Old tab names (from earlier versions, links and ?tab= snapshot aids) mapped to the current five.
 const OLD_TABS = { summary: "followup", cards: "rate", side: "rate", speed: "details", cost: "details", events: "details" };
 const TABS = [
-  ["followup", "Follow-up", "follow"],
+  ["followup", "Summary", "follow"],
   ["rate", "Rate", "rate"],
   ["transcript", "Transcript", "transcript"],
   ["missed", "Missed questions", "missed"],
@@ -1231,7 +1217,7 @@ function writeSummaryBtn() {
 // Tab renderers below (tFollowup, tRate, tTranscript, tMissed, tDetails) all take (pane, detail, opts) and fill the pane.
 function tFollowup(pane, d) {
   const s = d.callSummary,
-    box = h("div", { class: "pane" });
+    box = h("div", { class: "pane", id: "summary-view" });
   pane.append(box);
   if (!s) {
     const why = summaryWhy(d);
@@ -1764,7 +1750,6 @@ async function doRate(c, v, advance) {
   const el = document.querySelector(`#cardlist .card[data-id="${CSS.escape(c.id)}"]`);
   if (el) paintCard(el, c);
   renderStats();
-  renderPendingChip();
   refreshSeg();
   const left = pendingOf(s);
   announce(
