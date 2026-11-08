@@ -65,6 +65,8 @@ function createDisplayFollow({
   let chosen = null; // id of the display the window belongs to
   let hidden = false;
   let content = MIN_H;
+  /** @type {[string, (...a: any[]) => void][]} */
+  let handlers = [];
   const alive = () => win && !win.isDestroyed();
 
   /** The one place that moves the window. `display` must come from pick(). */
@@ -139,9 +141,18 @@ function createDisplayFollow({
     },
     /** Connects the three events of an Electron `screen`. */
     attach() {
-      screen.on("display-removed", (_e, d) => api.removed(d));
-      screen.on("display-added", () => api.added());
-      screen.on("display-metrics-changed", (_e, d) => api.metrics(d));
+      api.detach(); // attach twice never doubles the listeners
+      handlers = [
+        ["display-removed", (_e, d) => api.removed(d)],
+        ["display-added", () => api.added()],
+        ["display-metrics-changed", (_e, d) => api.metrics(d)],
+      ];
+      for (const [name, fn] of handlers) screen.on(name, fn);
+    },
+    /** Removes the three listeners (the window is closing). Safe to call twice. */
+    detach() {
+      for (const [name, fn] of handlers) screen.removeListener(name, fn);
+      handlers = [];
     },
   };
   return api;
@@ -173,6 +184,43 @@ function registerHotkeys(globalShortcut, items) {
   return { ok, failed };
 }
 
+/** Defaults of the global keys. Settings may name only some; the rest keep these. The last six reach the hero card from the keyboard (the window never takes focus, so Tab cannot). */
+const DEFAULT_HOTKEYS = {
+  clear: "Control+Alt+C",
+  pause: "Control+Alt+P",
+  rewind: "Control+Alt+R",
+  copy: "Control+Alt+K",
+  checklist: "Control+Alt+L",
+  recap: "Control+Alt+U", // Catch me up
+  more: "Control+Alt+M",
+  pin: "Control+Alt+S", // S = stay
+  useful: "Control+Alt+H", // H = helpful
+  notUseful: "Control+Alt+X",
+  dismiss: "Control+Alt+D",
+  restore: "Control+Alt+Z", // bring back the card that left in the last 30 seconds
+};
+
+/**
+ * The global keys as items for registerHotkeys. `page(channel, payload)` returns a function that tells the page; `copyLast` copies the newest captured value.
+ * Each card key only tells the page, and the page does what its button does.
+ */
+function hotkeyItems(HK, { page, copyLast }) {
+  return [
+    { name: "clear", accel: HK.clear, run: page("clear") },
+    { name: "pause", accel: HK.pause, run: page("pause") },
+    { name: "rewind", accel: HK.rewind, run: page("rewind") },
+    { name: "copy", accel: HK.copy, run: copyLast },
+    { name: "checklist", accel: HK.checklist, run: page("checklist") },
+    { name: "more", accel: HK.more, run: page("ctl", { name: "more" }) },
+    { name: "pin", accel: HK.pin, run: page("ctl", { name: "pin" }) },
+    { name: "useful", accel: HK.useful, run: page("ctl", { name: "useful" }) },
+    { name: "notUseful", accel: HK.notUseful, run: page("ctl", { name: "notuseful" }) },
+    { name: "dismiss", accel: HK.dismiss, run: page("ctl", { name: "dismiss" }) },
+    { name: "restore", accel: HK.restore, run: page("restore") },
+    { name: "recap", accel: HK.recap, run: page("recap") },
+  ];
+}
+
 /** The key names for a note, as the user knows them (Control = Ctrl, Alt = Opt). */
 const fmtKey = (a) =>
   String(a || "")
@@ -189,4 +237,4 @@ function hotkeyNote(failed, t) {
     .join(" · ");
 }
 
-module.exports = { MIN_H, fitBounds, inside, pickDisplay, createDisplayFollow, registerHotkeys, hotkeyNote, fmtKey };
+module.exports = { DEFAULT_HOTKEYS, hotkeyItems, MIN_H, fitBounds, inside, pickDisplay, createDisplayFollow, registerHotkeys, hotkeyNote, fmtKey };

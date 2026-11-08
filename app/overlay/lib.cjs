@@ -56,4 +56,78 @@ function unregisterCaptureKeys(gs, held) {
   held.length = 0;
 }
 
-module.exports = { PHASES, CAPTURE_MAX, callPhase, pushCapture, captureAccel, registerCaptureKeys, unregisterCaptureKeys };
+// The overlay's own small settings file (overlay-state.json in the data folder): how many cards it has shown in its life.
+// The key hints hide after the first few. Owner-only file; a missing or broken file counts as zero; a write that fails is ignored.
+const STATE_FILE = "overlay-state.json";
+const MAX_SHOWN = 1e6;
+/** Cards shown so far, from the state file text. Anything unreadable is 0. */
+function parseShown(raw) {
+  try {
+    const n = Number(JSON.parse(raw).cardsShown);
+    return Number.isInteger(n) && n > 0 ? Math.min(n, MAX_SHOWN) : 0;
+  } catch {
+    return 0;
+  }
+}
+/** Reads the count. `fs` and `dir` are injected so a test needs no Electron. */
+function readShown(fs, path, dir) {
+  try {
+    return parseShown(fs.readFileSync(path.join(dir, STATE_FILE), "utf8"));
+  } catch {
+    return 0;
+  }
+}
+/** Writes the count through a temp file and a rename. Returns true when it was saved. */
+function writeShown(fs, path, dir, n) {
+  try {
+    const file = path.join(dir, STATE_FILE);
+    const tmp = file + "." + process.pid + ".tmp";
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(tmp, JSON.stringify({ cardsShown: Math.min(MAX_SHOWN, Math.max(0, Math.floor(n))) }) + "\n", { mode: 0o600 });
+    fs.renameSync(tmp, file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The orphan guard's exit: clears every timer and listener the window owns, then exits. Safe to call twice, never throws.
+ * timers() returns the handles that exist now (they change over the window's life), follow is the display follower, unregister drops the global keys, exit ends the process.
+ */
+function makeBye({ timers, follow, unregister, exit }) {
+  let done = false;
+  return function bye() {
+    if (done) return;
+    done = true;
+    try {
+      for (const t of timers()) {
+        clearInterval(t);
+        clearTimeout(t);
+      }
+    } catch {}
+    try {
+      const f = follow();
+      if (f) f.detach();
+    } catch {}
+    try {
+      unregister();
+    } catch {}
+    exit(0);
+  };
+}
+
+module.exports = {
+  makeBye,
+  STATE_FILE,
+  parseShown,
+  readShown,
+  writeShown,
+  PHASES,
+  CAPTURE_MAX,
+  callPhase,
+  pushCapture,
+  captureAccel,
+  registerCaptureKeys,
+  unregisterCaptureKeys,
+};

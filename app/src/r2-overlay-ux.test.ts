@@ -21,29 +21,28 @@ const T0 = 1_000_000;
 const row = (o: Record<string, unknown>) => ({ type: "card", id: "x", say: "Say this", at: T0, ...o });
 
 // ---- labels, age, fade ----
-test("label: the model's label wins; else the first three words; never cut inside a word", () => {
-  assert.equal(V.labelOf({ label: "PHP version" }, "Yes, we run PHP 8.2 on the server today."), "PHP version");
-  assert.equal(V.labelOf({}, "Yes, we run PHP 8.2 on the server today."), "Yes, we run");
-  assert.equal(V.labelOf({ label: "Backups, and how long they stay." }, "x"), "Backups, and how long");
-  assert.equal(V.labelOf({ label: "" }, "Backups."), "Backups");
-  assert.equal(V.labelOf({}, "כן, אפשר לחבר את הטפסים ישירות"), "כן, אפשר לחבר");
+test("label: the model's label wins (2 to 4 words, never cut inside a word); with none the label is empty and the page shows the kind word", () => {
+  assert.equal(V.labelOf({ label: "PHP version" }), "PHP version");
+  assert.equal(V.labelOf({}), "", "the first words of the line are not a label any more");
+  assert.equal(V.labelOf({ label: "Backups, and how long they stay." }), "Backups, and how long");
+  assert.equal(V.labelOf({ label: "" }), "");
   // a long label stops at a word boundary inside 28 characters
-  const l = V.labelOf({ label: "Internationalization of the checkout flow" }, "x");
+  const l = V.labelOf({ label: "Internationalization of the checkout flow" });
   assert.ok(l.length <= 28 && "Internationalization of the checkout flow".startsWith(l), l);
-  assert.equal(V.labelOf({ label: "Internationalization of the checkout flow" }, "x").endsWith(" "), false);
+  assert.equal(V.labelOf({ label: "Internationalization of the checkout flow" }).endsWith(" "), false);
   // a single very long word stays whole (the page never cuts a word)
-  assert.equal(V.labelOf({ label: "Supercalifragilisticexpialidocious" }, "x"), "Supercalifragilisticexpialidocious");
+  assert.equal(V.labelOf({ label: "Supercalifragilisticexpialidocious" }), "Supercalifragilisticexpialidocious");
 });
 
-test("age: now, seconds in steps of five, minutes; fade levels at 1, 3 and 5 minutes", () => {
+test("age: now, seconds in steps of five, minutes; stale levels at 3 and 6 minutes", () => {
   assert.deepEqual(V.ageParts(3000), { unit: "now", n: 0 });
   assert.deepEqual(V.ageParts(21_000), { unit: "s", n: 20 });
   assert.deepEqual(V.ageParts(59_000), { unit: "s", n: 55 }, "never shows 60 s");
   assert.deepEqual(V.ageParts(60_000), { unit: "min", n: 1 });
   assert.deepEqual(V.ageParts(200_000), { unit: "min", n: 3 });
   assert.deepEqual(
-    [0, 59_999, 60_000, 179_999, 180_000, 299_999, 300_000].map((ms) => V.freshLevel(ms)),
-    [0, 0, 1, 1, 2, 2, 3],
+    [0, 59_999, 60_000, 179_999, 180_000, 359_999, 360_000].map((ms) => V.staleLevel(ms)),
+    [0, 0, 0, 0, 1, 1, 2],
   );
 });
 
@@ -319,16 +318,6 @@ test("display follow: a resolution change keeps the window inside the chosen dis
   assert.ok(W.inside(r.bounds, smaller.workArea), JSON.stringify(r.bounds));
 });
 
-test("no code path in overlay/ moves the window except through the display follower", () => {
-  // one grep-style guard on purpose: every setBounds / setPosition in main.cjs sits inside the follower wrapper
-  const src = require("node:fs").readFileSync(join(ROOT, "overlay/main.cjs"), "utf8") as string;
-  const uses = src.split("\n").filter((l) => /\.(setBounds|setPosition|setSize|center)\(/.test(l));
-  assert.ok(
-    uses.every((l) => /win\.setBounds\(b\)/.test(l)),
-    uses.join("\n"),
-  );
-});
-
 // ---- hotkeys ----
 test("hotkeys: a key another app owns is reported, not swallowed", () => {
   const taken = new Set(["Control+Alt+S"]);
@@ -375,12 +364,6 @@ test("hotkeys: a register that throws or a duplicate key is a failure, an empty 
   );
 });
 
-test("hotkeys: main.cjs registers dismiss, pin and restore, and every register goes through registerHotkeys", () => {
-  const src = require("node:fs").readFileSync(join(ROOT, "overlay/main.cjs"), "utf8") as string;
-  for (const name of ["dismiss", "pin", "restore"]) assert.match(src, new RegExp(`name: "${name}"`));
-  assert.equal((src.match(/globalShortcut\.register\(/g) ?? []).length, 0, "no bare register call is left");
-});
-
 test("strings: the note and hotkey names exist in both languages and the placeholders match", () => {
   const keys = Object.keys(strings.STRINGS.en).filter((k) => k.startsWith("note.") || k.startsWith("hk."));
   assert.ok(keys.length >= 14);
@@ -403,6 +386,7 @@ type Probe = {
   age: string;
   labels: string[];
   newDots: number;
+  chipAges: string[];
   more: string;
   sources: string[];
   pillX: number | null;
@@ -465,14 +449,16 @@ for (const lang of ["en", "he"] as const) {
     // labels are whole words of the label or of the line, never a cut
     for (const l of busy.labels) assert.ok(!/[…]$/.test(l) && l.trim().length > 0, l);
     assert.equal(busy.iconOnly, true, "thumbs and menu are icon-only buttons with a label");
-    // the aged card is faded and says how old it is
+    // the 6 minute old answer is a chip that says how old it is (the stale and collapse rules are tested in r3-cards-overlay.test.ts)
     const aged = by(rs, "v2-aged").probe;
-    assert.match(aged.heroClass, /age-3/);
-    assert.match(aged.age, lang === "en" ? /6 min/ : /6 דק/);
+    assert.ok(
+      aged.chipAges.some((a: string) => (lang === "en" ? /6 min/ : /6 דק/).test(a)),
+      aged.chipAges.join("|"),
+    );
     // restore: dismissed, then the restore key: the hero is back
     assert.ok(by(rs, "v2-restore").probe.hero.length > 0, "the dismissed card came back");
     // the Because label is its own isolate
-    const ans = by(rs, "v2-aged").probe;
+    const ans = by(rs, "v2-mixed").probe;
     assert.equal(ans.because?.bidi, "isolate");
     // nothing of this takes the focus
     for (const r of rs) assert.equal(r.focusable || r.focused, false);

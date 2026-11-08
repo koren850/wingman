@@ -84,7 +84,27 @@ const controls = WingmanV2.createControls(
   (text) => window.wingman.copy(text),
 );
 let lastFrame = null; // newest call frame row (kind, checklist): feeds the idle view before a view row arrives
-const v2 = createV2View({ tr, mixed, div, span, announce, controls, onChange: () => (emptyCheck(), drawNow(), refreshIdle(), heroChanged(), reportSize()) });
+// The key hints show for the first few cards of the app's life (the count is kept by main.cjs in overlay-state.json), then only a small "?" stays.
+let shownBase = 0; // cards shown in earlier runs (config.cardsShown)
+let shownRun = 0; // cards shown since this page loaded
+const hintsHidden = () => shownBase + shownRun > WingmanV2.HINT_CARDS;
+function cardShown() {
+  const was = hintsHidden();
+  shownRun++;
+  if (window.wingman.shown) window.wingman.shown(1);
+  if (!was && hintsHidden()) drawKeys();
+}
+const v2 = createV2View({
+  tr,
+  mixed,
+  div,
+  span,
+  announce,
+  controls,
+  cardShown,
+  uiDir: () => UIDIR,
+  onChange: () => (emptyCheck(), drawNow(), refreshIdle(), heroChanged(), reportSize()),
+});
 // Look: theme (dark | light | auto) and text size (s | m | l). ?theme= and ?size= give the first frame; the config event (theme, textSize) changes them later.
 const DARK_MQ = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 let THEME = "dark";
@@ -753,6 +773,13 @@ function drawNow() {
   lastBox.style.display = "flex";
 }
 setInterval(drawNow, 2000);
+/** The end of a long line, from a word start (the strip is one line: the newest words matter). */
+function lastWords(text, max) {
+  if (text.length <= max) return text;
+  const cut = text.slice(-max);
+  const i = cut.indexOf(" ");
+  return i > 0 && i < 24 ? cut.slice(i + 1) : cut;
+}
 function showLast(text, ch, partial, who) {
   const mine = ch === "me";
   const box = mine ? lastMeBox : lastBox,
@@ -770,7 +797,7 @@ function showLast(text, ch, partial, who) {
   const clean = String(text).replace(/\s+/g, " ").trim();
   box.classList.toggle("partial", !!partial);
   txt.replaceChildren();
-  mixed(txt, clean.slice(-220));
+  mixed(txt, lastWords(clean, 110));
   whoEl.textContent = who || (mine ? tr("who.me") : tr("who.them"));
   box._line = { ch, spk: box._spkNext };
   box._at = Date.now();
@@ -941,7 +968,9 @@ function drawKeys() {
   }
   const keys = document.getElementById("keys");
   keys.replaceChildren();
-  if (common.length) {
+  const hide = hintsHidden() && !keysOpen;
+  if (hide) items = [];
+  if (common.length && !hide) {
     const it = span("it");
     it.dir = "ltr";
     common.forEach((m, i) => {
@@ -959,7 +988,7 @@ function drawKeys() {
     it.append(kb, span("", text));
     keys.append(it);
   }
-  if (focus) {
+  if (focus || hide) {
     const q = document.createElement("button");
     q.type = "button";
     q.className = "qm" + (keysOpen ? " on" : "");
@@ -982,6 +1011,10 @@ window.wingman.onConfig((c) => {
   REWIND_S = c.rewindSeconds || 30;
   MAX = c.maxCards;
   HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
+  if (Number.isInteger(c.cardsShown) && c.cardsShown > 0) {
+    shownBase = c.cardsShown;
+    drawKeys();
+  }
   document.documentElement.style.setProperty("--say-pt", c.fontPt + "px");
   if (c.liveTextPt) document.documentElement.style.setProperty("--live-pt", c.liveTextPt + "px");
   setLayout(c.layout || LAYOUT);

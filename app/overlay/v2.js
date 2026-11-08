@@ -20,9 +20,17 @@
   const UNDO_MS = 30000; // a card that left can be brought back this long
   const LABEL_WORDS = 4;
   const LABEL_CHARS = 28;
+  const ABOUT_WORDS = 8;
+  const ABOUT_CHARS = 60;
+  const VAL_WORDS = 4;
+  const VAL_CHARS = 28;
+  const STALE_MS = 3 * 60 * 1000; // after this an answer fades, shows its age as a warning and an "about:" tag
+  const COLLAPSE_MS = 6 * 60 * 1000; // after this an answer or prompt is only a chip (checks and pinned cards stay)
+  const PAUSE_MS = 90 * 1000; // a card after this much quiet is the "first after a pause": the screen reader hears it
+  const HINT_CARDS = 3; // the key hints show for this many cards of the app's life
   const SRC = ["brief", "call", "you", "notes", "past"];
   const MAX_HISTORY = 20;
-  const RATINGS = ["useful", "not_useful", "none"];
+  const RATINGS = ["useful", "not_useful", "fewer", "none"];
   const EVENTS = ["pin", "unpin", "dismiss", "recap"];
 
   const isObj = (x) => x && typeof x === "object";
@@ -59,24 +67,11 @@
   };
   const rankOf = (kind, value) => (KIND_RANK[kind] ?? 0) * 10 + value;
 
-  /** Splits a say-line into the bold headline (at most `max` words) and the rest. A sentence end inside the limit wins over a hard cut. */
-  function splitHeadline(text, max = MAX_HEAD_WORDS) {
-    const clean = str(text).replace(/\s+/g, " ").trim();
-    if (!clean) return { head: "", rest: "" };
-    const words = clean.split(" ");
-    if (words.length <= max) return { head: clean, rest: "" };
-    let cut = -1;
-    for (let i = 0; i < max; i++) if (/[.!?…:]["')\]]?$/.test(words[i])) cut = i;
-    if (cut >= 3) return { head: words.slice(0, cut + 1).join(" "), rest: words.slice(cut + 1).join(" ") };
-    return {
-      head:
-        words
-          .slice(0, max)
-          .join(" ")
-          .replace(/[,;:\s]+$/, "") + "…",
-      rest: words.slice(max).join(" "),
-    };
+  /** The line to say, whole: spaces folded, nothing cut. The page clamps long text to 3 lines and offers More; the model never sees an ellipsis we added. */
+  function cleanSay(text) {
+    return str(text).replace(/\s+/g, " ").trim();
   }
+  const wordCount = (t) => (t ? t.split(" ").length : 0);
 
   /** Cuts at a word boundary: at most `words` words and `chars` characters. Never inside a word (a single word longer than `chars` stays whole). */
   function cutWords(text, words, chars) {
@@ -88,10 +83,14 @@
     }
     return out.join(" ").replace(/[\s,;:.!?…\-–—"'()]+$/u, "");
   }
-  /** Chip label: the model's `label` (2 to 4 words), else the first three words of the line. */
-  function labelOf(row, head) {
-    const own = cutWords(row && row.label, LABEL_WORDS, LABEL_CHARS);
-    return own || cutWords(head, 3, LABEL_CHARS);
+  /** Chip label: the model's `label` (2 to 4 words), else "". The page then shows the kind word. The first words of the line are never used. */
+  function labelOf(row) {
+    return cutWords(row && row.label, LABEL_WORDS, LABEL_CHARS);
+  }
+  /** The chip text: a fact with a value reads "label: value"; any card without a label reads as its kind word (the page passes the translated word). */
+  function chipText(e, kindWord) {
+    const name = e.label || kindWord;
+    return e.kind === "fact" && e.val ? name + ": " + e.val : name;
   }
   /** Age of a card as a unit and a number, language free: { unit: "now" | "s" | "min", n }. Seconds step by 5 so the text does not flicker. */
   function ageParts(ms) {
@@ -100,21 +99,44 @@
     if (s < 60) return { unit: "s", n: Math.min(55, Math.round(s / 5) * 5) };
     return { unit: "min", n: Math.floor(s / 60) };
   }
-  /** How far a card has faded: 0 fresh (under a minute), 1, 2, 3 old (over five minutes). */
-  function freshLevel(ms) {
-    return ms < 60000 ? 0 : ms < 180000 ? 1 : ms < 300000 ? 2 : 3;
+  /** How old a card is: 0 fresh, 1 stale (3 min: faded, age in the warning colour, "about:" tag), 2 old (6 min: an answer or prompt is only a chip). */
+  function staleLevel(ms) {
+    return ms < STALE_MS ? 0 : ms < COLLAPSE_MS ? 1 : 2;
+  }
+  /** The first card ever, a check, and the first card after PAUSE_MS of quiet are announced to a screen reader. The rest are not (they would talk over the call). */
+  function shouldAnnounce(kind, lastCardAt, now) {
+    return kind === "check" || !lastCardAt || now - lastCardAt >= PAUSE_MS;
+  }
+  /** What a key does to the card in focus. Returns an action name or "". Modifier keys are never ours. */
+  function keyAction(ev) {
+    if (!ev || ev.ctrlKey || ev.metaKey || ev.altKey) return "";
+    switch (ev.key) {
+      case "Enter":
+        return "more";
+      case "Escape":
+        return "dismiss";
+      case "p":
+      case "P":
+        return "pin";
+      case "1":
+        return "useful";
+      case "2":
+        return "notuseful";
+      default:
+        return "";
+    }
   }
 
   /** Builds the board entry for a row. */
   function makeEntry(row, now) {
     const kind = kindOf(row);
     const value = valueOf(row);
-    const sp = splitHeadline(row.say);
-    const more = (Array.isArray(row.more) ? row.more : [])
+    const head = cleanSay(row.say);
+    const detail = (Array.isArray(row.more) ? row.more : [])
       .map(str)
       .map((s) => s.trim())
-      .filter(Boolean);
-    const detail = [...(sp.rest ? [sp.rest] : []), ...more].slice(0, MAX_DETAIL);
+      .filter(Boolean)
+      .slice(0, MAX_DETAIL);
     // Legacy supporting facts of a v2 row read as detail too.
     if (Array.isArray(row.facts)) for (const f of row.facts) if (detail.length < MAX_DETAIL && str(f).trim()) detail.push(str(f).trim());
     return {
@@ -123,24 +145,32 @@
       value,
       rank: rankOf(kind, value),
       at: Number(row.at) || now,
-      head: sp.head,
+      head,
+      // longer than 14 words, or the engine says the line had to be cut: the page clamps it to 3 lines and offers More
+      long: row.fit === false || wordCount(head) > MAX_HEAD_WORDS,
       detail,
       why: str(row.why).trim(),
+      about: cutWords(row.about, ABOUT_WORDS, ABOUT_CHARS) || (kind === "answer" ? cutWords(row.question, ABOUT_WORDS, ABOUT_CHARS) : ""),
+      val: cutWords(row.val, VAL_WORDS, VAL_CHARS),
+      conf: row.conf === "low" ? "low" : "high",
       ref: str(row.ref),
       question: str(row.question),
       state: "live", // "live" | "dim"
       reason: "", // answered | topic | time, while dim
       dimAt: 0,
       pinned: row.pinned === true,
-      rating: "", // "" | useful | not_useful
-      label: labelOf(row, sp.head),
+      opened: false, // a collapsed card the user tapped stays open
+      rating: "", // "" | useful | not_useful | fewer
+      label: labelOf(row),
       src: SRC.includes(row.src) ? row.src : "",
-      seen: false, // a rail chip shows a "new" dot until it was on the rail for SEEN_MS or was tapped
+      seen: false, // a rail chip shows a bold "new" dot until it was on the rail for SEEN_MS or was tapped
       railAt: 0,
       dimMs: DIM_MS,
       row,
     };
   }
+  /** True when an answer or prompt is old enough to be only a chip. Checks, facts and pinned cards never collapse. */
+  const isCollapsed = (e, now) => (e.kind === "answer" || e.kind === "prompt") && !e.pinned && !e.opened && e.state === "live" && now - e.at >= COLLAPSE_MS;
 
   /** The card board: one hero, the waiting chips, and the history. All times are passed in, so tests need no clock. */
   class Board {
@@ -149,6 +179,7 @@
       this.heroId = "";
       this.history = []; // newest first: { id, kind, head, reason, at }
       this.ratings = new Map(); // id -> rating, kept after the card left
+      this.clock = 0; // the newest time the board was told (apply or tick): collapse is judged against it
     }
     get hero() {
       return this.cards.get(this.heroId) || null;
@@ -163,6 +194,7 @@
     /** Applies a row. A row with `closes` for a known card closes it; any other v2 row adds or updates a card. Returns the entry or null. */
     apply(row, now = Date.now()) {
       if (!isObj(row) || row.id == null) return null;
+      this.clock = now;
       const id = String(row.id);
       const old = this.cards.get(id);
       if (CLOSES.includes(row.closes)) {
@@ -182,13 +214,16 @@
         e.rating = old.rating;
         e.seen = old.seen;
         e.railAt = old.railAt;
+        e.opened = old.opened;
         if (old.state === "dim") Object.assign(e, { state: "dim", reason: old.reason, dimAt: old.dimAt });
       } else {
         e.rating = this.ratings.get(id) || "";
         this.cards.set(id, e);
       }
       this.cards.set(id, e);
+      e.collapsed = isCollapsed(e, now);
       if (e.id !== this.heroId) this._place(e);
+      else if (e.collapsed) this.heroId = "";
       this._trim(now);
       return e;
     }
@@ -205,7 +240,7 @@
     }
     /** Only the newest check can take the hero seat. Any other kind needs a higher rank, or the same rank and a newer time. */
     _place(e) {
-      if (e.kind === "fact" || e.state !== "live") return;
+      if (e.kind === "fact" || e.state !== "live" || e.collapsed) return;
       const hero = this.hero;
       if (!hero || hero.state === "dim") {
         this.heroId = e.id;
@@ -228,7 +263,7 @@
       let best = null;
       const score = (e) => e.rank + (e.pinned ? 100 : 0) + (e.kind === "check" ? e.at / 1e15 : 0);
       for (const e of this.cards.values()) {
-        if (e.kind === "fact" || e.state !== "live" || e.id === this.heroId) continue;
+        if (e.kind === "fact" || e.state !== "live" || e.id === this.heroId || e.collapsed) continue;
         if (!best || score(e) > score(best) || (score(e) === score(best) && e.at > best.at)) best = e;
       }
       return best;
@@ -297,7 +332,17 @@
     /** Moves time forward: dim cards leave after DIM_MS, facts after FACT_MS. Returns true when something changed. */
     tick(now = Date.now()) {
       let changed = false;
+      this.clock = now;
       for (const e of [...this.cards.values()]) {
+        const col = isCollapsed(e, now);
+        if (col !== !!e.collapsed) {
+          e.collapsed = col; // an old answer becomes a chip; the next best card takes the hero seat
+          if (col && this.heroId === e.id) {
+            this.heroId = "";
+            this._fill();
+          }
+          changed = true;
+        }
         if (e.state === "dim" && now - e.dimAt >= (e.dimMs || DIM_MS)) {
           this.remove(e.id, e.reason, now);
           changed = true;
@@ -312,6 +357,8 @@
     promote(id) {
       const e = this.cards.get(String(id));
       if (!e || e.kind === "fact") return false;
+      e.opened = true; // a card the user brought back does not collapse again
+      e.collapsed = false;
       this.heroId = e.id;
       e.seen = true;
       return true;
@@ -328,6 +375,8 @@
       e.dimAt = 0;
       e.seen = false;
       e.railAt = 0;
+      e.opened = true; // the user asked for it back: it does not collapse again
+      e.collapsed = false;
       this.cards.set(e.id, e);
       const hero = this.hero;
       if (!hero || hero.state === "dim" || e.kind === "check") this.heroId = e.id;
@@ -347,7 +396,8 @@
     /** Same rating again clears it. Returns the new rating ("" = none). */
     rate(id, rating) {
       const e = this.cards.get(String(id));
-      const next = e ? (e.rating === rating ? "" : rating) : "";
+      // "fewer like this" is a one-way signal: pressing it again does not clear it
+      const next = e ? (e.rating === rating && rating !== "fewer" ? "" : rating) : "";
       if (e) e.rating = next;
       this.ratings.set(String(id), next);
       return next;
@@ -422,9 +472,18 @@
     UNDO_MS,
     DIM_BY,
     labelOf,
+    chipText,
+    cleanSay,
     cutWords,
     ageParts,
-    freshLevel,
+    staleLevel,
+    isCollapsed,
+    shouldAnnounce,
+    keyAction,
+    STALE_MS,
+    COLLAPSE_MS,
+    PAUSE_MS,
+    HINT_CARDS,
     KIND_RANK,
     CLOSES,
     RATINGS,
@@ -436,7 +495,6 @@
     kindOf,
     isV2,
     rankOf,
-    splitHeadline,
     makeEntry,
     Board,
     normView,

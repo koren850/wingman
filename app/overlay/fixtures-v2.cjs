@@ -14,6 +14,21 @@ const TXT = {
     answerMore: ["Needs an admin user in Salesforce", "Zapier works too, but a direct webhook has fewer points of failure", "Price from the brief: 2,400 once"],
     prompt: "Who approves the design on your side?",
     answerLabel: "CRM link",
+    answerAbout: "Salesforce connection",
+    factVal: "WooCommerce 8.2",
+    factVal2: "30 days",
+    factLabel2: "Backups kept",
+    cut: "Yes, we can connect the forms straight to the CRM through the API, keep every UTM tag from the ad campaigns, and send a test lead to prove it works before the launch date, but",
+    chips8: [
+      ["answer", "CRM link"],
+      ["answer", "Backup time"],
+      ["prompt", "Design approval"],
+      ["answer", "Hebrew search"],
+      ["answer", "SLA terms"],
+      ["fact", "Their stack"],
+      ["answer", "Price range"],
+      ["answer", "Launch date"],
+    ],
     checkLabel: "Launch date",
     promptLabel: "Design approval",
     factLabel: "Their stack",
@@ -64,6 +79,21 @@ const TXT = {
     answerMore: ["צריך משתמש אדמין ב-Salesforce", "גם Zapier עובד, אבל webhook ישיר פחות נשבר", "מחיר מה-brief: 2,400 ₪ חד פעמי"],
     prompt: "מי מאשר את העיצוב אצלכם?",
     answerLabel: "חיבור ל-CRM",
+    answerAbout: "חיבור ל-Salesforce",
+    factVal: "WooCommerce 8.2",
+    factVal2: "30 יום",
+    factLabel2: "שמירת גיבויים",
+    cut: "כן, אפשר לחבר את הטפסים ישירות ל-CRM דרך ה-API, לשמור כל תג UTM מקמפייני הפרסום, ולשלוח ליד לדוגמה שמוכיח שהכול עובד עוד לפני תאריך ההשקה, אבל",
+    chips8: [
+      ["answer", "חיבור ל-CRM"],
+      ["answer", "זמן גיבוי"],
+      ["prompt", "אישור עיצוב"],
+      ["answer", "חיפוש בעברית"],
+      ["answer", "תנאי SLA"],
+      ["fact", "הטכנולוגיה שלהם"],
+      ["answer", "טווח מחירים"],
+      ["answer", "תאריך השקה"],
+    ],
     checkLabel: "תאריך השקה",
     promptLabel: "אישור עיצוב",
     factLabel: "הטכנולוגיה שלהם",
@@ -126,6 +156,7 @@ const answer = (T, o = {}) =>
     question: T.ask,
     say: T.answer,
     label: T.answerLabel,
+    about: T.answerAbout,
     why: T.answerWhy,
     more: T.answerMore,
     ...o,
@@ -158,7 +189,7 @@ const SCENARIOS = {
     rows: [view(T), row({ id: "w1", turnId: "t5", badge: "ai", kind: "answer", value: 1, say: T.demoted[0], at: now - 30000 }), answer(T, { at: now - 5000 })],
     lines: lines(T),
   }),
-  "v2-chipsopen": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ click: ".chip.count.open" }] }),
+  "v2-chipsopen": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ click: ".chip.ctxbtn" }] }),
   "v2-replace": (T) => ({
     rows: [view(T), row({ id: "w1", turnId: "t5", badge: "ai", kind: "answer", value: 1, say: T.demoted[0], at: now - 8000 }), check(T, { at: now })],
     lines: lines(T),
@@ -227,7 +258,107 @@ Object.assign(SCENARIOS, {
     steps: [{ click: ".chip.morecards" }],
   }),
   // an old hero (6 minutes): faded; and a chip that was seen vs one that is new
-  "v2-aged": (T) => ({ rows: [view(T), answer(T, { at: now - 6 * 60000 })], lines: lines(T) }),
+  // an answer 6 minutes old is only a chip (with what it was about); the newer prompt holds the hero seat
+  "v2-aged": (T) => ({
+    rows: [
+      view(T),
+      answer(T, { at: now - 6.5 * 60000 }),
+      row({ id: "p1", turnId: "t3", badge: "tip", kind: "prompt", value: 2, say: T.prompt, label: T.promptLabel, at: now - 40000 }),
+    ],
+    lines: lines(T),
+  }),
+  // ---- round 3 scenarios ----
+  // the line was cut by the engine (fit false): the hero clamps to 3 lines and offers More
+  "v2-fitfalse": (T) => ({ rows: [view(T), answer(T, { say: T.cut, fit: false, more: T.longMore })], lines: lines(T) }),
+  // a very long line with no detail: the hero clamps to 3 lines and More opens the rest
+  "v2-overflow": (T) => ({ rows: [view(T), answer(T, { say: T.long + " " + T.long, more: [] })], lines: lines(T) }),
+  "v2-fitfalse-open": (T) => ({
+    rows: [view(T), answer(T, { say: T.cut, fit: false, more: T.longMore })],
+    lines: lines(T),
+    steps: [{ click: ".hcard .b.more" }],
+  }),
+  // eight waiting cards with labels: three on the rail, the rest behind +N
+  "v2-chips8": (T) => ({
+    rows: [
+      view(T),
+      ...T.chips8.map(([kind, label], i) =>
+        row({
+          id: "k" + i,
+          turnId: "t" + i,
+          badge: "ai",
+          kind,
+          value: 1 + (i % 2),
+          say: T.demoted[i % 3],
+          label,
+          src: kind === "fact" ? "brief" : undefined,
+          val: kind === "fact" ? T.factVal : undefined,
+          at: now - (80 - i * 9) * 1000,
+        }),
+      ),
+    ],
+    lines: lines(T),
+  }),
+  // a card with no label reads as its kind word, never the first words of the line
+  "v2-nolabel": (T) => ({
+    rows: [
+      view(T),
+      row({ id: "n1", turnId: "t1", badge: "ai", kind: "answer", value: 1, say: T.demoted[0], at: now - 30000 }),
+      row({ id: "n2", turnId: "t2", badge: "ai", kind: "answer", value: 1, say: T.demoted[1], at: now - 20000 }),
+      row({ id: "n3", turnId: "t3", badge: "info", kind: "fact", value: 1, say: T.fact, at: now - 10000 }),
+      answer(T, { at: now - 2000 }),
+    ],
+    lines: lines(T),
+  }),
+  // fact chips show "label: value"
+  "v2-factvals": (T) => ({
+    rows: [
+      view(T),
+      row({ id: "f1", turnId: "t4", badge: "info", kind: "fact", value: 1, say: T.fact, label: T.factLabel, val: T.factVal, src: "brief", at: now - 20000 }),
+      row({
+        id: "f2",
+        turnId: "t5",
+        badge: "info",
+        kind: "fact",
+        value: 1,
+        say: T.demoted[0],
+        label: T.factLabel2,
+        val: T.factVal2,
+        src: "past",
+        at: now - 10000,
+      }),
+      answer(T, { at: now - 3000 }),
+    ],
+    lines: lines(T),
+  }),
+  // 3 minutes: faded text, the age in the warning colour, the about tag
+  "v2-stale3": (T) => ({ rows: [view(T), answer(T, { at: now - 200000 })], lines: lines(T) }),
+  // a check arrives while an answer is on screen: amber flash, the answer moves to the rail
+  "v2-check-arrive": (T) => ({
+    rows: [view(T), answer(T, { at: now - 20000 })],
+    lines: lines(T),
+    steps: [{ send: ["card", check(T, { at: Date.now() })] }],
+  }),
+  "v2-context": (T) => ({
+    rows: [
+      view(T),
+      answer(T),
+      row({ id: "p1", turnId: "t3", badge: "ai", kind: "answer", value: 1, say: T.demoted[0], label: "x", at: now - 9000 }),
+      { type: "card", id: "p1", closes: "dismissed", at: now },
+    ],
+    lines: lines(T),
+    steps: [{ click: ".chip.ctxbtn" }],
+  }),
+  // keyboard: Tab lands on the card; the focus ring shows
+  "v2-focus": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ focus: ".hcard" }] }),
+  "v2-focus-btn": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ focus: ".hcard .b.up" }] }),
+  // keyboard path: the card has the focus; Enter opens More, P pins, 1 and 2 rate, Esc dismisses
+  "v2-key-flow": (T) => ({
+    rows: [view(T), answer(T)],
+    lines: lines(T),
+    steps: [{ focus: ".hcard" }, { press: "Enter" }, { press: "p" }, { press: "1" }, { press: "2" }, { press: "Escape" }],
+  }),
+  // "Fewer like this" in the menu: a rating "fewer" and a dismiss go to main
+  "v2-fewer": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ click: ".hcard .b.fewer" }] }),
   "v2-menu": (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ click: ".hcard .b.menu" }] }),
   "v2-both": (T) => ({
     rows: [view(T), answer(T)],

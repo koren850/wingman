@@ -40,21 +40,6 @@ test("kindOf and isV2: v2 fields make a v2 card; legacy rows, tips, health and s
   assert.equal(V.isV2(null), false);
 });
 
-test("splitHeadline: at most 14 words, a sentence end wins, the rest becomes detail", () => {
-  assert.deepEqual(V.splitHeadline("Yes, through the API."), { head: "Yes, through the API.", rest: "" });
-  const long = "Yes we can connect the forms to the CRM through the API. Setup takes two working days and is a one time fee for the whole project.";
-  const s = V.splitHeadline(long);
-  assert.equal(s.head, "Yes we can connect the forms to the CRM through the API.");
-  assert.match(s.rest, /^Setup takes/);
-  const noStop = V.splitHeadline("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen");
-  assert.equal(noStop.head.replace("…", "").trim().split(" ").length, 14);
-  assert.ok(noStop.head.endsWith("…"));
-  assert.equal(noStop.rest, "fifteen sixteen");
-  const he = V.splitHeadline("כן, אפשר לחבר את הטפסים ישירות ל-CRM דרך ה-API, לשמור כל תג UTM מקמפייני הפרסום ולשלוח ליד לדוגמה שמוכיח שהכול עובד");
-  assert.ok(he.head.split(" ").length <= 14 + 0 && he.rest.length > 0);
-  assert.deepEqual(V.splitHeadline(""), { head: "", rest: "" });
-});
-
 test("board: a higher rank replaces the hero and the old hero waits as a chip", () => {
   const b = new V.Board();
   b.apply(row({ id: "a", kind: "answer", value: 2 }), T0);
@@ -172,14 +157,12 @@ test("board: promote swaps the hero; rate toggles; updates keep their place; wit
   assert.equal(b.history.length, 0);
 });
 
-test("makeEntry: an over-long line is split, the rest and the facts become detail, at most 4 lines", () => {
-  const e = V.makeEntry(
-    row({ say: "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen", more: ["m1", "m2", "m3"], facts: ["f1"] }),
-    T0,
-  );
-  assert.equal(e.detail.length, 4);
-  assert.equal(e.detail[0], "fifteen");
-  assert.equal(e.detail[3], "m3");
+test("makeEntry: the line stays whole; the detail is the more lines and the facts, at most 4", () => {
+  const long = "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen";
+  const e = V.makeEntry(row({ say: long, more: ["m1", "m2", "m3"], facts: ["f1", "f2"] }), T0);
+  assert.equal(e.head, long, "nothing is moved out of the line");
+  assert.equal(e.long, true);
+  assert.deepEqual(e.detail, ["m1", "m2", "m3", "f1"]);
   assert.equal(V.makeEntry(row({ value: 9 }), T0).value, 3);
   assert.equal(V.makeEntry(row({ value: "x" }), T0).value, 1);
 });
@@ -313,7 +296,7 @@ test("v2 strings: both languages have every v2 key; every tr() key in v2view.js 
   // keys built at run time: kind label, dim reason, count chips and their list titles, key names for the kinds on the idle line
   for (const k of ["answer", "prompt", "check", "fact"]) used.add("v2.kind." + k);
   for (const k of ["answered", "topic", "time"]) used.add("v2.dim." + k);
-  for (const k of ["v2.open", "v2.promises", "v2.cover", "v2.list.open", "v2.list.promises", "v2.list.cover"]) used.add(k);
+  for (const k of ["v2.list.open", "v2.list.promises", "v2.list.cover", "v2.age.s", "v2.age.min"]) used.add(k);
   for (const k of ["client", "support", "vendor", "team", "consult", "personal", "other"]) used.add("kind." + k);
   for (const k of used) assert.ok(k in strings.STRINGS.en, "unknown key " + k);
   for (const f of ["overlay/v2view.js", "overlay/v2.js", "overlay/qa-check.js", "overlay/index.html"]) {
@@ -324,7 +307,7 @@ test("v2 strings: both languages have every v2 key; every tr() key in v2view.js 
     assert.doesNotMatch(code, /[֐-׿]/, `${f} has a Hebrew literal outside strings.js`);
   }
   // the interface keeps its own labels short enough for a chip: no label above 40 characters except sentences
-  for (const k of ["v2.open", "v2.promises", "v2.cover", "v2.recap.button", "v2.more", "v2.useful", "v2.notUseful"]) {
+  for (const k of ["v2.context", "v2.fewer", "v2.recap.button", "v2.more", "v2.useful", "v2.notUseful"]) {
     assert.ok(strings.STRINGS.en[k].length <= 20 && strings.STRINGS.he[k].length <= 22, k);
   }
 });
@@ -371,7 +354,7 @@ function snap(lang: "en" | "he", specs: string[]) {
   const r = spawnSync(join(ROOT, "node_modules/.bin/electron"), [join(ROOT, "overlay/snap2.cjs"), out, "--check", ...specs], {
     env: { ...process.env, WINGMAN_OVERLAY_LANG: lang },
     encoding: "utf8",
-    timeout: 170_000,
+    timeout: 480_000, // the whole v2 set in two looks is over 100 specs
   });
   const results = r.stdout
     .split("\n")

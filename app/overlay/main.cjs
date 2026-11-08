@@ -5,11 +5,11 @@ const { app, BrowserWindow, screen, globalShortcut, clipboard, ipcMain } = requi
 require("../shared/permissions.cjs").install(app); // no browser permission is ever granted to a window
 const fs = require("node:fs");
 const path = require("node:path");
-const { callPhase, pushCapture, registerCaptureKeys, unregisterCaptureKeys } = require("./lib.cjs");
+const { callPhase, pushCapture, registerCaptureKeys, unregisterCaptureKeys, readShown, writeShown, makeBye } = require("./lib.cjs");
 const { readNewRows, rowKey, Seen, StdinRows, Backlog, ReloadGate } = require("./resilient.cjs");
 const { createMemoryFeed } = require("./memfeed.cjs");
 const { applyAct } = require("./act.cjs");
-const { createDisplayFollow, pickDisplay: pickSafeDisplay, registerHotkeys, hotkeyNote } = require("./window.cjs");
+const { createDisplayFollow, pickDisplay: pickSafeDisplay, registerHotkeys, hotkeyNote, hotkeyItems, DEFAULT_HOTKEYS } = require("./window.cjs");
 const STR = require("./strings.js");
 
 // A crash in this process must never raise Electron's error dialog (it could appear on a shared screen): log one line and carry on.
@@ -27,7 +27,9 @@ const BRAND_ICON = path.join(__dirname, "..", "..", "brand", "png", "icon-512.pn
 
 // WINGMAN_CALLS_DIR: point at a temp calls folder (snapshots/tests). WINGMAN_OVERLAY_SNAPSHOT=<png>: render hidden, save, quit.
 const CALLS = require("../shared/paths.cjs").callsDir();
+const STATE_DIR = path.dirname(CALLS); // the overlay's own state file (cards shown so far) sits beside calls/
 const SNAP = process.env.WINGMAN_OVERLAY_SNAPSHOT;
+let cardsShown = SNAP ? 0 : readShown(fs, path, STATE_DIR); // snapshots never read or write the real state
 // Hidden snapshots: no Dock icon.
 if (SNAP && process.platform === "darwin") {
   try {
@@ -64,20 +66,6 @@ const CFG = Object.assign(
   })(),
 );
 // Hotkeys: the settings may name only some; the rest keep these defaults. The last six reach the hero card from the keyboard (the window never takes focus, so Tab cannot).
-const DEFAULT_HOTKEYS = {
-  clear: "Control+Alt+C",
-  pause: "Control+Alt+P",
-  rewind: "Control+Alt+R",
-  copy: "Control+Alt+K",
-  checklist: "Control+Alt+L",
-  recap: "Control+Alt+U", // Catch me up
-  more: "Control+Alt+M",
-  pin: "Control+Alt+S", // S = stay
-  useful: "Control+Alt+H", // H = helpful
-  notUseful: "Control+Alt+X",
-  dismiss: "Control+Alt+D",
-  restore: "Control+Alt+Z", // bring back the card that left in the last 30 seconds
-};
 CFG.hotkeys = { ...DEFAULT_HOTKEYS, ...(CFG.hotkeys && typeof CFG.hotkeys === "object" ? CFG.hotkeys : {}) };
 const THEME = ["dark", "light", "auto"].includes(process.env.WINGMAN_OVERLAY_THEME || CFG.theme) ? process.env.WINGMAN_OVERLAY_THEME || CFG.theme : "dark";
 const TEXT_SIZE = ["s", "m", "l"].includes(process.env.WINGMAN_OVERLAY_SIZE || CFG.textSize) ? process.env.WINGMAN_OVERLAY_SIZE || CFG.textSize : "m";
@@ -116,17 +104,20 @@ let win,
   endedSent = false,
   endedCheckAt = 0,
   phaseKey = "",
+  hangTimer,
+  reloadTimer,
+  parentTimer,
   capList = [];
 const captureKeys = []; // Ctrl+Opt+1..3 held while the window runs
 // Orphan guard: when the engine (call.ts) that opened this window dies, even by SIGKILL, its stdin pipe closes and its pid disappears: quit.
 if (process.env.WINGMAN_WATCH_PARENT === "1") {
   const parent = process.ppid,
-    bye = () => {
-      try {
-        globalShortcut.unregisterAll();
-      } catch {}
-      app.exit(0);
-    };
+    bye = makeBye({
+      timers: () => [timer, hangTimer, reloadTimer, parentTimer],
+      follow: () => follow,
+      unregister: () => globalShortcut.unregisterAll(),
+      exit: (c) => app.exit(c),
+    });
   process.stdin.on("end", bye);
   process.stdin.on("close", bye);
   process.stdin.on("error", bye);
@@ -140,14 +131,15 @@ if (process.env.WINGMAN_WATCH_PARENT === "1") {
     }
   });
   process.stdin.resume();
-  setInterval(() => {
+  parentTimer = setInterval(() => {
     try {
       process.kill(parent, 0);
     } catch {
       bye();
     }
     if (process.ppid !== parent) bye();
-  }, 2000).unref();
+  }, 2000);
+  parentTimer.unref();
 }
 // Tailed files of calls/latest: cards.jsonl (cards + captures) and transcript.jsonl (for the rewind panel).
 /** @type {Record<"cards" | "transcript" | "live", { file: string | undefined, offset: number }>} */
@@ -239,6 +231,7 @@ function create() {
       liveTextPt: CFG.liveTextPt,
       rewindSeconds: CFG.rewindSeconds,
       hotkeys: CFG.hotkeys,
+      cardsShown,
       fit: !SNAP,
     });
     if (!SNAP && win && !win.isVisible() && !(follow && follow.hidden)) win.showInactive(); // shown once the page is ready, never focused
@@ -257,12 +250,12 @@ function create() {
   });
   // Crash and hang handling: the page is reloaded (it replays the call from the files and the pipe backlog); never an error dialog, never a closed window.
   const gate = new ReloadGate();
-  let hangTimer;
   const reloadSoon = (why) => {
     pageReady = false;
     clearInterval(timer);
     logErr("page " + why + "; reloading", "");
-    setTimeout(() => {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
       try {
         if (win && !win.isDestroyed()) win.webContents.reload();
       } catch (e) {
@@ -297,27 +290,15 @@ function create() {
   // Every register() result is checked: a key another app already owns shows a note in the window and in the tray note file, never silence.
   const to = (ch, payload) => () => win && !win.isDestroyed() && win.webContents.send(ch, payload);
   const HK = CFG.hotkeys;
-  const reg = registerHotkeys(globalShortcut, [
-    { name: "clear", accel: HK.clear, run: to("clear") },
-    { name: "pause", accel: HK.pause, run: to("pause") },
-    { name: "rewind", accel: HK.rewind, run: to("rewind") },
-    {
-      name: "copy",
-      accel: HK.copy,
-      run: () => {
+  const reg = registerHotkeys(
+    globalShortcut,
+    hotkeyItems(HK, {
+      page: to,
+      copyLast: () => {
         if (lastCapture) copyValue(lastCapture);
       },
-    },
-    { name: "checklist", accel: HK.checklist, run: to("checklist") },
-    // Card controls and Catch me up from the keyboard. Each one only tells the page; the page does what its button does.
-    { name: "more", accel: HK.more, run: to("ctl", { name: "more" }) },
-    { name: "pin", accel: HK.pin, run: to("ctl", { name: "pin" }) },
-    { name: "useful", accel: HK.useful, run: to("ctl", { name: "useful" }) },
-    { name: "notUseful", accel: HK.notUseful, run: to("ctl", { name: "notuseful" }) },
-    { name: "dismiss", accel: HK.dismiss, run: to("ctl", { name: "dismiss" }) },
-    { name: "restore", accel: HK.restore, run: to("restore") },
-    { name: "recap", accel: HK.recap, run: to("recap") },
-  ]);
+    }),
+  );
   if (reg.failed.length) {
     console.error("Could not register some global shortcuts: " + reg.failed.map((f) => `${f.accel} (${f.name}, ${f.why})`).join(", ") + ".");
     keyNote = hotkeyNote(reg.failed, tn);
@@ -334,6 +315,12 @@ function create() {
   // Click on a captured item copies it (the window never takes focus).
   ipcMain.on("copy", (_e, text) => {
     if (typeof text === "string" && text.length < 200) copyValue(text);
+  });
+  // The page counts new hero cards; the total lives in the state file so the key hints stay hidden after the first few cards of the app's life.
+  ipcMain.on("shown", (_e, n) => {
+    if (SNAP || !Number.isInteger(n) || n < 1 || n > 1000) return;
+    cardsShown += n;
+    writeShown(fs, path, STATE_DIR, cardsShown);
   });
   // Card controls from the page (rate, pin, dismiss, recap). Validated again; saved to the call folder; a failure is logged, never shown over the call.
   ipcMain.on("act", (_e, m) => {
@@ -383,15 +370,11 @@ function snapshotMode() {
 const seen = new Seen(),
   backlog = new Backlog();
 let pageReady = false;
-const waiting = [];
 function onPipeRow(c) {
   if (!c || typeof c !== "object") return;
   backlog.add(c);
   if (!seen.add(rowKey(c))) return; // the disk path already delivered it
-  if (!pageReady) {
-    waiting.push(c);
-    return;
-  }
+  if (!pageReady) return; // the backlog above keeps it: replayBacklog() sends it when the page is ready (a second buffer here grew without end)
   try {
     handleCardRow(c);
   } catch (e) {
@@ -401,7 +384,6 @@ function onPipeRow(c) {
 /** After the page was reset (new call, reload): rows that came by the pipe come back (they may not be on disk), then disk rows fill in. */
 function replayBacklog() {
   seen.clear();
-  waiting.length = 0;
   for (const c of backlog.all()) {
     if (seen.add(rowKey(c))) {
       try {

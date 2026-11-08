@@ -109,6 +109,15 @@ async function one(spec) {
   await sleep(450);
   for (const st of sc.steps || []) {
     if (st.click) await wc.executeJavaScript(`(() => { const e = document.querySelector(${JSON.stringify(st.click)}); if (e) e.click(); return !!e; })()`);
+    else if (st.focus)
+      // a hidden window has no page focus, so the browser sends no focus events: send the focusin the page would get when the window has the keyboard
+      await wc.executeJavaScript(
+        `(() => { const e = document.querySelector(${JSON.stringify(st.focus)}); if (e) { e.focus(); e.dispatchEvent(new FocusEvent("focusin", { bubbles: true })); } return !!e; })()`,
+      );
+    else if (st.press)
+      await wc.executeJavaScript(
+        `document.activeElement && document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(st.press)}, bubbles: true, cancelable: true }))`,
+      );
     else if (st.key) send(st.key);
     else if (st.send) send(st.send[0], st.send[1]);
     else if (st.wait) await sleep(st.wait);
@@ -146,6 +155,34 @@ async function one(spec) {
       captionBottom: vis(q("#last")) ? Math.round(q("#last").getBoundingClientRect().bottom) : null,
       bar: document.body.classList.contains("bar"),
       iconOnly: all("#hero .b.ib").every((b) => !b.textContent.trim() && b.getAttribute("aria-label")),
+      // round 3
+      heroClamped: hero ? hero.querySelector(".hsay").classList.contains("clamp") : false,
+      heroCut: hero ? hero.querySelector(".hsay").scrollHeight > hero.querySelector(".hsay").clientHeight + 1 : false,
+      moreBtn: hero && hero.querySelector(".b.more") ? hero.querySelector(".b.more").textContent : "",
+      about: q("#hero .habout") ? q("#hero .habout").textContent : "",
+      ageWarn: !!q("#hero .hage.warn"),
+      chipKinds: all("#chips .rail .chip").map((e) => (e.className.match(/k-([a-z]+)/) || ["", "more"])[1]),
+      chipAges: all("#chips .rail .chip .cage").map((e) => e.textContent),
+      chipMarks: all("#chips .rail .chip .kmark").length,
+      chipKdots: all("#chips .kdot").length,
+      chipNdots: all("#chips .rail .chip .ndot").length,
+      ctx: q("#chips .ctxbtn") ? { text: q("#chips .ctxbtn").textContent, badge: q("#chips .ctxbtn .cbadge") ? q("#chips .ctxbtn .cbadge").textContent : "", font: q("#chips .ctxbtn .cbadge") ? getComputedStyle(q("#chips .ctxbtn .cbadge")).fontFamily : "", chipFont: getComputedStyle(q("#chips .ctxbtn")).fontFamily } : null,
+      primaries: all("#chips .primary, #recap .primary, #wlist .primary").length,
+      primaryText: q("#chips .primary") ? q("#chips .primary").textContent : "",
+      listText: q("#wlist") && vis(q("#wlist")) ? q("#wlist").textContent : "",
+      flash: hero ? hero.classList.contains("flash") : false,
+      slides: all("#chips .chip.slide").length,
+      keyHints: all("#keys kbd").length,
+      ctlOpacity: hero ? getComputedStyle(hero.querySelector(".hctl")).opacity : "",
+      active: document.activeElement ? { cls: document.activeElement.className, fk: document.activeElement.dataset.fk || "", outline: getComputedStyle(document.activeElement).outlineStyle, outlineW: getComputedStyle(document.activeElement).outlineWidth } : null,
+      heroFont: hero ? parseFloat(getComputedStyle(hero.querySelector(".hsay")).fontSize) : 0,
+      lastFont: vis(q("#last")) ? parseFloat(getComputedStyle(q("#last .txt")).fontSize) : 0,
+      lastLines: vis(q("#last")) ? Math.round(q("#last .txt").getBoundingClientRect().height / parseFloat(getComputedStyle(q("#last .txt")).lineHeight)) : 0,
+      ageDir: q("#hero .hage") ? { dir: q("#hero .hage").dir, bidi: getComputedStyle(q("#hero .hage")).unicodeBidi } : null,
+      aiPaused: document.body.classList.contains("ai-paused") && vis(q("#aipill")),
+      aiOffline: document.body.classList.contains("ai-offline") && vis(q("#aibar")),
+      legacyCards: all("#cards .card").length,
+      menuBtns: all("#hero .hmenu .b").map((b) => b.textContent),
     };
   })()`);
   let fitInfo;

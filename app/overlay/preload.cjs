@@ -30,7 +30,7 @@ const EVENTS = [
 ];
 
 /** Card controls back to main on the "act" channel: { kind: "rate", cardId, rating } and { kind: "event", cardId, name }. Same rule as cleanAct in v2.js (a sandboxed preload cannot require it); anything else is dropped. */
-const RATINGS = ["useful", "not_useful", "none"];
+const RATINGS = ["useful", "not_useful", "fewer", "none"];
 const ACT_EVENTS = ["pin", "unpin", "dismiss", "recap"];
 function cleanAct(kind, payload) {
   const p = payload && typeof payload === "object" ? payload : {};
@@ -48,6 +48,11 @@ const api = {
     if (Number.isFinite(n) && n > 0 && n < 20000) ipcRenderer.send("size", Math.round(n));
   },
   copy: (text) => ipcRenderer.send("copy", String(text)),
+  /** How many cards the page has shown in this run: main adds it to the app's life count (the key hints hide after the first few). */
+  shown: (n) => {
+    const k = Number(n);
+    if (Number.isInteger(k) && k > 0 && k < 1e6) ipcRenderer.send("shown", k);
+  },
   act: (kind, payload) => {
     const m = cleanAct(kind, payload);
     if (m) ipcRenderer.send("act", m);

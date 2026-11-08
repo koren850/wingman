@@ -109,7 +109,7 @@ test("overlay: preload bridge functions return nothing; page script is external;
   assert.equal(subs.length, 22); // r2-overlay-ux added onRestore and onNote
   assert.deepEqual(
     Object.keys(api).filter((k) => !k.startsWith("on")),
-    ["size", "copy", "act"],
+    ["size", "copy", "shown", "act"],
   );
   for (const name of subs) {
     const got: unknown[] = [];

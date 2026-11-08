@@ -199,13 +199,13 @@ body.ended #dot {
   display: none;
   flex: 0 0 auto;
   margin: -2px 0 0;
-  padding: 6px 12px;
+  padding: 3px 10px;
   border-radius: var(--r-card);
   background: var(--card2);
-  font-size: calc(var(--live-pt) * var(--ui, 1));
+  font-size: max(12px, calc(var(--live-pt) * 0.6 * var(--ui, 1))); /* about 60 percent: the card is the largest thing on screen */
   line-height: 1.3;
   color: var(--text);
-  gap: 10px;
+  gap: 8px;
   align-items: baseline;
   min-width: 0;
   border-inline-start: 3px solid var(--line);
@@ -216,7 +216,7 @@ body.ended #dot {
 }
 #last .who {
   flex: 0 0 auto;
-  font-size: max(13px, calc(var(--live-pt) * 0.62));
+  font-size: max(12px, calc(var(--live-pt) * 0.5));
   font-weight: 700;
   color: var(--muted);
   border-radius: var(--r-pill);
@@ -230,7 +230,7 @@ body.ended #dot {
   flex: 1 1 auto;
   min-width: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
   unicode-bidi: plaintext;
@@ -1251,23 +1251,6 @@ body.paused #watch {
 .lk {
   unicode-bidi: isolate;
 }
-/* the card gets older: the accent and the headline soften (colours only, so contrast stays above 4.5:1) */
-.hcard.age-1 .hsay {
-  color: var(--soft);
-}
-.hcard.age-2 {
-  --kc: var(--muted);
-}
-.hcard.age-2 .hsay,
-.hcard.age-3 .hsay {
-  color: var(--soft);
-}
-.hcard.age-3 {
-  --kc: var(--muted);
-}
-.hcard.age-3 .hsay {
-  color: var(--muted);
-}
 .hcard.tappable {
   cursor: pointer;
 }
@@ -1320,17 +1303,20 @@ body.paused #watch {
   font-weight: 700;
   color: var(--soft);
 }
-/* the one line to say: bold, at most 14 words (v2.js splitHeadline), 3 lines at most on screen */
+/* the one line to say: bold, shown whole; over 14 words (or fit=false) it clamps to 3 lines with More */
 .hsay {
   font-size: calc(var(--hero-pt) * var(--ui));
   line-height: 1.22;
   font-weight: 700;
   color: var(--text);
+  overflow-wrap: anywhere;
+}
+/* a long line shows 3 lines and a More button (the page builds the button); More opens the whole line */
+.hsay.clamp {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  overflow-wrap: anywhere;
 }
 .hmore {
   margin: 2px 0 0;
@@ -1355,10 +1341,6 @@ body.paused #watch {
   font-size: max(12px, calc(13px * var(--ui)));
   color: var(--muted);
   white-space: nowrap;
-}
-.hexp {
-  color: var(--muted);
-  font-size: max(12px, calc(13px * var(--ui)));
 }
 .hctl {
   display: flex;
@@ -1482,26 +1464,28 @@ body.paused #watch {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.kdot {
+/* the kind mark on a chip: a glyph (a shape, so colour is not the only signal) in the kind colour */
+.kmark {
   flex: 0 0 auto;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--t-ai);
+  min-width: 1em;
+  text-align: center;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--t-ai);
 }
-.k-prompt .kdot {
-  background: var(--t-tip);
+.k-prompt .kmark {
+  color: var(--t-tip);
 }
-.k-check .kdot {
-  background: var(--t-careful);
+.k-check .kmark {
+  color: var(--t-careful);
 }
-.k-fact .kdot {
-  background: var(--t-fact);
+.k-fact .kmark {
+  color: var(--t-fact);
 }
 .ndot {
   flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--t-tip);
   box-shadow: 0 0 0 2px var(--bg);
@@ -1737,7 +1721,7 @@ body.paused #watch {
   padding: 3px 12px;
   border-radius: var(--r-card);
   background: var(--card2);
-  font-size: max(13px, calc(var(--live-pt) * 0.72 * var(--ui)));
+  font-size: max(12px, calc(var(--live-pt) * 0.6 * var(--ui)));
   line-height: 1.3;
   color: var(--soft);
   gap: 10px;
@@ -1898,4 +1882,137 @@ body.fit.bar #wrap {
 }
 :root[data-theme="light"] body.paused #state {
   background: var(--raised);
+}
+
+/* ======== Answer window v3 (round 3) ========
+   Hierarchy: the card is the largest element; the transcript is one line at about 60 percent. Stale cards fade; controls show on hover or focus.
+   Every colour pair here keeps 4.5:1 (the snapshot checks run in both themes). */
+:root {
+  --stale-fg: #ffffff; /* text of a faded card: full strength, so the 60 percent fade still reads at 4.5:1 */
+  --warn-fg: #ffd27a;
+}
+:root[data-theme="light"] {
+  --stale-fg: #000000;
+  --warn-fg: #7a4400;
+}
+/* a visible focus ring on everything a keyboard can reach (.kbf is set by v2view.js: a window that never takes focus matches no :focus rule) */
+.hcard:focus-visible,
+.b:focus-visible,
+.chip:focus-visible,
+#keys .qm:focus-visible,
+.kbf {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+/* controls: hidden until hover or focus, or the card is a minute old (time to rate it); they stay in the tab order, so a keyboard reaches them */
+.hcard .hctl {
+  opacity: 0;
+}
+.hcard:hover .hctl,
+.hcard:focus-within .hctl,
+.hcard.focus-in .hctl,
+.hcard.aged .hctl,
+.hcard.menu-open .hctl {
+  opacity: 1;
+}
+.hcard .b.more {
+  align-self: flex-start;
+}
+.habout {
+  font-size: max(12px, calc(13px * var(--ui)));
+  line-height: 1.3;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hage {
+  unicode-bidi: isolate;
+}
+/* stale (3 minutes): the text at 60 percent, the age in the warning colour, the accent muted */
+.hcard.stale {
+  --kc: var(--muted);
+}
+.hcard.stale .hsay,
+.hcard.stale .hmore,
+.hcard.stale .habout,
+.hcard.stale .hwhy {
+  opacity: 0.6;
+  color: var(--stale-fg);
+}
+.hage.warn {
+  color: var(--warn-fg);
+  font-weight: 700;
+}
+/* Check arrival: an amber flash (animated), on top of a static amber frame while it is new (reduced motion keeps the frame) */
+.hcard.flash {
+  box-shadow: 0 0 0 3px var(--t-careful);
+  animation: cflash 0.9s ease-out 2;
+}
+@keyframes cflash {
+  from {
+    box-shadow: 0 0 0 8px var(--t-careful);
+  }
+  to {
+    box-shadow: 0 0 0 3px var(--t-careful);
+  }
+}
+/* the old hero joins the rail with a short slide */
+.chip.slide {
+  animation: cslide 0.35s ease-out 1;
+}
+@keyframes cslide {
+  from {
+    transform: translateY(-14px);
+    opacity: 0.3;
+  }
+}
+/* chips: kind glyph, label (or the kind word), age; one bold dot for unseen */
+.chip .cage {
+  flex: 0 0 auto;
+  font-size: max(12px, calc(12px * var(--ui)));
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  unicode-bidi: isolate;
+}
+.chip.old {
+  border-style: dashed;
+}
+/* the Context button: a count badge in the text font; Catch me up is the one primary button */
+.chip.ctxbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.cbadge {
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+  min-width: 1.6em;
+  text-align: center;
+  border-radius: var(--r-pill);
+  padding: 0 6px;
+  background: var(--card2);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+.chip.recapbtn.primary {
+  background: var(--t-tip);
+  border-color: var(--t-tip);
+  color: #1a1305;
+  font-weight: 700;
+  padding-inline: 16px;
+}
+:root[data-theme="light"] .chip.recapbtn.primary {
+  background: #8a5300;
+  border-color: #8a5300;
+  color: #ffffff;
+}
+#wlist .lsh {
+  list-style: none;
+  font-weight: 700;
+  color: var(--muted);
+  margin-top: 4px;
 }

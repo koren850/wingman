@@ -802,3 +802,17 @@ Date: 2026-11-08
 **Alternatives.** Keep the plan table as the only budget (too loose). Call the real model in CI (cost, flakiness, keys in CI). Tune prompts on the scripted dev replies (no signal).
 
 **Consequences.** After the first recording the owner runs `pnpm eval --cassette ... --update` once to create the recorded baseline and budgets. A prompt change then changes the cassette keys: the replay reports misses, and the dev meetings must be recorded again before the next comparison. The recorded section may be rewritten only from a cassette that was made with the current prompts.
+
+## ADR 54: The card is shown whole, labels are never taken from the line, and old cards fade by rule
+
+Date: 2026-11-08
+
+**Context.** The round 3 review of the answer window (score 72 of 100) found five problems. The hero line could end in the middle of a sentence. Chips used the first three words of the line when the model sent no label ("What is the"). Each chip had two dots. The transcript row was louder than the card. An answer from six minutes ago looked almost as live as a new one.
+
+**Decision.** (1) The model never cuts the line. The hero shows the whole line; over 14 words, or when the engine marks `fit: false`, it clamps to 3 lines with a More button. (2) A chip shows the model's label, else the kind word. Facts show "label: value". There is one kind mark (a glyph), one bold dot for unseen, and an age. (3) The transcript is one line at about 60 percent size. (4) After 3 minutes a card fades, its age turns amber and an "about:" line says what it answered. After 6 minutes an answer or a prompt is only a chip. Checks, facts and pinned cards do not collapse, because a check that is not handled must not disappear. (5) Open, Promises, Cover and Earlier cards are one Context button with a count; Catch me up is the only primary button. (6) Controls show on hover, focus, or after one minute. "Fewer like this" writes a `fewer` rating and dismisses the card. (7) A screen reader hears a Check and the first card after 90 seconds of quiet. (8) The key hints hide after the first 3 cards of the app's life.
+
+**Why.** A cut line can mislead the one person who only reads that line. A label made from the first words says nothing at a glance; the kind word is true and short. Time rules are simple and testable, and they answer the question "is this still about now?" without the model. A fade that keeps the text at full strength (only the surface and accent soften) keeps the 4.5:1 contrast in both themes.
+
+**Alternatives.** Cut with an ellipsis (rejected: it hides the end of the sentence). Collapse checks too (rejected: an open check is the most important card). Keep two dots (rejected: no one could tell them apart). Make the window focusable so Tab always works (rejected: a focusable window can take the focus from the call; the global keys stay the main path).
+
+**Consequences.** The fade is by text opacity of 0.6 with a text colour chosen per theme (white or black), not by element opacity, because element opacity of 0.6 cannot reach 4.5:1 for amber text on a light card. The in-page keys work only when the user gives the window focus; a "focus the answer window" hotkey is left for a later round. Old screenshots in `docs/ux/` show the earlier layout and are not regenerated here.

@@ -3,13 +3,14 @@
 // Classic script (loaded before app.js). app.js calls createV2View(deps) once and routes rows to it. Text is always set with textContent / text nodes (card text comes from the call).
 // The model (which card is hero, lifetime, controls) lives in v2.js; this file only draws it.
 /* global WingmanV2, WingmanMemView, WingmanText */
-function createV2View(d) {
+function createV2View(deps) {
+  const d = { cardShown: () => {}, uiDir: () => "ltr", ...deps }; // two small hooks have defaults, so a test page may leave them out
   const { tr, mixed, div, span } = d;
   const V = WingmanV2;
   const board = new V.Board();
   let view = V.normView({});
   let hasView = false;
-  let openList = ""; // "" | open | promises | cover | history
+  let openList = ""; // "" | context | cards
   const expanded = new Set(); // ids whose detail is open
   let drawnHero = ""; // id of the hero drawn last (the rise animation plays only for a new one)
   let listTimer;
@@ -82,19 +83,63 @@ function createV2View(d) {
     return el;
   };
 
+  // ---- focus: a rebuild of the hero or the chips must not drop the keyboard focus ----
+  const fkOf = () => {
+    const a = document.activeElement;
+    return a && a.dataset && a.dataset.fk ? a.dataset.fk : "";
+  };
+  const refocus = (fk) => {
+    if (fk)
+      for (const box of [heroBox, chipsBox, listBox]) {
+        const t = [...box.querySelectorAll("[data-fk]")].find((x) => x.dataset.fk === fk);
+        if (t) {
+          t.focus({ preventScroll: true });
+          break;
+        }
+      }
+    markFocus();
+  };
+  /** The focus ring and the controls follow the element that holds the keyboard focus. A class does it, because a window that never takes focus matches no :focus rule. */
+  function markFocus() {
+    for (const el of document.querySelectorAll(".kbf, .focus-in")) el.classList.remove("kbf", "focus-in");
+    const a = document.activeElement;
+    if (!a || a === document.body || !(heroBox.contains(a) || chipsBox.contains(a) || listBox.contains(a))) return;
+    a.classList.add("kbf");
+    const card = a.closest(".hcard");
+    if (card) card.classList.add("focus-in");
+  }
+  document.addEventListener("focusin", markFocus);
+  document.addEventListener("focusout", () => setTimeout(markFocus, 0));
+  const withFk = (el, fk) => {
+    el.dataset.fk = fk;
+    return el;
+  };
+
   // ---- hero ----
   let menuFor = ""; // id of the card whose overflow menu is open
   let menuTimer;
+  const flashUntil = new Map(); // id -> time: a check that just arrived flashes until then
+  const FLASH_MS = 4000;
+  let lastCardAt = 0; // when the newest card row arrived: the first card after a long quiet is announced
+  const announceIds = new Set(); // cards whose arrival a screen reader should hear
+  let slideIds = new Set(); // old heroes that just moved to the rail: their chip slides in
+  let slideTimer;
   const closeMenu = () => {
     menuFor = "";
     clearTimeout(menuTimer);
   };
-  /** Thumbs and the overflow button. Pin, Copy and Dismiss wait in the menu row (hmenu), which is always built so the keyboard hotkeys can press them. */
+  /** Thumbs and the overflow button. They show on hover or focus, and once the card has aged a minute. Pin, Copy, Fewer and Dismiss wait in the menu row (hmenu), which is always built so the keyboard hotkeys can press them. */
   function ctl(e, dir) {
     const row = div("hctl", dir);
     row.append(
-      iconButton("up", "up", tr("v2.useful"), () => rate(e, "useful"), e.rating === "useful"),
-      iconButton("down", "down", tr("v2.notUseful"), () => rate(e, "not_useful"), e.rating === "not_useful"),
+      withFk(
+        iconButton("up", "up", tr("v2.useful"), () => rate(e, "useful"), e.rating === "useful"),
+        "b-up",
+      ),
+      withFk(
+        iconButton("down", "down", tr("v2.notUseful"), () => rate(e, "not_useful"), e.rating === "not_useful"),
+        "b-down",
+      ),
     );
     const m = iconButton(
       "menu",
@@ -109,14 +154,17 @@ function createV2View(d) {
       menuFor === e.id,
     );
     m.setAttribute("aria-haspopup", "true");
-    row.append(m);
+    row.append(withFk(m, "b-menu"));
     return row;
   }
   function menuRow(e, dir) {
     const row = div("hmenu", dir);
     row.style.display = menuFor === e.id ? "flex" : "none";
     const add = (cls, label, onClick, pressed) => {
-      const b = button("b " + cls, label, () => (closeMenu(), onClick()));
+      const b = withFk(
+        button("b " + cls, label, () => (closeMenu(), onClick())),
+        "b-" + cls,
+      );
       if (pressed !== undefined) b.setAttribute("aria-pressed", String(pressed));
       row.append(b);
       return b;
@@ -138,6 +186,14 @@ function createV2View(d) {
       setTimeout(draw, 1250);
     });
     cp.title = V.copyText(e);
+    // "Fewer like this": a strong not-useful for this kind of card; the card leaves (Undo brings it back)
+    add("fewer", tr("v2.fewer"), () => {
+      board.rate(e.id, "fewer");
+      d.controls.rate(e.id, "fewer");
+      d.controls.dismiss(e.id);
+      board.remove(e.id, "dismissed");
+      draw();
+    });
     add("x", tr("v2.dismiss"), () => {
       d.controls.dismiss(e.id);
       board.remove(e.id, "dismissed");
@@ -151,7 +207,21 @@ function createV2View(d) {
     d.controls.rate(e.id, next || "none");
     draw();
   }
-  const freshClass = (e, now) => (e.pinned || e.state === "dim" ? "" : " age-" + V.freshLevel(now - e.at));
+  /** 0 fresh, 1 stale (3 min). Pinned and dim cards keep their own look. */
+  const staleOf = (e, now) => (e.pinned || e.state === "dim" ? 0 : V.staleLevel(now - e.at));
+  const agedOf = (e, now) => e.state === "live" && now - e.at >= 60000;
+  /** A card has more to show when it has detail lines or its line is long (clamped to 3 lines until More is pressed). */
+  const expandable = (e) => e.detail.length > 0 || e.long;
+  const toggleExpand = (id) => {
+    expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+    draw();
+  };
+  /** The age as its own isolate in the direction of the window language: "10 s" never reads "s 10" inside a card that runs the other way. */
+  const ageSpan = (cls, ms) => {
+    const s = span(cls, ageText(ms));
+    s.dir = d.uiDir();
+    return s;
+  };
 
   function drawHero() {
     const e = board.hero;
@@ -163,36 +233,45 @@ function createV2View(d) {
     }
     const now = Date.now();
     const isNew = drawnHero !== e.id;
+    if (isNew && e.kind === "check" && e.state === "live") flashUntil.set(e.id, now + FLASH_MS);
+    const flash = (flashUntil.get(e.id) || 0) > now;
+    const lvl = staleOf(e, now);
+    const isExp = expanded.has(e.id);
     const cd = WingmanText.isLatin(e.head) ? "ltr" : "rtl"; // the card follows the direction of its own text; the rail and pills follow the window language
-    const el = div(`hcard k-${e.kind}${e.state === "dim" ? " dim" : ""}${e.pinned ? " pinned" : ""}${isNew ? " pulse" : ""}${freshClass(e, now)}`, cd);
+    const el = div(
+      `hcard k-${e.kind}${e.state === "dim" ? " dim" : ""}${e.pinned ? " pinned" : ""}${isNew ? " pulse" : ""}${flash ? " flash" : ""}${lvl ? " stale" : ""}${agedOf(e, now) ? " aged" : ""}${
+        menuFor === e.id ? " menu-open" : ""
+      }`,
+      cd,
+    );
     el.dataset.id = e.id;
-    if (e.detail.length) {
+    el.tabIndex = 0;
+    el.dataset.fk = "card";
+    el.setAttribute("role", "group");
+    el.setAttribute("aria-label", kindLabel(e.kind) + (lvl ? ", " + tr("v2.stale") : ""));
+    if (expandable(e)) {
       el.classList.add("tappable");
       el.title = tr("v2.tap");
-      el.setAttribute("aria-expanded", String(expanded.has(e.id)));
-      el.addEventListener("click", () => {
+      el.setAttribute("aria-expanded", String(isExp));
+    }
+    el.addEventListener("click", () => {
+      if (menuFor) {
         closeMenu();
-        expanded.has(e.id) ? expanded.delete(e.id) : expanded.add(e.id);
         draw();
-      });
-    } else el.addEventListener("click", () => menuFor && (closeMenu(), draw()));
+      } else if (expandable(e)) toggleExpand(e.id);
+    });
     const top = div("htop", cd);
     const pill = span("pill");
     pill.append(span("gl", GLYPH[e.kind]), document.createTextNode(kindLabel(e.kind)));
     top.append(pill);
-    const age = span("hage", ageText(now - e.at));
+    const age = ageSpan("hage" + (lvl ? " warn" : ""), now - e.at);
     age.setAttribute("aria-hidden", "true");
     top.append(age);
     if (e.state === "dim") top.append(span("dimwhy", dimLabel(e.reason)));
     else if (e.pinned) top.append(span("pinmark", tr("v2.pin")));
-    if (e.detail.length) {
-      const c = span("hexp", expanded.has(e.id) ? "▴" : "▾");
-      c.setAttribute("aria-hidden", "true");
-      top.append(c);
-    }
     top.append(ctl(e, cd));
     el.append(top);
-    const say = div("hsay", "auto");
+    const say = div("hsay" + (isExp ? "" : " clamp"), "auto");
     mixed(say, e.head);
     if (e.kind === "prompt") {
       // a prompt is something to say: it reads as speech, "Ask: ..."
@@ -202,7 +281,7 @@ function createV2View(d) {
       say.prepend(k, document.createTextNode(" "));
     }
     el.append(say);
-    if (expanded.has(e.id) && e.detail.length) {
+    if (isExp && e.detail.length) {
       const ul = document.createElement("ul");
       ul.className = "hmore";
       ul.dir = "auto";
@@ -214,6 +293,11 @@ function createV2View(d) {
       }
       el.append(ul);
     }
+    if (e.about) {
+      const ab = div("habout", "auto");
+      mixed(ab, tr("v2.about", { t: e.about }));
+      el.append(ab);
+    }
     if (e.why) {
       const w = div("hwhy", "auto");
       labelled(w, tr("v2.why"), e.why);
@@ -221,68 +305,111 @@ function createV2View(d) {
     }
     el.append(menuRow(e, cd));
     heroBox.append(el);
-    if (isNew && e.state === "live") d.announce(kindLabel(e.kind), e.head, true);
+    // More: shown when there is detail, or when the line does not fit in 3 lines (it is never cut without this button)
+    const over = !isExp && say.scrollHeight > say.clientHeight + 1;
+    if (e.detail.length || over || (isExp && e.long)) {
+      const mb = withFk(
+        button("b more", isExp ? tr("v2.less") : tr("v2.more"), () => toggleExpand(e.id)),
+        "b-more",
+      );
+      mb.setAttribute("aria-expanded", String(isExp));
+      say.after(mb);
+    }
+    if (isNew && e.state === "live") {
+      if (announceIds.has(e.id)) d.announce(kindLabel(e.kind), e.head, true);
+      // the old hero moves to the rail with a short slide
+      if (drawnHero && board.cards.has(drawnHero) && drawnHero !== e.id) {
+        slideIds.add(drawnHero);
+        clearTimeout(slideTimer);
+        slideTimer = setTimeout(() => (slideIds = new Set()), 900);
+      }
+    }
+    announceIds.delete(e.id);
     drawnHero = e.id;
   }
-  /** Once a second: the age text and the fade level of the hero, without rebuilding it (a rebuild would restart the pulse and re-announce). */
+  /** Once a second: the age text and the stale look of the hero and the chips, without rebuilding them (a rebuild would restart the pulse and drop the focus). */
   function tickAge(now) {
     const e = board.hero;
     const el = heroBox.firstElementChild;
-    if (!e || !el) return;
-    const t = el.querySelector(".hage");
-    const txt = ageText(now - e.at);
-    if (t && t.textContent !== txt) t.textContent = txt;
-    for (const n of [1, 2, 3]) el.classList.remove("age-" + n);
-    const f = freshClass(e, now).trim();
-    if (f) el.classList.add(f);
+    if (e && el) {
+      const t = el.querySelector(".hage");
+      const txt = ageText(now - e.at);
+      if (t && t.textContent !== txt) t.textContent = txt;
+      const lvl = staleOf(e, now);
+      el.classList.toggle("stale", lvl > 0);
+      if (t) t.classList.toggle("warn", lvl > 0);
+      el.classList.toggle("aged", agedOf(e, now));
+      if (el.classList.contains("flash") && (flashUntil.get(e.id) || 0) <= now) el.classList.remove("flash");
+    }
+    for (const c of chipsBox.querySelectorAll(".cage")) {
+      const txt = ageText(now - Number(c.dataset.at));
+      if (c.textContent !== txt) c.textContent = txt;
+    }
   }
 
   // ---- rail (one row of at most 3 labelled chips), "+N", and the pills row ----
-  const counts = () => [
-    ["open", view.open, "v2.open", "v2.list.open"],
-    ["promises", view.promises, "v2.promises", "v2.list.promises"],
-    ["cover", view.cover, "v2.cover", "v2.list.cover"],
+  /** The open list of the Context button: Open, Promises, Not covered yet, Earlier cards. */
+  const sections = () => [
+    ["open", view.open, "v2.list.open"],
+    ["promises", view.promises, "v2.list.promises"],
+    ["cover", view.cover, "v2.list.cover"],
   ];
+  const contextCount = () => view.open.length + view.promises.length + view.cover.length + board.history.length;
   function toggleList(name) {
     openList = openList === name ? "" : name;
     clearTimeout(listTimer);
     if (openList) listTimer = setTimeout(() => ((openList = ""), draw()), 20000);
     draw();
   }
-  function chipFor(e) {
+  /** The chip text: the model's label, else the kind word; a fact reads "label: value"; an old answer reads what it was about. */
+  const chipLabel = (e) => (e.collapsed && e.about ? e.about : V.chipText(e, kindLabel(e.kind)));
+  function chipFor(e, now) {
     const isNew = !e.seen && e.state === "live";
-    const c = button(`chip card k-${e.kind}${e.state === "dim" ? " dim" : ""}${isNew ? " isnew" : ""}`, null, () => {
-      if (e.kind === "fact") return;
-      board.promote(e.id);
-      draw();
-    });
-    c.append(span("kdot"));
+    const c = button(
+      `chip card k-${e.kind}${e.state === "dim" ? " dim" : ""}${isNew ? " isnew" : ""}${e.collapsed ? " old" : ""}${slideIds.has(e.id) ? " slide" : ""}`,
+      null,
+      () => {
+        if (e.kind === "fact") return;
+        board.promote(e.id);
+        draw();
+      },
+    );
+    c.dataset.fk = "chip-" + e.id;
+    const mk = span("kmark", GLYPH[e.kind]); // the kind is a shape (a glyph), not only a colour
+    mk.setAttribute("aria-hidden", "true");
+    c.append(mk);
     const t = span("ct");
     t.dir = "auto";
-    mixed(t, e.label);
+    mixed(t, chipLabel(e));
     c.append(t);
-    if (e.kind === "fact" && e.src) {
-      const s = span("src", tr("v2.src." + e.src));
-      c.append(s);
-    }
+    if (e.kind === "fact" && e.src) c.append(span("src", tr("v2.src." + e.src)));
+    const ag = ageSpan("cage", now - e.at);
+    ag.dataset.at = String(e.at);
+    ag.setAttribute("aria-hidden", "true");
+    c.append(ag);
     if (isNew) {
+      // the one unseen mark: a bold dot
       const n = span("ndot");
       n.setAttribute("aria-hidden", "true");
       c.append(n);
     }
     c.title = e.head;
-    c.setAttribute("aria-label", tr("v2.chip.show", { text: e.label }) + (isNew ? ", " + tr("v2.chip.new") : ""));
+    c.setAttribute("aria-label", tr("v2.chip.show", { text: chipLabel(e) }) + ", " + ageText(now - e.at) + (isNew ? ", " + tr("v2.chip.new") : ""));
     return c;
   }
   function drawChips() {
     chipsBox.replaceChildren();
+    const now = Date.now();
     const { shown, more } = board.rail();
     const rail = div("rail");
-    for (const e of shown) rail.append(chipFor(e));
+    for (const e of shown) rail.append(chipFor(e, now));
     if (more.length) {
       const anyNew = more.some((e) => !e.seen && e.state === "live");
-      const b = button("chip count morecards" + (openList === "cards" ? " on" : "") + (anyNew ? " isnew" : ""), tr("v2.chip.more", { n: more.length }), () =>
-        toggleList("cards"),
+      const b = withFk(
+        button("chip count morecards" + (openList === "cards" ? " on" : "") + (anyNew ? " isnew" : ""), tr("v2.chip.more", { n: more.length }), () =>
+          toggleList("cards"),
+        ),
+        "morecards",
       );
       b.setAttribute("aria-expanded", String(openList === "cards"));
       if (anyNew) b.append(span("ndot"));
@@ -291,17 +418,25 @@ function createV2View(d) {
     rail.style.display = shown.length ? "flex" : "none";
     chipsBox.append(rail);
     const pills = div("pills");
-    for (const [name, list, key] of counts()) {
-      if (!list.length) continue;
-      const b = button("chip count " + name + (openList === name ? " on" : ""), tr(key, { n: list.length }), () => toggleList(name));
-      b.setAttribute("aria-expanded", String(openList === name));
+    const n = contextCount();
+    if (n) {
+      // Open, Promises, Cover and Earlier cards are one button with a count
+      const b = withFk(
+        button("chip ctxbtn" + (openList === "context" ? " on" : ""), null, () => toggleList("context")),
+        "ctx",
+      );
+      b.append(span("", tr("v2.context")), span("cbadge", String(n)));
+      b.setAttribute("aria-expanded", String(openList === "context"));
+      b.setAttribute("aria-label", tr("v2.context.label", { n }));
       pills.append(b);
     }
-    if (board.history.length)
-      pills.append(
-        button("chip count hist" + (openList === "history" ? " on" : ""), tr("v2.list.history") + " " + board.history.length, () => toggleList("history")),
-      );
-    pills.append(button("chip recapbtn", tr("v2.recap.button"), () => toggleRecap()));
+    // Catch me up is the one primary button
+    pills.append(
+      withFk(
+        button("chip recapbtn primary", tr("v2.recap.button"), () => toggleRecap()),
+        "recap",
+      ),
+    );
     chipsBox.append(pills);
   }
   function drawList() {
@@ -313,9 +448,10 @@ function createV2View(d) {
     const ul = document.createElement("ul");
     ul.dir = "auto";
     let title = "";
-    const li = (content) => {
+    const li = (content, cls) => {
       const x = document.createElement("li");
       x.dir = "auto";
+      if (cls) x.className = cls;
       if (typeof content === "string") mixed(x, content);
       else x.append(content);
       ul.append(x);
@@ -337,28 +473,33 @@ function createV2View(d) {
           openList = "";
           draw();
         });
-        b.append(span("kdot"));
+        b.append(span("kmark", GLYPH[e.kind]));
         const t = span("ct");
         t.dir = "auto";
         mixed(t, e.head);
         b.append(t);
         li(b);
       }
-    } else if (openList === "history") {
-      title = tr("v2.list.history");
-      const now = Date.now();
-      board.history.slice(0, 8).forEach((h, i) => {
-        const x = li(h.head + (h.reason && h.reason !== "cap" && h.reason !== "dismissed" ? " (" + dimLabel(h.reason) + ")" : ""));
-        if (i === 0 && h.entry && now - h.at <= V.UNDO_MS)
-          x.append(
-            " ",
-            button("b undo", tr("v2.undo"), () => restoreLast()),
-          );
-      });
     } else {
-      const c = counts().find((x) => x[0] === openList);
-      title = tr(c[3]);
-      for (const t of c[1].slice(0, 6)) li(t);
+      // context: what is open, promised, not covered, and the cards that left
+      title = tr("v2.context");
+      const now = Date.now();
+      for (const [, list, key] of sections()) {
+        if (!list.length) continue;
+        li(tr(key), "lsh");
+        for (const t of list.slice(0, 3)) li(t);
+      }
+      if (board.history.length) {
+        li(tr("v2.list.history"), "lsh");
+        board.history.slice(0, 3).forEach((h, i) => {
+          const x = li(h.head + (h.reason && h.reason !== "cap" && h.reason !== "dismissed" ? " (" + dimLabel(h.reason) + ")" : ""));
+          if (i === 0 && h.entry && now - h.at <= V.UNDO_MS)
+            x.append(
+              " ",
+              button("b undo", tr("v2.undo"), () => restoreLast()),
+            );
+        });
+      }
     }
     if (!ul.children.length) {
       const x = document.createElement("li");
@@ -386,7 +527,7 @@ function createV2View(d) {
     aiBar.replaceChildren();
     aiBar.style.display = view.ai === "offline" ? "flex" : "none";
     if (view.ai === "offline") aiBar.append(span("", tr("v2.ai.offline")));
-    aiPill.style.display = view.ai === "paused" ? "" : "none";
+    aiPill.style.display = view.ai === "paused" ? "inline-block" : "none"; // "" would fall back to the stylesheet's display:none and the pill never showed
     aiPill.textContent = view.ai === "paused" ? tr("v2.ai.paused") : "";
     document.body.classList.toggle("ai-offline", view.ai === "offline");
     document.body.classList.toggle("ai-paused", view.ai === "paused");
@@ -505,14 +646,16 @@ function createV2View(d) {
     if (ev.target.closest && ev.target.closest(".retry")) return;
     toggleRecap(false);
   });
-  const CONTROL_CLASS = { pin: "pin", useful: "up", notuseful: "down", dismiss: "x" };
+  const CONTROL_CLASS = { pin: "pin", useful: "up", notuseful: "down", dismiss: "x", fewer: "fewer" };
 
   // ---- one draw ----
   function draw() {
+    const fk = fkOf();
     drawHero();
     drawChips();
     drawList();
     drawAi();
+    refocus(fk);
     const any = !!board.hero || board.chips.length > 0 || hasView;
     document.body.classList.toggle("has-v2", any);
     watchBox.style.display = board.chips.length || hasView || board.history.length ? "flex" : "none";
@@ -520,6 +663,25 @@ function createV2View(d) {
     if (recapOpen()) toggleRecap(true);
     d.onChange();
   }
+
+  // Keys, when the window has the keyboard focus: Tab moves between the card and its buttons, Enter opens More, Esc dismisses (or closes a sheet first), P pins, 1 and 2 rate.
+  document.addEventListener("keydown", (ev) => {
+    if (ev.defaultPrevented) return;
+    const t = ev.target;
+    if (t && /^(input|textarea|select)$/i.test(t.tagName || "")) return;
+    if (ev.key === "Escape" && (recapOpen() || openList || menuFor)) {
+      toggleRecap(false);
+      openList = "";
+      closeMenu();
+      draw();
+      ev.preventDefault();
+      return;
+    }
+    const act = V.keyAction(ev);
+    if (!act || !t || !heroBox.contains(t)) return;
+    if (act === "more" && t !== heroBox.firstElementChild) return; // Enter on a button presses that button
+    if (api.control(act)) ev.preventDefault();
+  });
 
   setInterval(() => {
     const now = Date.now();
@@ -529,7 +691,7 @@ function createV2View(d) {
     else tickAge(now);
   }, 1000);
 
-  return {
+  const api = {
     board,
     /** Routes a card row. Returns true when v2 took it (a v2 card, or a closing/withdraw row for a card it holds). */
     handleCard(row) {
@@ -537,7 +699,14 @@ function createV2View(d) {
       const known = board.has(row.id);
       if (!V.isV2(row) && !(known && (row.withdraw || V.CLOSES.includes(row.closes)))) return false;
       if (V.isV2(row) && V.CLOSES.includes(row.closes) && !known) return true; // update row for a card that already left: nothing to do
-      board.apply(row, Date.now());
+      const now = Date.now();
+      if (!known && V.isV2(row) && !row.withdraw && !V.CLOSES.includes(row.closes)) {
+        // a new card: a Check, the first card, and the first one after a long quiet are announced to a screen reader; the others are silent
+        if (V.shouldAnnounce(V.kindOf(row), lastCardAt, now)) announceIds.add(String(row.id));
+        lastCardAt = now;
+        if (!(Number(row.at) && now - Number(row.at) > 60000)) d.cardShown(); // a replayed old row (page reload) is not a new card for the hint count
+      }
+      board.apply(row, now);
       draw();
       return true;
     },
@@ -566,9 +735,8 @@ function createV2View(d) {
       if (name === "more") {
         // tap on the card: open or close the detail
         const e = board.hero;
-        if (!e || !e.detail.length) return false;
-        expanded.has(e.id) ? expanded.delete(e.id) : expanded.add(e.id);
-        draw();
+        if (!e || !expandable(e)) return false;
+        toggleExpand(e.id);
         return true;
       }
       const cls = CONTROL_CLASS[name];
@@ -586,10 +754,14 @@ function createV2View(d) {
       openList = "";
       closeMenu();
       expanded.clear();
+      flashUntil.clear();
+      announceIds.clear();
+      lastCardAt = 0;
       drawnHero = "";
       recapBox.style.display = "none";
       recapLive = null;
       draw();
     },
   };
+  return api;
 }

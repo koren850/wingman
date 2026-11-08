@@ -66,6 +66,18 @@ This is the window you read during a call. Put it on the second screen. By defau
 
 In the Full layout all of this is on screen all the time.
 
+#### Cards, chips and keys (answer window v3)
+
+- **The card is the biggest thing on screen.** What they said is one small line above it. The card shows its line in full. A long line shows three lines and a **More** button; More opens the rest. A card never ends in a cut sentence.
+- **Chips** are the waiting cards. A chip shows its label, or the kind word (Answer, Check, Prompt, Fact) when it has no label. A fact chip reads "label: value". Every chip has a small mark for its kind, its age, and a bold dot while you have not seen it yet.
+- **Old cards fade.** After 3 minutes an answer fades, its age turns amber, and a line "about: ..." says which question it answered. After 6 minutes an answer or a prompt becomes a chip. A Check and a pinned card stay until you handle them.
+- **Check.** A new Check flashes amber and takes the card seat. The card it replaced moves to the chips.
+- **Context** is one button with a count. It opens a small list: open questions, promises, topics not covered yet, and earlier cards. **Catch me up** is the one highlighted button.
+- **Buttons on a card** (useful, not useful, more) appear when you point at the card, when the card has the keyboard focus, or when it is a minute old. Under the three dots: Pin, Copy, **Fewer like this** and Dismiss. Fewer like this tells Wingman that this kind of card was not worth showing. The card leaves, and Wingman raises the bar for that kind for the rest of the call. Undo brings the card back for 30 seconds.
+- **Keys.** The window never takes the focus by itself, so the global keys (Ctrl+Opt+S pin, H useful, X not useful, D dismiss, M more, Z undo, U catch me up) are the normal way. If you give the window the keyboard focus, Tab moves between the card, its buttons and the chips, with a clear ring. Enter opens More, Esc dismisses (or closes a list first), P pins, 1 and 2 rate.
+- **Screen readers** hear a Check, and the first card after a quiet time of 90 seconds. Other cards are silent, so they do not talk over the call.
+- **Key hints** at the bottom show for the first 3 cards you ever see. After that only a small ? stays; press it to see all keys.
+
 ### Home, during a call
 
 <img src="ux/home-window.png" alt="The Home view of the main window during a call, with the timer, a client suggestion, quiet mode and a note box" width="640">

@@ -140,6 +140,8 @@
     for (const el of doc.querySelectorAll("#chips .ct, #hero .hsay, #hero .hwhy")) {
       if (!visible(el)) continue;
       const cut = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+      // a clamped headline is deliberate only when the card offers More (the whole line is one press away)
+      if (cut && el.classList.contains("hsay") && el.closest(".hcard") && el.closest(".hcard").querySelector(".b.more")) continue;
       if (cut) add("midword", el, `text is cut: ${el.scrollWidth}x${el.scrollHeight} in ${el.clientWidth}x${el.clientHeight}`);
     }
     const recap = doc.getElementById("recap"),
