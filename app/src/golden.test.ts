@@ -28,6 +28,7 @@ import {
 } from "../qa/grade-golden.ts";
 import { GoldenSchema, TYPES } from "../qa/golden-schema.ts";
 import { loadSplit, checkTestLock, checkLock, readSplitFiles, lockHash } from "../qa/golden-load.ts";
+import { denylistHits } from "../qa/denylist.ts";
 import { buildAll, MEETINGS } from "../qa/golden-build.ts";
 import { legacyTimeline } from "../qa/legacy-replay.ts";
 
@@ -367,34 +368,7 @@ test("script: every moment has a reply in the PLAN 3.2 format; quiet lines get S
 });
 
 test("denylist: no real person, company or client name in the golden data or its sources", () => {
-  // The repo owner, the owner's employer and clients, and well-known companies a test author might reach for. Invented names only.
-  const DENY = [
-    "name-a",
-    "name-b",
-    "name-c",
-    "name-d",
-    "name-g",
-    "name-h",
-    "name-i",
-    "name-e",
-    "name-j",
-    "name-k",
-    "name-f",
-    "name-l",
-    "google",
-    "microsoft",
-    "amazon",
-    "facebook",
-    "apple inc",
-    "paypal",
-    "stripe",
-    "wix",
-    "shopify",
-    "monday.com",
-    "deepgram",
-    "anthropic",
-    "openai",
-  ];
+  // Well-known companies plus the owner's private list (WINGMAN_DENYLIST or data/private/denylist.txt, never in the repo).
   const files = [
     ...readSplitFiles("dev").map((f) => f.text),
     ...readSplitFiles("test").map((f) => f.text),
@@ -402,10 +376,7 @@ test("denylist: no real person, company or client name in the golden data or its
     ...readdirSync(join(MEETINGS, "src")).map((f) => readFileSync(join(MEETINGS, "src", f), "utf8")),
   ];
   for (const text of files) {
-    const low = text.toLowerCase();
-    for (const w of DENY) assert.ok(!low.includes(w), `denylisted name "${w}" found`);
-    assert.ok(!/[\w.+-]+@[\w-]+\.\w{2,}/.test(text), "no email address in golden data");
-    assert.ok(!/\b0\d{1,2}-?\d{7}\b|\+972/.test(text), "no phone number in golden data");
+    assert.deepEqual(denylistHits(text), [], "no real names, e-mail addresses or phone numbers in golden data");
   }
 });
 

@@ -5,19 +5,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "../src/env.ts";
 
-// Split on purpose: this file must not contain the words it searches for.
+// Well-known companies a test author might reach for. Personal and client names live only in the private list.
 export const DENY_WORDS = [
-  "name-a",
-  "name-b",
-  "name-d",
-  "name-g",
-  "name-h",
-  "name-i",
-  "name-e",
-  "name-j",
-  "name-k",
-  "name-f",
-  "name-l",
   "google",
   "microsoft",
   "amazon",
