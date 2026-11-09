@@ -159,6 +159,7 @@
       reason: "", // answered | topic | time, while dim
       dimAt: 0,
       pinned: row.pinned === true,
+      closedReason: "", // the engine closed this card while it was pinned (answered | topic | time): kept, and applied when the user unpins
       opened: false, // a collapsed card the user tapped stays open
       rating: "", // "" | useful | not_useful | fewer
       label: labelOf(row),
@@ -179,6 +180,7 @@
       this.heroId = "";
       this.history = []; // newest first: { id, kind, head, reason, at }
       this.ratings = new Map(); // id -> rating, kept after the card left
+      this.pins = new Set(); // ids the user pinned (kept after a page reload from the call's overlay events, see setPins)
       this.clock = 0; // the newest time the board was told (apply or tick): collapse is judged against it
     }
     get hero() {
@@ -211,6 +213,7 @@
       if (old) {
         e.at = old.at; // updates (streaming) keep their age and place
         e.pinned = old.pinned || e.pinned;
+        e.closedReason = old.closedReason;
         e.rating = old.rating;
         e.seen = old.seen;
         e.railAt = old.railAt;
@@ -218,6 +221,7 @@
         if (old.state === "dim") Object.assign(e, { state: "dim", reason: old.reason, dimAt: old.dimAt });
       } else {
         e.rating = this.ratings.get(id) || "";
+        if (this.pins.has(id)) e.pinned = true;
         this.cards.set(id, e);
       }
       this.cards.set(id, e);
@@ -309,7 +313,12 @@
       const e = this.cards.get(String(id));
       if (!e) return;
       if (reason === "dismissed") return this.remove(e.id, "dismissed", now);
-      if (e.pinned || e.state === "dim") return;
+      if (e.pinned) {
+        // pinned: stays as it is, but the close is remembered, because the engine sends it once. Unpinning then dims the card (see togglePin).
+        if (CLOSES.includes(reason)) e.closedReason = reason;
+        return;
+      }
+      if (e.state === "dim") return;
       e.state = "dim";
       e.reason = CLOSES.includes(reason) ? reason : "time";
       e.dimAt = now;
@@ -387,11 +396,28 @@
       const e = this.cards.get(String(id));
       if (!e) return false;
       e.pinned = !e.pinned;
+      if (e.pinned) this.pins.add(e.id);
+      else this.pins.delete(e.id);
       if (e.pinned && e.state === "dim") {
+        e.closedReason = e.reason; // pinned again while dimming: it stays, and dims again when unpinned
         e.state = "live";
         e.reason = "";
       }
+      if (!e.pinned && e.closedReason && e.state === "live") {
+        // closed by the engine while pinned: it dims now, for the usual time
+        const reason = e.closedReason;
+        e.closedReason = "";
+        this.close(e.id, reason, this.clock || Date.now());
+      }
       return e.pinned;
+    }
+    /** The ids pinned earlier in this call (from the call's overlay events, after a page reload). Cards that arrive later start pinned; cards already here are pinned now. */
+    setPins(ids) {
+      this.pins = new Set((Array.isArray(ids) ? ids : []).map(String));
+      for (const id of this.pins) {
+        const e = this.cards.get(id);
+        if (e && e.state === "live") e.pinned = true;
+      }
     }
     /** Same rating again clears it. Returns the new rating ("" = none). */
     rate(id, rating) {
@@ -407,6 +433,7 @@
       this.heroId = "";
       this.history.length = 0;
       this.ratings.clear();
+      this.pins.clear();
     }
   }
 

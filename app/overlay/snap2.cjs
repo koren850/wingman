@@ -120,6 +120,8 @@ async function one(spec) {
       await wc.executeJavaScript(
         `document.activeElement && document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(st.press)}, bubbles: true, cancelable: true }))`,
       );
+    else if (st.eval)
+      await wc.executeJavaScript("(() => { " + st.eval + "; return null; })()"); // page script, for a test that must change a timer or read the page (never part of the app)
     else if (st.key) send(st.key);
     else if (st.send) send(st.send[0], st.send[1]);
     else if (st.wait) await sleep(st.wait);
@@ -193,6 +195,21 @@ async function one(spec) {
       nudge: vis(q("#nudge")) ? q("#nudge").textContent : "",
       legacyCards: all("#cards .card").length,
       menuBtns: all("#hero .hmenu .b").map((b) => b.textContent),
+      // sheets and states (round 16): what is on screen, as the tests for the sequences read it
+      recapOpen: vis(q("#recap")),
+      rewindOpen: vis(q("#rewind")),
+      moreOpen: document.body.classList.contains("more-open"),
+      paused: document.body.classList.contains("paused"),
+      ended: document.body.classList.contains("ended"),
+      stateWord: q("#state") ? q("#state").textContent : "",
+      heroShown: vis(q("#hero .hcard")) && !document.body.classList.contains("paused"),
+      heroPinned: !!q("#hero .hcard.pinned"),
+      heroDim: !!q("#hero .hcard.dim"),
+      youOn: vis(q("#you")),
+      askOn: vis(q("#ask")),
+      moreBtnText: q("#morebtn") && vis(q("#morebtn")) ? q("#morebtn").textContent : "",
+      tipCount: all("#tips .tip").length,
+      frameOn: vis(q("#frame")),
     };
   })()`);
   let fitInfo;

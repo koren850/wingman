@@ -22,8 +22,9 @@ const EVENTS = [
   ["checklist", "onChecklist", false],
   ["clear", "onClear", false],
   ["ask", "onAsk", true],
-  ["pause", "onPause", false],
+  ["pause", "onPause", true], // { paused, callId }: the whole pause state, owned by main
   ["recap", "onRecap", true], // Catch me up: no payload = open the sheet; { phase, text, recap } = the streamed recap
+  ["pins", "onPins", true], // [card id]: the cards the user pinned earlier in this call, sent after a reset so a replayed close does not take them away
   ["restore", "onRestore", false], // bring back the card that left in the last 30 s
   ["note", "onNote", true], // { kind, text }: a taken hotkey or a lost screen; empty text clears it
   ["nudge", "onNudge", true], // { kind: pace | share | interrupt, value, limit }: a thin bar, not a card

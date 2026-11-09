@@ -201,13 +201,13 @@ const DEFAULT_HOTKEYS = {
 };
 
 /**
- * The global keys as items for registerHotkeys. `page(channel, payload)` returns a function that tells the page; `copyLast` copies the newest captured value.
+ * The global keys as items for registerHotkeys. `page(channel, payload)` returns a function that tells the page; `copyLast` copies the newest captured value; `pause` toggles the pause state that main keeps.
  * Each card key only tells the page, and the page does what its button does.
  */
-function hotkeyItems(HK, { page, copyLast }) {
+function hotkeyItems(HK, { page, copyLast, pause }) {
   return [
     { name: "clear", accel: HK.clear, run: page("clear") },
-    { name: "pause", accel: HK.pause, run: page("pause") },
+    { name: "pause", accel: HK.pause, run: pause || page("pause") }, // main owns the pause state and passes `pause`; the fallback only tells the page
     { name: "rewind", accel: HK.rewind, run: page("rewind") },
     { name: "copy", accel: HK.copy, run: copyLast },
     { name: "checklist", accel: HK.checklist, run: page("checklist") },

@@ -8,7 +8,7 @@ const path = require("node:path");
 const { callPhase, pushCapture, registerCaptureKeys, unregisterCaptureKeys, readShown, writeShown, makeBye } = require("./lib.cjs");
 const { readNewRows, rowKey, Seen, StdinRows, Backlog, ReloadGate } = require("./resilient.cjs");
 const { createMemoryFeed } = require("./memfeed.cjs");
-const { applyAct } = require("./act.cjs");
+const { applyAct, pinnedIds } = require("./act.cjs");
 const { createDisplayFollow, pickDisplay: pickSafeDisplay, registerHotkeys, hotkeyNote, hotkeyItems, DEFAULT_HOTKEYS } = require("./window.cjs");
 const STR = require("./strings.js");
 
@@ -97,6 +97,17 @@ function setNote(kind, text) {
 const mem = createMemoryFeed({ send: (row) => win && !win.isDestroyed() && win.webContents.send("card", row) });
 let currentDir = "",
   memAt = 0;
+// Pause belongs to main: one state for the whole app, sent to the page in full ({ paused, callId }). It resets with a new call and when the call ends,
+// and it survives a page reload (the page asks nothing: main sends it again after every "reset").
+const pauseState = { paused: false, callId: "" };
+function sendPause() {
+  if (win && !win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send("pause", { paused: pauseState.paused, callId: pauseState.callId });
+}
+function setPause(on, callId) {
+  pauseState.paused = on;
+  pauseState.callId = callId;
+  sendPause();
+}
 let keyNote = ""; // the note about hotkeys that did not register; shown again when the page reloads
 let win,
   timer,
@@ -294,6 +305,9 @@ function create() {
     globalShortcut,
     hotkeyItems(HK, {
       page: to,
+      pause: () => {
+        if (!endedSent) setPause(!pauseState.paused, pauseState.callId); // nothing to pause after the call ended
+      },
       copyLast: () => {
         if (lastCapture) copyValue(lastCapture);
       },
@@ -342,7 +356,7 @@ function snapshotMode() {
     .split(",")
     .filter(Boolean);
   win.webContents.once("did-finish-load", () => {
-    setTimeout(() => keys.forEach((k) => win.webContents.send(k)), 900);
+    setTimeout(() => keys.forEach((k) => (k === "pause" ? win.webContents.send(k, { paused: true, callId: "" }) : win.webContents.send(k))), 900);
     // key "late": a new answer arrives after the other keys (e.g. while the rewind sheet is open)
     if (keys.includes("late"))
       setTimeout(
@@ -468,7 +482,13 @@ function pollOnce() {
     currentDir = dir;
     mem.reset();
     memAt = 0;
+    if (dir !== pauseState.callId) {
+      pauseState.paused = false; // a new call starts running; the same call after a page reload keeps its pause
+      pauseState.callId = dir;
+    }
     win.webContents.send("reset");
+    sendPause(); // the reset cleared the page's pause: put main's state back
+    win.webContents.send("pins", pinnedIds(dir)); // and its pins, before the replayed rows (a replayed close must not take a pinned card away)
     replayBacklog();
   }
   for (const c of readNewRows(tails.cards)) {
@@ -499,7 +519,9 @@ function pollOnce() {
       if (p.phase === "ended") {
         endedSent = true;
         capList = [];
+        pauseState.paused = false;
         win.webContents.send("ended");
+        sendPause();
       }
     }
   }

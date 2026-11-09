@@ -457,6 +457,7 @@ live("v2-live-stream", (r) => ({
   rows: r.rows,
   lines: r.lines,
   steps: [
+    { key: "recap" }, // the sheet opens only for a recap the user asked for
     { send: ["recap", { phase: "start", text: "", recap: null, offline: false, notes: false }] },
     { send: ["recap", { phase: "delta", text: r.recapText.split("\n").slice(0, 3).join("\n"), recap: null, offline: false, notes: false }] },
   ],
@@ -464,17 +465,17 @@ live("v2-live-stream", (r) => ({
 live("v2-live-recapdone", (r) => ({
   rows: r.rows,
   lines: r.lines,
-  steps: [{ send: ["recap", { phase: "done", text: r.recapText, recap: null, offline: false, notes: false }] }],
+  steps: [{ key: "recap" }, { send: ["recap", { phase: "done", text: r.recapText, recap: null, offline: false, notes: false }] }],
 }));
 live("v2-live-recapnotes", (r) => ({
   rows: r.rows,
   lines: r.lines,
-  steps: [{ send: ["recap", { phase: "done", text: "", recap: null, offline: true, notes: true }] }],
+  steps: [{ key: "recap" }, { send: ["recap", { phase: "done", text: "", recap: null, offline: true, notes: true }] }],
 }));
 live("v2-live-recaperror", (r) => ({
   rows: r.rows,
   lines: r.lines,
-  steps: [{ send: ["recap", { phase: "error", text: "", recap: null, offline: false, notes: false }] }],
+  steps: [{ key: "recap" }, { send: ["recap", { phase: "error", text: "", recap: null, offline: false, notes: false }] }],
 }));
 // the keyboard path: the global keys reach the hero as "ctl" events (the window never takes focus), and the recap key as a "recap" event with no payload
 live("v2-live-keys", (r) => ({
@@ -490,7 +491,144 @@ live("v2-live-keys", (r) => ({
   ],
 }));
 live("v2-live-aipaused", (r) => ({ rows: [{ ...r.rows[0], ai: "paused" }, ...r.rows.slice(1)], lines: r.lines }));
-const ALL = Object.keys(SCENARIOS);
+// ---- sequences (round 16): each one replays an order of events that used to go wrong; src/overlay-ux.test.ts reads the probe ----
+const mePartial = (text) => ({ t: now, ch: "me", text, spk: undefined, name: undefined });
+const tipRow = (id, say) => row({ id, turnId: "tips", badge: "tip", tipType: "ask", say });
+const recapRows = (T) => ({
+  start: { phase: "start", text: "", recap: null, offline: false, notes: false },
+  delta: { phase: "delta", text: "WHERE: " + T.recap.where, recap: null, offline: false, notes: false },
+  done: { phase: "done", text: "", recap: T.recap, offline: false, notes: false },
+});
+// the user closes the sheet while it streams; the next delta, and then the done row, must not open it again
+SCENARIOS["v2-seq-recap-closed"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [
+    { key: "recap" },
+    { send: ["recap", recapRows(T).start] },
+    { click: "#recap .b.x" },
+    { send: ["recap", recapRows(T).delta] },
+    { send: ["recap", recapRows(T).done] },
+  ],
+});
+// a recap row nobody asked for (a replay after a reload, or a new call) does not open the sheet
+SCENARIOS["v2-seq-recap-replayed"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [{ send: ["recap", recapRows(T).start] }, { send: ["recap", recapRows(T).delta] }, { send: ["recap", recapRows(T).done] }],
+});
+// a late recap row after the call ended leaves the ended screen alone
+SCENARIOS["v2-seq-recap-ended"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [{ key: "recap" }, { key: "ended" }, { send: ["recap", recapRows(T).done] }],
+});
+// the sheet stays open through card rows and chip ticks, and its timer is set once (the page reports it)
+SCENARIOS["v2-seq-recap-stays"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [
+    { key: "recap" },
+    { send: ["recap", recapRows(T).start] },
+    { send: ["recap", recapRows(T).done] },
+    { send: ["card", row({ id: "b2", turnId: "t9", badge: "ai", kind: "answer", value: 2, say: T.answer, label: T.answerLabel })] },
+  ],
+});
+// rewind and recap are two sheets of one value: the last one opened wins, the other closes
+SCENARIOS["v2-seq-sheets"] = (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ key: "rewind" }, { key: "recap" }] });
+SCENARIOS["v2-seq-sheets-back"] = (T) => ({ rows: [view(T), answer(T)], lines: lines(T), steps: [{ key: "recap" }, { key: "rewind" }] });
+// pause at the end of call A, then call B starts: B must not start paused
+SCENARIOS["v2-seq-pause-next-call"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [
+    { send: ["pause", { paused: true, callId: "a" }] },
+    { key: "ended" },
+    { key: "reset" },
+    { send: ["phase", { phase: "live", liveAt: Date.now() - 5000 }] },
+    { send: ["card", row({ id: "b1", turnId: "t1", badge: "ai", kind: "answer", value: 2, say: T.answer, label: T.answerLabel })] },
+  ],
+});
+// main sends the whole pause state: pause on, a repeated "on" stays on, then off
+SCENARIOS["v2-seq-pause-state"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [{ send: ["pause", { paused: true, callId: "a" }] }, { send: ["pause", { paused: true, callId: "a" }] }],
+});
+SCENARIOS["v2-seq-pause-off"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [{ send: ["pause", { paused: true, callId: "a" }] }, { send: ["pause", { paused: false, callId: "a" }] }],
+});
+// a cards.jsonl row that reaches the page after the call ended (main keeps reading the file) changes nothing
+SCENARIOS["v2-seq-late-ended"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [
+    { key: "ended" },
+    { send: ["frame", { kind: "client", topic: T.topic, checklist: [{ item: "x", done: false }] }] },
+    { send: ["addressed", { who: "Dana", text: T.ask }] },
+    { send: ["nudge", { kind: "pace", value: 200, limit: 160 }] },
+    { send: ["ask", { on: true, until: Date.now() + 60000 }] },
+    { send: ["card", tipRow("late-tip", T.ask)] },
+    { send: ["line", { t: Date.now(), ch: "them", text: T.ask }] },
+  ],
+});
+// The 90 s tip timers are caught by the page script below and run by hand: window.__tipTimers keeps every one of them, in order, even after clearTimeout.
+const catchTipTimers =
+  "const st = window.setTimeout, ct = window.clearTimeout; window.__live = new Map(); window.__tipTimers = []; let n = 1e6; " +
+  "window.setTimeout = (f, ms, ...a) => (ms === 90000 ? (window.__tipTimers.push(f), window.__live.set(++n, f), n) : st(f, ms, ...a)); " +
+  "window.clearTimeout = (id) => (window.__live.delete(id) ? undefined : ct(id))";
+// the same tip id comes back after it was pushed out (limit of two): the first tip's timer fires late and must not delete the new tip
+SCENARIOS["v2-seq-tip-reuse"] = () => ({
+  rows: [],
+  lines: [],
+  steps: [
+    { eval: catchTipTimers },
+    { send: ["card", tipRow("t1", "one")] },
+    { send: ["card", tipRow("t2", "two")] },
+    { send: ["card", tipRow("t3", "three")] },
+    { send: ["card", tipRow("t1", "one again")] },
+    { eval: "window.__tipTimers[0]()" },
+  ],
+});
+// a tip from call A is gone after the reset, and A's timer must not touch call B's tip with the same id
+SCENARIOS["v2-seq-tip-next-call"] = () => ({
+  rows: [],
+  lines: [],
+  steps: [
+    { eval: catchTipTimers },
+    { send: ["card", tipRow("t1", "call A")] },
+    { key: "reset" },
+    { send: ["card", tipRow("t1", "call B")] },
+    { eval: "window.__tipTimers[0]()" },
+  ],
+});
+// an empty partial from your own voice must not hide the other side's line
+SCENARIOS["v2-seq-strips"] = (T) => ({
+  rows: [],
+  lines: [{ t: now - 1000, ch: "them", text: T.ask }],
+  steps: [{ send: ["partial", mePartial("")] }],
+});
+// the pinned card is closed by the engine, then the user unpins it: it dims then (the close was kept)
+SCENARIOS["v2-seq-pin-closed"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [{ click: ".hcard .b.pin" }, { send: ["card", answer(T, { closes: "answered" })] }, { wait: 300 }],
+});
+SCENARIOS["v2-seq-pin-closed-unpin"] = (T) => ({
+  rows: [view(T), answer(T)],
+  lines: lines(T),
+  steps: [{ click: ".hcard .b.pin" }, { send: ["card", answer(T, { closes: "answered" })] }, { click: ".hcard .b.pin" }],
+});
+// after a page reload main sends the pins first: the replayed close dims nothing that is pinned
+SCENARIOS["v2-seq-pin-replay"] = (T) => ({
+  rows: [],
+  lines: [],
+  steps: [{ send: ["pins", ["a1"]] }, { send: ["card", answer(T)] }, { send: ["card", answer(T, { closes: "topic" })] }],
+});
+// the sequence scenarios (v2-seq-*) are run by src/overlay-states.test.ts, with probes; the "every scenario" checks and snapshot.sh skip them to stay fast
+const ALL = Object.keys(SCENARIOS).filter((n) => !n.startsWith("v2-seq-"));
 /** Build a scenario for a UI language ("en" | "he"). */
 function build(name, lang) {
   const f = SCENARIOS[name];

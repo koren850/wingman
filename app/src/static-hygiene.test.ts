@@ -105,7 +105,7 @@ test("overlay: preload bridge functions return nothing; page script is external;
     Mod._load = orig;
   }
   const subs = Object.keys(api).filter((k) => k.startsWith("on"));
-  assert.equal(subs.length, 23); // overlay-ux added onRestore and onNote; features added onNudge
+  assert.equal(subs.length, 24); // overlay-ux added onRestore and onNote; features added onNudge; round 16 added onPins
   assert.deepEqual(
     Object.keys(api).filter((k) => !k.startsWith("on")),
     ["size", "copy", "shown", "act"],
@@ -118,15 +118,15 @@ test("overlay: preload bridge functions return nothing; page script is external;
       "a bridge function must not return the ipcRenderer proxy",
     );
   }
-  assert.equal(Object.keys(registered).length, 23);
+  assert.equal(Object.keys(registered).length, 24);
   const seen: unknown[][] = [];
   const expectSeen = (want: unknown[][], why: string) => assert.deepEqual(seen as unknown[], want as unknown[], why);
   api.onCard!((...a: unknown[]) => seen.push(a));
   registered.card!({}, { id: "c1" });
   expectSeen([[{ id: "c1" }]], "payload events pass the payload only");
   seen.length = 0;
-  api.onPause!((...a: unknown[]) => seen.push(a));
-  registered.pause!({}, "ignored");
+  api.onRewind!((...a: unknown[]) => seen.push(a));
+  registered.rewind!({}, "ignored");
   expectSeen([[]], "payload-less events call the handler with no argument");
   const html = read("overlay/index.html");
   const csp = /Content-Security-Policy"\s+content="([^"]*)"/.exec(html)![1];

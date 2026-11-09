@@ -17,11 +17,20 @@ let folded = false,
   sizeRaf = 0,
   lastSize = 0,
   lastHero = "";
-let paused = false,
-  quiet = false,
-  phase = "starting",
-  realPhase = false,
-  liveAt = 0,
+// The page's state, one value per machine. Nothing below reads these back from the DOM (classes, style.display); the DOM is drawn from them.
+//   phase: starting | waiting | listening | ended (call.json, or the 4 s fallback)   paused: set by main (full state, see onPause)
+//   sheet: none | rewind | recap | more | checklist (one sheet at a time, see setSheet)   callId: the call that main said pause belongs to
+const ui = { phase: "starting", realPhase: false, paused: false, quiet: false, sheet: "none", callId: "", frame: false };
+/** Channels that still count after the call ended. Everything else main sends late (cards.jsonl is read to its end) is dropped, so the ended screen stays clean. */
+const AFTER_END_OK = new Set(["onConfig", "onReset", "onEnded", "onClear", "onPause", "onNote", "onCopied"]);
+/** The one place the page subscribes to main: a late row for a finished call never reaches its handler. */
+function onMain(name, fn) {
+  window.wingman[name]((...a) => {
+    if (ui.phase === "ended" && !AFTER_END_OK.has(name)) return;
+    fn(...a);
+  });
+}
+let liveAt = 0,
   pausedNew = 0,
   HK = { ask: "Control+Alt+A", pause: "Control+Alt+P" };
 
@@ -102,6 +111,9 @@ const v2 = createV2View({
   announce,
   controls,
   cardShown,
+  paused: () => ui.paused,
+  sheet: () => ui.sheet,
+  setSheet: (name) => setSheet(name),
   uiDir: () => UIDIR,
   onChange: () => (emptyCheck(), drawNow(), refreshIdle(), heroChanged(), reportSize()),
 });
@@ -126,7 +138,17 @@ const stateEl = document.getElementById("state"),
   emptyS = document.getElementById("emptyS");
 function refreshState() {
   const s =
-    phase === "ended" ? "ended" : phase === "waiting" ? "waiting" : paused ? "paused" : quiet ? "quiet" : phase === "starting" ? "starting" : "listening";
+    ui.phase === "ended"
+      ? "ended"
+      : ui.phase === "waiting"
+        ? "waiting"
+        : ui.paused
+          ? "paused"
+          : ui.quiet
+            ? "quiet"
+            : ui.phase === "starting"
+              ? "starting"
+              : "listening";
   for (const n of ["ended", "paused", "quiet", "starting", "waiting"]) document.body.classList.toggle(n, s === n);
   const key = (n, part) => "state." + n + (part ? "." + part : "");
   const T = [tr(key(s)), tr(key(s, "title")), s === "listening" || s === "ended" || s === "quiet" || s === "starting" ? tr(key(s, "sub")) : null];
@@ -142,7 +164,7 @@ function refreshState() {
 }
 /** Idle view in the empty state: what Wingman understands so far. The mascot only shows in the first-run states (starting, waiting; see overlay.css). */
 function refreshIdle() {
-  const shown = v2.drawIdle(phase === "listening" && !paused, lastFrame);
+  const shown = v2.drawIdle(ui.phase === "listening" && !ui.paused, lastFrame);
   emptyBox.classList.toggle("idle", shown);
 }
 const elapsed = (ms) => {
@@ -152,8 +174,8 @@ const elapsed = (ms) => {
 let startTimer;
 // First card or line = we are live, but only when call.json writes no phase (then a 4 s timer is the fallback too).
 function listening() {
-  if (phase === "starting" && !realPhase) {
-    phase = "listening";
+  if (ui.phase === "starting" && !ui.realPhase) {
+    ui.phase = "listening";
     clearTimeout(startTimer);
     refreshState();
   }
@@ -165,11 +187,10 @@ function fadeCheck() {
 }
 function emptyCheck() {
   fadeCheck();
-  emptyBox.style.display = (cards.size || v2.hasContent()) && !paused && phase !== "ended" ? "none" : "flex";
+  emptyBox.style.display = (cards.size || v2.hasContent()) && !ui.paused && ui.phase !== "ended" ? "none" : "flex";
 }
 function clearCards() {
-  for (const el of cards.values()) el.remove();
-  cards.clear();
+  for (const id of [...cards.keys()]) dropCard(id);
   emptyCheck();
 }
 
@@ -219,7 +240,7 @@ function drawHealthDot() {
 }
 function renderHealth(c) {
   if (c.id === "health-quiet") {
-    quiet = !c.clear;
+    ui.quiet = !c.clear;
     refreshState();
     return;
   }
@@ -232,14 +253,20 @@ const rail = document.getElementById("rail"),
   notesBox = document.getElementById("notes"),
   noteList = document.getElementById("notelist");
 const sides = new Map();
+const notes = []; // AI notes (the 3 newest); noteList is drawn from it
 /** Side rail items (facts, reminders, info) and AI notes. Rail keeps the 2 newest; notes list keeps 3. */
 function renderSide(c) {
   if (c.badge === "note") {
-    const li = document.createElement("li");
-    li.dir = "rtl";
-    mixed(li, c.say);
-    noteList.append(li);
-    while (noteList.children.length > 3) noteList.firstElementChild.remove();
+    notes.push(String(c.say));
+    while (notes.length > 3) notes.shift();
+    noteList.replaceChildren(
+      ...notes.map((t) => {
+        const li = document.createElement("li");
+        li.dir = "rtl";
+        mixed(li, t);
+        return li;
+      }),
+    );
     notesBox.style.display = "block";
     updateMore();
     return;
@@ -280,14 +307,14 @@ function renderSide(c) {
 const moreBtn = document.getElementById("morebtn"),
   moreBox = document.getElementById("morebox"),
   mainBox = document.getElementById("main");
-let moreTimer;
-const moreOpen = () => document.body.classList.contains("more-open");
 /** Panels that live in the More strip in Focus, in their Full order. */
 function moreParts() {
   return ["frame", "tips", "capture", "rail", "notes"].map((id) => document.getElementById(id));
 }
 function setLayout(l) {
+  const was = LAYOUT;
   LAYOUT = l === "full" ? "full" : "focus";
+  if (was !== LAYOUT && (ui.sheet === "more" || ui.sheet === "checklist")) setSheet("none"); // those two sheets belong to one layout each
   SHOW_OLDER = LAYOUT === "focus" ? 1 : 2;
   document.body.classList.toggle("focus", LAYOUT === "focus");
   document.body.classList.toggle("full", LAYOUT === "full");
@@ -296,7 +323,6 @@ function setLayout(l) {
   else {
     document.getElementById("wrap").insertBefore(parts[0], document.getElementById("flow"));
     mainBox.append(...parts.slice(1)); // after the (hidden) More strip
-    toggleMore(false);
   }
   updateMore();
   layoutRoles();
@@ -304,22 +330,39 @@ function setLayout(l) {
 }
 /** Number of things behind the More strip: checklist, tips, client/fact cards, AI notes, captured details. */
 function updateMore() {
-  const n = (frameBox.style.display === "flex" ? 1 : 0) + tipEls.size + sides.size + noteList.children.length + caps.size;
+  const n = (ui.frame ? 1 : 0) + tipEls.size + sides.size + notes.length + caps.size;
   moreBtn.replaceChildren(span("mt", tr("more.title", { n })));
   if (HK.checklist) moreBtn.append(Object.assign(document.createElement("kbd"), { textContent: fmtKey(HK.checklist).split("+").pop() }));
   moreBtn.style.display = LAYOUT === "focus" && n > 0 ? "" : "none";
-  moreBtn.setAttribute("aria-expanded", String(moreOpen()));
-  if (!n && moreOpen()) toggleMore(false);
+  moreBtn.setAttribute("aria-expanded", String(ui.sheet === "more"));
+  if (!n && ui.sheet === "more") setSheet("none");
 }
-function toggleMore(on) {
-  const open = on === undefined ? !moreOpen() : on && LAYOUT === "focus";
-  document.body.classList.toggle("more-open", open);
-  moreBtn.setAttribute("aria-expanded", String(open));
-  clearTimeout(moreTimer);
-  if (open) moreTimer = setTimeout(() => toggleMore(false), 20000);
+// ---- sheets: ONE value says which sheet is open; opening one closes the others; one timer closes it; the DOM is drawn from the value ----
+const SHEET_MS = { rewind: 20000, recap: 45000, more: 20000, checklist: 15000 };
+let sheetTimer;
+function setSheet(name) {
+  let next = name in SHEET_MS ? name : "none";
+  if (next === "more" && LAYOUT !== "focus") next = "none"; // the More strip exists only in Focus
+  if (next === "checklist" && LAYOUT === "focus") next = "more"; // in Focus the checklist lives behind More
+  const was = ui.sheet;
+  if (next === was) return;
+  ui.sheet = next;
+  clearTimeout(sheetTimer);
+  if (next !== "none") sheetTimer = setTimeout(() => setSheet("none"), SHEET_MS[next]);
+  renderSheets();
+  v2.sheetChanged(was, next);
+}
+function renderSheets() {
+  rewindBox.style.display = ui.sheet === "rewind" ? "flex" : "none";
+  if (ui.sheet !== "rewind") rNew.style.display = "none";
+  recapBox.style.display = ui.sheet === "recap" ? "flex" : "none";
+  document.body.classList.toggle("more-open", ui.sheet === "more");
+  moreBtn.setAttribute("aria-expanded", String(ui.sheet === "more"));
+  frameBox.classList.toggle("open", ui.sheet === "checklist");
   fadeCheck();
+  reportSize();
 }
-moreBtn.addEventListener("click", () => toggleMore());
+moreBtn.addEventListener("click", () => setSheet(ui.sheet === "more" ? "none" : "more"));
 
 // Card types (glossary): Prepared / AI / Buy time / For you / Math / Tip. Each has a glyph + label + tint.
 const TYPE = {
@@ -367,7 +410,7 @@ function updateAges() {
 }
 setInterval(() => {
   updateAges();
-  if (phase === "listening" && liveAt && !cards.size) refreshState();
+  if (ui.phase === "listening" && liveAt && !cards.size) refreshState();
 }, 10000);
 
 // ---- call frame header + checklist ----
@@ -419,15 +462,16 @@ function renderFrame(f) {
     ul.append(li);
   }
   clBox.append(ul);
+  ui.frame = true;
   frameBox.style.display = "flex";
   updateMore();
 }
-window.wingman.onFrame(renderFrame);
+onMain("onFrame", renderFrame);
 // ---- flow: their own discussion, and the moment they turn to you ----
 const flowBox = document.getElementById("flow"),
   youBox = document.getElementById("you");
 let youTimer;
-window.wingman.onFlow((f) => {
+onMain("onFlow", (f) => {
   if (f.state !== "internal") {
     flowBox.classList.remove("on");
     return;
@@ -442,7 +486,7 @@ window.wingman.onFlow((f) => {
 const nudgeBox = document.getElementById("nudge");
 let nudgeTimer;
 const NUDGE_MS = 12000;
-window.wingman.onNudge((n) => {
+onMain("onNudge", (n) => {
   if (!n || !["pace", "share", "interrupt"].includes(n.kind) || v2.checkLive()) return;
   nudgeBox.replaceChildren();
   mixed(nudgeBox, tr("nudge." + n.kind, { n: n.value }));
@@ -454,7 +498,7 @@ window.wingman.onNudge((n) => {
   }, NUDGE_MS);
   reportSize();
 });
-window.wingman.onAddressed((a) => {
+onMain("onAddressed", (a) => {
   flowBox.classList.remove("on");
   const yt = youBox.querySelector(".yt");
   yt.replaceChildren();
@@ -464,19 +508,13 @@ window.wingman.onAddressed((a) => {
   clearTimeout(youTimer);
   youTimer = setTimeout(() => youBox.classList.remove("on"), 10000);
 });
-window.wingman.onChecklist(() => {
-  if (LAYOUT === "focus") {
-    toggleMore();
-    return;
-  }
-  frameBox.classList.toggle("open");
-  clearTimeout(frameBox._t);
-  if (frameBox.classList.contains("open")) frameBox._t = setTimeout(() => frameBox.classList.remove("open"), 15000);
+onMain("onChecklist", () => {
+  setSheet(ui.sheet === (LAYOUT === "focus" ? "more" : "checklist") ? "none" : "checklist"); // setSheet maps checklist to More in Focus
 });
 
 // ---- tips ----
 const tipsBox = document.getElementById("tips"),
-  tipEls = new Map();
+  tipEls = new Map(); // id -> { el, timer }: the tip on screen and the timer that removes it
 const TIP_KINDS = ["ask", "clarify", "term", "remind", "note"];
 const SVG = "http://www.w3.org/2000/svg";
 function tipIcon() {
@@ -488,27 +526,34 @@ function tipIcon() {
   s.append(p);
   return s;
 }
+/** Takes a tip off the screen and stops its timer. */
+function dropTip(id) {
+  const t = tipEls.get(id);
+  if (!t) return;
+  clearTimeout(t.timer);
+  t.el.remove();
+  tipEls.delete(id);
+}
 function renderTip(c) {
-  let el = tipEls.get(c.id);
-  if (!el) {
-    el = div("tip");
-    tipEls.set(c.id, el);
+  let tip = tipEls.get(c.id);
+  if (!tip) {
+    const el = div("tip");
+    tip = { el, timer: 0 };
+    tipEls.set(c.id, tip);
     tipsBox.append(el);
-    while (tipEls.size > 2) {
-      const [k, v] = tipEls.entries().next().value;
-      v.remove();
-      tipEls.delete(k);
-    }
-    setTimeout(() => {
-      el.remove();
-      tipEls.delete(c.id);
+    while (tipEls.size > 2) dropTip(tipEls.keys().next().value);
+    const mine = tip;
+    tip.timer = setTimeout(() => {
+      if (tipEls.get(c.id) !== mine) return; // the id was reused by a newer tip: that one has its own timer
+      dropTip(c.id);
       updateMore();
     }, 90000);
   }
+  const el = tip.el;
   el.replaceChildren(tipIcon());
   const k = document.createElement("span");
   k.className = "k";
-  k.textContent = tr("tip.prefix") + " · " + (TIP_KINDS.includes(c.tipType) ? tr("tip." + c.tipType) : tr("tip.prefix"));
+  k.textContent = tr("tip.prefix") + " \u00b7 " + (TIP_KINDS.includes(c.tipType) ? tr("tip." + c.tipType) : tr("tip.prefix"));
   el.append(k);
   const t = document.createElement("span");
   t.className = "tx";
@@ -607,19 +652,26 @@ function buildCard(el, c, consent) {
 function applyWriting(el) {
   const on = WingmanText.isWriting({
     ai: el.classList.contains("ai") && !el.classList.contains("calc") && !el.classList.contains("consent"),
-    done: el._done,
-    updated: el._upd,
-    age: Date.now() - (el._chg || 0),
-    text: el._txt,
+    done: el._w.done,
+    updated: el._w.upd,
+    age: Date.now() - (el._w.chg || 0),
+    text: el._w.txt,
   });
   el.classList.toggle("writing", !!on);
-  clearTimeout(el._wt);
-  if (on) el._wt = setTimeout(() => applyWriting(el), 300);
+  clearTimeout(el._w.timer);
+  if (on && el.isConnected) el._w.timer = setTimeout(() => applyWriting(el), 300);
+}
+/** Removes a legacy card and stops its typing timer, so nothing runs for a card that is gone. */
+function dropCard(id) {
+  const el = cards.get(id);
+  if (!el) return;
+  if (el._w) clearTimeout(el._w.timer);
+  el.remove();
+  cards.delete(id);
 }
 
 /** Handles one row from calls/latest/cards.jsonl. The same id arrives again as the answer streams or is rewritten, so cards are updated in place. */
 function render(c) {
-  if (phase === "ended") return;
   listening();
   if (c.type === "view") {
     v2.handleView(c);
@@ -639,8 +691,7 @@ function render(c) {
     return;
   } // facts/notes/reminders are kept even while paused
   if (c.withdraw) {
-    cards.get(c.id)?.remove();
-    cards.delete(c.id);
+    dropCard(c.id);
     layoutRoles();
     emptyCheck();
     return;
@@ -652,14 +703,12 @@ function render(c) {
   if (!el) {
     el = document.createElement("div");
     el._at = Number(c.at) || Date.now();
+    el._w = { txt: undefined, done: false, upd: false, chg: 0, timer: 0 }; // the "writing" state of this card
     cards.set(c.id, el);
     cardsBox.prepend(el);
-    while (cards.size > MAX) {
-      const [k, v] = cards.entries().next().value;
-      v.remove();
-      cards.delete(k);
-    }
-    if (paused) pausedNew++;
+    while (cards.size > MAX) dropCard(cards.keys().next().value);
+    if (ui.paused) pausedNew++;
+    unfold(); // a new answer unfolds a folded window
   }
   const sig = [c.badge, c.dim, consent, c.source, c.question, (c.facts || []).join("\u0001")].join("\u0002");
   if (el._sig !== sig) {
@@ -667,29 +716,28 @@ function render(c) {
     el._sig = sig;
   }
   const say = String(c.say || "");
-  if (el._txt !== say) {
-    if (el._txt !== undefined) el._upd = true;
-    el._txt = say;
-    el._chg = Date.now();
+  if (el._w.txt !== say) {
+    if (el._w.txt !== undefined) el._w.upd = true;
+    el._w.txt = say;
+    el._w.chg = Date.now();
   }
-  if (c.done) el._done = true;
+  if (c.done) el._w.done = true;
   setSay(el, say);
   applyWriting(el);
   layoutRoles();
   emptyCheck();
-  if (!paused && !consent && c.badge !== "info") announce(el._label, String(c.say || ""));
+  if (!ui.paused && !consent && c.badge !== "info") announce(el._label, String(c.say || ""));
   if (isNew && !consent) newInRewind(el, c);
 }
 
 // Rewind: keep recent transcript lines; the hotkey shows the last N seconds (auto-hides after 20 s).
 const lines = [];
-let REWIND_S = 30,
-  rewindTimer;
+let REWIND_S = 30;
 const rewindBox = document.getElementById("rewind"),
   rContent = document.getElementById("rcontent"),
   rNew = document.getElementById("rnew"),
   capBox = document.getElementById("capture");
-const rewindOpen = () => rewindBox.style.display === "flex";
+const recapBox = document.getElementById("recap");
 function showNewBar(el, c) {
   rNew.replaceChildren(span("rl", tr("rewind.newAnswer") + el._label));
   const t = span("rt");
@@ -700,13 +748,12 @@ function showNewBar(el, c) {
 }
 // A new answer while the sheet is open: a bar on top of the sheet, so it is never hidden.
 function newInRewind(el, c) {
-  if (rewindOpen() && c.badge !== "info") showNewBar(el, c);
+  if (ui.sheet === "rewind" && c.badge !== "info") showNewBar(el, c);
 }
 /** Hotkey toggle for the "what did they say" sheet; it hides itself after 20 s. */
 function showRewind() {
-  if (rewindOpen()) {
-    rewindBox.style.display = "none";
-    rNew.style.display = "none";
+  if (ui.sheet === "rewind") {
+    setSheet("none");
     return;
   }
   const since = Date.now() - REWIND_S * 1000;
@@ -739,13 +786,8 @@ function showRewind() {
     body.append(d);
   }
   rContent.append(body);
-  rewindBox.style.display = "flex";
+  setSheet("rewind");
   body.scrollTop = body.scrollHeight;
-  clearTimeout(rewindTimer);
-  rewindTimer = setTimeout(() => {
-    rewindBox.style.display = "none";
-    rNew.style.display = "none";
-  }, 20000);
 }
 // Live strip: the newest line from either side, labelled (overlay.showLastLine). Text nodes only.
 // A short "me" line (< 3 words: "yes", "okay") does not replace the other side's sentence, so the question stays readable.
@@ -770,23 +812,64 @@ const whoLabel = (l) =>
 // NOW line: the newest spoken line while it is fresh; after NOW_HOLD_MS without speech, the topic from the view row (when there is one).
 const NOW_HOLD_MS = 8000;
 let lastLineAt = 0;
+// Each strip is one small state machine: mode hidden | line | partial | topic. Only strip.mode decides what shows; drawStrip draws the box from it.
+// them: the other side's line or the topic. me: your own voice, under it. `at` = when the text last changed, `fresh` counts the fade-ins to play.
+const newStrip = (box, txt, who) => ({
+  box,
+  txt,
+  who: who,
+  mode: "hidden",
+  text: "",
+  whoText: "",
+  spk: undefined,
+  at: 0,
+  topic: "",
+  fresh: 0,
+  freshDrawn: 0,
+  drawn: "",
+});
+const strips = { them: newStrip(lastBox, lastTxt, lastWho), me: newStrip(lastMeBox, lastMeTxt, lastMeWho) };
+function resetStrips() {
+  for (const k of ["them", "me"]) Object.assign(strips[k], { mode: "hidden", text: "", whoText: "", spk: undefined, at: 0, topic: "", drawn: "" });
+  lastLineAt = 0;
+  for (const k of ["them", "me"]) drawStrip(strips[k]);
+}
+/** Draws one strip from its state, and only what changed (a partial never rebuilds the box for the same words). */
+function drawStrip(st) {
+  const { box, mode } = st;
+  box.style.display = mode === "hidden" ? "none" : "flex";
+  box.classList.toggle("topic", mode === "topic");
+  box.classList.toggle("partial", mode === "partial");
+  if (mode === "hidden") return;
+  const key = mode + "\u0001" + st.text + "\u0001" + st.whoText;
+  if (key !== st.drawn) {
+    st.drawn = key;
+    st.txt.replaceChildren();
+    mixed(st.txt, st.text);
+    st.who.textContent = st.whoText;
+  }
+  if (mode === "topic") box.classList.remove("me", "fresh");
+  else if (st.fresh !== st.freshDrawn) {
+    st.freshDrawn = st.fresh;
+    box.classList.remove("fresh");
+    void box.offsetWidth; // restart the fade-in
+    box.classList.add("fresh");
+  }
+}
 function drawNow() {
-  if (lastMeBox._at && Date.now() - lastMeBox._at > ME_HOLD_MS) {
-    lastMeBox.style.display = "none";
-    lastMeBox._at = 0;
+  const me = strips.me;
+  if (me.mode !== "hidden" && me.at && Date.now() - me.at > ME_HOLD_MS) {
+    me.mode = "hidden";
+    me.at = 0;
+    drawStrip(me);
     reportSize();
   }
   const topic = v2.view.topic;
+  const them = strips.them;
   if (!topic || (lastLineAt && Date.now() - lastLineAt <= NOW_HOLD_MS)) return;
-  if (lastBox._topic === topic && lastBox.classList.contains("topic")) return;
-  lastBox._topic = topic;
-  lastBox.classList.remove("me", "partial", "fresh");
-  lastBox.classList.add("topic");
-  lastTxt.replaceChildren();
-  mixed(lastTxt, topic.slice(-220));
-  lastWho.textContent = tr("v2.now.topic");
-  lastBox._line = null;
-  lastBox.style.display = "flex";
+  if (them.mode === "topic" && them.topic === topic) return;
+  Object.assign(them, { mode: "topic", topic, text: topic.slice(-220), whoText: tr("v2.now.topic"), spk: undefined });
+  drawStrip(them);
 }
 setInterval(drawNow, 2000);
 /** The end of a long line, from a word start (the strip is one line: the newest words matter). */
@@ -796,64 +879,64 @@ function lastWords(text, max) {
   const i = cut.indexOf(" ");
   return i > 0 && i < 24 ? cut.slice(i + 1) : cut;
 }
-function showLast(text, ch, partial, who) {
-  const mine = ch === "me";
-  const box = mine ? lastMeBox : lastBox,
-    txt = mine ? lastMeTxt : lastTxt,
-    whoEl = mine ? lastMeWho : lastWho;
-  if (!SHOW_LAST || !text) {
-    lastBox.style.display = "none";
-    lastMeBox.style.display = "none";
-    lastBox.classList.remove("topic");
+function showLast(text, ch, partial, who, spk) {
+  const st = ch === "me" ? strips.me : strips.them;
+  if (!SHOW_LAST) {
+    for (const k of ["them", "me"]) strips[k].mode = "hidden";
+    drawStrip(strips.them);
+    drawStrip(strips.me);
+    drawNow();
+    return;
+  }
+  if (!text) {
+    // empty words: this side stopped (an empty partial). Only this strip is affected, and only when it still shows words that were never finished.
+    if (st.mode === "partial") st.mode = "hidden";
+    drawStrip(st);
     drawNow();
     return;
   }
   lastLineAt = Date.now();
-  if (!mine) lastBox.classList.remove("topic");
   const clean = String(text).replace(/\s+/g, " ").trim();
-  box.classList.toggle("partial", !!partial);
-  txt.replaceChildren();
-  mixed(txt, lastWords(clean, 110));
-  whoEl.textContent = who || (mine ? tr("who.me") : tr("who.them"));
-  box._line = { ch, spk: box._spkNext };
-  box._at = Date.now();
-  if (!partial && !box._wasPartial) {
-    box.classList.remove("fresh");
-    void box.offsetWidth;
-    box.classList.add("fresh");
-  }
-  box._wasPartial = !!partial;
-  box.style.display = "flex";
+  if (!partial && st.mode !== "partial") st.fresh++;
+  Object.assign(st, {
+    mode: partial ? "partial" : "line",
+    text: lastWords(clean, 110),
+    whoText: who || (ch === "me" ? tr("who.me") : tr("who.them")),
+    spk,
+    at: Date.now(),
+  });
+  drawStrip(st);
   reportSize();
 }
-window.wingman.onLine((l) => {
-  if (phase === "ended") return;
+onMain("onLine", (l) => {
   listening();
   lines.push(l);
   while (lines.length > 400) lines.shift();
-  (l.ch === "me" ? lastMeBox : lastBox)._spkNext = l.spk;
-  showLast(l.text, l.ch, false, whoLabel(l));
+  showLast(l.text, l.ch, false, whoLabel(l), l.spk);
 });
-window.wingman.onPartial((l) => {
-  if (phase === "ended") return;
+onMain("onPartial", (l) => {
   listening();
-  (l.ch === "me" ? lastMeBox : lastBox)._spkNext = l.spk;
-  showLast(l.text, l.ch, true, whoLabel(l));
+  showLast(l.text, l.ch, true, whoLabel(l), l.spk);
 });
-window.wingman.onSpeaker((s) => {
+onMain("onSpeaker", (s) => {
   if (s.name) NAMES.set(s.spk, s.name);
   else NAMES.delete(s.spk);
-  if (lastBox._line && lastBox._line.ch === "them" && lastBox._line.spk === s.spk) lastWho.textContent = whoLabel(lastBox._line); // the strip on screen follows at once
+  const st = strips.them;
+  if ((st.mode === "line" || st.mode === "partial") && st.spk === s.spk) {
+    st.whoText = whoLabel({ ch: "them", spk: st.spk }); // the strip on screen follows at once
+    drawStrip(st);
+  }
 });
-window.wingman.onRewind(showRewind);
-window.wingman.onRecap((p) => (p ? v2.handleRecap(p) : v2.hotkeyRecap()));
-window.wingman.onCtl((c) => v2.control(c && c.name));
-window.wingman.onRestore(() => v2.restoreLast());
+onMain("onRewind", showRewind);
+onMain("onRecap", (p) => (p ? v2.handleRecap(p) : v2.hotkeyRecap()));
+onMain("onCtl", (c) => v2.control(c && c.name));
+onMain("onRestore", () => v2.restoreLast());
+onMain("onPins", (ids) => v2.setPins(ids));
 
 // ---- note banner: a taken hotkey, a lost screen. Tap to hide. ----
 const noteBox = document.getElementById("note");
 let noteTimer;
-window.wingman.onNote((n) => {
+onMain("onNote", (n) => {
   clearTimeout(noteTimer);
   const text = n && typeof n.text === "string" ? n.text.slice(0, 300) : "";
   noteBox.replaceChildren();
@@ -872,23 +955,25 @@ document.body.classList.toggle("fit", FIT);
 const wrapEl = document.getElementById("wrap"),
   stageEl = document.getElementById("stage"),
   foldBtn = document.getElementById("fold");
-const shown = (el) => el.style.display && el.style.display !== "none";
+/** A new answer (v2 hero or legacy card) unfolds a window the user folded. */
+function unfold() {
+  if (!folded) return;
+  folded = false;
+  foldBtn.setAttribute("aria-pressed", "false");
+}
 function heroChanged() {
   const id = v2.board.heroId;
-  if (id && id !== lastHero && folded) {
-    folded = false; // a new hero unfolds the window
-    foldBtn.setAttribute("aria-pressed", "false");
-  }
+  if (id && id !== lastHero) unfold();
   lastHero = id;
 }
 function barMode() {
   if (!FIT) return false;
   if (folded) return true;
-  const sheet = shown(document.getElementById("recap")) || shown(rewindBox) || moreOpen();
-  return phase === "listening" && !paused && !v2.hasContent() && !cards.size && !sheet;
+  const sheet = ui.sheet === "rewind" || ui.sheet === "recap" || ui.sheet === "more";
+  return ui.phase === "listening" && !ui.paused && !v2.hasContent() && !cards.size && !sheet;
 }
 function sheetHeight(el) {
-  return shown(el) ? Math.ceil(el.scrollHeight) + 4 : 0;
+  return Math.ceil(el.scrollHeight) + 4;
 }
 /** Measures the page and sends its height to main (once per frame at most, and only when it changed). */
 function reportSize() {
@@ -896,7 +981,7 @@ function reportSize() {
   sizeRaf = requestAnimationFrame(() => {
     sizeRaf = 0;
     document.body.classList.toggle("bar", barMode());
-    const need = Math.max(sheetHeight(document.getElementById("recap")), sheetHeight(rewindBox));
+    const need = ui.sheet === "recap" ? sheetHeight(recapBox) : ui.sheet === "rewind" ? sheetHeight(rewindBox) : 0;
     stageEl.style.minHeight = need ? need + "px" : ""; // the sheets are overlays inside the stage; the stage must be as tall as they are
     const h = Math.ceil(wrapEl.scrollHeight);
     if (Math.abs(h - lastSize) >= 2) {
@@ -924,8 +1009,8 @@ const numberChips = () =>
     el.querySelector(".n").textContent = String(i + 1);
     el.setAttribute("aria-label", `${el.dataset.kind} ${el.dataset.value}, ${fmtKey("Control+Alt+" + (i + 1))}`);
   });
-window.wingman.onCapture((c) => {
-  if (phase === "ended" || caps.has(c.value)) return;
+onMain("onCapture", (c) => {
+  if (caps.has(c.value)) return;
   const el = document.createElement("div");
   el.className = "cap";
   el.setAttribute("role", "button");
@@ -951,10 +1036,10 @@ window.wingman.onCapture((c) => {
   numberChips();
   updateMore();
 });
-window.wingman.onCopied((t) => {
+onMain("onCopied", (t) => {
   const el = caps.get(t);
   if (el) {
-    if (LAYOUT === "focus" && !moreOpen()) toggleMore(true); // the details are behind More: open it so the copied one is seen
+    if (LAYOUT === "focus" && ui.sheet !== "more") setSheet("more"); // the details are behind More: open it so the copied one is seen
     el.classList.add("copied");
     setTimeout(() => el.classList.remove("copied"), 1200);
   }
@@ -1023,10 +1108,10 @@ function drawKeys() {
   }
   keys.classList.toggle("all", keysOpen);
 }
-window.wingman.onConfig((c) => {
+onMain("onConfig", (c) => {
   if (c.language) setLanguage(c.language);
   SHOW_LAST = c.showLastLine !== false;
-  if (!SHOW_LAST) lastBox.style.display = lastMeBox.style.display = "none";
+  if (!SHOW_LAST) resetStrips();
   REWIND_S = c.rewindSeconds || 30;
   MAX = c.maxCards;
   HK = { ask: "Control+Alt+A", ...(c.hotkeys || {}) };
@@ -1056,14 +1141,14 @@ const drawAsk = () => {
   askEl.style.display = "flex";
   askEl.textContent = tr("ask.listening", { left: s < 60 ? tr("ask.seconds", { n: s }) : Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") });
 };
-window.wingman.onAsk((a) => {
+onMain("onAsk", (a) => {
   clearInterval(askTimer);
   askUntil = a && a.on ? a.until || 0 : 0;
   // a row replayed from an old call (window reloaded) has `until` in the past: no indicator
   drawAsk();
   if (askUntil) askTimer = setInterval(drawAsk, 500);
 });
-window.wingman.onCard(render);
+onMain("onCard", render);
 /** Applies the UI language to the page chrome: <html lang/dir>, the direction of the strips, and every [data-i18n] label. Card content keeps its own line direction. */
 function setLanguage(lang) {
   const L = WingmanStrings.normLang(lang),
@@ -1089,74 +1174,80 @@ function wipe() {
   askUntil = 0;
   clearInterval(askTimer);
   askEl.style.display = "none";
+  ui.frame = false;
   frameBox.style.display = "none";
-  frameBox.classList.remove("open");
-  for (const v of tipEls.values()) v.remove();
-  tipEls.clear();
-  lastBox.style.display = "none";
-  lastMeBox.style.display = "none";
-  lastMeBox._at = 0;
-  lastBox.classList.remove("topic");
-  lastLineAt = 0;
+  setSheet("none"); // one sheet value and one timer: closing it clears both
+  for (const id of [...tipEls.keys()]) dropTip(id); // and each tip's timer
+  resetStrips();
   lastFrame = null;
   v2.reset();
   clearCards();
   for (const v of sides.values()) v.remove();
   sides.clear();
+  notes.length = 0;
   noteList.replaceChildren();
   notesBox.style.display = "none";
-  toggleMore(false);
   lines.length = 0;
   for (const n of caps.values()) n.remove();
   caps.clear();
   capBox.style.display = "none";
   updateMore();
-  rewindBox.style.display = "none";
-  rNew.style.display = "none";
   bars.clear();
   NAMES.clear();
   flowBox.classList.remove("on");
   youBox.classList.remove("on");
+  clearTimeout(youTimer);
+  nudgeBox.classList.remove("on");
+  clearTimeout(nudgeTimer);
+  clearTimeout(liveTimer); // a delayed announcement must not fill the live region after the wipe
+  keysOpen = false;
+  clearTimeout(keysTimer);
+  drawKeys();
+  folded = false;
+  foldBtn.setAttribute("aria-pressed", "false");
   drawHealth();
-  quiet = false;
+  ui.quiet = false;
+  setPaused(false); // pause belongs to one call
   pausedNew = 0;
   liveEl.textContent = "";
 }
-window.wingman.onReset(() => {
+onMain("onReset", () => {
   wipe();
-  phase = "starting";
-  realPhase = false;
+  ui.phase = "starting";
+  ui.realPhase = false;
   liveAt = 0;
   clearTimeout(startTimer);
   refreshState();
 });
 // Real phase from call.json. {phase:null} = the call writes none: fall back to the 4 s timer.
-window.wingman.onPhase((p) => {
-  if (!p || phase === "ended") return;
+onMain("onPhase", (p) => {
+  if (!p) return;
   if (p.phase === null) {
-    realPhase = false;
-    if (phase === "starting") {
+    ui.realPhase = false;
+    if (ui.phase === "starting") {
       clearTimeout(startTimer);
       startTimer = setTimeout(listening, 4000);
     }
     return;
   }
-  realPhase = true;
+  ui.realPhase = true;
   clearTimeout(startTimer);
   liveAt = p.liveAt || 0;
-  phase = p.phase === "live" ? "listening" : p.phase;
+  ui.phase = p.phase === "live" ? "listening" : p.phase;
   refreshState();
 });
-window.wingman.onEnded(() => {
+onMain("onEnded", () => {
   wipe();
-  phase = "ended";
+  ui.phase = "ended";
   refreshState();
 });
-window.wingman.onClear(clearCards);
-window.wingman.onPause(() => {
-  paused = !paused;
-  document.body.classList.toggle("paused", paused);
-  if (!paused && pausedNew > 0) {
+onMain("onClear", clearCards);
+/** Pause is owned by main: it sends the whole state { paused, callId } (never a toggle), so a reload or a new call cannot flip it the wrong way. */
+function setPaused(on) {
+  if (ui.paused === on) return;
+  ui.paused = on;
+  document.body.classList.toggle("paused", on);
+  if (!on && pausedNew > 0) {
     // back from pause: the latest answer that came in is on screen, marked for a few seconds
     const hero = [...cards.values()].pop();
     if (hero) {
@@ -1168,6 +1259,10 @@ window.wingman.onPause(() => {
   pausedNew = 0;
   layoutRoles();
   refreshState();
+}
+onMain("onPause", (p) => {
+  ui.callId = p && typeof p.callId === "string" ? p.callId : ui.callId;
+  setPaused(!!(p && p.paused) && ui.phase !== "ended"); // nothing to pause after the call ended
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") clearCards();

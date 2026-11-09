@@ -4,7 +4,8 @@
 // The model (which card is hero, lifetime, controls) lives in v2.js; this file only draws it.
 /* global WingmanV2, WingmanMemView, WingmanText */
 function createV2View(deps) {
-  const d = { cardShown: () => {}, uiDir: () => "ltr", ...deps }; // two small hooks have defaults, so a test page may leave them out
+  // Small hooks with defaults, so a test page may leave them out. sheet() / setSheet(name) give the one open-sheet value, which app.js owns (none | rewind | recap | more | checklist).
+  const d = { cardShown: () => {}, uiDir: () => "ltr", paused: () => false, sheet: () => "none", setSheet: () => {}, ...deps };
   const { tr, mixed, div, span } = d;
   const V = WingmanV2;
   const board = new V.Board();
@@ -14,7 +15,6 @@ function createV2View(deps) {
   const expanded = new Set(); // ids whose detail is open
   let drawnHero = ""; // id of the hero drawn last (the rise animation plays only for a new one)
   let listTimer;
-  let recapTimer;
   let copiedAt = 0;
 
   const heroBox = document.getElementById("hero"),
@@ -330,7 +330,7 @@ function createV2View(deps) {
       say.after(mb);
     }
     if (isNew && e.state === "live") {
-      if (announceIds.has(e.id)) d.announce(kindLabel(e.kind), e.head, true);
+      if (announceIds.has(e.id) && !d.paused()) d.announce(kindLabel(e.kind), e.head, true); // a hidden (paused) card is not read out
       // the old hero moves to the rail with a short slide
       if (drawnHero && board.cards.has(drawnHero) && drawnHero !== e.id) {
         slideIds.add(drawnHero);
@@ -447,7 +447,7 @@ function createV2View(deps) {
     // Catch me up is the one primary button
     pills.append(
       withFk(
-        button("chip recapbtn primary", tr("v2.recap.button"), () => toggleRecap()),
+        button("chip recapbtn primary", tr("v2.recap.button"), () => (recapShown() ? d.setSheet("none") : d.setSheet("recap"))),
         "recap",
       ),
     );
@@ -589,35 +589,45 @@ function createV2View(deps) {
 
   // ---- Catch me up sheet ----
   // The sheet shows, in this order: the streamed recap from the engine (when it came), else the recap made from the notes (view.recap).
-  // recapLive: null = nothing asked; { phase: start | delta | done | error, text, recap, offline, notes } = the engine's answer so far.
-  let recapLive = null;
-  const recapOpen = () => recapBox.style.display === "flex";
+  // recap = { status, reqId, live }. status: closed | open (notes only, nothing asked) | loading | streaming | done | error.
+  // Only a request made here (the button's retry, the hotkey) lets engine rows in; with status "closed" every row is dropped, so a closed sheet stays closed
+  // and an old recap replayed after a reload or a new call cannot open it. Whether the sheet is on screen is the sheet value (d.sheet), not this object.
+  // live: null = nothing asked; { phase: start | delta | done | error, text, recap, offline, notes } = the engine's answer so far.
+  const recap = { status: "closed", reqId: 0, live: null };
+  const recapShown = () => d.sheet() === "recap";
   /** `arrived` = how many of the five sections have started to come in (the rest show a skeleton while loading). */
   const liveRecap = () => {
+    const live = recap.live;
     const fromNotes = V.recapEmpty(view.recap) ? 0 : 5;
-    if (!recapLive) return { recap: view.recap, status: "", arrived: 5 };
-    if (recapLive.recap) return { recap: recapLive.recap, status: recapLive.offline || recapLive.notes ? "notes" : "", arrived: 5 };
-    if (recapLive.text) {
-      const p = WingmanMemView.parseRecapText(recapLive.text);
+    if (!live) return { recap: view.recap, status: "", arrived: 5 };
+    if (live.recap) return { recap: live.recap, status: live.offline || live.notes ? "notes" : "", arrived: 5 };
+    if (live.text) {
+      const p = WingmanMemView.parseRecapText(live.text);
       if (p.labels) {
-        const going = recapLive.phase === "delta" || recapLive.phase === "start";
+        const going = live.phase === "delta" || live.phase === "start";
         return { recap: p.recap, status: going ? "loading" : "", arrived: going ? p.labels : 5 };
       }
     }
-    if (recapLive.phase === "error") return { recap: view.recap, status: "error", arrived: 5 };
-    if (recapLive.offline || recapLive.notes) return { recap: view.recap, status: "notes", arrived: 5 };
+    if (live.phase === "error") return { recap: view.recap, status: "error", arrived: 5 };
+    if (live.offline || live.notes) return { recap: view.recap, status: "notes", arrived: 5 };
     return { recap: view.recap, status: "loading", arrived: fromNotes };
   };
-  function toggleRecap(on) {
-    const open = on === undefined ? !recapOpen() : on;
-    clearTimeout(recapTimer);
-    recapBox.style.display = open ? "flex" : "none";
-    if (!open) return;
+  /** The sheet changed (app.js calls this after every change of the sheet value): keeps the recap status in step and draws the content when it is open. */
+  function sheetChanged(was, now) {
+    if (was === "recap" && now !== "recap") {
+      // closed: an unfinished request is given up, so its late rows are dropped and a reopen shows the notes
+      if (recap.status === "loading" || recap.status === "streaming") recap.live = null;
+      recap.status = "closed";
+    } else if (now === "recap" && recap.status === "closed") recap.status = recap.live ? "done" : "open";
+    if (now === "recap") drawRecap();
+  }
+  /** Draws the content of the sheet. Never opens or closes it, and never touches the close timer (app.js sets it once, when the sheet opens). */
+  function drawRecap() {
     recapBox.replaceChildren();
     const h = div("rh", "auto");
     h.append(
       span("rt", tr("v2.recap.title")),
-      button("b x", tr("v2.recap.close"), () => toggleRecap(false)),
+      button("b x", tr("v2.recap.close"), () => d.setSheet("none")),
     );
     recapBox.append(h);
     const { recap: rc, status, arrived } = liveRecap();
@@ -661,17 +671,19 @@ function createV2View(deps) {
     sec("v2.recap.open", rc.open);
     sec("v2.recap.promised", rc.promised);
     sec("v2.recap.asked", rc.asked);
-    recapTimer = setTimeout(() => toggleRecap(false), 45000);
   }
   /** Opens the sheet (from notes at once) and asks the engine for a fresh recap. */
   function requestRecap() {
-    recapLive = { phase: "start", text: "", recap: null, offline: false, notes: false };
+    recap.reqId++;
+    recap.live = { phase: "start", text: "", recap: null, offline: false, notes: false };
+    recap.status = "loading";
     d.controls.recap();
-    toggleRecap(true);
+    if (recapShown()) drawRecap();
+    else d.setSheet("recap"); // sheetChanged keeps "loading": the status is already set
   }
   recapBox.addEventListener("click", (ev) => {
     if (ev.target.closest && ev.target.closest(".retry")) return;
-    toggleRecap(false);
+    d.setSheet("none");
   });
   const CONTROL_CLASS = { pin: "pin", useful: "up", notuseful: "down", dismiss: "x", fewer: "fewer" };
 
@@ -687,7 +699,7 @@ function createV2View(deps) {
     document.body.classList.toggle("has-v2", any);
     watchBox.style.display = board.chips.length || hasView || board.history.length ? "flex" : "none";
     document.body.classList.toggle("has-hero", !!board.hero);
-    if (recapOpen()) toggleRecap(true);
+    if (recapShown()) drawRecap();
     d.onChange();
   }
 
@@ -696,8 +708,8 @@ function createV2View(deps) {
     if (ev.defaultPrevented) return;
     const t = ev.target;
     if (t && /^(input|textarea|select)$/i.test(t.tagName || "")) return;
-    if (ev.key === "Escape" && (recapOpen() || openList || menuFor)) {
-      toggleRecap(false);
+    if (ev.key === "Escape" && (d.sheet() !== "none" || openList || menuFor)) {
+      d.setSheet("none");
       openList = "";
       closeMenu();
       draw();
@@ -731,7 +743,7 @@ function createV2View(deps) {
         // a new card: a Check, the first card, and the first one after a long quiet are announced to a screen reader; the others are silent
         if (V.shouldAnnounce(V.kindOf(row), lastCardAt, now)) announceIds.add(String(row.id));
         lastCardAt = now;
-        if (!(Number(row.at) && now - Number(row.at) > 60000)) d.cardShown(); // a replayed old row (page reload) is not a new card for the hint count
+        if (!(Number(row.at) && now - Number(row.at) > 60000) && !d.paused()) d.cardShown(); // a hidden (paused) card does not count toward the key hints // a replayed old row (page reload) is not a new card for the hint count
       }
       board.apply(row, now);
       draw();
@@ -748,16 +760,27 @@ function createV2View(deps) {
     drawIdle,
     /** A Check is on screen (live): a live nudge waits while it is. */
     checkLive: () => [...board.cards.values()].some((e) => e.kind === "check" && e.state === "live"),
-    toggleRecap,
     requestRecap,
+    sheetChanged,
+    drawRecap,
+    /** The recap state, for tests and the page: { status, reqId }. */
+    get recap() {
+      return { status: recap.status, reqId: recap.reqId };
+    },
     /** The hotkey: closes the sheet when it is open, else opens it and asks for a fresh recap. */
-    hotkeyRecap: () => (recapOpen() ? toggleRecap(false) : requestRecap()),
-    /** A { phase, text, recap } payload from the engine's recap rows. */
+    hotkeyRecap: () => (recapShown() ? d.setSheet("none") : requestRecap()),
+    /** A { phase, text, recap } payload from the engine's recap rows. Dropped unless a request made here is waiting (status loading or streaming). */
     handleRecap(p) {
       if (!p || typeof p !== "object") return;
-      if (p.phase === "start") recapLive = { phase: "start", text: "", recap: null, offline: false, notes: false };
-      else recapLive = { phase: p.phase, text: p.text || (recapLive && recapLive.text) || "", recap: p.recap || null, offline: !!p.offline, notes: !!p.notes };
-      toggleRecap(true);
+      if (recap.status !== "loading" && recap.status !== "streaming") return;
+      if (p.phase === "start") {
+        recap.live = { phase: "start", text: "", recap: null, offline: false, notes: false };
+        recap.status = "loading";
+      } else {
+        recap.live = { phase: p.phase, text: p.text || (recap.live && recap.live.text) || "", recap: p.recap || null, offline: !!p.offline, notes: !!p.notes };
+        recap.status = p.phase === "delta" ? "streaming" : p.phase === "error" ? "error" : p.phase === "done" ? "done" : "loading";
+      }
+      if (recapShown()) drawRecap();
     },
     /** A card control pressed on the keyboard (the window never takes focus): does what the button on the hero does. */
     control(name) {
@@ -774,6 +797,10 @@ function createV2View(deps) {
       return !!b;
     },
     restoreLast,
+    setPins(ids) {
+      board.setPins(ids);
+      draw();
+    },
     redraw: draw,
     hasContent: () => !!board.hero || board.chips.length > 0,
     reset() {
@@ -787,8 +814,8 @@ function createV2View(deps) {
       announceIds.clear();
       lastCardAt = 0;
       drawnHero = "";
-      recapBox.style.display = "none";
-      recapLive = null;
+      recap.status = "closed";
+      recap.live = null; // app.js closes the sheet itself (setSheet("none")) before this
       draw();
     },
   };

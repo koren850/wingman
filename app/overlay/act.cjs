@@ -71,4 +71,17 @@ function applyAct(callDir, msg, now, o) {
   }
 }
 
-module.exports = { applyAct };
+/** The card ids the user pinned in this call: the last pin or unpin event of each card decides. Used to restore the pins when the page is reloaded. */
+function pinnedIds(callDir, o) {
+  const fs = (o && o.fs) || nodeFs,
+    path = (o && o.path) || nodePath;
+  const on = new Set();
+  for (const r of readRows(fs, path.join(callDir, "overlay-events.jsonl"))) {
+    if (typeof r.cardId !== "string") continue;
+    if (r.name === "pin") on.add(r.cardId);
+    else if (r.name === "unpin" || r.name === "dismiss") on.delete(r.cardId);
+  }
+  return [...on].slice(-200);
+}
+
+module.exports = { applyAct, pinnedIds };
