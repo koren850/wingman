@@ -49,7 +49,7 @@ test("engine: control-mode run emits mode + stop steps in order and call.json en
   assert.ok(meta.endedAt);
   assert.ok(meta.liveAt > 0, "liveAt was written when listening started");
   // the reducer fed with the real stream ends with a clean stop
-  let s = lib.initialState();
+  let s = lib.reduce(lib.initialState(), { ev: "starting" }); // the controller sends this before the engine starts
   for (const e of evs) s = lib.reduce(s, e);
   assert.equal(s.stopPhase, "done");
   assert.equal(s.phase, "stopping");

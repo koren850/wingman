@@ -63,7 +63,7 @@ test("control mode: note, quiet, client confirm and stop work from stdin; status
     assert.ok(evs.indexOf("summary") < evs.indexOf("ended"), "summary status comes before ended");
     assert.equal(events.filter((e) => e.type === "quiet").length, 2, "quiet on, then off");
     // the menu-bar state machine ends idle after exit
-    let s = lib.initialState();
+    let s = lib.reduce(lib.initialState(), { ev: "starting" });
     for (const m of statuses) s = lib.reduce(s, m);
     s = lib.reduce(s, { ev: "exit", code });
     assert.equal(s.phase, "idle");
