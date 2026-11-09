@@ -117,7 +117,7 @@ This is an early release (v0.0.1). Read this before you rely on it.
 
 - The plumbing works. In short test calls with the real speech service and the real AI (invented scripts, text-to-speech voices), nothing crashed, questions in English and Hebrew were heard, a prepared card showed in under a second, and an AI card in about 1 to 3.5 seconds.
 - Speech to text was right for about 92 percent of the words in English and 77 to 83 percent in Hebrew, on those synthetic voices.
-- Card quality is not proven. The numbers on the Roadmap were measured on an earlier build; the prompts changed after that and the recording has not been repeated yet. Replays of the recorded AI against the scripted test meetings fail most of the release lines (too few useful cards, some wrong or in the wrong language). Treat every card as a hint and check it before you say it. The numbers are on the [Roadmap](docs/ROADMAP.md#evidence-so-far).
+- Card quality is not proven. A replay of the real AI against the 34 invented test meetings passes 6 of 16 release lines: cost, language and card count pass, but too few cards hit the expected moment (precision about 11 percent, recall about 5 percent), and a model judge rated about a third of the cards useful. Treat every card as a hint and check it before you say it. The numbers are on the [Roadmap](docs/ROADMAP.md#evidence-so-far).
 
 Cost, measured in short test calls: about $1.40 an hour in total, of which about 90 percent is speech to text. The AI part is about 5 to 20 cents an hour.
 
