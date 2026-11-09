@@ -74,6 +74,38 @@ test("after-pack: fuses for both platforms, ad hoc signing only for an unsigned 
   assert.equal(afterPack.planFor("linux", "/o/linux-unpacked", "Wingman", {}, j), null);
 });
 
+test(
+  "after-pack: camera and Bluetooth usage texts are removed from the app and its helpers, the microphone text stays",
+  { skip: process.platform !== "darwin" && "plutil is macOS only" },
+  () => {
+    const j = (...p: string[]) => p.join("/");
+    assert.deepEqual(afterPack.plistPaths("/o/Wingman.app", [""], j), [
+      "/o/Wingman.app/Contents/Info.plist",
+      "/o/Wingman.app/Contents/Frameworks/Wingman Helper.app/Contents/Info.plist",
+    ]);
+    const dir = mkdtempSync(join(tmpdir(), "wingman-plist-"));
+    try {
+      const app = join(dir, "Wingman.app");
+      const files = afterPack.plistPaths(app);
+      for (const f of files) {
+        mkdirSync(dirname(f), { recursive: true });
+        writeFileSync(
+          f,
+          `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>NSCameraUsageDescription</key><string>c</string><key>NSBluetoothAlwaysUsageDescription</key><string>b</string><key>NSMicrophoneUsageDescription</key><string>m</string></dict></plist>`,
+        );
+      }
+      afterPack.stripUnusedPlistKeys(app);
+      for (const f of files) {
+        const t = readFileSync(f, "utf8");
+        assert.ok(!/Camera|Bluetooth/.test(t), f);
+        assert.ok(t.includes("NSMicrophoneUsageDescription"), f);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
+
 test("set-fuses: the binary is found for a .app, an .exe and an unpacked folder, and the fuses flip in an exe-like buffer", () => {
   assert.match(fuses.binaryOf("/x/Wingman.app"), /Electron Framework$/);
   assert.equal(fuses.binaryOf("/x/Wingman.exe"), "/x/Wingman.exe");

@@ -259,7 +259,16 @@ export function wrongLanguage(question: string, say: string): boolean {
 export function wrongTextLanguage(ref: "he" | "en", text: string): boolean {
   const h = count(text, HE),
     l = count(text, LAT);
-  return ref === "en" ? h > l && h >= 3 : h < 2 && l >= 12;
+  return ref === "en" ? h > l && h >= 3 : h < 2 && l >= 12 && !isLatinTerm(text);
+}
+
+const ENGLISH_FUNCTION_WORDS = new Set(
+  "the a an to you your do don't not is are was we it i this that and can will should be ask say tell with for if when but they he she".split(" "),
+);
+/** A short technical term or proper noun in Latin letters ("Cross-Origin Resource Sharing", "SOC 2 Type II report"): up to 5 words, no sentence ending, no English function word. */
+function isLatinTerm(text: string): boolean {
+  const words = text.trim().split(/\s+/);
+  return words.length <= 5 && !/[.!?]$/.test(text.trim()) && !words.some((w) => ENGLISH_FUNCTION_WORDS.has(w.toLowerCase()));
 }
 
 /** How long to wait for the SDK's usage after an abort before giving up. */

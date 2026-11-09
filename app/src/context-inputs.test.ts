@@ -3,7 +3,7 @@
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { crc32 } from "node:zlib";
+import { crc32, deflateRawSync } from "node:zlib";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync, existsSync, readFileSync, statSync, cpSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,24 +22,27 @@ import { MemoryLoop, DEFAULT_MEMORY_CONFIG } from "./engine/memory.ts";
 
 // ---------------------------------------------------------------- helpers
 /** A tiny .docx: a zip with one stored entry, word/document.xml. */
-function makeDocx(xml: string): Buffer {
+function makeDocx(xml: string, deflate = false): Buffer {
   const name = Buffer.from("word/document.xml");
-  const data = Buffer.from(xml, "utf8");
-  const crc = crc32(data);
+  const raw = Buffer.from(xml, "utf8");
+  const data = deflate ? deflateRawSync(raw) : raw;
+  const crc = crc32(raw);
   const local = Buffer.alloc(30);
   local.writeUInt32LE(0x04034b50, 0);
   local.writeUInt16LE(20, 4);
+  local.writeUInt16LE(deflate ? 8 : 0, 8);
   local.writeUInt32LE(crc, 14);
   local.writeUInt32LE(data.length, 18);
-  local.writeUInt32LE(data.length, 22);
+  local.writeUInt32LE(raw.length, 22);
   local.writeUInt16LE(name.length, 26);
   const central = Buffer.alloc(46);
   central.writeUInt32LE(0x02014b50, 0);
   central.writeUInt16LE(20, 4);
   central.writeUInt16LE(20, 6);
+  central.writeUInt16LE(deflate ? 8 : 0, 10);
   central.writeUInt32LE(crc, 16);
   central.writeUInt32LE(data.length, 20);
-  central.writeUInt32LE(data.length, 24);
+  central.writeUInt32LE(raw.length, 24);
   central.writeUInt16LE(name.length, 28);
   const cdOffset = local.length + name.length + data.length;
   const end = Buffer.alloc(22);
@@ -94,16 +97,22 @@ test("docx: the text of word/document.xml, one line per paragraph, fields and de
   assert.doesNotMatch(r.text, /gone|HYPERLINK/);
 });
 
+test("docx: without unzip (Windows) the built-in zip reader gives the same text, stored or deflated", async () => {
+  const noUnzip = (_c: string, _a: string[], _o: unknown, cb: (e: Error | null, out?: string) => void) =>
+    cb(Object.assign(new Error("spawn unzip ENOENT"), { code: "ENOENT" }));
+  const docx = makeDocx(W(para("שלום עולם") + para("Second line")));
+  const r = await readSource({ type: "file", name: "a.docx", bytes: docx }, { exec: noUnzip as never });
+  assert.match(r.text, /שלום עולם\nSecond line/);
+  // The same file with the entry deflated (Word writes deflated entries).
+  const r2 = await readSource({ type: "file", name: "b.docx", bytes: makeDocx(W(para("Deflated line")), true) }, { exec: noUnzip as never });
+  assert.match(r2.text, /Deflated line/);
+  const broken = Buffer.concat([Buffer.from([0x50, 0x4b]), Buffer.alloc(50)]);
+  await assert.rejects(readSource({ type: "file", name: "c.docx", bytes: broken }, { exec: noUnzip as never }), /could not be read/);
+});
+
 test("docx: the real unzip reads a real zip file", { skip: !hasUnzip && "unzip is not installed here" }, async () => {
   const r = await readSource({ type: "file", name: "a.docx", bytes: makeDocx(W(para("שלום עולם") + para("Second line"))) });
   assert.match(r.text, /שלום עולם\nSecond line/);
-});
-
-test("docx: when unzip is missing the file is refused with a clear message", async () => {
-  const exec = (_c: string, _a: string[], _o: unknown, cb: (e: Error) => void) => cb(Object.assign(new Error("spawn unzip ENOENT"), { code: "ENOENT" }));
-  await assert.rejects(readSource({ type: "file", name: "a.docx", bytes: makeDocx(W(para("x"))) }, { exec: exec as never }), (e: Error) =>
-    /needs the unzip tool/.test(e.message),
-  );
 });
 
 test("docx: a file that is not a zip, an empty file and a huge unpacked file are refused", async () => {

@@ -1,12 +1,17 @@
 // pnpm factscheck: false-hit check of the client/domain snapshot (entities.json in the Wingman data folder, EntitySpotter) against ordinary
 // call speech (gold sentences, question corpus, bank, synthetic call). Every HIT printed here is a false positive to fix.
-// Needs a private snapshot, so it only works on a machine that has one. Prints only; the exit code is always 0.
+// Needs a private snapshot, so it only works on a machine that has one. Without a snapshot it says so and stops; without a pack the bank part is empty.
+// Prints only; the exit code is always 0.
 import { DATA, ENTITIES_FILE } from "./env.ts";
 import { readPack } from "./pack.ts";
 import { readFileSync } from "node:fs";
 import YAML from "yaml";
 import { EntitySpotter, loadSnapshot } from "./entities.ts";
-const snap = loadSnapshot(ENTITIES_FILE)!;
+const snap = loadSnapshot(ENTITIES_FILE);
+if (!snap) {
+  console.log("No client snapshot found (entities.json in the Wingman data folder). Nothing to check.");
+  process.exit(0);
+}
 const s = new EntitySpotter(snap, { sslWarnDays: 30, minAliasLen: 4 });
 const D = DATA + "/";
 const texts: string[] = [
@@ -14,7 +19,7 @@ const texts: string[] = [
   ...readFileSync(D + "questions.tsv", "utf8")
     .split("\n")
     .map((l) => l.split("\t")[0]),
-  ...(YAML.parse(readPack("bank.yaml")) as { say: string; facts: string[]; triggers: string[] }[]).flatMap((c) => [c.say, ...c.facts, ...c.triggers]),
+  ...((YAML.parse(readPack("bank.yaml")) ?? []) as { say: string; facts: string[]; triggers: string[] }[]).flatMap((c) => [c.say, ...c.facts, ...c.triggers]),
   ...((JSON.parse(readFileSync(D + "synthetic/call1.json", "utf8")) as { turns?: { text: string }[] }).turns?.map((t) => t.text) ?? []),
 ];
 let hits = 0;

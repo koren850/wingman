@@ -4,10 +4,10 @@ Invented calls used to measure Wingman. No real names, companies or data.
 
 ## What is here
 
-- `dev/` (32 files): free to read and to tune on.
+- `dev/` (34 files): free to read and to tune on.
   - 16 core meetings: 8 types, each in English and in Hebrew.
   - 8 `dev-noq-*` meetings (problem, numbers, decision, objection, English and Hebrew): the card must show for a line with no "?" and no question word. `noq` means "no question".
-  - 8 variety meetings (English and Hebrew): a 45 minute monologue, cross-talk, three speakers, speech-to-text errors, a meeting where silence is right.
+  - 10 variety meetings (English and Hebrew): a 45 minute monologue, cross-talk, three speakers, speech-to-text errors, a meeting where silence is right.
 - `test/` (8 files): held out. Different scenarios from dev, with noisy speech-to-text text (no question marks, near-sound words, split sentences). Two of them are Hebrew with English terms.
 - `test-b/` (14 files): a second held-out split. 8 `noq` meetings, 2 speech-to-text error meetings, 2 cross-talk meetings and 2 silent meetings, English and Hebrew in equal number. It was written by the same author as the dev set, so it is weaker than a split from an independent author.
 - `test-c/` (8 files): a third held-out split, 4 English and 4 Hebrew, for the release check. It has speech-to-text errors in Hebrew (a split prefix, a dropped word, a number said in words, an English word in Hebrew letters), a meeting with three speakers talking over each other, a 50 second silence, and a topic jump. Only `pnpm eval --final --ship` reads it: the loader refuses without the flag. Read it once per release candidate. Do not tune on it.

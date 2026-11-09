@@ -163,7 +163,9 @@ function parseTagLine(line: string): (TagInfo & { aloud?: boolean }) | undefined
   if (tag === "STALL") {
     const w = rest.split(/\s+/);
     const kind = w[0]?.toLowerCase().replace(/[^a-z]/g, "");
-    if (w.length > 1 && !TAG_TAIL_OK.test(w.slice(1).join(" "))) return { tag: "SKIP", aloud: true };
+    // A dash or colon after the kind starts a label ("STALL price - they pushed"): it is kept. Plain words after the kind are thinking aloud.
+    const tail = w.slice(1).join(" ");
+    if (w.length > 1 && !TAG_TAIL_OK.test(tail) && !/^[-–—:]\s+\S/.test(tail)) return { tag: "SKIP", aloud: true };
     return { tag, stall: STALL_KINDS.find((k) => k === kind) ?? "other" };
   }
   return { tag };

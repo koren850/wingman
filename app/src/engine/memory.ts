@@ -551,11 +551,13 @@ export class MemoryLoop {
     this.lastPromptAt = now;
     return c;
   }
-  /** An open question after which the user went on talking for a while was most likely answered: the updater only has not marked it. Promises are not judged this way. */
+  /** An open question after which the answering side went on talking for a while was most likely answered: the updater only has not marked it.
+   *  Another person's question is answered by the user; the user's own question only by the other side. Promises are not judged this way. */
   private answeredByUser(x: OpenLoopPrompt): boolean {
     if (x.kind !== "question") return false;
     let words = 0;
-    for (const l of this.tail) if (l.side === "me" && l.at > x.at) words += wordCount(l.text);
+    const answerer = x.who === "me" ? "them" : "me";
+    for (const l of this.tail) if (l.side === answerer && l.at > x.at) words += wordCount(l.text);
     return words >= ANSWER_WORDS;
   }
 

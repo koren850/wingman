@@ -41,7 +41,9 @@ The first window checks each key with one small request:
 - **"Could not reach ..."**: check your internet, a proxy or a firewall, and press **Try again**.
 - **Too many tries**: wait a minute. Keys are checked at most 12 times a minute.
 
-Keys are stored in the macOS Keychain, or encrypted for your Windows account. If the store fails, the window says so. Developers: `pnpm keys status` says only whether a key is present.
+Keys are stored in the macOS Keychain, or encrypted for your Windows account. If the store fails, the window says so. Developers: `pnpm keys status` shows where each key comes from and its last 4 characters, never the whole key.
+
+The keys live in the `secrets` folder inside the data folder. If you set `WINGMAN_DATA_DIR`, that folder moves too, and Wingman will not see keys saved under the old folder. Set the variable the same way every time, or save the keys again.
 
 ## Hebrew or English is not recognised
 
@@ -200,7 +202,7 @@ Live reading, the default help engine, could not use the AI: the spend cap (per 
 
 ## A context file or web address is refused
 
-Wingman reads pasted text, `.txt`, `.md`, `.docx`, `.eml`, `.pdf` and `.ics` files, https web addresses, a calendar link and your next calendar event. The full list and its limits are in the [User guide](USER-GUIDE.md#meeting-context-what-you-can-add). A `.pdf` needs `pdftotext` (`brew install poppler`). Web addresses inside your network and plain http are refused. If a file will not read, paste its text instead.
+Wingman reads pasted text, `.txt`, `.md`, `.docx`, `.eml`, `.pdf` and `.ics` files, https web addresses, a calendar link and your next calendar event. The full list and its limits are in the [User guide](USER-GUIDE.md#meeting-context-what-you-can-add). A `.docx` works on Mac and Windows. A `.pdf` needs `pdftotext` (`brew install poppler` on a Mac); Windows has no such tool, so save the PDF as .txt or paste its text. Web addresses inside your network and plain http are refused. If a file will not read, paste its text instead.
 
 ## Reporting a bug
 

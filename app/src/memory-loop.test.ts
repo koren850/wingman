@@ -456,6 +456,25 @@ test("open loop: no prompt for a question the user went on to answer, even befor
   });
 });
 
+test("open loop: the user's own question is closed by the other side answering, not by the user talking on", async () => {
+  await withVClock(async (vc) => {
+    const r = rig(vc);
+    r.pm.reply({ role: "memory" }, JSON.stringify({ add: { openQuestions: [{ asker: "me", text: "Who owns the DNS records" }] } }));
+    await talk(r, [{ text: words(30) }], 21);
+    r.loop.addLine({ side: "me", text: "I will go on and explain how our setup works today, it has many parts and we want to be clear" });
+    for (let i = 0; i < 8; i++) await vc.advance(1000);
+    assert.equal(r.loop.openLoopPrompt()?.id, "q1", "the user talked on: still unanswered");
+  });
+  await withVClock(async (vc) => {
+    const r = rig(vc);
+    r.pm.reply({ role: "memory" }, JSON.stringify({ add: { openQuestions: [{ asker: "me", text: "Who owns the DNS records" }] } }));
+    await talk(r, [{ text: words(30) }], 21);
+    r.loop.addLine({ side: "them", text: "The infrastructure team owns the DNS records and they are managed in one place" });
+    for (let i = 0; i < 8; i++) await vc.advance(1000);
+    assert.equal(r.loop.openLoopPrompt(), undefined, "the other side answered");
+  });
+});
+
 test("open loop: the memory's second wording of the same promise is not offered again", async () => {
   await withVClock(async (vc) => {
     const r = rig(vc);

@@ -15,3 +15,10 @@ test("stt clean: Hebrew '60 1000' is 60000, a weekday ordinal is the day name, o
   assert.equal(cleanSttText("We pay 60 1000 per year, 4º"), "We pay 60 1000 per year, 4º");
   assert.equal(cleanSttText(""), "");
 });
+
+test("stt clean: phone-like digit runs keep their digits", () => {
+  assert.equal(cleanSttText("התקשר ל 050 1000000 מחר"), "התקשר ל 050 1000000 מחר");
+  assert.equal(cleanSttText("הטלפון 052 123 1000 תודה"), "הטלפון 052 123 1000 תודה");
+  assert.equal(cleanSttText("התקשר ל 03-1000000 מחר"), "התקשר ל 03-1000000 מחר");
+  assert.equal(cleanSttText("התקציב 60 1000 שקל"), "התקציב 60000 שקל");
+});

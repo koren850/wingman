@@ -21,7 +21,7 @@ One cap for the whole run. `--estimate` prints (a floor, from the modelled usage
 
 | Step | What it records | Estimate |
 |---|---|---|
-| dev | the 32 dev meetings, with the model judge, then the dev eval and the cost check | about $0.49 |
+| dev | the 34 dev meetings, with the model judge, then the dev eval and the cost check | about $0.49 |
 | memory | 24 calls through the real memory updater | about $0.04 |
 | judge | 120 judgement cases through the real moment role | about $0.03 |
 | test, test-b, test-c | the held-out meetings (each asks for a yes first) | about $0.06, $0.11, $0.06 |

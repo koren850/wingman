@@ -74,7 +74,7 @@ Paste both keys and press **Check and save**. Each key is checked with one small
 
 ![Step 3: start a practice call, or a real call](ux/first-run-ready.png)
 
-From a terminal (developers): `pnpm keys set deepgram`, `pnpm keys set anthropic`, `pnpm keys status` (it says only whether a key is present). Never put keys in the repo.
+From a terminal (developers): `pnpm keys set deepgram`, `pnpm keys set anthropic`, `pnpm keys status` (it shows where each key comes from and its last 4 characters, never the whole key). Never put keys in the repo.
 
 **Cost (an estimate from the price table in the config).** A call costs about $1.50 an hour in total. Speech to text with Deepgram Nova-3 (two channels) is about $1.30 to $1.40 of that. The AI is about 5 to 20 cents an hour. In short test calls the whole call cost about $1.40 an hour, and about 90 percent of it was speech to text. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits the AI spend, and Settings, Money has a soft cap per hour. Set a limit in both provider consoles too.
 

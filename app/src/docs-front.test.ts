@@ -1,7 +1,7 @@
 // The first things a stranger reads must be current: links and images resolve, ADR anchors exist, and no internal wording leaks in.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
@@ -100,4 +100,10 @@ test("front docs agree on the numbers of the fact sheet", () => {
   assert.ok(!/English only/.test(read("app/README.md")));
   const adrs = (read("docs/DECISIONS.md").match(/^## ADR \d+:/gm) ?? []).length;
   assert.ok(read("CHANGELOG.md").includes(`${adrs} architecture decision records`), `the changelog should name ${adrs} architecture decision records`);
+});
+
+test("the dev meeting count in the docs is the real count", () => {
+  const n = readdirSync(join(ROOT, "app/data/meetings/dev")).filter((f) => f.endsWith(".json")).length;
+  assert.ok(read("app/data/meetings/README.md").includes(`\`dev/\` (${n} files)`), `meetings README should say dev/ has ${n} files`);
+  assert.ok(read("docs/RECORDING-EVALS.md").includes(`the ${n} dev meetings`), `RECORDING-EVALS should say ${n} dev meetings`);
 });

@@ -12,12 +12,40 @@ function planFor(platformName, appOutDir, productFilename, env = process.env, jo
   return null;
 }
 
+/** Usage texts that Electron's own Info.plist carries but Wingman never uses (no camera, no Bluetooth device access). They are removed from the packaged app. */
+const UNUSED_PLIST_KEYS = ["NSCameraUsageDescription", "NSBluetoothAlwaysUsageDescription", "NSBluetoothPeripheralUsageDescription"];
+
+/** The Info.plist files of a packaged .app: the app itself and its helper apps. Pure. */
+function plistPaths(appPath, helperNames = ["", " (GPU)", " (Plugin)", " (Renderer)"], join = path.join) {
+  const base = path.basename(appPath, ".app");
+  return [
+    join(appPath, "Contents", "Info.plist"),
+    ...helperNames.map((h) => join(appPath, "Contents", "Frameworks", `${base} Helper${h}.app`, "Contents", "Info.plist")),
+  ];
+}
+
+/** Removes the unused usage texts with plutil. A missing file or key is fine. */
+function stripUnusedPlistKeys(appPath) {
+  for (const f of plistPaths(appPath))
+    for (const k of UNUSED_PLIST_KEYS) {
+      try {
+        execFileSync("plutil", ["-remove", k, f], { stdio: "ignore" });
+      } catch {
+        /* the file or the key is not there */
+      }
+    }
+}
+
 exports.planFor = planFor;
+exports.UNUSED_PLIST_KEYS = UNUSED_PLIST_KEYS;
+exports.plistPaths = plistPaths;
+exports.stripUnusedPlistKeys = stripUnusedPlistKeys;
 exports.default = async function afterPack(context) {
   const plan = planFor(context.electronPlatformName, context.appOutDir, context.packager.appInfo.productFilename);
   if (!plan) return;
   const out = execFileSync(process.execPath, [path.join(__dirname, "set-fuses.cjs"), plan.target], { encoding: "utf8" });
   process.stdout.write(`  • ${out.trim()}\n`);
+  if (context.electronPlatformName === "darwin") stripUnusedPlistKeys(plan.target); // before any signature
   if (!plan.adHoc) return; // Windows: nothing to sign. macOS with WINGMAN_SIGN=1: electron-builder signs next, with the Developer ID certificate
   execFileSync("codesign", ["--force", "--deep", "--sign", "-", plan.target], { stdio: "inherit" });
   process.stdout.write("  • ad hoc signed (unsigned build: macOS asks to confirm the first start)\n");

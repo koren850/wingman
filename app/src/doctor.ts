@@ -168,7 +168,15 @@ if (sw) {
 // Under the app the microphone is recorded by the app itself: no ffmpeg. A terminal run still uses ffmpeg for the microphone.
 const appCapture = !!process.env.WINGMAN_CAPTURE_ENDPOINT && process.env.WINGMAN_MIC_ENGINE !== "ffmpeg";
 if (appCapture) ok("audio is recorded by the Wingman app (no ffmpeg needed)");
-else run("ffmpeg", ["-version"]) ? ok("ffmpeg present") : bad("ffmpeg not found", "install ffmpeg (brew install ffmpeg), then run the readiness check again");
+else
+  run("ffmpeg", ["-version"])
+    ? ok("ffmpeg present")
+    : bad(
+        "ffmpeg not found",
+        process.platform === "win32"
+          ? "install ffmpeg and add it to PATH, then run the readiness check again"
+          : "install ffmpeg (brew install ffmpeg), then run the readiness check again",
+      );
 const batt = run("pmset", ["-g", "batt"]);
 if (batt) {
   const pct = Number(batt.match(/(\d+)%/)?.[1]);
@@ -181,11 +189,14 @@ const freeMb = df ? Number(df[3]) : NaN;
 if (Number.isFinite(freeMb)) {
   freeMb > 500 ? ok(`free disk ${Math.round(freeMb / 1024)} GB`) : warn(`free disk ${freeMb} MB`, "free some space");
 }
-const orphans = run("pgrep", ["-f", "ffmpeg.*avfoundation|audiotee"]);
-orphans
-  ? warn("leftover ffmpeg/audiotee process found", IS_APP ? "quit Wingman from the menu bar and open it again" : "pkill -f 'ffmpeg.*avfoundation|audiotee'")
-  : ok("no orphan audio processes");
-if (S.overlay.enabled) {
+const orphans = process.platform === "win32" ? "" : run("pgrep", ["-f", "ffmpeg.*avfoundation|audiotee"]);
+if (process.platform === "win32") ok("leftover audio process check: not available on Windows");
+else if (orphans)
+  warn("leftover ffmpeg/audiotee process found", IS_APP ? "quit Wingman from the menu bar and open it again" : "pkill -f 'ffmpeg.*avfoundation|audiotee'");
+else ok("no orphan audio processes");
+// The display count comes from macOS system_profiler. Elsewhere it is not available: say so, do not warn.
+if (S.overlay.enabled && process.platform !== "darwin") ok("display count: not checked on this system");
+else if (S.overlay.enabled) {
   const displays = Number(run("sh", ["-c", "system_profiler SPDisplaysDataType 2>/dev/null | grep -c 'Resolution:'"]));
   displays >= 2
     ? ok(`${displays} displays: overlay goes to the second`)
@@ -290,15 +301,18 @@ section("Screens and audio devices");
       )
     : ok("no Bluetooth headset in use");
   const screens = await new Promise<number>((res) =>
-    execFile("system_profiler", ["SPDisplaysDataType", "-json"], { timeout: 5000 }, (e, out) => {
-      try {
-        res(e ? -1 : ((JSON.parse(out).SPDisplaysDataType ?? []) as { spdisplays_ndrvs?: unknown[] }[]).flatMap((g) => g.spdisplays_ndrvs ?? []).length);
-      } catch {
-        res(-1);
-      }
-    }),
+    process.platform !== "darwin"
+      ? res(-2)
+      : execFile("system_profiler", ["SPDisplaysDataType", "-json"], { timeout: 5000 }, (e, out) => {
+          try {
+            res(e ? -1 : ((JSON.parse(out).SPDisplaysDataType ?? []) as { spdisplays_ndrvs?: unknown[] }[]).flatMap((g) => g.spdisplays_ndrvs ?? []).length);
+          } catch {
+            res(-1);
+          }
+        }),
   );
-  if (screens < 0) warn("could not count screens");
+  if (screens === -2) ok("screen count: not checked on this system");
+  else if (screens < 0) warn("could not count screens");
   else if (screens >= 2) ok(`${screens} screens: the answer window opens on the second one`);
   else if (S.overlay.allowPrimary) warn("only one screen: the answer window opens on it (overlay.allowPrimary). Do NOT share this screen");
   else warn("only one screen: the answer window will NOT open (it would show when you share your screen)", "connect the second screen before the call");

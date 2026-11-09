@@ -29,6 +29,11 @@ test("language: wrongTextLanguage judges a card text against the language it sho
   assert.equal(wrongTextLanguage("he", "Do not promise a date before you check the plan"), true);
   assert.equal(wrongTextLanguage("he", "כן, זה עובד עם WooCommerce"), false);
   assert.equal(wrongTextLanguage("he", "PHP 8.2"), false);
+  assert.equal(wrongTextLanguage("he", "Cross-Origin Resource Sharing"), false);
+  assert.equal(wrongTextLanguage("he", "SOC 2 Type II report"), false);
+  assert.equal(wrongTextLanguage("he", "Kubernetes ingress"), false);
+  assert.equal(wrongTextLanguage("he", "Do not promise a date"), true);
+  assert.equal(wrongTextLanguage("he", "Send the pricing sheet today."), true);
 });
 
 test("language: sayAllowed drops a Hebrew CHECK card in an English call and an English REPLY in a Hebrew call, keeps the right ones", () => {

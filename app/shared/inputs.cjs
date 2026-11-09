@@ -1,7 +1,7 @@
 "use strict";
 // Context sources for the Meeting context box: a Word file (.docx), a web page (https), a mail file (.eml) and a calendar link (a private .ics address).
 // Plain CommonJS because the tray and the Wingman window (Electron main) cannot load TypeScript. The typed entry point is src/session/inputs.ts.
-// No dependency: .docx text is read with the system `unzip -p` (if it is missing, the file is refused with a clear message); the network is the
+// No dependency: .docx text is read with the system `unzip -p`; where unzip is missing (Windows) a small built-in zip reader is used instead; the network is the
 // built-in fetch. Everything here returns plain text. All of it is untrusted: control and bidi characters are removed and the tags that could
 // close the transcript wrapper of a prompt are taken out (untag), so a page or a mail cannot talk to the model.
 //
@@ -15,6 +15,7 @@ const os = require("node:os");
 const path = require("node:path");
 const net = require("node:net");
 const dns = require("node:dns");
+const zlib = require("node:zlib");
 const { execFile } = require("node:child_process");
 const ics = require("./ics.cjs");
 
@@ -95,14 +96,52 @@ function htmlToText(html) {
 }
 
 // ---------------------------------------------------------------- .docx
+/** One entry of a zip file, read with node:zlib only (stored or deflated). Returns undefined when the entry is not there. Used where `unzip` is missing. */
+function zipEntry(buf, name) {
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 65535); i--) {
+    if (buf.readUInt32LE(i) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw fail("baddocx", "That Word file could not be read. Is it a .docx? Save it as .docx or paste the text.");
+  const count = buf.readUInt16LE(eocd + 10);
+  let p = buf.readUInt32LE(eocd + 16);
+  for (let n = 0; n < count && p + 46 <= buf.length && buf.readUInt32LE(p) === 0x02014b50; n++) {
+    const method = buf.readUInt16LE(p + 10);
+    const csize = buf.readUInt32LE(p + 20);
+    const nameLen = buf.readUInt16LE(p + 28);
+    const extraLen = buf.readUInt16LE(p + 30);
+    const commentLen = buf.readUInt16LE(p + 32);
+    const local = buf.readUInt32LE(p + 42);
+    if (buf.toString("utf8", p + 46, p + 46 + nameLen) === name) {
+      if (local + 30 > buf.length || buf.readUInt32LE(local) !== 0x04034b50) break;
+      const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
+      const data = buf.subarray(start, start + csize);
+      if (method === 0) return data;
+      if (method === 8) {
+        try {
+          return zlib.inflateRawSync(data, { maxOutputLength: DOCX_XML_MAX });
+        } catch (e) {
+          if (e && e.code === "ERR_BUFFER_TOO_LARGE") throw fail("toolarge", "That Word file is too large to read. Paste the part you need.");
+          break;
+        }
+      }
+      break;
+    }
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  throw fail("baddocx", "That Word file could not be read. Is it a .docx? Save it as .docx or paste the text.");
+}
+
 /** Runs `unzip -p file word/document.xml`. exec is replaceable for tests. */
 function runUnzip(file, exec) {
   const run = exec || execFile;
   return new Promise((resolve, reject) => {
     run("unzip", ["-p", "--", file, "word/document.xml"], { timeout: 10_000, maxBuffer: DOCX_XML_MAX, encoding: "utf8" }, (err, stdout) => {
       if (err) {
-        if (err.code === "ENOENT")
-          return reject(fail("nounzip", "Reading a Word file needs the unzip tool, which is not on this computer. Save the file as .txt, or paste the text."));
+        if (err.code === "ENOENT") return reject(Object.assign(new Error("no unzip"), { noUnzip: true }));
         if (/maxBuffer/i.test(String(err.message))) return reject(fail("toolarge", "That Word file is too large to read. Paste the part you need."));
         return reject(fail("baddocx", "That Word file could not be read. Is it a .docx? Save it as .docx or paste the text."));
       }
@@ -136,7 +175,13 @@ async function docxText(bytes, o = {}) {
   try {
     const f = path.join(dir, "in.docx");
     fs.writeFileSync(f, buf, { mode: 0o600 });
-    const xml = await runUnzip(f, o.exec);
+    let xml;
+    try {
+      xml = await runUnzip(f, o.exec);
+    } catch (e) {
+      if (!e || !e.noUnzip) throw e;
+      xml = zipEntry(buf, "word/document.xml").toString("utf8"); // no unzip on this computer: read the zip here
+    }
     const text = safeText(docxXmlToText(xml));
     if (!text) throw fail("empty", "That Word file has no readable text.");
     return text;

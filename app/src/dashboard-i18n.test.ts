@@ -185,7 +185,10 @@ test("errors: raw messages from the engine and from file import reach the right 
     code("A .docx file cannot be read here. Wingman reads .txt, .md, .pdf and .ics files. Paste the text instead, or save the file as one of those."),
     "file-type",
   );
-  assert.equal(code("PDF needs the pdftotext tool, which is not installed on this Mac. Paste the text instead, or use a .txt or .md file."), "pdf-missing");
+  assert.equal(
+    code("PDF needs the pdftotext tool, which is not installed on this computer. Paste the text instead, or use a .txt or .md file."),
+    "pdf-missing",
+  );
   assert.equal(code("Files can be 2 MB at most."), "file-big");
   assert.equal(code("That file has no readable text."), "file-empty");
   assert.equal(code("The background limit is reached. Remove a file first."), "file-limit");

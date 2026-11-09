@@ -49,7 +49,7 @@ Highlights: a live agent for meetings that builds context as the call goes and s
 ### Security and privacy
 
 - No telemetry and no cloud account. Audio is never stored. By default nothing leaves your Mac except audio to Deepgram and call text to Anthropic. Three opt-in features contact the hosts you give them: a web address as context, a calendar .ics link, and web lookup (off by default).
-- API keys are kept in the macOS Keychain, with one lookup order everywhere (Keychain, then environment variable, then a legacy `keys.env`).
+- API keys are kept in the Keychain on macOS and in files encrypted for your Windows user (DPAPI) on Windows, with one lookup order everywhere (key store, then environment variable, then a legacy `keys.env`).
 - The control socket and call files are owner-only. The app asks for confirmation before a call is started or deleted from the command line.
 - Strict Content-Security-Policy in the Electron windows; Electron fuses are set at build time.
 - Optional Deepgram model-improvement opt-out (`stt.deepgram.mipOptOut`).

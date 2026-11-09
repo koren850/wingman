@@ -401,7 +401,10 @@ function createStore(o) {
     if (ext === "pdf") {
       if (!buf.subarray(0, 5).equals(Buffer.from("%PDF-"))) return { ok: false, error: "That is not a PDF file." };
       if (!pdftotext)
-        return { ok: false, error: "PDF needs the pdftotext tool, which is not installed on this Mac. Paste the text instead, or use a .txt or .md file." };
+        return {
+          ok: false,
+          error: "PDF needs the pdftotext tool, which is not installed on this computer. Paste the text instead, or use a .txt or .md file.",
+        };
       ensure();
       // pdftotext needs a real file; the temp name starts with "." so entries() never lists it, and finally{} removes it.
       const tmp = path.join(dir, `.pdf-${process.pid}-${now().toString(36)}.pdf`);

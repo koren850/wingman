@@ -48,6 +48,10 @@ test("parse: BANK needs an id; STALL takes an optional kind", () => {
   const s = ok("STALL price\nVALUE: 3\nAIM: me\n").moment;
   assert.equal(s.stall, "price");
   assert.equal(ok("STALL\nVALUE: 3\nAIM: me\n").moment.stall, "other");
+  // A labelled stall survives; a kind followed by plain words is still thinking aloud.
+  assert.equal(ok("STALL price - they pushed\nVALUE: 3\nAIM: me\n").moment.tag, "STALL");
+  assert.equal(ok("STALL price - they pushed\nVALUE: 3\nAIM: me\n").moment.stall, "price");
+  assert.equal(ok("STALL price Hmm wait\nVALUE: 3\nAIM: me\n").moment.tag, "SKIP");
 });
 
 test("parse: SKIP keeps its WHY and nothing else", () => {
