@@ -118,9 +118,11 @@ section("Data");
 try {
   const bank = loadBank();
   const ids = new Set(bank.map((c) => c.id));
-  ids.size === bank.length && bank.length > 0
-    ? ok(`Prepared cards load: ${bank.length} cards, unique ids`)
-    : bad("Prepared cards: ids are not unique or the list is empty");
+  !packPath("bank.yaml")
+    ? ok("No pack: no prepared cards. Answers come from the call and your notes. Add a pack to get prepared cards (docs/PACK-FORMAT.md)")
+    : ids.size === bank.length && bank.length > 0
+      ? ok(`Prepared cards load: ${bank.length} cards, unique ids`)
+      : bad("Prepared cards: ids are not unique or the list is empty");
 } catch (e) {
   bad(`Prepared cards failed to load: ${(e as Error).message}`);
 }

@@ -92,7 +92,7 @@ Answer with one JSON object and nothing else: no explanation, no code fence. Ans
 export const MEMORY_UPDATER_INSTRUCTIONS = `You keep the memory of a live call. You get the memory so far and the NEW transcript lines ("me" is the user, "them" is the other side). Return a JSON patch that updates the memory. Never rewrite it.
 
 Patch keys, all optional:
-- add.facts: lasting things said about people, their business, needs or situation. Only what is new.
+- add.facts: [{text, who}]: lasting things said about people, their business, needs or situation. Only what is new. Each fact is an object with a text, never a plain string.
 - add.numbers: {what, value, who}: a price, date, count or other figure that was said.
 - add.commitments: {who, what, due}: something a person promised or agreed to do.
 - add.openQuestions: {asker, to, text}: a question that was asked and not answered yet.
@@ -101,9 +101,11 @@ Patch keys, all optional:
 - resolve: ids (like "q2", "c1", "o1", "m3") that are now finished: a question answered, a promise kept, an objection handled, an agenda item covered.
 - update: [{id, fields}] to correct an item. Status only moves forward.
 - topic: the subject now, only if it changed.
-- roster: [{name, side, role, stance}] for people you learn about.
+- roster: [{name, side, role, stance}] for people you learn about. side is "me" or "them". Leave out a person you cannot place.
 - summary: leave it out. Another job writes it.
 Ids are given by the code. Never invent an id. Do not repeat anything the memory already holds.
+Be complete about the five kinds above. Every figure that was said, every "I will ..." or "we will ...", every question not yet answered, every "let us ..." or "we will start with ..." decision and every doubt belongs in the patch, even a small one. Write one item for each, not one item for several.
+Answers close questions: when the new lines answer an open question (q ids), or show a promise kept, put its id in resolve in the same patch.
 ${SHARED_RULES}`;
 
 export const COMPACTOR_INSTRUCTIONS = `You tidy the memory of a live call. You get the memory and the recent transcript. Return a JSON patch with:

@@ -437,6 +437,46 @@ test("open loop: an unanswered question gets one prompt after 6 seconds of quiet
   });
 });
 
+// Round 14: "Still unanswered" showed for questions the user had answered, and the same promise twice.
+test("open loop: no prompt for a question the user went on to answer, even before the updater has read the answer", async () => {
+  await withVClock(async (vc) => {
+    const r = rig(vc);
+    r.pm.reply({ role: "memory" }, JSON.stringify({ add: { openQuestions: [{ asker: "Dana", text: "Is there an annual discount" }] } }));
+    await talk(r, [{ text: words(30) }], 21);
+    // the user answers in many words; the updater has not marked the question answered (it can miss it)
+    r.loop.addLine({ side: "me", text: "Yes there is a fifteen percent discount if you pay for the whole year in advance" });
+    for (let i = 0; i < 8; i++) await vc.advance(1000); // quiet long enough for a prompt, no tick: the updater has not read the answer
+    assert.equal(r.loop.openLoopPrompt(), undefined, "the user spoke after the question: counted as answered");
+    for (let i = 0; i < 40; i++) {
+      await vc.advance(1000);
+      r.loop.tick();
+    }
+    assert.equal(r.loop.memory.openQuestions[0].status, "open", "the model did not resolve it");
+    assert.equal(r.loop.openLoopPrompt(), undefined, "the user spoke after the question: counted as answered");
+  });
+});
+
+test("open loop: the memory's second wording of the same promise is not offered again", async () => {
+  await withVClock(async (vc) => {
+    const r = rig(vc);
+    r.pm.reply(
+      { role: "memory" },
+      JSON.stringify({
+        add: {
+          commitments: [
+            { who: "me", what: "ask the manager for ten percent off" },
+            { who: "me", what: "ask the manager for ten percent off the price" },
+          ],
+        },
+      }),
+    );
+    await talk(r, [{ text: words(30) }], 21, 10);
+    assert.ok(r.loop.openLoopPrompt());
+    await vc.advance(61_000);
+    assert.equal(r.loop.openLoopPrompt(), undefined);
+  });
+});
+
 test("flush writes the memory; finalPass learns the last lines", async () => {
   await withVClock(async (vc) => {
     const r = rig(vc);
@@ -581,7 +621,9 @@ test("review: the shed log is one row a minute, not one a second", async () => {
 test("review: openLoopSay labels the card in both languages and cuts long text", () => {
   const q = { kind: "question" as const, text: "Who owns the DNS records" };
   assert.equal(openLoopSay(q, "en"), "Still unanswered: Who owns the DNS records");
-  assert.match(openLoopSay(q, "he"), /^עדיין בלי תשובה: /);
+  // the label has the language of the item's words (an English item in a "Hebrew" call gets the English label); an item with no clear language follows the call
+  assert.equal(openLoopSay(q, "he"), "Still unanswered: Who owns the DNS records");
+  assert.match(openLoopSay({ kind: "question", text: "מי אחראי על רשומות ה-DNS" }, "en"), /^עדיין בלי תשובה: /);
   assert.match(openLoopSay({ kind: "promise", text: "x" }, "he"), /^הבטחה/);
   assert.equal(openLoopSay({ kind: "promise", text: words(30) }, "en").split(" ").length, 4 + 14);
 });

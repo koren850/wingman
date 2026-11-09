@@ -252,6 +252,16 @@ export function wrongLanguage(question: string, say: string): boolean {
   return h > l && h >= 3;
 }
 
+/**
+ * True when a card text is in another language than the language it should follow ("he" or "en"). English reference: the text may not be Hebrew-dominant.
+ * Hebrew reference: the text may not be a plain English sentence (at least 12 Latin letters and no Hebrew word; names, numbers and short terms are fine).
+ */
+export function wrongTextLanguage(ref: "he" | "en", text: string): boolean {
+  const h = count(text, HE),
+    l = count(text, LAT);
+  return ref === "en" ? h > l && h >= 3 : h < 2 && l >= 12;
+}
+
 /** How long to wait for the SDK's usage after an abort before giving up. */
 export const ABORT_USAGE_WAIT_MS = 300;
 

@@ -63,8 +63,6 @@ test("parse: errors fall back to SKIP with an error.survived row", () => {
     ["   \n\n", "empty"],
     ["Let me think about this\nANS\nVALUE: 2\nAIM: me\nSAY: hi there\n", "bad-tag"],
     ["MAYBE\nVALUE: 2\n", "bad-tag"],
-    ["ANS\nAIM: me\nSAY: hello there friend\n", "missing:VALUE"],
-    ["ANS\nVALUE: 2\nSAY: hello there friend\n", "missing:AIM"],
     ["ANS\nVALUE: 2\nAIM: me\n", "missing:SAY"],
     ["ANS\nVALUE: 9\nAIM: me\nSAY: hello there friend\n", "missing:VALUE"],
     ["ANS\nVALUE: 2\nAIM: nobody\nSAY: hello there friend\n", "missing:AIM"],

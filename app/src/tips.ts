@@ -245,8 +245,12 @@ export function timeLeftTip(o: { plannedMin: number; elapsedMin: number; leadMin
 }
 
 /** The words on an open-loop PROMPT card: a short label in the call language, then the memory's own wording (at most 14 words). */
-export function openLoopSay(p: { kind: "question" | "promise"; text: string }, lang: "he" | "en"): string {
+export function openLoopSay(p: { kind: "question" | "promise"; text: string }, callLang: "he" | "en"): string {
   const t = p.text.split(/\s+/).filter(Boolean).slice(0, 14).join(" ");
+  // The label follows the language of the item's own words, so a card never reads "<Hebrew label>: <English promise>". The call language decides only when the item has no clear language.
+  const he = (t.match(/[\u0590-\u05FF]/g) ?? []).length,
+    lat = (t.match(/[A-Za-z]/g) ?? []).length;
+  const lang: "he" | "en" = he >= 2 && he >= lat ? "he" : lat >= 3 && lat > he ? "en" : callLang;
   const label =
     p.kind === "question" ? (lang === "en" ? "Still unanswered" : "עדיין בלי תשובה") : lang === "en" ? "Promised, not done yet" : "הבטחה שעוד לא בוצעה";
   return `${label}: ${t}`;

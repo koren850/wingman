@@ -25,7 +25,10 @@ export type BankCard = {
 export type BankHit = { card: BankCard; score: number; matched: string[] };
 
 /** Reads and validates the YAML bank. Throws on a card without id/say/triggers or a duplicate id. */
-export function loadBank(file = packPath("bank.yaml") ?? ""): BankCard[] {
+export function loadBank(...args: [file?: string]): BankCard[] {
+  // No argument and no bank.yaml in any pack folder: a user with no pack has no prepared cards (see pack.ts). An explicit empty path is still a mistake.
+  if (!args.length && !packPath("bank.yaml")) return [];
+  const file = args.length ? (args[0] ?? "") : (packPath("bank.yaml") ?? "");
   if (!file) throw new Error("no bank.yaml in the pack (~/.config/wingman/pack or data/example-pack)");
   const parsed = YAML.parse(readFileSync(file, "utf8")) as BankCard[] | null; // an empty file parses to null: no cards
   const cards = parsed ?? [];

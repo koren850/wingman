@@ -160,6 +160,8 @@ export class MemoryLoop {
   private pendingNames: string[] = [];
   private localNumbers: { what: string; value: string; who: string }[] = [];
   private readonly prompted = new Set<string>();
+  /** Words of the open loops already offered, to keep the memory's second wording of the same item from being offered again. */
+  private readonly promptedWords: Set<string>[] = [];
   /** "Last time": the first time a person with a past fact is named, one Fact card may show it. Once per call. */
   private pastPending: string | undefined;
   private pastDone = false;
@@ -533,11 +535,28 @@ export class MemoryLoop {
     const now = this.deps.now();
     if (this.stopped || now - this.lastLineAt < this.cfg.silencePromptSeconds * 1000) return undefined;
     if (now - this.lastPromptAt < 60_000) return undefined;
-    const c = openLoops(this.mem).find((x) => !this.prompted.has(x.id) && now - x.at >= this.cfg.silencePromptSeconds * 1000 && now - x.at < 5 * 60_000);
+    // The updater is reading new lines right now: it may be closing this very item.
+    if (this.busy) return undefined;
+    const c = openLoops(this.mem).find(
+      (x) =>
+        !this.prompted.has(x.id) &&
+        now - x.at >= this.cfg.silencePromptSeconds * 1000 &&
+        now - x.at < 5 * 60_000 &&
+        !this.answeredByUser(x) &&
+        !this.promptedWords.some((w) => sameItem(w, wordsOf(x.text))),
+    );
     if (!c) return undefined;
     this.prompted.add(c.id);
+    this.promptedWords.push(wordsOf(c.text));
     this.lastPromptAt = now;
     return c;
+  }
+  /** An open question after which the user went on talking for a while was most likely answered: the updater only has not marked it. Promises are not judged this way. */
+  private answeredByUser(x: OpenLoopPrompt): boolean {
+    if (x.kind !== "question") return false;
+    let words = 0;
+    for (const l of this.tail) if (l.side === "me" && l.at > x.at) words += wordCount(l.text);
+    return words >= ANSWER_WORDS;
   }
 
   // ------------------------------------------------------------ end of call
@@ -590,6 +609,18 @@ export function nearCap(mem: SessionMemory): boolean {
     objections: mem.objections,
   };
   return (Object.keys(lists) as (keyof typeof lists)[]).some((k) => lists[k].length >= CAPS[k] - 2);
+}
+
+/** The user spoke this many words after a question was asked: the question counts as answered for the open-loop prompt. */
+const ANSWER_WORDS = 6;
+/** Lower-case words of a text (letters and digits, Unicode), for the near-duplicate check. */
+export const wordsOf = (t: string): Set<string> => new Set(t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []);
+/** Two items say the same thing when most words of the shorter one are in the other (at least 3 words in common). */
+export function sameItem(a: Set<string>, b: Set<string>): boolean {
+  if (!a.size || !b.size) return false;
+  let common = 0;
+  for (const w of a) if (b.has(w)) common++;
+  return common >= 3 && common / Math.min(a.size, b.size) >= 0.7;
 }
 
 export type OpenLoopPrompt = { id: string; kind: "question" | "promise"; text: string; who: string; at: number };

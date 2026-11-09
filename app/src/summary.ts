@@ -45,6 +45,7 @@ Answer with ONE JSON object and nothing else, with exactly these keys:
 
 Hard rules (they apply to everything you write, most of all the email):
 - Names: speech-to-text garbles names. Use a person's name only if it is in ${u}'s notes (brief, plan, typed notes), or if it was said at least twice in the same spelling. A name that appears once, or in different spellings, is not trustworthy: do not use it in the email or in "who", write ${en ? '"Hi,"' : '"שלום,"'} or the person's role. When the notes and the transcript disagree, the notes win.
+- The user: never write ${u}'s name in "summary", "decisions", "nextSteps" or "openQuestions". The people on the call may call the user by another name or spelling, and a name from the settings and a name from the call must not appear together. Write ${en ? '"you" or "the user"' : '"אתה" or "המשתמש"'} for the user. The email is signed as the notes say, and nothing else uses the name.
 - Use only what was said in the call. Never invent facts, names, numbers or decisions. If something is unclear, put it in openQuestions.
 - The email must contain NO prices or amounts, NO dates, days, months or deadlines, and NO promises or guarantees. Where a price or date would be needed, write the placeholder ${en ? "[fill in: price] or [fill in: date]" : "[להשלים: מחיר] or [להשלים: תאריך]"} instead.
 - ${en ? "Write everything in English (the call was in English; the keys and the who labels stay as given), natural business tone." : "Hebrew, natural spoken-business tone, English tech terms are fine."}`;

@@ -1,5 +1,7 @@
 // Strict patch validator and the pure applyPatch. The model proposes a patch; this file decides.
 //   - A bad patch is dropped whole, with a reason. The memory is returned unchanged (the same object).
+//     Two shape slips that real models make all the time are repaired and not punished (round 14: 54 of 73 recorded replies were dropped whole):
+//     a fact written as a plain string is the fact {text}, and a roster entry that cannot be used (side "unknown") is left out.
 //   - Ids (f1, n1, c1, q1, d1, o1, m1, p1) are assigned here, never by the model, and are never reused.
 //   - Status only moves forward: done stays done, answered stays answered, handled stays handled.
 //   - Lists stay inside their caps (caps.ts). The patch can add and update; it can never remove an item by itself.
@@ -115,7 +117,9 @@ function check(raw: unknown): PatchCheck {
       if (!Array.isArray(items)) return { ok: false, reason: `add.${list} is not an array` };
       if (items.length > CAPS.addPerList) return { ok: false, reason: `add.${list} has more than ${CAPS.addPerList} items` };
       const [req, opt] = ADD_FIELDS[list as AddList];
-      for (const it of items) {
+      for (const given of items) {
+        // The model often writes facts as plain strings. A string is the text of a fact; for the other lists it is still a bad item.
+        const it = list === "facts" && typeof given === "string" ? { text: given } : given;
         if (!isObj(it)) return { ok: false, reason: `add.${list}: item is not an object` };
         const f: Rec = {};
         for (const [k, v] of Object.entries(it)) {
@@ -204,7 +208,7 @@ function check(raw: unknown): PatchCheck {
       for (const k of Object.keys(p)) if (!["name", "side", "role", "stance", "id"].includes(k)) return { ok: false, reason: `roster: unknown field "${k}"` };
       const name = cleanText(p.name, CAPS.short);
       if (!name) return { ok: false, reason: "roster: missing name" };
-      if (p.side !== "me" && p.side !== "them") return { ok: false, reason: "roster: bad side" };
+      if (p.side !== "me" && p.side !== "them") continue; // "unknown" or empty: we cannot place this person, so leave the entry out and keep the rest of the patch
       const e: ValidPatch["roster"][number] = { name, side: p.side };
       const role = cleanText(p.role, CAPS.short);
       if (role) e.role = role;

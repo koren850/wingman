@@ -1,4 +1,5 @@
 // STT results into the call: foreign-script and echo drops, side features, transcript, the per-channel buffer, and flush() into questions ("them") or handleMe ("me").
+import { cleanSttText } from "../stt-clean.ts";
 import { speechRing } from "../session/coaching.ts";
 import { eventError } from "../errtext.ts";
 import { matchBank, matchBankFor, matchBankSmart } from "../bank.ts";
@@ -309,6 +310,7 @@ function onResultCore(r: SttResult) {
     earlyPartial(r);
     return;
   }
+  if (r.text) r.text = cleanSttText(r.text); // Hebrew numbers and weekdays that smart formatting wrote as "60 1000" and "יום 4º"
   watchLanguage(r);
   // Hebrew + English mixing sometimes hallucinates Telugu / Persian / Arabic on short clips: such a final triggers nothing.
   if (S.stt.dropForeignScript && r.text) {

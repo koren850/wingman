@@ -58,12 +58,23 @@ export function quantities(text: string): Quantity[] {
 
 const eq = (a: number, b: number) => Math.abs(a - b) < 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
 
+/** Two figures this far apart (more than this factor) are not one figure said wrong: a price per month and a budget, a rate and a total. A slip of one zero (10x) still counts. */
+export const MAX_SLIP_FACTOR = 12;
+const comparable = (a: number, b: number) => {
+  const hi = Math.max(Math.abs(a), Math.abs(b)),
+    lo = Math.min(Math.abs(a), Math.abs(b));
+  return lo > 0 && hi / lo <= MAX_SLIP_FACTOR;
+};
+
 /** Numbers the user said that do not fit any paired number in `refs`. A number with no pair is never a mismatch. */
 export function mismatches(said: Quantity[], refs: RefQuantity[]): Mismatch[] {
   const out: Mismatch[] = [];
   for (const q of said) {
     if (!q.unit || q.value === 0) continue;
-    const paired = refs.filter((r) => r.unit === q.unit && (q.money || q.unit === "%" || r.words.some((w) => q.words.includes(w))));
+    // A pair needs the same unit and a figure of about the same size. Round 14: "$1,200" was held against "budget: $85,000" and "8,000 shekels" against "250 shekels a month".
+    const paired = refs.filter(
+      (r) => r.unit === q.unit && comparable(r.value, q.value) && (q.money || q.unit === "%" || r.words.some((w) => q.words.includes(w))),
+    );
     if (!paired.length || paired.some((r) => eq(r.value, q.value))) continue;
     out.push({ said: q, ref: paired[0] });
   }

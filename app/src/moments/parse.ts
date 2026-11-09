@@ -145,23 +145,52 @@ function cleanShort(raw: string, maxWords: number, maxChars: number): string {
 
 const needsSay = (t: MomentTag) => t !== "SKIP" && t !== "BANK" && t !== "STALL";
 
-function parseTagLine(line: string): TagInfo | undefined {
+/** What may follow the id or kind on line 1: nothing, or punctuation. Any other text is the model thinking aloud ("BANK php-version Hmm, wait ..."). */
+const TAG_TAIL_OK = /^[\s.,:;!)\]>\-–—]*$/;
+
+function parseTagLine(line: string): (TagInfo & { aloud?: boolean }) | undefined {
   const m = clean(line.replace(/^[\s>#\-•]+/, "")).match(TAG_RE);
   if (!m) return undefined;
   const tag = m[1].toUpperCase() as MomentTag;
   const rest = m[2].trim();
   if (tag === "BANK") {
-    const id = rest.match(/^[<[]?([A-Za-z0-9][\w-]{0,63})[>\]]?(?:\s|$)/)?.[1];
-    return id ? { tag, bankId: id.toLowerCase() } : undefined; // a BANK verdict with no id is not usable
+    const hit = rest.match(/^[<[]?([A-Za-z0-9][\w-]{0,63})[>\]]?(?=\s|$|[.,:;!])(.*)$/);
+    if (!hit) return undefined; // a BANK verdict with no id is not usable
+    // A choice followed by more words is a choice the model took back. The card is not shown; it is not a format error to log as bad-tag.
+    if (!TAG_TAIL_OK.test(hit[2])) return { tag: "SKIP", aloud: true };
+    return { tag, bankId: hit[1].toLowerCase() };
   }
   if (tag === "STALL") {
-    const kind = rest
-      .split(/\s+/)[0]
-      ?.toLowerCase()
-      .replace(/[^a-z]/g, "");
+    const w = rest.split(/\s+/);
+    const kind = w[0]?.toLowerCase().replace(/[^a-z]/g, "");
+    if (w.length > 1 && !TAG_TAIL_OK.test(w.slice(1).join(" "))) return { tag: "SKIP", aloud: true };
     return { tag, stall: STALL_KINDS.find((k) => k === kind) ?? "other" };
   }
   return { tag };
+}
+
+/** Field names as the prompt spells them (upper case). A reply that puts several on one line is split before it is read. */
+const FIELD_NAMES = FIELD_RE.source.slice(FIELD_RE.source.indexOf("(") + 1, FIELD_RE.source.indexOf(")")); // the names of FIELD_RE, one list
+const INLINE_FIELD = new RegExp(`(?<=\\S)\\s+(?=(?:${FIELD_NAMES})\\s*[:=])`, "g");
+/**
+ * Puts each field on its own line. The model sometimes writes "ANS AIM: me CONF: high SAY: ..." on one line (round 14: the card was dropped for a missing VALUE).
+ * Only upper-case names followed by a colon split a line, and only the first use of a name on a line: a SAY that holds "WHY:" later keeps it.
+ */
+export function splitInlineFields(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const seen = new Set<string>();
+      const first = line.replace(/^[\s>#]+/, "").match(new RegExp(`^(${FIELD_NAMES})\\s*[:=]`))?.[1];
+      if (first) seen.add(first);
+      return line.replace(INLINE_FIELD, (m, off: number, whole: string) => {
+        const name = whole.slice(off + m.length).match(new RegExp(`^(${FIELD_NAMES})`))?.[1] ?? "";
+        if (seen.has(name)) return m;
+        seen.add(name);
+        return "\n";
+      });
+    })
+    .join("\n");
 }
 
 /** Reads `buf` (everything streamed so far). `final` = the stream ended. Never throws. */
@@ -182,7 +211,7 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
   const fail = (reason: string, text = buf) => {
     out.errors.push({ type: "error.survived", where: "moments.parse", reason, sample: sample(text) });
   };
-  let text = String(buf ?? "");
+  let text = splitInlineFields(String(buf ?? ""));
   if (text.length > LIMITS.inputChars) {
     text = text.slice(0, LIMITS.inputChars);
     fail("input-capped");
@@ -202,7 +231,19 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
     }
     return out;
   }
-  const tag = parseTagLine(first);
+  const parsedTag = parseTagLine(first);
+  const aloud = !!parsedTag?.aloud;
+  const tag: TagInfo | undefined = parsedTag && {
+    tag: parsedTag.tag,
+    ...(parsedTag.bankId ? { bankId: parsedTag.bankId } : {}),
+    ...(parsedTag.stall ? { stall: parsedTag.stall } : {}),
+  };
+  if (aloud) {
+    fail("reasoning-aloud", first);
+    out.tag = { tag: "SKIP" };
+    if (final) out.moment = { ...SKIP_MOMENT, more: [] };
+    return out;
+  }
   if (!tag) {
     fail("bad-tag", first);
     out.tag = { tag: "SKIP" };
@@ -239,7 +280,9 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
   const done = (name: string) => name in f && lines.some((l) => new RegExp(`^[\\s>#]*${name}\\s*[:=]`, "i").test(l)); // a half-streamed line is not read
   let sayRest = "";
   if ("SAY" in f) {
-    const say = strip(f.SAY);
+    const say = strip(f.SAY)
+      .replace(new RegExp(`\\s+(?:${FIELD_NAMES})\\s*[:=]?$`), "")
+      .trim(); // a field name cut off at the end ("... LABEL")
     if (needsSay(tag.tag) && (wordCount(say) > LIMITS.sayWords || say.length > LIMITS.sayChars)) {
       const fit = fitSay(say);
       out.fields.say = fit.say;
@@ -294,10 +337,22 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
     out.moment = { ...SKIP_MOMENT, more: [], why: cut(out.fields.why ?? "", LIMITS.whyChars) };
     return out;
   }
-  if (out.fields.value === undefined) return skip("missing:VALUE");
-  if (out.fields.aim === undefined) return skip("missing:AIM");
   const say = out.fields.say ?? "";
   if (needsSay(tag.tag) && !say) return skip("missing:SAY");
+  // VALUE and AIM are the model's judgement of one card whose text is already fine. A reply that has the verdict and the SAY but forgot one of them
+  // keeps its card with the cautious value: 1 (marginal, so the scheduler is the one to decide) and AIM unclear (the user may act on it). Round 14
+  // lost cards for "is the data encrypted" this way. A reply with no SAY (above) is still dropped.
+  // A field that is there but wrong (VALUE: 9, AIM: nobody) is still a bad reply.
+  if (out.fields.value === undefined) {
+    if ("VALUE" in f) return skip("missing:VALUE");
+    out.fields.value = 1;
+    fail("defaulted:VALUE", text);
+  }
+  if (out.fields.aim === undefined) {
+    if ("AIM" in f) return skip("missing:AIM");
+    out.fields.aim = "unclear";
+    fail("defaulted:AIM", text);
+  }
   // A runaway SAY is garbage, not a long line: more than sayCutWords words, or text far over the character limit.
   if (rawSayGarbage(f.SAY) || say.length > LIMITS.sayChars) return skip("say-too-long"); // the second test: one long word with no break to cut at
   if (say && CONTROL_WORD.test(say)) return skip("leaked-tag"); // the model talking about its own verdict

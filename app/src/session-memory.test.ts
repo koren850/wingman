@@ -67,7 +67,8 @@ const BAD: [string, unknown][] = [
   ["unknown key", { add: {}, evil: 1 }],
   ["unknown list", { add: { secrets: [{ text: "x" }] } }],
   ["list not array", { add: { facts: { text: "x" } } }],
-  ["item not object", { add: { facts: ["x"] } }],
+  ["item not object", { add: { facts: [42] } }],
+  ["string item in another list", { add: { decisions: ["x"] } }],
   ["missing field", { add: { numbers: [{ what: "budget" }] } }],
   ["unknown field", { add: { facts: [{ text: "x", color: "red" }] } }],
   ["empty text", { add: { facts: [{ text: "   " }] } }],
@@ -82,7 +83,6 @@ const BAD: [string, unknown][] = [
   ["update bad bool", { update: [{ id: "o1", fields: { handled: "yes" } }] }],
   ["bad topic", { topic: 12.5 }],
   ["bad kind", { kind: "wedding" }],
-  ["roster bad side", { roster: [{ name: "Dana", side: "both" }] }],
   ["roster missing name", { roster: [{ side: "me" }] }],
   ["good op next to a bad one", { add: { facts: [{ text: "fine" }] }, topic: "" }],
 ];

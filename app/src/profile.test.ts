@@ -134,7 +134,7 @@ test("masculine fix only applies when the profile addresses the user in the masc
 test("pack: look-up order is the user's pack folder, then the example pack, per file", () => {
   const dir = tmp("pack");
   writeFileSync(join(dir, "house-style.md"), "MY STYLE");
-  const env = { WINGMAN_PACK_DIR: dir };
+  const env = { WINGMAN_PACK_DIR: dir, WINGMAN_EXAMPLE_PACK: "1" }; // the example pack is read only when asked for (see realfix.test.ts)
   assert.deepEqual(packDirs(env), [dir, EXAMPLE_PACK]);
   assert.equal(packPath("house-style.md", env), join(dir, "house-style.md"));
   assert.equal(readPack("house-style.md", env), "MY STYLE");

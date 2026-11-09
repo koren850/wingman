@@ -1,5 +1,8 @@
 // The "pack": the business content Wingman answers from (answer bank, house style, keyterms, topic words). It is NOT in the repo:
 // look-up order per file is  1. $WINGMAN_PACK_DIR or ~/.config/wingman/pack/   2. the repo's data/example-pack/ (an invented example).
+// The example pack is a web and hosting business. It is used (2) only when it is asked for: the practice call and the demo, a test (WINGMAN_EXAMPLE_PACK=1),
+// or to fill a file that a user pack with its own bank.yaml lacks. A user with no pack gets no prepared cards: an example answer must never
+// appear as the user's own answer in a real call (round 14: SOC 2, price and region questions got hosting cards).
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -13,7 +16,14 @@ export const USER_PACK = join(homedir(), ".config", "wingman", "pack");
 export const PACK_FILES = ["bank.yaml", "bank.en.yaml", "house-style.md", "keyterms.txt", "topics.txt"] as const;
 
 /** Pack folders in look-up order. */
-export const packDirs = (env: NodeJS.ProcessEnv = process.env): string[] => [env.WINGMAN_PACK_DIR || USER_PACK, EXAMPLE_PACK];
+export const packDirs = (env: NodeJS.ProcessEnv = process.env): string[] => {
+  const user = env.WINGMAN_PACK_DIR || USER_PACK;
+  return exampleAllowed(env, user) ? [user, EXAMPLE_PACK] : [user];
+};
+/** True when the example pack may be read: asked for by the environment (tests, demo, practice call), or the user pack is real (it has its own bank.yaml) and only lacks some files. */
+export function exampleAllowed(env: NodeJS.ProcessEnv, user: string): boolean {
+  return env.WINGMAN_EXAMPLE_PACK === "1" || env.WINGMAN_DEMO === "1" || !!env.WINGMAN_STT_SCRIPT || existsSync(join(user, "bank.yaml"));
+}
 /** Path of a pack file: the first folder that has it. Undefined if none does. */
 export function packPath(name: string, env: NodeJS.ProcessEnv = process.env): string | undefined {
   return packDirs(env)
@@ -26,7 +36,7 @@ export function packPath(name: string, env: NodeJS.ProcessEnv = process.env): st
  */
 export function packMixedIn(env: NodeJS.ProcessEnv = process.env): string[] {
   const user = packDirs(env)[0];
-  if (user === EXAMPLE_PACK || !existsSync(join(user, "bank.yaml"))) return [];
+  if (user === EXAMPLE_PACK || packDirs(env).length < 2 || !existsSync(join(user, "bank.yaml"))) return [];
   return PACK_FILES.filter((f) => !existsSync(join(user, f)) && existsSync(join(EXAMPLE_PACK, f)));
 }
 /** Text of a pack file, or "" when no folder has it. */

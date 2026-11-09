@@ -44,7 +44,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isEmptyMemory } from "../session/types.ts";
 import { guard } from "../guards.ts";
-import { leakedTag, wrongLanguage } from "../reflex.ts";
+import { leakedTag, wrongLanguage, wrongTextLanguage, langOf } from "../reflex.ts";
 import { STALL_TIER, type BankCard } from "../bank.ts";
 import { frameText } from "../frame.ts";
 import { describe, ProviderError } from "../providers/errors.ts";
@@ -287,10 +287,14 @@ export function bankMomentCard(c: BankCard, m: Moment, o: { id: string; turnId: 
   };
 }
 /** The model's text may be shown to the user only if it carries no price, date or promise of its own (ANS and REPLY are lines the user may say aloud). */
-export function sayAllowed(m: Moment, question: string): { ok: boolean; why?: string } {
-  if (m.tag !== "ANS" && m.tag !== "REPLY") return { ok: true };
-  if (leakedTag(m.say)) return { ok: false, why: "leaked-tag" };
+export function sayAllowed(m: Moment, question: string, callLang: "he" | "en" | undefined = st.m.lang): { ok: boolean; why?: string } {
+  const spoken = m.tag === "ANS" || m.tag === "REPLY";
+  if (spoken && leakedTag(m.say)) return { ok: false, why: "leaked-tag" };
   if (m.tag === "ANS" && wrongLanguage(question, m.say)) return { ok: false, why: "language" };
+  // Every text card follows the language of what was asked, else of the call: a Hebrew "careful" card in an English call is noise (round 14: 6% of cards).
+  const ref = langOf(question) ?? callLang;
+  if (m.tag !== "ANS" && m.say && ref && wrongTextLanguage(ref, m.say)) return { ok: false, why: "language" };
+  if (!spoken) return { ok: true };
   const g = guard(m.say);
   return g.ok ? { ok: true } : { ok: false, why: `guard:${g.rule}` };
 }
