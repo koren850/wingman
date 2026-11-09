@@ -775,7 +775,7 @@ function packPanel() {
       { class: "help" },
       p.using === "user"
         ? `Wingman prepares its answers from your own files (${p.userFiles.join(", ")}) in ${p.userDir}.`
-        : "Until you pick one, Wingman answers from an invented web and hosting example. Pick a starter that is close to your work. It is copied to your own folder, and you edit the copy there.",
+        : "Until you pick one, Wingman has no prepared answers; it still helps from what is said in the call. Pick a starter that is close to your work. It is copied to your own folder, and you edit the copy there.",
     ),
     p.canCopy ? picker : null,
     h(
@@ -798,7 +798,7 @@ function packPanel() {
       p.using === "user" ? btn("Show my answers folder", { cls: "sm", icon: "folder", onclick: () => api.setupRevealPack().catch(() => {}) }) : null,
       p.using === "user"
         ? null
-        : btn("Keep the example for now", {
+        : btn("Not now", {
             cls: "sm ghost",
             onclick: () => {
               SU.acks.pack = true;

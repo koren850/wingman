@@ -85,7 +85,7 @@
     "su.mic.why": "Which microphone Wingman listens to.",
     "su.pack": "Starter answers",
     "su.pack.user": "Your own answers are in use.",
-    "su.pack.example": "The example answers are in use (invented web and hosting answers).",
+    "su.pack.example": "No prepared answers yet. Copy a starter to begin.",
     "su.pack.why": "The answers Wingman prepares from.",
     "su.check.why": "Tests the microphone, system audio, the speech service and the AI. About 20 seconds, a few cents.",
     "nav.home": "Home",
@@ -900,6 +900,8 @@
     "wiz.sys.acked": "You said it is on",
     "wiz.sys.restart": "After you switch it on, quit Wingman and open it again. macOS applies the change only to an app that starts again.",
     "wiz.sys.none": "Nothing to allow",
+    "wiz.sys.missing":
+      "Wingman is not in the list? macOS adds it when a call first tries to listen. Start a call once, press Allow when macOS asks, then check the list again.",
     "wiz.perm.check": "Check again",
     "wiz.ready.title": "You are ready",
     "wiz.ready.text": "Start with a practice call. A pretend client talks to you and you see real answer cards. It is free and needs no internet.",

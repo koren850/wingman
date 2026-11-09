@@ -50,7 +50,7 @@ Most people start calls from the app (Home, **Quick call**). `pnpm start` runs t
 ## Your profile and pack
 Your name, spellings, how to address you, your business and your time zone (an IANA name such as `Asia/Jerusalem`; empty means this Mac's zone) are in `~/.config/wingman/profile.yaml`. Set them in **Settings, About you** or with `wingman profile set ...`. A bad file keeps the last good profile during a call.
 
-Your answer bank, house style, keyterms and topic words are a pack in `~/.config/wingman/pack/` (or the folder in `WINGMAN_PACK_DIR`). Without one, the example pack below is used, file by file. The Readiness check lists any file that fell back. Formats: [PACK-FORMAT](../docs/PACK-FORMAT.md). To draft cards from an FAQ file: `pnpm run pack:from-notes <file.txt|.md|.pdf>` ([how it works](../docs/PACK-FORMAT.md#build-answers-from-your-notes)). Nothing personal belongs in this repo.
+Your answer bank, house style, keyterms and topic words are a pack in `~/.config/wingman/pack/` (or the folder in `WINGMAN_PACK_DIR`). Without one, a new user has no prepared cards until they copy a starter pack or write one. The practice call and the demo use the example pack below. If your pack has its own `bank.yaml`, files it lacks are filled from the example pack, and the Readiness check lists them. Formats: [PACK-FORMAT](../docs/PACK-FORMAT.md). To draft cards from an FAQ file: `pnpm run pack:from-notes <file.txt|.md|.pdf>` ([how it works](../docs/PACK-FORMAT.md#build-answers-from-your-notes)). Nothing personal belongs in this repo.
 
 Naming: the **profile** is `profile.yaml` (you). A **settings preset** is a file in `profiles/<name>.yaml`, used with `--profile <name>` (a bundle of setting overrides). They are different things.
 

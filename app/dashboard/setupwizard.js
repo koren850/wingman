@@ -334,6 +334,7 @@ function wizAllowStep(v) {
               }),
             ],
       a.system === "none" ? null : h("p", { class: "wiz-note" }, T("wiz.sys.restart")),
+      a.system === "none" || !mac ? null : h("p", { class: "wiz-note", id: "wiz-sys-missing" }, T("wiz.sys.missing")),
     ),
   );
   return h(

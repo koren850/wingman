@@ -41,7 +41,7 @@ xattr -dr com.apple.quarantine /Applications/Wingman.app
 
 The command removes the "downloaded from the internet" mark from the app. It changes nothing else.
 
-**Permissions.** Wingman asks for **Microphone** (your voice) and **System Audio Recording** (the other side). The first window walks you through both. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it. Wingman does not need Screen Recording, Accessibility or Camera.
+**Permissions.** Wingman asks for **Microphone** (your voice) and **System Audio Recording** (the other side). The first window walks you through both. If Wingman is not in the System Audio Recording list, start a real call once and press **Allow** when macOS asks. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it. Wingman does not need Screen Recording, Accessibility or Camera.
 
 ### On Windows (10 or 11, 64-bit)
 
@@ -146,7 +146,7 @@ cp -R app/data/example-pack/. ~/.config/wingman/pack/     # run from the reposit
 
 Instead of writing cards by hand, you can let a model draft them from your own FAQ or notes. In `app/`, run `pnpm run pack:from-notes <file.txt|.md|.pdf>` (one model call, a few cents). It writes a draft folder; every card goes through the guards, and a card with a price, date or promise becomes a stall line. Nothing is written into your live pack: read the draft and copy what you want. Details: [PACK-FORMAT.md](PACK-FORMAT.md).
 
-Wingman looks in `~/.config/wingman/pack/` first (or in the folder named by `WINGMAN_PACK_DIR`), then in the example pack, file by file. Copy all five files so none of the invented example text mixes in.
+Wingman looks in `~/.config/wingman/pack/` first (or in the folder named by `WINGMAN_PACK_DIR`), and nothing else. With no pack you have no prepared cards until you copy a starter pack or write one. The practice call and the demo use the example pack. If your pack has its own `bank.yaml`, files it lacks are filled from the example pack, and the Readiness check lists them. Copy all five files so none of the invented example text mixes in.
 
 ### 2. Edit `bank.yaml`
 

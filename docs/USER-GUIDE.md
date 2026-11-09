@@ -132,7 +132,7 @@ A **For you** card answers a question you ask Wingman: say it out loud (Ctrl+Opt
 
 <img src="ux/setup-step.png" alt="The setup guide on the Home page: three steps (Try it, Connect, Allow) with the practice call open, then Make it yours (optional)" width="520">
 
-1. **Set up Wingman** shows how many of the 3 steps are done ("2 of 3"). The first step, **Try it**, is a free practice call: a pretend caller talks to Wingman on your Mac, so you can see the windows before you pay for anything.
+1. **Set up Wingman** shows how many of the 3 steps are done ("1 of 3"). The first step, **Try it**, is a free practice call: a pretend caller talks to Wingman on your Mac, so you can see the windows before you pay for anything.
 2. **Open** shows the details of a step. **Close** hides them again.
 3. **Connect** has the two key fields (Deepgram and Anthropic). Paste a key, press **Save**, then **Test**. **Allow** covers the microphone, System Audio Recording and your screens.
 4. **Make it yours (optional)** lists About you, Your privacy, Choose your microphone, Starter answers and the readiness check.
@@ -142,8 +142,8 @@ The **Starter answers** item offers starter packs, so you do not begin with an e
 
 <img src="ux/setup-starter-packs.png" alt="The Starter answers item open, with a Start from list: Sales, Customer support, Job interview practice, Empty pack and Web hosting example, and a Copy to my folder button" width="520">
 
-1. **Start from**: pick the starter closest to your work. **Web hosting (example)** is the invented example Wingman uses until you choose.
-2. **Copy to my folder** copies the starter to your own pack folder. You edit the copy there. **Keep the example for now** changes nothing.
+1. **Start from**: pick the starter closest to your work. **Web hosting (example)** is the invented example that the practice call uses. Until you copy a starter, Wingman has no prepared cards.
+2. **Copy to my folder** copies the starter to your own pack folder. You edit the copy there. **Not now** changes nothing.
 
 ## Before a call: What Wingman knows
 
@@ -205,7 +205,7 @@ If you used an older version that kept calls in the repo folder (`calls/` and `d
   wingman profile set --name Dana --spelling Dana --address female --timezone Asia/Jerusalem
   wingman profile show
   ```
-- A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answers (the file `bank.yaml`), house style, keyterms and topic words. Without one, the invented example web/hosting pack in `app/data/example-pack/` is used. File formats: [docs/PACK-FORMAT.md](PACK-FORMAT.md).
+- A **pack** folder (`~/.config/wingman/pack/`, or `WINGMAN_PACK_DIR`): your answers (the file `bank.yaml`), house style, keyterms and topic words. Without one, a new user has no prepared cards until they copy a starter pack or write one. Wingman still helps from what is said in the call. The practice call and the demo use the invented example web/hosting pack in `app/data/example-pack/`. If your pack has its own `bank.yaml`, files it lacks are filled from the example pack, and the Readiness check lists them. File formats: [docs/PACK-FORMAT.md](PACK-FORMAT.md).
 - **Build answers from your notes.** If you have an FAQ file, `pnpm run pack:from-notes <file.txt|.md|.pdf>` (in `app/`) drafts the cards for you into a separate folder. You read and fix them, then copy them into your pack. Prices, dates and promises in your notes become safe "I will check" cards. Details: [Build answers from your notes](PACK-FORMAT.md#build-answers-from-your-notes).
 
 Do not confuse these with a **settings preset** (`app/profiles/<name>.yaml`, used with `--profile <name>`). A preset is a set of setting overrides, such as `first-client-call`. It has nothing to do with `profile.yaml`.

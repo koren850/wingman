@@ -7,7 +7,7 @@ For anyone who wants Wingman to answer in their own words about their own busine
 For each file, in this order:
 
 1. The folder in `WINGMAN_PACK_DIR`, if you set it. Otherwise `~/.config/wingman/pack/`.
-2. `app/data/example-pack/` (an invented web and hosting example).
+2. `app/data/example-pack/` (an invented web and hosting example). It is used only by the practice call and the demo, and to fill files that a pack with its own `bank.yaml` lacks. A new user with no pack has no prepared cards.
 
 The lookup is **per file**. If your pack has `bank.yaml` but no `topics.txt`, the example `topics.txt` is used. That would mix invented example words into your setup, so the Readiness check lists every file that falls back. Copy all the files you need into your pack.
 
