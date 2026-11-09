@@ -4,7 +4,7 @@ For someone who has just found Wingman and wants to use it on a real call. About
 
 Four parts:
 
-1. [Install the app](#part-1-install-the-app): the Mac, the app, the keys.
+1. [Install the app](#part-1-install-the-app): download, open it once, paste the two keys.
 2. [Try a practice call](#part-2-try-a-practice-call): a pretend client, free, no keys.
 3. [Start a real call](#part-3-start-a-real-call), with optional context before it.
 4. [Make your own pack](#part-4-make-your-own-pack): write your own answer cards.
@@ -17,20 +17,70 @@ A **moment** is a point in the call where a short private nudge would help. Most
 
 Before a meeting you can give it context (an invite, an email, notes). That is optional. With no context it still works: it learns from the call.
 
+**Languages.** English and Hebrew, also mixed in one call. The default setting (`multi`) hears both. Other languages are not supported yet. See [Languages in the user guide](USER-GUIDE.md#languages).
+
 ## Part 1: Install the app
 
-**Most people: download the app.** Open the [latest release](https://github.com/koren850/wingman/releases/latest).
+**Most people: download the app.** Open the [latest release](https://github.com/koren850/wingman/releases/latest) and take the file for your computer. You need no Node, no Homebrew and no ffmpeg. You need a second screen for the answer window. With one screen the answer window stays closed, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it).
 
-- Mac (Apple Silicon, macOS 14.2 or newer): open the `.dmg` and drag Wingman to Applications. macOS asks you to confirm the first start because the app is not signed yet (System Settings, Privacy & Security, Open Anyway).
-- Windows 10 or 11 (64-bit): run `Wingman-Setup-<version>-x64.exe`. It installs for your user only, with no administrator rights, and adds a Start menu shortcut. SmartScreen may say "Windows protected your PC" because the installer is not signed yet: choose **More info**, then **Run anyway**. To remove it, use Settings, Apps, Wingman. Your calls and notes stay in `%APPDATA%\Wingman` until you delete that folder.
+Both apps are **not signed yet**. Your system shows a warning the first time. It is expected, and the steps below get past it once.
 
-You need no Node, no Homebrew and no ffmpeg for the downloaded app. Then go to Part 2. The rest of this part is for people who build from source.
+### On a Mac (macOS 14.2 or newer, Apple Silicon)
 
-**Build from source.** You need:
+1. Download `Wingman-<version>-arm64.dmg` and double-click it. A window opens with the Wingman icon and an Applications folder.
+2. Drag **Wingman** onto **Applications**. Eject the disk image.
+3. Open **Applications** and double-click **Wingman**. macOS says "Wingman Not Opened" because it cannot check the app for malware. Press **Done**. Do not press "Move to Bin".
+4. Open **System Settings**, then **Privacy & Security**. Scroll down to the **Security** section. It says "Wingman was blocked to protect your Mac". Press **Open Anyway**. Enter your password or use Touch ID. In the last dialog press **Open Anyway** again.
+5. The Wingman window opens and a small icon appears in the menu bar. Later starts open normally.
 
-- macOS 14.2 or newer, Node 24 or newer (the installer does not install it), `ffmpeg` only if you run from a terminal (the app records the microphone itself and does not need it), pnpm 11 (comes with corepack; run pnpm from `app/` so it uses the pinned version).
-- A second screen. With one screen the answer window stays closed, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it).
-- For live calls, a Deepgram key and an Anthropic key. The practice call needs no keys.
+On macOS 15 and newer, the old way (right-click the app, then **Open**) no longer gets past this warning. If **Open Anyway** is missing or does nothing, open Terminal and run this once, then open Wingman again:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Wingman.app
+```
+
+The command removes the "downloaded from the internet" mark from the app. It changes nothing else.
+
+**Permissions.** Wingman asks for **Microphone** (your voice) and **System Audio Recording** (the other side). The first window walks you through both. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it. Wingman does not need Screen Recording, Accessibility or Camera.
+
+### On Windows (10 or 11, 64-bit)
+
+1. Download `Wingman-Setup-<version>-x64.exe` and double-click it.
+2. Windows may show a blue box, "Windows protected your PC" (SmartScreen), because the installer is not signed yet. Press **More info**, then **Run anyway**.
+3. The installer does everything in one step. It installs for your user only, asks for no administrator rights, adds a **Wingman** shortcut to the Start menu and starts the app.
+4. The Wingman icon is in the notification area at the bottom right. If you do not see it, press the small arrow to show hidden icons.
+5. If Windows blocks the microphone, the first window has a button that opens the right Settings page ("Let desktop apps access your microphone"). Windows needs no permission for the sound of the other people on the call.
+
+![Step 2 on Windows: only the microphone needs a switch](ux/first-run-allow-win.png)
+
+To remove Wingman, use **Settings, Apps, Wingman**. Your calls and notes stay in `%APPDATA%\Wingman` until you delete that folder. The Windows app records the microphone and the system audio itself. This has been tested with fakes only, not yet on a real Windows machine, so please report problems.
+
+### The two keys
+
+Wingman needs two keys. You paste them in the first window. That is the whole setup.
+
+| Key | What it does | Where to get it | Cost |
+|---|---|---|---|
+| Deepgram | Turns speech into text | Sign up at [console.deepgram.com/signup](https://console.deepgram.com/signup), then create a key in the console | About $1.30 to $1.40 an hour of call |
+| Anthropic | The AI (Claude) that reads the call, writes cards and the summary | Create an account at [platform.claude.com](https://platform.claude.com), add credit under Billing, create a key under [Settings, API keys](https://platform.claude.com/settings/keys) | About 5 to 20 cents an hour |
+
+Open **Wingman**. The welcome window has three steps: **Your two keys**, **Let Wingman hear** and **Ready**.
+
+![The first window: two key boxes, one for Deepgram and one for Anthropic, and a Check and save button](ux/first-run-keys.png)
+
+Paste both keys and press **Check and save**. Each key is checked with one small request and saved only when the service accepts it. A wrong key, no credit and no network each give a plain message and a button that fixes it. Keys are stored in the macOS Keychain on a Mac, or encrypted for your account on Windows, never in a plain file. See the [user guide](USER-GUIDE.md#first-run).
+
+![Step 2 on a Mac: allow the microphone and System Audio Recording](ux/first-run-allow-mac.png)
+
+![Step 3: start a practice call, or a real call](ux/first-run-ready.png)
+
+From a terminal (developers): `pnpm keys set deepgram`, `pnpm keys set anthropic`, `pnpm keys status` (it says only whether a key is present). Never put keys in the repo.
+
+**Cost (an estimate from the price table in the config).** A call costs about $1.50 an hour in total. Speech to text with Deepgram Nova-3 (two channels) is about $1.30 to $1.40 of that. The AI is about 5 to 20 cents an hour. In short test calls the whole call cost about $1.40 an hour, and about 90 percent of it was speech to text. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits the AI spend, and Settings, Money has a soft cap per hour. Set a limit in both provider consoles too.
+
+### Build from source (developers only)
+
+Node is needed only to build and run the code, never to use the downloaded app. You need macOS 14.2 or newer (or Windows, see [Development](DEVELOPMENT.md#building-the-app-dmg-and-windows-installer)), Node 24 or newer (the installer does not install it), git and pnpm 11 (comes with corepack; run pnpm from `app/` so it uses the pinned version). `ffmpeg` is only for terminal runs and file replay: the app records the microphone itself.
 
 ```bash
 brew install node@24                       # skip if you already have Node 24
@@ -40,13 +90,9 @@ cd wingman
 ./install.sh                               # checks the Mac, installs, builds Wingman.app
 ```
 
-The installer never uses sudo. It asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg` (only needed for terminal runs). It is safe to run again. `./install.sh --dry-run` shows every step; `--uninstall` removes it. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`). A `MISSING` line from `--check` tells you what to install; see [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old) if Node is too old.
+The installer never uses sudo. It asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg` (only needed for terminal runs). It is safe to run again. `./install.sh --dry-run` shows every step; `--uninstall` removes it. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`). A `MISSING` line from `--check` tells you what to install; see [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old-building-from-source) if Node is too old. The app built this way is also ad-hoc signed, so the first start needs the same **Open Anyway** step.
 
-**First launch.** The app is ad-hoc signed, not notarised, so macOS may refuse to open it the first time. Right-click `Wingman.app` and choose **Open**, then confirm. Or open it once, then go to **System Settings, Privacy & Security** and click **Open Anyway**.
-
-**Permissions.** Wingman asks for **Microphone** (your voice) and **System Audio Recording** (the other side). After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it. It does not need Screen Recording, Accessibility or Camera.
-
-**A Mac with no developer tools.** Install them first (each step is skipped if you already have it):
+A Mac with no developer tools: install them first (each step is skipped if you already have it):
 
 ```bash
 xcode-select --install                                  # git; finish the dialog that opens
@@ -57,17 +103,6 @@ corepack enable                                         # gives you pnpm; ./inst
 brew install ffmpeg                                     # developer file replay and terminal runs (the app does not need it)
 brew install poppler                                    # optional: read PDF files as context
 ```
-
-### The keys
-
-| Key | What it does | Where to get it |
-|---|---|---|
-| Deepgram | Turns speech into text | Sign up at [console.deepgram.com/signup](https://console.deepgram.com/signup), then create a key in the console |
-| Anthropic | The AI that reads the call, writes cards and the summary | Create an account at [platform.claude.com](https://platform.claude.com), add credit under Billing, create a key under [Settings, API keys](https://platform.claude.com/settings/keys) |
-
-Open **Wingman**. The welcome window has three steps: **Your two keys**, **Let Wingman hear** and **Ready**. Paste both keys and press **Check and save**: each key is checked with one small request and stored in the macOS Keychain on a Mac, or encrypted for your account on Windows, never in a plain file. A wrong key, no credit and no network each give a plain message and a button that fixes it. See the [user guide](USER-GUIDE.md#first-run). From a terminal: `pnpm keys set deepgram`, `pnpm keys set anthropic`, `pnpm keys status` (it says only whether a key is present). Never put keys in the repo.
-
-**Cost (an estimate from the price table in the config).** AI cost is modelled at about $0.03 an hour; plan for 5 to 20 cents an hour. Speech with Deepgram Nova-3 (two channels) is about $1.40 an hour, so a call is about $1.50 an hour in total. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits AI spend, and Settings, Money has a soft cap per hour. Set a limit in both provider consoles too.
 
 ## Part 2: Try a practice call
 
@@ -92,7 +127,7 @@ The Readiness check (Home, **Run readiness check**) tests the microphone, the sy
 
 **Optional: give Wingman context first.** On Home choose **Add meeting context**. Paste an invite, an email or notes, drop a file (.txt, .md, .docx, .eml, .pdf or .ics), give a web address (https), a calendar link, or choose your next calendar event. **Prepare** shows what Wingman understood. Before the call starts, Wingman shows **What Wingman knows** once: who is joining, the kind of call, and the facts, each with its source line. Untick or edit any line. **Start without review** is one click. If you add no context, this step is skipped.
 
-Press **Start** on a meeting, or **Quick call** on Home. From a terminal: `wingman start --quick` (the app asks you to confirm in a window). Then talk, or join your call. Wingman builds its memory as you go ("So far" in the live view shows it). When it ends, press **Stop call** and then **Open summary**. Wingman saves the transcript and writes a summary and a follow-up email draft. Everything is in `~/Library/Application Support/Wingman/calls/`. See [EXAMPLES.md](EXAMPLES.md#d-a-call-summary-and-follow-up-email) for what the summary looks like.
+Press **Start** on a meeting, or **Quick call** on Home. (Developers on a Mac can also run `wingman start --quick` from a terminal; the app asks you to confirm in a window.) Then talk, or join your call. Wingman builds its memory as you go ("So far" in the live view shows it). When it ends, press **Stop call** and then **Open summary**. Wingman saves the transcript and writes a summary and a follow-up email draft. Everything is in `~/Library/Application Support/Wingman/calls/` on a Mac and `%APPDATA%\Wingman\calls\` on Windows. See [EXAMPLES.md](EXAMPLES.md#d-a-call-summary-and-follow-up-email) for what the summary looks like.
 
 Tell the people you talk to that you use a call assistant if the law or your rules ask for it. See [Privacy and security](PRIVACY-AND-SECURITY.md).
 

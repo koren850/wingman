@@ -4,7 +4,7 @@ Thank you for helping. Wingman is a small project with one maintainer, so short 
 
 ## Set up
 
-You need a Mac (macOS 14.2 or newer), Node 24 or newer, and `ffmpeg` (for file replay and terminal runs; the app itself does not need it).
+You need Node 24 or newer and git. Node is only for developers; people who just use Wingman download the app. To build and run the full app on a Mac you need macOS 14.2 or newer. The unit tests also run on Windows and Linux. `ffmpeg` is optional (file replay and terminal runs; the app itself does not need it).
 
 ```bash
 # clone the repository as shown in the README quick start, then:
@@ -24,7 +24,7 @@ pnpm 11 comes through corepack (`corepack enable`). The version is fixed in `app
 
 More detail: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-**Good first contributions.** A new language (one file in `app/src/lang/`), a new speech or AI provider (one line in `app/src/providers/catalog.ts` plus an adapter), a Windows or Linux `AudioBackend`. The steps are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#extending). Run `pnpm check` before you open a pull request.
+**Good first contributions.** A new language ([how](docs/DEVELOPMENT.md#adding-a-language)), a new speech or AI provider (one line in `app/src/providers/catalog.ts` plus an adapter), a Linux `AudioBackend`, or testing the Windows app on a real machine and reporting what you see. The other steps are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#extending). Run `pnpm check` before you open a pull request.
 
 ## Run the checks
 
@@ -97,7 +97,7 @@ The short version. The full list is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md
 - Say what changed and why, in a few sentences.
 - Say how you checked it (which tests, anything you tried by hand).
 - Docs change with the code. If you change a setting, a command or a path, update the docs in the same pull request.
-- CI runs the type check, the unit tests, the end-to-end tests and `pnpm eval` on macOS and Linux; both must be green. Windows CI runs the type check and the unit tests only. Tests that need macOS, bash or POSIX file modes skip themselves with a reason through `app/src/test-platform.ts`.
+- CI runs the type check, the unit tests, the end-to-end tests and `pnpm eval` on macOS and Linux; both must be green. Windows CI runs the type check, the unit tests and a packaging check. Tests that need macOS, bash or POSIX file modes skip themselves with a reason through `app/src/test-platform.ts`.
 
 ## Security problems
 

@@ -45,7 +45,7 @@ flowchart LR
   ENG <-->|"call text, answers, summary"| AN["Anthropic"]
 ```
 
-The tray app starts one call at a time through the controller, which runs `call.ts`. `call.ts` starts the engine (`run.ts`) and the answer window. The window reads the call folder itself; the relay socket is only a backup path for card rows if writing `cards.jsonl` fails. Keys come from the macOS Keychain at start and live only in memory.
+The tray app starts one call at a time through the controller, which runs `call.ts`. `call.ts` starts the engine (`run.ts`) and the answer window. The window reads the call folder itself; the relay socket is only a backup path for card rows if writing `cards.jsonl` fails. Keys come from the key store of the system (macOS Keychain, Windows data protection) at start and live only in memory.
 
 ## Components
 

@@ -8,9 +8,9 @@ Every number is labelled **scripted** (the model replies are fixtures) or **reco
 
 - Live call loop: two-channel speech to text, **live reading** (the default: the AI reads the call and decides when a card helps), a shared call memory that grows during the call, optional pre-meeting context with a review step, Prepared bank, AI answers with guards, answer window. **Classic** (the older question gate) is a fallback and a language-neutral floor runs when the AI is down.
 - Precision rules (confidence chips, required labels, a 12-word line, "fewer like this", per-user learning), speaker numbers that survive a reconnect, a ring that keeps the audio before the first connect, an early start on stable partials (off), and ship thresholds with a held-out split.
-- Menu-bar app with Home, Calls and Settings; prepared meetings; practice call; Readiness check; keys in the Keychain.
+- Menu-bar app with Home, Calls and Settings; prepared meetings; practice call; Readiness check; keys in the Keychain (Mac) or encrypted for your Windows account.
 - Shipped, not yet proven on a real call: your own modes (lock the call kind or write a mode, [ADR 64](DECISIONS.md#adr-64-modes-are-visible-lockable-and-writable-by-the-user)) and web lookup (opt-in, with a source and a cost cap, [ADR 65](DECISIONS.md#adr-65-web-lookup-is-opt-in-with-a-source-and-a-cap-replaces-adr-36)). Context can also come from a web address, a calendar link or your next calendar event.
-- An installer (`install.sh`, with update and uninstall), a guided first-run setup, and user data in `~/Library/Application Support/Wingman`.
+- A downloadable app for macOS (.dmg) and Windows (.exe), both unsigned. For developers, an installer (`install.sh`, with update and uninstall). A first window that asks for the two keys, a practice call, and user data in `~/Library/Application Support/Wingman` (`%APPDATA%\Wingman` on Windows).
 - Practice and mock-interview mode (kind `interview`, a practice coach) and group call mode (several people on the other side).
 - Reliability: audio sources restart by themselves, the call survives sleep, a stray error and a full disk, and a dead speech channel steps down to transcript-only instead of ending the call.
 - Security: confirmation in the app before a CLI start or delete, safe file attach, strict Content-Security-Policy, Electron fuses set at build time, short error text, profile validation.
@@ -18,13 +18,33 @@ Every number is labelled **scripted** (the model replies are fixtures) or **reco
 - Health ladder, reconnect buffer, cost caps, idle stop, sleep recovery, disk-space warning.
 - The `wingman` CLI over an owner-only socket.
 - A self-contained app and .dmg build (unsigned), `wingman diagnose`, bilingual starter packs and `wingman pack from-notes`, a Focus layout for the answer window, language modules for the detector and guards.
-- A test suite of about 2,000 tests (unit, end-to-end on a virtual clock, snapshot checks for the windows). CI runs the type check, unit tests, end-to-end tests and `pnpm eval` on macOS and Linux. Windows CI runs the type check and the unit tests only. A synthetic QA harness has 32 invented scenarios.
+- A test suite of about 2,000 tests (unit, end-to-end on a virtual clock, snapshot checks for the windows). CI runs the type check, unit tests, end-to-end tests and `pnpm eval` on macOS and Linux. Windows CI runs the type check, the unit tests and a packaging check (build, install, start, uninstall). A synthetic QA harness has 32 invented scenarios.
 - End-to-end checks on a virtual clock with fake streams: speaker rebase across a faked reconnect, no audio lost before the first open, early-start latency, the AI-paused floor, and a 3-hour soak with a reconnect storm, a provider switch, a slow model, a 529 storm, a stalled dialog and a quit with a wedged engine.
 - An older deep test on the **Classic** engine (real Deepgram and Haiku, a 60-minute soak, failure injection, a 166-utterance answer-quality judge) on synthetic voices. **Recorded, Classic engine, synthetic voices, older build:** question recall 98 percent, right card about 86 percent on replay, Prepared first card p50 0.57 s and p95 1.9 s, math 0.43 s, AI answer for you 1.65 s, AI answer for them 1.4 s, 0 guard leaks, AI cost about 20 cents an hour in the longest test. Synthetic voices are cleaner than real speech, so treat these as optimistic. **They say nothing about live reading.**
 
 ## Evidence so far
 
-Nothing in this table is recorded. "In-sample" means the set was used while tuning.
+### A recorded run (November 2026)
+
+A first run with the real AI was made, on the build of this release (two passes, about $1.20 in total, with invented scripts and text-to-speech voices). It did **not** pass.
+
+| What | Result |
+|---|---|
+| Short real calls (8 calls, English, Hebrew and mixed, with real Deepgram and the real model) | No crash, no AI error, no stuck call. Every question was heard and detected. |
+| Speech to text, words right | English about 92 percent, Hebrew 77 to 83 percent, mixed speech lower |
+| Time from end of speech to a card | Prepared card 0.3 to 0.7 s. AI card 1.0 to 3.5 s |
+| Cost | About $1.40 an hour for the whole call, 90 percent of it speech to text. The AI part was about $0.14 an hour in these short calls (the model of the replays: $0.03 to $0.04 an hour) |
+| Ship lines (`pnpm eval --ship`) on a replay of the real AI against the 32 dev meetings | 4 pass, 12 FAIL. Card recall and precision were close to zero, wrong-card rate 83 percent, wrong language 6.8 percent, first card of a direct question p95 6.1 s |
+| Held-out meetings (`test`, `test-b`) on the recording | 2 hard limits fail (cards in silent stretches, guard breaches). Recall 0.5 to 1.4 percent |
+| Memory of the call (24 invented calls) | F1 well below the floors (open questions 14, numbers 9, objections 0) |
+
+What the failures looked like in the real calls: direct questions to the user often got no card; the prepared example answers (web hosting) showed in unrelated calls; some cards were in the wrong language; the model sometimes wrote its coaching text into the card; "Still unanswered" tips came back after the user had answered; a check card compared two unrelated numbers. Two of the numbers above are partly measurement problems and are not trusted yet: a replay of the same recording misses about 10 percent of the calls, and the model judge returned empty answers in most cases. So read the table as "card quality is not proven and probably weak", not as exact figures.
+
+What this means for v0.0.1: the app, the install, the two-key setup, the languages and the call loop work. The usefulness of the cards on a real call is unproven. Use it on calls where a wrong or missing card does no harm, and check every card before you say it.
+
+### Scripted numbers
+
+"In-sample" means the set was used while tuning. These are scripted: the model replies are fixtures.
 
 | What | Result | Basis |
 |---|---|---|
@@ -48,9 +68,9 @@ Nothing in this table is recorded. "In-sample" means the set was used while tuni
 
 ## Not yet checked on real audio
 
-Everything above ran on scripted replies, synthetic voices and hidden-window snapshots. Not yet recorded or checked on real calls:
+The recorded run above used synthetic voices and invented scripts. Not yet recorded or checked on real people and real calls:
 
-- **A recorded run of live reading:** `pnpm morning --cap 5` ([Recording evals](RECORDING-EVALS.md)). It gives recorded recall and precision, the model judge, the memory F1, the judgement set, the cost check against real usage and the cache share.
+- **A clean recorded run of live reading** after the fixes: `pnpm morning --cap 5` ([Recording evals](RECORDING-EVALS.md)). The tool has two known problems (it records nothing with the real transport until the key bug is fixed, and the model judge returns empty answers).
 - A real call rated with `pnpm tag`: useful cards an hour, and how many cards you would have rather not seen.
 - Latency with real partials: whether early start is stable enough to turn on, and the real first-card time of the direct path.
 - Speaker numbers after a real reconnect (so far a fake stream), and the ring after a real slow first connect.
@@ -75,16 +95,17 @@ Everything above ran on scripted replies, synthetic voices and hidden-window sna
 
 ## Known limits
 
-- **macOS first.** macOS needs 14.2 or newer for system audio. On Windows the app records the microphone and the system audio itself (Electron loopback) and an unsigned installer is built by CI, but this has been tested with fakes only and has not run on a real Windows machine. The engine and file replay run on Linux (tested in CI).
+- **macOS and Windows.** macOS needs 14.2 or newer (Apple Silicon only) for system audio. On Windows 10 or 11 (64-bit) the app records the microphone and the system audio itself (Electron loopback). A CI run built the installer, installed it for the user, found the Start menu shortcut, started the tray app and uninstalled it. The first run of the install check failed on a hanging tool; a fix is in this release but has not been run on Windows again. Windows audio capture, the key store and the tool process have been tested with fakes only. The engine and file replay also run on Linux (tested in CI); there is no Linux app.
 - **English and Hebrew** (and calls that mix them). Other languages are not supported yet: a call in one shows a one-time notice. More languages are possible later; see the roadmap below.
-- Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.50 an hour (an estimate): about $1.40 for speech with Deepgram add-ons plus roughly 5 to 20 cents for AI (modelled at about $0.03). Prices in the config are estimates.
+- Needs **Deepgram and Anthropic keys** and the internet. Costs about $1.50 an hour (an estimate; $1.40 measured in short test calls): about $1.30 to $1.40 for speech with Deepgram add-ons plus roughly 5 to 20 cents for AI. Prices in the config are estimates.
 - Not a recording or consent tool; the user is responsible for telling participants (see [PRIVACY-AND-SECURITY.md](PRIVACY-AND-SECURITY.md)).
 - Call files are not encrypted at rest.
-- No signed or notarised build (only ad hoc signed). The app built by `install.sh` runs the repo's code and needs Node 24 at launch; the .dmg from `pnpm dist` carries its own engine and needs neither. Permissions attach to the app or terminal that runs it.
+- No signed or notarised build: macOS needs the Open Anyway step and Windows shows SmartScreen on the first start. The app built by `install.sh` runs the repo's code and needs Node 24 at launch; the downloaded .dmg and .exe carry their own engine and need no Node. Permissions attach to the app or terminal that runs it.
 - Answer quality gaps seen in testing: slow-site, talk-over and vendor-hosting scenarios pick the right card less often than the baseline (speech garble and model choices); a Hebrew-English mix misses "גרסה של PHP"; team-call tech questions may get no card.
 - The old question detector (Classic) and its word lists are a hint and the offline fallback ([ADR 56](DECISIONS.md#adr-56-live-reading-is-the-default-word-lists-are-a-hint-and-the-offline-floor)). They cover Hebrew and English only; for other languages only the language-neutral floor remains. Plan: remove the legacy detector after 0.1.
 - Deepgram may use call audio to improve its models unless you turn the opt-out on (`stt.deepgram.mipOptOut`, off by default because opting out may change the price). A choice at first run is not built yet.
-- First-run readiness messages are not fully translated into Hebrew yet.
+- Hebrew speech to text is weaker than English (77 to 83 percent of words right against about 92 percent in our synthetic tests), and Hebrew numbers and dates are sometimes written oddly ("60 1000" for sixty thousand). Check numbers before you say them.
+- The Readiness check (doctor) still has macOS-only checks, and some error texts in the setup are English only.
 - Two chips can still show for one line when the direct path and the observer both chip it (found by the fuzz test, not fixed).
 - Live reading shows more cards than the ship line allows (82 an hour scripted; the line is 40).
 - Soniox, Gladia and non-Anthropic AI models are tested only with mocks.
@@ -108,6 +129,7 @@ Everything above ran on scripted replies, synthetic voices and hidden-window sna
 - A second STT or AI vendor proven on real Hebrew calls.
 - A signed, notarised macOS installer and a signed Windows installer (SmartScreen warns on the unsigned one).
 - Verify the Windows live app on real machines, and Linux support for the live app (engine and replay first). Linux has no audio backend yet. Help wanted.
+- More languages. The detector hints, the guards and the window texts need one file set per language ([how](DEVELOPMENT.md#adding-a-language)).
 - Optional ring-buffer polish after STT reconnects and connection keep-warm.
 
 Next: [Architecture](ARCHITECTURE.md) · [Development](DEVELOPMENT.md) · [Decisions](DECISIONS.md)

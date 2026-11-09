@@ -1,6 +1,6 @@
 # Development
 
-For people who want to build, test or change Wingman. Everything is in `app/`. Run commands from there. If you only want to try it, see [Getting started](GETTING-STARTED.md).
+For people who want to build, test or change Wingman. Everything is in `app/`. Run commands from there. If you only want to use the app, download it instead: you need no Node for that (see [Getting started](GETTING-STARTED.md)). Node is only for developers.
 
 ## Setup
 
@@ -25,7 +25,7 @@ pnpm eval                               # detector, bank and guard quality numbe
 
 Before you open a pull request, `pnpm check` runs the type check, lint, format check, unit tests and `pnpm eval` in one go.
 
-Needs macOS 14.2 or newer, Node 24 or newer, pnpm 11 (through `corepack enable`; the version is pinned in `package.json`) and `ffmpeg`. Poppler (`pdftotext`) is optional, for PDF attachments. Keys are not needed for unit tests: they use mocks and fake keys, and the real Keychain runner refuses to run under the test runner. For live work, add keys with `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never commit keys.
+To build and run the code you need Node 24 or newer, git and pnpm 11 (through `corepack enable`; the version is pinned in `package.json`). The full app and the macOS installer script need macOS 14.2 or newer. `ffmpeg` is optional: it is used only for file replay and terminal runs, because the app records the microphone itself. Poppler (`pdftotext`) is optional, for PDF attachments. The unit tests also run on Linux and Windows. Keys are not needed for unit tests: they use mocks and fake keys, and the real Keychain runner refuses to run under the test runner. For live work, add keys with `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never commit keys.
 
 ## Try it from the code, with no keys
 
@@ -53,12 +53,12 @@ This only reports. It changes nothing. On a ready Mac you see:
   ok    CPU: Apple silicon (arm64)
   ok    Node 24.21.0
   ok    pnpm 11.22.0
-  ok    ffmpeg (/opt/homebrew/bin/ffmpeg)
+  ok    ffmpeg (optional: only for terminal runs and file replay)
   warn  pdftotext not found: optional, only needed to attach PDFs to a meeting.  brew install poppler
   ok    git
 ```
 
-A `MISSING` line tells you what to install. The `pdftotext` warning is fine: you only need it to attach PDF files to a meeting. Node is never installed for you. See [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old) if Node is too old.
+A `MISSING` line tells you what to install. The `pdftotext` warning is fine: you only need it to attach PDF files to a meeting. Node is never installed for you. See [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old-building-from-source) if Node is too old.
 
 ### 3. Install the dependencies
 
@@ -178,13 +178,13 @@ The demo writes to a temporary folder and deletes it at the end. It also ignores
 pnpm eval
 ```
 
-This plays the 32 invented golden dev meetings through the real engine with scripted AI replies, grades the cards, runs four bad-model controls that must score low, and then prints the old word-list checks under a boxed "LEGACY SMOKE, in-sample" header. No keys, no network. It fails when a number is worse than `app/qa/eval-baseline.json`. `pnpm eval:ship` adds the absolute ship thresholds from `app/qa/ship.json`, one pass or FAIL line each. **It fails today, on purpose:** the ship lines need a recorded run, and none exists yet (see [Release gates](#release-gates-pnpm-eval-budgets-held-out-snapshots)). A failing `eval:ship` is not a broken checkout. Everything it prints is **scripted**; see [Release gates](#release-gates-pnpm-eval-budgets-held-out-snapshots).
+This plays the 32 invented golden dev meetings through the real engine with scripted AI replies, grades the cards, runs four bad-model controls that must score low, and then prints the old word-list checks under a boxed "LEGACY SMOKE, in-sample" header. No keys, no network. It fails when a number is worse than `app/qa/eval-baseline.json`. `pnpm eval:ship` adds the absolute ship thresholds from `app/qa/ship.json`, one pass or FAIL line each. **It fails today:** a recorded run of the real model exists (November 2026), and most ship lines fail on it (see the [Roadmap](ROADMAP.md#evidence-so-far)). A failing `eval:ship` is not a broken checkout. Everything it prints is **scripted**; see [Release gates](#release-gates-pnpm-eval-budgets-held-out-snapshots).
 
 You can also run the unit tests with `pnpm test:unit` (the quick option).
 
 ## Get your API keys
 
-Live work needs two paid keys. Deepgram (speech to text): sign up at [console.deepgram.com/signup](https://console.deepgram.com/signup) and create a key in the console. Anthropic (the AI): create an account at [platform.claude.com](https://platform.claude.com), add credit under Billing and create a key under [Settings, API keys](https://platform.claude.com/settings/keys). Paste them in the app's first-run setup or **Settings, Keys**, or run `pnpm keys set deepgram` and `pnpm keys set anthropic`. Cost: about $1.10 an hour for speech plus roughly 5 to 20 cents an hour for AI. Unit tests need no keys.
+Live work needs two paid keys. Deepgram (speech to text): sign up at [console.deepgram.com/signup](https://console.deepgram.com/signup) and create a key in the console. Anthropic (the AI): create an account at [platform.claude.com](https://platform.claude.com), add credit under Billing and create a key under [Settings, API keys](https://platform.claude.com/settings/keys). Paste them in the app's first-run setup or **Settings, Keys**, or run `pnpm keys set deepgram` and `pnpm keys set anthropic`. Cost: about $1.30 to $1.40 an hour for speech plus roughly 5 to 20 cents an hour for AI. Unit tests need no keys.
 
 ## Install, update, uninstall
 
@@ -244,7 +244,7 @@ What `pnpm install` does in `app/`:
 
 ## Tests
 
-- Unit tests are `src/*.test.ts` (`pnpm test:unit`, about 1,770 tests; several minutes on a quiet Mac, and 18 minutes when the machine was busy); end-to-end tests that start the engine as a subprocess are `src/e2e/*.test.ts` (`pnpm test:e2e`). About 1,900 tests in all (unit plus end-to-end); a full `pnpm test` can take about half an hour on a busy machine, so use `pnpm test:unit` while you work. `pnpm test` runs both with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards-table.test.ts` (use the file you need).
+- Unit tests are `src/*.test.ts` (`pnpm test:unit`, about 1,800 tests; several minutes on a quiet Mac, and 18 minutes when the machine was busy); end-to-end tests that start the engine as a subprocess are `src/e2e/*.test.ts` (`pnpm test:e2e`). About 2,000 tests in all (unit plus end-to-end); a full `pnpm test` can take about half an hour on a busy machine, so use `pnpm test:unit` while you work. `pnpm test` runs both with `tsx --test --test-concurrency=1`. Run one file with `pnpm exec tsx --test src/guards-table.test.ts` (use the file you need).
 - Do not start a second `pnpm test` while one is running; they share ports and files.
 - Test names say what they protect. Bug fixes should come with a regression test.
 - The "repo guard" test fails if a tracked source, data or config file contains a word from your private word list. Set it with `WINGMAN_DENYLIST="word1,word2" pnpm test`, or one word per line in the git-ignored `app/data/private/denylist.txt`. With no list it skips. How and why: [CONTRIBUTING.md](../CONTRIBUTING.md#the-private-word-list-repo-guard).
@@ -259,7 +259,7 @@ What `pnpm install` does in `app/`:
 New model-driven features are tested with these tools, all in `app/src/testkit/` and `app/src/providers/cassette.ts`. None of them calls a real API.
 
 - **Policy fake model** (`testkit/policy-model.ts`). The test declares what the model says; the fake never decides by itself. `pm.reply({ role: "moment", lastLine: "l3" }, text, { ms })`, and `garbage()`, `truncate(n)`, `hang()`, `refuse()`, `error(529)`, `slow(ms)`, `injection(text)`. A rule can match the role (`moment`, `memory`, `ask`, `digest`, `compact`, `wrapup`), the last transcript line (its `[id]` or its text) and any text in the system block. The first rule that matches wins. A call with no matching rule fails loudly. `pm.assertPrompt(...)` checks what the model received (a memory block, a token limit). `setUsage()` sets the tokens it reports, for cost tests. `pm.serve(golden.script)` serves the scripted replies of a golden meeting. A package that adds a role calls `registerRole(role, marker)` (in `testkit/prompt.ts`) with a phrase from its system prompt.
-- **Cassettes** (`providers/cassette.ts`). `WINGMAN_LLM_MODE=live|record|replay`, default `live`. In `replay` every call must be in the cassette (`WINGMAN_CASSETTE`, default `data/cassettes/default.cassette.json`) and no key or network is used. A miss shows a diff against the nearest entry. `record` needs a key and is for the maintainer only; it is never run in CI. The folder `data/cassettes/` does not exist in a fresh checkout; the recording commands and the morning run create it. Each entry says if it was `recorded` or `authored`.
+- **Cassettes** (`providers/cassette.ts`). `WINGMAN_LLM_MODE=live|record|replay`, default `live`. In `replay` every call must be in the cassette (`WINGMAN_CASSETTE`, default `data/cassettes/default.cassette.json`) and no key or network is used. A miss shows a diff against the nearest entry. `record` needs a key and is for the maintainer only; it is never run in CI. The folder `data/cassettes/` holds a first recording (dev, the judge, memory and the judgement set, about 8 MB). It was recorded at 4 times speed, so its model times are too long and replays drop answers as late: do not read release numbers from it. Record again at real speed (pace 1, about an hour for dev). Each entry says if it was `recorded` or `authored`.
 - **Prompt snapshots** (`testkit/prompt-snapshot.ts`). `assertPromptSnapshot("moment", { system, user })` compares the prompt with `data/snapshots/prompts/moment.txt`. After an intended change run once with `WINGMAN_UPDATE_SNAPSHOTS=1` and review the diff of the file.
 - **Virtual clock** (`testkit/vclock.ts`). `withVClock(async (vc) => { await vc.advance(90_000); })` fakes `Date.now`, `new Date()`, `performance.now`, `setTimeout`, `setInterval` and `setImmediate`. 90 seconds of meeting run in a few milliseconds. New code can read time through `wallNow()` and `monoNow()` in `clock.ts`.
 - **Golden helpers** (`e2e/helpers.ts`). `replayOnVClock` plays `Golden.lines` in this process. `runGolden` plays them into the real engine (`src/run.ts`) with scripted speech and the policy fake (profile `e2e-policy`) and returns the card timeline: id, kind, text, and ms after the line. The engine is one process per call and keeps its real clock, so `runGolden` runs in real time (use `speed` to compress the gaps between lines).
@@ -324,7 +324,7 @@ pnpm eval --cassette data/cassettes/dev.cassette.json --update      # first reco
 pnpm eval --final --cassette data/cassettes/test.cassette.json,data/cassettes/test-b.cassette.json   # the held-out, once
 ```
 
-The command prints a one-page estimate first and refuses when it is over the cap (`--allow-partial` stops at the cap instead). Estimates (modelled cost per hour of the baseline times 2 for real prompt sizes; the judge at $0.0004 a card): dev about $0.25 (+ $0.28 judge) and about one hour of wall time at 4 meetings at a time; test-b about $0.03 (+ $0.04) and about 10 minutes; test about $0.05 (+ $0.06) and about 12 minutes. Treat these as floors. Check the first meeting's booked cost before you leave it alone. The recorder plays at real time (pace 1) because the real model answers in real time.
+The command prints a one-page estimate first and refuses when it is over the cap (`--allow-partial` stops at the cap instead). Estimates (modelled cost per hour of the baseline times 2 for real prompt sizes; the judge at $0.0004 a card): dev about $0.25 (+ $0.28 judge) and about one hour of wall time at 4 meetings at a time; test-b about $0.03 (+ $0.04) and about 10 minutes; test about $0.05 (+ $0.06) and about 12 minutes. Treat these as floors. Check the first meeting's booked cost before you leave it alone. The recorder must play at real time (pace 1) because the real model answers in real time. A faster pace makes every recorded model time too long.
 
 Held-out cassettes (`test`, `test-b`) must be recorded and replayed once, after the dev numbers are final. Do not edit a prompt after you have looked at them.
 
@@ -401,6 +401,22 @@ Used for UX checks and for the images in `docs/ux/`. They need the Electron runt
 - **Fuses** (`scripts/set-fuses.cjs`): `RunAsNode`, `NODE_OPTIONS` and `--inspect` are turned off, so the app cannot be used as a free Node or debugged from outside. The script patches the binary directly and has no dependency.
 - The output is git-ignored, is ad hoc signed only (not notarised), and contains the absolute path of your checkout. macOS permissions (microphone, system audio) belong to the app that runs the code: Wingman.app, or your terminal.
 
+## Building from source on Windows
+
+Install Node 24 (nodejs.org or `winget install OpenJS.NodeJS`) and git. Then, in PowerShell (the same steps CI runs):
+
+```powershell
+git clone https://github.com/koren850/wingman.git
+cd wingman\app
+corepack enable
+$env:WINGMAN_SKIP_APP = "1"; $env:ELECTRON_SKIP_BINARY_DOWNLOAD = "1"
+pnpm install --frozen-lockfile
+pnpm test:unit        # the unit tests
+pnpm dist             # builds dist\Wingman-Setup-<version>-x64.exe and dist\win-unpacked\
+```
+
+electron-builder downloads the Windows Electron files itself. `install.sh` is for macOS only. These Windows steps are what CI runs, but they have not been tried by hand on a real Windows machine.
+
 ## Code conventions
 
 - TypeScript run directly by `tsx` (ES modules, `.ts` imports with the extension). Electron and shared UI files are plain `.cjs` and `.js`, with no framework and no build step.
@@ -417,9 +433,22 @@ Used for UX checks and for the images in `docs/ux/`. They need the Electron runt
 ## Extending
 
 - **A speech or model provider.** Write the adapter (`app/src/providers/stt/<name>.ts`, or an AI SDK package for models). Add one line to `app/src/providers/catalog.ts` (id and key variable) and one to the registry (`STT_PROVIDERS` in `providers/stt/index.ts`). The settings schema, key names and types follow from the catalog, and the compiler fails if the registry and the catalog disagree. The Keys page in the dashboard lists only Deepgram and Anthropic on purpose.
-- **A language.** Add `app/src/lang/<id>.ts` that satisfies the `Language` type (question heads, request cues, fillers, price/date/promise/salary patterns) and list it in `lang/index.ts`. `lang.test.ts` fails if a guard family is empty. Run `pnpm eval` after any list change.
-- **A platform.** Implement `AudioBackend` (`app/src/audio-platform.ts`): a mic source and a system-audio source. win32 and linux are stubs with TODO notes.
+- **A language.** See [Adding a language](#adding-a-language) below.
+- **A platform.** Implement `AudioBackend` (`app/src/audio-platform.ts`): a mic source and a system-audio source. macOS (AudioTee, ffmpeg) and Windows (the app backend with Electron loopback) exist. Linux is a stub with a TODO note.
 - **Lint rules.** "Never use X" checks (innerHTML, eval, hand-built `.bin` paths) are ESLint rules in `app/eslint.config.mjs`, not tests.
+
+## Adding a language
+
+Today the code knows two languages, `he` and `en`. The speech service and the AI model handle many languages, so a new one is mostly Wingman's own word files and texts. The steps, in the order to do them. The type checker (`"he" | "en"` appears in many files) shows you the places you missed.
+
+1. **The language file.** Add `app/src/lang/<id>.ts` that satisfies the `Language` type in `lang/types.ts`: question heads and phrases, request cues, fillers, number words, and the price, date, promise and salary patterns the guards use. The type has no optional fields, so it does not compile without the guards. Add it to `LANGUAGES` in `lang/index.ts` and widen the `id` type. `lang.test.ts` fails if a guard family is empty. Copy `en.ts` as a start.
+2. **Speech to text.** Add the language to the `stt.language` list in `src/settings.ts` and `config/defaults.yaml`, and pass the right code to Deepgram (`providers/stt/deepgram.ts`). Check that Deepgram Nova-3 supports it and whether it can mix with English (`multi` covers only some languages). `lang.ts` drops finals that are mostly in another script (`stt.dropForeignScript`): a new script must be allowed there, and `langwatch.ts` (the "unsupported language" notice) must know the language.
+3. **The language of the call.** `calllang.ts` decides the language of summaries, notes and tips (today `he` or `en`, by the share of Hebrew letters). Extend it, and the language of the follow-up email and the summary labels (`summary.ts`, `summary-email.ts`, `htext.ts`).
+4. **Window texts.** Add `dashboard/strings.<id>.js`, the language in `overlay/strings.js` and `tray/menu-text.cjs`, and the language list in `dashboard/i18n.js` (and the right-to-left rule if needed). `dashboard-i18n.test.ts` checks that every string exists in every language. Take new snapshots (see below).
+5. **The pack.** Starter packs have a `bank.<id>.yaml` next to `bank.yaml` (`data/starter-packs/`). `bank.ts` picks cards by the language of the question.
+6. **Tests and numbers.** Add test meetings in the new language to `data/meetings/dev` and run `pnpm eval`. Add question cases to `data/questions.tsv` and run `pnpm detector`. Run the unit tests and `pnpm snapshots`.
+
+Plan for a real Hebrew-quality check before you call a language supported: record a short call and look at the cards. Our own numbers for Hebrew are weaker than for English (see the [Roadmap](ROADMAP.md#known-limits)).
 
 ## Folder map
 

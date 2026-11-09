@@ -1,14 +1,14 @@
 # Live call checklist
 
-A checklist for using Wingman on a real call. For first-time setup see the [user guide](../docs/USER-GUIDE.md#first-run).
+A checklist for using Wingman on a real call. For first-time setup see the [user guide](../docs/USER-GUIDE.md#first-run). The keys below are for macOS (Ctrl+Opt+...). On Windows use Ctrl+Alt+... (Alt is Option).
 
 ## Before the call (about 10 minutes)
 
 - Run the readiness check until it reports READY (**Home, Run readiness check**, or `pnpm run doctor`).
 - Turn on Do Not Disturb. Wired headphones work best (AirPods switch audio profiles and can degrade the microphone). Pick the microphone in **Settings, Setup guide, Choose your microphone**.
-- Permissions: Microphone and System Audio Recording are allowed, and Wingman was restarted after System Audio Recording was allowed.
+- Permissions: on a Mac, Microphone and System Audio Recording are allowed, and Wingman was restarted after System Audio Recording was allowed. On Windows, only the microphone switch exists.
 - Second screen connected. Test your screen-share mode (window, primary screen, secondary screen, all screens) before the call. Never share the screen that shows the answer window.
-- Keys: **Settings, Keys**, then Test both. Each should read "Saved in Keychain". If you still have an old `keys.env` file, use Move to Keychain once.
+- Keys: **Settings, Keys**, then Test both. Each should read "Saved" (in the Keychain on a Mac, encrypted for your account on Windows). If you still have an old `keys.env` file, use Move to Keychain once.
 - Spend limits are set with Deepgram and Anthropic. For a first call, consider **Quick call without AI** (or `--no-ai`), which shows prepared cards only.
 - Start a call from **Home**: **Quick call** (no Plan) or **Start** on a prepared meeting. To prepare one, use **Prepare a meeting** (who, goal, notes, must-cover points, background files). `pnpm call` in Terminal also works.
 - Rehearsal (practice and prep mode): create the meeting with `--kind interview` (see the [app README](README.md#practice-and-prep-mode-kind-interview)). Real interviews and exams that forbid outside help are out of scope.
@@ -31,7 +31,7 @@ A checklist for using Wingman on a real call. For first-time setup see the [user
 ## After the call
 
 - Home shows **Summary ready, Open follow-up**. Rate the cards under **Waiting for you** (or `pnpm tag`) soon after the call.
-- Delete calls you do not need: **Calls, Delete call**, or `pnpm purge <id>`. Calls are stored in `~/Library/Application Support/Wingman/calls/`.
+- Delete calls you do not need: **Calls, Delete call**, or `pnpm purge <id>`. Calls are stored in `~/Library/Application Support/Wingman/calls/` (Mac) or `%APPDATA%\Wingman\calls\` (Windows).
 
 ## First-run order (from a terminal)
 

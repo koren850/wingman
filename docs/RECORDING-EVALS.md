@@ -54,6 +54,8 @@ Each line prints pass or FAIL, and now the two recorded-only lines (memory F1, d
 | `refusing to run in CI`, `--cap ... is required`, `no ANTHROPIC_API_KEY` | A guard, not a bug. | Fix the command line or the environment. |
 | `the estimate is above the cap` | Not enough budget for the steps you asked for. | Raise `--cap`, use `--only`, or add `--allow-partial`. |
 | A step says `failed` | The call, the file or the key failed in that step. The others still ran. | Read the note in `qa/out/morning.md`. Re-run only that step: `--only <step>`. Recordings that exist are kept. |
+| The recording has 0 entries and every call fails with "ANTHROPIC_API_KEY is missing" | Known bug: the engine start removes the key from the environment before the recording worker reads it (`src/engine/boot.ts`, `src/e2e/v2-worker.ts`). Not fixed in 0.0.1. | Read the key under another variable name for the worker. Check "0 entries" before you wait for a long run. |
+| Model times in the recording look 4 times too long | The recording ran faster than real time (`--pace` above 1). | Record again at pace 1. |
 | `STALE` or many cassette misses | A prompt changed after the recording. This is not a bug. | Record again (`--only dev`). `pnpm cassette:status --cassette <file>` shows the coverage. |
 | Cost check over 15 percent (total or any role above 5 percent of cost) | The budgets in `qa/budgets.json` came from modelled usage and are wrong. | Do not change the engine. Move the budgets with `pnpm eval --cassette <file> --update` after you read the diff. |
 | `recorded-baseline.json` not written | The dev eval against the recording failed. | Open the dev eval text in `qa/out/morning.md`; fix the cause, then run `pnpm eval --cassette data/cassettes/dev.cassette.json --update`. |
@@ -63,6 +65,6 @@ Each line prints pass or FAIL, and now the two recorded-only lines (memory F1, d
 
 ## What a good run looks like
 
-`qa/out/morning.md` says "all steps that ran are fine", the cost check is inside 15 percent, `eval --ship` on the recording passes every line, a real call was rated with at least 2 useful cards an hour, and the numbers are written in the docs with the word **recorded** next to them. Until then the docs keep the word **scripted** next to every number.
+`qa/out/morning.md` says "all steps that ran are fine", the cost check is inside 15 percent, `eval --ship` on the recording passes every line, a real call was rated with at least 2 useful cards an hour, and the numbers are written in the docs with the word **recorded** next to them. Until then the docs keep the word **scripted** next to every number. A first recorded run was made in November 2026; its result is in the [Roadmap](ROADMAP.md#evidence-so-far). It does not pass.
 
 Next: [Development](DEVELOPMENT.md) · [Roadmap](ROADMAP.md) · [Decisions](DECISIONS.md)

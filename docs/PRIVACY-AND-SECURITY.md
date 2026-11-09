@@ -2,7 +2,7 @@
 
 For anyone who will use Wingman on a real call, and for anyone judging whether it is safe to run. Wingman listens to calls. Read this before you use it on one.
 
-In short: audio goes to Deepgram and text goes to Anthropic, only while a call is on. By default nothing else is sent. Three opt-in features contact the hosts you give them (see the table). Nothing is saved as audio. Your files stay on your Mac, outside the repo. Keys are in the Keychain. You can see what is stored with `ls ~/Library/Application\ Support/Wingman/calls/` and delete it any time.
+In short: audio goes to Deepgram and text goes to Anthropic, only while a call is on. By default nothing else is sent. Three opt-in features contact the hosts you give them (see the table). Nothing is saved as audio. Your files stay on your computer, outside the repo. Keys are in the Keychain (Mac) or encrypted for your Windows account. You can see what is stored with `ls ~/Library/Application\ Support/Wingman/calls/` (Mac) or by opening `%APPDATA%\Wingman\calls\` (Windows), and delete it any time.
 
 ## Your responsibility
 
@@ -11,7 +11,7 @@ In short: audio goes to Deepgram and text goes to Anthropic, only while a call i
 - Do not use it where hidden AI help is not allowed, such as real job interviews or exams. The interview mode is a practice coach.
 - Do not use it on calls covered by an NDA or a client policy that forbids cloud processing.
 
-## What leaves your Mac
+## What leaves your computer
 
 | Data | Goes to | When | Why |
 |---|---|---|---|
@@ -31,7 +31,7 @@ Read your providers' own data-retention and training policies. Wingman does not 
 
 ## What is stored on your Mac
 
-Your data folder is `~/Library/Application Support/Wingman/` (override: `WINGMAN_DATA_DIR`). It is outside the repo. Folders are mode 700, files mode 600.
+Your data folder is `~/Library/Application Support/Wingman/` on a Mac and `%APPDATA%\Wingman\` on Windows (override: `WINGMAN_DATA_DIR`). Your settings, profile and pack are in `.config/wingman` in your home folder on both systems. It is outside the repo. Folders are mode 700, files mode 600.
 
 | What | Where | How long | Protection |
 |---|---|---|---|

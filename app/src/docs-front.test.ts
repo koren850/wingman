@@ -79,10 +79,10 @@ test("front docs have no internal wording", () => {
   for (const rel of FILES) assert.ok(!banned.test(read(rel)), `${rel} has internal wording: ${banned.exec(read(rel))?.[0]}`);
 });
 
-test("the changelog starts at 0.0.1 with a date and keeps Unreleased empty", () => {
+test("the changelog has one section, 0.0.1, marked unreleased until the release is published", () => {
   const text = read("CHANGELOG.md");
-  assert.match(text, /^## Unreleased\n\n## 0\.0\.1 - 2026-11-10\n/m);
-  assert.ok(!/unreleased\b(?!\n)/i.test(text.replace("## Unreleased", "")), "no other mention of unreleased");
+  assert.match(text, /^## 0\.0\.1 - unreleased\n/m);
+  assert.ok(!/^## Unreleased$/m.test(text), "no separate Unreleased section");
 });
 
 test("the privacy doc lists the three opt-in network features and does not claim no other host", () => {

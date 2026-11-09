@@ -24,14 +24,14 @@ body:
   - type: input
     id: macos
     attributes:
-      label: macOS version
-      placeholder: "14.5"
+      label: Operating system and version
+      placeholder: "macOS 15.2, or Windows 11 23H2"
     validations:
       required: true
   - type: input
     id: node
     attributes:
-      label: Node version
+      label: Node version (only if you build from source)
       placeholder: "24.x"
   - type: input
     id: version
@@ -43,7 +43,9 @@ body:
     attributes:
       label: How you run it
       options:
-        - Wingman.app
+        - Downloaded app (macOS .dmg)
+        - Downloaded app (Windows .exe)
+        - Built from source (Wingman.app)
         - Terminal (pnpm start / pnpm dashboard)
         - wingman CLI
         - Replay of an audio file

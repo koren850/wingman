@@ -1,6 +1,6 @@
 # Wingman app and operator guide (app)
 
-This is the detailed guide for the app in `app/`. For what Wingman is, requirements and install steps, read the [root README](../README.md). Problems: [TROUBLESHOOTING](../docs/TROUBLESHOOTING.md). Writing your answer cards: [PACK-FORMAT](../docs/PACK-FORMAT.md). Design: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Decisions: [docs/DECISIONS.md](../docs/DECISIONS.md). Privacy: [docs/PRIVACY-AND-SECURITY.md](../docs/PRIVACY-AND-SECURITY.md). Developing: [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md). Limits: macOS only, English and Hebrew, needs Deepgram and Anthropic keys, costs money per call, and is not a recording or consent tool.
+This is the detailed guide for the app in `app/`. For what Wingman is, requirements and install steps, read the [root README](../README.md). Problems: [TROUBLESHOOTING](../docs/TROUBLESHOOTING.md). Writing your answer cards: [PACK-FORMAT](../docs/PACK-FORMAT.md). Design: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Decisions: [docs/DECISIONS.md](../docs/DECISIONS.md). Privacy: [docs/PRIVACY-AND-SECURITY.md](../docs/PRIVACY-AND-SECURITY.md). Developing: [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md). Limits: macOS and Windows (unsigned apps), English and Hebrew, needs Deepgram and Anthropic keys, costs money per call, and is not a recording or consent tool.
 
 Wingman is a live agent for client, support and team calls. It listens to a call or meeting (any kind, or just you thinking aloud), builds context as the call goes, shows cards when something needs your attention, answers questions **you** ask it, and writes notes, tips and a summary. The answer bank (your pack; an example web/hosting pack is included) is one knowledge source, used when the call is about that kind of work.
 
@@ -9,12 +9,12 @@ Wingman is a live agent for client, support and team calls. It listens to a call
 Launched from the app or the terminal. Audio goes to Deepgram (and text to Anthropic) in the cloud. Call-day checklist: [CALL-DAY.md](CALL-DAY.md).
 
 ## Setup (once)
-1. Install with `./install.sh` at the repo root (see the [root README](../README.md#quick-start)). Then open Wingman. The first window is a welcome with three steps (Your two keys, Let Wingman hear, Ready): paste the two keys, allow the microphone, start a practice call. Then optional items on Home: About you, privacy, microphone, starter answers, readiness check. You can reopen it from **Settings, Setup guide**.
+1. Install: download the app (see the [root README](../README.md#install)), or build it from source with `./install.sh` at the repo root (developers, macOS). Then open Wingman. The first window is a welcome with three steps (Your two keys, Let Wingman hear, Ready): paste the two keys, allow the microphone, start a practice call. Then optional items on Home: About you, privacy, microphone, starter answers, readiness check. You can reopen it from **Settings, Setup guide**.
 2. Keys: in the welcome window (each key is checked with one small request before it is saved), or **Settings, Keys**, paste each key (write-only box, Save). They are stored in the macOS Keychain (service `wingman`) on a Mac, and encrypted with Windows data protection on Windows. Or `pnpm keys set deepgram|anthropic` (hidden prompt). If your keys are still in `~/.config/wingman/keys.env`: **Settings → Keys → Move to Keychain** (or `pnpm keys migrate`; each key is written to the Keychain and read back before its line is removed; no backup copy is made). Never put keys in this repo.
 3. Permissions: allow **Microphone** and **System Audio Recording** for Wingman. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it.
    When you run from a terminal instead of the app, the permission belongs to the terminal. Use Terminal.app. In iTerm/Warp/IDE terminals add the app by hand under Privacy & Security > Screen & System Audio Recording > System Audio Recording Only.
 4. `pnpm run doctor` (the app calls it "Readiness check") checks keys, mic, system audio, Deepgram and Haiku (incl. prompt cache).
-5. Set `audio.mic.device` (or `WINGMAN_MIC`) if the default mic is wrong (the setup has a microphone picker, which lists what the app sees; from a terminal, list devices with `ffmpeg -f avfoundation -list_devices true -i ""`, then e.g. `WINGMAN_MIC=":1"`). Avoid AirPods for the first call.
+5. (Terminal runs only; the app picks the microphone itself.) Set `audio.mic.device` (or `WINGMAN_MIC`) if the default mic is wrong (the setup has a microphone picker, which lists what the app sees; from a terminal, list devices with `ffmpeg -f avfoundation -list_devices true -i ""`, then e.g. `WINGMAN_MIC=":1"`). Avoid AirPods for the first call.
 
 Working on the code without the app? `cd app && WINGMAN_SKIP_APP=1 pnpm install` skips the Electron download.
 
@@ -64,7 +64,7 @@ Naming: the **profile** is `profile.yaml` (you). A **settings preset** is a file
 - `data/gold/SCRIPT.md` the 40 sentences to record for the STT gate
 
 ## Each call is saved to `<data folder>/calls/<id>/`
-The data folder is `~/Library/Application Support/Wingman` (override: `WINGMAN_DATA_DIR`; only the calls folder: `WINGMAN_CALLS_DIR`; only the prepared meetings: `WINGMAN_BRIEFS_DIR`). Inside: `calls/`, `briefs/` (with `briefs/attachments/`) and `entities.json`. Settings, keys, profile and pack stay in `~/.config/wingman`. The data folder is also where Electron keeps its own files (cache, local storage), so extra entries there are normal. Older versions kept calls in `app/calls` and meetings in `app/data/private`: the first start copies them over (never moves, never overwrites). Delete the old folders yourself once the new ones look right.
+The data folder is `~/Library/Application Support/Wingman` on a Mac and `%APPDATA%\Wingman` on Windows (override: `WINGMAN_DATA_DIR`; only the calls folder: `WINGMAN_CALLS_DIR`; only the prepared meetings: `WINGMAN_BRIEFS_DIR`). Inside: `calls/`, `briefs/` (with `briefs/attachments/`) and `entities.json`. Settings, keys, profile and pack stay in `~/.config/wingman`. The data folder is also where Electron keeps its own files (cache, local storage), so extra entries there are normal. Older versions kept calls in `app/calls` and meetings in `app/data/private`: the first start copies them over (never moves, never overwrites). Delete the old folders yourself once the new ones look right.
 
 `events.jsonl`, `transcript.jsonl`, `cards.jsonl`, `latency.jsonl` (speech end → bank card / tag / first words), `usage.jsonl` (tokens, STT seconds).
 Files are user-only (umask 077). Delete calls you don't need with `pnpm purge`; no encryption yet (interim privacy policy). Env (still work, mapped onto settings): `WINGMAN_ENDPOINT_MS` (= `stt.endpointMs`, default 200; try 700-1000 if questions get split at pauses), `WINGMAN_SHOW_IN_CAPTURE=1` (= `overlay.contentProtection: false`, for the Zoom share test), `WINGMAN_MIC`, `WINGMAN_ALLOW_PRIMARY=1`.
@@ -72,7 +72,7 @@ Files are user-only (umask 077). Delete calls you don't need with `pnpm purge`; 
 Decision rule: client call only if the gate passes (term recall >= 85% after one alias/keyterm rerun, or the miss is understood and accepted); otherwise self-call with `--no-ai`.
 
 ## It works for any kind of call
-Wingman does not assume a client call: it works for any kind of call. About once a minute a small model writes the **call frame** (kind: client, support, vendor, team, consult, personal or other; topic; goal; people; a checklist of what this kind of call should cover): `src/frame.ts`, settings `frame.*`. The frame feeds the answers, the **live tips** (`src/tips.ts`, settings `tips.*`: at most one small tip per two minutes), the summary (its sections follow the kind) and the answer window / dashboard (header line, `3/6` checklist). On a call that is not with a client, bank cards are weak (dimmed, the model may drop them); price / timeline / guarantee stall cards stay. A prepared meeting (the "Plan") also takes background files (.txt, .md, pasted text; .pdf when `pdftotext` is installed): `tray/attachments.cjs`. QA for this: `pnpm qa vendor-hosting team-planning consult-accountant personal-casual`.
+Wingman does not assume a client call: it works for any kind of call. The call memory (`src/session/`, settings `memory.*`) learns the kind of call (client, support, vendor, team, consult, personal or other), its topic, goal, people and a checklist of what this kind of call should cover. This replaced the older "call frame" model call ([ADR 63](../docs/DECISIONS.md#adr-63-one-memory-the-call-frame-is-retired)), so the settings `frame.everyMs`, `frame.minNewWords`, `frame.model` and `frame.timeoutMs` in `config/defaults.yaml` have no effect any more. `frame.enabled` still switches the kind, topic and checklist on or off. The memory feeds the answers, the **live tips** (`src/tips.ts`, settings `tips.*`: at most one small tip per two minutes), the summary (its sections follow the kind) and the answer window / dashboard (header line, `3/6` checklist). On a call that is not with a client, bank cards are weak (dimmed, the model may drop them); price / timeline / guarantee stall cards stay. A prepared meeting (the "Plan") also takes background files (.txt, .md, pasted text; .pdf when `pdftotext` is installed): `tray/attachments.cjs`. QA for this: `pnpm qa vendor-hosting team-planning consult-accountant personal-casual`.
 
 ## Several speakers and group call mode
 **Several people on the other side.** With `stt.speakers` on (the default), the other side's voices are told apart ("Speaker 1", 2... or names taken from introductions and from the meeting's attendees). A name is only taken from an introduction when it matches an attendee or is a short intro line ("this is Zoom" does not name a voice). Rename a voice on the dashboard or with `wingman speaker <n> "<name>"` (`--clear` removes it). A rename also relabels the earlier lines, for the AI and the summary. Names live only for the call.
@@ -181,7 +181,6 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 
 | Label in the app | Setting | Default |
 |---|---|---|
-| How often to re-check the call | `frame.everyMs` | 60 seconds |
 | Time between tips, at least | `tips.minGapMs` | 120 seconds |
 | Background text the AI may read | `attachments.maxChars` | 40000 characters |
 | Nudge when I talk more than | `coach.talkShareMax` | 70 percent |
@@ -196,7 +195,7 @@ Notes on a few of them:
 - `privacy.requireConsentAck`: the call waits for **Start listening** before any audio is sent.
 - `overlay.allowPrimary`: lets the answer window open on the only screen. Never share that screen.
 - `system.sleepGapMs` (5000): a gap longer than this between health ticks means the Mac slept. Wingman shows a warning, restarts the audio and reopens the speech connection. 0 turns the check off.
-- `moments.*`: more live-reading options are in `config/defaults.yaml` (observer calls a minute, the window the observer sees, the least value a card needs). `coach.*`: nudges are one thin line, at most one every 5 minutes, with no AI call. `lookup.*`: web lookup is off by default and contacts the public page you ask about, see [Privacy and security](../docs/PRIVACY-AND-SECURITY.md#what-leaves-your-mac). `context.*`: where Plan a call gets context.
+- `moments.*`: more live-reading options are in `config/defaults.yaml` (observer calls a minute, the window the observer sees, the least value a card needs). `coach.*`: nudges are one thin line, at most one every 5 minutes, with no AI call. `lookup.*`: web lookup is off by default and contacts the public page you ask about, see [Privacy and security](../docs/PRIVACY-AND-SECURITY.md#what-leaves-your-computer). `context.*`: where Plan a call gets context.
 - `flow.*`: see Group call mode above. `selfCheck.*`: cards about what you said.
 
 **Switch the speech-to-text provider**
@@ -232,6 +231,8 @@ Model strings are `provider:model`. Only Anthropic is installed. For others run 
 - Tests use a mocked `security` runner and fake keys (`src/keys.test.ts`); the real runner refuses to run under the test runner.
 
 ## Keys, stopping and quitting (menu-bar app)
+
+The keys are written for macOS (Ctrl+Opt). On Windows the same keys are Ctrl+Alt+... (Alt is Option).
 
 | Key | What it does |
 |---|---|

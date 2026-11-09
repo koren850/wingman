@@ -23,7 +23,7 @@ function socialHtml(shot, lockup, tagline) {
   .win{width:660px;border-radius:14px;overflow:hidden;border:1px solid #5b4630;box-shadow:0 18px 50px rgba(0,0,0,.55);background:#0f1722}
   .win img{display:block;width:660px}
   </style><body><div class="l"><img class="lock" src="${dataUri(lockup)}"><div class="tag">${esc(tagline)}</div>
-  <div class="tech">macOS · Electron · TypeScript · Deepgram · Claude</div></div>
+  <div class="tech">macOS · Windows · Electron · TypeScript · Deepgram · Claude</div></div>
   <div class="r"><div class="win"><img src="${dataUri(shot)}"></div></div></body>`;
 }
 

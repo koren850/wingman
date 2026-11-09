@@ -69,8 +69,14 @@ for n in setup-step setup-starter-packs; do
   "$ELECTRON" "$HERE/docshots.cjs" crop "$TMP/$n.png" "$OUT/$n.png" $box >/dev/null 2>&1 || exit 1
 done
 
+# First-run window (two keys, sound permissions, ready): the window alone, English, light
+for n in keys allow-mac allow-win ready; do
+  shot WINGMAN_SNAP_NOCALLS=1 WINGMAN_DASHBOARD_FAKE_KEYS=missing WINGMAN_DASHBOARD_SIZE=1100x1000 -- "first-run-$n:en:light:home:-:setup-$n"
+  cp "$TMP/first-run-$n.png" "$OUT/first-run-$n.png"
+done
+
 # Social preview: the live window beside the logo and the first line of the README
-TAG="$(sed -n 's/^<p align="center"><b>\(.*\)<\/b><br>.*/\1/p' "$ROOT/README.md" | head -1)"
+TAG="$(sed -n 's/^<p align="center"><b>\(.*\)<\/b>\(<br>.*\)\{0,1\}<\/p>$/\1/p;s/^<p align="center"><b>\(.*\)<\/b><br>.*/\1/p' "$ROOT/README.md" | head -1)"
 [ -n "$TAG" ] || { echo "README tagline not found" >&2; exit 1; }
 "$ELECTRON" "$HERE/docshots.cjs" social "$OUT/social-preview.png" "$TMP/ow/v2-live-fit.png" "$ROOT/brand/png/lockup-dark.png" "$TAG" >/dev/null 2>&1 || exit 1
 rm -rf "$TMP"; echo "pictures written to $OUT"

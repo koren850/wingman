@@ -1,8 +1,8 @@
 # User guide
 
-For people who have installed Wingman and use it on calls. It covers everyday use after it is installed: what Wingman does, the first run, the windows, the review step before a call, call kinds and modes, updating, where your files live, profile and pack, practice and prep mode, group call mode, words used in Wingman and the command line. For install and requirements see the [README](../README.md); for a first walk-through see [Getting started](GETTING-STARTED.md); for every setting and hotkey see [app/README.md](../app/README.md).
+For people who have installed Wingman and use it on calls. It covers everyday use after it is installed: what Wingman does, the first run, the windows, the review step before a call, call kinds and modes, updating, where your files live, profile and pack, practice and prep mode, group call mode, words used in Wingman and the command line. For install and requirements see the [README](../README.md#install); for a first walk-through see [Getting started](GETTING-STARTED.md); for every setting and hotkey see [app/README.md](../app/README.md).
 
-Contents: [What Wingman does](#what-wingman-does) · [First run](#first-run) · [Tour of the windows](#tour-of-the-windows) · [Before a call: What Wingman knows](#before-a-call-what-wingman-knows) · [Meeting context](#meeting-context-what-you-can-add) · [Call kinds and modes](#call-kinds-and-modes) · [The menu-bar menu](#the-menu-bar-menu) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Group call mode](#group-call-mode) · [Words used in Wingman](#words-used-in-wingman) · [Command line](#command-line)
+Contents: [What Wingman does](#what-wingman-does) · [First run](#first-run) · [Tour of the windows](#tour-of-the-windows) · [Before a call: What Wingman knows](#before-a-call-what-wingman-knows) · [Meeting context](#meeting-context-what-you-can-add) · [Call kinds and modes](#call-kinds-and-modes) · [The menu-bar menu](#the-menu-bar-menu) · [Update and uninstall](#update-and-uninstall) · [Where your files live](#where-your-files-live) · [Profile and pack](#profile-and-pack) · [Practice and prep mode](#practice-and-prep-mode) · [Group call mode](#group-call-mode) · [Languages](#languages) · [How Wingman decides and remembers](#how-wingman-decides-and-remembers) · [Mac and Windows](#mac-and-windows) · [Words used in Wingman](#words-used-in-wingman) · [Command line](#command-line)
 
 ## What Wingman does
 
@@ -14,7 +14,7 @@ A **moment** is a point in the call where a short private nudge would help: a qu
 
 ## First run
 
-Open **Wingman** (Spotlight or Launchpad on a Mac, the Start menu on Windows). The first window is a short welcome with three steps. You need no terminal and you edit no file. English and Hebrew both work: the language box at the top changes the window at once.
+Open **Wingman** (Spotlight or Launchpad on a Mac, the Start menu on Windows). A downloaded app that is not signed yet needs one extra step the first time: see [Getting started](GETTING-STARTED.md#part-1-install-the-app). The first window is a short welcome with three steps. You need no terminal and you edit no file. English and Hebrew both work: the language box at the top changes the window at once.
 
 1. **Your two keys.** Wingman needs two keys, one from Deepgram (it turns the call into text) and one from Anthropic (it writes the answers). Each box has a button that opens the right page, a plain line about what it does and what it costs: about $1.40 per hour of call for Deepgram plus about 5 to 20 cents an hour for Anthropic. Paste each key and press **Check and save**. Wingman checks each key with one small request, and saves it only when the service accepts it. It then tells you in plain words if something is wrong:
    - **The service did not accept the key.** You copied only part of it, or it was switched off. **Get a new key** opens the page.
@@ -90,7 +90,7 @@ A **For you** card answers a question you ask Wingman: say it out loud (Ctrl+Opt
 - **Check.** A new Check flashes amber and takes the card seat. The card it replaced moves to the chips.
 - **Context** is one button with a count. It opens a small list: open questions, promises, topics not covered yet, and earlier cards. **Catch me up** is the one highlighted button.
 - **Buttons on a card** (useful, not useful, more) appear when you point at the card, when the card has the keyboard focus, or when it is a minute old. Under the three dots: Pin, Copy, **Fewer like this** and Dismiss. Fewer like this tells Wingman that this kind of card was not worth showing. The card leaves, and Wingman raises the bar for that kind for the rest of the call. Undo brings the card back for 30 seconds. Wingman also remembers across calls which kinds of cards you rate down, and shows fewer of them. It keeps only counts, no text.
-- **Keys.** The window never takes the focus by itself, so the global keys (Ctrl+Opt+S pin, H useful, X not useful, D dismiss, M more, Z undo, U catch me up) are the normal way. If you give the window the keyboard focus, Tab moves between the card, its buttons and the chips, with a clear ring. Enter opens More, Esc dismisses (or closes a list first), P pins, 1 and 2 rate.
+- **Keys.** The window never takes the focus by itself, so the global keys (Ctrl+Opt+S pin, Ctrl+Opt+H useful, Ctrl+Opt+X not useful, Ctrl+Opt+D dismiss, Ctrl+Opt+M more, Ctrl+Opt+Z undo, Ctrl+Opt+U catch me up; on Windows Opt is Alt) are the normal way. If you give the window the keyboard focus, Tab moves between the card, its buttons and the chips, with a clear ring. Enter opens More, Esc dismisses (or closes a list first), P pins, 1 and 2 rate.
 - **Screen readers** hear a Check, and the first card after a quiet time of 90 seconds. Other cards are silent, so they do not talk over the call.
 - **Key hints** at the bottom show for the first 3 cards you ever see. After that only a small ? stays; press it to see all keys.
 
@@ -191,8 +191,8 @@ Nothing about you is stored in this repository.
 
 | Folder | What is there |
 |---|---|
-| `~/Library/Application Support/Wingman/` | Your data: `calls/` (transcripts, cards, summaries), `briefs/` (prepared meetings, with `briefs/attachments/`), `entities.json` (optional client snapshot). Override with `WINGMAN_DATA_DIR`. |
-| `~/.config/wingman/` | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
+| `~/Library/Application Support/Wingman/` (Mac) or `%APPDATA%\Wingman\` (Windows) | Your data: `calls/` (transcripts, cards, summaries), `briefs/` (prepared meetings, with `briefs/attachments/`), `entities.json` (optional client snapshot). Override with `WINGMAN_DATA_DIR`. |
+| `~/.config/wingman/` (on Windows `C:\Users\<you>\.config\wingman\`) | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
 | macOS Keychain, service `wingman` (Mac) or `<data folder>/secrets/*.dpapi` (Windows, encrypted) | Your API keys. |
 
 If you used an older version that kept calls in the repo folder (`calls/` and `data/private/` inside the repo folder), the first start **copies** them to the new folder. It never moves or overwrites. The old folders stay until you delete them.
@@ -232,6 +232,42 @@ For calls with several people on the other side (needs `stt.speakers`, on by def
 - When two or more of them talk to each other and you are quiet, a muted line shows who is talking and about what. Answer cards wait (`flow.holdCards`). Price and date cards, and questions with your name, still show.
 - When someone turns to you (says your name, or "you" right after their own discussion), an orange alert shows who.
 - Nothing is kept between calls. Names only live for the call.
+
+## Languages
+
+Wingman works in **English** and **Hebrew**, and in calls that mix them.
+
+- **Language of the call.** Settings, "Language the call is heard in" (`stt.language`). The default is `multi`: speech to text hears Hebrew and English in the same call. Choose `he` or `en` to force one language, which can be steadier on short clips.
+- **Language of the windows.** The Wingman window follows your system language (Settings, Basics, Window language can change it). The answer window has its own setting, `ui.language` (`auto`, `he`, `en`). Both switch to right-to-left layout for Hebrew.
+- **Language of the cards.** A card is written in the language of the call. The summary and the follow-up email follow it too.
+- **Other languages are not supported yet.** If a call is in another language, Wingman shows one notice and gives no cards for those lines. The speech service and the AI themselves handle many languages, so more can be added. What is missing is Wingman's own language file (question hints, and the price, date and promise guards) and the window texts. A developer adds a language in [Development, Adding a language](DEVELOPMENT.md#adding-a-language).
+
+## How Wingman decides and remembers
+
+Wingman does not wait for a question mark. It works in three steps.
+
+1. **It remembers the call.** While the call runs, a small AI model keeps short notes: the topic, who is there, the numbers that were said (and who said them), what was promised, what is still open, what was decided. The notes are updated when enough new words were said, at most every 20 seconds, and older notes are folded into a summary every few minutes so a long call stays small. You can see them in the live view (**So far**, **What Wingman knows**) and fix or remove a line. Context you add before the meeting is the first content of the notes. The notes stay on your computer, in the call folder. A new call can start with up to 5 short "Last time" facts about people you met before.
+2. **It looks at each new line.** A direct question to you goes to the AI at once. Other lines wait in a short window, and the AI sees the last minute or so of the call and the notes. It then decides whether a short private nudge helps at this moment: an answer, a check on a number, a prompt for a topic you wanted to cover, a fact. Most lines get no card. Code checks the numbers you say against your notes and the call, with no AI call.
+3. **It checks before it shows.** Your own prepared answers come first and need no AI. Guards in code replace any price, date or promise in AI text with a safe "Buy time" line. Cards the AI is unsure about become small chips. If the AI is down or the spend cap is reached, a language-neutral floor (question marks from speech to text, digits and money, your name, short sentence shape) and your prepared answers keep working, and a calm bar says "AI paused".
+
+Details and reasons: [Architecture](ARCHITECTURE.md#moment-core) and [DECISIONS](DECISIONS.md).
+
+## Mac and Windows
+
+Almost everything is the same on both. The differences:
+
+| | macOS | Windows |
+|---|---|---|
+| Keys | Keychain (service `wingman`) | Encrypted for your Windows account (Windows data protection), in the data folder |
+| Data folder | `~/Library/Application Support/Wingman/` | `%APPDATA%\Wingman\` |
+| Settings, profile, pack | `~/.config/wingman/` | `C:\Users\<you>\.config\wingman\` |
+| Permissions | Microphone and System Audio Recording | Microphone only |
+| Hotkeys | Ctrl+Opt+... (Control and Option) | Ctrl+Alt+... (the same keys, Alt is Option) |
+| Menu | Menu-bar icon | Icon in the notification area (system tray) |
+| Install | `.dmg`, drag to Applications | `.exe`, one click, no administrator rights |
+| Command line (`wingman ...`) | Developer feature, needs a checkout | Not available |
+
+Windows audio capture has been tested with fakes only; please report problems.
 
 ## Words used in Wingman
 

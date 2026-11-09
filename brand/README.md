@@ -2,7 +2,7 @@
 
 The Wingman logo is a calm capybara with a yuzu on its head: one tilted ear, closed eyes and a soft smile. A night colour variant is used on dark backgrounds, and the banner includes an answer card.
 
-To regenerate every asset, run `./build.sh` (it needs `app/node_modules`, so run `pnpm install` in `app/` first).
+To regenerate every asset, run `./build.sh` (it needs `app/node_modules`, so run `pnpm install` in `app/` first). This is for developers only.
 `build.py` is the single source. Edit it, not the generated files.
 
 | File | Use |

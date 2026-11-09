@@ -1,17 +1,63 @@
 # Troubleshooting
 
-For anyone whose Wingman does not install, does not hear, or does not show answers. Find your problem, then follow the steps. Run `./install.sh --check` any time to see what is present and what is missing. It changes nothing. For a quick offline check of the engine itself, run `pnpm demo` in `app/` (no keys needed): if it prints cards, the engine works and the problem is audio, permissions, keys or the app.
+For anyone whose Wingman does not install, does not hear, or does not show answers. Find your problem, then follow the steps. If you installed the downloaded app, start with the sections that name your system. Developers who build from source can run `./install.sh --check` any time to see what is present and what is missing. It changes nothing. For a quick offline check of the engine itself, run `pnpm demo` in `app/` (no keys needed): if it prints cards, the engine works and the problem is audio, permissions, keys or the app.
 
 The Wingman window follows your system language (English or Hebrew). The bars in the answer window follow the setting `ui.language`: `auto` shows Hebrew unless the speech language is English, and `en` or `he` force one. The descriptions below say what each bar means.
 
-## No sound from the other side
+## macOS will not open the app
+
+Signs: "Wingman Not Opened. Apple could not verify Wingman is free of malware", or "Wingman is damaged and can't be opened".
+
+The app is not signed yet, so macOS blocks the first start. Do this once:
+
+1. Double-click Wingman in Applications. Press **Done** in the warning.
+2. Open **System Settings, Privacy & Security**, scroll to **Security** and press **Open Anyway** next to "Wingman was blocked". Enter your password or use Touch ID, then press **Open Anyway** again.
+3. If **Open Anyway** is not there, or "damaged" is shown, run this in Terminal and open the app again:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Wingman.app
+```
+
+Right-click, **Open** does not work on macOS 15 and newer. The Open Anyway button shows for about an hour after the block; double-click the app again if it is gone. Permissions are asked again after each new build, because an unsigned build has a new identity each time.
+
+## Windows shows "Windows protected your PC"
+
+This is SmartScreen. The installer is not signed yet. Press **More info**, then **Run anyway**. If your company blocks unsigned installers, ask your administrator or use [build from source](DEVELOPMENT.md#building-the-app-dmg-and-windows-installer). If an antivirus program removes the file, restore it and add an exception.
+
+## Windows: I do not see Wingman
+
+The app has no Dock icon. It lives in the notification area at the bottom right. Press the small arrow to show hidden icons, or start **Wingman** from the Start menu again: a second start opens the window of the running app. To remove the app: Settings, Apps, Wingman. Your calls stay in `%APPDATA%\Wingman` until you delete that folder.
+
+## No sound from the other side on Windows
+
+The app records the sound that the computer plays (loopback). It needs no permission, but it needs the call to play on this computer. If it stays silent, run the Readiness check (Home, **Run readiness check**) and close other programs that take the audio device for themselves. Windows audio capture has been tested with fakes only, so please open an issue and say what you see.
+
+## A key is not accepted
+
+The first window checks each key with one small request:
+
+- **"did not accept this key"**: you copied part of it, or it was switched off. Press **Get a new key** and paste the whole key.
+- **"The key is right, but the account has no credit"**: add credit in the provider's billing page (Anthropic: platform.claude.com, Billing; Deepgram: the console) and press **Check again**. You can still run a practice call.
+- **"Could not reach ..."**: check your internet, a proxy or a firewall, and press **Try again**.
+- **Too many tries**: wait a minute. Keys are checked at most 12 times a minute.
+
+Keys are stored in the macOS Keychain, or encrypted for your Windows account. If the store fails, the window says so. Developers: `pnpm keys status` says only whether a key is present.
+
+## Hebrew or English is not recognised
+
+- The default setting (`stt.language: multi`) hears both. Under Settings, "Language the call is heard in", you can force `he` or `en`. A forced language can be steadier on short clips but misses the other one.
+- Speech to text is weaker on Hebrew than on English (about 77 to 83 percent of words right, against about 92 percent, in our synthetic tests), and numbers and dates in Hebrew are sometimes written in an odd way ("60 1000"). Check numbers before you say them.
+- Other languages are not supported. Wingman shows one notice and gives no cards for those lines.
+- A microphone that is far away or a Bluetooth headset makes it worse. Use the built-in microphone or wired headphones.
+
+## No sound from the other side on a Mac
 
 Signs: a red bar that says the other side is not heard (when Zoom, Teams or a similar app is open), or a calm line "Hearing only you" (when no call app is open).
 
-1. Is the other side's audio playing on this Mac? Wingman captures what the Mac plays. If the call plays on another device, there is nothing to hear.
+1. (Mac) Is the other side's audio playing on this Mac? Wingman captures what the Mac plays. If the call plays on another device, there is nothing to hear.
 2. Check System Audio Recording permission (next section).
 3. Run the Readiness check (**Home, Run readiness check**). It tests the system audio.
-4. If you only wanted to test alone, the calm line is fine. Ask Wingman anything with Ctrl+Opt+A.
+4. If you only wanted to test alone, the calm line is fine. Ask Wingman anything with Ctrl+Opt+A (Ctrl+Alt+A on Windows).
 
 ## System Audio Recording permission
 
@@ -51,7 +97,7 @@ Signs: a red bar that says the microphone is not picking up, ten seconds after l
 4. The setup window saves the microphone with its name (`audio.mic.device` is then like `":2|External USB Microphone"`). When a headset connects, the numbers can move; Wingman looks the name up again at every start and uses the right number. If the name is not found, it uses the default microphone and shows an amber bar. Choose the microphone again in Settings to fix it.
 5. If the device disappears during a call (headphones switched off), Wingman restarts that audio source by itself and falls back to the default mic after a couple of tries. A red or amber bar shows while it recovers.
 
-## The Electron download failed
+## The Electron download failed (building from source)
 
 The install stops with "could not download the Electron runtime". The cause is almost always the network or a proxy.
 
@@ -63,18 +109,18 @@ pnpm run make-app
 
 Or run `./install.sh` again. It is safe to repeat.
 
-## The app says the folder moved
+## The app says the folder moved (built from source)
 
-Wingman.app remembers the folder it was built from. If you moved or renamed the folder, it shows a dialog.
+A Wingman.app built by `install.sh` remembers the folder it was built from. If you moved or renamed the folder, it shows a dialog.
 
 1. Open Terminal in the new folder.
 2. Run `./install.sh`.
 
 That rebuilds the app and fixes the `wingman` command link. Your calls and settings are not touched.
 
-## Node is too old
+## Node is too old (building from source)
 
-`./install.sh` or `pnpm install` stops with "Node ... is too old". Wingman needs Node 24 or newer.
+The downloaded app needs no Node. `./install.sh` or `pnpm install` stops with "Node ... is too old". Wingman needs Node 24 or newer.
 
 ```bash
 brew install node@24       # then: brew link --overwrite node@24
@@ -86,7 +132,7 @@ Check with `node -v`. The installer never installs Node for you. The app also ne
 
 ## "wingman: command not found"
 
-The command is a link in `~/.local/bin`. That folder must be on your PATH. Add this line to `~/.zshrc`, then open a new Terminal:
+The `wingman` command is a developer feature (a checkout on a Mac). It is not in the downloaded app and not on Windows. The command is a link in `~/.local/bin`. That folder must be on your PATH. Add this line to `~/.zshrc`, then open a new Terminal:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
@@ -114,7 +160,7 @@ Signs: an amber bar under 500 MB free, a red bar under 100 MB.
 A call that cannot write loses its transcript and summary, and a notification tells you. Free some space now.
 
 - Delete calls you do not need: **Calls, Delete call**, or `wingman calls purge <id> --yes`, or `pnpm purge --older-than 30` in `app/`.
-- Your calls are in `~/Library/Application Support/Wingman/calls/`.
+- Your calls are in `~/Library/Application Support/Wingman/calls/` on a Mac and `%APPDATA%\Wingman\calls\` on Windows.
 - Cards still reach the answer window over a second channel while the disk is full.
 
 ## The Mac went to sleep during a call

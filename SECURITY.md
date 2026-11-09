@@ -11,4 +11,4 @@ Wingman handles call audio, transcripts and API keys. How it treats them is desc
 
 ## Supported versions
 
-Only the latest commit on the main branch.
+Only the latest release (0.0.1 for now) and the latest commit on the main branch.
