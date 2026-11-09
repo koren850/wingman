@@ -291,7 +291,7 @@ export function sayAllowed(m: Moment, question: string, callLang: "he" | "en" | 
   const spoken = m.tag === "ANS" || m.tag === "REPLY";
   if (spoken && leakedTag(m.say)) return { ok: false, why: "leaked-tag" };
   if (m.tag === "ANS" && wrongLanguage(question, m.say)) return { ok: false, why: "language" };
-  // Every text card follows the language of what was asked, else of the call: a Hebrew "careful" card in an English call is noise (round 14: 6% of cards).
+  // Every text card follows the language of what was asked, else of the call: a Hebrew "careful" card in an English call is noise (in a recorded run: 6% of cards).
   const ref = langOf(question) ?? callLang;
   if (m.tag !== "ANS" && m.say && ref && wrongTextLanguage(ref, m.say)) return { ok: false, why: "language" };
   if (!spoken) return { ok: true };

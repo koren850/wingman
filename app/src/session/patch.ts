@@ -1,6 +1,6 @@
 // Strict patch validator and the pure applyPatch. The model proposes a patch; this file decides.
 //   - A bad patch is dropped whole, with a reason. The memory is returned unchanged (the same object).
-//     Two shape slips that real models make all the time are repaired and not punished (round 14: 54 of 73 recorded replies were dropped whole):
+//     Two shape slips that real models make all the time are repaired and not punished (in a recorded run: 54 of 73 recorded replies were dropped whole):
 //     a fact written as a plain string is the fact {text}, and a roster entry that cannot be used (side "unknown") is left out.
 //   - Ids (f1, n1, c1, q1, d1, o1, m1, p1) are assigned here, never by the model, and are never reused.
 //   - Status only moves forward: done stays done, answered stays answered, handled stays handled.

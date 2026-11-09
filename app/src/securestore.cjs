@@ -3,7 +3,7 @@
 //   macOS    the Keychain (src/keychain.cjs, /usr/bin/security)
 //   Windows  Windows data protection (DPAPI) through the PowerShell that ships with Windows. The key is encrypted for the signed-in user
 //            and the encrypted text is stored in <data folder>/secrets/<NAME>.dpapi. Nothing to install.
-//   other    a file in <data folder>/secrets/<NAME>.key that only the owner can read (folder 700, file 600). There is no OS keyring in v0.0.1.
+//   other    a file in <data folder>/secrets/<NAME>.key that only your user account can read (folder 700, file 600). There is no OS keyring in v0.0.1.
 // CommonJS, so the Electron main process and the tsx tools share one copy. Every backend takes an injectable runner or folder, so tests
 // never reach a real Keychain or a real PowerShell: the real runner refuses to run under the node test runner.
 const fs = require("node:fs");
@@ -52,7 +52,7 @@ function secretsDir(dataDir) {
   fs.mkdirSync(d, { recursive: true, mode: 0o700 });
   return d;
 }
-/** Writes a small file so that only the owner can read it, and replaces any older copy in one step. */
+/** Writes a small file so that only your user account can read it, and replaces any older copy in one step. */
 function writeOwnerOnly(file, text) {
   const tmp = `${file}.tmp-${process.pid}-${Date.now()}`;
   fs.writeFileSync(tmp, text, { mode: 0o600, flag: "wx" });

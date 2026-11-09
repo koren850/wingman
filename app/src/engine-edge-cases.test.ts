@@ -1,4 +1,4 @@
-// Engine edge cases from the engine review (AUDIT-2026-11-06 / 7), one test per finding: streaming parse, claims, cost, bank loader, CLI flags,
+// Engine edge cases, one test per case: streaming parse, claims, cost, bank loader, CLI flags,
 // turn language, settings, relay, clocks, the audio source stop, the circuit breaker and PCM alignment.
 import "./test-setup.ts";
 import test from "node:test";

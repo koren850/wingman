@@ -1,4 +1,4 @@
-// End-to-end (subprocess): engine behaviours found in the engine review (AUDIT-2026-11-06/8). The call loop (src/run.ts) runs offline over a
+// End-to-end (subprocess): engine modes and edge behaviours. The call loop (src/run.ts) runs offline over a
 // silent wav with scripted speech-to-text and a scripted model: error bar, flow mode, Stop during STT close, echo-filter order, quiet mode.
 import "../test-setup.ts";
 import { test } from "node:test";

@@ -32,7 +32,7 @@ async function main() {
   const g = loadSplit(split, { final: split !== "dev", ship: split === "test-c" }).find((x) => x.id === id);
   if (!g) throw new Error(`no ${split} meeting ${id}`);
   // A recording or a replay names the recorded model for every role that calls one. The profile's "assist" (the classifier for the user's own lines) points at the
-  // scripted fake, which the real provider cannot serve: those calls were neither recorded nor found again (round 14: 126 of 984 calls missing on replay).
+  // scripted fake, which the real provider cannot serve: those calls were neither recorded nor found again (in a recorded run: 126 of 984 calls missing on replay).
   const recorded = !!(opts.record || opts.replay);
   const e = await setupEngine({
     "llm.reflex.model": "anthropic:claude-haiku-5-5",

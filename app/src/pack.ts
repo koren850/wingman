@@ -2,7 +2,7 @@
 // look-up order per file is  1. $WINGMAN_PACK_DIR or ~/.config/wingman/pack/   2. the repo's data/example-pack/ (an invented example).
 // The example pack is a web and hosting business. It is used (2) only when it is asked for: the practice call and the demo, a test (WINGMAN_EXAMPLE_PACK=1),
 // or to fill a file that a user pack with its own bank.yaml lacks. A user with no pack gets no prepared cards: an example answer must never
-// appear as the user's own answer in a real call (round 14: SOC 2, price and region questions got hosting cards).
+// appear as the user's own answer in a real call (in a recorded run: SOC 2, price and region questions got hosting cards).
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";

@@ -71,7 +71,7 @@ export function mismatches(said: Quantity[], refs: RefQuantity[]): Mismatch[] {
   const out: Mismatch[] = [];
   for (const q of said) {
     if (!q.unit || q.value === 0) continue;
-    // A pair needs the same unit and a figure of about the same size. Round 14: "$1,200" was held against "budget: $85,000" and "8,000 shekels" against "250 shekels a month".
+    // A pair needs the same unit and a figure of about the same size. In a recorded run "$1,200" was held against "budget: $85,000" and "8,000 shekels" against "250 shekels a month".
     const paired = refs.filter(
       (r) => r.unit === q.unit && comparable(r.value, q.value) && (q.money || q.unit === "%" || r.words.some((w) => q.words.includes(w))),
     );

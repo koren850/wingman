@@ -173,7 +173,7 @@ function parseTagLine(line: string): (TagInfo & { aloud?: boolean }) | undefined
 const FIELD_NAMES = FIELD_RE.source.slice(FIELD_RE.source.indexOf("(") + 1, FIELD_RE.source.indexOf(")")); // the names of FIELD_RE, one list
 const INLINE_FIELD = new RegExp(`(?<=\\S)\\s+(?=(?:${FIELD_NAMES})\\s*[:=])`, "g");
 /**
- * Puts each field on its own line. The model sometimes writes "ANS AIM: me CONF: high SAY: ..." on one line (round 14: the card was dropped for a missing VALUE).
+ * Puts each field on its own line. The model sometimes writes "ANS AIM: me CONF: high SAY: ..." on one line (in a recorded run the card was dropped for a missing VALUE).
  * Only upper-case names followed by a colon split a line, and only the first use of a name on a line: a SAY that holds "WHY:" later keeps it.
  */
 export function splitInlineFields(text: string): string {
@@ -340,7 +340,7 @@ function parseInner(buf: string, final: boolean, out: ParsedMoment): ParsedMomen
   const say = out.fields.say ?? "";
   if (needsSay(tag.tag) && !say) return skip("missing:SAY");
   // VALUE and AIM are the model's judgement of one card whose text is already fine. A reply that has the verdict and the SAY but forgot one of them
-  // keeps its card with the cautious value: 1 (marginal, so the scheduler is the one to decide) and AIM unclear (the user may act on it). Round 14
+  // keeps its card with the cautious value: 1 (marginal, so the scheduler is the one to decide) and AIM unclear (the user may act on it). A recorded run
   // lost cards for "is the data encrypted" this way. A reply with no SAY (above) is still dropped.
   // A field that is there but wrong (VALUE: 9, AIM: nobody) is still a bad reply.
   if (out.fields.value === undefined) {

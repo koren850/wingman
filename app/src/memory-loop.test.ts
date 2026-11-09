@@ -437,7 +437,7 @@ test("open loop: an unanswered question gets one prompt after 6 seconds of quiet
   });
 });
 
-// Round 14: "Still unanswered" showed for questions the user had answered, and the same promise twice.
+// Found in a recorded run: "Still unanswered" showed for questions the user had answered, and the same promise twice.
 test("open loop: no prompt for a question the user went on to answer, even before the updater has read the answer", async () => {
   await withVClock(async (vc) => {
     const r = rig(vc);
