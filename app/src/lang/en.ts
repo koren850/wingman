@@ -74,6 +74,11 @@ const SALARY_FIGURE = [
 ];
 
 /** English clause grammar used by enQuestion() in detector.ts: auxiliaries, sentence openers, pronouns, tag questions, accent fixes. */
+/** Common English function words. A short Latin-letter card without any of these is a term or a name, not an English sentence. */
+export const ENGLISH_FUNCTION_WORDS: ReadonlySet<string> = new Set(
+  "the a an to you your do don't not is are was we it i this that and can will should be ask say tell with for if when but they he she".split(" "),
+);
+
 export const EN_SYNTAX = {
   auxiliaries: new Set([
     "is",

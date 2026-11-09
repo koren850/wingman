@@ -8,6 +8,7 @@ import type { Settings } from "./settings.ts";
 import { userName, getProfile, hebrewAddressRule, userTimezone } from "./profile.ts";
 import { ModelRegistry, providerOptionsFor, temperatureFor, cacheOptionsFor, withFallbacks } from "./providers/llm.ts";
 import { classifyFinish, classifyLlmError, ProviderError } from "./providers/errors.ts";
+import { ENGLISH_FUNCTION_WORDS } from "./lang/en.ts";
 
 /** True when a model say-line contains one of the reflex control words (SKIP / STALL / BANK / ANS) as a word (for example "... לכן SKIP עדיף כרגע"). */
 export function leakedTag(say: string): boolean {
@@ -262,9 +263,6 @@ export function wrongTextLanguage(ref: "he" | "en", text: string): boolean {
   return ref === "en" ? h > l && h >= 3 : h < 2 && l >= 12 && !isLatinTerm(text);
 }
 
-const ENGLISH_FUNCTION_WORDS = new Set(
-  "the a an to you your do don't not is are was we it i this that and can will should be ask say tell with for if when but they he she".split(" "),
-);
 /** A short technical term or proper noun in Latin letters ("Cross-Origin Resource Sharing", "SOC 2 Type II report"): up to 5 words, no sentence ending, no English function word. */
 function isLatinTerm(text: string): boolean {
   const words = text.trim().split(/\s+/);
