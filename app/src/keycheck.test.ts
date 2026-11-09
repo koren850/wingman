@@ -82,6 +82,13 @@ test("a value that could inject a header, or an unknown provider, is invalid and
   assert.equal(t.seen.length, 0);
 });
 
+test("keycheck: a Deepgram key with fewer rights (403 on the project list) is accepted; 401 is still invalid", async () => {
+  const { checkKey } = await import("./keychain.ts");
+  const st = (status: number) => (async () => new Response("{}", { status })) as unknown as typeof fetch;
+  assert.equal(await checkKey("deepgram", "k".repeat(30), st(403)), "ok");
+  assert.equal(await checkKey("deepgram", "k".repeat(30), st(401)), "invalid");
+});
+
 test("keycheck: Deepgram account whose balance cannot be read still works", async () => {
   const { checkKey } = await import("./keychain.ts");
   const f = (async (url: string) => {

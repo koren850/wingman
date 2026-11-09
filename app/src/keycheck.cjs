@@ -36,6 +36,8 @@ function byStatus(s) {
 async function checkDeepgram(key, f) {
   const auth = { headers: { Authorization: `Token ${key}` } };
   const res = await send(f, "https://api.deepgram.com/v1/projects", { method: "GET", ...auth });
+  // 403: the key is known but may not list projects (a key made with fewer rights). It can still transcribe, and the readiness check opens a real socket.
+  if (res.status === 403) return "ok";
   const word = byStatus(res.status);
   if (word !== "ok" || res.status === 429) return word || "unavailable";
   const body = await json(res);

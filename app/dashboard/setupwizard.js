@@ -117,8 +117,11 @@ function wizReopen() {
 
 /* ---------- keys ---------- */
 /** Sends one pasted key to be checked and saved. The answer is a result word and the saved-key status, never the key. */
+/** The newest connect per service: an older answer that comes back late says nothing. */
+const WZ_SEQ = {};
 async function wizConnect(p, value) {
   WZ.started = true; // the window stays through its steps once the person has started it
+  const mine = (WZ_SEQ[p] = (WZ_SEQ[p] || 0) + 1);
   WZ.busy.add(p);
   delete WZ.res[p];
   wizRedraw();
@@ -128,7 +131,14 @@ async function wizConnect(p, value) {
   } catch {
     r = { ok: false, result: "app" };
   }
+  // A newer paste came while the service answered: that one reports and clears the busy mark.
+  if (WZ_SEQ[p] !== mine) return;
   WZ.busy.delete(p);
+  // A remove came while the service answered: nothing to report.
+  if (r && r.result === "superseded") {
+    wizRedraw();
+    return;
+  }
   // Where the person is when the answer comes. Someone who already pressed Continue is not taken back to the keys.
   const onKeys = wizStep() === "keys";
   const result = (r && r.result) || (r && r.ok ? "ok" : "other");
