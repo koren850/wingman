@@ -20,7 +20,7 @@ function readForm() {
 }
 /** Plan edits that were typed but not saved. Kept while the page redraws, never dropped. */
 function captureDraft() {
-  if (!$("plan-form")) return;
+  if (!$("plan-form") || H.editor.status === "loading") return; // while loading, the form on screen is not this plan's
   H.draft = readForm();
   const more = $("ctx-more");
   if (more) H.moreOpen = more.getAttribute("aria-expanded") === "true";
@@ -74,6 +74,8 @@ const UI_LOCALE = () => (WingmanI18n.lang === "he" ? "he-IL" : "en");
 
 /** Opens the editor for plan `id` ("" = a new one). Loads its files and its pasted text first. */
 async function openEditor(id) {
+  H.editor = HL.editorBegin(H.editor, id);
+  const tok = H.editor.token;
   H.editId = id;
   H.editing = true;
   H.planOpen = true;
@@ -82,8 +84,13 @@ async function openEditor(id) {
   H.prepared = null;
   H.prepNote = "";
   const cur = id ? H.plans.find((m) => m.id === id) : null;
-  H.attach = await api.attachList(id).catch(() => null);
+  const attach = await api.attachList(id).catch(() => null);
+  if (!HL.editorLoaded(H.editor, tok)) return; // closed, or another plan was opened, while the files were loading
   const ctx = id ? await api.planContext(id).catch(() => "") : "";
+  const open = HL.editorLoaded(H.editor, tok);
+  if (!open) return;
+  H.editor = open;
+  H.attach = attach;
   if (cur) H.draft = { context: ctx, title: cur.title, at: cur.atInput || "", who: cur.who, goal: cur.goal, mustCover: cur.mustCover };
   H.moreOpen = !!(cur && (cur.title || cur.who || cur.goal || cur.mustCover || cur.at));
   renderSide();
@@ -96,6 +103,7 @@ async function openEditor(id) {
 /** Closes the editor. discard: an unsaved new meeting's background files are thrown away. */
 function closeEditor(discard) {
   if (discard && !H.editId) api.discardDraft().catch(() => {});
+  H.editor = HL.editorClose(H.editor);
   H.editing = false;
   H.planOpen = false;
   H.draft = null;

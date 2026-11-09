@@ -77,7 +77,27 @@
   const wizardVisible = (o) => !(o && (o.done || o.skipped || o.running)) && !!(o && (o.keysMissing || o.started));
   /** Short mask for a saved key: "...ab12". */
   const mask = (last4) => (last4 ? "\u2026" + last4 : "");
+  /** Key drafts: what the person has typed or pasted into a key box and not sent yet, per provider. Kept in this page's memory only, so a redraw
+   *  of the window can put the text back. Cleared when the key is sent. Never stored, never logged, never part of any message. */
+  const createKeyDraft = () => {
+    const d = Object.create(null);
+    return {
+      get: (p) => d[p] || "",
+      set: (p, v) => {
+        if (v) d[p] = String(v);
+        else delete d[p];
+      },
+      clear: (p) => void delete d[p],
+      clearAll: () => {
+        for (const p of Object.keys(d)) delete d[p];
+      },
+      has: (p) => !!d[p],
+    };
+  };
+  const keyDraft = createKeyDraft();
   const api = {
+    createKeyDraft,
+    keyDraft,
     WIZ_STEPS,
     KEY_PROBLEMS,
     keyProblem,

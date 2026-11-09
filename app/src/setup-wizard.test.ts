@@ -162,7 +162,14 @@ test("keys:recheck checks the saved key and returns a result word only", async (
 });
 
 // ---------------------------------------------------------------- the window itself, drawn with stub page helpers
-type Node_ = { tag: string; attrs: Record<string, any>; kids: any[]; addEventListener: (...a: any[]) => void };
+type Node_ = {
+  tag: string;
+  attrs: Record<string, any>;
+  kids: any[];
+  value?: string;
+  on: Record<string, ((e?: any) => void)[]>;
+  addEventListener: (...a: any[]) => void;
+};
 const flat = (a: any[]): any[] => a.flat(Infinity).filter((k) => k != null && k !== false);
 /** Loads dashboard/setupwizard.js with stand-ins for the page helpers (h, btn, chip, T ...) and returns it with a record of what was asked. */
 function loadWindow(o: { platform?: string; mic?: string; missing?: string[]; audio?: boolean; api?: Record<string, any> } = {}) {
@@ -170,7 +177,16 @@ function loadWindow(o: { platform?: string; mic?: string; missing?: string[]; au
   const used = new Set<string>();
   const log = { announce: [] as string[], fail: [] as string[], redraw: 0, started: [] as string[], saved: 0, viewHome: 0 };
   const inputs: Record<string, { value: string }> = {};
-  const h = (tag: string, attrs: any, ...kids: any[]): Node_ => ({ tag, attrs: attrs || {}, kids: flat(kids), addEventListener: () => {} }) as Node_;
+  const h = (tag: string, attrs: any, ...kids: any[]): Node_ => {
+    const n: Node_ = {
+      tag,
+      attrs: attrs || {},
+      kids: flat(kids),
+      on: {},
+      addEventListener: (ev: string, fn: any) => void (n.on[ev] ||= []).push(fn),
+    };
+    return n;
+  };
   const providers = (missing: string[]) =>
     Object.fromEntries(
       ["deepgram", "anthropic"].map((p) => [
@@ -229,6 +245,15 @@ const ids = (n: any) => {
   walk(n, (x) => x.attrs.id && r.push(x.attrs.id));
   return r;
 };
+
+/** Types into a key box the way a person does: draws the window, sets the field's value and fires its input event. Returns the field. */
+function typeKey(t: ReturnType<typeof loadWindow>, p: string, value: string) {
+  const f = find(t.W.welcomeCard(), "wiz-key-" + p)!;
+  f.value = value;
+  for (const fn of f.on.input || []) fn();
+  t.inputs["wiz-key-" + p] = f as any; // $() finds the live field, as in the page
+  return f;
+}
 
 test("the window draws every example state with texts that exist in English and Hebrew, one primary action per state", () => {
   const { W, used } = loadWindow();
@@ -316,8 +341,8 @@ test("pasting: the field is read once and cleared; a good key saves; a wrong key
     setupOpenLink: async () => ({ ok: true }),
   };
   const t = loadWindow({ api });
-  t.inputs["wiz-key-deepgram"] = { value: "  dgTESTONLY0123456789abcdefABCDEF1234Zz  " };
-  t.inputs["wiz-key-anthropic"] = { value: "" };
+  typeKey(t, "deepgram", "  dgTESTONLY0123456789abcdefABCDEF1234Zz  ");
+  typeKey(t, "anthropic", "");
   await t.W.wizSubmit();
   assert.deepEqual(calls, [["deepgram", "dgTESTONLY0123456789abcdefABCDEF1234Zz"]], "trimmed, and only the filled field is sent");
   assert.equal(t.inputs["wiz-key-deepgram"].value, "", "the field is cleared before anything else");
@@ -341,6 +366,56 @@ test("pasting: the field is read once and cleared; a good key saves; a wrong key
   assert.equal(JSON.stringify(t.log), JSON.stringify(t.log).replace(/sk-ant-TESTONLY/g, "X"), "no key text in anything the window announced");
 });
 
+test("a pasted key survives every redraw of the window until it is sent (D-1)", async () => {
+  const calls: [string, string][] = [];
+  const t = loadWindow({ api: { keysConnect: async (p: string, v: string) => (calls.push([p, v]), { ok: false, result: "invalid" }) } });
+  S.keyDraft.clearAll();
+  typeKey(t, "deepgram", "dgTESTONLY-first");
+  // The person goes to the browser and comes back: the window redraws (focus, a check result, a call-state update).
+  for (let i = 0; i < 3; i++) t.W.welcomeCard();
+  assert.equal(find(t.W.welcomeCard(), "wiz-key-deepgram")!.value, "dgTESTONLY-first", "the first key is still in its box");
+  typeKey(t, "anthropic", "sk-ant-TESTONLY-second");
+  assert.equal(find(t.W.welcomeCard(), "wiz-key-deepgram")!.value, "dgTESTONLY-first");
+  assert.equal(find(t.W.welcomeCard(), "wiz-key-anthropic")!.value, "sk-ant-TESTONLY-second");
+  await t.W.wizSubmit();
+  assert.deepEqual(calls.map((c) => c[0]).sort(), ["anthropic", "deepgram"], "both keys are sent, not one");
+  assert.equal(find(t.W.welcomeCard(), "wiz-key-deepgram")!.value, "", "cleared once sent");
+  assert.equal(S.keyDraft.has("deepgram") || S.keyDraft.has("anthropic"), false);
+});
+
+test("a late key result does not pull the person back from the next step; Continue waits for a running check (D-6)", async () => {
+  let release!: (r: unknown) => void;
+  const gate = new Promise((r) => (release = r));
+  const t = loadWindow({ missing: [], audio: false, api: { keysConnect: () => gate } });
+  t.W.wizReopen(); // both keys are saved; the person opens the window again from Settings
+  t.W.WZ.pick = "keys";
+  const run = t.W.wizConnect("deepgram", "dgTESTONLY-replacement");
+  assert.equal(find(t.W.welcomeCard(), "wiz-next")!.attrs.disabled, true, "Continue is off while the check runs");
+  t.W.WZ.pick = ""; // pressed anyway (for example a click that was already on its way)
+  assert.equal(t.W.wizStep(), "allow");
+  release({ ok: true, result: "ok", saved: true });
+  await run;
+  assert.equal(t.W.WZ.pick, "", "the answer does not send the person back to the keys");
+  assert.equal(t.W.wizStep(), "allow");
+  assert.equal(t.W.WZ.res.deepgram, "ok");
+  // On the keys step the answer keeps the person there to read it.
+  t.W.WZ.pick = "keys";
+  await t.W.wizConnect("deepgram", "x");
+  assert.equal(t.W.WZ.pick, "keys");
+});
+
+test("an error button that says 'allow the sound' opens the allow step of the window, once the keys are done (D-6)", () => {
+  const first = loadWindow(); // keys missing: the window shows the keys step and stays there
+  assert.equal(first.W.wizGoAllow(), true);
+  assert.equal(first.W.WZ.pick, "");
+  const have = loadWindow({ missing: [] });
+  assert.equal(have.W.wizGoAllow(), false, "window not on screen: the setup card handles it");
+  have.W.wizReopen();
+  assert.equal(have.W.wizGoAllow(), true);
+  assert.equal(have.W.WZ.pick, "allow");
+  assert.equal(have.W.wizStep(), "allow");
+});
+
 test("pressing Check and save with empty boxes says so; a bridge that throws becomes a plain message", async () => {
   const t = loadWindow({
     api: {
@@ -349,8 +424,8 @@ test("pressing Check and save with empty boxes says so; a bridge that throws bec
       },
     },
   });
-  t.inputs["wiz-key-deepgram"] = { value: "" };
-  t.inputs["wiz-key-anthropic"] = { value: "" };
+  typeKey(t, "deepgram", "");
+  typeKey(t, "anthropic", "");
   await t.W.wizSubmit();
   assert.equal(t.W.WZ.empty, true);
   assert.ok(t.log.announce.includes("wiz.empty"));

@@ -13,11 +13,13 @@ const WZ = {
   busy: new Set(), // providers being checked now
   pending: {}, // provider -> a key that could not be checked for a network-type reason
   replace: {}, // provider -> the person chose "Use a different key"
-  pick: "", // a step the person went back to
+  pick: "", // a step the person chose on purpose (Back, Continue); the step shown otherwise follows from the keys and the sound
+  empty: false, // "Check and save" was pressed with every box empty
   asked: false, // the microphone prompt was shown
   started: false, // the window has been on screen in this run, so it stays through the steps even after the keys are saved
   preview: "", // snapshot aid (?focus=setup-<name>): fixed example states, never real data
 };
+const KD = WingmanSetup.keyDraft; // typed but not yet sent keys, per provider (memory only; see setuplib.js)
 const WZ_NAMES = { deepgram: "Deepgram", anthropic: "Anthropic" };
 const WZ_PROVIDERS = ["deepgram", "anthropic"];
 
@@ -69,6 +71,12 @@ function wizView() {
   };
 }
 
+/** The step on screen now, from the same inputs welcomeCard uses. */
+function wizStep() {
+  const v = wizView();
+  const allow = WingmanSetup.allowState({ platform: v.platform, mic: v.mic, audioAck: v.audioAck });
+  return WingmanSetup.wizardPlan({ keys: v.keyStates(), allow, pick: WZ.preview ? WZ_PREVIEWS[WZ.preview].pick || "" : WZ.pick }).step;
+}
 const wizRedraw = () => {
   if (state.view === "home") renderSide();
 };
@@ -90,6 +98,14 @@ function wizEnd(kind) {
   SU.acks[kind === "skip" ? "welcomeSkipped" : "welcomeDone"] = true;
   suSave();
 }
+/** An error button said "allow the sound": show the allow step of the window when it is on screen. Returns false when it is not (the setup card takes it). */
+function wizGoAllow() {
+  if (!wizardActive()) return false;
+  const v = wizView();
+  if (!WingmanSetup.keysDone(v.keyStates())) return true; // the keys come first; the window already shows them
+  WZ.pick = "allow";
+  return true;
+}
 /** Opens the window again from Settings → Setup guide. */
 function wizReopen() {
   SU.acks.welcomeDone = false;
@@ -102,6 +118,7 @@ function wizReopen() {
 /* ---------- keys ---------- */
 /** Sends one pasted key to be checked and saved. The answer is a result word and the saved-key status, never the key. */
 async function wizConnect(p, value) {
+  WZ.started = true; // the window stays through its steps once the person has started it
   WZ.busy.add(p);
   delete WZ.res[p];
   wizRedraw();
@@ -112,6 +129,8 @@ async function wizConnect(p, value) {
     r = { ok: false, result: "app" };
   }
   WZ.busy.delete(p);
+  // Where the person is when the answer comes. Someone who already pressed Continue is not taken back to the keys.
+  const onKeys = wizStep() === "keys";
   const result = (r && r.result) || (r && r.ok ? "ok" : "other");
   if (r && r.state && r.state.ok) {
     H.keys = r.state;
@@ -122,7 +141,7 @@ async function wizConnect(p, value) {
   else delete WZ.pending[p];
   WZ.res[p] = result;
   if (r && r.saved) WZ.replace[p] = false;
-  WZ.pick = "keys"; // stay on this step so the person sees the result, then presses Continue
+  if (onKeys) WZ.pick = "keys"; // stay on this step so the person sees the result, then presses Continue
   const name = WZ_NAMES[p];
   if (result === "ok") announce(T("wiz.ok", { name }));
   else fail(T(WingmanSetup.keyProblem(result).text, { name }));
@@ -130,6 +149,7 @@ async function wizConnect(p, value) {
 }
 /** The saved key checked again (credit added, or an earlier problem). */
 async function wizRecheck(p) {
+  WZ.started = true;
   WZ.busy.add(p);
   wizRedraw();
   let r;
@@ -140,6 +160,7 @@ async function wizRecheck(p) {
   }
   WZ.busy.delete(p);
   WZ.res[p] = (r && r.result) || (r && r.ok ? "ok" : "other");
+  if (wizStep() === "keys") WZ.pick = "keys";
   if (WZ.res[p] === "ok") announce(T("wiz.ok", { name: WZ_NAMES[p] }));
   wizRedraw();
 }
@@ -148,7 +169,8 @@ async function wizSubmit() {
   const todo = [];
   for (const p of WZ_PROVIDERS) {
     const el = $("wiz-key-" + p);
-    const v = (el && el.value.trim()) || WZ.pending[p] || "";
+    const v = KD.get(p).trim() || WZ.pending[p] || "";
+    KD.clear(p);
     if (el) el.value = "";
     if (v) todo.push([p, v]);
   }
@@ -197,6 +219,8 @@ function wizKeyBlock(p, v) {
       placeholder: T("wiz.paste", { name }),
       disabled: busy ? true : null,
     });
+    field.value = KD.get(p); // a redraw puts the typed text back
+    field.addEventListener("input", () => KD.set(p, field.value));
     field.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -273,7 +297,7 @@ function wizKeysStep(v) {
       "div",
       { class: "wiz-actions" },
       anyInput ? btn(busy ? T("wiz.checking") : T("wiz.check"), { id: "wiz-check", cls: "primary", icon: "check", disabled: busy, onclick: wizSubmit }) : null,
-      done ? btn(T("wiz.continue"), { id: "wiz-next", cls: anyInput ? "" : "primary", onclick: () => ((WZ.pick = ""), wizRedraw()) }) : null,
+      done ? btn(T("wiz.continue"), { id: "wiz-next", cls: anyInput ? "" : "primary", disabled: busy, onclick: () => ((WZ.pick = ""), wizRedraw()) }) : null,
     ),
     h("p", { class: "wiz-note", id: "wiz-store" }, T("wiz.store." + v.store)),
   );
@@ -400,7 +424,6 @@ function wizReadyStep(v) {
 /** The first-run window, or null when it is not needed. home.js shows it instead of the usual Home cards. */
 function welcomeCard() {
   if (!wizardActive()) return null;
-  WZ.started = true; // kept for this run of the app only: after a restart with both keys saved, the usual Home and its setup card take over
   const v = wizView();
   const allow = WingmanSetup.allowState({ platform: v.platform, mic: v.mic, audioAck: v.audioAck });
   const pl = WingmanSetup.wizardPlan({ keys: v.keyStates(), allow, pick: WZ.preview ? WZ_PREVIEWS[WZ.preview].pick || "" : WZ.pick });
@@ -451,4 +474,4 @@ if (typeof window !== "undefined")
   });
 // A unit test loads this file with require() and stub globals (src/setup-wizard.test.ts); the page itself loads it as a classic script.
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { welcomeCard, wizPreviewSet, wizSubmit, wizConnect, wizRecheck, wizEnd, wizReopen, WZ, WZ_PREVIEWS };
+  module.exports = { welcomeCard, wizGoAllow, wizStep, wizPreviewSet, wizSubmit, wizConnect, wizRecheck, wizEnd, wizReopen, WZ, WZ_PREVIEWS };

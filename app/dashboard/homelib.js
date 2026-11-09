@@ -254,7 +254,62 @@
     return el ? el.id || (el.getAttribute && el.getAttribute("data-fk")) || "" : "";
   }
 
+  /* ---------- flow states (pure): the readiness check and the Start flow ----------
+   * The page keeps one small value per flow and draws from it. Nothing is read back from the DOM to decide what to do. */
+  const CHECK_IDLE = Object.freeze({ status: "idle", kind: "", token: 0 });
+  /** A check starts: returns the new state, or null when one that must not be overlapped is already running.
+   *  The free quick check (kind "quick") may be replaced by a full one; a full check is never replaced. Every start gets a new token. */
+  function checkBegin(c, kind) {
+    const cur = c || CHECK_IDLE;
+    if (cur.status === "running" && !(cur.kind === "quick" && kind === "full")) return null;
+    return { status: "running", kind: kind === "full" ? "full" : "quick", token: cur.token + 1 };
+  }
+  /** A check answered with this token. accept is false for an answer that is not the current check (it was replaced); drop it. */
+  function checkEnd(c, token) {
+    const cur = c || CHECK_IDLE;
+    if (cur.status !== "running" || cur.token !== token) return { accept: false, state: cur };
+    return { accept: true, state: { status: "idle", kind: "", token: cur.token } };
+  }
+  const checkRunning = (c) => !!c && c.status === "running";
+
+  const START_IDLE = Object.freeze({ status: "idle", planId: "" });
+  // Which status may follow which. "gate" waits for the person (Check again, Start anyway, Cancel), so a new start may begin from it.
+  const START_NEXT = {
+    idle: ["saving"],
+    saving: ["gate", "reviewing", "starting", "idle"],
+    gate: ["saving", "idle"],
+    reviewing: ["starting", "idle"],
+    starting: ["idle"],
+  };
+  /** Move the Start flow to a status. Returns the new state, or null when that move is not allowed (a second click while one start is under way). */
+  function startNext(s, to, planId) {
+    const cur = s || START_IDLE;
+    if (!(START_NEXT[cur.status] || []).includes(to)) return null;
+    if (to === "idle") return START_IDLE;
+    return { status: to, planId: planId != null ? planId : cur.planId };
+  }
+  /** Are the Start buttons held off by a start under way? (gate and idle are not busy: the person is free to press something.) */
+  const startBusy = (s) => !!s && ["saving", "reviewing", "starting"].includes(s.status);
+
+  const EDITOR_CLOSED = Object.freeze({ status: "closed", id: "", token: 0 });
+  /** The plan editor starts loading plan `id` ("" = a new one). Every start and every close gets a new token. */
+  const editorBegin = (e, id) => ({ status: "loading", id: id || "", token: ((e || EDITOR_CLOSED).token || 0) + 1 });
+  /** The files and text of that plan have arrived. Returns the open state, or null when the editor was closed or moved to another plan meanwhile. */
+  const editorLoaded = (e, token) => (e && e.status === "loading" && e.token === token ? { ...e, status: "open" } : null);
+  const editorClose = (e) => ({ status: "closed", id: "", token: ((e || EDITOR_CLOSED).token || 0) + 1 });
+
   const api = {
+    EDITOR_CLOSED,
+    editorBegin,
+    editorLoaded,
+    editorClose,
+    CHECK_IDLE,
+    checkBegin,
+    checkEnd,
+    checkRunning,
+    START_IDLE,
+    startNext,
+    startBusy,
     waitingCalls,
     WAIT_DAYS,
     stopSteps,

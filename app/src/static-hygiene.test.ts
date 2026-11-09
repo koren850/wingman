@@ -363,7 +363,7 @@ test("static: key values can only reach memory; no logging or persistence path t
   const ui = read("dashboard/settings.js");
   assert.match(ui, /type: "password",\s*id,\s*autocomplete: "off",\s*spellcheck: "false"/);
   assert.doesNotMatch(ui, /localStorage|sessionStorage/);
-  assert.match(ui, /const v = inp\.value;\s*inp\.value = ""/);
+  assert.match(ui, /const v = WingmanSetup\.keyDraft\.get\(p\);\s*WingmanSetup\.keyDraft\.clear\(p\);\s*inp\.value = ""/); // the draft is memory only and cleared before the key is sent
 });
 
 // Why static: a child process that inherits the environment would inherit the API keys; the spawn sites are the only place to check it.

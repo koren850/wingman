@@ -16,7 +16,10 @@ const H = {
   planOpen: false,
   draft: null,
   dismissed: "",
-  doctorBusy: false,
+  check: HL.CHECK_IDLE, // the readiness check: {status: idle|running, kind: quick|full, token}. Only the current token's answer is used.
+  editor: HL.EDITOR_CLOSED, // the plan editor: {status: closed|loading|open, id, token}; an answer for an older token is dropped
+  localDoctor: null, // the newest result this page got itself, kept when a call-state push brings an older one
+  start: HL.START_IDLE, // the Start flow: {status: idle|saving|gate|reviewing|starting, planId}
   tickBound: false,
   lastHealth: "",
   showConv: false,
@@ -35,6 +38,8 @@ const H = {
   quickAt: 0,
   fullAt: 0,
   stopAt: 0,
+  stopSent: false, // Stop was sent for this call
+  quietBusy: false, // the quiet switch is waiting for the main process
 };
 const isRunning = () => !!(state.call && state.call.running);
 const phaseOf = () => (state.call ? state.call.phase : "idle");
@@ -72,8 +77,13 @@ async function act(fn, what) {
 /** Handler for every controller state push (from boot.js). Redraws the header chip and, on Home, patches or rebuilds the panels. */
 function onCallState(s) {
   const was = state.call && state.call.running;
+  // A result this page got itself can be newer than the one in a push that was sent a moment before it.
+  if (H.localDoctor && (!s.doctor || s.doctor.at < H.localDoctor.at)) s.doctor = H.localDoctor;
   state.call = s;
   if (!!was !== !!s.running) {
+    if (s.running) closePrestart(); // a call started (here or from the tray): a review for the next start is out of date
+    H.stopSent = false; // a new call, or the end of this one
+    H.quietBusy = false;
     H.showConv = false; // the live conversation is hidden again at the start of every call
     H.knows = undefined; // and what Wingman knows is asked for again
     H.kai = "ok";
@@ -160,8 +170,15 @@ function ensureTick() {
 /** Draw Home. focus "plan" opens the plan form. Loads brief, files, keys, settings and recent plans first; drops out if the user navigated away meanwhile. */
 async function viewHome(focus) {
   closePopover(false);
+  closeSheets();
   state.view = "home";
-  state.gen++;
+  const gen = ++state.gen; // a newer viewHome or any other view makes this one drop out after its awaits
+  H.editor = HL.editorClose(H.editor); // an editor still loading from before is cancelled
+  H.editId = "";
+  H.editing = false;
+  H.planOpen = false;
+  H.draft = null;
+  H.attach = null;
   setNav();
   busy();
   wizPreviewSet(focus); // screenshot aid: focus "setup-<name>" shows a fixed state of the first-run window (setupwizard.js)
@@ -176,31 +193,34 @@ async function viewHome(focus) {
   H.panelKey = "";
   H.sideKey = undefined;
   ensureTick();
+  const current = () => state.gen === gen && state.view === "home";
   if (!state.call) {
+    let c = null;
     try {
-      state.call = await api.callState();
+      c = await api.callState();
     } catch {
-      state.call = null;
+      c = null;
     }
+    if (!state.call) state.call = c; // a state pushed meanwhile is newer
   }
-  H.plans = await api.plansList().catch(() => []);
-  H.attach = null;
-  H.editId = "";
+  const plans = await api.plansList().catch(() => []);
+  if (!current()) return;
+  H.plans = plans;
   H.keys = await api
     .keysStatus()
     .then((r) => (r && r.ok ? r : null))
     .catch(() => null);
+  if (!current()) return;
   loadAiMode();
   loadSetup()
     .then(() => {
       if (state.view === "home" && !isRunning()) renderSide();
     })
     .catch(() => {});
-  H.recent = await api.recentPlans().catch(() => []);
-  H.editing = false;
-  H.planOpen = false;
-  H.draft = null;
-  if (state.view !== "home") return;
+  if (!current()) return;
+  const recent = await api.recentPlans().catch(() => []);
+  if (!current()) return;
+  H.recent = recent;
   renderCallSlot();
   updateCallPanel(true);
   renderSide();
@@ -402,7 +422,8 @@ const shortcutsBtn = () =>
     h("span", {}, T("home.shortcuts")),
   );
 const doc = () => (state.call && state.call.doctor) || null;
-const checking = () => !!(state.call && state.call.doctorRunning) || H.doctorBusy;
+const checking = () => !!(state.call && state.call.doctorRunning) || HL.checkRunning(H.check);
+const startHeld = () => HL.startBusy(H.start);
 /** 1 Readiness check, 2 Start: which one needs the user now. */
 function curStep() {
   const d = doc();
@@ -432,7 +453,8 @@ function startWhy(ss, t) {
     { class: "startwhy", id: "start-why", role: "status" },
     ico("warning"),
     h("span", { class: "grow" }, text),
-    fixControl(ss.code ? ss.code : code, {}) || btn(T("gate.check"), { id: "gate-check", icon: "refresh", cls: "sm", onclick: () => runCheck(false) }),
+    fixControl(ss.code ? ss.code : code, {}) ||
+      btn(T("gate.check"), { id: "gate-check", icon: "refresh", cls: "sm", disabled: checking(), onclick: () => runCheck(false) }),
     ss.raw ? h("button", { type: "button", class: "linkbtn", id: "gate-anyway", onclick: () => startFlow(t, true) }, T("gate.anyway")) : null,
   );
 }
@@ -452,7 +474,7 @@ function idleCard() {
       type: "button",
       class: "btn lg primary",
       id: "start-call",
-      disabled: ss.disabled,
+      disabled: ss.disabled || startHeld(),
       "aria-describedby": ss.disabled ? "start-why" : null,
       onclick: () => startFlow({ noAi: false }),
     },
@@ -463,7 +485,7 @@ function idleCard() {
     icon: "play",
     cls: "",
     id: "start-noai",
-    disabled: ss.disabled && ss.code !== "key-anthropic", // without the Anthropic key a call can still run without AI
+    disabled: startHeld() || (ss.disabled && ss.code !== "key-anthropic"), // without the Anthropic key a call can still run without AI
     onclick: () => startFlow({ noAi: true }),
   });
   const target = HL.practiceTarget(H.plans, now);
@@ -509,7 +531,13 @@ function idleCard() {
       h(
         "div",
         { class: "pm-act" },
-        btn(T("home.start"), { id: "pm-start-" + r.id, cls: "sm", aria: r.startLabel, disabled: ss.disabled, onclick: () => startFlow({ planId: r.id }) }),
+        btn(T("home.start"), {
+          id: "pm-start-" + r.id,
+          cls: "sm",
+          aria: r.startLabel,
+          disabled: ss.disabled || startHeld(),
+          onclick: () => startFlow({ planId: r.id }),
+        }),
         btn("", {
           id: "pm-edit-" + r.id,
           icon: "pencil",
@@ -620,34 +648,50 @@ async function savePlanFirst(planId) {
   return true;
 }
 const blockedBy = () => HL.blockedBy(doc());
-const setStartBusy = (on) => {
+/** Puts the Start buttons in line with the Start flow state (they are also drawn from it by every redraw). */
+const syncStartButtons = () => {
   const ss = startNow(); // a blocked Start stays off when the busy state ends
   for (const b of document.querySelectorAll("#start-call, #start-noai, #next-start, .pm-act .primary"))
-    b.disabled = on || (ss.disabled && !(b.id === "start-noai" && ss.code === "key-anthropic"));
+    b.disabled = startHeld() || (ss.disabled && !(b.id === "start-noai" && ss.code === "key-anthropic"));
 };
-/** Start. t: { planId?, noAi? }: no planId is a quick call (no Plan). Warns when the last readiness check failed (Start anyway is always there). Practice never goes through here. */
+/** Moves the Start flow to the next status. A move that is not allowed is ignored. Returns whether it happened. */
+function startTo(to, planId) {
+  const n = HL.startNext(H.start, to, planId);
+  if (!n) return false;
+  H.start = n;
+  syncStartButtons();
+  return true;
+}
+/** Start. t: { planId?, noAi? }: no planId is a quick call (no Plan). Warns when the last readiness check failed (Start anyway is always there). Practice never goes through here.
+ *  One start at a time: a second click while one is under way does nothing (H.start). */
 async function startFlow(t, anyway) {
+  if (!startTo("saving", t.planId || "")) return;
   H.reviewOps = null; // edits from an earlier, unfinished start must not reach this call
   const g = $("start-gate");
   if (g) g.textContent = "";
-  setStartBusy(true);
   try {
     if (!(await savePlanFirst(t.planId))) return;
     const d = anyway ? null : blockedBy();
     if (d) {
-      showStartGate(d, t);
+      if (startTo("gate")) showStartGate(d, t);
       return;
     }
     if (t.planId && !t.reviewed) {
+      startTo("reviewing");
       const rv = await reviewBeforeStart(t.planId);
       if (!rv.go) return;
       H.reviewOps = rv.ops;
-    }
+      startTo("starting"); // from reviewing
+    } else startTo("starting");
+    if (isRunning()) return; // a call was started from the tray while the review was open
     const m = t.planId ? H.plans.find((x) => x.id === t.planId) : null;
     const what = t.planId ? T("home.startNamed", { name: m ? m.title || m.who || "" : "" }) : t.noAi ? T("home.quickNoAi") : T("home.quickCall");
     await act(() => (t.noAi ? api.startNoAi(t.planId) : api.start(t.planId)), what);
   } finally {
-    setStartBusy(false);
+    if (H.start.status !== "gate") {
+      H.start = HL.START_IDLE;
+      syncStartButtons();
+    }
   }
 }
 /**
@@ -701,12 +745,13 @@ function showStartGate(d, t) {
       h(
         "div",
         { class: "actions" },
-        btn(T("gate.check"), { id: "gate-check", icon: "refresh", cls: "primary", onclick: () => runCheck(false) }),
+        btn(T("gate.check"), { id: "gate-check", icon: "refresh", cls: "primary", disabled: checking(), onclick: () => runCheck(false) }),
         btn(T("gate.anyway"), { id: "gate-anyway", cls: "danger", onclick: () => startFlow(t, true) }),
         btn(T("gate.cancel"), {
           cls: "ghost",
           onclick: () => {
             slot.textContent = "";
+            if (H.start.status === "gate") H.start = HL.START_IDLE;
           },
         }),
       ),
@@ -830,10 +875,7 @@ function livePanel(s) {
             class: "switch",
             role: "switch",
             "aria-checked": "false",
-            onclick: (e) => {
-              const on = e.currentTarget.getAttribute("aria-checked") !== "true";
-              act(() => api.quiet(on), T("live.quiet"));
-            },
+            onclick: () => quietToggle(),
           },
           h("span", { class: "knob", "aria-hidden": "true" }),
           h("span", { class: "sl" }, T("live.quiet")),
@@ -850,7 +892,7 @@ function livePanel(s) {
       h(
         "div",
         { class: "stoprow" },
-        btn(ph === "stopping" ? T("live.stopping") : T("live.stop"), { id: "stop", icon: "stop", cls: "", onclick: () => act(api.stop, T("live.stop")) }),
+        btn(ph === "stopping" ? T("live.stopping") : T("live.stop"), { id: "stop", icon: "stop", cls: "", onclick: () => stopCall() }),
         h("span", { class: "grow" }),
         shortcutsBtn(),
       ),
@@ -998,6 +1040,29 @@ function patchAsk(s) {
     as.classList.toggle("on", !!at);
   }
 }
+/** Quiet switch. The new value comes from the call state, not from the button; one request at a time. */
+async function quietToggle() {
+  if (H.quietBusy) return;
+  H.quietBusy = true;
+  try {
+    await act(() => api.quiet(!(state.call && state.call.quiet)), T("live.quiet"));
+  } finally {
+    H.quietBusy = false;
+  }
+}
+/** Stop. Sent once per call: a second click before the state says "stopping" does nothing. A refusal lets the person try again. */
+async function stopCall() {
+  if (H.stopSent) return;
+  H.stopSent = true;
+  const st = $("stop");
+  if (st) st.disabled = true;
+  if (!(await act(api.stop, T("live.stop")))) {
+    H.stopSent = false;
+    const b = $("stop");
+    if (b && !(state.call && state.call.phase === "stopping")) b.disabled = false;
+  }
+}
+
 /** Update the live panel in place from call state: timers, quiet switch, note count, stop steps, client proposal, and the problem banner. */
 function patchLive(s) {
   const ph = s.phase,
@@ -1222,17 +1287,24 @@ function readinessCard() {
 }
 /** Run the readiness check. offline = the free quick check (keys and settings only). Result lands in state.call.doctor. */
 async function runCheck(offline) {
-  H.doctorBusy = true;
+  const next = HL.checkBegin(H.check, offline === true ? "quick" : "full");
+  if (!next) return; // a check is already running (a full one is never replaced)
+  H.check = next;
   renderSide();
   if (!offline) announce(T("ready.announceChecking"));
-  let r = null;
+  let r = null,
+    failed = false;
   try {
     r = await api.runDoctor(offline === true);
   } catch (e) {
-    if (!offline) showError(T("ready.didNotFinish"), { retry: () => runCheck(false) });
+    failed = true;
   }
-  H.doctorBusy = false;
+  const end = HL.checkEnd(H.check, next.token);
+  if (!end.accept) return; // replaced by a newer check: its answer is the one that counts
+  H.check = end.state;
+  if (failed && !offline) showError(T("ready.didNotFinish"), { retry: () => runCheck(false) });
   if (r && state.call) {
+    H.localDoctor = r;
     state.call.doctor = r;
     if (offline) H.quickAt = r.at;
     else H.fullAt = r.at;

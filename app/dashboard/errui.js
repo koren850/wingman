@@ -14,9 +14,11 @@ function performErrorAction(action, ctx) {
       viewSettings("keys");
       return true;
     case "allow":
-      // The permission step of the guided setup is on Home; open it there.
-      SU.open = "allow";
-      SU.force = true;
+      // The permission step is on Home: in the first-run window when it is on screen, otherwise in the setup card.
+      if (!wizGoAllow()) {
+        SU.open = "allow";
+        SU.force = true;
+      }
       viewHome();
       return true;
     case "settings":

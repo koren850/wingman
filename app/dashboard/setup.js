@@ -456,7 +456,7 @@ function openKeysSheet() {
   });
   $("pop-slot").append(ov);
   fillKeySheet(ov);
-  const f = $("key-deepgram");
+  const f = $("ks-key-deepgram");
   if (f) f.focus();
 }
 function fillKeySheet(ov) {
@@ -477,7 +477,7 @@ function fillKeySheet(ov) {
         ),
       ),
       h("p", { class: "help" }, T("keys.cost")),
-      h("div", { class: "setlist su-keys" }, keyRow("deepgram"), keyRow("anthropic")),
+      h("div", { class: "setlist su-keys" }, keyRow("deepgram", "ks-key-"), keyRow("anthropic", "ks-key-")),
       none ? h("p", { class: "saved good", id: "keys-done", role: "status" }, ico("check"), T("keys.saved")) : null,
       h(
         "details",

@@ -14,10 +14,17 @@ for (const b of document.querySelectorAll(".cancel")) b.addEventListener("click"
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") window.close();
 });
+let sending = false; // a second Enter before main closes the window must not send the same note again
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (sending) return;
+  sending = true;
   const v = (id) => document.getElementById(id).value;
   const data = kind === "note" ? { text: v("noteText") } : { who: v("who"), goal: v("goal"), notes: v("notes"), mustCover: v("mustCover") };
-  await window.wingman.submit(kind, data);
+  try {
+    await window.wingman.submit(kind, data);
+  } catch {
+    sending = false; // the send failed and the window is still open: let the person try again
+  }
 });
 document.body.dataset.ready = "1";

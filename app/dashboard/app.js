@@ -514,6 +514,11 @@ function closePopover(restore) {
   document.removeEventListener("pointerdown", p._outside, true);
   if (restore && t) t.focus();
 }
+/** Closes the sheets in #pop-slot (the review before Start, the keys sheet). Every view change calls it: a sheet belongs to the view it was opened from. */
+function closeSheets() {
+  closePrestart();
+  closeKeysSheet(false);
+}
 /** Toggle the "How the usefulness score works" dialog under the usefulness strip. Escape or a click outside closes it. */
 function gatePopover(anchor, trigger, g, ok, none) {
   if ($("gate-pop")) {
@@ -696,6 +701,7 @@ function nextUpCard() {
 function viewInbox(restoreFocus) {
   state.view = "inbox";
   closePopover(false);
+  closeSheets();
   state.gen++;
   setNav();
   busy();
@@ -878,6 +884,7 @@ function defaultTab(d) {
 /** Load one call and show it. o: { tab, filter, sub, line, hl }. A newer navigation while loading wins (state.gen). */
 async function openCall(id, o = {}) {
   closePopover(false);
+  closeSheets();
   state.view = "call";
   state.id = id;
   state.lastId = id;
@@ -1738,12 +1745,15 @@ function setCur(id, focus) {
 }
 /** Save a rating (same value again clears it) through the main process, then update the stats, chips and the card. advance moves on to the next unrated card. */
 async function doRate(c, v, advance) {
-  const d = state.detail,
+  // The call and the screen this rating belongs to, fixed before the await: the person may open another call while it is saved.
+  const id = state.id,
+    gen = state.gen,
+    d = state.detail,
     prev = d.tags[c.id],
     next = prev === v ? null : v;
   let s;
   try {
-    s = await api.setTag(state.id, c.id, next);
+    s = await api.setTag(id, c.id, next);
   } catch (e) {
     fail("Could not save the rating: " + e.message);
     return false;
@@ -1751,8 +1761,9 @@ async function doRate(c, v, advance) {
   d.summary = s;
   if (next) d.tags[c.id] = next;
   else delete d.tags[c.id];
-  const i = state.calls.findIndex((x) => x.id === state.id);
+  const i = state.calls.findIndex((x) => x.id === id);
   if (i >= 0) state.calls[i] = s;
+  if (state.id !== id || state.gen !== gen) return true; // saved for the right call; the screen now shows another, so nothing on it is touched
   const el = document.querySelector(`#cardlist .card[data-id="${CSS.escape(c.id)}"]`);
   if (el) paintCard(el, c);
   renderStats();

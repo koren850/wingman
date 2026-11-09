@@ -11,6 +11,7 @@ const MAIN_ORDER = window.WingmanSettings.MAIN_ORDER;
 /** Draw Settings. focus: "advanced" opens the debug list, "keys" jumps to the first key field. */
 async function viewSettings(focus) {
   closePopover(false);
+  closeSheets();
   state.view = "settings";
   state.gen++;
   setNav();
@@ -566,12 +567,12 @@ function testText(r) {
   );
 }
 /** Row for one provider: status chip, write-only password field, Test and Remove. */
-function keyRow(p) {
+function keyRow(p, idPrefix = "key-") {
   const [name, what] = KEY_NAMES[p],
     st = KEYS.data && KEYS.data.providers[p],
     busy = KEYS.busy.has(p),
     m = KEYS.msg[p],
-    id = "key-" + p;
+    id = idPrefix + p; // the keys sheet passes its own prefix: its ids must not repeat the ones of the Settings page behind it
   const inp = h("input", {
     type: "password",
     id,
@@ -583,8 +584,11 @@ function keyRow(p) {
     class: "keyin",
     disabled: busy,
   });
+  inp.value = WingmanSetup.keyDraft.get(p); // a redraw puts the typed text back
+  inp.addEventListener("input", () => WingmanSetup.keyDraft.set(p, inp.value));
   const submit = () => {
-    const v = inp.value;
+    const v = WingmanSetup.keyDraft.get(p);
+    WingmanSetup.keyDraft.clear(p);
     inp.value = ""; // cleared before anything else happens
     if (!v) return;
     keyAct(p, () => api.keysSet(p, v), T("key.msg.saved"));

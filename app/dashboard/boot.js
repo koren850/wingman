@@ -53,6 +53,8 @@ Promise.all([
   api
     .callState()
     .then((s) => {
+      // An update pushed while this answer was on its way is newer than it: keep that one.
+      if (state.call) return;
       state.call = s;
       renderCallSlot();
     })

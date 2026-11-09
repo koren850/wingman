@@ -8,18 +8,25 @@
 /** The sections the review lists, in reading order (the same order as the model text). */
 const PRESTART_SECTIONS = ["roster", "past", "agenda", "facts", "mustCover"];
 
+let psCancel = null; // closes the open review as "not started" (a view change, or a call that started elsewhere)
+/** Closes the review sheet if it is open. Whoever waits for it gets { go: false }. */
+function closePrestart() {
+  if (psCancel) psCancel();
+}
+
 /**
  * Opens the review sheet for a "before the call" model. Resolves to { go: false } (closed, nothing started) or { go: true, ops } (start; ops = the edits to send to the call).
  */
 function prestartReview(model, o = {}) {
   return new Promise((resolve) => {
     const KNW = window.WingmanKnows;
-    const st = { off: {}, text: {} };
+    const st = { off: {}, text: {}, editing: null }; // editing: { id, value } while one line is being edited; kept here so a redraw cannot lose it
     const opener = document.activeElement;
     let done = false;
     const finish = (r) => {
       if (done) return;
       done = true;
+      psCancel = null;
       const ov = $("prestart-sheet");
       if (ov) ov.remove();
       if (!r.go && opener && document.contains(opener)) opener.focus();
@@ -82,6 +89,7 @@ function prestartReview(model, o = {}) {
         );
       }
     };
+    psCancel = () => finish({ go: false });
     const line = (key, x) => {
       const on = !st.off[x.id];
       const text = st.text[x.id] != null ? st.text[x.id] : x.text;
@@ -93,21 +101,32 @@ function prestartReview(model, o = {}) {
         if (again) again.focus();
       });
       const from = srcLine(x);
+      const stopEdit = () => {
+        st.editing = null;
+        draw();
+        const f = $("ps-e-" + x.id);
+        if (f) f.focus();
+      };
       const edit = () => {
+        st.editing = { id: x.id, value: text };
+        draw();
+        const i = $("ps-i-" + x.id);
+        if (i) i.focus();
+      };
+      if (st.editing && st.editing.id === x.id) {
         const inp = h("input", {
           type: "text",
           id: "ps-i-" + x.id,
-          value: text,
           maxlength: String(KNW.MAX_TEXT),
           "aria-label": T("knows.editShort"),
           dir: "auto",
         });
+        inp.value = st.editing.value;
+        inp.addEventListener("input", () => (st.editing.value = inp.value));
         const save = () => {
-          const r = KNW.editItem({ sections: { [key]: [{ id: x.id, text: x.text }] } }, key, x.id, inp.value);
+          const r = KNW.editItem({ sections: { [key]: [{ id: x.id, text: x.text }] } }, key, x.id, st.editing.value);
           if (r.ok) st.text[x.id] = r.model.sections[key][0].text;
-          draw();
-          const f = $("ps-e-" + x.id);
-          if (f) f.focus();
+          stopEdit();
         };
         inp.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
@@ -117,15 +136,11 @@ function prestartReview(model, o = {}) {
           } else if (e.key === "Escape") {
             e.preventDefault();
             e.stopPropagation();
-            draw();
-            const f = $("ps-e-" + x.id);
-            if (f) f.focus();
+            stopEdit();
           }
         });
-        li.textContent = "";
-        li.append(inp, btn(T("knows.save"), { id: "ps-s-" + x.id, cls: "sm", onclick: save }));
-        inp.focus();
-      };
+        return h("li", { class: "kn-item ps-item", "data-id": x.id }, inp, btn(T("knows.save"), { id: "ps-s-" + x.id, cls: "sm", onclick: save }));
+      }
       const li = h(
         "li",
         { class: "kn-item ps-item" + (on ? "" : " off"), "data-id": x.id },
