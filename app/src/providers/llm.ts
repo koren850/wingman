@@ -158,3 +158,34 @@ export async function withFallbacks<T>(
   }
   throw last!;
 }
+
+/**
+ * Opens the connection to the model before the first question, so that question does not pay for the package load, DNS, TCP and TLS.
+ * Measured on real calls: the first request took 1.3 to 2.5 s to its first token, later ones 0.8 to 0.9 s. One request with one output token,
+ * so the cost is a fraction of a cent. Only in live mode and for a real provider: a cassette or a scripted model has no connection to open.
+ * Never throws; returns the time in ms, or why it was skipped or failed.
+ */
+export async function warmUp(
+  registry: ModelRegistry,
+  ref: string,
+  o: { generate?: typeof generateText; mode?: string; timeoutMs?: number } = {},
+): Promise<{ ms: number } | { skipped: string } | { error: string }> {
+  const { provider } = parseModelRef(ref);
+  if (provider === "script" || provider === "scripted") return { skipped: "offline model" };
+  if ((o.mode ?? llmMode()) !== "live") return { skipped: "not live" };
+  const t0 = Date.now();
+  try {
+    const model = await registry.resolve(ref, "warm");
+    await generateOnce(o.generate, {
+      model,
+      maxOutputTokens: 1,
+      maxRetries: 0,
+      temperature: temperatureFor(ref),
+      abortSignal: AbortSignal.timeout(o.timeoutMs ?? 8000),
+      prompt: "ok",
+    });
+    return { ms: Date.now() - t0 };
+  } catch (e) {
+    return { error: (e as Error)?.message ?? String(e) };
+  }
+}

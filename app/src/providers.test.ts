@@ -13,7 +13,7 @@ import {
   POLICY,
   type ErrorKind,
 } from "./providers/errors.ts";
-import { parseModelRef, ModelRegistry, ConfigError, providerOptionsFor, cacheOptionsFor, withFallbacks } from "./providers/llm.ts";
+import { parseModelRef, ModelRegistry, ConfigError, providerOptionsFor, cacheOptionsFor, withFallbacks, warmUp } from "./providers/llm.ts";
 import { runReflex } from "./reflex.ts";
 import { loadSettings } from "./settings.ts";
 
@@ -272,4 +272,26 @@ test("aborted turn: a rejected or never-resolving usage promise books nothing an
   await abortedRun(new Promise(() => {}), (i) => seen.push(i));
   await new Promise((r) => setTimeout(r, 400));
   assert.equal(seen.length, 0);
+});
+
+test("warmUp: one request of one token in live mode; skipped offline and on a cassette; a failure never throws", async () => {
+  const importer = async () => ({ createOpenAI: (o: { apiKey: string }) => (id: string) => ({ id, apiKey: o.apiKey }) });
+  const reg = new ModelRegistry({ openai: "k" }, importer);
+  const calls: Record<string, unknown>[] = [];
+  const generate = (async (opts: Record<string, unknown>) => {
+    calls.push(opts);
+    return { text: "o" };
+  }) as never;
+  const r = await warmUp(reg, "openai:m", { generate, mode: "live" });
+  assert.ok("ms" in r);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].maxOutputTokens, 1);
+  assert.equal(calls[0].maxRetries, 0);
+  assert.deepEqual(await warmUp(reg, "openai:m", { generate, mode: "replay" }), { skipped: "not live" });
+  assert.deepEqual(await warmUp(reg, "scripted:x", { generate, mode: "live" }), { skipped: "offline model" });
+  assert.equal(calls.length, 1, "no request when skipped");
+  const failing = (async () => {
+    throw new Error("network down");
+  }) as never;
+  assert.deepEqual(await warmUp(reg, "openai:m", { generate: failing, mode: "live" }), { error: "network down" });
 });

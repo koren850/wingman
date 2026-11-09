@@ -10,7 +10,8 @@ import { startTapWatchdog, stopTapWatchdog, noteMicFrame, micBack, stopMicWatch,
 import { startSources } from "./start-sources.ts";
 import { eventError } from "../errtext.ts";
 import { stops, lifecycle } from "./lifecycle.ts";
-import { log, PHONE, gate, phone, S, ECHO, UI_LANG } from "./boot.ts";
+import { log, PHONE, gate, phone, S, ECHO, UI_LANG, noAi, registry } from "./boot.ts";
+import { warmUp } from "../providers/llm.ts";
 import { ht } from "../htext.ts";
 import { chans, st } from "./state.ts";
 import { safe, healthClear, health } from "./out.ts";
@@ -242,6 +243,8 @@ export async function startLiveSources() {
     },
     () => mic.stop(),
   ];
+  // Open the model connection now, while the audio starts, so the first question does not wait for it.
+  if (!noAi) void warmUp(registry, S.llm.reflex.model).then((r) => log.write("events", { type: "llm.warm", model: S.llm.reflex.model, ...r }));
   const go = await startSources({
     sys,
     mic,

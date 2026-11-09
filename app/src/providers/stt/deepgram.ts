@@ -191,7 +191,7 @@ export class DeepgramStream extends EventEmitter implements SttStreamLike {
 
   // Peak over every 4th sample (stride 8 bytes) is enough to tell speech (>= 1500 of 32768) from silence; cheap on the audio path.
   private watchSilence(pcm: Buffer) {
-    const ms = this.opts.finalizeSilenceMs ?? 900;
+    const ms = this.opts.finalizeSilenceMs ?? 500;
     if (!(ms > 0)) return;
     let peak = 0;
     for (let i = 0; i + 1 < pcm.length; i += 8) {

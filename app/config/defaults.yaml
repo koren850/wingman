@@ -17,7 +17,7 @@ stt:
   endpointMs: 200 # silence (ms) that ends an utterance. Measured with TTS audio and real Deepgram: 350 -> final lag p50 0.51 s, 200 -> ~0.4, 100 -> 0.27. Real speech pauses more than TTS: raise to 350-700 if questions get split. Env: WINGMAN_ENDPOINT_MS
   utteranceEndMs: 1000 # Deepgram utterance_end_ms (docs: min 1000, needs interim_results; the app does not act on UtteranceEnd, so this does not change lag)
   keepAliveMs: 5000 # socket keep-alive interval (Deepgram closes after ~10 s of silence)
-  flushFallbackMs: 1500 # handle buffered finals if no speech_final arrives within this time
+  flushFallbackMs: 800 # handle buffered finals if no speech_final arrives within this time (a backstop: speech_final normally comes first)
   joinWindowMs: 1500 # a short client fragment without an end mark is glued to the next one within this time (split questions). 0 = off
   keyterms:
     enabled: auto # auto | on | off   (off = never send keyterms)
