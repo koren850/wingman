@@ -232,7 +232,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
 const mockJudgeTransport: JudgeTransport = async () => ({ text: "VERDICT: good\nREASON: mock judge", ms: 1 });
 /**
  * The model options of one judge call. Thinking is off: with it on, Haiku 5.5 spends all the output tokens on thinking and returns an empty text
- * (round 14: 85% empty replies, every one scored "unreadable judge answer").
+ * (in a recorded run: 85% empty replies, every one scored "unreadable judge answer").
  */
 export function judgeCallOptions(model: string) {
   return { maxOutputTokens: 120, providerOptions: providerOptionsFor(model, { effort: "low", thinking: false }) };

@@ -64,7 +64,7 @@ Signs: a red bar that says the other side is not heard (when Zoom, Teams or a si
 macOS has **no live status** for this permission, so Wingman cannot tell you if it is on.
 
 1. Open **System Settings, Privacy & Security, Screen & System Audio Recording**.
-2. Scroll to **System Audio Recording Only** and switch Wingman on. If you run from a terminal, switch the terminal app on instead.
+2. Scroll to **System Audio Recording Only** and switch Wingman on. If you run from a terminal, switch the terminal app on instead. If Wingman is not in the list, macOS has not been asked yet. Start a real call once and press **Allow** when macOS asks. Wingman is in the list after that.
 3. **Quit and reopen Wingman.** macOS only applies the permission to a new start.
 4. Run the Readiness check again.
 
@@ -128,7 +128,7 @@ brew install node@24       # then: brew link --overwrite node@24
 nvm install 24 && nvm use 24
 ```
 
-Check with `node -v`. The installer never installs Node for you. The app also needs Node 24 when it starts. If it cannot find it, install Node and open the app again.
+Check with `node -v`. The installer never installs Node for you. Only a build from source needs Node; the downloaded app does not.
 
 ## "wingman: command not found"
 

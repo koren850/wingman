@@ -76,7 +76,7 @@ A call costs about $1.50 an hour in total. Speech to text is most of it. These a
 ### First run
 
 1. **Your two keys.** Paste both and press **Check and save**.
-2. **Let Wingman hear.** macOS: allow the microphone, switch on System Audio Recording for Wingman in System Settings, then quit and open Wingman again. Windows: only the microphone switch; the sound of the call needs no permission.
+2. **Let Wingman hear.** macOS: allow the microphone, switch on System Audio Recording for Wingman in System Settings (if Wingman is not listed, start a real call once and press Allow when macOS asks), then quit and open Wingman again. Windows: only the microphone switch; the sound of the call needs no permission.
 3. **Ready.** Press **Start a practice call**. A pretend client talks and the cards appear. No keys needed, and nothing leaves your computer. When you are ready, press **Start a real call**.
 
 Full steps and pictures: [Getting started](docs/GETTING-STARTED.md). If something fails: [Troubleshooting](docs/TROUBLESHOOTING.md).
@@ -117,7 +117,7 @@ This is an early release (v0.0.1). Read this before you rely on it.
 
 - The plumbing works. In short test calls with the real speech service and the real AI (invented scripts, text-to-speech voices), nothing crashed, questions in English and Hebrew were heard, a prepared card showed in under a second, and an AI card in about 1 to 3.5 seconds.
 - Speech to text was right for about 92 percent of the words in English and 77 to 83 percent in Hebrew, on those synthetic voices.
-- Card quality is not proven. Replays of the recorded AI against the scripted test meetings fail most of the release lines (too few useful cards, some wrong or in the wrong language). Treat every card as a hint and check it before you say it. The numbers are on the [Roadmap](docs/ROADMAP.md#evidence-so-far).
+- Card quality is not proven. The numbers on the Roadmap were measured on an earlier build; the prompts changed after that and the recording has not been repeated yet. Replays of the recorded AI against the scripted test meetings fail most of the release lines (too few useful cards, some wrong or in the wrong language). Treat every card as a hint and check it before you say it. The numbers are on the [Roadmap](docs/ROADMAP.md#evidence-so-far).
 
 Cost, measured in short test calls: about $1.40 an hour in total, of which about 90 percent is speech to text. The AI part is about 5 to 20 cents an hour.
 

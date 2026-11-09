@@ -29,7 +29,16 @@ Highlights: a live agent for meetings that builds context as the call goes and s
 - **Command line and installer.** The `wingman` command drives the running app over an owner-only local socket. `install.sh` has check, dry run, update and uninstall modes and never uses sudo. `pnpm dist` builds an unsigned, self-contained `Wingman.app` and `.dmg` on a Mac, and an unsigned per-user `Wingman-Setup-<version>-x64.exe` on Windows (keys kept with Windows data protection, `Wingman --wingman-smoke` install check). The release workflow builds and attaches both on a `v*` tag; no download is published yet.
 - **Evaluation tools.** `pnpm eval` with a quality baseline and ship thresholds (`pnpm eval:ship`, which fails today on purpose until a recorded run exists); 32 invented dev meetings and three held-out splits; a memory eval of 24 invented calls; a 120-case judgement set; cassette recording and replay (`pnpm morning`, `pnpm replay`); and a bad-model control that must fail the gate. See [docs/RECORDING-EVALS.md](docs/RECORDING-EVALS.md).
 - **Tests and CI.** About 2,000 unit and end-to-end tests on a virtual clock with fake models and streams, snapshot checks for the windows in English and Hebrew, and a CI workflow. Windows CI runs the type check, the unit tests and a packaging check (build, install, start, uninstall); Linux and macOS also run end-to-end tests and `pnpm eval`.
-- **Documentation.** Step-by-step install for macOS and Windows (including the unsigned-app steps), the two-key setup with costs, languages and how to add one, the call memory design, troubleshooting, architecture, 71 architecture decision records, privacy and security guide, user guide, getting started, development guide, troubleshooting, pack format, examples and the roadmap.
+- **Documentation.** Step-by-step install for macOS and Windows (including the unsigned-app steps), the two-key setup with costs, languages and how to add one, the call memory design, troubleshooting, architecture, 73 architecture decision records, privacy and security guide, user guide, getting started, development guide, troubleshooting, pack format, examples and the roadmap.
+
+### Changed in the last round before release
+
+- **Example answers are opt-in.** A new user has no prepared cards until they copy a starter pack or write one. The practice call and the demo still use the invented example pack.
+- **Hebrew numbers and weekdays.** Speech to text sometimes writes "60 1000" or "יום 4º"; these are now read as 60000 and as the weekday name before Wingman uses the text.
+- **Fewer false "still unanswered" tips.** No tip while the memory is being updated, none for a question the user answered, and no repeat of a promise that was already offered.
+- **Replies with a missing field are kept.** A card is no longer dropped because its value or aim line is missing. The memory patch reader accepts plain-text facts.
+- **Card language follows the call.** A card in the wrong language for the question is dropped, and a promise tip carries a label in its own language.
+- **Recording tools.** `--pace` above 1 is refused for a real recording unless `--fast-ok` is given, and the evaluation refuses a paced recording for the ship lines.
 
 ### Fixed
 

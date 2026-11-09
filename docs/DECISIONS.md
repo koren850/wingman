@@ -77,6 +77,8 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [69](#adr-69-a-windows-installer-built-and-checked-on-windows) | A Windows installer, built and checked on Windows |
 | [70](#adr-70-first-run-is-two-keys-one-key-store-per-platform-and-a-cheap-check) | First run is two keys, one key store per platform, and a cheap check |
 | [71](#adr-71-the-import-layers-are-a-unit-test) | The import layers are a unit test |
+| [72](#adr-72-the-example-pack-is-opt-in) | The example pack is opt-in |
+| [73](#adr-73-memory-patches-repair-two-known-shape-slips) | Memory patches repair two known shape slips |
 
 ---
 
@@ -1088,3 +1090,31 @@ Date: 2026-11-09
 **Alternatives.** An ESLint import-boundary plugin (a new dependency, and it does not find cycles through several files). Moving the flat top level into folders now (a very large diff with no change in behaviour; the area table in ARCHITECTURE.md gives the same map). Removing the Classic path now (it is still a documented setting; see ADR 47).
 
 **Consequences.** A new cross-module call that would close a ring fails the unit tests with the list of files in the ring. The top level of `src/` is still flat.
+
+## ADR 72: The example pack is opt-in
+
+Date: 2026-11-09
+
+**Context.** Until now a user with no pack of their own got the invented web and hosting example pack as a fallback. In the first real-model recording, questions about security reports, price and regions got hosting cards, in calls that had nothing to do with hosting. The example answers were shown as if the user had written them.
+
+**Decision.** The example pack is read only when it is asked for: the practice call and the demo, a test (`WINGMAN_EXAMPLE_PACK=1`), or to fill a file that a user pack is missing when that pack has its own `bank.yaml`. A user with no pack has no prepared cards, no topic words and no example house style. Wingman still reads the call and writes cards from what is said. The readiness check says "No pack" and lists any file that is filled in from the example. The setup guide offers starter packs to copy.
+
+**Why.** An answer that looks like the user's own but was written for another business is worse than no answer. An empty bank is honest, and the live reading does not need it.
+
+**Alternatives.** Keep the fallback and label the cards (the label is easy to miss on a live call). Remove the example pack (the practice call and the demo need it). Ask the user to pick a starter before the first call (one more step before they can start).
+
+**Consequences.** A new user sees fewer prepared cards in the first real call until they copy a starter pack. The docs and the setup guide say so. Tests set the variable, so they behave as before.
+
+## ADR 73: Memory patches repair two known shape slips
+
+Date: 2026-11-09
+
+**Context.** The small model that keeps the call memory returns a JSON patch. In the recorded run, 54 of 73 patches were dropped whole: facts came as plain strings instead of objects, and one roster entry with an unknown side made the whole patch invalid. The memory scores were low mostly because of this check, not because of the model.
+
+**Decision.** The patch reader accepts a plain string as a fact (`{text}`) and skips one unusable roster entry instead of dropping the patch. Everything else that does not fit the shape is still dropped and logged. The moment reply parser follows the same idea: a reply that has a SAY line but no VALUE or AIM keeps its card with a default (logged as `defaulted:VALUE` or `defaulted:AIM`), while a VALUE or AIM that is present but wrong still drops the reply.
+
+**Why.** The content was usable. Throwing it away because of a harmless slip made the memory empty and the cards fewer. The repairs are small and logged, so a change in the model's habits shows in the logs.
+
+**Alternatives.** Ask the model again (costs time and money on every slip). Loosen the whole validator (it would accept wrong content). Fix it only in the prompt (the model keeps slipping in new ways).
+
+**Consequences.** More patches and replies are used. A reply that lacks a field gets a plain default, so its card is lower in rank. The memory floors are still not met; the next recorded run shows the effect.

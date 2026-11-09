@@ -26,7 +26,9 @@ Every number is labelled **scripted** (the model replies are fixtures) or **reco
 
 ### A recorded run (November 2026)
 
-A first run with the real AI was made, on the build of this release (two passes, about $1.20 in total, with invented scripts and text-to-speech voices). It did **not** pass.
+A first run with the real AI was made (two passes, about $1.20 in total, with invented scripts and text-to-speech voices). It did **not** pass.
+
+**These numbers are from the build before the fixes that followed.** Since then the recording tool keeps its key and records every call, the judge no longer returns empty answers, the example answers are opt-in, and the prompts, the reply parser, the memory patch check and the language check changed. The recorded replays in `app/data/cassettes/` are stale for the changed prompts. The table below is therefore the state before the fixes, not the state of v0.0.1. Run `pnpm morning` again to refresh it ([Recording evals](RECORDING-EVALS.md)).
 
 | What | Result |
 |---|---|
@@ -70,7 +72,7 @@ What this means for v0.0.1: the app, the install, the two-key setup, the languag
 
 The recorded run above used synthetic voices and invented scripts. Not yet recorded or checked on real people and real calls:
 
-- **A clean recorded run of live reading** after the fixes: `pnpm morning --cap 5` ([Recording evals](RECORDING-EVALS.md)). The tool has two known problems (it records nothing with the real transport until the key bug is fixed, and the model judge returns empty answers).
+- **A clean recorded run of live reading** after the fixes: `pnpm morning --cap 5` ([Recording evals](RECORDING-EVALS.md)). The two recording tool bugs found in the first run are fixed: the real key is kept, so a real recording works, and the model judge no longer returns empty answers. The numbers in the table above still predate these fixes, and the cassettes are stale for the changed prompts, so `pnpm morning` must be run again to refresh them.
 - A real call rated with `pnpm tag`: useful cards an hour, and how many cards you would have rather not seen.
 - Latency with real partials: whether early start is stable enough to turn on, and the real first-card time of the direct path.
 - Speaker numbers after a real reconnect (so far a fake stream), and the ring after a real slow first connect.

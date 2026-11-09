@@ -55,7 +55,7 @@ const HEBREW_VOICES = new Set(["Carmit"]);
 const DEFAULT_VOICE = { he: { me: "Carmit", them: "Carmit" }, en: { me: "Daniel", them: "Samantha" } } as const;
 /**
  * The voice for one turn. A scenario names one voice per side, but a mixed Hebrew and English call has turns in both languages, and an English voice that reads
- * Hebrew says "dot, question mark" (round 14: speech-to-text 56% instead of 77%). So a voice is used only for text in its own language; otherwise the default
+ * Hebrew says "dot, question mark" (in a recorded run: speech-to-text 56% instead of 77%). So a voice is used only for text in its own language; otherwise the default
  * voice of the text's language and side is used. An explicit `voice` on the turn always wins.
  */
 export function voiceFor(text: string, side: "me" | "them", named: string | undefined, turnVoice?: string): string {
