@@ -120,6 +120,7 @@ function createControlServer(o) {
 
   /** Each handler returns {ok:true,...} or {ok:false,code,error}. */
   const refused = (error) => err("refused", error);
+  const CHECKING = "The readiness check is running. Start the call when it has finished (wingman status shows doctorRunning).";
   const need = (cond, error) => (cond ? null : refused(error));
   const done = (ok, error) => (ok ? { ok: true, state: view() } : refused(error));
   /** Rate limit start/practice (never stop): checked AFTER the state checks. The budget is used only when the command is accepted: a start the app refuses costs nothing. */
@@ -229,6 +230,7 @@ function createControlServer(o) {
       },
       run: async (a) => {
         if (ctl.isRunning()) return refused("A call is already running. Stop it first (wingman stop).");
+        if (ctl.getState().doctorRunning) return refused(CHECKING);
         const pick = resolveStart(a);
         if (!pick.ok) return pick;
         let must = true;
@@ -241,6 +243,7 @@ function createControlServer(o) {
           const no = await ask("start", o.confirm && o.confirm.start);
           if (no) return refused(no);
           if (ctl.isRunning()) return refused("A call is already running. Stop it first (wingman stop).");
+          if (ctl.getState().doctorRunning) return refused(CHECKING);
         }
         return paced(() => {
           const r = done(ctl.start({ noAi: !!a.noAi, planId: pick.meeting ? pick.meeting.id : "" }), "Could not start a call.");
@@ -256,6 +259,7 @@ function createControlServer(o) {
       },
       run: (a) => {
         if (ctl.isRunning()) return refused("A call is already running. Stop it first (wingman stop).");
+        if (ctl.getState().doctorRunning) return refused(CHECKING);
         /** @type {any} */
         let m = null;
         if (a.planId) {

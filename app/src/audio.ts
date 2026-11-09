@@ -198,6 +198,7 @@ export class SupervisedSource extends EventEmitter implements Source {
   private spawnedAt = 0;
   private watching = false; // a source was spawned and has not failed yet: the stall check applies, also while "down"
   private downSince = 0;
+  private dropping?: Promise<void>; // the old source is still being stopped: the next one waits for it (two ffmpeg processes must not hold the mic together)
   frames = 0;
   constructor(private o: SupervisedOpts) {
     super();
@@ -211,6 +212,13 @@ export class SupervisedSource extends EventEmitter implements Source {
 
   async start() {
     this.stopped = false;
+    // A second start() replaces the first: one stall timer and one source, never two.
+    clearInterval(this.stallTimer);
+    clearTimeout(this.timer);
+    if (this.inner) {
+      this.gen++;
+      await this.drop();
+    }
     this.stallTimer = this.o.stallMs ? setInterval(() => this.checkStall(), Math.max(250, Math.min(2000, this.o.stallMs / 4))) : undefined;
     this.stallTimer?.unref();
     await this.spawn();
@@ -230,7 +238,7 @@ export class SupervisedSource extends EventEmitter implements Source {
     this.fail(reason, true, true);
   }
 
-  private async drop() {
+  private async drop(): Promise<void> {
     const old = this.inner;
     this.inner = undefined;
     if (!old) return;
@@ -244,8 +252,12 @@ export class SupervisedSource extends EventEmitter implements Source {
   }
   private async spawn() {
     if (this.stopped) return;
-    const gen = ++this.gen,
-      attempt = this.attempt++;
+    const gen = ++this.gen;
+    if (this.dropping) {
+      await this.dropping;
+      if (this.stopped || gen !== this.gen) return;
+    }
+    const attempt = this.attempt++;
     this.spawnedAt = this.lastFrame = performance.now(); // per-spawn watchdog: a new source gets its own stall window
     this.watching = true;
     try {
@@ -297,7 +309,11 @@ export class SupervisedSource extends EventEmitter implements Source {
     clearTimeout(this.stableTimer);
     this.stableTimer = undefined;
     this.gen++; // ignore whatever the old source still says
-    void this.drop();
+    const d = this.drop();
+    this.dropping = d;
+    void d.finally(() => {
+      if (this.dropping === d) this.dropping = undefined;
+    });
     if (quiet) {
       this.timer = setTimeout(() => {
         this.emit("retry", { n: 0, delayMs: 0, attempt: this.attempt });

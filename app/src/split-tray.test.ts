@@ -65,9 +65,9 @@ test("tray: doctor verdict", () => {
 });
 
 test("tray: a crashed call is not a clean end; turning itself off notifies", () => {
-  let s = lib.reduce(lib.initialState(), { ev: "ended", crashed: true });
+  let s = lib.reduce(lib.reduce(lib.initialState(), { ev: "starting" }), { ev: "ended", crashed: true });
   assert.equal(s.endedCleanly, false);
-  s = lib.reduce(lib.initialState(), { ev: "ended", crashed: false });
+  s = lib.reduce(lib.reduce(lib.initialState(), { ev: "starting" }), { ev: "ended", crashed: false });
   assert.equal(s.endedCleanly, true);
   assert.equal(lib.notifications(lib.initialState(), s, { ev: "off", reasons: ["stt down"] })[0].title, "Wingman turned itself off");
 });

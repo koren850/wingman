@@ -50,14 +50,14 @@ function openOverlay() {
   if (overlay?.stdin) relay.attach(overlay.stdin);
   overlay?.on("exit", (code, sig) => {
     relay.detach();
-    if (stopping) return;
+    if (life !== "running") return;
     restarts = nextRestartCount(restarts, Date.now() - overlayStartedAt); // a window that ran 10 minutes was stable: crashes far apart do not add up
     if (code !== 3 && code !== 0 && restarts < S.overlay.restartMax) {
       restarts++;
       console.log(`(answer window crashed: code ${code ?? sig}; reopening, ${restarts}/${S.overlay.restartMax})`);
       status("overlay", { ok: false, restarting: true });
       setTimeout(() => {
-        if (!stopping) openOverlay();
+        if (life === "running") openOverlay();
       }, 1000);
     } else {
       console.log(`(answer window exited: code ${code ?? sig}; still listening, Ctrl+C to stop)`);
@@ -75,10 +75,13 @@ run.on("error", (e) => {
   finalExit(1);
 });
 
-// stopping = a stop was requested; runExited = run.ts is gone (only the window lingers); exiting = finalExit() already started.
-let stopping = false,
-  runExited = false,
-  exiting = false;
+// What call.ts is doing: running (the engine runs), stopping (a stop was requested), runGone (the engine is gone, only the window lingers for
+// 5 s; runCode keeps the engine's own exit code), exiting (finalExit() has started). Only the edges in LIFE_EDGES happen; others are ignored.
+type Life = "running" | "stopping" | "runGone" | "exiting";
+const LIFE_EDGES: Record<Life, Life[]> = { running: ["stopping", "runGone", "exiting"], stopping: ["runGone", "exiting"], runGone: ["exiting"], exiting: [] };
+let life: Life = "running",
+  runCode = 0;
+const moveLife = (to: Life): boolean => (LIFE_EDGES[life].includes(to) ? ((life = to), true) : false);
 /** SIGTERM the answer window, SIGKILL it 2 s later if it hangs. */
 function closeOverlay() {
   const o = overlay;
@@ -94,8 +97,7 @@ function closeOverlay() {
 }
 /** Close the window (escalating) and leave; never waits longer than 2.5 s for it. */
 function finalExit(code: number) {
-  if (exiting) return;
-  exiting = true;
+  if (!moveLife("exiting")) return;
   rows?.close();
   const o = overlay;
   closeOverlay();
@@ -107,14 +109,15 @@ function finalExit(code: number) {
   });
 }
 function stop() {
-  if (runExited) return finalExit(0); // the call is over and only the window lingers: a stop (new call starting, quit) closes it now
-  if (stopping) {
+  if (life === "runGone") return finalExit(runCode); // the call is over and only the window lingers: a stop (new call starting, quit) closes it now
+  if (life === "exiting") return;
+  if (life === "stopping") {
     try {
       run.kill("SIGKILL");
     } catch {}
     return;
   } // second stop: the call is stuck, force it
-  stopping = true;
+  moveLife("stopping");
   run.kill("SIGINT"); // run.ts saves the call and prints the speed summary
   setTimeout(closeOverlay, 5000); // leave the last cards up briefly
 }
@@ -122,9 +125,12 @@ function stop() {
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
 process.on("SIGHUP", stop);
-run.on("exit", (code) => {
-  stopping = true;
-  runExited = true; // stopping also stops the crash-restart of the window
-  setTimeout(() => finalExit(code ?? 0), 5000);
+run.on("exit", (code, signal) => {
+  moveLife("runGone"); // (this also stops the crash-restart of the window)
+  runCode = code ?? (signal ? 1 : 0);
+  // The engine died without saying goodbye (SIGKILL, out of memory, a crash): the tray would show a live call for 5 more seconds, and its Stop
+  // would go to a dead process. A clean exit already printed its own "ended" line; a second one is ignored by the tray.
+  if (runCode !== 0) status("ended", { crashed: true, deleted: false });
+  setTimeout(() => finalExit(runCode), 5000);
   console.log("(answer window closes in 5 s)");
 });

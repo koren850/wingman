@@ -6,13 +6,14 @@ const nodePath = require("node:path");
 const { StringDecoder } = require("node:string_decoder");
 const defaultLib = require("./lib.cjs");
 const Plans = require("../shared/plans.js");
+const { createSlot } = require("./slot.cjs");
 
 /** The complete list of things that can ever be written to a call's stdin. Notes are cleaned and capped before they get here. */
 const COMMANDS = Object.freeze(["consent", "quiet on", "quiet off", "client", "ask", "recap", "stop", "stop-delete", "stop-no-summary", "skip-summary"]);
 
 /**
  * Builds the controller. o: { root, spawn (child_process.spawn-like), lib?, fs?, path?, bin?, logPath?, tmpDir?, env?, plans?,
- * notify?(title, body), onChange?(), setTimeout?, kill?, doctorTimeoutMs? } (fs/spawn/timers are injectable for tests).
+ * notify?(title, body), onChange?(), canStart?() (false while the app quits), setTimeout?, kill?, doctorTimeoutMs? } (fs/spawn/timers are injectable for tests).
  * State lives in lib.reduce; every change calls onChange so the tray and window can redraw. Only one call child at a time.
  * @param {any} o Options as listed above.
  * @returns {object} The controller API: getState, isRunning, start, practice, consent, setQuiet, askWingman, recap, confirmClient, note, ask, speaker, mode,
@@ -45,12 +46,11 @@ function createController(o) {
   const notify = o.notify || (() => {});
   const clock = o.now || Date.now;
   let stopSentAt = 0; // when the "stop" command last went to the engine (0 = never)
-  let doctorProc;
   const DOCTOR_TIMEOUT_MS = o.doctorTimeoutMs || 90_000;
   const STDOUT_DRAIN_MS = 300; // how long a finished child may still be delivering its last stdout lines
-  let child,
-    lingering,
-    state = lib.initialState();
+  // What the controller is busy with: idle | doctor | call (tray/slot.cjs). `child`, `lingering` and the doctor are read from it.
+  const slot = createSlot((m) => logLine(m));
+  let state = lib.initialState();
   const finished = new WeakSet(); // children whose end ("ended" line or process exit) has been handled
   const change = () => {
     try {
@@ -62,14 +62,15 @@ function createController(o) {
   const set = (ev) => {
     const before = state;
     state = lib.reduce(state, ev);
+    if (state === before) logLine(`state: ignored "${ev.ev}" in phase ${before.phase}`); // the reducer returns the same object for an event it refuses
     return before;
   };
 
   /** The engine is done and call.ts only lingers to keep the answer window up: a new call replaces it (its overlay is closed now). */
   function dropLingering() {
-    if (lingering) {
-      const l = lingering;
-      lingering = undefined;
+    if (slot.lingering) {
+      const l = slot.lingering;
+      slot.lingering = undefined;
       killGroup(l, "SIGTERM");
       st(() => killGroup(l, "SIGKILL"), 3000);
     }
@@ -78,9 +79,9 @@ function createController(o) {
   function finish(c, code, signal) {
     if (finished.has(c)) return;
     finished.add(c);
-    if (child === c) {
-      child = undefined;
-      lingering = c;
+    if (slot.child === c) {
+      slot.to("idle");
+      slot.lingering = c;
     }
     // Killed by a signal (SIGKILL, SIGSEGV, the out-of-memory killer): Node reports code null. That is a crash, not a clean end.
     if (code == null && signal) {
@@ -96,9 +97,18 @@ function createController(o) {
     change();
   }
 
+  /** A start while the controller is busy (a call, or the readiness check that uses the same mic) is refused and logged. */
+  function refuseStart() {
+    logLine(`start refused: busy (${slot.kind})`);
+    return false;
+  }
+  /** The app is stopping the call in order to quit (o.canStart() is false then): a new call would be killed at once. */
+  const mayStart = () => (!o.canStart || o.canStart() ? true : (logLine("start refused: the app is quitting"), false));
+
   /** Spawns src/call.ts. Returns false if a call is already running. Reads its stdout "@@wingman" lines into state and notifications. */
   function startCall(extraArgs = [], extraEnv = {}, planId = "") {
-    if (child) return false;
+    if (slot.kind !== "idle") return refuseStart();
+    if (!mayStart()) return false;
     dropLingering();
     set({ ev: "starting", practice: !!extraEnv.WINGMAN_STT_SCRIPT, noAi: extraArgs.includes("--no-ai"), planId });
     const env = { ...(o.env || process.env), WINGMAN_CONTROL: "1", FORCE_COLOR: "0", ...appEnv(), ...extraEnv };
@@ -115,7 +125,7 @@ function createController(o) {
     const spawnFailed = (e) => {
       logLine("ERR spawn " + e.message);
       notify("Wingman could not start", `${e.message}. Quit Wingman from the menu bar and open it again; if it keeps happening, choose Show log.`);
-      if (c && child === c) child = undefined;
+      if (c && slot.child === c) slot.to("idle");
       set({ ev: "stderr", text: e.message });
       if (c) finished.add(c);
       set({ ev: "exit", code: 1 });
@@ -128,9 +138,12 @@ function createController(o) {
       spawnFailed(e);
       return false;
     }
-    child = c;
+    slot.to("call", { child: c });
     stopSentAt = 0; // a new call: an earlier Stop must not make a quit kill this one at once
-    c.on("error", spawnFailed);
+    // 'error' is a spawn failure only when there is no pid; a later kill or pipe error on a running child must not end the call in the state.
+    c.on("error", (e) => (c.pid ? logLine("ERR child " + e.message) : spawnFailed(e)));
+    // Events of a child that is no longer the current call (an old call being replaced) must not touch the new call's state.
+    const current = () => slot.child === c || (!slot.child && slot.lingering === c);
     c.stdin.on("error", () => {
       /* the call already ended */
     });
@@ -142,8 +155,10 @@ function createController(o) {
     const handleLine = (line) => {
       const msg = lib.parseStatus(line);
       if (!msg) return;
+      if (!current()) return logLine("stale " + line.trim().slice(0, 100));
       logLine(line.trim());
       const before = set(msg);
+      if (state === before) return; // not allowed in this phase: nothing else follows from it
       // A real call is live: record it on the plan (nothing is deleted; a practice call never does). The plan counts as used when the call
       // saved its first memory ({ev:"memory"}, sent by the engine) or, for the engine without memory, when the call ends cleanly.
       if (msg.ev === "consented" && !state.practice && state.planId) usePlan("live");
@@ -177,13 +192,14 @@ function createController(o) {
       const text = errDec.write(d);
       if (!text) return;
       logLine("ERR " + text.trimEnd());
+      if (!current()) return; // an old call's chatter is not the new call's error
       set({ ev: "stderr", text });
       change();
     });
     c.on("exit", (code, signal) => {
       const end = () => {
         finish(c, code, signal);
-        if (lingering === c) lingering = undefined; // (after finish: an exited process is not lingering)
+        if (slot.lingering === c) slot.lingering = undefined; // (after finish: an exited process is not lingering)
       };
       // Node can report "exit" before the last stdout bytes (the "ended" line) are read. Wait for the pipe to end, but not for long:
       // a child process of the call may keep the pipe open. A stream without `readable` (a test double) is not waited for.
@@ -218,7 +234,8 @@ function createController(o) {
    * The meeting is passed with --brief and is NOT used up. False when a call runs, or when the named meeting is gone.
    */
   function practice(o2 = {}) {
-    if (child) return false;
+    if (slot.kind !== "idle") return refuseStart();
+    if (!mayStart()) return false;
     const pid = o2.quick ? "" : o2.planId || (o.plans ? (o.plans.practiceDefault() || {}).id || "" : "");
     const exp = pid && o.plans ? o.plans.exportBrief(pid) : null;
     if (o2.planId && !exp) return false;
@@ -253,9 +270,9 @@ function createController(o) {
         /* a temp folder left behind is harmless */
       }
     };
-    if (ok && child) {
-      child.once("exit", drop);
-      child.once("error", drop); // a spawn that fails (no exit event) must not leave the folder behind
+    if (ok && slot.child) {
+      slot.child.once("exit", drop);
+      slot.child.once("error", drop); // a spawn that fails (no exit event) must not leave the folder behind
     } else drop();
     if (ok)
       notify(
@@ -267,7 +284,7 @@ function createController(o) {
 
   /** Writes one line to the call's stdin. Only the fixed COMMANDS, or "note"/"ask" plus one clean line of text, are allowed; anything else is refused. */
   function send(cmd) {
-    if (!child) return false;
+    if (!slot.child) return false;
     // The call mode: a kind name or a custom mode id, nothing else on the line. The engine checks the name against the kinds and the pack.
     if (/^mode [a-z0-9][a-z0-9-]{0,23}$/.test(cmd)) return write(cmd);
     if (!COMMANDS.includes(cmd) && !/^(note|ask) [^\n\r]{1,300}$/.test(cmd) && !/^speaker (?:[1-9]|1[0-9]|20)(?: [^\n\r]{1,40})?$/.test(cmd)) return false;
@@ -275,8 +292,8 @@ function createController(o) {
   }
   function write(cmd) {
     try {
-      if (child.stdin.writable) {
-        child.stdin.write(cmd + "\n");
+      if (slot.child.stdin.writable) {
+        slot.child.stdin.write(cmd + "\n");
         return true;
       }
     } catch {
@@ -298,7 +315,7 @@ function createController(o) {
   }
   /** Asks the call to stop (and optionally delete or skip the summary), then escalates: SIGINT at 12 s, SIGKILL at 20 s if it is still the same child. */
   function stop(del = false, noSummary = false) {
-    if (!child) return false;
+    if (!slot.child) return false;
     if (state.phase === "stopping") {
       // A plain Stop was pressed and the user now wants the call deleted: the engine takes that until the summary is written.
       if (!del) return false;
@@ -307,7 +324,7 @@ function createController(o) {
       change();
       return true;
     }
-    const c = child;
+    const c = slot.child;
     send(del ? "stop-delete" : noSummary ? "stop-no-summary" : "stop");
     stopSentAt = clock();
     if (del) set({ ev: "stopdelete" });
@@ -315,24 +332,24 @@ function createController(o) {
     set({ ev: "stopping" });
     change();
     st(() => {
-      if (child === c || lingering === c) killGroup(c, "SIGINT"); // (after "ended" the call lingers about 5 s: a hung one is still ended)
+      if (slot.child === c || slot.lingering === c) killGroup(c, "SIGINT"); // (after "ended" the call lingers about 5 s: a hung one is still ended)
     }, 12000); // call.ts: graceful stop
     st(() => {
-      if (child === c || lingering === c) killGroup(c, "SIGKILL");
+      if (slot.child === c || slot.lingering === c) killGroup(c, "SIGKILL");
     }, 20000); // stuck: force everything off (mic included)
     return true;
   }
 
   const api = {
     /** A copy of the current state (phase, call id, health, doctor result, ...) plus `running`. */
-    getState: () => ({ ...state, health: { ...state.health }, running: !!child }),
+    getState: () => ({ ...state, health: { ...state.health }, running: !!slot.child, doctorRunning: slot.kind === "doctor" }),
     /** True while a call child process exists. */
-    isRunning: () => !!child,
+    isRunning: () => !!slot.child,
     /** Stop and save, but do not write the summary (it can be written later from Calls or `wingman calls summary <id> --generate`). */
     stopNoSummary: () => stop(false, true),
     /** While a call is stopping and the summary has not finished: give it up. The call stays saved. */
     skipSummary: () =>
-      !!child &&
+      !!slot.child &&
       state.phase === "stopping" &&
       !state.summarySkipped &&
       state.stopPhase !== "done" &&
@@ -343,7 +360,7 @@ function createController(o) {
      * (--no-brief), which never uses up or changes any prepared meeting. o2.noAi: Prepared cards only.
      */
     start: (o2 = {}) => {
-      if (child) return false;
+      if (slot.kind !== "idle") return refuseStart();
       const ai = o2.noAi ? ["--no-ai"] : [];
       if (!o2.planId) return startCall([...ai, "--no-brief"]);
       const exp = o.plans ? o.plans.exportBrief(o2.planId) : null;
@@ -352,34 +369,34 @@ function createController(o) {
     /** Starts a practice call (see `practice` above). */
     practice,
     /** Sends the listening consent while the call waits for it. Returns false in any other phase. */
-    consent: () => !!child && state.phase === "waiting" && send("consent"),
+    consent: () => !!slot.child && state.phase === "waiting" && send("consent"),
     /** Turns quiet mode on or off during a live call. */
-    setQuiet: (on) => !!child && state.phase === "live" && send(on ? "quiet on" : "quiet off"),
+    setQuiet: (on) => !!slot.child && state.phase === "live" && send(on ? "quiet on" : "quiet off"),
     /** "The next thing I say is for you": Ctrl+Opt+A. Works whenever the call is listening. */
-    askWingman: () => !!child && state.phase === "live" && send("ask"),
+    askWingman: () => !!slot.child && state.phase === "live" && send("ask"),
     /** "Catch me up" (Ctrl+Opt+U, `wingman recap`): the engine writes the five-line recap sheet. Only while the call is live. */
-    recap: () => !!child && state.phase === "live" && send("recap"),
+    recap: () => !!slot.child && state.phase === "live" && send("recap"),
     /** Confirms the client Wingman has proposed. False when nothing is proposed or one is already confirmed. */
-    confirmClient: () => !!child && !!state.proposed && !state.client && send("client"),
+    confirmClient: () => !!slot.child && !!state.proposed && !state.client && send("client"),
     /** Adds a note (cleaned, at most 300 characters) to the live call. */
     note: (text) => {
       const t = lib.cleanText(text, 300);
-      return !!child && state.phase !== "stopping" && !!t && send("note " + t);
+      return !!slot.child && state.phase !== "stopping" && !!t && send("note " + t);
     },
     /** A typed question for the live call (the CLI's `wingman ask`; the `ask <text>` stdin command in run.ts). */
     ask: (text) => {
       const t = lib.cleanText(text, 300);
-      return !!child && state.phase === "live" && !!t && send("ask " + t);
+      return !!slot.child && state.phase === "live" && !!t && send("ask " + t);
     },
     /** Rename (or, with an empty name, clear) the other side's call-local speaker n (1-20): the `speaker <n> <name>` stdin command in run.ts. */
     speaker: (n, name) => {
       if (!Number.isInteger(n) || n < 1 || n > 20 || typeof name !== "string") return false;
       const t = lib.cleanText(name, 40);
       if (name.trim() && !t) return false;
-      return !!child && state.phase !== "stopping" && send(t ? `speaker ${n} ${t}` : `speaker ${n}`);
+      return !!slot.child && state.phase !== "stopping" && send(t ? `speaker ${n} ${t}` : `speaker ${n}`);
     },
     /** The call mode: a built-in kind, a custom mode id from the pack, or "auto". Only while the call is live; the engine refuses an id it does not know. */
-    mode: (kind) => typeof kind === "string" && /^[a-z0-9][a-z0-9-]{0,23}$/.test(kind) && !!child && state.phase === "live" && send("mode " + kind),
+    mode: (kind) => typeof kind === "string" && /^[a-z0-9][a-z0-9-]{0,23}$/.test(kind) && !!slot.child && state.phase === "live" && send("mode " + kind),
     /** Stops the call gracefully and saves it with its summary. */
     stop: () => stop(false),
     /** Stops the call and deletes it. Callers must ask the user first. */
@@ -415,21 +432,22 @@ function createController(o) {
       }
     },
     /** Full doctor (microphone, audio, Deepgram, Haiku). Refused while a call runs. Resolves to lib.doctorSummary. */
-    runDoctor: (opts = {}) =>
-      new Promise((resolve) => {
-        if (child)
-          return resolve({
-            ran: false,
-            ok: false,
-            verdict: "BUSY",
-            failing: [{ text: "A call is running. Check again after it ends.", fix: "" }],
-            warnings: [],
-            at: Date.now(),
-          });
-        if (state.doctorRunning) return resolve(state.doctor);
+    runDoctor: (opts = {}) => {
+      if (slot.child)
+        return Promise.resolve({
+          ran: false,
+          ok: false,
+          verdict: "BUSY",
+          failing: [{ text: "A call is running. Check again after it ends.", fix: "" }],
+          warnings: [],
+          at: Date.now(),
+        });
+      // A check is already running: every caller gets that same check's result (the first one decides `offline`).
+      if (slot.doctor) return slot.doctor.promise;
+      const promise = new Promise((resolve) => {
         const [dcmd, dargs] = binCmd("tsx", [path.join(root, "src", "doctor.ts"), ...(opts.offline ? ["--offline"] : [])]);
         const p = o.spawn(dcmd, dargs, { cwd: root, env: { ...(o.env || process.env), FORCE_COLOR: "0", ...appEnv() }, detached: true });
-        doctorProc = p;
+        slot.to("doctor", { proc: p, promise: undefined });
         let out = "";
         const dd = new StringDecoder("utf8"),
           de = new StringDecoder("utf8");
@@ -443,7 +461,7 @@ function createController(o) {
           if (done) return;
           done = true;
           if (timer) clearTimeout(timer);
-          if (doctorProc === p) doctorProc = undefined;
+          if (slot.doctor && slot.doctor.proc === p) slot.to("idle");
           const r = lib.doctorSummary(out);
           set({ ev: "doctor.end", result: r });
           change();
@@ -464,20 +482,23 @@ function createController(o) {
           p.stdout.once("close", fin);
           st(fin, STDOUT_DRAIN_MS);
         });
-      }),
+      });
+      if (slot.doctor) slot.doctor.promise = promise; // (the executor ran synchronously; a check that already finished leaves the slot idle)
+      return promise;
+    },
     /** App is quitting. The timers below would never run (the app exits right after), so nothing may depend on them:
      *  a call that was already asked to stop more than QUIT_GRACE_MS ago and is still alive is wedged, and its whole process group gets SIGKILL now,
      *  synchronously (it is detached and would otherwise outlive the app with the mic open). A lingering call.ts (already saved) is killed at once.
      *  A call that was not asked yet gets the stop command; it also stops by itself when its control pipe closes with the app. */
     shutdown: () => {
-      if (doctorProc) killGroup(doctorProc, "SIGKILL");
-      if (lingering) {
-        const l = lingering;
-        lingering = undefined;
+      if (slot.doctor) killGroup(slot.doctor.proc, "SIGKILL");
+      if (slot.lingering) {
+        const l = slot.lingering;
+        slot.lingering = undefined;
         killGroup(l, "SIGKILL");
       }
-      if (!child) return;
-      const c = child;
+      if (!slot.child) return;
+      const c = slot.child;
       if (stopSentAt && clock() - stopSentAt > QUIT_GRACE_MS) {
         killGroup(c, "SIGKILL");
         return;

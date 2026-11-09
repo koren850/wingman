@@ -159,11 +159,14 @@ const startKey = lib.createStartKey({
   log: logLine,
 });
 const confirmDelete = () => void lib.confirmStopDelete({ dialog, stopDelete: () => ctl.stopDelete() }).catch(() => {});
-let quitting = false;
-/** Quit with a confirmation when a call runs. `quitting` stops a second quit click while the first is still stopping the call. */
+// The app's quit state: "running" -> "confirmingQuit" (the dialog is open) -> "quitting" (the call is stopping, then the app exits).
+// A second quit click is ignored outside "running"; no new call starts in "quitting" (the controller asks canStart); a quit that is
+// cancelled or fails goes back to "running".
+let appPhase = "running";
+/** Quit with a confirmation when a call runs. */
 function quitApp() {
-  if (quitting) return;
-  quitting = true;
+  if (appPhase !== "running") return;
+  appPhase = "confirmingQuit";
   lib
     .requestQuit({
       isRunning: () => ctl.isRunning(),
@@ -175,17 +178,26 @@ function quitApp() {
         message: tt(uiLanguage(), "quitMessage"),
         detail: tt(uiLanguage(), "quitDetail"),
       },
+      onStopping: () => {
+        appPhase = "quitting";
+      },
       quit: () => {
         allowQuit = true;
+        appPhase = "quitting";
         app.quit();
+        // If something cancels the quit (the system, another handler), the app is still here a moment later: allow quitting again.
+        setTimeout(() => {
+          allowQuit = false;
+          appPhase = "running";
+        }, 5000).unref();
       },
       whenStopped: () => lib.waitUntil(() => !ctl.isRunning(), 25_000),
     })
     .then((r) => {
-      if (r === "kept") quitting = false;
+      if (r === "kept") appPhase = "running";
     })
     .catch(() => {
-      quitting = false;
+      appPhase = "running";
     });
 }
 
@@ -220,18 +232,19 @@ function refresh() {
     } catch {
       /* the menu still works without the list */
     }
-    items.push({ label: t("quick"), click: () => ctl.start({}) });
+    const idle = !s.doctorRunning; // a call and the readiness check use the same mic: no start while it runs
+    items.push({ label: t("quick"), enabled: idle, click: () => ctl.start({}) });
     items.push({
       label: t("prepared"),
-      enabled: meetings.length > 0,
+      enabled: idle && meetings.length > 0,
       submenu: meetings.length
         ? meetings.map((m) => ({ label: m.label, click: () => ctl.start({ planId: m.planId }) }))
         : [{ label: t("noPrepared"), enabled: false }],
     });
-    items.push({ label: t("quickNoAi"), click: () => ctl.start({ noAi: true }) });
+    items.push({ label: t("quickNoAi"), enabled: idle, click: () => ctl.start({ noAi: true }) });
     items.push({ label: t("prepare"), click: () => openWindow({ view: "home", focus: "plan" }) });
     items.push({ type: "separator" });
-    items.push({ label: t("practice"), click: () => ctl.practice() });
+    items.push({ label: t("practice"), enabled: idle, click: () => ctl.practice() });
   } else {
     if (s.phase === "waiting") items.push({ label: t("startListening"), accelerator: KEYS.consent, registerAccelerator: false, click: () => ctl.consent() });
     if (s.proposed && !s.client) items.push({ label: t("confirmClient", { name: s.proposed }), click: () => ctl.confirmClient() });
@@ -346,6 +359,7 @@ app.whenReady().then(() => {
   }
   ctl = createController({
     captureEnv: () => (captureBridge ? captureBridge.env() : {}),
+    canStart: () => appPhase !== "quitting", // no new call while the app stops the call to quit
     uiLanguage,
     // Snapshot mode can never start anything: the spawn function itself refuses.
     spawn: SNAPSHOT

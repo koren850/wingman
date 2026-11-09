@@ -344,3 +344,57 @@ test("log: sweepLive removes stale live.jsonl from old calls, never the current 
   assert.ok(!existsSync(join(calls, "old", "live.jsonl")) && existsSync(join(calls, "cur", "live.jsonl")) && existsSync(join(calls, "fresh", "live.jsonl")));
   rmSync(calls, { recursive: true, force: true });
 });
+
+test("L14: the next source starts only after the old one has stopped (no two holders of the mic)", async () => {
+  const made: Fake[] = [];
+  let live = 0,
+    maxLive = 0;
+  class Slow extends Fake {
+    async start() {
+      live++;
+      maxLive = Math.max(maxLive, live);
+      await super.start();
+    }
+    async stop() {
+      await sleep(120); // a slow ffmpeg shutdown
+      live--;
+      await super.stop();
+    }
+  }
+  const s = new SupervisedSource({
+    name: "t",
+    backoff: () => 0,
+    make: () => {
+      const f = new Slow();
+      made.push(f);
+      return f;
+    },
+  });
+  await s.start();
+  made[0].die("exited");
+  await until(() => made.length === 2);
+  await sleep(60);
+  assert.equal(maxLive, 1, "the second source did not start while the first was stopping");
+  await s.stop();
+});
+
+test("L14: start() called twice leaves one source and one stall timer", async () => {
+  const made: Fake[] = [];
+  const s = new SupervisedSource({
+    name: "t",
+    backoff: fast,
+    stallMs: 200,
+    make: () => {
+      const f = new Fake();
+      made.push(f);
+      return f;
+    },
+  });
+  await s.start();
+  await s.start();
+  assert.equal(made.length, 2);
+  assert.ok(made[0].stopped, "the first source was stopped");
+  await s.stop();
+  assert.equal((s as any).stallTimer?._destroyed ?? true, true, "the stall timer is gone after stop");
+  assert.ok(made[1].stopped);
+});

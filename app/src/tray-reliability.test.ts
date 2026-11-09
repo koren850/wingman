@@ -149,7 +149,7 @@ test("Cmd+Q while a call runs goes through the quit confirmation", () => {
   const src = read("tray/main.cjs");
   const bq = src.slice(src.indexOf('app.on("before-quit"'));
   assert.match(bq, /!allowQuit && ctl && ctl\.isRunning\(\)[\s\S]*e\.preventDefault\(\)[\s\S]*quitApp\(\)/);
-  assert.match(src, /quit: \(\) => \{\s*allowQuit = true;\s*app\.quit\(\);/);
+  assert.match(src, /quit: \(\) => \{\s*allowQuit = true;\s*appPhase = "quitting";\s*app\.quit\(\);/);
 });
 
 test("a dead overlay page stops the poll until the reload starts it again", () => {
@@ -162,4 +162,45 @@ test("a dead overlay page stops the poll until the reload starts it again", () =
 test("call.ts handles a failed spawn of the engine", () => {
   const src = read("src/call.ts");
   assert.match(src, /run\.on\("error", \(e\) => \{[\s\S]*finalExit\(1\)/);
+});
+
+test("M7: the quit tells the caller when the call is being stopped, and a kept call does not", async () => {
+  const seen: string[] = [];
+  const base = {
+    isRunning: () => true,
+    stop: () => seen.push("stop"),
+    quit: () => seen.push("quit"),
+    onStopping: () => seen.push("onStopping"),
+    whenStopped: async () => true,
+  };
+  await lib.requestQuit({ ...base, dialog: { showMessageBox: async () => ({ response: 0 }) } });
+  assert.deepEqual(seen, [], "Keep: nothing happens");
+  await lib.requestQuit({ ...base, dialog: { showMessageBox: async () => ({ response: 1 }) } });
+  assert.deepEqual(seen, ["onStopping", "stop", "quit"], "onStopping comes before the stop, so no call can start in between");
+});
+
+test("M7: main.cjs keeps one quit state, passes canStart to the controller and resets a cancelled quit", () => {
+  const src = read("tray/main.cjs");
+  assert.match(src, /let appPhase = "running"/);
+  assert.match(src, /if \(appPhase !== "running"\) return;/);
+  assert.match(src, /canStart: \(\) => appPhase !== "quitting"/);
+  assert.match(src, /allowQuit = false;\s*appPhase = "running";/);
+});
+
+test("L10: call.ts tells the tray when the engine died without an ended line, and keeps the engine's exit code", () => {
+  const src = read("src/call.ts");
+  const exit = src.slice(src.indexOf('run.on("exit"'));
+  assert.match(exit, /runCode = code \?\? \(signal \? 1 : 0\)/);
+  assert.match(exit, /if \(runCode !== 0\) status\("ended", \{ crashed: true/);
+  assert.match(src, /if \(life === "runGone"\) return finalExit\(runCode\)/, "a stop during the linger keeps the real exit code");
+  assert.doesNotMatch(src, /runExited|let stopping/, "the three flags are one state");
+});
+
+test("L10: a second ended line after the call finished does not change the tray state", async () => {
+  const { createRequire } = await import("node:module");
+  const lib = createRequire(import.meta.url)("../tray/lib.cjs");
+  let st = lib.reduce(lib.initialState(), { ev: "starting" });
+  st = lib.reduce(st, { ev: "ended", id: "A" });
+  st = lib.reduce(st, { ev: "exit", code: 0 });
+  assert.equal(lib.reduce(st, { ev: "ended", crashed: true }), st);
 });

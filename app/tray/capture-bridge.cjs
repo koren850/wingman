@@ -75,7 +75,12 @@ function createCaptureBridge(o) {
       if (before && before !== sock) send(before, { ev: "ended", ch: msg.ch, reason: "another program took over the audio capture" });
       try {
         const r = await o.host.start(msg.ch, { name: typeof msg.name === "string" ? msg.name : "" });
-        if (owner[msg.ch] !== sock) return; // a newer start or a stop came meanwhile
+        if (owner[msg.ch] !== sock) {
+          // A newer start or a stop came meanwhile. A newer start owns the channel now; with no owner at all (the engine closed or stopped
+          // while the host was starting) nobody wants the capture: stop it, or the mic stays on with nobody listening.
+          if (owner[msg.ch] === undefined) await o.host.stop(msg.ch).catch(() => {});
+          return;
+        }
         reply({ ev: "started", ch: msg.ch, fellBack: !!r.fellBack });
       } catch (e) {
         if (owner[msg.ch] === sock) owner[msg.ch] = undefined;

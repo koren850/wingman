@@ -12,7 +12,9 @@ const permissions = require("../shared/permissions.cjs");
 
 type Cmd = { id: number; op: string; ch?: string; name?: string };
 
-function env(o: { platform?: string; mic?: string; ask?: boolean; sources?: unknown[] } = {}) {
+function env(
+  o: { platform?: string; mic?: string; ask?: boolean; sources?: unknown[]; askGate?: Promise<void>; execGate?: Promise<void>; loadFails?: boolean } = {},
+) {
   const ipc = new EventEmitter();
   const wins: FakeWin[] = [];
   const grants: [unknown, string[]][] = [];
@@ -32,13 +34,14 @@ function env(o: { platform?: string; mic?: string; ask?: boolean; sources?: unkn
           this.onCommand?.(cmd);
         },
         setWindowOpenHandler: () => {},
+        executeJavaScript: () => o.execGate ?? Promise.resolve(),
       });
       wins.push(this);
     }
     onCommand?: (c: Cmd) => void;
     loadFile(f: string) {
       this.loaded = f;
-      return Promise.resolve();
+      return o.loadFails ? Promise.reject(new Error("ERR_FILE_NOT_FOUND")) : Promise.resolve();
     }
     isDestroyed() {
       return this.destroyed;
@@ -65,6 +68,7 @@ function env(o: { platform?: string; mic?: string; ask?: boolean; sources?: unkn
       getMediaAccessStatus: () => o.mic ?? "granted",
       askForMediaAccess: async () => {
         asked.push("ask");
+        if (o.askGate) await o.askGate;
         return o.ask ?? true;
       },
     },
@@ -314,4 +318,89 @@ test("host: a failing gesture script does not stop the system start", async () =
   await new Promise((r) => setImmediate(r));
   ipcReply(e, w, w.sent.at(-1)!.id, { ok: true });
   assert.deepEqual(await p, { fellBack: false });
+});
+
+// ---- Round 16: explicit channel state (tray/capture-chan.cjs) ----
+
+test("H1: a stop during the microphone prompt cancels the start; the mic is not opened after Allow", async () => {
+  let allow!: () => void;
+  const e = env({ mic: "not-determined", ask: true, askGate: new Promise<void>((r) => (allow = r)) });
+  const starting = e.host.start("mic", {});
+  const outcome = starting.then(
+    () => "started",
+    (x: any) => x.code,
+  );
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(e.asked, ["ask"], "the prompt is open");
+  assert.equal(e.wins.length, 0, "no window yet, so stop has nothing to send");
+  await e.host.stop("mic"); // the engine socket closed
+  allow(); // the user clicks Allow
+  assert.equal(await outcome, "cancelled");
+  assert.equal(e.wins.length, 0, "the window was never opened");
+  assert.equal(e.host.isRunning("mic"), false);
+  // the channel is usable again afterwards
+  const again = env();
+  const p = again.host.start("mic", {});
+  await new Promise((r) => setImmediate(r));
+  ipcReply(again, again.wins[0], again.wins[0].sent[0].id, { ok: true });
+  await p;
+  assert.equal(again.host.isRunning("mic"), true);
+});
+
+test("H1: on Windows a stop that overtakes the start gesture means the start command is never sent", async () => {
+  let go!: () => void;
+  const e = env({ platform: "win32", execGate: new Promise<void>((r) => (go = r)) });
+  const starting = e.host.start("system", {});
+  const outcome = starting.then(
+    () => "started",
+    (x: any) => x.code,
+  );
+  await new Promise((r) => setImmediate(r));
+  const w = e.wins[0];
+  const stopping = e.host.stop("system");
+  await new Promise((r) => setImmediate(r));
+  ipcReply(e, w, w.sent.find((c) => c.op === "stop")!.id, { ok: true });
+  await stopping;
+  go();
+  assert.equal(await outcome, "cancelled");
+  assert.deepEqual(
+    w.sent.map((c) => c.op),
+    ["stop"],
+    "no start reached the page after the stop",
+  );
+  assert.equal(e.host.isRunning("system"), false);
+});
+
+test("H1: a stop while the page is still starting leaves the channel stopped", async () => {
+  const e = env();
+  const starting = e.host.start("mic", {});
+  const outcome = starting.then(
+    () => "started",
+    (x: any) => x.code,
+  );
+  await new Promise((r) => setImmediate(r));
+  const w = e.wins[0];
+  const startCmd = w.sent[0];
+  const stopping = e.host.stop("mic");
+  await new Promise((r) => setImmediate(r));
+  ipcReply(e, w, startCmd.id, { ok: true });
+  ipcReply(e, w, w.sent.find((c) => c.op === "stop")!.id, { ok: true });
+  await stopping;
+  assert.equal(await outcome, "cancelled");
+  assert.equal(e.host.isRunning("mic"), false);
+});
+
+test("M9: a capture window that fails to load is destroyed, and a retry opens a fresh one", async () => {
+  const e = env({ loadFails: true });
+  for (let i = 0; i < 3; i++)
+    await assert.rejects(
+      () => e.host.start("mic", {}),
+      (x: any) => x.code === "failed" && /did not load/.test(x.message),
+    );
+  assert.equal(e.wins.length, 3);
+  assert.ok(
+    e.wins.every((w) => w.destroyed),
+    "no hidden window is left behind",
+  );
+  assert.equal(e.host.isRunning("mic"), false);
 });

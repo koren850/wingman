@@ -110,3 +110,48 @@ test("connect: in a preview nothing is checked or saved", async () => {
   assert.equal(h.saved.size, 0);
   assert.equal(h.requests.length, 0);
 });
+
+test("L12: a connect that finishes after a newer paste does not overwrite it, and a remove during a connect is not undone", async () => {
+  const slow: Array<() => void> = [];
+  const saved = new Map<string, string>();
+  const handlers = new Map<string, (...a: any[]) => any>();
+  let n = 0;
+  ipc.register({
+    handle: (name: string, fn: any) => handlers.set(name, fn),
+    getWin: () => ({}),
+    dialog: { showMessageBox: async () => ({ response: 1 }) },
+    keysFile: async () => "/nonexistent/keys.env",
+    fake: "",
+    store: {
+      kind: "dpapi",
+      get: (p: string) => saved.get(p) ?? null,
+      set: (p: string, v: string) => (saved.set(p, v), true as const),
+      remove: (p: string) => saved.delete(p),
+    },
+    env: {},
+    // the first check is slow (it answers after the second one), the later ones answer at once
+    fetch: (_url: string) =>
+      n++ === 0 ? new Promise((r) => slow.push(() => r({ status: 200, json: async () => ({}) }))) : Promise.resolve({ status: 200, json: async () => ({}) }),
+    now: () => 1000,
+  });
+  const call = (name: string, ...a: any[]) => handlers.get(name)!(...a);
+  const OLD = KEY,
+    NEW = "sk-ant-TESTONLY0123456789abcdefghijkl9F2b";
+  const first = call("keys:connect", "anthropic", OLD);
+  const second = await call("keys:connect", "anthropic", NEW);
+  assert.equal(second.saved, true);
+  slow[0]();
+  const r1 = await first;
+  assert.equal(r1.saved, false);
+  assert.equal(r1.result, "superseded");
+  assert.equal(saved.get("anthropic"), NEW, "the newer key stays");
+  // remove during a connect
+  n = 0;
+  slow.length = 0;
+  saved.set("deepgram", "dgOLDKEY0123456789abcdefABCDEF1234Zz"); // something to remove
+  const third = call("keys:connect", "deepgram", DG);
+  await call("keys:remove", "deepgram");
+  slow[0]();
+  assert.equal((await third).saved, false);
+  assert.equal(saved.has("deepgram"), false);
+});

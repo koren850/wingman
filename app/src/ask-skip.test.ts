@@ -31,7 +31,7 @@ test("askSecondsLeft / askClock: whole seconds rounded up, nothing when not arme
 });
 
 test("tray reducer keeps the real armed deadline and drops it on disarm, stop and exit", () => {
-  let s = trayLib.reduce(trayLib.initialState(), { ev: "consented" });
+  let s = trayLib.reduce(trayLib.reduce(trayLib.initialState(), { ev: "starting" }), { ev: "consented" });
   s = trayLib.reduce(s, { ev: "ask", on: true, until: 123456 });
   assert.equal(s.askArmed, true);
   assert.equal(s.askUntil, 123456);
@@ -42,7 +42,7 @@ test("tray reducer keeps the real armed deadline and drops it on disarm, stop an
 
 test("tray status, title and menu key show the seconds left while armed, and only then", () => {
   const now = 10_000_000;
-  let s = trayLib.reduce(trayLib.initialState(), { ev: "consented" });
+  let s = trayLib.reduce(trayLib.reduce(trayLib.initialState(), { ev: "starting" }), { ev: "consented" });
   s = { ...s, liveAt: now - 5000 };
   const idle = trayLib.view(s, now);
   assert.doesNotMatch(idle.statusLine, /question/);

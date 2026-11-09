@@ -1127,3 +1127,19 @@ test("cli: digest keeps the raw text as plain background without a key, saves di
   assert.equal((await run("digest", "--json")).code, 2, "nothing to digest is a usage error");
   assert.equal((await run("digest", join(h, "missing.txt"), "--json")).code, 5);
 });
+
+test("M8: wingman start reports a failure when the call never started (the engine exits at once)", async () => {
+  const r = await rig();
+  try {
+    const run = r.run("start", "--quick", "--json");
+    await new Promise((res) => setTimeout(res, 150));
+    r.f.spawned[0].stderr.emit("data", Buffer.from("DEEPGRAM_API_KEY is missing\n"));
+    r.f.spawned[0].emit("exit", 2);
+    const out = await run;
+    assert.equal(out.code, 1, out.out + out.err);
+    assert.equal(out.json.error.code, "start_failed");
+    assert.match(out.json.error.message, /did not start.*DEEPGRAM_API_KEY/);
+  } finally {
+    await r.done();
+  }
+});

@@ -276,6 +276,25 @@ function speakerNames(rows) {
   return out;
 }
 
+const SUMMARY_BACKGROUND_MS = 10 * 60_000; // the background writer has up to 3 min for the model call; after this long it is taken as gone
+
+/**
+ * Is a call's summary still being written by the background process the engine started at the end of a long call?
+ * True when the last summary event is `summary.background`, nothing was written yet and it is not older than SUMMARY_BACKGROUND_MS.
+ * (summary.done / summary.error / summary.skipped after it end the wait; so does a summary.json.)
+ */
+function summaryPending(events, hasSummary, now = Date.now()) {
+  if (hasSummary) return false;
+  const last = (events || []).filter((e) => e && /^summary\.(background|done|error|skipped)$/.test(e.type)).at(-1);
+  return !!last && last.type === "summary.background" && now - (Number(last.t) || 0) < SUMMARY_BACKGROUND_MS;
+}
+
+/** summaryPending for the call folder of `id`. */
+function callSummaryPending(callsDir, id, now = Date.now()) {
+  const dir = callDir(callsDir, id);
+  return summaryPending(read(dir, "events.jsonl"), !!readSummary(dir), now);
+}
+
 /** Everything the call view needs: summary, meta, call summary, frame, transcript, cards (last version each), captures, events, latency, usage (provider internals removed) and ratings by card id. */
 function getCall(callsDir, id) {
   const dir = callDir(callsDir, id);
@@ -291,11 +310,14 @@ function getCall(callsDir, id) {
   }
   const tags = {};
   for (const t of read(dir, "tags.jsonl")) if (t && t.id && (t.useful === "y" || t.useful === "n")) tags[t.id] = t.useful;
+  const events = read(dir, "events.jsonl");
+  const callSummary = readSummary(dir);
   return {
     summary: summarize(callsDir, id),
     meta: readJson(dir, "call.json"),
-    callSummary: readSummary(dir),
-    callFrame: readFrame(read(dir, "events.jsonl")),
+    callSummary,
+    summaryPending: summaryPending(events, !!callSummary), // the engine handed a long call's summary to a background process: it is still being written
+    callFrame: readFrame(events),
     memory: memLib.afterCall(callsDir, id), // open loops and decisions from the call memory (null when the call has none)
     transcript: read(dir, "transcript.jsonl").map((r) => ({
       t: r.t,
@@ -307,7 +329,7 @@ function getCall(callsDir, id) {
     speakers: speakerNames(rows),
     cards: [...final.values()],
     captures: rows.filter((c) => c.type === "capture"),
-    events: read(dir, "events.jsonl"),
+    events,
     latency: read(dir, "latency.jsonl"),
     usage: read(dir, "usage.jsonl").map((u) => {
       const { usage: _u, providerMetadata: _p, ...rest } = u;
@@ -406,6 +428,8 @@ module.exports = {
   listCalls,
   listCallsAsync,
   getCall,
+  summaryPending,
+  callSummaryPending,
   setTag,
   searchCalls,
   deleteCall,

@@ -68,6 +68,10 @@ function register(o) {
       return "";
     }
   };
+  // Last request wins, per provider: every connect, set and remove takes a number; a connect whose check finishes after a newer request
+  // (another paste, a remove) is dropped instead of saving an old key over the newer state.
+  const latest = {};
+  const take = (p) => (latest[p] = (latest[p] || 0) + 1);
   // Handlers never throw a message that could contain a value: failures come back as {ok:false, message} with fixed text.
   o.handle("keys:status", () => status());
   o.handle("keys:set", async (p, value) => {
@@ -76,6 +80,7 @@ function register(o) {
     if (!limit()) return { ok: false, message: "Too many tries. Wait a minute." };
     const bad = kc.checkKeyFormat(p, value);
     if (bad) return { ok: false, message: bad };
+    take(p);
     try {
       keychain.set(p, value);
     } catch (e) {
@@ -95,7 +100,9 @@ function register(o) {
     if (fake) return preview;
     if (!limitConnect()) return { ok: false, result: "limit", saved: false };
     if (kc.checkKeyFormat(p, value)) return { ok: false, result: "format", saved: false };
+    const mine = take(p);
     const result = await checkKey(p, value, o.fetch);
+    if (latest[p] !== mine) return { ok: false, result: "superseded", saved: false, state: await status() }; // a newer paste or a remove came while the service answered
     if (result !== "ok" && result !== "nocredit") return { ok: false, result, saved: false };
     try {
       keychain.set(p, value);
@@ -140,6 +147,7 @@ function register(o) {
       detail: "Calls need it. You can paste it again later.",
     });
     if (r !== 1) return { ok: true, cancelled: true, state: await status() };
+    take(p); // a connect that is still checking must not save its key after this
     return { ok: kc.PROVIDERS.includes(p) && keychain.remove(p), state: await status() };
   });
   // Only ever called from the button. Never from startup.

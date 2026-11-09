@@ -195,6 +195,7 @@ test("a finished call keeps its id and summary flag for the 'summary ready' card
 test("spawn error and crash return to idle with the error kept", () => {
   const { ctl, spawned, notes } = fake();
   ctl.start({});
+  spawned[0].pid = undefined; // Node gives a child that never started no pid
   spawned[0].emit("error", new Error("ENOENT tsx"));
   assert.equal(ctl.isRunning(), false);
   assert.equal(ctl.getState().phase, "idle");
@@ -298,4 +299,144 @@ test("uiLanguageOf: explicit language wins; auto is English only when the call l
   assert.equal(uiLanguageOf({ "ui.language": "auto", "stt.language": "en" }), "en");
   assert.equal(uiLanguageOf({ "ui.language": "auto", "stt.language": "multi" }), "he");
   assert.equal(uiLanguageOf(null), "he");
+});
+
+// ---- Round 16: explicit state (tray/slot.cjs, the phase edges in tray/lib.cjs) ----
+
+test("M4: a late consented after Stop does not bring the call back to live, and a second Stop sends nothing", () => {
+  const { ctl, spawned, timers } = fake();
+  ctl.start({});
+  const c = spawned[0];
+  c.say("waiting", { id: "01ABC" });
+  assert.equal(ctl.consent(), true);
+  assert.equal(ctl.stop(), true);
+  assert.equal(ctl.getState().phase, "stopping");
+  c.say("consented", { id: "01ABC" }); // the engine had taken "consent" before "stop"
+  assert.equal(ctl.getState().phase, "stopping", "still stopping");
+  assert.equal(ctl.getState().liveAt, 0);
+  assert.equal(ctl.askWingman(), false, "Ask stays disabled");
+  assert.equal(ctl.stop(), false, "a second plain Stop is refused");
+  assert.deepEqual(c.written, ["consent\n", "stop\n"]);
+  assert.equal(timers.length, 2, "one SIGINT and one SIGKILL timer, not two pairs");
+  c.say("ended", { id: "01ABC" });
+  assert.equal(ctl.getState().phase, "idle");
+});
+
+test("M4: a late waiting while live is ignored; the phase table allows only forward edges", () => {
+  const lib = createRequire(import.meta.url)("../tray/lib.cjs");
+  assert.equal(lib.canMove("live", "waiting"), false);
+  assert.equal(lib.canMove("stopping", "live"), false);
+  assert.equal(lib.canMove("starting", "live"), true, "a practice call has no waiting phase");
+  assert.equal(lib.canMove("stopping", "idle"), true);
+  const live = lib.reduce(lib.reduce(lib.initialState(), { ev: "starting" }), { ev: "consented" });
+  assert.equal(lib.reduce(live, { ev: "waiting", id: "X" }), live, "the same object comes back for an ignored event");
+});
+
+test("H2: a call cannot start while the readiness check runs, and can after it", async () => {
+  const { ctl, spawned } = fake();
+  const p = ctl.runDoctor();
+  assert.equal(ctl.getState().doctorRunning, true);
+  assert.equal(ctl.start({}), false, "start refused during the check");
+  assert.equal(ctl.practice(), false, "practice refused during the check");
+  assert.equal(spawned.length, 1, "no call process was spawned");
+  assert.equal(ctl.isRunning(), false);
+  spawned[0].stdout.emit("data", "NOT READY: x\n");
+  spawned[0].emit("exit", 1);
+  await p;
+  assert.equal(ctl.getState().doctorRunning, false);
+  assert.equal(ctl.start({}), true);
+  assert.equal(spawned.length, 2);
+});
+
+test("M6: a second readiness request gets the running check's result, never null", async () => {
+  const { ctl, spawned } = fake();
+  const a = ctl.runDoctor();
+  const b = ctl.runDoctor({ offline: true });
+  assert.equal(spawned.length, 1, "one check process");
+  spawned[0].stdout.emit("data", "Wingman doctor\n  ✅ settings valid\n\nREADY\n");
+  spawned[0].emit("exit", 0);
+  const [ra, rb] = await Promise.all([a, b]);
+  assert.ok(ra && rb);
+  assert.equal(rb, ra);
+  assert.equal(rb.verdict, "READY");
+});
+
+test("M5: lines and errors from an old call do not touch the new call", () => {
+  const { ctl, spawned, timers, notes } = fake();
+  ctl.start({});
+  const a = spawned[0];
+  a.say("waiting", { id: "A" });
+  a.say("ended", { id: "A" }); // A saved and lingers for its answer window
+  assert.equal(ctl.start({}), true, "B starts while A lingers");
+  const b = spawned[1];
+  assert.ok(timers.length > 0);
+  a.stderr.emit("data", Buffer.from("answer window closed badly\n"));
+  a.say("overlay", { reason: "closed" });
+  a.say("health", { id: "stt", level: "red", text: "old" });
+  assert.equal(ctl.getState().lastError, "", "A's stderr is not B's error");
+  assert.equal(ctl.getState().overlayDown, "");
+  assert.deepEqual(ctl.getState().health, {});
+  a.emit("exit", 1, null);
+  assert.equal(ctl.isRunning(), true, "A's exit does not end B");
+  assert.equal(ctl.getState().phase, "starting");
+  assert.ok(!notes.includes("Wingman stopped unexpectedly"));
+  b.say("waiting", { id: "B" });
+  assert.equal(ctl.getState().callId, "B");
+});
+
+test("M5: an error event on a running child (it has a pid) is logged, not a spawn failure", () => {
+  const { ctl, spawned } = fake();
+  ctl.start({});
+  spawned[0].say("waiting", { id: "X" });
+  spawned[0].emit("error", new Error("kill EPERM"));
+  assert.equal(ctl.isRunning(), true);
+  assert.equal(ctl.getState().phase, "waiting");
+});
+
+test("H3: a background summary is not reported as a failure, and the state says so", () => {
+  const { ctl, spawned, notes } = fake();
+  ctl.start({});
+  const c = spawned[0];
+  c.say("waiting", { id: "01ABC" });
+  c.say("consented");
+  c.say("stopping");
+  c.say("summary", { ok: false, background: true, id: "01ABC" });
+  assert.equal(ctl.getState().summaryState, "background");
+  assert.ok(!notes.includes("No call summary"), "no false failure notice");
+  assert.ok(notes.includes("Call summary is being written"));
+  c.say("ended", { id: "01ABC" });
+  c.say("summary", { ok: false }); // a real failure still says so
+  assert.equal(ctl.getState().summaryState, "failed");
+});
+
+test("H3: the dashboard treats a summary.background event with no summary as still being written", () => {
+  const { summaryPending } = createRequire(import.meta.url)("../dashboard/lib.cjs");
+  const now = 1_000_000_000_000;
+  const bg = { type: "summary.background", t: now - 60_000 };
+  assert.equal(summaryPending([bg], false, now), true);
+  assert.equal(summaryPending([bg], true, now), false, "a summary.json ends the wait");
+  assert.equal(summaryPending([bg, { type: "summary.error", t: now - 1000 }], false, now), false);
+  assert.equal(summaryPending([bg, { type: "summary.done", t: now - 1000 }], false, now), false);
+  assert.equal(summaryPending([{ ...bg, t: now - 11 * 60_000 }], false, now), false, "a writer that is gone does not block forever");
+  assert.equal(summaryPending([], false, now), false);
+});
+
+test("H3: Write summary is refused while the background writer runs", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(join(ROOT, "dashboard", "window.cjs"), "utf8");
+  assert.match(src, /data\.callSummaryPending\(CALLS, id\)[\s\S]{0,120}still being written/);
+});
+
+test("M7: no call or practice call starts while the app is stopping the call to quit", () => {
+  let quitting = false;
+  const { ctl, spawned } = fake({ canStart: () => !quitting });
+  assert.equal(ctl.start({}), true);
+  spawned[0].say("waiting", { id: "A" });
+  spawned[0].say("ended", { id: "A" });
+  quitting = true;
+  assert.equal(ctl.start({}), false);
+  assert.equal(ctl.practice(), false);
+  assert.equal(spawned.length, 1, "nothing was spawned");
+  quitting = false; // the quit was cancelled
+  assert.equal(ctl.start({}), true);
 });

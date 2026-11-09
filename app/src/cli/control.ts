@@ -66,6 +66,11 @@ export async function start(ctx: Ctx, args: string[]): Promise<Result> {
   );
   const s = values["no-wait"] ? await appStatus(ctx) : await waitFor(ctx, (st) => st.phase !== "starting", 20_000);
   const st = s?.state ?? {};
+  // The call came back to idle while we waited: the engine did not start (spawn failure, missing keys, an immediate exit). Not a success.
+  if (!values["no-wait"] && s && !st.running && st.phase === "idle") {
+    const why = s.lastError ? ` (${String(s.lastError).slice(0, 160)})` : "";
+    throw new CliError("start_failed", `The call did not start${why}.`, EXIT.FAIL, "Run: wingman doctor, or open Wingman and choose Show log.");
+  }
   const consentNeeded = st.phase === "waiting";
   const plan = reply.plan ?? null,
     mode: string = reply.mode ?? (plan ? "plan" : "quick");

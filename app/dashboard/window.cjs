@@ -295,6 +295,9 @@ function create(ctx) {
         const st = controller.getState();
         if (st.running && st.callId === id) return resolve({ ok: false, error: "This call is still running." });
         if (writing.has(id)) return resolve({ ok: false, error: "Already writing it." });
+        // A long call's summary is finished by a background process: a second writer would double the cost and write the same files.
+        if (data.callSummaryPending(CALLS, id))
+          return resolve({ ok: false, error: "The summary is still being written in the background. It will show in a minute." });
         writing.add(id);
         execTsx(
           [path.join(ROOT, "src", "summary.ts"), id],

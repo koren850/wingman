@@ -80,6 +80,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [72](#adr-72-the-example-pack-is-opt-in) | The example pack is opt-in |
 | [73](#adr-73-memory-patches-repair-two-known-shape-slips) | Memory patches repair two known shape slips |
 | [74](#adr-74-a-direct-question-gets-a-concrete-answer-not-a-skip) | A direct question gets a concrete answer, not a SKIP |
+| [75](#adr-75-explicit-state-for-the-tray-call-slot-and-the-capture-channels) | Explicit state for the tray call slot and the capture channels |
 
 ---
 
@@ -1133,3 +1134,22 @@ Date: 2026-11-09
 **Alternatives.** Lower the value floor (it only lets weak cards through). Add a rule in code that forces a card (the code cannot know the answer). Ask the memory updater for a due time on every promise (a bigger change, needs a new recording of the memory).
 
 **Consequences.** The static rules grow by about 100 tokens (cached for 1 hour, so the cost per hour does not change in a visible way). More cards for questions, so precision must be measured again. The dev cassette is stale for these prompts until it is recorded again.
+
+## ADR 75: Explicit state for the tray call slot and the capture channels
+
+Date: 2026-11-09
+
+**Context.** The menu-bar app kept its state in loose flags: `child`, `lingering`, `doctorProc`, a `running` set and a `quitting` boolean. The call phase could be set from any event. The audit of round 16 found real bugs from this: a call could start during the readiness check and take the mic from it; a late "consented" line undid Stop; an old call's output changed the new call's error; a second readiness request got `null`; a Stop during the macOS microphone prompt was lost, so the mic opened after the user pressed Allow with nobody listening; a long call's background summary was shown as a failure.
+
+**Decision.** Each machine has one state value and a table of allowed edges. A change that is not in the table is ignored and logged.
+- The controller holds one slot (`tray/slot.cjs`): `idle`, `doctor` or `call`. `isRunning` and `doctorRunning` are read from it. A start is refused while the check runs. A second check request gets the running check's result.
+- The call phase (`tray/lib.cjs`) moves only along `starting -> waiting | live | stopping`, `waiting -> live | stopping`, `live -> stopping`, `stopping -> idle`. Lines of a child that is no longer the current call are dropped; an `error` on a child with a pid is logged, not treated as a failed spawn.
+- The summary has its own state: `none`, `background`, `ready`, `failed` or `skipped`. The window treats a `summary.background` event with no summary as "being written" and does not offer a second writer.
+- Each capture channel (`tray/capture-chan.cjs`) is `idle`, `permission`, `starting`, `live` or `stopping`, and each start carries a token. A stop cancels the token, so a start that wakes up after the prompt, the window load or the page reply gives up and stops the page.
+- The app has one quit state (`running`, `confirmingQuit`, `quitting`); no call starts in `quitting`. `call.ts` has one life state (`running`, `stopping`, `runGone`, `exiting`) and tells the tray when the engine died without an `ended` line.
+
+**Why.** Every one of these bugs was a state that the code could reach but nobody had named. A table shows the missing edge. Ignoring an invalid change is safer than guessing, and the log shows it.
+
+**Alternatives.** A state machine library (a new dependency for about 100 lines of tables). One big machine for the whole app (the channels and the call run on different clocks).
+
+**Consequences.** Some old tests built a state by hand from `idle`; they now start with `starting`. A start while the check runs returns false, so the menu greys out the start items then. `wingman start` fails when the call went back to idle while it waited.

@@ -6,6 +6,8 @@
 // command/reply bookkeeping. It offers a small object (start, stop, devices, onPcm, onEnded) that tray/capture-bridge.cjs serves to the engine.
 // Electron objects are passed in (o), so the logic is unit-tested with fakes in src/capture-host.test.ts.
 
+const { createChannels } = require("./capture-chan.cjs");
+
 const START_TIMEOUT_MS = 20_000;
 const COMMAND_TIMEOUT_MS = 10_000;
 
@@ -15,7 +17,7 @@ function codedError(code, message) {
 }
 
 /**
- * o: { BrowserWindow, session, ipcMain, desktopCapturer, systemPreferences, grantSession, dir, platform?, setTimeout?, clearTimeout? }
+ * o: { BrowserWindow, session, ipcMain, desktopCapturer, systemPreferences, grantSession, dir, platform?, setTimeout?, clearTimeout?, log? }
  * dir = the folder with capture.html (tray/capture). The window is created on the first command and again after a crash.
  */
 function createCaptureHost(o) {
@@ -26,7 +28,7 @@ function createCaptureHost(o) {
   const pcmListeners = new Set(),
     endListeners = new Set();
   const pending = new Map(); // command id -> { resolve, reject, timer }
-  const running = new Set(); // channels the page is recording now
+  const chans = createChannels((m) => o.log && o.log(m)); // per channel: idle | permission | starting | live | stopping (tray/capture-chan.cjs)
   let win,
     ready,
     nextId = 1,
@@ -65,14 +67,15 @@ function createCaptureHost(o) {
       else p.reject(codedError(typeof msg.code === "string" ? msg.code : "failed", String(msg.message || "capture failed").slice(0, 300)));
     });
     o.ipcMain.on("capture:pcm", (e, ch, bytes) => {
-      if (!mine(e) || (ch !== "mic" && ch !== "system") || !running.has(ch)) return;
+      if (!mine(e) || (ch !== "mic" && ch !== "system") || !chans.active(ch)) return;
       const buf = Buffer.from(bytes);
       if (buf.length < 2) return;
       const whole = buf.length % 2 ? buf.subarray(0, buf.length - 1) : buf;
       for (const cb of pcmListeners) cb(ch, whole);
     });
     o.ipcMain.on("capture:ended", (e, ch, reason) => {
-      if (!mine(e) || (ch !== "mic" && ch !== "system") || !running.delete(ch)) return;
+      if (!mine(e) || (ch !== "mic" && ch !== "system") || !chans.active(ch)) return;
+      chans.to(ch, "idle");
       for (const cb of endListeners) cb(ch, String(reason || "the audio device stopped"));
     });
   }
@@ -83,9 +86,23 @@ function createCaptureHost(o) {
       p.reject(codedError("failed", reason));
       pending.delete(id);
     }
-    for (const ch of [...running]) {
-      running.delete(ch);
-      for (const cb of endListeners) cb(ch, reason);
+    for (const ch of ["mic", "system"])
+      if (chans.active(ch)) {
+        chans.to(ch, "idle");
+        for (const cb of endListeners) cb(ch, reason);
+      }
+  }
+
+  /** Forgets window w (it crashed or did not load) and destroys it, so a retry opens a fresh one and no hidden window is left behind. */
+  function dropWindow(w) {
+    if (win === w) {
+      win = undefined;
+      ready = undefined;
+    }
+    try {
+      if (!w.isDestroyed()) w.destroy();
+    } catch {
+      /* already gone */
     }
   }
 
@@ -114,12 +131,8 @@ function createCaptureHost(o) {
     w.webContents.on("will-navigate", (e) => e.preventDefault());
     w.webContents.on("render-process-gone", (_e, d) => {
       // A crashed page is dropped, so the next command opens a fresh window.
-      if (win === w) {
-        win = undefined;
-        ready = undefined;
-      }
+      dropWindow(w);
       failAll(`the capture window stopped (${(d && d.reason) || "gone"})`);
-      if (!w.isDestroyed()) w.destroy();
     });
     w.on("closed", () => {
       if (win === w) {
@@ -131,10 +144,7 @@ function createCaptureHost(o) {
     ready = Promise.resolve(w.loadFile(path.join(o.dir, "capture.html"))).then(
       () => w,
       (e) => {
-        if (win === w) {
-          win = undefined;
-          ready = undefined;
-        }
+        dropWindow(w);
         throw codedError("failed", `capture window did not load: ${e && e.message}`);
       },
     );
@@ -142,11 +152,12 @@ function createCaptureHost(o) {
   }
 
   /** Sends one command to the page and waits for its reply. */
-  async function command(cmd, timeoutMs = COMMAND_TIMEOUT_MS) {
+  async function command(cmd, timeoutMs = COMMAND_TIMEOUT_MS, stillWanted = () => true) {
     const w = await window();
     // Chromium lets getDisplayMedia run only right after a user gesture. This script counts as one for a few seconds, so the page may call it.
     if (cmd.op === "start" && cmd.ch === "system" && typeof w.webContents.executeJavaScript === "function")
       await Promise.resolve(w.webContents.executeJavaScript("0", true)).catch(() => {});
+    if (!stillWanted()) throw codedError("cancelled", `${cmd.op} ${cmd.ch} was cancelled`); // a stop came while the window or the gesture was awaited
     const id = nextId++;
     return new Promise((resolve, reject) => {
       const timer = setT(() => {
@@ -190,20 +201,46 @@ function createCaptureHost(o) {
     /** Starts recording a channel. Resolves { fellBack } once the page has the stream; rejects with a coded Error. */
     async start(ch, opts = {}) {
       if (ch === "system" && platform !== "win32") throw codedError("unsupported", "system audio capture in the app is Windows only");
-      if (ch === "mic") await micPermission();
-      running.add(ch); // before the reply: the first chunk can be sent right behind it
+      const tok = {};
+      chans.to(ch, "idle"); // a newer start replaces an older one; the older one sees its token is gone
+      const wanted = () => chans.current(ch, tok);
+      if (ch === "mic") {
+        chans.to(ch, "permission", tok);
+        try {
+          await micPermission();
+        } catch (e) {
+          if (wanted()) chans.to(ch, "idle");
+          throw e;
+        }
+        // A stop (the engine gave up or the call ended) can arrive while the macOS prompt is open: do not start the mic after the user answers.
+        if (!wanted()) throw codedError("cancelled", "the microphone start was cancelled");
+      }
+      chans.to(ch, "starting", tok); // before the reply: the first chunk can be sent right behind it
       try {
-        const r = await command({ op: "start", ch, name: typeof opts.name === "string" ? opts.name.slice(0, 120) : "" }, START_TIMEOUT_MS);
+        const r = await command({ op: "start", ch, name: typeof opts.name === "string" ? opts.name.slice(0, 120) : "" }, START_TIMEOUT_MS, wanted);
+        if (!wanted()) {
+          // Stopped or replaced while the page was starting: the page may be recording now. Tell it to stop unless a newer start owns the channel.
+          if (chans.kind(ch) === "idle") await command({ op: "stop", ch }).catch(() => {});
+          throw codedError("cancelled", `${ch} was stopped while it started`);
+        }
+        chans.to(ch, "live", tok);
         return { fellBack: !!r.fellBack };
       } catch (e) {
-        running.delete(ch);
+        if (wanted()) chans.to(ch, "idle");
         throw e;
       }
     },
     async stop(ch) {
-      running.delete(ch);
-      if (!win || win.isDestroyed()) return;
-      await command({ op: "stop", ch }).catch(() => {});
+      const tok = chans.tok(ch);
+      // Cancels a start that is still waiting (prompt, window, reply). A running channel is "stopping" until the page confirms.
+      if (chans.active(ch)) chans.to(ch, "stopping", tok);
+      else chans.to(ch, "idle");
+      if (!win || win.isDestroyed()) return void (chans.kind(ch) === "stopping" && chans.to(ch, "idle"));
+      try {
+        await command({ op: "stop", ch }).catch(() => {});
+      } finally {
+        if (chans.kind(ch) === "stopping" && chans.tok(ch) === tok) chans.to(ch, "idle");
+      }
     },
     /** The input devices the page can see: { devices: [{index, name}], defaultName }. */
     async devices() {
@@ -221,7 +258,7 @@ function createCaptureHost(o) {
     },
     /** Closes the window (app quit). */
     destroy() {
-      running.clear();
+      for (const ch of ["mic", "system"]) chans.to(ch, "idle");
       const w = win;
       win = undefined;
       ready = undefined;
@@ -232,7 +269,7 @@ function createCaptureHost(o) {
       }
       if (w && !w.isDestroyed()) w.destroy();
     },
-    isRunning: (ch) => running.has(ch),
+    isRunning: (ch) => chans.active(ch),
   };
 }
 

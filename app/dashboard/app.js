@@ -1226,9 +1226,13 @@ function tFollowup(pane, d) {
         "div",
         { class: "empty-big" },
         h("div", { class: "capy", "aria-hidden": "true" }),
-        h("h2", {}, "No summary for this call"),
-        why ? h("span", {}, why) : null,
-        writeSummaryBtn(),
+        h("h2", {}, d.summaryPending ? "The summary is being written" : "No summary for this call"),
+        d.summaryPending
+          ? h("span", {}, "A long call takes more time. It is finishing in the background. Open this call again in a minute.")
+          : why
+            ? h("span", {}, why)
+            : null,
+        d.summaryPending ? null : writeSummaryBtn(),
         h(
           "span",
           { class: "faint" },

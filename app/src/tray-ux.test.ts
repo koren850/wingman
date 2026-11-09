@@ -33,7 +33,7 @@ test("reducer: stopphase is stored, unknown phases ignored, cleared on start and
 });
 
 test("reducer: askArmed follows the ask event, clears on timeout, stop and exit", () => {
-  let s = lib.reduce(lib.initialState(), { ev: "consented" });
+  let s = lib.reduce(lib.reduce(lib.initialState(), { ev: "starting" }), { ev: "consented" });
   s = lib.reduce(s, { ev: "ask", on: true, until: 1 });
   assert.equal(s.askArmed, true);
   assert.equal(lib.reduce(s, { ev: "ask", on: false }).askArmed, false);
@@ -212,6 +212,7 @@ test("controller state carries stopPhase, askArmed and the AI mode", () => {
 test("notifications for crashes and start failures say what to do next", () => {
   const { ctl, spawned, notes } = fake();
   ctl.start({});
+  spawned[0].pid = undefined; // a child that never started has no pid
   spawned[0].emit("error", new Error("ENOENT tsx"));
   assert.match(notes[0][1], /Quit Wingman.*open it again/);
   ctl.start({});
@@ -261,15 +262,19 @@ test("Start listening key: registered only while waiting, removed otherwise, han
   assert.equal(f.reg.size, 1, "can come back for the next call");
   assert.deepEqual(msgs, []);
 });
-test("Start listening key: a refused registration is logged and retried at the next sync", () => {
+test("Start listening key: a refused registration is logged once and retried only when the call waits again", () => {
   const f = fakeShortcuts(false);
   const msgs: string[] = [];
   const k = lib.createStartKey({ globalShortcut: f.gs, key: "Control+Alt+Return", onPress: () => {}, log: (m: string) => msgs.push(m) });
   k.sync(true);
   assert.equal(k.isOn(), false);
   assert.match(msgs[0], /could not register/);
+  for (let i = 0; i < 5; i++) k.sync(true); // the menu bar syncs every second
+  assert.equal(f.log.length, 1, "no retry at every tick");
+  assert.equal(msgs.length, 1, "logged once");
+  k.sync(false);
   k.sync(true);
-  assert.equal(f.log.length, 2, "tries again");
+  assert.equal(f.log.length, 2, "tries again when the next call waits");
   const t = lib.createStartKey({
     globalShortcut: {
       register() {

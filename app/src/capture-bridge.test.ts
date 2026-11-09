@@ -376,3 +376,28 @@ test("bridge: a source stopped while its start is still waiting does not leave t
     await t.done();
   }
 });
+
+test("H1: the engine connection closing while the host is still starting does not leave the capture running", async () => {
+  const t = await setup();
+  try {
+    let go!: () => void;
+    const gate = new Promise<void>((r) => (go = r));
+    const realStart = t.host.start.bind(t.host);
+    t.host.start = async (ch, opts) => {
+      await gate; // the macOS prompt is open
+      return realStart(ch, opts);
+    };
+    const src = new BridgeSource(t.link, "mic");
+    src.on("error", () => {});
+    const starting = src.start().catch(() => {});
+    await sleep(100);
+    t.link.close(); // the engine gave up
+    await sleep(100);
+    go(); // the user clicks Allow
+    await starting;
+    await sleep(250);
+    assert.ok(!t.host.running("mic"), "the mic is not left on");
+  } finally {
+    await t.done();
+  }
+});

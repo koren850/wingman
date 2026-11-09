@@ -30,6 +30,7 @@ function initialState() {
     callId: "",
     deleted: false,
     summaryOk: false,
+    summaryState: "none",
     practice: false,
     stopPhase: "",
     askArmed: false,
@@ -53,8 +54,27 @@ function parseStatus(line) {
   }
 }
 
+/**
+ * The call phases and the edges between them. Any other change is ignored (the reducer returns the same state object, the controller logs it),
+ * so a late engine line cannot undo "stopping": starting -> waiting | live | stopping, waiting -> live | stopping, live -> stopping, stopping -> idle.
+ * "idle" comes only from the process exit (event "exit"), and a new call resets everything (event "starting").
+ */
+const PHASE_EDGES = Object.freeze({
+  idle: ["starting"],
+  starting: ["waiting", "live", "stopping", "idle"],
+  waiting: ["live", "stopping", "idle"],
+  live: ["stopping", "idle"],
+  stopping: ["idle"],
+});
+/** True when the call may move from phase `from` to phase `to` (staying in the same phase is always fine). */
+const canMove = (from, to) => from === to || (PHASE_EDGES[from] || []).includes(to);
+/** The phase an event moves the call to, or "" for an event that does not change the phase. */
+const EVENT_PHASE = Object.freeze({ waiting: "waiting", consented: "live", stopping: "stopping", ended: "stopping", exit: "idle" });
+
 /** Pure state reducer: (state, event m from run.ts or the controller) -> new state. Unknown events leave the state unchanged. */
 function reduce(s, m) {
+  const to = EVENT_PHASE[m.ev];
+  if (to && !canMove(s.phase, to)) return s; // e.g. "consented" after the user pressed Stop: the call is stopping, it does not go live again
   const n = { ...s, health: { ...s.health } };
   switch (m.ev) {
     case "boot":
@@ -127,6 +147,8 @@ function reduce(s, m) {
     case "summary":
       n.summaryOk = !!m.ok;
       if (m.skipped) n.summarySkipped = true;
+      // none | background | ready | failed | skipped. "background": the engine handed a long call's summary to a separate process; it will be ready later.
+      n.summaryState = m.skipped ? "skipped" : m.ok ? "ready" : m.background ? "background" : "failed";
       break;
     case "summaryskip":
       n.summarySkipped = true;
@@ -191,7 +213,12 @@ function notifications(before, after, m) {
     });
   if (m.ev === "summary" && m.skipped) {
     /* the user skipped it: no notification */
-  } else if (m.ev === "summary")
+  } else if (m.ev === "summary" && m.background)
+    out.push({
+      title: "Call summary is being written",
+      body: "A long call takes more time. It is finishing in the background and will show in the call when it is ready.",
+    });
+  else if (m.ev === "summary")
     out.push(
       m.ok
         ? { title: "Call summary ready", body: "Summary, next steps and a draft follow-up email: click here to open the Follow-up tab." }
@@ -411,13 +438,19 @@ function writeSilentWav(file, seconds) {
 const KEYS = { consent: "Control+Alt+Return", note: "Control+Alt+N", ask: "Control+Alt+A", recap: "Control+Alt+U" };
 const OVERLAY_KEYS = ["Control+Alt+C", "Control+Alt+P", "Control+Alt+R", "Control+Alt+K", "Control+Alt+L", "Control+Alt+1", "Control+Alt+2", "Control+Alt+3"];
 
-/** The Start listening key exists only while a call is waiting. sync(true/false) registers or unregisters it; it never throws. */
+/**
+ * The Start listening key exists only while a call is waiting. sync(true/false) registers or unregisters it; it never throws.
+ * States: off, on, failed (the system refused the key). `failed` is tried again only when the call leaves the waiting phase and enters it
+ * again, not at every tick (the menu bar syncs every second, which would fill the log).
+ */
 function createStartKey(o) {
-  let on = false;
+  let on = false,
+    failed = false;
   return {
     isOn: () => on,
     sync(waiting) {
-      if (!!waiting === on) return on;
+      if (!waiting) failed = false;
+      if (!!waiting === on || (waiting && failed)) return on;
       if (waiting) {
         let ok = false;
         try {
@@ -427,6 +460,7 @@ function createStartKey(o) {
         }
         if (!ok) {
           o.log && o.log(`could not register ${o.key}`);
+          failed = true;
           return on;
         }
         on = true;
@@ -624,6 +658,7 @@ async function requestQuit(o) {
     detail: x.detail || "Quitting stops the call first: it is saved and the summary is written (up to 20 seconds), then Wingman closes.",
   });
   if (!r || r.response !== 1) return "kept";
+  if (o.onStopping) o.onStopping(); // from here a new call must not start: the app is on its way out
   o.stop();
   await o.whenStopped();
   o.quit();
@@ -639,6 +674,8 @@ module.exports = {
   uiLanguageOf,
   CLI_CONFIRM_MS,
   planMenu,
+  PHASE_EDGES,
+  canMove,
   KEYS,
   OVERLAY_KEYS,
   createStartKey,
