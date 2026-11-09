@@ -2,8 +2,8 @@
 # model: snapshot
 # options: {}
 ## system
-moment: block 1 cache 1h 1188 tokens, starts "Profile: The user is Dan (male: always a" | block 2 cache 1h 1153 tokens, starts "You are Wingman, a private voice that he" | block 3 cache 5m 105 tokens, starts "<call_memory> Call type: other Facts: - " | block 4 no cache 129 tokens, starts "<call_facts> User: Dan </call_facts> <ba" | user message 371 tokens
-observer: block 1 cache 1h 1188 tokens, starts "Profile: The user is Dan (male: always a" | block 2 cache 1h 1153 tokens, starts "You are Wingman, a private voice that he" | block 3 cache 5m 105 tokens, starts "<call_memory> Call type: other Facts: - " | block 4 no cache 9 tokens, starts "<call_facts> User: Dan </call_facts>" | user message 468 tokens
+moment: block 1 cache 1h 1188 tokens, starts "Profile: The user is Dan (male: always a" | block 2 cache 1h 1179 tokens, starts "You are Wingman, a private voice that he" | block 3 cache 5m 105 tokens, starts "<call_memory> Call type: other Facts: - " | block 4 no cache 189 tokens, starts "<call_facts> User: Dan </call_facts> <ba" | user message 371 tokens
+observer: block 1 cache 1h 1188 tokens, starts "Profile: The user is Dan (male: always a" | block 2 cache 1h 1179 tokens, starts "You are Wingman, a private voice that he" | block 3 cache 5m 105 tokens, starts "<call_memory> Call type: other Facts: - " | block 4 no cache 9 tokens, starts "<call_facts> User: Dan </call_facts>" | user message 468 tokens
 memory: block 1 cache 1h 572 tokens, starts "You keep the memory of a live call. You " | block 2 no cache 105 tokens, starts "<call_memory> Call type: other Facts: - " | user message 78 tokens
 compact: block 1 cache 1h 283 tokens, starts "You tidy the memory of a live call. You " | block 2 no cache 85 tokens, starts "<call_memory> Call type: other Facts: - " | user message 191 tokens
 ## messages

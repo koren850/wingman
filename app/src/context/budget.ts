@@ -58,8 +58,8 @@ export const RETRIEVE = {
 /** Defaults. Settings (memory.budgetTokens, ctx.rawTailTokens) may override memory and rawTail per call. */
 export const DEFAULT_BUDGETS: Budgets = {
   // direct question or implied moment: fast, small. Last lines only.
-  moment: { total: 6500, shared: 3000, memory: 1800, roleInstructions: 1500, rawTail: 600, trigger: 200, retrieved: 600 },
-  observer: { total: 6500, shared: 3000, memory: 1800, roleInstructions: 1500, rawTail: 800, trigger: 200, retrieved: 0 },
+  moment: { total: 6500, shared: 3000, memory: 1800, roleInstructions: 1800, rawTail: 600, trigger: 200, retrieved: 600 },
+  observer: { total: 6500, shared: 3000, memory: 1800, roleInstructions: 1800, rawTail: 800, trigger: 200, retrieved: 0 },
   // updater: the new lines since the last cursor
   memory: { total: 7000, shared: 3000, memory: 1800, roleInstructions: 900, rawTail: 1200, trigger: 100, retrieved: 0 },
   compact: { total: 8000, shared: 3000, memory: 1800, roleInstructions: 900, rawTail: 2400, trigger: 100, retrieved: 0 },
