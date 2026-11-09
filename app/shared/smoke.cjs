@@ -61,17 +61,21 @@ function keystoreProblem({ keychain }) {
  */
 function toolProblem({ execFile, execPath, env, tool = "settings-cli", expect = /Effective Wingman settings/, expectKey = undefined }) {
   return new Promise((resolve) => {
+    const t0 = Date.now();
     execFile(
       execPath,
       ["--wingman-tool", tool, "--"],
       { env, timeout: 60_000, windowsHide: true, maxBuffer: 1 << 20, encoding: "utf8" },
       (err, out, errOut) => {
-        if (err)
-          return resolve(
-            `${tool} failed: ${String(errOut || err.message)
+        if (err) {
+          // Say how it ended (exit code, killed by the time limit, how long it ran) and the last words of its output: a GUI program on Windows has no console.
+          const how = `${err.killed ? "killed after the time limit" : "exit " + (err.code ?? err.signal ?? "?")}, ${Math.round((Date.now() - t0) / 1000)} s`;
+          const tail = (x) =>
+            String(x || "")
               .trim()
-              .slice(0, 200)}`,
-          );
+              .slice(-300);
+          return resolve(`${tool} failed (${how}): stderr "${tail(errOut)}" stdout "${tail(out)}"`);
+        }
         if (!expect.test(String(out))) return resolve(`${tool} printed something unexpected`);
         // A key saved by this process must be readable in the tool process too. A per-process key store (such as Electron safeStorage) keeps its master key in the Electron
         // user-data folder, and every helper process has a folder of its own (tray/app-entry.cjs backgroundProcess), so this can really fail.
@@ -117,6 +121,7 @@ async function runSmoke(d) {
       HOME: scratch,
       USERPROFILE: scratch,
       NO_COLOR: "1",
+      WINGMAN_TOOL_TRACE: "1",
       WINGMAN_TOOL_TOKEN: d.newToken(),
       WINGMAN_PARENT_PID: String(d.pid || process.pid),
     };

@@ -179,7 +179,7 @@ test("smoke mode: reports every problem, tries the key store in a scratch folder
   assert.equal(bad.problems.length, 3);
   assert.match(bad.problems[0], /missing files: .*yaml/);
   assert.match(bad.problems[1], /key store: no encryption/);
-  assert.match(bad.problems[2], /tool: settings-cli failed: wingman: not allowed/);
+  assert.match(bad.problems[2], /tool: settings-cli failed \(exit \?, \d+ s\): stderr "wingman: not allowed"/);
   // a store that returns another value, and a tool that prints the wrong thing
   const store = new Map<string, string>();
   const liar = { set: (p: string, v: string) => store.set(p, v + "!"), get: (p: string) => store.get(p) ?? null, remove: (p: string) => store.delete(p) };

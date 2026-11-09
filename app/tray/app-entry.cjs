@@ -7,10 +7,18 @@
 // Only the names in shared/bin.cjs PACKED_TOOLS can run: no path from the command line is ever loaded. The RunAsNode fuse stays off.
 // First of all: refuse switches that let another program control the app (Chromium reads them before this file runs).
 const guard = require("../shared/entry-guard.cjs");
+/** Prints one line and ends the process with code 2. The line is written with a blocking write: on Windows a pipe may lose text if the process exits at once. */
+function failFast(line) {
+  try {
+    require("node:fs").writeSync(2, line + "\n");
+  } catch {
+    /* no stderr to write to */
+  }
+  process.exit(2);
+}
 const refused = guard.refusedSwitch(process.argv.slice(1));
 if (refused) {
-  console.error(`wingman: the option ${refused} is not allowed in the packaged app`);
-  process.exit(2);
+  failFast(`wingman: the option ${refused} is not allowed in the packaged app`);
 }
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -39,8 +47,7 @@ else {
     tool: toolAt >= 0 ? String(argv[toolAt + 1] || "") : "overlay",
   });
   if (why) {
-    console.error(`wingman: ${why}`);
-    process.exit(2);
+    failFast(`wingman: ${why}`);
   }
 }
 process.env.WINGMAN_PARENT_PID = String(process.pid); // for the children of this process (the detached background summary)
@@ -75,13 +82,18 @@ function quietCrashes() {
   process.on("unhandledRejection", die);
 }
 /** Short tools end when they have nothing left to do (a long call ends itself with process.exit). Only the stdio pipes may stay open. */
-function exitWhenIdle(waitForStdin) {
+function exitWhenIdle(waitForStdin, maxMs = 0) {
   let quiet = 0;
+  const t0 = Date.now();
+  const trace = !!process.env.WINGMAN_TOOL_TRACE; // CI sets it: prints what keeps the tool alive
   const tick = () => {
+    // Short settings tools finish at once. If the idle check never sees a quiet process (its resource names differ by system), end them anyway.
+    if (maxMs && Date.now() - t0 > maxMs && !(waitForStdin && !process.stdin.readableEnded)) return finish(process.exitCode || 0);
     const res = process.getActiveResourcesInfo();
     const own = res.indexOf("Timeout"); // this check's own timer is still listed while it runs
     if (own >= 0) res.splice(own, 1);
     const busy = res.filter((r) => r !== "PipeWrap" && r !== "TTYWrap");
+    if (trace && busy.length) console.error(`wingman: tool still busy: ${busy.join(",")}`);
     // A tool that reads JSON from stdin is not idle until the parent has closed the pipe.
     const waiting = waitForStdin && !process.stdin.readableEnded;
     quiet = busy.length || waiting ? 0 : quiet + 1;
@@ -91,6 +103,8 @@ function exitWhenIdle(waitForStdin) {
   setTimeout(tick, 100);
 }
 const ONE_SHOT = new Set(["summary", "settings-edit-cli", "profile-edit-cli", "mics-cli", "settings-cli", "doctor"]);
+/** How long (ms) a short tool may stay open after it has loaded before it is ended. The settings and microphone tools take a moment at most; the summary and the readiness check can run long. */
+const ONE_SHOT_CAP_MS = { "settings-cli": 15000, "settings-edit-cli": 15000, "profile-edit-cli": 15000, "mics-cli": 30000 };
 const STDIN_TOOLS = new Set(["settings-edit-cli", "profile-edit-cli"]); // `write` reads its JSON from stdin
 
 if (toolAt >= 0) {
@@ -106,7 +120,7 @@ if (toolAt >= 0) {
     process.argv = [process.execPath, file, ...afterDash(argv.slice(toolAt + 2))]; // what the tool would see under node
     const toolArgs = afterDash(argv.slice(toolAt + 2));
     import(pathToFileURL(file).href).then(
-      () => ONE_SHOT.has(name) && exitWhenIdle(STDIN_TOOLS.has(name) && toolArgs[0] === "write"),
+      () => ONE_SHOT.has(name) && exitWhenIdle(STDIN_TOOLS.has(name) && toolArgs[0] === "write", ONE_SHOT_CAP_MS[name] || 0),
       (e) => {
         console.error(`wingman: ${name} failed to start: ${String((e && e.stack) || e).slice(0, 2000)}`);
         finish(1);
