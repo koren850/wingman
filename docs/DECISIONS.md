@@ -82,6 +82,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [74](#adr-74-a-direct-question-gets-a-concrete-answer-not-a-skip) | A direct question gets a concrete answer, not a SKIP |
 | [75](#adr-75-explicit-state-for-the-tray-call-slot-and-the-capture-channels) | Explicit state for the tray call slot and the capture channels |
 | [76](#adr-76-a-conversation-state-model-call-flow-tone-and-what-comes-next-proposed) | A conversation state model: call flow, tone and what comes next (proposed) |
+| [77](#adr-77-speed-shorter-speech-to-text-backstops-a-model-warm-up-and-early-start-stays-off-measured) | Speed: shorter speech-to-text backstops, a model warm-up, and early start stays off (measured) |
 
 ---
 
@@ -1185,3 +1186,23 @@ Date: 2026-11-09. Status: proposed, planned for 0.0.2. Not built.
 - A new measurable gate: of the predicted questions, how many are asked in the next two minutes of the golden meetings. It is scored from the transcripts, with no new labels.
 - Prepared cards show only on a strong match, so a wrong prediction costs nothing on screen.
 - Build order: (1) delivery signals and talk stats, local only; (2) phase, stance and goal in the memory call and in the prompts; (3) predictions and prepared cards with the prediction gate.
+
+## ADR 77: Speed: shorter speech-to-text backstops, a model warm-up, and early start stays off (measured)
+
+Date: 2026-11-09
+
+**Context.** A card from the model shows about 1.5 s after the other person stops talking, and the slow cases take 4.6 to 6 s. The audit of round 17 found the time in three places: the final text from speech-to-text, the model's first token, and the stalls when no end-of-speech mark comes. We measured with real services: 20 spoken questions (10 English, 10 Hebrew, macOS text-to-speech) streamed to Deepgram with the app's settings, and short real requests to the model.
+
+**Decision.**
+- Send Deepgram `Finalize` after 500 ms of silence (was 900 ms), and handle buffered finals after 800 ms when no end-of-speech mark comes (was 1500 ms).
+- At call start, send one request with one output token to the answer model, so the first question does not open the connection.
+- Keep `moments.earlyStart` off.
+
+**Why.**
+- With `language: multi`, Deepgram's own end-of-speech mark is not reliable: with no `Finalize`, 4 of 20 questions never got one. Final text after the end of speech: median 0.78 s and worst 1.38 s with 900 ms; median 0.79 s and worst 1.16 s with 500 ms; median 0.59 s and worst 0.69 s with 300 ms, but one question lost its "?" there. 500 ms cuts the tail with no visible split. Text-to-speech has no pauses inside a sentence, so we do not go lower before real speech is measured.
+- Model first token: the first request of a process took 1.3 to 2.5 s, the next ones 0.8 to 0.9 s. A pause of 20 s added about 0.1 s. One warm-up removes the cold cost from the first question for a fraction of a cent.
+- Early start: Deepgram sent 1 to 4 partial results per question, about one a second. None of them ended in "?" before the final. The 600 ms rule fired on half sentences ("How much", "Can you") in 20 of 20 questions, so every early call would have been aborted. It would cost calls and save nothing.
+
+**Alternatives.** A periodic warm-up during the call (the measured gain after a pause is about 0.1 s). A Finalize at 300 ms (faster, but needs real speech to check splits). Early start on audio silence instead of partial timing (a possible later change: it needs the silence signal from the audio path).
+
+**Consequences.** Final text comes sooner in the slow cases, and the first question no longer pays about 0.5 to 1.5 s for the connection. A `llm.warm` event records the warm-up time. ADR 60 stays: early start is off, and the reason is now measured. Next: measure real speech for a lower `Finalize` time, and the ideas in ADR 76.
