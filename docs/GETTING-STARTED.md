@@ -43,7 +43,9 @@ The command removes the "downloaded from the internet" mark from the app. It cha
 
 **Permissions.** Wingman asks for **Microphone** (your voice) and **System Audio Recording** (the other side). The first window walks you through both. If Wingman is not in the System Audio Recording list, start a real call once and press **Allow** when macOS asks. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it. Wingman does not need Screen Recording, Accessibility or Camera.
 
-### On Windows (10 or 11, 64-bit)
+### On Windows (10 or 11, 64-bit) - beta
+
+Windows is a **beta**. The installer is built and checked, but the sound capture has not been tested on a real Windows PC yet. It may fail; please report what you see.
 
 1. Download `Wingman-Setup-<version>-x64.exe` and double-click it.
 2. Windows may show a blue box, "Windows protected your PC" (SmartScreen), because the installer is not signed yet. Press **More info**, then **Run anyway**.

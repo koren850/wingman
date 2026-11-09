@@ -51,7 +51,9 @@ Both downloads are **not signed yet**, so your system warns you once. This is ex
 
 On macOS 15 and newer, right-click, **Open** no longer works for this. If the steps above do not work, run this in Terminal once, then open the app again: `xattr -dr com.apple.quarantine /Applications/Wingman.app`.
 
-### Windows (10 or 11, 64-bit)
+### Windows (10 or 11, 64-bit) - beta
+
+Windows is a **beta**: the installer is built and checked, but nobody has yet tested the sound capture on a real Windows PC. It may fail; please report what you see.
 
 1. Download `Wingman-Setup-<version>-x64.exe` and run it.
 2. If Windows shows "Windows protected your PC" (SmartScreen), press **More info**, then **Run anyway**.
@@ -60,7 +62,7 @@ On macOS 15 and newer, right-click, **Open** no longer works for this. If the st
 
 To remove it, use Settings, Apps, Wingman. Your calls and notes stay in `%APPDATA%\Wingman` until you delete that folder.
 
-The Windows app records the microphone and the system audio itself. The installer, the install and the key store are built and checked, but audio capture has only been tested with fakes, not yet on a real Windows machine. Help wanted.
+The Windows app records the microphone and the system audio itself. Audio capture has only been tested with fakes, not yet on a real Windows machine. Help wanted.
 
 ### The two keys
 
@@ -115,7 +117,7 @@ Two audio streams keep who said what. A shared call memory (topic, people, numbe
 
 This is an early release (v0.0.1). Read this before you rely on it.
 
-- The plumbing works. In short test calls with the real speech service and the real AI (invented scripts, text-to-speech voices), nothing crashed, questions in English and Hebrew were heard, a prepared card showed in under a second, and an AI card in about 1 to 3.5 seconds.
+- The plumbing works. In short test calls with the real speech service and the real AI (invented scripts, text-to-speech voices), nothing crashed, questions in English and Hebrew were heard, a prepared card showed in under a second, and an AI card in about 1 to 3.5 seconds (slow cases took up to about 5 seconds).
 - Speech to text was right for about 92 percent of the words in English and 77 to 83 percent in Hebrew, on those synthetic voices.
 - Card quality is not proven. A replay of the real AI against the 34 invented test meetings passes 6 of 16 release lines: cost, language and card count pass, but too few cards hit the expected moment (precision about 11 percent, recall about 5 percent), and a model judge rated about a third of the cards useful. Treat every card as a hint and check it before you say it. The numbers are on the [Roadmap](docs/ROADMAP.md#evidence-so-far).
 
