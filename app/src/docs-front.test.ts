@@ -1,7 +1,7 @@
 // The first things a stranger reads must be current: links and images resolve, ADR anchors exist, and no internal wording leaks in.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
@@ -57,6 +57,7 @@ test("relative links, images and anchors in the front docs resolve", () => {
       const target = path ? join(dirname(rel), path) : rel;
       if (PENDING_IMAGES.has(target)) continue;
       assert.ok(existsSync(join(ROOT, target)), `${rel}: ${href} does not exist`);
+      if (/\.(png|jpe?g|gif|svg)$/i.test(target)) assert.ok(statSync(join(ROOT, target)).size > 0, `${rel}: ${href} is an empty file`);
       if (frag && target.endsWith(".md")) assert.ok(anchors(target).has(frag), `${rel}: anchor #${frag} is not a heading in ${target}`);
     }
   }
@@ -97,5 +98,6 @@ test("front docs agree on the numbers of the fact sheet", () => {
   assert.ok(!/\b65 architecture decision/.test(all));
   assert.ok(!/29 options/.test(all));
   assert.ok(!/English only/.test(read("app/README.md")));
-  assert.ok(read("CHANGELOG.md").includes("71 architecture decision records"));
+  const adrs = (read("docs/DECISIONS.md").match(/^## ADR \d+:/gm) ?? []).length;
+  assert.ok(read("CHANGELOG.md").includes(`${adrs} architecture decision records`), `the changelog should name ${adrs} architecture decision records`);
 });
