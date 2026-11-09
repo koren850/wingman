@@ -86,3 +86,22 @@ test("misheard name still alerts; only recent voices are listed", () => {
   assert.deepEqual(ev, [{ type: "internal", who: ["Dana", "Pierre"] }]); // speaker 1 spoke 38 s ago: not part of it
   assert.equal(f.add(them(3, "Pierre", "Dann, can you import the old news?", 72_000))[0].type, "addressed");
 });
+
+test("epoch: a new discussion has a new number, so a topic job from the old one can be dropped", () => {
+  const f = new FlowTracker();
+  assert.equal(f.epoch, 0);
+  f.add(them(1, "דנה", "א", 30_000));
+  f.add(them(2, "רות", "ב", 32_000));
+  f.add(them(1, "דנה", "ג", 34_000));
+  const first = f.epoch;
+  assert.equal(first, 1);
+  f.add(them(2, "רות", "ד", 36_000));
+  assert.equal(f.epoch, first, "the same discussion goes on");
+  f.add(me("אני רוצה להוסיף משהו", 40_000)); // it ends ...
+  assert.equal(f.internal, false);
+  f.add(them(3, "אבי", "א", 70_000)); // ... and other people start another one
+  f.add(them(4, "גלית", "ב", 72_000));
+  f.add(them(3, "אבי", "ג", 74_000));
+  assert.equal(f.internal, true);
+  assert.notEqual(f.epoch, first);
+});

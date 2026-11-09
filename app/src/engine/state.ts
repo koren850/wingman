@@ -5,6 +5,7 @@ import type { SttChannel } from "../providers/stt/channel.ts";
 import type { EchoMode } from "../echo.ts";
 import { emptyMemory, type MemoryKind, type SessionMemory } from "../session/types.ts";
 import { newSchedulerState } from "../moments/scheduler.ts";
+import { isClosing, isStopping } from "./phase.ts";
 import { ECHO, PHONE, S, interview } from "./boot.ts";
 
 /** Monotonic ms (does not jump with the wall clock; on macOS it also stands still while the Mac sleeps). Idle time and frame freshness use it. */
@@ -20,8 +21,14 @@ export const st = {
   /** Call lifecycle. consented: audio may be sent for transcription. */
   call: {
     consented: false,
-    shuttingDown: false,
-    closing: false as boolean, // shutdown is closing the STT channels: finals still arriving are written to the transcript, but start nothing (no card, no question, no note)
+    /** Derived from the call phase (engine/phase.ts): Stop has begun. Everything async checks it before it starts something new. */
+    get shuttingDown() {
+      return isStopping();
+    },
+    /** Derived: shutdown is closing the STT channels. Finals still arriving are written to the transcript, but start nothing (no card, no question, no note). */
+    get closing() {
+      return isClosing();
+    },
     crashed: false,
     quiet: S.cards.quiet,
     discardNow: false,

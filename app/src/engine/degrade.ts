@@ -27,6 +27,7 @@ import {
 } from "./boot.ts";
 import { sttSwitchedCh, sttRetryLoop } from "./stt.ts";
 import { st, mono, chans } from "./state.ts";
+import { isStopping } from "./phase.ts";
 import { liveSources } from "./audio-sources.ts";
 import { llmFailurePolicy, pausedReason } from "./rules.ts";
 import { aiPaused } from "./strings.ts";
@@ -238,6 +239,7 @@ export async function resolveReflexModels() {
 
 /** Starts the ladder supervisor and the health tick (every health.tickMs). The timer is unref'd: it never keeps the process alive on its own. */
 export function startHealthTick() {
+  if (isStopping()) return; // Stop came during startup: no supervisor, no rows after the call record is closed
   sup.on("rung", renderRung);
   sup.start();
   lastTick = Date.now();

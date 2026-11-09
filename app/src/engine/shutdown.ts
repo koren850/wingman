@@ -33,8 +33,9 @@ import {
   PROMPT_V,
 } from "./boot.ts";
 import { st, chans } from "./state.ts";
+import { transition, writeEnded } from "./phase.ts";
 import { askKey } from "./control.ts";
-import { lifecycle, stops } from "./lifecycle.ts";
+import { lifecycle, stops, runStopHooks } from "./lifecycle.ts";
 import { flushMemory, memoryLoop } from "./coach.ts";
 import { endCallLearning } from "./moments.ts";
 import { engineV2 } from "./memory.ts";
@@ -73,6 +74,13 @@ let wakeSkip: () => void = () => {};
 const summarySkipWait = new Promise<void>((res) => {
   wakeSkip = res;
 });
+/** The tray hears "summary skipped" once, however many paths notice the skip. */
+let skippedSent = false;
+function skippedStatus() {
+  if (skippedSent) return;
+  skippedSent = true;
+  status("summary", { ok: false, skipped: true });
+}
 export function skipSummaryNow() {
   if (summarySkipped) return;
   summarySkipped = true;
@@ -87,7 +95,7 @@ export function skipSummaryNow() {
 /** Post-call summary: one model call before the "delete this call?" question. Never blocks longer than summary.timeoutMs; errors are logged, not thrown. */
 async function postCallSummary() {
   if (summarySkipped) {
-    status("summary", { ok: false, skipped: true });
+    skippedStatus();
     return;
   }
   try {
@@ -134,7 +142,7 @@ async function postCallSummary() {
       write: (stream, row) => log.write(stream, row),
     });
     if (summarySkipped) {
-      status("summary", { ok: false, skipped: true });
+      skippedStatus();
       return;
     }
     summaryDone = true;
@@ -153,11 +161,7 @@ async function postCallSummary() {
 
 /** Writes endedAt and phase "ended" to call.json. Safe to call more than once (the last call wins), never throws. */
 function markEnded() {
-  try {
-    log.update({ endedAt: new Date().toISOString(), crashed: st.call.crashed, phase: "ended" });
-  } catch {
-    /* best effort: the log itself may be what failed */
-  }
+  writeEnded(st.call.crashed);
 }
 /** The speech-to-text usage row. Written once in the normal path, and by the hard-exit timer when closing hung. */
 function writeSttUsage() {
@@ -189,8 +193,8 @@ export async function shutdown() {
   if (st.call.shuttingDown) return;
   // shuttingDown stops everything that would start something new (cards, questions, notes). `closing` lets the STT finals that are still on their
   // way (the sockets get ~1.5 s to flush) into the transcript and the summary; it ends when the channels are closed.
-  st.call.shuttingDown = true;
-  st.call.closing = true;
+  transition("closing");
+  runStopHooks(); // timers and observers of the modules stop and are not started again
   st.turn.current?.abort();
   notesAbort.abort();
   void flushMemory(); // session.json is on disk before anything slow starts (also on the crash path: crash() calls shutdown())
@@ -231,7 +235,7 @@ export async function shutdown() {
     /* best effort: interim words are never worth keeping, even if the rest of the shutdown hangs */
   }
   await Promise.all([chans.me?.close(), chans.them?.close()].filter(Boolean)).catch(() => {});
-  st.call.closing = false;
+  transition("closed");
   clearTimeout(hard);
   // Budget: the tray sends SIGINT at 12 s and SIGKILL at 20 s after Stop, so the final frame + summary share ~12 s from the start of shutdown.
   // The call files (usage, endedAt) are written FIRST; the frame look and the summary are best effort on top of that.
@@ -256,7 +260,7 @@ export async function shutdown() {
     log.write("usage", summaryRow());
     const summary = speedSummary();
     log.write("events", { type: "speed.summary", summary });
-    log.update({ endedAt: new Date().toISOString(), crashed: st.call.crashed, phase: "ended" });
+    markEnded();
     console.log(
       `\nSpeakers mode (${st.echo.mode}): mic muted ${Math.round(st.echo.gatedMs / 1000)} s while the client talked · ${st.echo.dropped} echo lines dropped`,
     );
@@ -280,17 +284,13 @@ export async function shutdown() {
   // (usage was logged twice on purpose: once above so the numbers exist even if the summary hangs, again below with the summary's own cost.)
   status("stopphase", { phase: "summary" });
   await Promise.race([postCallSummary(), summarySkipWait, new Promise((res) => setTimeout(res, Math.max(1500, left())))]);
-  if (summarySkipped) status("summary", { ok: false, skipped: true });
+  if (summarySkipped) skippedStatus();
   try {
     log.write("usage", summaryRow());
   } catch {
     /* best effort: the call files were already written above */
   }
-  try {
-    log.update({ endedAt: new Date().toISOString(), crashed: st.call.crashed, phase: "ended" });
-  } catch {
-    /* best effort: the call files were already written above */
-  }
+  markEnded(); // never throws
   let del = discard || st.call.discardNow;
   if (!del && !st.call.crashed && process.stdin.isTTY) {
     process.stdout.write("\nDelete this call's saved text now? y = delete, any other key (or 10 s) = keep: ");
@@ -342,6 +342,7 @@ export async function shutdown() {
     } catch {
       /* best effort */
     }
+  transition("ended");
   status("stopphase", { phase: "done" });
   status("ended", {
     id: log.id,

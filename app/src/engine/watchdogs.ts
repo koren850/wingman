@@ -6,16 +6,27 @@ import { log, sup, S, fileArg, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { st, mono } from "./state.ts";
 import { MicWatch } from "./mic-watch.ts";
+import { MicBar } from "./mic-bar.ts";
+import { themDeadFlag } from "./them-dead.ts";
 
+/** The "other side not heard" flag for the supervisor, from three owners (see them-dead.ts). */
+export const setThemDead = themDeadFlag((dead) => sup.set({ themDead: dead }));
+
+/** The one "mic" bar: the watchdog above and the source supervisor (audio-sources.ts) both feed it, and it shows the worst of them. */
+export const micBar = new MicBar({
+  show: (level, text, note) => health("mic", level, text, note),
+  clear: () => healthClear("mic"),
+  texts: { never: () => ht(UI_LANG, "mic.never"), long: () => ht(UI_LANG, "mic.long") },
+});
 const MIC_LONG_SILENT_MS = 5 * 60_000;
 const micWatch = new MicWatch({
   intervalMs: S.audio.watchdog.micSilentMs,
   micPeak: S.audio.watchdog.micPeak,
   longSilentMs: MIC_LONG_SILENT_MS,
   shuttingDown: () => st.call.shuttingDown,
-  onNever: () => health("mic", "red", ht(UI_LANG, "mic.never")),
-  onLong: () => health("mic", "amber", ht(UI_LANG, "mic.long")),
-  onHeard: () => healthClear("mic"),
+  onNever: () => micBar.setWatch("never"),
+  onLong: () => micBar.setWatch("long"),
+  onHeard: () => micBar.setWatch(undefined),
 });
 
 /** One mic frame: tracks the peak levels the mic watchdog reads, and clears the bar when the mic is heard again. */
@@ -53,7 +64,7 @@ export function startTapWatchdog(sys: SupervisedSource | undefined, deadFrameMs:
   const clearThemBanner = () => {
     if (!shownKind) return;
     healthClear(shownKind === "red" ? "them-silent" : "only-you");
-    if (shownKind === "red") sup.set({ themDead: false });
+    if (shownKind === "red") setThemDead("tap", false);
     shownKind = undefined;
   };
   st.voice.themHeard = clearThemBanner;
@@ -84,7 +95,7 @@ export function startTapWatchdog(sys: SupervisedSource | undefined, deadFrameMs:
             shownKind = undefined;
           }
           shownKind = "red";
-          sup.set({ themDead: true });
+          setThemDead("tap", true);
           log.write("events", { type: "watchdog.tap-dead" });
           health("them-silent", "red", ht(UI_LANG, "tap.dead"));
         }

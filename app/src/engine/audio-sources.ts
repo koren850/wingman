@@ -6,11 +6,11 @@ import { backendFor } from "../audio-platform.ts";
 import { resolveEchoMode, type EchoMode } from "../echo.ts";
 import { readAudioDevices, listInputDevices, bluetoothInUse } from "../devices.ts";
 import { stopConsentTimer } from "./consent.ts";
-import { startTapWatchdog, stopTapWatchdog, noteMicFrame, micBack, stopMicWatch, micStarted } from "./watchdogs.ts";
+import { startTapWatchdog, stopTapWatchdog, noteMicFrame, micBack, stopMicWatch, micStarted, micBar, setThemDead } from "./watchdogs.ts";
 import { startSources } from "./start-sources.ts";
 import { eventError } from "../errtext.ts";
 import { stops, lifecycle } from "./lifecycle.ts";
-import { sup, log, PHONE, gate, phone, S, ECHO, UI_LANG } from "./boot.ts";
+import { log, PHONE, gate, phone, S, ECHO, UI_LANG } from "./boot.ts";
 import { ht } from "../htext.ts";
 import { chans, st } from "./state.ts";
 import { safe, healthClear, health } from "./out.ts";
@@ -36,7 +36,16 @@ function gateMic(b: Buffer): Buffer {
 }
 
 /** Supervisor events -> log + health bars. The bar appears at the first failure and goes when frames flow again. */
-const wireSource = (src: SupervisedSource, name: "mic" | "sys", id: string, downText: (code?: string) => string, onDown: () => void, onUp: () => void) => {
+const wireSource = (
+  src: SupervisedSource,
+  name: "mic" | "sys",
+  id: string,
+  downText: (code?: string) => string,
+  onDown: () => void,
+  onUp: () => void,
+  /** Where the "down" bar goes. The mic shares its bar with the watchdog (watchdogs.ts micBar); the default is a bar of its own. */
+  bar: { down: (text: string, note: string) => void; up: () => void } = { down: (t, n) => health(id, "red", t, n), up: () => healthClear(id) },
+) => {
   let shown = false;
   src.on(
     "down",
@@ -45,7 +54,7 @@ const wireSource = (src: SupervisedSource, name: "mic" | "sys", id: string, down
       console.error(`${name} audio down (${d.reason}); retry ${d.n} in ${Math.round(d.delayMs / 1000)} s`);
       if (!shown) {
         shown = true;
-        health(id, "red", downText(d.code), d.reason);
+        bar.down(downText(d.code), d.reason);
         onDown();
       }
     }),
@@ -57,7 +66,7 @@ const wireSource = (src: SupervisedSource, name: "mic" | "sys", id: string, down
       console.log(`${name} audio is back (down ${Math.round(d.after / 1000)} s)`);
       if (shown) {
         shown = false;
-        healthClear(id);
+        bar.up();
         onUp();
       }
     }),
@@ -195,6 +204,7 @@ export async function startLiveSources() {
     (code) => ht(UI_LANG, code === "permission" ? "mic.denied" : code === "busy" ? "mic.busy" : "mic.down"),
     () => {},
     micBack,
+    { down: (text, note) => micBar.setDown({ text, note }), up: () => micBar.setDown(undefined) },
   );
   if (sys) {
     sys.on(
@@ -209,15 +219,15 @@ export async function startLiveSources() {
       "sys",
       "sys",
       (code) => ht(UI_LANG, code === "permission" ? "sys.denied" : "sys.down"),
-      () => sup.set({ themDead: true }),
-      () => sup.set({ themDead: false }),
+      () => setThemDead("sys", true),
+      () => setThemDead("sys", false),
     );
   } else if (PHONE) {
     console.log("Phone mode: one microphone hears both of you (phone on speaker). The louder voice is you.");
     log.write("events", { type: "phone.mode", on: true });
   } else {
     console.log("audio.system.source is off: no audio from the other side, so only your own questions get answers (Ctrl+Opt+A).");
-    sup.set({ themDead: true });
+    setThemDead("off", true);
   }
   // Neither start() can fail the call: a source that will not start is retried in the background. The stoppers are registered before the starts are
   // awaited (a Stop during a slow start finds them), and each start has a timeout (a hung audiotee start must not hang the engine).

@@ -169,6 +169,42 @@ test("retry registry: a wake-up reopen is skipped when the channel is healthy, a
   assert.equal(recovered, 1);
 });
 
+test("retry registry: a permanent request takes over a wake loop, which then keeps retrying with the new hooks", async () => {
+  const reg = new SttRetryRegistry();
+  const calls: string[] = [];
+  let release: () => void = () => {};
+  let gate = new Promise<void>((r) => (release = r));
+  const mk = (name: string, o: { healthy?: () => boolean; slow?: boolean } = {}) => ({
+    reopen: async () => void calls.push(`${name}.reopen`),
+    stopped: () => false,
+    sleep: async () => void (o.slow && (await gate)),
+    slowMs: 1000,
+    healthy: o.healthy,
+    onPermanent: () => {},
+    onFail: () => {},
+    onRecovered: () => void calls.push(`${name}.recovered`),
+  });
+  // The wake loop is waiting; the old socket still looks open, so its `healthy` says true.
+  const wake = reg.run("them", mk("wake", { healthy: () => true, slow: true }), false, 0);
+  await sleep(5);
+  // A permanent error arrives (revive on the silent socket failed with a refused key): this request is stronger.
+  await reg.run("them", mk("perm"), true);
+  assert.equal(reg.has("them"), true, "still one loop");
+  release();
+  await wake;
+  assert.deepEqual(calls, ["perm.reopen", "perm.recovered"], "the wake loop did not leave on `healthy`; it reopened and recovered with the new hooks");
+  assert.equal(reg.has("them"), false);
+  // A weaker request never replaces a stronger loop.
+  const calls2: string[] = [];
+  gate = new Promise<void>((r) => (release = r));
+  const slowPerm = reg.run("me", { ...mk("p2", { slow: true }), reopen: async () => void calls2.push("p2") }, true);
+  await sleep(5);
+  await reg.run("me", { ...mk("w2", { healthy: () => true }), reopen: async () => void calls2.push("w2") }, false, 0);
+  release();
+  await slowPerm;
+  assert.deepEqual(calls2, ["p2"]);
+});
+
 // ---- tray controller ----
 function ctl(spawnImpl?: () => unknown) {
   const spawned: any[] = [];
@@ -245,4 +281,103 @@ test("failback: close() while waiting for the stable period opens no new socket"
   await ch.close();
   await sleep(150);
   assert.equal(a.length, 1, "no primary socket after close");
+});
+
+// A channel runs one socket operation at a time (first open, switch, failback, reopen). These tests start a second one while the first is slow.
+const twoProviders = (a: Fake[], b: Fake[], slow: { b: number; a: number }, extra: Partial<ConstructorParameters<typeof SttChannel>[0]> = {}) =>
+  new SttChannel({
+    channel: "them",
+    chain: [
+      provider("deepgram", async (_s, n) => void (n > 0 && (await sleep(slow.a))), a),
+      provider("soniox", async (_s, n) => void (n > 0 && (await sleep(slow.b))), b),
+    ],
+    keyOf: () => "k",
+    base: {},
+    circuit: { failures: 1, windowMs: 10_000 },
+    ...extra,
+  });
+const openCount = (...l: Fake[][]) => l.flat().filter((s) => s.isOpen).length;
+
+test("channel ops: a failback timer that fires during a reopen does not open a second socket", async () => {
+  const a: Fake[] = [],
+    b: Fake[] = [];
+  const slow = { a: 0, b: 0 };
+  const ch = twoProviders(a, b, slow, { failbackAfterMs: 40 });
+  await ch.open();
+  const sw = new Promise((r) => ch.once("switched", r));
+  a[0].emit("error", auth("deepgram"), { terminal: true }); // permanent: no failback armed from the switch
+  await sw;
+  assert.equal(ch.provider, "soniox");
+  await sleep(5); // the switch has ended
+  (ch as unknown as { armFailback(): void }).armFailback(); // as if the switch had been transient
+  slow.b = 200; // the reopen of the fallback is slow
+  const re = ch.reopen();
+  await sleep(120); // the failback timer fired in the middle of it
+  assert.equal(a.length, 1, "no primary socket was opened while the reopen ran");
+  await re;
+  await sleep(250); // the refused failback was armed again and has gone through now
+  assert.equal(ch.provider, "deepgram");
+  assert.equal(openCount(a, b), 1, "exactly one socket is open, none leaked");
+  await ch.close();
+});
+
+test("channel ops: two reopen() calls share one socket", async () => {
+  const a: Fake[] = [],
+    b: Fake[] = [];
+  const ch = twoProviders(a, b, { a: 60, b: 0 });
+  await ch.open();
+  let reconnected = 0;
+  ch.on("reconnected", () => reconnected++);
+  await Promise.all([ch.reopen(), ch.reopen()]);
+  assert.equal(a.length, 2, "one new socket, not two");
+  assert.equal(openCount(a), 1);
+  assert.equal(reconnected, 1);
+  await ch.close();
+});
+
+test("channel ops: a terminal error during a reopen does not start a switch", async () => {
+  const a: Fake[] = [],
+    b: Fake[] = [];
+  const ch = twoProviders(a, b, { a: 80, b: 0 });
+  await ch.open();
+  const switched: unknown[] = [];
+  ch.on("switched", (d) => switched.push(d));
+  const re = ch.reopen();
+  a[0].emit("error", new ProviderError("network", "deepgram", "gone"), { terminal: true }); // the dead stream's own last words
+  await re;
+  await sleep(50);
+  assert.equal(switched.length, 0);
+  assert.equal(b.length, 0, "the fallback was not opened");
+  assert.equal(ch.provider, "deepgram");
+  assert.equal(openCount(a, b), 1);
+  await ch.close();
+});
+
+test("channel ops: close() while every fallback fails to open closes the old stream", async () => {
+  const a: Fake[] = [];
+  const b: Fake[] = [];
+  const ch = new SttChannel({
+    channel: "them",
+    chain: [
+      provider("deepgram", () => {}, a),
+      provider(
+        "soniox",
+        async () => {
+          await sleep(60);
+          throw new ProviderError("network", "soniox", "down");
+        },
+        b,
+      ),
+    ],
+    keyOf: () => "k",
+    base: {},
+    circuit: { failures: 1, windowMs: 10_000 },
+  });
+  await ch.open();
+  a[0].emit("error", new ProviderError("network", "deepgram", "gone"), { terminal: true });
+  await sleep(10);
+  await ch.close(); // the switch is mid-attempt; the old stream is not this.stream right now
+  await sleep(120);
+  assert.equal(a[0].closed, true, "the old stream is closed after the failed switch");
+  assert.equal(openCount(a, b), 0);
 });

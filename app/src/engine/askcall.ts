@@ -6,7 +6,7 @@ import { loadMemory } from "../session/store.ts";
 import { answerAsk, showRecap, type FlowDeps } from "../session/askflow.ts";
 import type { AskEnv } from "../session/ask.ts";
 import { ht } from "../htext.ts";
-import { log, cost, S, registry, transcript, speakers, houseStyle, bank, UI_LANG } from "./boot.ts";
+import { log, cost, notesAbort, S, registry, transcript, speakers, houseStyle, bank, UI_LANG } from "./boot.ts";
 import { usableModels, llmFailed } from "./degrade.ts";
 import { emitCard } from "./cards.ts";
 import { st } from "./state.ts";
@@ -33,6 +33,7 @@ function env(offline = false): AskEnv {
   return {
     registry,
     models: offline ? [] : models(),
+    signal: notesAbort.signal, // Stop aborts a running answer
     cfg: { timeoutMs: Math.min(S.llm.reflex.timeoutMs, 9000), maxTokens: 220, cache: S.llm.reflex.cache, effort: "low", thinking: false },
     memory: freshest(),
     lines: lines(),

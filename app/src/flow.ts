@@ -28,10 +28,16 @@ export class FlowTracker {
   private internalSince = 0;
   private internalEndedAt = 0;
   private who: string[] = [];
+  private discussions = 0;
   constructor(private o: FlowOptions = FLOW_DEFAULTS) {}
   /** True while the other side is in a discussion among themselves. */
   get internal(): boolean {
     return this.internalSince > 0;
+  }
+  /** Number of the current discussion: a new one starts each time the other side begins talking among themselves. A job that began in one discussion
+   *  compares this after its await and drops its result when the number moved on (the people and the subject are not the same any more). */
+  get epoch(): number {
+    return this.discussions;
   }
   /** Ends the discussion; a new one must build up from fresh lines. */
   private end(at: number): FlowEvent[] {
@@ -70,7 +76,10 @@ export class FlowTracker {
     const now = voices.length >= 2 && this.lines.length >= this.o.minLines && meQuiet;
     const same = voices.length === this.who.length && voices.every((v) => this.who.includes(v)); // order changes are not news
     if (now && (!wasInternal || !same)) {
-      if (!wasInternal) this.internalSince = l.at;
+      if (!wasInternal) {
+        this.internalSince = l.at;
+        this.discussions++;
+      }
       this.who = voices;
       out.push({ type: "internal", who: voices });
     } else if (!now && wasInternal && voices.length < 2) out.push(...this.end(l.at));

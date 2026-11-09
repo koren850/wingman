@@ -15,44 +15,55 @@ export type RetryHooks = {
   onRecovered: (attempts: number) => void;
 };
 
+/** wake = skip when the channel is fine (a check after sleep); transient = a failure that can pass; permanent = refused key / no credit (slow schedule, red bar). */
+type Mode = "wake" | "transient" | "permanent";
+const STRENGTH: Record<Mode, number> = { wake: 0, transient: 1, permanent: 2 };
+type Running = { mode: Mode; hooks: RetryHooks };
+
 export class SttRetryRegistry {
-  private running = new Set<string>();
-  private upgraded = new Set<string>();
+  private running = new Map<string, Running>();
 
   /** Is a loop running for this channel? */
   has(ch: string) {
     return this.running.has(ch);
   }
 
-  /** Runs the loop until the channel reopens or the call stops. A second call for a running channel only upgrades it (when `permanent`). */
+  /** Runs the loop until the channel reopens or the call stops. A second call for a running channel does not start a second loop. When it is
+   *  stronger (wake < transient < permanent) it takes the loop over: its hooks replace the old ones, so a wake-up loop that was only waiting for
+   *  `healthy` keeps trying when a real failure arrives, and its `onRecovered` clears what the new request set. A weaker request is ignored. */
   async run(ch: string, h: RetryHooks, permanent = false, firstDelayMs?: number) {
-    if (this.running.has(ch)) {
-      if (permanent) this.upgraded.add(ch);
+    const mode: Mode = permanent ? "permanent" : h.healthy ? "wake" : "transient";
+    const now = this.running.get(ch);
+    if (now) {
+      if (STRENGTH[mode] > STRENGTH[now.mode]) {
+        now.mode = mode;
+        now.hooks = { ...now.hooks, ...h, healthy: h.healthy }; // what the new request does not say stays; `healthy` is only for a wake-up loop, so it goes
+      }
       return;
     }
-    this.running.add(ch);
+    const me: Running = { mode, hooks: h };
+    this.running.set(ch, me);
     const sleep = h.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     try {
-      for (let n = 0; !h.stopped(); n++) {
-        if (!permanent && this.upgraded.has(ch)) permanent = true;
-        await sleep(n === 0 && firstDelayMs !== undefined ? firstDelayMs : sttRetryDelayMs(n, permanent, h.slowMs));
-        if (h.stopped()) return;
-        if (h.healthy?.()) return;
+      for (let n = 0; !me.hooks.stopped(); n++) {
+        await sleep(n === 0 && firstDelayMs !== undefined ? firstDelayMs : sttRetryDelayMs(n, me.mode === "permanent", me.hooks.slowMs));
+        const cur = me.hooks; // read again: the loop may have been taken over while it slept
+        if (cur.stopped()) return;
+        if (cur.healthy?.()) return;
         try {
-          await h.reopen();
-          h.onRecovered(n + 1);
+          await cur.reopen();
+          me.hooks.onRecovered(n + 1);
           return;
         } catch (e) {
-          h.onFail(n + 1, e as Error);
-          if (!permanent && isPermanentSttError(e as { retryable?: boolean; kind?: string })) {
-            permanent = true;
-            h.onPermanent(e as Error);
+          me.hooks.onFail(n + 1, e as Error);
+          if (me.mode !== "permanent" && isPermanentSttError(e as { retryable?: boolean; kind?: string })) {
+            me.mode = "permanent";
+            me.hooks.onPermanent(e as Error);
           }
         }
       }
     } finally {
-      this.running.delete(ch);
-      this.upgraded.delete(ch);
+      if (this.running.get(ch) === me) this.running.delete(ch);
     }
   }
 }

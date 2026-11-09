@@ -313,6 +313,10 @@ Background loops run beside this: live notes (every 30 s), tips (max one per 2 m
 | `live` | Listening. Audio streams to Deepgram. This is the normal state by default. |
 | `ended` | The call is over and saved. |
 
+Inside the engine the phase is one value, `CallPhase` in `engine/phase.ts`: `starting`, `waiting`, `live`, `closing` (Stop has begun; the STT sockets close and late finals still reach the transcript), `closed` (sockets shut, summary runs), `ended`. It only moves forward through `transition()`. A late "consent" cannot write `live` over a Stop. `st.call.shuttingDown` and `st.call.closing` are read from it. `shutdown.ts` goes through `transition()` and `writeEnded()`; `call.json` says `ended` as soon as Stop starts saving. After Stop, `emitCard` lets only withdraw and clear rows out, and modules stop their own timers with `onStop()` (`engine/lifecycle.ts`).
+
+An STT channel (`providers/stt/channel.ts`) also has one state: `op` is `idle`, `opening`, `switching`, `failback`, `reopen` or `closed`. Only one runs at a time. A second `reopen()` shares the running one; a switch or a failback that is asked while another runs is skipped or tried again later. `close()` makes the state `closed`, so a stream that finishes opening afterwards is closed, not kept.
+
 While a call ends, a separate `stopPhase` shows the steps (`wingman status` prints it):
 
 | stopPhase | Meaning |

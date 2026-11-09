@@ -154,3 +154,42 @@ test("MicSource: a stop that came first means start() spawns no child", async ()
   assert.equal(liveAudioChildren(), 0);
   assert.equal(killAudioChildren(), 0);
 });
+
+test("mic bar: a down device outranks the watchdog, and the watchdog's bar comes back when the device does", async () => {
+  const { MicBar } = await import("./engine/mic-bar.ts");
+  const out: string[] = [];
+  const bar = new MicBar({
+    show: (level, text) => out.push(`${level}:${text}`),
+    clear: () => out.push("clear"),
+    texts: { never: () => "never heard", long: () => "long silence" },
+  });
+  // The mic was heard, then a long silence, then the device dies: red replaces amber, and stays when the watchdog speaks again.
+  bar.setWatch("long");
+  bar.setDown({ text: "mic down" });
+  bar.setWatch("long");
+  assert.deepEqual(out, ["amber:long silence", "red:mic down"]);
+  // The device is back while the mic was never heard: the "never heard" bar shows again, the bar is not simply cleared.
+  out.length = 0;
+  bar.setWatch("never");
+  bar.setDown(undefined);
+  assert.deepEqual(out, ["red:never heard"]);
+  // Heard again: nothing is left to show.
+  bar.setWatch(undefined);
+  assert.deepEqual(out, ["red:never heard", "clear"]);
+  bar.setWatch(undefined);
+  assert.equal(out.length, 2, "no second clear");
+});
+
+test("them-dead: each owner clears only its own reason", async () => {
+  const { themDeadFlag } = await import("./engine/them-dead.ts");
+  const seen: boolean[] = [];
+  const set = themDeadFlag((d) => seen.push(d));
+  set("sys", true); // the system source drops
+  set("tap", true); // the tap watchdog sees no frames too
+  set("sys", false); // the source comes back, but the tap is still silent
+  assert.deepEqual(seen, [true], "still dead: the tap has not cleared its reason");
+  set("tap", false);
+  assert.deepEqual(seen, [true, false]);
+  set("tap", false);
+  assert.deepEqual(seen, [true, false], "no repeat");
+});

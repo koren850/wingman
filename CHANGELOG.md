@@ -51,6 +51,8 @@ Highlights: a live agent for meetings that builds context as the call goes and s
 
 - **State machines.** The menu-bar controller has one slot (idle, readiness check or call), the call phase moves only along allowed steps, and each capture channel has a state with a start token. This fixes: a call starting during the readiness check, a late "listening" line undoing Stop, an old call's output leaking into the new call, a second readiness check getting no result, the microphone opening after the macOS prompt when the call had already stopped, a background summary reported as a failure (and a second writer allowed), a new call starting while the app quits, `wingman start` reporting success for a call that never started, a hidden capture window left after a failed load, the Start listening key retried every second, an older key check overwriting a newer key, and two audio processes holding the mic together.
 
+- **Stop and the engine state.** The call phase is one forward-only value, so nothing starts after Stop (no late ask or recap card, no health timer after a Stop during startup, no restarted observer or memory timer). An STT channel runs one socket operation at a time, so a reopen, a failback and a provider switch can no longer leave a socket open. A permanent STT error takes over a running wake-up retry. The mic bar shows the worst of "device down", "never heard" and "long silence". A flow topic is dropped when its discussion has ended.
+
 ### Security and privacy
 
 - No telemetry and no cloud account. Audio is never stored. By default nothing leaves your Mac except audio to Deepgram and call text to Anthropic. Three opt-in features contact the hosts you give them: a web address as context, a calendar .ics link, and web lookup (off by default).

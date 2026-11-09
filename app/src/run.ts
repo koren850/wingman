@@ -8,7 +8,8 @@
 import { st } from "./engine/state.ts";
 import { fileArg, noAi, CONTROL, log, sup, brief, spotter, snapshot, bank, discard, S, ECHO, UI_LANG, interview } from "./engine/boot.ts";
 import { ht } from "./htext.ts";
-import { setPhase, status, health, safe } from "./engine/out.ts";
+import { transition } from "./engine/phase.ts";
+import { status, health, safe } from "./engine/out.ts";
 import { crash, installProcessHandlers } from "./engine/shutdown.ts";
 import { createChannels, openBothChannels, wireChannels } from "./engine/stt.ts";
 import { resolveReflexModels, startHealthTick, tickHealth, checkDisk, v2Active } from "./engine/degrade.ts";
@@ -28,7 +29,7 @@ log.onWriteFail = (e) => {
     /* best effort: the bar itself needs the log */
   }
 };
-setPhase("starting");
+transition("starting");
 status("mode", { noAi }); // effective AI mode for the app (the setting or --no-ai)
 installProcessHandlers();
 if (CONTROL) startControlReader(); // Stop must work while the STT sockets are still opening (that can take 30 s)
@@ -76,13 +77,14 @@ async function main() {
   createChannels();
   wireChannels(onResult, tickHealth); // before opening: a terminal failure of the first channel while the second is still opening must reach the retry loop
   await resolveReflexModels();
+  if (st.call.shuttingDown) return; // Stop came during startup: shutdown() is closing the call, so start nothing (no timers, no health rows)
   await openBothChannels();
+  if (st.call.shuttingDown) return; // same, after the slow part
   startTimers();
   printStartup();
   checkDisk(true);
   sup.tick();
   printBanner();
-  if (st.call.shuttingDown) return; // Stop came during startup: shutdown() is already closing the call, so start nothing new
   startConsent(CONTROL ? setupControl : setupKeys);
   if (fileArg) await startFileSource(fileArg);
   else await startLiveSources();

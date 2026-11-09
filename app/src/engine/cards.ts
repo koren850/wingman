@@ -3,6 +3,7 @@ import { matchBankFor } from "../bank.ts";
 import { isClearQuestion } from "../detector.ts";
 import { sanitize } from "../guards.ts";
 import { st, callKind } from "./state.ts";
+import { isStopping } from "./phase.ts";
 import { log, tipGate, S, bank, interview, PROMPT_V, schedCfg } from "./boot.ts";
 import { capDecision, CardScheduler, CheckBook, kindOfBadge, type CardV2Extra, type CardRow, type OfferMeta, type Offered } from "./cards-v2.ts";
 import type { ScheduledMoment } from "../moments/scheduler.ts";
@@ -58,6 +59,8 @@ export function focusWorthy(text: string, reason: string): boolean {
   return isClearQuestion(text, reason) || !!matchBankFor(text, bank)?.card.id.startsWith("stall-");
 }
 export function emitCard(c: Card) {
+  // After Stop only rows that take something away may still go out: a late answer must not appear while the call is being saved.
+  if (isStopping() && !c.withdraw && !c.clear) return;
   // Checks: at most 3 open, one card per ref, closing rows for the oldest. The closing rows go out first.
   const adm = checkBook.admit(c, Date.now());
   if (adm.merged) log.write("events", { type: "check.merged", id: c.id, into: adm.merged, ref: c.ref });

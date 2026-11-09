@@ -8,14 +8,6 @@ import type { MemoryView } from "../session/types.ts";
 
 /** Label for a channel in the UI language, used in health texts. */
 export const chHe = (c: string) => ht(UI_LANG, c === "me" ? "ch.me" : "ch.them");
-/** Call phase for the answer window: written into call.json at each change (best effort, like every CallLog write). */
-export function setPhase(phase: "starting" | "waiting" | "live" | "ended", extra: Record<string, unknown> = {}) {
-  try {
-    log.update({ phase, ...extra });
-  } catch {
-    /* best effort */
-  }
-}
 /** Status line for the menu-bar app: "@@wingman {json}" on its own line (the leading newline keeps it off any half-written log line). Only in control mode. */
 export function status(ev: string, data: Record<string, unknown> = {}) {
   if (CONTROL) process.stdout.write(`\n@@wingman ${JSON.stringify({ ev, ...data })}\n`);

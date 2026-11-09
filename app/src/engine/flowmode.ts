@@ -37,12 +37,13 @@ export async function flowTick() {
   if (Date.now() - flowTopicAt < S.flow.topicEveryMs) return;
   flowBusy = true;
   flowTopicAt = Date.now();
+  const epoch = flow.epoch; // the discussion this topic is about
   try {
     const lines = transcript.slice(-14).map(lineOf);
     const r = await runTopic({ registry, model: S.flow.model, lines, signal: notesAbort.signal, timeoutMs: S.flow.timeoutMs, sttLanguage: S.stt.language });
     const c = cost.addLlm("flow", S.flow.model, r.usage, r.providerMetadata);
     log.write("usage", { role: "flow", model: S.flow.model, usage: r.usage, usd: c.usd });
-    if (r.topic && flow.internal && !st.call.shuttingDown && r.topic !== flowTopic) {
+    if (r.topic && flow.internal && flow.epoch === epoch && !st.call.shuttingDown && r.topic !== flowTopic) {
       flowTopic = r.topic;
       log.write("cards", { type: "flow", state: "internal", who: flow.people, topic: r.topic, at: Date.now() });
       console.log(`\n[👥 topic] ${r.topic}`);

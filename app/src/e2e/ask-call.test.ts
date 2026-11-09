@@ -32,7 +32,7 @@ const MEM = applyPatch(
   { now: 2 },
 ).mem;
 
-async function run(rules: (pm: ReturnType<typeof policyModel>) => void) {
+async function run(rules: (pm: ReturnType<typeof policyModel>) => void, extraEnv: Record<string, string> = {}) {
   const tmp = mkdtempSync(join(tmpdir(), "wingman-e2e-ask-"));
   const calls = join(tmp, "calls");
   const wav = join(tmp, "silence.wav");
@@ -49,6 +49,7 @@ async function run(rules: (pm: ReturnType<typeof policyModel>) => void) {
       WINGMAN_POLICY_FILE: policy,
       WINGMAN_POLICY_LOG: join(tmp, "policy-calls.jsonl"),
       WINGMAN_CALLS_DIR: calls,
+      ...extraEnv,
     },
     "e2e-policy",
   );
@@ -122,6 +123,24 @@ test("e2e: with the model returning 529 an ask still shows a card from the notes
     assert.deepEqual(rc.recap.promised, ["send the plan"]);
     r.e.p.kill("SIGINT");
     await r.e.done;
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("e2e: an ask that is still being answered when Stop comes puts no card on the screen afterwards", { timeout: 60_000 }, async () => {
+  const r = await run(
+    (pm) => pm.reply({ role: "ask", user: "Dover" }, "SRC: call\nANSWER: The Dover warehouse closes on the ninth of March.", { ms: 1500 }),
+    { WINGMAN_TEST_SLOW_STOPS: "1x3500" }, // Stop takes 3.5 s, so the answer would land in the middle of it
+  );
+  try {
+    r.send("ask when does the Dover warehouse close?");
+    await sleep(200);
+    r.send("stop");
+    const code = await r.e.done;
+    assert.equal(code, 0, r.e.out());
+    const askCards = readRows(r.dir, "cards.jsonl").filter((c) => c.type === "card" && String(c.id).endsWith("-me"));
+    assert.deepEqual(askCards, [], "no ask card was written after Stop");
   } finally {
     r.cleanup();
   }

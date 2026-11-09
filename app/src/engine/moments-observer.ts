@@ -2,6 +2,7 @@
 // one `observer` model call, and its verdict becomes a card through the same scheduler and guards as the direct path (moments.ts).
 import { emitCard, recordLatency, noteModel, checkBook, closeCards, type Card } from "./cards.ts";
 import { st, callKind } from "./state.ts";
+import { onStop } from "./lifecycle.ts";
 import { S, log, sup, tracker, speakers, interview, registry, bank, observer, notesAbort } from "./boot.ts";
 import { nameRegex } from "../profile.ts";
 import { type ContextOutput } from "../context/build.ts";
@@ -157,6 +158,7 @@ export function stopObserver() {
   clearTimeout(obsTimer);
   obsAc?.abort();
 }
+onStop(stopObserver);
 
 function dispatch(w: ObserverWindow) {
   // Any trigger: when the newest line of the window is a question the direct path already took, a second call would show a second card for one line.

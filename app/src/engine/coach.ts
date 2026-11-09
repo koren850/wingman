@@ -25,6 +25,7 @@ import {
   noAi,
 } from "./boot.ts";
 import { st, callKind } from "./state.ts";
+import { onStop } from "./lifecycle.ts";
 import { liveNotes } from "./side.ts";
 import { emitCard, emitMoment, closeCards, cardSched } from "./cards.ts";
 import { applyFeedback } from "./moments.ts";
@@ -205,6 +206,7 @@ export function setCallMode(mode: string): { ok: boolean; reason?: string } {
 export function memoryLoop(): MemoryLoop | undefined {
   if (!engineV2(S) || noAi || !memCfg.enabled) return undefined;
   if (loop) return loop;
+  if (st.call.shuttingDown && !st.call.consented) return undefined; // a call that never went live learns nothing and writes no session.json
   const now = Date.now();
   // A call that is resumed or restarted in its folder keeps what it learned; a new call starts from the pre-meeting brief (facts, agenda) or empty.
   let mem: SessionMemory = loadMemory(log.dir, now).mem;
@@ -283,8 +285,13 @@ export function memoryLoop(): MemoryLoop | undefined {
   }
   return loop;
 }
+function stopV2Timer() {
+  clearInterval(v2Timer);
+  v2Timer = undefined;
+}
+onStop(stopV2Timer);
 function startV2Timer() {
-  if (v2Timer || !memoryLoop()) return;
+  if (v2Timer || st.call.shuttingDown || !memoryLoop()) return;
   v2Timer = setInterval(safe("memory", v2Tick), 1000);
   v2Timer.unref();
 }
@@ -446,7 +453,6 @@ export async function flushMemory(maxMs?: number): Promise<void> {
   l.flush();
   if (maxMs !== undefined) {
     l.stop();
-    clearInterval(v2Timer);
-    v2Timer = undefined;
+    stopV2Timer();
   }
 }

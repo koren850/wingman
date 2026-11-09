@@ -1,6 +1,7 @@
 // Start of listening: the consent card, and "Start listening" (immediately, or after the user confirms when privacy.requireConsentAck is on).
 import { log, CONTROL, fileArg, S, CONSENT_SAY, confirmContext } from "./boot.ts";
-import { setPhase, status } from "./out.ts";
+import { status } from "./out.ts";
+import { transition } from "./phase.ts";
 import { st, mono } from "./state.ts";
 import { emitCard, type Card } from "./cards.ts";
 import { startMicWatch } from "./watchdogs.ts";
@@ -39,20 +40,24 @@ export function startConsent(listen: (startForwarding: () => void) => void) {
     confirmContext(); // the brief and files are kept until now. Later it could move to the first successful session-memory write ({ev:"memory"} for the tray).
     const consentedAt = Date.now();
     st.call.consentedMono = mono();
-    setPhase("live", { liveAt: consentedAt });
+    transition("live", { liveAt: consentedAt });
     if (!fileArg) startMicWatch();
   };
   if (needAck) emitCard(consentCard());
-  reemit = setInterval(() => {
-    if (!st.call.consented && !st.call.shuttingDown && needAck) emitCard(consentCard());
-  }, 20_000);
+  if (needAck) {
+    // Only a call that waits for the user's yes needs the card again and again.
+    reemit = setInterval(() => {
+      if (!st.call.consented && !st.call.shuttingDown) emitCard(consentCard());
+    }, 20_000);
+    reemit.unref();
+  }
   if (!needAck) startForwarding();
   listen(startForwarding);
   if (!st.call.consented) {
     console.log(
       `\nWaiting for you to start listening: nothing is sent to the cloud until you ${CONTROL ? 'click "Start listening" in the menu bar' : "press Enter"}.`,
     );
-    setPhase("waiting");
+    transition("waiting");
     status("waiting", { id: log.id });
   }
 }

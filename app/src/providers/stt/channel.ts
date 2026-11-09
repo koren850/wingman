@@ -29,12 +29,16 @@ export type ChannelOpts = {
 };
 
 /** Events: result · disconnected · reconnected · switched {from,to,kind,reason} · exhausted (ProviderError) · stt_error (ProviderError) · keyterms_off */
+/** idle | opening (first open) | switching (to the next provider) | failback (to the primary) | reopen (same provider) | closed. */
+type ChannelOp = { k: "idle" | "opening" | "switching" | "failback" | "reopen" | "closed" };
+
 export class SttChannel extends EventEmitter {
   private idx = 0;
   private stream?: SttStreamLike;
   private failures: number[] = [];
-  private switching = false;
-  private closed = false;
+  /** The one socket operation that runs now. Every change of `stream` / `idx` happens inside one of these, so two never overlap. */
+  private op: ChannelOp = { k: "idle" };
+  private inflight?: Promise<void>; // the running operation, so a late caller can join it or wait for it
   private lastFailure?: { stream: SttStreamLike | undefined; kind: string; at: number };
   private seconds: Record<string, number> = {};
   private droppedOld = 0;
@@ -45,7 +49,6 @@ export class SttChannel extends EventEmitter {
   private flushEndSec = 0; // flushed audio occupies [0, flushEndSec] of the current connection's audio clock
   private deadTimer?: NodeJS.Timeout;
   private deadFor?: SttStreamLike; // the stream the dead timer is armed for
-  private opening = false; // the first open() is running: failure events of its stream belong to open(), not to switchNext()
   private failbackTimer?: NodeJS.Timeout;
   private liveTimer?: NodeJS.Timeout;
   private reviving = false;
@@ -53,6 +56,26 @@ export class SttChannel extends EventEmitter {
   private streamSince = 0;
   constructor(private o: ChannelOpts) {
     super();
+  }
+
+  private get closed() {
+    return this.op.k === "closed";
+  }
+  /** Start an operation unless another one runs (or the channel is closed). The caller must `end` it. */
+  private begin(k: Exclude<ChannelOp["k"], "idle" | "closed">): boolean {
+    if (this.op.k !== "idle") return false;
+    this.op = { k };
+    return true;
+  }
+  private end(k: ChannelOp["k"]) {
+    if (this.op.k === k) this.op = { k: "idle" };
+  }
+  /** Run `fn` as operation `k`; undefined when another operation runs. */
+  private exec(k: Exclude<ChannelOp["k"], "idle" | "closed">, fn: () => Promise<void>): Promise<void> | undefined {
+    if (!this.begin(k)) return undefined;
+    const p = fn().finally(() => this.end(k));
+    this.inflight = p;
+    return p;
   }
 
   get provider() {
@@ -92,12 +115,9 @@ export class SttChannel extends EventEmitter {
 
   /** Open the first provider in the chain that works; a switchProvider failure moves on, others throw. */
   async open(): Promise<void> {
-    this.opening = true;
-    try {
-      await this.openChain();
-    } finally {
-      this.opening = false;
-    }
+    const run = this.exec("opening", () => this.openChain());
+    if (run) return run;
+    await this.inflight?.catch(() => {}); // another operation runs: wait for it instead of opening a second socket
   }
   private async openChain(): Promise<void> {
     let last: ProviderError | undefined;
@@ -166,7 +186,7 @@ export class SttChannel extends EventEmitter {
   private checkRx() {
     const s = this.stream,
       limit = this.o.rxSilenceMs ?? 20_000;
-    if (this.closed || this.switching || this.opening || this.reviving || !s || !s.rxLiveness || !s.isOpen) return;
+    if (this.op.k !== "idle" || this.reviving || !s || !s.rxLiveness || !s.isOpen) return;
     const t = this.mono();
     if (t - this.lastSendAt > 3000) return; // no audio going out (paused): silence from the service is normal
     if (t - Math.max(s.lastRxAt ?? 0, this.streamSince) < limit) return;
@@ -278,7 +298,7 @@ export class SttChannel extends EventEmitter {
 
   /** Decide: wait for the SDK/adapter to reconnect, or switch provider now. */
   private onFailure(err: ProviderError, stream: SttStreamLike | undefined, kind: "error" | "disconnected", terminal = false) {
-    if (this.opening) return; // open() sees the same failure as a rejection and moves on itself; two paths would open two fallback sockets
+    if (this.op.k === "opening") return; // open() sees the same failure as a rejection and moves on itself; two paths would open two fallback sockets
     const t = this.now();
     // One socket failure can surface twice: an "error" event, then the "disconnected" for the same close (or the other way round).
     // An event of the other kind from the same stream within SAME_FAILURE_MS is the same failure: count it once toward the circuit.
@@ -294,37 +314,39 @@ export class SttChannel extends EventEmitter {
 
   /** Move to the next provider in the chain. On success emits "switched"; if none opens, emits "exhausted" and keeps the old stream. Re-entrant calls are ignored. */
   async switchNext(err: ProviderError) {
-    if (this.switching) return;
-    this.switching = true;
-    try {
-      const old = this.stream,
-        from = this.provider;
-      for (let i = this.idx + 1; i < this.o.chain.length; i++) {
-        try {
-          this.stream = undefined;
-          await this.openCurrent(i);
-          if (this.closed) {
-            // close() ran while the fallback was opening: do not leave that new socket (and the old one) running.
-            void (this.stream as SttStreamLike | undefined)?.close().catch(() => {});
-            void old?.close().catch(() => {});
-            return;
-          }
-          this.seconds[from] = (this.seconds[from] ?? 0) + (old?.audioSeconds ?? 0);
-          this.droppedOld += old?.dropped ?? 0;
-          this.failures = [];
-          this.emit("switched", { from, to: this.provider, kind: err.kind, reason: err.message });
+    await this.exec("switching", () => this.doSwitch(err));
+  }
+  private async doSwitch(err: ProviderError) {
+    const old = this.stream,
+      from = this.provider;
+    for (let i = this.idx + 1; i < this.o.chain.length; i++) {
+      try {
+        this.stream = undefined;
+        await this.openCurrent(i);
+        if (this.closed) {
+          // close() ran while the fallback was opening: do not leave that new socket (and the old one) running.
+          void (this.stream as SttStreamLike | undefined)?.close().catch(() => {});
           void old?.close().catch(() => {});
-          if (!(err.switchProvider && !err.retryable)) this.armFailback(); // a refused key will not come back by itself
           return;
-        } catch (e) {
-          this.emit("stt_error", classifySttError(this.o.chain[i].id, e));
-          this.stream = old;
+        }
+        this.seconds[from] = (this.seconds[from] ?? 0) + (old?.audioSeconds ?? 0);
+        this.droppedOld += old?.dropped ?? 0;
+        this.failures = [];
+        this.emit("switched", { from, to: this.provider, kind: err.kind, reason: err.message });
+        void old?.close().catch(() => {});
+        if (!(err.switchProvider && !err.retryable)) this.armFailback(); // a refused key will not come back by itself
+        return;
+      } catch (e) {
+        this.emit("stt_error", classifySttError(this.o.chain[i].id, e));
+        this.stream = old;
+        if (this.closed) {
+          // close() ran during the attempt and found no stream to close: the old one is ours to close now.
+          void old?.close().catch(() => {});
+          return;
         }
       }
-      this.emit("exhausted", err);
-    } finally {
-      this.switching = false;
     }
+    this.emit("exhausted", err);
   }
 
   /** On a fallback after a transient failure: look at the primary again after a stable period and go back to it when it opens. */
@@ -336,8 +358,10 @@ export class SttChannel extends EventEmitter {
     this.failbackTimer.unref?.();
   }
   private async tryFailback() {
-    if (this.closed || this.switching || this.idx === 0) return;
-    this.switching = true;
+    if (this.closed || this.idx === 0) return;
+    if (!(await this.exec("failback", () => this.doFailback()))) this.armFailback(); // another operation runs: look again later
+  }
+  private async doFailback() {
     const old = this.stream,
       from = this.provider;
     try {
@@ -355,16 +379,23 @@ export class SttChannel extends EventEmitter {
       void old?.close().catch(() => {});
       this.emit("failback", { from, to: this.provider });
     } catch {
-      this.switching = false;
       this.armFailback(); // still down: look again later
-    } finally {
-      this.switching = false;
     }
   }
 
   /** After "exhausted" with no fallback left: open a fresh socket on the CURRENT provider. Throws (classified) on failure. The old stream stays
    *  as this.stream until the new one is open, so a failing new socket cannot trigger another switch. */
   async reopen(): Promise<void> {
+    for (;;) {
+      if (this.closed) return;
+      const run = this.exec("reopen", () => this.doReopen());
+      if (run) return run;
+      if (this.op.k === "reopen") return this.inflight; // the same job is already running: share its result
+      await this.inflight?.catch(() => {}); // a switch / failback / first open runs: let it end, then see if the channel is fine
+      if (this.closed || this.isOpen) return;
+    }
+  }
+  private async doReopen(): Promise<void> {
     const old = this.stream,
       prov = this.provider;
     await this.openCurrent().catch((e) => {
@@ -397,7 +428,7 @@ export class SttChannel extends EventEmitter {
     return ok;
   }
   async close() {
-    this.closed = true;
+    this.op = { k: "closed" };
     clearTimeout(this.failbackTimer);
     clearInterval(this.liveTimer);
     this.liveTimer = undefined;
