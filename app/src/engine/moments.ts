@@ -18,6 +18,8 @@ import {
   brief,
   briefArg,
   contextNotes,
+  background,
+  bank,
   intake,
   schedCfg,
   ctxBudgets,
@@ -43,7 +45,7 @@ import { CALLS, USER_DATA } from "../env.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isEmptyMemory } from "../session/types.ts";
-import { guard } from "../guards.ts";
+import { guard, guardGrounded } from "../guards.ts";
 import { leakedTag, wrongLanguage, wrongTextLanguage, langOf } from "../reflex.ts";
 import { STALL_TIER, type BankCard } from "../bank.ts";
 import { frameText } from "../frame.ts";
@@ -300,7 +302,29 @@ export function sayAllowed(m: Moment, question: string, callLang: "he" | "en" | 
   if (m.tag !== "ANS" && m.say && ref && wrongTextLanguage(ref, m.say)) return { ok: false, why: "language" };
   if (!spoken) return { ok: true };
   const g = guard(m.say);
-  return g.ok ? { ok: true } : { ok: false, why: `guard:${g.rule}` };
+  if (g.ok) return { ok: true };
+  // A figure, date or promise the user's own material states word for word may stay. Anything else is still a stall.
+  const own = guardGrounded(m.say, ownMaterial());
+  return own.ok ? { ok: true } : { ok: false, why: `guard:${g.rule}` };
+}
+/** The user's own text for this call: typed notes, the brief, background files, the facts the user or the brief gave, the prepared cards and what the user said in this call. Never what the other side said. */
+export function ownMaterial(): string {
+  const m = st.m.mem;
+  const mine = transcript
+    .slice(-80)
+    .filter((l) => l.ch === "me")
+    .map((l) => l.text);
+  return [
+    ...contextNotes,
+    brief?.goal ?? "",
+    ...(brief?.notes ?? []),
+    ...(brief?.mustCover ?? []),
+    background ?? "",
+    ...m.facts.filter((f) => f.src === "brief" || f.src === "user").map((f) => f.text),
+    ...m.mustCover.map((x) => x.text),
+    ...(bank ?? []).flatMap((c) => [c.say, ...c.facts, c.en?.say ?? "", ...(c.en?.facts ?? [])]),
+    ...mine,
+  ].join("\n");
 }
 
 // ---------------------------------------------------------------- logs and cost

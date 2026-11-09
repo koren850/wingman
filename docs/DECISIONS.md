@@ -83,6 +83,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [75](#adr-75-explicit-state-for-the-tray-call-slot-and-the-capture-channels) | Explicit state for the tray call slot and the capture channels |
 | [76](#adr-76-a-conversation-state-model-call-flow-tone-and-what-comes-next-proposed) | A conversation state model: call flow, tone and what comes next (proposed) |
 | [77](#adr-77-speed-shorter-speech-to-text-backstops-a-model-warm-up-and-early-start-stays-off-measured) | Speed: shorter speech-to-text backstops, a model warm-up, and early start stays off (measured) |
+| [78](#adr-78-an-answer-may-keep-a-figure-the-users-own-notes-state) | An answer may keep a figure the user's own notes state |
 
 ---
 
@@ -1206,3 +1207,21 @@ Date: 2026-11-09
 **Alternatives.** A periodic warm-up during the call (the measured gain after a pause is about 0.1 s). A Finalize at 300 ms (faster, but needs real speech to check splits). Early start on audio silence instead of partial timing (a possible later change: it needs the silence signal from the audio path).
 
 **Consequences.** Final text comes sooner in the slow cases, and the first question no longer pays about 0.5 to 1.5 s for the connection. A `llm.warm` event records the warm-up time. ADR 60 stays: early start is off, and the reason is now measured. Next: measure real speech for a lower `Finalize` time, and the ideas in ADR 76.
+
+## ADR 78: An answer may keep a figure the user's own notes state
+
+Date: 2026-11-09
+
+**Context.** The code dropped every answer whose SAY held a price, a date or a promise and showed the stall line instead. This also happened when the user's own notes state that exact figure, so a question such as "what does the Pro plan cost" got "let me check" while the price was in the brief. In the recorded dev run, 45 of 255 cards were generic stall lines.
+
+**Decision.**
+- A guard hit on ANS or REPLY passes when the user's own material holds the same text. Own material is the typed notes, the brief, the background files, the facts from the user or the brief, the prepared cards and what the user said in this call. What the other side said is not included.
+- The check works on the text each guard pattern matched, so it is the same in English and Hebrew. A match with digits must appear in the notes as the same figure ("$45" does not match "$49" or "$450"; "1,500" and "1500" are the same). A match with words only (for example "by Friday") needs two words or more, and a lone word like "tomorrow" never passes. Every number of the card must also be in the notes.
+- Everything else stays blocked, and a blocked answer is still the stall line. The prompt now says a price or date may be in SAY only when the notes state that exact figure.
+- A blocked answer to a question that opens with another person's name gives no stall line. The observer already shows no generic stall line.
+
+**Why.** A figure the user wrote down is not an invention. The guard exists so the model cannot promise what the user did not decide.
+
+**Alternatives.** Let the model mark the source of a figure (the model could be wrong, and code can check text). Turn the guard off when notes exist (too broad). Count what the other side said as allowed (a budget they state is not a price the user may offer).
+
+**Consequences.** Some cards that were stall lines now show the user's own figure. A note written in a different form from the answer ("49 USD" and "$49") still blocks. The dev cassette is stale for the changed prompt, so replay numbers drop until it is recorded again.

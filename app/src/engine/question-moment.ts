@@ -24,6 +24,8 @@ import { runMoment, type MomentDone } from "../moments/run.ts";
 import { momentFromParsed, type ParsedMoment } from "../moments/parse.ts";
 import type { Moment } from "../moments/types.ts";
 import { st } from "./state.ts";
+import { nameWords } from "../profile.ts";
+import { addressedElsewhere } from "../moments/floor.ts";
 
 // st.q: turnSeq, reflexErrors (consecutive model failures: 2 in a row raise the "AI not answering" bar, 1 for an ask by the user; a success clears it)
 // and bankShownAt (per-call state, see state.ts).
@@ -117,6 +119,14 @@ function momentSkip(t: Turn, why: string, rowType: "moment.skip" | "moment.drop"
   logMomentRow(rowType, t.id, "direct", why, { latencyMs: Date.now() - Number(t.lat.reqAt), ...extra });
 }
 
+/** The line opens with the name of another person of the call ("Dana, can you ..."): a stall line under it would speak for the user to nobody. */
+function askedOfSomeoneElse(t: Turn): boolean {
+  const roster = st.m.mem.roster;
+  const others = roster.filter((p) => p.side !== "me").map((p) => p.name);
+  const me = [...nameWords(), ...roster.filter((p) => p.side === "me").map((p) => p.name)];
+  return addressedElsewhere(t.r.text, others, me);
+}
+
 /** One verdict with its value and aim is known: scheduler, guards, then the card. */
 function presentMoment(t: Turn, m0: Moment) {
   let m = m0;
@@ -183,8 +193,8 @@ function presentMoment(t: Turn, m0: Moment) {
   if (!ok.ok) {
     log.write("events", { type: ok.why!.startsWith("guard") ? "guard" : "reflex.discard", turnId: t.id, rule: ok.why, why: ok.why });
     if (ok.why!.startsWith("guard") && !t.noStall) {
-      // A blocked answer on a customer call becomes the stall line (as in the old path).
-      if (t.shown?.id !== t.stallId && !t.shown && fresh(t)) {
+      // A blocked answer on a customer call becomes the stall line (as in the old path), unless the question opens with another person's name or a card is already up.
+      if (t.shown?.id !== t.stallId && !t.shown && !t.mcard && fresh(t) && !askedOfSomeoneElse(t)) {
         t.shown = stallCardFor(t);
         emitCard(t.shown);
         t.lat.stallAt = Date.now();

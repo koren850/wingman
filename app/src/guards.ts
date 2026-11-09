@@ -102,3 +102,76 @@ export function guardDigits(text: string, allowed: string): GuardResult {
   if (FIGURE.test(text) && !FIGURE.test(allowed)) return { ok: false, rule: "number" };
   return { ok: true };
 }
+
+// ---------- figures the user's own material states ----------
+// A price, a date or a promise in a card is allowed when the user's own text (notes, brief, background, prepared cards, their own words in this call) holds the
+// exact same text. The check works on what each pattern matched, so it is the same for every language that has patterns. Nothing the other side said is passed in.
+const squash = (s: string): string =>
+  asciiDigits(s)
+    .toLowerCase()
+    .replace(/[‎‏‪-‮⁦-⁩]/g, "")
+    .replace(/(?<=\d)[,.](?=\d{3}(?!\d))/g, "")
+    .replace(/[\s ]+/g, " ")
+    .trim();
+/** `needle` is in `hay` and not inside a longer number ("$45" is not in "$450"). Both squashed. */
+function holds(hay: string, needle: string): boolean {
+  for (let i = hay.indexOf(needle); i >= 0; i = hay.indexOf(needle, i + 1)) {
+    const before = hay[i - 1] ?? "";
+    const after = hay[i + needle.length] ?? "";
+    if (/\d/.test(needle[0]!) && /[\d.]/.test(before)) continue;
+    if (/\d/.test(needle[needle.length - 1]!) && /\d/.test(after)) continue;
+    return true;
+  }
+  return false;
+}
+/** The match widened to the whole number it cuts: "$4" in "$45.50" is "$45.50". */
+function widen(text: string, start: number, end: number): string {
+  let a = start;
+  let b = end;
+  const digit = (i: number) => /\p{Nd}/u.test(text[i] ?? "");
+  if (digit(b - 1)) while (digit(b) || (/[.,]/.test(text[b] ?? "") && digit(b + 1))) b++;
+  if (digit(a)) while (digit(a - 1) || (/[.,]/.test(text[a - 1] ?? "") && digit(a - 2))) a--;
+  return text.slice(a, b);
+}
+const FIGURE_TOKEN = /(?:\p{Sc}\s?)?\p{Nd}[\p{Nd}.,]*(?:\s?[\p{Sc}%％٪])?/gu;
+/** Like `guard`, but a hit passes when the user's own text holds the matched text. A hit with digits: the same text, or (with a currency or percent sign) every figure of it with its sign. A hit with words only: two words or more, or a part of a hit that passed (so "tomorrow" alone never passes). Every number in `text` must also be in `own`. A near miss ($45 for a note with $49) still fails. */
+export function guardGrounded(text: string, own: string): GuardResult {
+  const first = guard(text);
+  if (first.ok) return first;
+  const ownSq = squash(own);
+  const families: [string, RegExp[]][] = [
+    ["price", PRICE],
+    ["date", DATE],
+    ["promise", PROMISE],
+  ];
+  const hits: { rule: string; start: number; end: number; sq: string }[] = [];
+  for (const [rule, list] of families)
+    for (const r of list) {
+      const re = new RegExp(r.source, r.flags.replace(/[gy]/g, "") + "g");
+      for (const m of text.matchAll(re)) {
+        const start = m.index ?? 0;
+        const wide = widen(text, start, start + m[0].length);
+        const end = Math.max(start + m[0].length, text.indexOf(wide, Math.max(0, start - wide.length)) + wide.length);
+        hits.push({ rule, start, end, sq: squash(wide) });
+      }
+    }
+  if (!ownSq) return { ok: false, rule: first.rule };
+  const grounded = (h: (typeof hits)[number]): boolean => {
+    if (h.sq.length < 3) return false;
+    if (/\d/.test(h.sq)) {
+      if (holds(ownSq, h.sq)) return true;
+      if (!/[\p{Sc}%]/u.test(h.sq)) return false;
+      const tokens = [...h.sq.matchAll(FIGURE_TOKEN)].map((t) => t[0]);
+      return tokens.length > 0 && tokens.every((t) => /[\p{Sc}%]/u.test(t) && holds(ownSq, t));
+    }
+    return h.sq.split(" ").filter(Boolean).length >= 2 && holds(ownSq, h.sq);
+  };
+  const ok = hits.map(grounded);
+  for (const [i, h] of hits.entries()) {
+    if (ok[i]) continue;
+    const inside = !/\d/.test(h.sq) && hits.some((o, j) => ok[j] && o.start <= h.start && o.end >= h.end && o !== h);
+    if (!inside) return { ok: false, rule: h.rule };
+  }
+  if (unsupportedNumbers(text, own).length) return { ok: false, rule: first.rule };
+  return { ok: true };
+}
