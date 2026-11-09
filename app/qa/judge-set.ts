@@ -117,6 +117,7 @@ export function judgeContext(c: JudgeCase) {
   });
 }
 
+export const isJudgeTag = (t: string): t is JudgeTag => (JUDGE_TAGS as readonly string[]).includes(t);
 export type Verdict = { tag: JudgeTag | "ERROR"; say: string; usage?: unknown; error?: string };
 const CFG = { timeoutMs: 8000, maxTokens: 200, maxRetries: 0, effort: "low", thinking: false, cache: "off" } as const;
 
@@ -135,7 +136,10 @@ export async function askCase(c: JudgeCase, registry: Pick<ModelRegistry, "resol
       h: {
         onPartial: () => {},
         onDone: (d) => {
-          out = { tag: d.moment.tag as JudgeTag, say: d.moment.say, usage: d.usage };
+          // A tag outside the judge table (BANK: the cases carry no bank) is a wrong verdict, not a crash in the scorer.
+          out = isJudgeTag(d.moment.tag)
+            ? { tag: d.moment.tag, say: d.moment.say, usage: d.usage }
+            : { tag: "ERROR", say: "", usage: d.usage, error: `tag ${d.moment.tag} is not a judge verdict` };
         },
       },
     });
@@ -151,7 +155,7 @@ const norm = (s: string) => s.toLowerCase();
 export function gradeCase(c: JudgeCase, v: Verdict): CaseResult {
   const e = c.expected;
   const allowed = [e.tag, ...(e.accept ?? [])];
-  const tagOk = v.tag !== "ERROR" && allowed.includes(v.tag);
+  const tagOk = v.tag !== "ERROR" && isJudgeTag(v.tag) && allowed.includes(v.tag);
   const needSay = v.tag === e.tag && !!e.mustMention?.length;
   const sayMiss = needSay && !e.mustMention!.every((t) => norm(v.say).includes(norm(t)));
   return { id: c.id, lang: c.lang, tags: c.tags, expected: e.tag, got: v.tag, ok: tagOk && !sayMiss, sayMiss };
@@ -190,7 +194,7 @@ export function scoreJudge(cases: JudgeCase[], results: CaseResult[]): JudgeScor
     if (r.ok) counts[gold].tp++;
     else {
       counts[r.expected].fn++;
-      if (r.got !== "ERROR") counts[r.got].fp++;
+      if (r.got !== "ERROR" && counts[r.got]) counts[r.got].fp++;
     }
   }
   const byKind = Object.fromEntries(JUDGE_TAGS.map((t) => [t, kindScore(counts[t].tp, counts[t].fp, counts[t].fn)])) as Record<JudgeTag, KindScore>;

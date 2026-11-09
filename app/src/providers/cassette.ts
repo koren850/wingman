@@ -44,7 +44,18 @@ export type Entry = {
   /** Total ms from call to the end of the answer. */
   ms: number;
 };
-type File = { v: 1; entries: Entry[] };
+/** `pace` is the virtual clock speed the recording ran at (1 = real time). Recorded model times are only true at pace 1. Absent in older files. */
+type File = { v: 1; pace?: number; entries: Entry[] };
+
+/** The pace a cassette file was recorded at, or undefined when the file does not say. Reads only the header field. */
+export function cassettePaceOf(path: string): number | undefined {
+  try {
+    const f = JSON.parse(readFileSync(path, "utf8")) as File;
+    return typeof f.pace === "number" ? f.pace : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** Stable key of one call. Volatile fields (abort signals, headers, the wingman role marker) are not part of it. */
 export function cassetteKey(v: Pick<PromptView, "role" | "model" | "system" | "messages" | "options">): string {
@@ -92,11 +103,14 @@ export class CassetteStale extends CassetteMiss {
 
 export class Cassette {
   private byKey = new Map<string, Entry>();
+  /** The pace of the recording (see File). Set by the recorder; kept when the file is read and written again. */
+  pace?: number;
   constructor(readonly path?: string) {
     if (path && existsSync(path)) {
       const f = JSON.parse(readFileSync(path, "utf8")) as File;
       if (f.v !== 1) throw new Error(`cassette ${path}: unknown version ${String(f.v)}`);
       for (const e of f.entries) this.byKey.set(e.key, e);
+      if (typeof f.pace === "number") this.pace = f.pace;
     }
   }
   get size() {
@@ -133,7 +147,11 @@ export class Cassette {
   save(path = this.path) {
     if (!path) throw new Error("cassette: no path to save to");
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
-    const f: File = { v: 1, entries: [...this.byKey.values()].sort((a, b) => a.key.localeCompare(b.key)) };
+    const f: File = {
+      v: 1,
+      ...(this.pace === undefined ? {} : { pace: this.pace }),
+      entries: [...this.byKey.values()].sort((a, b) => a.key.localeCompare(b.key)),
+    };
     const tmp = `${path}.tmp${process.pid}`;
     writeFileSync(tmp, JSON.stringify(f, null, 1) + "\n", { mode: 0o600 });
     renameSync(tmp, path);

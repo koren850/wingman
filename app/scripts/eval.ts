@@ -23,6 +23,7 @@
 import "../src/test-setup.ts"; // the invented user and the example pack: the numbers do not depend on whose machine this runs on
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { cassettePaceOf } from "../src/providers/cassette.ts";
 import { detect } from "../src/detector.ts";
 import { guard, guardInterview } from "../src/guards.ts";
 import { loadBank, matchBank, matchBankSmart } from "../src/bank.ts";
@@ -66,6 +67,17 @@ for (const f of cassette?.split(",") ?? [])
     console.error(`--cassette: no such file ${f}`);
     process.exit(2);
   }
+// A cassette recorded with a faster clock holds stretched model times: a replay drops its answers as stale. Never use it for a gate or a baseline.
+for (const f of cassette?.split(",") ?? []) {
+  const pace = cassettePaceOf(f);
+  if (pace !== undefined && pace > 1) {
+    const gate = process.argv.includes("--ship") || process.argv.includes("--final") || process.argv.includes("--update");
+    console.error(
+      `--cassette: ${f} was recorded at pace ${pace} (not real time), so its model times are ${pace} times too long.${gate ? " It cannot be used for --ship, --final or --update. Record it again at pace 1." : " The numbers below are not true."}`,
+    );
+    if (gate) process.exit(2);
+  }
+}
 const BASELINE = join(APP_DIR, "qa", "eval-baseline.json");
 type LegacyBaseline = { tolerance: number; metrics: Record<string, number> };
 type Baseline = { legacy: LegacyBaseline; v2?: V2Baseline; v2Recorded?: V2Baseline };

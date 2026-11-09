@@ -307,6 +307,7 @@ test("cassette-record: arguments are checked (suite, cap, pace)", () => {
     only: "x",
     pace: undefined,
     allowPartial: false,
+    fastOk: false,
     judge: false,
   });
 });

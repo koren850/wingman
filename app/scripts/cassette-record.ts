@@ -22,6 +22,7 @@ import type { Golden } from "../qa/grade-golden.ts";
 import { ModelJudge, JUDGE_MODEL, type JudgeTransport } from "../qa/judge.ts";
 import { judgeCassettePath } from "../qa/judge-eval.ts";
 import { Cassette } from "../src/providers/cassette.ts";
+import { providerOptionsFor } from "../src/providers/llm.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const SUITES = ["dev", "test", "test-b", "test-c"] as const;
@@ -42,7 +43,17 @@ export type Deps = {
   /** Filled in at the end: what the run booked, so a caller that runs several steps (pnpm morning) can keep one cap across them. */
   report?: { spentUsd: number; entries: number; stopped: boolean; cassette: string };
 };
-export type Args = { suite: Suite; cap: number; final: boolean; out?: string; only?: string; pace?: number; allowPartial: boolean; judge: boolean };
+export type Args = {
+  suite: Suite;
+  cap: number;
+  final: boolean;
+  out?: string;
+  only?: string;
+  pace?: number;
+  allowPartial: boolean;
+  judge: boolean;
+  fastOk: boolean;
+};
 /** USD per judged card (about 450 input tokens and 30 output tokens on the judge model, no cache). A planning number, not a measurement. */
 export const JUDGE_USD_PER_CARD = 0.0004;
 /** Cards per hour of the v2 baseline, for the estimate of the judge cost. */
@@ -65,6 +76,7 @@ export function parseArgs(argv: string[]): Args | string {
     pace,
     allowPartial: argv.includes("--allow-partial"),
     judge: argv.includes("--judge"),
+    fastOk: argv.includes("--fast-ok"),
   };
 }
 
@@ -118,6 +130,11 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
   const meetings = v2Meetings(all).filter((g) => !a.only || g.id === a.only);
   if (!meetings.length) return err(a.only ? `no meeting ${a.only} in ${a.suite}` : "no meetings to record");
   const pace = a.pace ?? (deps.transport === "real" ? 1 : 0);
+  // A faster clock stretches every recorded model time (a 1 s reply is stored as 4 s at pace 4), so a replay drops the answers as stale. Refuse unless asked.
+  if (deps.transport === "real" && pace > 1 && !a.fastOk)
+    return err(
+      `--pace ${pace} would store model times ${pace} times too long, and a replay would drop answers as stale. Record at pace 1, or pass --fast-ok for a cassette you will not use for a gate (eval refuses it for --ship, --final and --update).`,
+    );
   const est = estimate(meetings, pace || 1, deps.baselineFile, a.judge, deps.transport === "real" ? 4 : 1);
   const out = a.out ?? join(deps.dataDir ?? join(ROOT, "data", "cassettes"), `${a.suite}.cassette.json`);
 
@@ -129,6 +146,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
       `  model calls    about ${est.calls}`,
       `  cost           about $${est.usd.toFixed(2)} (cap $${a.cap.toFixed(2)})${a.judge ? `, of which the judge about $${est.judgeUsd.toFixed(2)}` : ""}`,
       `  basis          ${est.basis}, times 2 for real prompt sizes`,
+      `  pace           ${pace || 1}${pace > 1 ? " (model times in the cassette are stretched: not for a gate)" : " (real time: the stored model times are true)"}`,
       `  wall time      about ${est.wallMinutes.toFixed(0)} minutes at pace ${pace || 1} (4 meetings at a time, never less than the longest meeting)`,
       `  cassette       ${out}`,
       `  transport      ${deps.transport}`,
@@ -163,6 +181,7 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
   const n = mergeParts(
     out,
     meetings.map((g) => partOf(g.id)).filter((p) => existsSync(p)),
+    pace || 1,
   );
   deps.log(`Done: ${n} entries in ${out}, about $${spent.toFixed(3)} booked${stopped ? " (stopped at the cap)" : ""}.`);
   if (deps.report) Object.assign(deps.report, { spentUsd: spent, entries: n, stopped, cassette: out });
@@ -211,6 +230,13 @@ export async function main(argv: string[], env: NodeJS.ProcessEnv, deps: Deps): 
 }
 
 const mockJudgeTransport: JudgeTransport = async () => ({ text: "VERDICT: good\nREASON: mock judge", ms: 1 });
+/**
+ * The model options of one judge call. Thinking is off: with it on, Haiku 5.5 spends all the output tokens on thinking and returns an empty text
+ * (round 14: 85% empty replies, every one scored "unreadable judge answer").
+ */
+export function judgeCallOptions(model: string) {
+  return { maxOutputTokens: 120, providerOptions: providerOptionsFor(model, { effort: "low", thinking: false }) };
+}
 /** The real judge: one short call per card on the judge model. Only the maintainer's command gets here (a key in the environment, never in CI). */
 function realJudgeTransport(apiKey: string): JudgeTransport {
   return async ({ model, system, user }) => {
@@ -218,7 +244,7 @@ function realJudgeTransport(apiKey: string): JudgeTransport {
     const { generateText } = await import("ai");
     const m = await new ModelRegistry({ anthropic: apiKey } as never).resolve(model || JUDGE_MODEL, "judge");
     const t0 = Date.now();
-    const r = await generateText({ model: m, system, prompt: user, maxOutputTokens: 80 });
+    const r = await generateText({ model: m, system, prompt: user, ...judgeCallOptions(model || JUDGE_MODEL) });
     return { text: r.text, usage: r.usage, ms: Date.now() - t0 };
   };
 }

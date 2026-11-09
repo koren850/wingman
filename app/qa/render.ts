@@ -49,6 +49,24 @@ export function allScenarioNames(): string[] {
     .sort();
 }
 
+/** The macOS voices that speak Hebrew. Every other voice named in a scenario is taken to be an English one. */
+const HEBREW_VOICES = new Set(["Carmit"]);
+/** Default voice per language and side when the scenario names none that fits the text. */
+const DEFAULT_VOICE = { he: { me: "Carmit", them: "Carmit" }, en: { me: "Daniel", them: "Samantha" } } as const;
+/**
+ * The voice for one turn. A scenario names one voice per side, but a mixed Hebrew and English call has turns in both languages, and an English voice that reads
+ * Hebrew says "dot, question mark" (round 14: speech-to-text 56% instead of 77%). So a voice is used only for text in its own language; otherwise the default
+ * voice of the text's language and side is used. An explicit `voice` on the turn always wins.
+ */
+export function voiceFor(text: string, side: "me" | "them", named: string | undefined, turnVoice?: string): string {
+  if (turnVoice) return turnVoice;
+  const he = (text.match(/[\u0590-\u05FF]/g) ?? []).length,
+    lat = (text.match(/[A-Za-z]/g) ?? []).length;
+  const lang: "he" | "en" = he > lat ? "he" : "en";
+  const fits = named && (HEBREW_VOICES.has(named) ? lang === "he" : lang === "en");
+  return fits ? named : DEFAULT_VOICE[lang][side];
+}
+
 /** Mono 16 kHz s16le PCM for one phrase (cached). */
 function speak(text: string, voice: string, rate: number): Buffer {
   const wpm = Math.round(BASE_WPM * rate);
@@ -92,13 +110,13 @@ function noise(n: number, amp: number, seed: number): Int16Array {
  * Returns the wav path, the per-turn timeline (ms) and the total duration. Needs macOS `say`.
  */
 export async function renderScenario(sc: Scenario & { name: string }): Promise<{ wav: string; timeline: TimelineTurn[]; durationMs: number }> {
-  const voices = { me: sc.voices?.me ?? "Carmit", them: sc.voices?.them ?? "Carmit" };
+  const voices = { me: sc.voices?.me, them: sc.voices?.them };
   const tl: TimelineTurn[] = [];
   const clips: { speaker: "me" | "them"; start: number; pcm: Buffer }[] = [];
   let cursor = Math.round(0.8 * SR); // lead-in
   let lastEnd = cursor;
   sc.turns.forEach((t, i) => {
-    const pcm = speak(t.text, t.voice ?? voices[t.speaker], t.rate ?? 1);
+    const pcm = speak(t.text, voiceFor(t.text, t.speaker, voices[t.speaker], t.voice), t.rate ?? 1);
     const pause = Math.round(((t.pauseBeforeMs ?? 700) / 1000) * SR);
     const overlap = Math.round(((t.overlapMs ?? 0) / 1000) * SR);
     const start = Math.max(0, lastEnd + pause - overlap);

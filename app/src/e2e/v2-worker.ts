@@ -1,6 +1,7 @@
 // Child process of the v2 gate tests: one golden meeting through the real engine modules (in-process engine, virtual clock, policy fake with the
 // meeting's own scripted replies, memory loop on its 1 s timer). Result goes to the file in V2_OUT as JSON. See v2-kit.ts (runMeeting).
 // The engine is a per-process singleton, so one process plays one meeting. No network, no keys.
+import { REAL_ANTHROPIC_KEY } from "../testkit/real-key.ts"; // first: boot.ts removes the key from the environment when it is imported
 import "../test-setup.ts";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { setupEngine } from "../testkit/engine-inproc.ts";
@@ -30,7 +31,14 @@ async function main() {
   const split = opts.split ?? "dev";
   const g = loadSplit(split, { final: split !== "dev", ship: split === "test-c" }).find((x) => x.id === id);
   if (!g) throw new Error(`no ${split} meeting ${id}`);
-  const e = await setupEngine({ "llm.reflex.model": "anthropic:claude-haiku-5-5", ...(opts.sets ?? {}) });
+  // A recording or a replay names the recorded model for every role that calls one. The profile's "assist" (the classifier for the user's own lines) points at the
+  // scripted fake, which the real provider cannot serve: those calls were neither recorded nor found again (round 14: 126 of 984 calls missing on replay).
+  const recorded = !!(opts.record || opts.replay);
+  const e = await setupEngine({
+    "llm.reflex.model": "anthropic:claude-haiku-5-5",
+    ...(recorded ? { "assist.model": "anthropic:claude-haiku-5-5" } : {}),
+    ...(opts.sets ?? {}),
+  });
   if (opts.tailChunk) {
     // Simulator study (context-modes): cache the raw tail in chunks for these roles. CACHE_POLICY is read for every call, so a change here is in force.
     const { CACHE_POLICY } = await import("../context/cache.ts");
@@ -40,9 +48,10 @@ async function main() {
   if (opts.record) {
     // Record mode: every model call goes through the cassette recorder. The inner model is the observed policy fake ("mock" transport, used by the
     // tests) or the real provider ("real", the maintainer's command only: needs ANTHROPIC_API_KEY in the environment and WINGMAN_LLM_MODE unset).
+    if (opts.record.transport === "real" && !REAL_ANTHROPIC_KEY) throw new Error("real recording: ANTHROPIC_API_KEY was not in the environment at start");
     const cassette = new Cassette(opts.record.cassette);
     const observed = e.boot.registry.resolve as unknown as (ref: string, role?: string) => Promise<unknown>;
-    const real = opts.record.transport === "real" ? new ModelRegistry({ anthropic: process.env.ANTHROPIC_API_KEY } as never) : undefined;
+    const real = opts.record.transport === "real" ? new ModelRegistry({ anthropic: REAL_ANTHROPIC_KEY } as never) : undefined;
     e.boot.registry.resolve = (async (ref: string, role?: string) =>
       wrapCassette({ mode: "record", cassette, ref, role, inner: (real ? await real.resolve(ref, role) : await observed(ref, role)) as never })) as never;
   }
