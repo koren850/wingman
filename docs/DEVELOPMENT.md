@@ -109,7 +109,7 @@ Looks like a call with Acme Stores Ltd. Press y to confirm (adds it to the AI no
 
 [📋 email] dana@acmestores.com
 
-Speed: 11 questions · first card p50 0.3s / p95 0.3s · Prepared cards 3 (p50 0.3s) · Haiku first tag p50 -
+Speed: 11 questions · first card p50 0.3s / p95 0.3s · Prepared cards 3 (p50 0.3s) · AI first words p50 -
 Cost: AI $0.001 of $2 · STT $0.00 · total $0.00 (estimate from settings budget.prices)
 Prompt cache: 77% of AI input tokens were cache hits
 
@@ -140,7 +140,7 @@ Wingman · call 01M6XVVVQJKPT2E9TM9XWQGD9R · file .../silence.wav · 41 prepare
 
 [📋 email] dana@acmestores.co.il
 
-Speed: 7 questions · first card p50 - / p95 - · Prepared cards 0 (p50 -) · Haiku first tag p50 -
+Speed: 7 questions · first card p50 - / p95 - · Prepared cards 0 (p50 -) · AI first words p50 -
 Cost: AI $0.000 of $2 · STT $0.00 (estimate from settings budget.prices)
 
 📋 סיכום השיחה

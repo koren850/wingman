@@ -28,7 +28,7 @@ Every number is labelled **scripted** (the model replies are fixtures) or **reco
 
 A first run with the real AI was made (two passes, about $1.20 in total, with invented scripts and text-to-speech voices). It did **not** pass.
 
-**Re-recorded after the fixes (v0.0.1 prompts, 34 dev meetings, real model, pace 1):** 6 of 16 ship lines pass (was 4): duplicates 2.9 percent, cards an hour 36, wrong language 0 percent, the two English and Hebrew gap lines, and cost $0.064 an hour for the model. Still failing: card precision 10.9 percent, recall 5.1 percent, cards in silent stretches 0.11 a minute, memory F1, and the first card of a direct question (p95 4.6 s). The model judge rated 32 percent of the recorded cards useful. Card quality is still the weak part of v0.0.1. Held-out meetings were not read again.
+**Re-recorded after the fixes (v0.0.1 prompts, 32 dev meetings, real model, pace 1):** 6 of 16 ship lines pass (was 4): duplicates 2.9 percent, cards an hour 36, wrong language 0 percent, the two English and Hebrew gap lines, and cost $0.064 an hour for the model. Still failing: card precision 10.9 percent, recall 5.1 percent, cards in silent stretches 0.11 a minute, memory F1, and the first card of a direct question (p95 4.6 s). The model judge rated 32 percent of the recorded cards useful. Card quality is still the weak part of v0.0.1. Held-out meetings were not read again.
 
 The table below is the first recording, before those fixes.
 

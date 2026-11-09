@@ -141,7 +141,7 @@ export function recordLatency(lat: Record<string, number | string>) {
   log.write("latency", lat);
 }
 
-/** One-line speed summary: speech end -> first card on screen, bank cards, and Haiku first tag. */
+/** One-line speed summary: speech end -> first card on screen, prepared cards, and the AI's first words. */
 export function speedSummary(): string {
   const pct = (a: number[], p: number) => {
     const s = [...a].sort((x, y) => x - y);
@@ -154,7 +154,7 @@ export function speedSummary(): string {
     .filter(Number.isFinite);
   const bank = since("bankAt"),
     tag = since("tagAt");
-  return `Speed: ${latRows.length} questions · first card p50 ${ms(pct(first, 50))} / p95 ${ms(pct(first, 95))} · Prepared cards ${bank.length} (p50 ${ms(pct(bank, 50))}) · Haiku first tag p50 ${ms(pct(tag, 50))}${
+  return `Speed: ${latRows.length} questions · first card p50 ${ms(pct(first, 50))} / p95 ${ms(pct(first, 95))} · Prepared cards ${bank.length} (p50 ${ms(pct(bank, 50))}) · AI first words p50 ${ms(pct(tag, 50))}${
     st.me.lat.length
       ? ` · For you ${st.me.lat.length} answers (speech end to card p50 ${ms(
           pct(
