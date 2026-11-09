@@ -113,7 +113,7 @@ test("local tips and self-check nudges: English line gets English text that pass
     entities: [],
     checklist: [{ item: "Ask about backups", done: false, must: true }],
   };
-  const o = { latestText: "talk soon", elapsedMin: 1, wrapUpAfterMin: 20, alreadyNudged: false };
+  const o = { latestText: "talk soon", elapsedMin: 5, wrapUpAfterMin: 20, alreadyNudged: false };
   const en = wrapUpTip(frame, { ...o, lang: "en" })!;
   assert.match(en.text, /^Before you finish, you have not covered yet: Ask about backups/);
   assert.equal(guard(en.text).ok, true);

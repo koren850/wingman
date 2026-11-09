@@ -2,7 +2,7 @@
 // one `observer` model call, and its verdict becomes a card through the same scheduler and guards as the direct path (moments.ts).
 import { emitCard, recordLatency, noteModel, checkBook, closeCards, type Card } from "./cards.ts";
 import { st, callKind } from "./state.ts";
-import { S, log, sup, tracker, speakers, interview, registry, bank, stall, observer, notesAbort } from "./boot.ts";
+import { S, log, sup, tracker, speakers, interview, registry, bank, observer, notesAbort } from "./boot.ts";
 import { nameRegex } from "../profile.ts";
 import { type ContextOutput } from "../context/build.ts";
 import { SHORTER } from "../moments/prompt.ts";
@@ -16,7 +16,6 @@ import { runMoment, type MomentDone } from "../moments/run.ts";
 import type { ParsedMoment } from "../moments/parse.ts";
 import type { ObserverWindow } from "../moments/observer.ts";
 import { resolveBankId } from "../reflex.ts";
-import { stallSay } from "../bank.ts";
 import { isAgencyKind, isAgencyTopic } from "../frame.ts";
 import { ProviderError } from "../providers/errors.ts";
 import { errBrief, survived } from "./out.ts";
@@ -390,10 +389,14 @@ function presentObserver(m: Moment, o: ObsPresent) {
       stallEnabled: S.reflex.stall,
     });
     if (gate.noStall) return logMomentRow("moment.drop", o.turnId, "observer", "stall-off", { tag: m.tag });
-    card = {
-      ...momentCard({ ...m, say: stallSay(stall, st.q.turnSeq, st.m.lang) }, { id: o.cardId, turnId: o.turnId, question: q, ctx: o.ctx }),
-      badge: "stall",
-    };
+    // The observer is never an emergency, so it has no canned stall line: "I want to check that properly and come back to you" under a question it did not
+    // answer helps nobody (the model judge of a recorded run called 20 of 22 such cards useless). The card shows the model's own words, a line the user can say
+    // while checking, when it wrote one and the guard allows it. Else there is no card.
+    const own = m.say.trim();
+    if (!own) return logMomentRow("moment.drop", o.turnId, "observer", "stall-generic", { tag: m.tag });
+    const ok = sayAllowed({ ...m, tag: "REPLY" }, q);
+    if (!ok.ok) return logMomentRow("moment.drop", o.turnId, "observer", ok.why ?? "guard", { tag: m.tag });
+    card = { ...momentCard({ ...m, say: own }, { id: o.cardId, turnId: o.turnId, question: q, ctx: o.ctx }), badge: "stall" };
   } else {
     if (m.tag === "ANS" && !S.reflex.allowAns) return logMomentRow("moment.drop", o.turnId, "observer", "ans-off", { tag: m.tag });
     const ok = sayAllowed(m, q);

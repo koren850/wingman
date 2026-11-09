@@ -204,12 +204,12 @@ export function checkOwnLine(text: string) {
     turnId: `ck${n}`,
     badge: "careful",
     question: text.slice(0, 200),
-    say: checkNumberSay(hit.said.raw, hit.ref.source),
+    say: checkNumberSay(hit.said.raw, hit.ref.source, st.m.lang),
     facts: [],
     priority: true,
     kind: "check",
     value: 2,
-    why: checkNumberWhy(),
+    why: checkNumberWhy(st.m.lang),
     at: now,
   });
   log.write("events", { type: "moment.check", said: hit.said.raw, ref: hit.ref.source });

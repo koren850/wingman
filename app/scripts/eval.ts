@@ -34,7 +34,17 @@ import { loadSplit, loadFinalSplits } from "../qa/golden-load.ts";
 import { CONTROLS, type Control } from "../qa/controls.ts";
 import type { Golden } from "../qa/grade-golden.ts";
 import { play, v2Meetings, v2Metrics, controlResults, baselineOf, compare, fmt, type V2Baseline } from "../qa/eval-v2.ts";
-import { measure, checkBudgets, readBudgets, writeBudgets, fmtBudget, BUDGET_TOLERANCE, COST_PER_HOUR_GATE, type Section } from "../qa/budgets.ts";
+import {
+  measure,
+  directFirstCard,
+  checkBudgets,
+  readBudgets,
+  writeBudgets,
+  fmtBudget,
+  BUDGET_TOLERANCE,
+  COST_PER_HOUR_GATE,
+  type Section,
+} from "../qa/budgets.ts";
 import { runMemoryEval, controlBreaches, CONTROL_LIMITS, type MemoryEvalResult } from "../qa/memory-eval.ts";
 import { modelJudgeSummary, judgeCassettePath } from "../qa/judge-eval.ts";
 import { readShip, shipValues, judgeShip, controlShip, fmtLimit } from "../qa/ship.ts";
@@ -132,7 +142,10 @@ function printControls(p: Played): number {
 function shipBlock(p: Played, title: string): number {
   const file = readShip();
   const memF1 = arg("--memory-f1") !== undefined ? Number(arg("--memory-f1")) : undefined;
-  const direct = cassette ? p.section.paths.direct?.p95 : undefined;
+  // The first card of any kind after a direct question, not the first card with the right words: this gate is about speed (see directFirstCard).
+  const df = cassette ? directFirstCard(p.res.per) : undefined;
+  const direct = df && df.n >= 5 ? (df.p95 ?? undefined) : undefined;
+  if (df) console.log(`   direct questions: ${df.n} got a first card (p50 ${df.p50 ?? "-"} ms, p95 ${df.p95 ?? "-"} ms), ${df.none} got none in time.`);
   const values = shipValues(p.res, {
     ...(memF1 !== undefined && Number.isFinite(memF1) ? { "memory.f1": memF1 } : {}),
     ...(direct !== undefined ? { "ttc.direct.p95": direct } : {}),

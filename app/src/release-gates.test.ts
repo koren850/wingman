@@ -11,14 +11,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./env.ts";
 import { tsx } from "./test-platform.ts";
-import { measure, checkBudgets, readBudgets, pathOf, BUDGET_TOLERANCE, COST_PER_HOUR_GATE, type Section } from "../qa/budgets.ts";
+import { measure, directFirstCard, checkBudgets, readBudgets, pathOf, BUDGET_TOLERANCE, COST_PER_HOUR_GATE, type Section } from "../qa/budgets.ts";
 import { modelJudgeSummary, judgeCassettePath } from "../qa/judge-eval.ts";
 import { loadSplit } from "../qa/golden-load.ts";
 import { main as recordMain, estimate, parseArgs, JUDGE_USD_PER_CARD } from "../scripts/cassette-record.ts";
 import { runMeeting } from "./e2e/v2-kit.ts";
 import { Cassette } from "./providers/cassette.ts";
 import type { MeetingRun } from "./e2e/v2-kit.ts";
-import type { GoldenGrade } from "../qa/grade-golden.ts";
+import type { Golden, GoldenGrade } from "../qa/grade-golden.ts";
 
 // ---------------------------------------------------------------- budgets (pure)
 const fakeRun = (usd: Record<string, number[]>, lengthMs = 3_600_000, cards: { turnId: string; ttc: number }[] = []) => {
@@ -320,3 +320,33 @@ test(
     }
   },
 );
+
+test("directFirstCard: speed of the first card of any kind after a direct question, not of a card with the right words", () => {
+  const golden = {
+    lines: [
+      { id: "l1", t: 1000, side: "them", text: "q1" },
+      { id: "l2", t: 20000, side: "them", text: "q2" },
+      { id: "l3", t: 40000, side: "them", text: "q3" },
+      { id: "l4", t: 60000, side: "them", text: "statement" },
+    ],
+    moments: [
+      { id: "m1", afterLine: "l1", kind: "answer", mustMention: ["price"], latestMs: 4000, direct: true },
+      { id: "m2", afterLine: "l2", kind: "answer", mustMention: ["scope"], latestMs: 4000, direct: true },
+      { id: "m3", afterLine: "l3", kind: "answer", mustMention: ["hosting"], latestMs: 4000, direct: true },
+      { id: "m4", afterLine: "l4", kind: "prompt", latestMs: 4000 },
+    ],
+  } as unknown as Golden;
+  const run = {
+    cards: [
+      { atMs: 2000, kind: "answer", text: "stall line" }, // 1000 ms after q1, wrong words: still the first card
+      { atMs: 24000, kind: "fact", text: "anything" }, // 4000 ms after q2, another kind
+      { atMs: 61000, kind: "prompt", text: "not after a direct question" },
+    ],
+  } as unknown as MeetingRun;
+  const r = directFirstCard([{ golden, run }]);
+  assert.equal(r.n, 2);
+  assert.equal(r.none, 1, "q3 got no card within twice its window");
+  assert.equal(r.p50, 1000);
+  assert.equal(r.p95, 4000);
+  assert.deepEqual(directFirstCard([]), { n: 0, none: 0, p50: null, p95: null });
+});

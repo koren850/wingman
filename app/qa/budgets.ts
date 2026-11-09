@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "../src/env.ts";
 import type { MeetingRun } from "../src/e2e/v2-kit.ts";
-import { percentile, type GoldenGrade } from "./grade-golden.ts";
+import { percentile, type Golden, type GoldenGrade } from "./grade-golden.ts";
 
 export const BUDGET_FILE = join(ROOT, "qa", "budgets.json");
 /** Allowed growth over the budget, per role and per path. */
@@ -74,6 +74,24 @@ export function measure(per: Per, basis: Basis, source: string): Section {
   const input = rows.reduce((a, r) => a + ((r as { input_tokens?: number }).input_tokens ?? 0), 0);
   const read = rows.reduce((a, r) => a + ((r as { cache_read?: number }).cache_read ?? 0), 0);
   return { basis, source, hours: r6(hours), perHour: r6(hours ? total / hours : 0), roles, paths, cacheReadShare: input ? r6(read / input) : 0 };
+}
+
+/** Time from the end of a direct question to the first card of any kind, over the direct-question moments that got one within twice their window. The ship gate
+ *  "direct question: first card p95" is about speed, so it must not wait for a card with the right words: measured on hits only, a model that answers
+ *  slowly or wrongly gave no value at all. A question that got no card is counted as `none`. Pure. */
+export function directFirstCard(per: { golden: Golden; run: MeetingRun }[]): { n: number; none: number; p50: number | null; p95: number | null } {
+  const ms: number[] = [];
+  let none = 0;
+  for (const { golden: g, run } of per) {
+    const t = new Map(g.lines.map((l) => [l.id, l.t]));
+    for (const m of g.moments.filter((x) => x.direct)) {
+      const t0 = t.get(m.afterLine)!;
+      const first = run.cards.filter((c) => c.atMs >= t0 && c.atMs <= t0 + 2 * m.latestMs).sort((a, b) => a.atMs - b.atMs)[0];
+      if (first) ms.push(first.atMs - t0);
+      else none++;
+    }
+  }
+  return { n: ms.length, none, p50: percentile(ms, 50), p95: percentile(ms, 95) };
 }
 
 export type BudgetRow = { id: string; now: number; budget: number | undefined; unit: "usd" | "ms"; verdict: "ok" | "FAIL" | "new" };

@@ -3,6 +3,8 @@
 //
 // A card timeline is a list of { atMs, kind, text } with atMs measured from the start of the meeting (virtual time is fine).
 // A moment is "recalled" when a card of the same kind shows within [line.t, line.t + latestMs] and its text holds every `mustMention` token.
+//   - other kind, in time, tokens present  -> hit as well ("kind-swapped"): the model chose to show the right words as another kind of card. The user got the help;
+//                                             the kind is a presentation choice. Counted in `kindSwapped` so a run can still be read strictly.
 //   - right kind, in time, tokens missing  -> wrong text (the moment is not recalled; counts in the wrong-card rate)
 //   - right kind, after latestMs (up to 2x) -> late (not recalled)
 //   - a card that matches no moment         -> extra (lowers precision; inside a silent window it is a silent breach)
@@ -23,7 +25,7 @@ export type GradeOpts = {
   /** Two cards with the same text/ref inside this window are duplicates. Default 120 s. */
   dupWindowMs?: number;
 };
-export type MomentResult = { id: string; kind: Kind; status: "hit" | "miss" | "late" | "wrong-text"; ttcMs?: number; card?: number };
+export type MomentResult = { id: string; kind: Kind; status: "hit" | "miss" | "late" | "wrong-text"; ttcMs?: number; card?: number; swapped?: true };
 export type KindStats = { moments: number; hits: number; cards: number; correct: number; recall: number; precision: number };
 export type GoldenGrade = {
   id: string;
@@ -32,6 +34,8 @@ export type GoldenGrade = {
   /** cards that matched an allowedExtra label (they are in `cards`, but not in the precision denominator) */
   allowed: number;
   hits: number;
+  /** hits that came from a card of another kind than the label (the right words, shown as a different kind of card) */
+  kindSwapped: number;
   recall: number; // 0..1
   precision: number; // 0..1 (correct cards / (cards - allowed)); 1 when there are no cards
   byKind: Record<Kind, KindStats>;
@@ -104,6 +108,19 @@ export function gradeGolden(g: Golden, cardsIn: TimelineCard[], opts: GradeOpts 
     inTime.add(good.i);
     momentOfCard.set(good.i, m.id);
     byId.set(m.id, { id: m.id, kind: m.kind, status: "hit", ttcMs: good.atMs - t0, card: good.i });
+  }
+  // Same words and time, another kind of card: still a hit (see the header). Only moments that have tokens to check; without tokens any card would match.
+  const anyKind = () => cards.filter((c) => !used.has(c.i));
+  for (const m of ordered) {
+    if (byId.has(m.id) || !m.mustMention?.length) continue;
+    const t0 = lineT(m.afterLine);
+    const swapped = anyKind().find((c) => c.atMs >= t0 && c.atMs <= t0 + m.latestMs && hasAll(c.text, m.mustMention));
+    if (!swapped) continue;
+    used.add(swapped.i);
+    correct.add(swapped.i);
+    inTime.add(swapped.i);
+    momentOfCard.set(swapped.i, m.id);
+    byId.set(m.id, { id: m.id, kind: m.kind, status: "hit", ttcMs: swapped.atMs - t0, card: swapped.i, swapped: true });
   }
   for (const m of ordered) {
     if (byId.has(m.id)) continue;
@@ -213,6 +230,7 @@ export function gradeGolden(g: Golden, cardsIn: TimelineCard[], opts: GradeOpts 
     cards: cards.length,
     allowed: allowed.size,
     hits: hits.length,
+    kindSwapped: hits.filter((r) => r.swapped).length,
     recall: g.moments.length ? hits.length / g.moments.length : 1,
     precision: cards.length - allowed.size > 0 ? correct.size / (cards.length - allowed.size) : 1,
     byKind,
@@ -242,6 +260,7 @@ export type PooledGrade = {
   cards: number;
   allowed: number;
   hits: number;
+  kindSwapped: number;
   correct: number;
   recall: number;
   precision: number;
@@ -295,6 +314,7 @@ export function poolGrades(gs: { golden: Golden; grade: GoldenGrade }[]): Pooled
     cards,
     allowed: sum((x) => x.allowed),
     hits,
+    kindSwapped: sum((x) => x.kindSwapped),
     correct,
     recall: moments ? hits / moments : 1,
     precision: cards - sum((x) => x.allowed) > 0 ? correct / (cards - sum((x) => x.allowed)) : 1,

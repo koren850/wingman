@@ -13,7 +13,7 @@ import { emptyMemory, type SessionMemory } from "./session/types.ts";
 import { CostMeter } from "./cost.ts";
 import { loadSettings } from "./settings.ts";
 import { ME_LABEL } from "./profile.ts";
-import { memoryWrapUpTip } from "./tips.ts";
+import { memoryWrapUpTip, wrapUpItems } from "./tips.ts";
 import type { ModelRegistry } from "./providers/llm.ts";
 
 const WRAP = { system: "post-call summary" }; // the summary prompt also starts like the reflex prompt, so the role marker is not used here
@@ -221,4 +221,20 @@ test("memoryWrapUpTip: the wrap-up reminder reads the memory, once, only at a cl
   assert.equal(memoryWrapUpTip(m, { ...o, elapsedMin: 50 })?.type, "remind");
   assert.equal(memoryWrapUpTip(m, { ...o, elapsedMin: 50, alreadyNudged: true }), undefined);
   assert.equal(memoryWrapUpTip(emptyMemory(0), { ...o, elapsedMin: 50 }), undefined);
+});
+
+test("memoryWrapUpTip: a goodbye phrase in the first minutes is not a wrap-up", () => {
+  const m = mem();
+  const o = { latestText: "ok so thanks so much, talk soon", elapsedMin: 1, wrapUpAfterMin: 40, alreadyNudged: false, lang: "en" as const };
+  assert.equal(memoryWrapUpTip(m, o), undefined, "one minute in");
+  assert.equal(memoryWrapUpTip(m, { ...o, elapsedMin: 2.9 }), undefined);
+  assert.ok(memoryWrapUpTip(m, { ...o, elapsedMin: 3 }), "three minutes in, with the cue");
+  assert.ok(memoryWrapUpTip(m, { ...o, latestText: "ok", elapsedMin: 40 }), "no cue, but the call has run long");
+});
+
+test("wrapUpItems: the items the reminder lists, at most three, agenda first", () => {
+  const items = wrapUpItems(mem());
+  assert.ok(items.length >= 1 && items.length <= 3);
+  assert.match(items[0], /Timeline/);
+  assert.deepEqual(wrapUpItems(emptyMemory(0)), []);
 });

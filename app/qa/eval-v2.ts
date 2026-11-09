@@ -55,7 +55,9 @@ export async function play(
   const base = (g: Golden): WorkerOptions => ({
     split: o.split(g),
     ...(o.engineControl ? { control: o.engineControl } : {}),
-    ...(o.replay ? { replay: { cassette: o.replay } } : {}),
+    // A recording is made with asks off (scripts/cassette-record.ts), so its file holds no "ask" call. Replaying the scripted asks would miss, and each miss shows
+    // an "AI is down" card that the recorded run never had.
+    ...(o.replay ? { replay: { cassette: o.replay }, asks: false } : {}),
   });
   for (const g of meetings) jobs.push({ id: g.id, kind: "clean", opts: base(g) });
   if (o.noisy !== false && !o.replay)

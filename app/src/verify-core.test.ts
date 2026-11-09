@@ -431,9 +431,9 @@ test(
     assert.ok(cmp.rows.find((r) => r.id === "card.recall")!.verdict === "FAIL");
     assert.ok(cmp.rows.find((r) => r.id === "card.precision")!.verdict === "FAIL");
 
-    // self-test: if a control scored high the check says so. Same always-ANS cards, graded against labels with no tokens and a wide window (a weak grader).
-    // (The window is 120 s: the engine drops the same sentence twice within 20 s, so the control makes fewer repeat cards than it used to.)
-    const weak = meetings.map((g) => ({ ...g, moments: g.moments.map((m) => ({ ...m, mustMention: [], latestMs: 120_000 })) }));
+    // self-test: if a control scored high the check says so. Same always-ANS cards, graded against labels with no tokens, no kind and a wide window (a weak grader).
+    // (The window is the whole meeting: the engine drops the same sentence twice within 20 s and holds back reminders in the first minutes, so the control makes fewer cards than it used to.)
+    const weak = meetings.map((g) => ({ ...g, moments: g.moments.map((m) => ({ ...m, kind: "answer" as const, mustMention: [], latestMs: 1_000_000 })) }));
     const ansRuns = full.controls["always-ans"]!;
     const weakPool = poolGrades(
       ansRuns.map((run) => ({

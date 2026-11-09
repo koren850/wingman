@@ -166,6 +166,7 @@ export class MemoryLoop {
   private pastPending: string | undefined;
   private pastDone = false;
   private lastPromptAt = 0;
+  private readonly startedAt: number;
   private abort = new AbortController();
   private stopped = false;
   stats = { runs: 0, compactions: 0, dropped: 0, failures: 0, applied: 0, shed: 0, nameMapped: 0, nameAsked: 0, compactLost: 0 };
@@ -176,6 +177,7 @@ export class MemoryLoop {
     start: SessionMemory,
   ) {
     this.mem = start;
+    this.startedAt = deps.now();
     this.lastCompactAt = deps.now();
     for (const p of start.roster) this.learnName(p.name);
   }
@@ -529,18 +531,21 @@ export class MemoryLoop {
   }
 
   // ------------------------------------------------------------ open loops
-  /** An open question or promise that nobody has picked up for more than silencePromptSeconds. Each item is offered once, at most one per minute.
-   *  The caller turns it into a PROMPT card; the text is the model's own wording in the call language, so no language is hard-coded here. */
+  /** An open question or promise that nobody has picked up. Each item is offered once, at most one per OPEN_LOOP_GAP_MS, and never in the first minutes of a call.
+   *  The caller turns it into a PROMPT card; the text is the model's own wording in the call language, so no language is hard-coded here.
+   *  "Still open" is only true after a while: a question needs OPEN_LOOP_QUESTION_MS of silence from the answerer, a promise OPEN_LOOP_PROMISE_MS (a promise made
+   *  a few seconds ago is not forgotten). In a recorded run the old 6 s rule gave 81 "Promised, not done yet" cards in 32 short calls, most about the last thing said. */
   openLoopPrompt(): OpenLoopPrompt | undefined {
     const now = this.deps.now();
     if (this.stopped || now - this.lastLineAt < this.cfg.silencePromptSeconds * 1000) return undefined;
-    if (now - this.lastPromptAt < 60_000) return undefined;
+    if (now - this.startedAt < OPEN_LOOP_CALL_MS) return undefined;
+    if (now - this.lastPromptAt < OPEN_LOOP_GAP_MS) return undefined;
     // The updater is reading new lines right now: it may be closing this very item.
     if (this.busy) return undefined;
     const c = openLoops(this.mem).find(
       (x) =>
         !this.prompted.has(x.id) &&
-        now - x.at >= this.cfg.silencePromptSeconds * 1000 &&
+        now - x.at >= (x.kind === "promise" ? OPEN_LOOP_PROMISE_MS : OPEN_LOOP_QUESTION_MS) &&
         now - x.at < 5 * 60_000 &&
         !this.answeredByUser(x) &&
         !this.promptedWords.some((w) => sameItem(w, wordsOf(x.text))),
@@ -550,6 +555,10 @@ export class MemoryLoop {
     this.promptedWords.push(wordsOf(c.text));
     this.lastPromptAt = now;
     return c;
+  }
+  /** Items another card (the wrap-up reminder) has just listed: the open-loop prompt must not offer them again a second later. */
+  markShown(items: string[]): void {
+    for (const t of items) this.promptedWords.push(wordsOf(t));
   }
   /** An open question after which the answering side went on talking for a while was most likely answered: the updater only has not marked it.
    *  Another person's question is answered by the user; the user's own question only by the other side. Promises are not judged this way. */
@@ -613,6 +622,14 @@ export function nearCap(mem: SessionMemory): boolean {
   return (Object.keys(lists) as (keyof typeof lists)[]).some((k) => lists[k].length >= CAPS[k] - 2);
 }
 
+/** No open-loop prompt in the first minutes of a call: little is open yet and the memory is still learning who is who. */
+export const OPEN_LOOP_CALL_MS = 120_000;
+/** Time between two open-loop prompts. */
+export const OPEN_LOOP_GAP_MS = 120_000;
+/** Age of an open question before it is offered. */
+export const OPEN_LOOP_QUESTION_MS = 30_000;
+/** Age of an open promise before it is offered. */
+export const OPEN_LOOP_PROMISE_MS = 120_000;
 /** The user spoke this many words after a question was asked: the question counts as answered for the open-loop prompt. */
 const ANSWER_WORDS = 6;
 /** Lower-case words of a text (letters and digits, Unicode), for the near-duplicate check. */

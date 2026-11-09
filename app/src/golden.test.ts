@@ -78,11 +78,29 @@ test("grader: a hit counts for recall, precision and time to card", () => {
   assert.equal(g.ttcP50, 1500);
 });
 
-test("grader: a miss is a miss, and a card of the wrong kind does not count", () => {
-  const g = gradeGolden(toy, [c(11000, "answer", "scope scope")]);
+test("grader: a miss is a miss, and a card of the wrong kind without the words does not count", () => {
+  const g = gradeGolden(toy, [c(11000, "answer", "nothing to see")]);
   assert.equal(g.results.find((r) => r.id === "m2")?.status, "miss");
   assert.equal(g.hits, 0);
   assert.equal(g.precision, 0);
+});
+
+test("grader: the right words in time as another kind of card are a hit, and the run says so", () => {
+  const g = gradeGolden(toy, [c(11000, "answer", "Talk about the scope first")]); // m2 wants a prompt card with "scope"
+  const m2 = g.results.find((r) => r.id === "m2")!;
+  assert.equal(m2.status, "hit");
+  assert.equal(m2.swapped, true);
+  assert.equal(m2.ttcMs, 1000);
+  assert.equal(g.hits, 1);
+  assert.equal(g.kindSwapped, 1);
+  assert.equal(g.precision, 1);
+  // a same-kind card with the words still wins, and the swapped one is not used twice
+  const both = gradeGolden(toy, [c(11000, "answer", "scope"), c(11500, "prompt", "scope again")]);
+  assert.equal(both.kindSwapped, 0);
+  assert.equal(both.hits, 1);
+  // too late or no words: no swap
+  assert.equal(gradeGolden(toy, [c(30000, "answer", "scope")]).hits, 0);
+  assert.equal(gradeGolden(toy, [c(11000, "answer", "Talk about the price")]).results.find((r) => r.id === "m2")?.status, "miss");
 });
 
 test("grader: a late card is a late miss, not a hit", () => {

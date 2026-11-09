@@ -415,7 +415,7 @@ test("interview calls: claims.ts numbers go into numbers without a model call (o
   });
 });
 
-test("open loop: an unanswered question gets one prompt after 6 seconds of quiet, once", async () => {
+test("open loop: an unanswered question gets one prompt after quiet, once, and not in the first two minutes", async () => {
   await withVClock(async (vc) => {
     const r = rig(vc);
     r.pm.reply(
@@ -425,14 +425,16 @@ test("open loop: an unanswered question gets one prompt after 6 seconds of quiet
     await talk(r, [{ text: words(30) }], 21);
     r.loop.addLine({ side: "them", text: "mm hm" });
     assert.equal(r.loop.openLoopPrompt(), undefined, "a line came in a moment ago");
-    for (let i = 0; i < 7; i++) await vc.advance(1000);
+    for (let i = 0; i < 40; i++) await vc.advance(1000);
+    assert.equal(r.loop.openLoopPrompt(), undefined, "quiet, but the call is not two minutes old yet");
+    await vc.advance(90_000);
     const p = r.loop.openLoopPrompt();
     assert.equal(p?.id, "q1");
     assert.equal(p?.text, "Who owns the DNS records");
-    assert.equal(r.loop.openLoopPrompt(), undefined, "at most one a minute");
-    await vc.advance(61_000);
-    assert.equal(r.loop.openLoopPrompt()?.id, "c1", "the next item, a minute later");
-    await vc.advance(61_000);
+    assert.equal(r.loop.openLoopPrompt(), undefined, "at most one every two minutes");
+    await vc.advance(121_000);
+    assert.equal(r.loop.openLoopPrompt()?.id, "c1", "the next item, two minutes later (a promise is offered once it is two minutes old)");
+    await vc.advance(121_000);
     assert.equal(r.loop.openLoopPrompt(), undefined, "each item once");
   });
 });
@@ -445,7 +447,7 @@ test("open loop: no prompt for a question the user went on to answer, even befor
     await talk(r, [{ text: words(30) }], 21);
     // the user answers in many words; the updater has not marked the question answered (it can miss it)
     r.loop.addLine({ side: "me", text: "Yes there is a fifteen percent discount if you pay for the whole year in advance" });
-    for (let i = 0; i < 8; i++) await vc.advance(1000); // quiet long enough for a prompt, no tick: the updater has not read the answer
+    await vc.advance(125_000); // quiet long enough for a prompt, no tick: the updater has not read the answer
     assert.equal(r.loop.openLoopPrompt(), undefined, "the user spoke after the question: counted as answered");
     for (let i = 0; i < 40; i++) {
       await vc.advance(1000);
@@ -462,7 +464,7 @@ test("open loop: the user's own question is closed by the other side answering, 
     r.pm.reply({ role: "memory" }, JSON.stringify({ add: { openQuestions: [{ asker: "me", text: "Who owns the DNS records" }] } }));
     await talk(r, [{ text: words(30) }], 21);
     r.loop.addLine({ side: "me", text: "I will go on and explain how our setup works today, it has many parts and we want to be clear" });
-    for (let i = 0; i < 8; i++) await vc.advance(1000);
+    await vc.advance(125_000);
     assert.equal(r.loop.openLoopPrompt()?.id, "q1", "the user talked on: still unanswered");
   });
   await withVClock(async (vc) => {
@@ -470,7 +472,7 @@ test("open loop: the user's own question is closed by the other side answering, 
     r.pm.reply({ role: "memory" }, JSON.stringify({ add: { openQuestions: [{ asker: "me", text: "Who owns the DNS records" }] } }));
     await talk(r, [{ text: words(30) }], 21);
     r.loop.addLine({ side: "them", text: "The infrastructure team owns the DNS records and they are managed in one place" });
-    for (let i = 0; i < 8; i++) await vc.advance(1000);
+    await vc.advance(125_000);
     assert.equal(r.loop.openLoopPrompt(), undefined, "the other side answered");
   });
 });
@@ -490,8 +492,9 @@ test("open loop: the memory's second wording of the same promise is not offered 
       }),
     );
     await talk(r, [{ text: words(30) }], 21, 10);
+    await vc.advance(125_000);
     assert.ok(r.loop.openLoopPrompt());
-    await vc.advance(61_000);
+    await vc.advance(121_000);
     assert.equal(r.loop.openLoopPrompt(), undefined);
   });
 });

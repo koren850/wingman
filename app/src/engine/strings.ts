@@ -16,8 +16,9 @@ export const reminderTitle = () => ht(UI_LANG, "side.reminder");
 export const reminderMore = (n: number) => ht(UI_LANG, "side.more", { n });
 export const speakerName = (n: number | string) => ht(UI_LANG, "flow.speaker", { n });
 export const aiPaused = (why: "cap" | "down" | "net") => ht(UI_LANG, "ai.paused", { why: ht(UI_LANG, `ai.paused.${why}`) });
-export const checkNumberSay = (said: string, ref: string) => ht(UI_LANG, "moment.check", { said, ref });
-export const checkNumberWhy = () => ht(UI_LANG, "moment.check.why");
+/** The Check card quotes the call, so it follows the language of the call (`lang`), not the language of the app: an English call must not get "You said $1,800 ... " in Hebrew. */
+export const checkNumberSay = (said: string, ref: string, lang: "he" | "en" = UI_LANG) => ht(lang, "moment.check", { said, ref });
+export const checkNumberWhy = (lang: "he" | "en" = UI_LANG) => ht(lang, "moment.check.why");
 export const askOffline = () => ht(UI_LANG, "ask.offline");
 export const askNoCall = () => ht(UI_LANG, "ask.nocall");
 export const askNothing = () => ht(UI_LANG, "ask.nothing");

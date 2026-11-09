@@ -98,6 +98,30 @@ for (const c of CASES) {
   });
 }
 
+// A recorded run: the observer's STALL showed the canned "I want to check that properly and come back to you" under questions it did not answer.
+// Now the card carries the model's own stall line, and no line from the model means no card.
+test("observer: a STALL card shows the model's own words, never the canned stall line, and a STALL with no words shows nothing", async () => {
+  await e.reset();
+  const line = "I would like to know how long a build of the whole shop would take for us";
+  e.pm.reply({ role: "observer", lastLine: line }, reply("STALL timeline", "First we map the scope, then I come back with a timeline"), { ms: 400 });
+  e.say("them", line);
+  await e.vc.advance(3000);
+  const s = e.screen().filter((c) => c.badge === "stall");
+  assert.equal(s.length, 1, JSON.stringify(e.screen()));
+  assert.equal(s[0].say, "First we map the scope, then I come back with a timeline");
+
+  await e.reset();
+  const line2 = "And honestly I wonder what you would charge us to move all the old data over";
+  e.pm.reply({ role: "observer", lastLine: line2 }, "STALL price\nVALUE: 3\nAIM: me\nWHY: price is a commitment", { ms: 400 });
+  e.say("them", line2);
+  await e.vc.advance(3000);
+  assert.equal(e.screen().length, 0, JSON.stringify(e.screen()));
+  assert.ok(
+    events().some((x) => x.type === "moment.drop" && x.why === "stall-generic"),
+    "the drop is logged with its reason",
+  );
+});
+
 test("implied question without a question mark: the observer asks the model and the ANS reply becomes a card", async () => {
   await e.reset();
   const line = "I do not know yet how we would move the old reports over";
@@ -512,4 +536,14 @@ test("the observer failing twice raises the amber AI bar; a good reply clears it
     e.rows.some((r) => r.id === "health-ai" && r.clear),
     "cleared after a good reply",
   );
+});
+
+// A recorded run: an English call got "Hebrew label: English figures" on its Check card, because the card followed the app language.
+test("check card: the words follow the language of the call, and the app language is only the fallback", async () => {
+  const { checkNumberSay, checkNumberWhy } = await import("./engine/strings.ts"); // after setupEngine: boot reads the settings when it loads
+  assert.match(checkNumberSay("$1,800", "$1,500", "en"), /^You said \$1,800\. Your notes or the call say: \$1,500$/);
+  assert.match(checkNumberSay("$1,800", "$1,500", "he"), /^אמרת/);
+  assert.match(checkNumberWhy("en"), /^A number that does not match/);
+  assert.match(checkNumberWhy("he"), /^מספר/);
+  assert.equal(checkNumberSay("1", "2", undefined), checkNumberSay("1", "2"), "no call language yet: the app language decides, as before");
 });

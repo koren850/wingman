@@ -178,6 +178,11 @@ const WRAP = [
   /\bbye\b/i,
 ];
 export const hasWrapCue = (text: string): boolean => WRAP.some((r) => r.test(text));
+/** A goodbye phrase in the first minutes is not a wrap-up ("ok so", "thanks a lot" open and close small talk too). In a recorded run 23 of 28 "Before you finish"
+ *  cards came in the first 1.5 minutes. */
+export const WRAP_CUE_AFTER_MIN = 3;
+const wrapDue = (latestText: string, elapsedMin: number, wrapUpAfterMin: number) =>
+  (hasWrapCue(latestText) && elapsedMin >= WRAP_CUE_AFTER_MIN) || elapsedMin >= wrapUpAfterMin;
 
 /** One-time nudge for must-cover checklist items still open: at a wrap-up cue in the latest lines, or after wrapUpAfterMin. */
 export function wrapUpTip(
@@ -188,7 +193,7 @@ export function wrapUpTip(
   if (f?.kind === "personal") return undefined;
   const miss = missedMust(f);
   if (!miss.length) return undefined;
-  if (!hasWrapCue(o.latestText) && o.elapsedMin < o.wrapUpAfterMin) return undefined;
+  if (!wrapDue(o.latestText, o.elapsedMin, o.wrapUpAfterMin)) return undefined;
   const list = miss
     .slice(0, 3)
     .map((m) => m.item)
@@ -205,16 +210,20 @@ export function memoryWrapUpTip(
   o: { latestText: string; elapsedMin: number; wrapUpAfterMin: number; alreadyNudged: boolean; lang?: CallLang },
 ): Tip | undefined {
   if (o.alreadyNudged) return undefined;
-  const todo = mem.mustCover.filter((m) => !m.done).map((m) => m.text);
-  const loops = mem.openQuestions.filter((q) => q.status === "open").map((q) => q.text);
-  const promises = mem.commitments.filter((c) => c.status === "open").map((c) => c.what);
-  const list = [...todo, ...loops, ...promises].slice(0, 3);
+  const list = wrapUpItems(mem);
   if (!list.length) return undefined;
-  if (!hasWrapCue(o.latestText) && o.elapsedMin < o.wrapUpAfterMin) return undefined;
+  if (!wrapDue(o.latestText, o.elapsedMin, o.wrapUpAfterMin)) return undefined;
   const items = list.map((t) => t.replace(/\s+/g, " ").slice(0, 60)).join(" · ");
   let text = o.lang === "en" ? `Before you finish, still open: ${items}` : `לפני שמסיימים, עדיין פתוח: ${items}`;
   if (text.length > MAX_TIP_CHARS) text = text.slice(0, MAX_TIP_CHARS).replace(/\s+\S*$/, "");
   return { type: "remind", text };
+}
+/** The (at most 3) unfinished items the wrap-up card lists, in its order: agenda items, open questions, open promises. */
+export function wrapUpItems(mem: Pick<SessionMemory, "mustCover" | "openQuestions" | "commitments">): string[] {
+  const todo = mem.mustCover.filter((m) => !m.done).map((m) => m.text);
+  const loops = mem.openQuestions.filter((q) => q.status === "open").map((q) => q.text);
+  const promises = mem.commitments.filter((c) => c.status === "open").map((c) => c.what);
+  return [...todo, ...loops, ...promises].slice(0, 3);
 }
 
 /**

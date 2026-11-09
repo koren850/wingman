@@ -42,7 +42,7 @@ import { isEmptyMemory, type SessionMemory } from "../session/types.ts";
 import { briefNotes, briefKind } from "../brief.ts";
 import { setMode } from "../session/patch.ts";
 import { loadCustomModes, type CustomMode } from "../pack.ts";
-import { memoryWrapUpTip, openLoopSay, timeLeftTip } from "../tips.ts";
+import { memoryWrapUpTip, openLoopSay, timeLeftTip, wrapUpItems } from "../tips.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Moment } from "../moments/types.ts";
@@ -390,6 +390,7 @@ function v2Tick() {
   });
   if (wrap && tipGate.can(now, { quiet: st.call.quiet, ignoreGap: true })) {
     v2Nudged = true;
+    l.markShown(wrapUpItems(l.memory)); // the same items must not come again as "still open" prompts
     emitTip(wrap, "wrapup");
     return;
   }
