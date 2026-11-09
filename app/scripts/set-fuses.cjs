@@ -30,8 +30,9 @@ function state(buf) {
 const frameworkOf = (app) => path.join(app, "Contents", "Frameworks", "Electron Framework.framework", "Versions", "A", "Electron Framework");
 
 /** The file that holds the fuse wire: the framework binary of a .app, or the .exe (a folder means <folder>/Wingman.exe). */
-function binaryOf(target) {
-  if (target.endsWith(".app")) return frameworkOf(target);
+function binaryOf(target, exists = fs.existsSync) {
+  // A macOS bundle: a name ending in .app, or a folder with the Electron framework inside (make-app.sh builds into a temp folder like ".Wingman.app.build.123").
+  if (target.endsWith(".app") || exists(path.join(target, "Contents", "Frameworks", "Electron Framework.framework"))) return frameworkOf(target);
   return target.toLowerCase().endsWith(".exe") ? target : path.join(target, "Wingman.exe");
 }
 

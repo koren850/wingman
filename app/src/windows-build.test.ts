@@ -111,6 +111,16 @@ test("set-fuses: the binary is found for a .app, an .exe and an unpacked folder,
   assert.equal(fuses.binaryOf("/x/Wingman.exe"), "/x/Wingman.exe");
   assert.equal(fuses.binaryOf("/x/Wingman.EXE"), "/x/Wingman.EXE");
   assert.match(fuses.binaryOf(join("x", "win-unpacked")), /win-unpacked[\\/]Wingman\.exe$/);
+  // make-app.sh builds into a temp folder whose name does not end in .app: the framework inside makes it a macOS bundle
+  const tmpApp = "/x/.Wingman.app.build.123";
+  assert.match(
+    fuses.binaryOf(tmpApp, (p: string) => p === join(tmpApp, "Contents", "Frameworks", "Electron Framework.framework")),
+    /Electron Framework$/,
+  );
+  assert.match(
+    fuses.binaryOf(tmpApp, () => false),
+    /Wingman\.exe$/,
+  );
   // MZ header, some bytes, the sentinel, version 1, 9 fuses: RunAsNode on, cookie encryption on, NODE_OPTIONS on, inspect on, the rest left alone
   const sentinel = Buffer.from("dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX");
   const buf = Buffer.concat([Buffer.from("MZ\0\0pad"), sentinel, Buffer.from([1, 9]), Buffer.from("111100001")]);
