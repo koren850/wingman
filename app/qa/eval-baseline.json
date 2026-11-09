@@ -34,8 +34,8 @@
         "n": 292
       },
       "card.precision": {
-        "value": 0.79677,
-        "n": 310
+        "value": 0.79935,
+        "n": 309
       },
       "recall.answer": {
         "value": 1,
@@ -58,8 +58,8 @@
         "n": 96
       },
       "precision.prompt": {
-        "value": 0.77358,
-        "n": 106
+        "value": 0.78095,
+        "n": 105
       },
       "precision.check": {
         "value": 1,
@@ -102,12 +102,12 @@
         "n": 248
       },
       "dup.rate": {
-        "value": 0.00965,
-        "n": 311
+        "value": 0.00968,
+        "n": 310
       },
       "wrong.lang": {
-        "value": 0.00643,
-        "n": 311
+        "value": 0.00645,
+        "n": 310
       },
       "guard.rate": {
         "value": 0.005,
@@ -118,15 +118,15 @@
         "n": 20
       },
       "rubric.pass": {
-        "value": 0.86817,
-        "n": 311
+        "value": 0.87419,
+        "n": 310
       },
       "noisy.delta": {
         "value": 0.02532,
         "n": 79
       },
       "cost.perHour": {
-        "value": 0.03231,
+        "value": 0.03105,
         "n": 1233
       },
       "calls.perHour": {
@@ -134,8 +134,8 @@
         "n": 1233
       },
       "cards.perHour": {
-        "value": 82.00465,
-        "n": 311
+        "value": 81.74097,
+        "n": 310
       }
     }
   }

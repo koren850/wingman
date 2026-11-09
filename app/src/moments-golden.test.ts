@@ -77,9 +77,9 @@ test("golden dev through the v2 engine (SCRIPTED): the planned moments show, sil
 // Estimates per call (USD, Haiku list prices): moment 0.00016, observer 0.00013. The cost test fails at +20 percent per role.
 // The observer reads a little more per call (the LABEL line, windows that carry lines back after a dropped silence look): 0.00014.
 // Round 14: the moment rules grew by five rules (language, no coaching in SAY, no thinking aloud, bank ids, direct questions). This test counts the role
-// instructions at the plain price, although they are served from the prompt cache; measured 0.000168 per call, so the observer table is 0.00015.
+// instructions at the plain price, although they are served from the prompt cache; measured 0.000168 per call, so the observer table is 0.0002 (measured 0.000199 after the bank candidates fit in the prompt). The moment table is 0.00022 (measured 0.000218: the rules are sent with every call, and the bank candidates now fit in the prompt).
 // The per-hour gate (v2-cost, USD 0.25) is the real limit.
-const TABLE = { moment: 0.00016, observer: 0.00015 };
+const TABLE = { moment: 0.00022, observer: 0.0002 };
 test("cost: usage rows of golden dev meetings, per role, stay within the planned table (+20 percent)", { timeout: 120_000 }, async () => {
   const { readFileSync } = await import("node:fs");
   const usageRows = () =>
