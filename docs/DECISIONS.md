@@ -81,6 +81,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [73](#adr-73-memory-patches-repair-two-known-shape-slips) | Memory patches repair two known shape slips |
 | [74](#adr-74-a-direct-question-gets-a-concrete-answer-not-a-skip) | A direct question gets a concrete answer, not a SKIP |
 | [75](#adr-75-explicit-state-for-the-tray-call-slot-and-the-capture-channels) | Explicit state for the tray call slot and the capture channels |
+| [76](#adr-76-a-conversation-state-model-call-flow-tone-and-what-comes-next-proposed) | A conversation state model: call flow, tone and what comes next (proposed) |
 
 ---
 
@@ -1153,3 +1154,34 @@ Date: 2026-11-09
 **Alternatives.** A state machine library (a new dependency for about 100 lines of tables). One big machine for the whole app (the channels and the call run on different clocks).
 
 **Consequences.** Some old tests built a state by hand from `idle`; they now start with `starting`. A start while the check runs returns false, so the menu greys out the start items then. `wingman start` fails when the call went back to idle while it waited.
+
+## ADR 76: A conversation state model: call flow, tone and what comes next (proposed)
+
+Date: 2026-11-09. Status: proposed, planned for 0.0.2. Not built.
+
+**Context.** Wingman knows who speaks (`speakers.ts`), when the other side talks among themselves (`flow.ts`) and a call memory of numbers, open questions, decisions and promises. It does not know where the call is going. In the recorded dev run most cards were reminders or generic lines, 31 of 56 direct questions got no card, and cards often came at the wrong time ("Promised, not done yet" seconds after a promise; "Before you finish" in the first minute). The answer card is written live from raw notes for every question, which costs about 1 s of model time.
+
+**Decision.** Add a conversation state, kept by two loops.
+- Slow loop (background, about every 20 to 30 s or on a topic change). The memory update call that already runs also returns:
+  - the phase of the call: intro, discovery, pricing, objections, next steps or closing;
+  - for each speaker: role (decides, technical, other), what they care about, and stance (positive, doubtful, pushing back);
+  - the user's goal for the call (from the brief) and how close the call is to it;
+  - the two or three most likely next questions or objections, each with a short prepared answer taken from the notes.
+- Fast loop (every final, local, no model call):
+  - delivery signals from the word timings Deepgram already sends: speaking rate, pause length, interruptions and talk share per speaker;
+  - a line that matches a predicted question shows its prepared card at once (bank card speed);
+  - the live answer prompt gets a short state summary (about 150 tokens: phase, who asks, their stance), so the answer fits the moment at no extra wait;
+  - timing rules read the phase: hold cards in their own discussion (as today), next-step and wrap-up cards only in the closing phase, and a "likely next" card when the phase changes.
+
+**Why.** Understanding the call is slow and can run in the background. The moment a card appears must stay fast, so it only reads the state. Delivery signals from timings are measured facts, not guesses about feelings, and cost nothing. Prepared answers help both quality (written with the whole context, not under time pressure) and speed (no model call when they match).
+
+**Alternatives.**
+- A separate state model call: more cost and one more prompt to keep in step with the memory call.
+- Tone from the audio with a sentiment model: a new dependency or vendor, and Deepgram's sentiment feature is not part of the live stream.
+- Showing the mood on screen ("they seem annoyed"): a wrong guess is worse than none, so tone only steers which cards appear.
+
+**Consequences.**
+- The memory schema grows, so the memory cassette must be recorded again (about $1 for a dev run and a judge pass).
+- A new measurable gate: of the predicted questions, how many are asked in the next two minutes of the golden meetings. It is scored from the transcripts, with no new labels.
+- Prepared cards show only on a strong match, so a wrong prediction costs nothing on screen.
+- Build order: (1) delivery signals and talk stats, local only; (2) phase, stance and goal in the memory call and in the prompts; (3) predictions and prepared cards with the prediction gate.

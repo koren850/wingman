@@ -126,6 +126,7 @@ The recorded run above used synthetic voices and invented scripts. Not yet recor
 
 ## Ideas (not built)
 
+- Next (0.0.2): a conversation state model. The call memory also keeps the phase of the call, each speaker's role and stance, the user's goal and the likely next questions with prepared answers. Local delivery signals (speaking rate, pauses, interruptions) steer when cards appear. See [ADR 76](DECISIONS.md#adr-76-a-conversation-state-model-call-flow-tone-and-what-comes-next-proposed).
 - A voice print so Wingman can tell you from the other side on speakers, and remember people's voices across calls.
 - Phone mode: speakerphone on the Mac microphone with one mixed channel and diarization.
 - Web lookup as a live Tip (a company or term, one line, with a source). The opt-in lookup in the Ask tab and the CLI is built ([ADR 65](DECISIONS.md#adr-65-web-lookup-is-opt-in-with-a-source-and-a-cap-replaces-adr-36)); showing it during a call needs a cost cap and a guard against invented numbers. Screen context needs a privacy design first.
