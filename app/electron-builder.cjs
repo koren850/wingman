@@ -52,7 +52,7 @@ module.exports = {
   // The window and the tray read their icons from ../brand/png (next to the app folder).
   // Windows uses the multi-size wingman.ico for the tray (shared/platform.cjs trayIcon).
   extraResources: [
-    { from: "../brand/png", to: "brand/png", filter: ["icon-512.png", "trayTemplate.png", "trayTemplate@2x.png"] },
+    { from: "../brand/png", to: "brand/png", filter: ["icon-512.png", "mac/icon-512.png", "trayTemplate.png", "trayTemplate@2x.png"] },
     { from: "../brand", to: "brand", filter: ["wingman.ico"] },
   ],
   mac: {

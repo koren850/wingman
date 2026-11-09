@@ -20,6 +20,8 @@ const features = require("./featureslib.cjs");
 
 const ROOT = path.join(__dirname, "..");
 const BRAND_ICON = path.join(ROOT, "..", "brand", "png", "icon-512.png");
+// The Dock needs the Mac version: the same tile with the Apple grid margin, so it is the same size as other apps.
+const DOCK_ICON = path.join(ROOT, "..", "brand", "png", "mac", "icon-512.png");
 const userPaths = require("../shared/paths.cjs");
 const CALLS = userPaths.callsDir();
 const BRIEFS = userPaths.briefsDir();
@@ -171,7 +173,7 @@ function create(ctx) {
     if (!SNAP && process.platform === "darwin" && app.dock) {
       try {
         app.dock.show();
-        if (fs.existsSync(BRAND_ICON)) app.dock.setIcon(BRAND_ICON);
+        if (fs.existsSync(DOCK_ICON)) app.dock.setIcon(DOCK_ICON);
       } catch {
         /* no dock */
       }

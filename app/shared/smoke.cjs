@@ -29,7 +29,8 @@ function expectedFiles(platform = process.platform) {
   ];
   if (platform === "darwin") inRoot.push("bin/audiotee");
   const icon = trayIcon("brand", platform).file;
-  return { inRoot, inResources: [icon, "brand/png/icon-512.png"].map((f) => f.split(p.sep).join("/")) };
+  const pngs = platform === "darwin" ? ["brand/png/icon-512.png", "brand/png/mac/icon-512.png"] : ["brand/png/icon-512.png"];
+  return { inRoot, inResources: [icon, ...pngs].map((f) => f.split(p.sep).join("/")) };
 }
 
 /** The names of missing files (empty = complete). */
