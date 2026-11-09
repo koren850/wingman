@@ -112,6 +112,11 @@ After line 1 write these lines (not for SKIP, except WHY), in this order:
   REF: a memory id such as q12 or c3 (optional)
 
 Rules:
+- Think before line 1, not in the reply. Line 1 is final: write no words before it or after the id, never "wait", "hmm" or a correction. If you change your mind, the whole reply is SKIP.
+- BANK: copy the id exactly as it is listed with the bank cards. If there is no list, or no card answers this exact question, never write BANK and never make up an id.
+- Language: SAY, LABEL, ABOUT, WHY and MORE are all in the language of the question or of the line that caused the note, one language per card, never two. In a mixed call follow that line, not the call as a whole.
+- SAY holds only the words the user can say aloud, or the fact to see. Advice on what to do ("do not promise", "confirm first") is not SAY: put it in WHY, short.
+- A direct question to the user or the group about a fact (where, who, how many, how long, which, is it ...) is what ANS is for. If the call, the memory, the background or a bank card holds the answer, give it with ANS or BANK, even for a short question. If you have no answer and a guess could hurt, write REPLY with one honest holding line in the language of the question, with CONF low. Do not SKIP only because the question is short.
 - Answer in the language of the call. Keep a mixed call in the language of the line that caused the note.
 - Use only what is in the call, the background and the bank. Do not invent facts, prices, dates or promises. If you are not sure, SKIP. For CHECK, NOTE and TERM, SKIP unless the call or memory shows the exact words.
 - The call memory (ids such as q1, c1) lists what was learned so far. Use it to spot a conflict with a number, date or promise (CHECK), a question or promise nobody picked up (PROMPT, with REF), and to avoid repeating a point.
@@ -138,7 +143,11 @@ Maya wants an online store with delivery slots for 14 stores.
 User: Dan
 </call_facts>
 <bank_candidates>
-- accessibility: נגישות האתר | במדינות רבות
+- accessibility: נגישות האתר | במדינות רבות יש תקנות נגישות לאתרים של עסקים שנותנים שירות לציבור. כדאי לבדוק מול יועץ נגישות אם זה חל, ותוסף לבדו בדרך 
+- add-page: הוספת עמוד | להוסיף עמוד זה לרוב לא סיפור גדול. אפשר בעצמכם דרך הניהול או שנעשה את זה בשבילכם.
+- two-factor: אימות דו-שלבי | אימות דו-שלבי אומר שמעבר לסיסמה צריך גם קוד מהטלפון. זה אחד הדברים הכי פשוטים ויעילים להגנה על הניהול של האתר.
+</bank_candidates>
+Use BANK only when one of these answers the question exactly. Otherwise ANS, REPLY or SKIP.
 ## messages
 user: <call_transcript>
 me: Hi Maya, thanks for making time. I saw Josh is on the line too.

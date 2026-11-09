@@ -186,7 +186,7 @@ test("size: every role's input stays under its budget in the replayed call, and 
   console.log(
     `PROMPT SIZE static text: moment rules ${est(MOMENT_RULES)} tokens, memory updater ${est(MEMORY_UPDATER_INSTRUCTIONS)}, compactor ${est(COMPACTOR_INSTRUCTIONS)}`,
   );
-  assert.ok(est(MOMENT_RULES) <= 900, "the moment rules fit in 900 tokens");
+  assert.ok(est(MOMENT_RULES) <= 1300, "the moment rules fit in 1300 tokens");
   assert.ok(est(MEMORY_UPDATER_INSTRUCTIONS) <= 700);
 });
 
