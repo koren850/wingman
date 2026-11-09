@@ -61,8 +61,8 @@ for step in try pack; do
 })()
 JS
 done
-shot WINGMAN_SNAP_NOCALLS=1 WINGMAN_DASHBOARD_FAKE_KEYS=missing WINGMAN_DASHBOARD_SIZE=1100x2400 WINGMAN_SNAP_EVAL="$TMP/open-try.js" -- setup-step:en:dark:home:-:-
-shot WINGMAN_SNAP_NOCALLS=1 WINGMAN_DASHBOARD_FAKE_KEYS=missing WINGMAN_DASHBOARD_SIZE=1100x2400 WINGMAN_SNAP_EVAL="$TMP/open-pack.js" -- setup-starter-packs:en:dark:home:-:-
+shot WINGMAN_SNAP_NOCALLS=1 WINGMAN_DASHBOARD_FAKE_KEYS=file WINGMAN_DASHBOARD_SIZE=1100x2400 WINGMAN_SNAP_EVAL="$TMP/open-try.js" -- setup-step:en:dark:home:-:-
+shot WINGMAN_SNAP_NOCALLS=1 WINGMAN_DASHBOARD_FAKE_KEYS=file WINGMAN_DASHBOARD_SIZE=1100x2400 WINGMAN_SNAP_EVAL="$TMP/open-pack.js" -- setup-starter-packs:en:dark:home:-:-
 for n in setup-step setup-starter-packs; do
   box="$(node -e 'const r=require(process.argv[1]);console.log([r.x,r.y,r.w,r.h].join(" "))' "$TMP/$n.png.json")"
   # shellcheck disable=SC2086
