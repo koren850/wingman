@@ -201,6 +201,7 @@
     [/^install ffmpeg/, () => "התקן את ffmpeg (brew install ffmpeg) והרץ שוב את הבדיקה"],
     [/^macOS ([\d.]+): system audio tap needs/, (m) => `macOS ${m[1]}: הקלטת שמע המערכת דורשת גרסה 14.2 ומעלה`],
     [/^only one (display|screen)/, () => "יש מסך אחד בלבד: חלון התשובות לא ייפתח (כדי שלא יופיע במסך משותף)"],
+    [/^connect a second screen, or turn on/, () => "חבר מסך שני, או הפעל בהגדרה את האפשרות למסך אחד (ואל תשתף את המסך הזה)"],
     [/^connect a second screen/, () => "חבר מסך שני לפני השיחה"],
     [/^settings invalid/, () => "ההגדרות לא תקינות"],
     [/^fix the setting above/, () => "תקן את ההגדרה שמוצגת ואז הרץ שוב את בדיקת המוכנות"],

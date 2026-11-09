@@ -11,7 +11,7 @@ Four parts:
 
 ## What Wingman does, in one minute
 
-Wingman is a live agent for your meeting. It listens to both sides and builds context as the call goes: who is there, what was decided, which numbers were said, what you promised. From that it shows short cards on a second screen. **Live reading** is the default: the AI reads the whole call and decides when a card helps, so you also get help on objections, numbers and promises, not only on questions. **Classic** is the older mode that reacts to questions only. It is off by default; set `moments: {engine: legacy}` in the settings file to use it. Keep it as a rollback (Settings, Advanced).
+Wingman is a live agent for your meeting. It listens to both sides and builds context as the call goes: who is there, what was decided, which numbers were said, what you promised. From that it shows short cards on a second screen. **Live reading** is the default: the AI reads the whole call and decides when a card helps, so you also get help on objections, numbers and promises, not only on questions. **Classic** is the older mode that reacts to questions only. It is off by default; set `moments: {engine: legacy}` in the settings file to use it. Keep it as a rollback.
 
 A **moment** is a point in the call where a short private nudge would help. Most lines are not a moment and get no card.
 

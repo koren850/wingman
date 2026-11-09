@@ -203,7 +203,10 @@ else if (S.overlay.enabled) {
     : displays === 1
       ? S.overlay.allowPrimary
         ? warn("one display and overlay.allowPrimary: the overlay will be on the shared screen")
-        : bad("only one display: the overlay would refuse to open", "connect a second screen, or set overlay.allowPrimary: true (never share that screen)")
+        : warn(
+            "only one display: the answer window stays closed, the call still works",
+            "connect a second screen, or turn on the one-screen option in the setup (never share that screen)",
+          )
       : warn("could not count displays");
 }
 

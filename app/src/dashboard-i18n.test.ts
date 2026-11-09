@@ -340,7 +340,8 @@ test("first-run readiness lines read in Hebrew (keys, microphone, system audio, 
     ["System Settings → Privacy & Security → Microphone: allow Wingman, then restart Wingman (or choose another device in Settings)", "מיקרופון"],
     ["audio.system.source is off: the client cannot be heard (transcript-only)", "שמע המערכת כבוי"],
     ["ffmpeg not found", "ffmpeg"],
-    ["only one display: the overlay would refuse to open", "מסך אחד"],
+    ["only one display: the answer window stays closed, the call still works", "מסך אחד"],
+    ["connect a second screen, or turn on the one-screen option in the setup (never share that screen)", "מסך אחד"],
   ];
   for (const [raw, want] of lines) {
     const out = HL.issueText(raw, "he");
