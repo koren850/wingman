@@ -241,7 +241,6 @@ function refresh() {
         ? meetings.map((m) => ({ label: m.label, click: () => ctl.start({ planId: m.planId }) }))
         : [{ label: t("noPrepared"), enabled: false }],
     });
-    items.push({ label: t("quickNoAi"), enabled: idle, click: () => ctl.start({ noAi: true }) });
     items.push({ label: t("prepare"), click: () => openWindow({ view: "home", focus: "plan" }) });
     items.push({ type: "separator" });
     items.push({ label: t("practice"), enabled: idle, click: () => ctl.practice() });

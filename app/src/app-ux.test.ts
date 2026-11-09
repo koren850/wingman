@@ -295,7 +295,7 @@ test("tray menu text: every item is in English and Hebrew with the same placehol
       .sort()
       .join();
   const keys = Object.keys(MT.T);
-  assert.ok(keys.length >= 27);
+  assert.ok(keys.length >= 26);
   for (const k of keys) {
     const [e, h] = MT.T[k];
     assert.ok(e && h, k);

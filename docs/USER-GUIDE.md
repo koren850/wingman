@@ -169,7 +169,7 @@ Wingman guesses the kind of call after about 20 words: client, support, vendor, 
 
 ## The menu-bar menu
 
-The menu-bar icon has: **Open Wingman**, **Start quick call**, **Start prepared meeting**, **Start quick call without AI (Prepared cards only)**, **Prepare a meeting**, **Try a practice call (offline, free)**, **Start listening** (when you asked to be asked first), **Confirm client**, **Ask Wingman: my next sentence is for you**, **Catch me up: where we are**, **Add a note for the AI**, **Quiet mode**, **Stop call**, **Stop and delete this call**, **Run readiness check**, **Show log** and **Quit Wingman**. If you quit during a call, Wingman asks first; quitting stops the call, saves it and writes the summary (up to 20 seconds). If the engine does not answer to Stop, quitting ends it for you. The note window follows the interface language and works in the dark theme.
+The menu-bar icon has: **Open Wingman**, **Start quick call**, **Start prepared meeting**, **Prepare a meeting**, **Practice call (free)**, **Start listening** (when you asked to be asked first), **Confirm client**, **Ask Wingman: my next sentence is for you**, **Catch me up: where we are**, **Add a note for the AI**, **Quiet mode**, **Stop call**, **Stop and delete this call**, **Run readiness check**, **Show log** and **Quit Wingman**. A call without AI (prepared cards only) starts from Home: **Quick call without AI**. If you quit during a call, Wingman asks first; quitting stops the call, saves it and writes the summary (up to 20 seconds). If the engine does not answer to Stop, quitting ends it for you. The note window follows the interface language and works in the dark theme.
 
 ## Settings
 
