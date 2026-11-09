@@ -2,7 +2,9 @@
 // A scenario is { rows, lines?, steps?, phase?, frame? }. rows reach the page on the "card" channel exactly as main.cjs would send them:
 //   v2 card rows (kind, value, why, more, closes, ...), view rows ({ type: "view", ... }) and legacy rows (no v2 fields).
 // steps run in the page after the rows: { click: "css selector" } | { wait: ms } | { key: "recap" } (fires the recap event).
-const now = Date.now();
+// Card ages are relative to this moment. build() refreshes it for every scenario: a run of many specs on a slow machine can last minutes, and a card made 100 s old at load
+// would cross the 3 minute stale line (faded text, a contrast failure) in a later spec.
+let now = Date.now();
 const row = (o) => ({ type: "card", question: "", facts: [], at: now, ...o });
 
 /** Call content in the language of the UI, so a Hebrew run looks like a Hebrew call. */
@@ -633,6 +635,7 @@ const ALL = Object.keys(SCENARIOS).filter((n) => !n.startsWith("v2-seq-"));
 function build(name, lang) {
   const f = SCENARIOS[name];
   if (!f) throw new Error("unknown v2 scenario " + name);
+  now = Date.now();
   const sc = f(TXT[lang] || TXT.en, lang);
   return sc.forceContent ? f(TXT[sc.forceContent], sc.forceContent) : sc; // forceContent: the call is in another language than the window (RTL text in an English window)
 }

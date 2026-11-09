@@ -355,6 +355,7 @@ function snap(lang: "en" | "he", specs: string[]) {
     env: { ...process.env, WINGMAN_OVERLAY_LANG: lang },
     encoding: "utf8",
     timeout: 480_000, // the whole v2 set in two looks is over 100 specs
+    maxBuffer: 64 * 1024 * 1024,
   });
   const results = r.stdout
     .split("\n")
@@ -466,4 +467,17 @@ test("board edge: junk rows never throw and a numeric id works", () => {
   assert.equal(b.has(7), true, "a card that timed out stays longer than one you answered");
   b.tick(T0 + V.DIM_BY.time);
   assert.equal(b.has(7), false);
+});
+
+test("fixtures: card ages are measured from the moment a scenario is built, not from when the file was loaded", () => {
+  // A snapshot run of many specs can take minutes on a busy machine. If ages were fixed at load, a 40 s old card would turn stale (3 minutes) in a late spec and fail the contrast check.
+  const realNow = Date.now;
+  const t0 = realNow.call(Date);
+  try {
+    Date.now = () => t0 + 10 * 60_000;
+    const rows = fx.build("v2-answer", "en").rows as { at: number }[];
+    for (const r of rows) assert.ok(Date.now() - r.at < 60_000, "a fresh scenario has fresh cards, however late it is built: " + (Date.now() - r.at));
+  } finally {
+    Date.now = realNow;
+  }
 });

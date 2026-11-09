@@ -450,6 +450,7 @@ function snap(lang: "en" | "he", specs: string[]): Res[] {
     env: { ...process.env, WINGMAN_OVERLAY_LANG: lang },
     encoding: "utf8",
     timeout: 170_000,
+    maxBuffer: 64 * 1024 * 1024,
   });
   const res = r.stdout
     .split("\n")
