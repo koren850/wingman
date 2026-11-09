@@ -176,8 +176,12 @@ function aboutBlock() {
   return h(
     "section",
     { class: "setgroup", "aria-labelledby": "g-about" },
-    h("h2", { id: "g-about", class: "label", tabindex: "-1" }, "About you"),
-    h("div", { class: "setlist" }, h("div", { class: "su-settings-form" }, SU.profile ? aboutForm("ab") : h("div", { class: "loading" }, "Loading…"))),
+    h("h2", { id: "g-about", class: "label", tabindex: "-1" }, T("set.about")),
+    h(
+      "div",
+      { class: "setlist" },
+      h("div", { class: "su-settings-form" }, SU.profile ? aboutForm("ab") : h("div", { class: "loading" }, T("set.loadingShort"))),
+    ),
   );
 }
 /** Settings section "Setup guide": opens the guided setup on Home again. */
@@ -185,22 +189,18 @@ function setupGuideBlock() {
   return h(
     "section",
     { class: "setgroup", "aria-labelledby": "g-setup" },
-    h("h2", { id: "g-setup", class: "label", tabindex: "-1" }, "Setup guide"),
+    h("h2", { id: "g-setup", class: "label", tabindex: "-1" }, T("set.setupGuide")),
     h(
       "div",
       { class: "setlist" },
       h(
         "div",
         { class: "keyfile" },
-        h(
-          "p",
-          { class: "help" },
-          "Three steps to get going (try it, connect, allow), then optional extras: your name, privacy, microphone, starter answers and the readiness check. Steps you skipped come back.",
-        ),
+        h("p", { class: "help" }, T("set.setupGuide.body")),
         h(
           "div",
           { class: "actions" },
-          btn("Open the setup guide", {
+          btn(T("set.setupGuide.open"), {
             id: "open-setup",
             icon: "play",
             cls: "sm",
@@ -221,7 +221,7 @@ function setupGuideBlock() {
 }
 
 /* ---------- steps ---------- */
-const fmtMic = (v) => (v === ":default" ? "System default" : v);
+const fmtMic = (v) => (v === ":default" ? T("set.mic.system") : v);
 function micChip() {
   const m = SU.status && SU.status.mic;
   return m === "granted"
@@ -620,12 +620,12 @@ function ensureMics() {
 }
 function micPanel() {
   const s = SU.status;
-  if (!ensureMics()) return h("div", { class: "loading" }, "Looking for microphones…");
+  if (!ensureMics()) return h("div", { class: "loading" }, T("set.mic.looking"));
   const cur = s ? s.micDevice : ":default";
   const sel = h(
     "select",
-    { id: "su-micsel", "aria-label": "Microphone" },
-    h("option", { value: ":default", selected: cur === ":default" }, "System default" + (SU.mics.defaultInput ? ` (${SU.mics.defaultInput})` : "")),
+    { id: "su-micsel", "aria-label": T("set.mic.label") },
+    h("option", { value: ":default", selected: cur === ":default" }, T("set.mic.system") + (SU.mics.defaultInput ? ` (${SU.mics.defaultInput})` : "")),
     SU.mics.devices.map((d) => h("option", { value: ":" + d.index, selected: cur === ":" + d.index }, d.name)),
   );
   const odd = cur !== ":default" && !/^:\d{1,2}$/.test(cur);

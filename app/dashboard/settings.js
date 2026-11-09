@@ -20,7 +20,7 @@ async function viewSettings(focus) {
   main.textContent = "";
   main.append(
     h("div", { class: "page-head" }, h("h1", {}, T("nav.settings"))),
-    h("div", { id: "set-body", class: "set" }, h("div", { class: "loading" }, "Loading settings…")),
+    h("div", { id: "set-body", class: "set" }, h("div", { class: "loading" }, T("set.loading"))),
   );
   let r;
   try {
@@ -138,14 +138,14 @@ function drawSettingsBody(body) {
       h(
         "div",
         { class: "card-big errbox", role: "alert" },
-        h("h2", {}, ico("warning"), "Your settings file has a problem"),
-        h("p", {}, "Wingman cannot read it, so calls would not start. Fix or remove the file, then reopen this page."),
+        h("h2", {}, ico("warning"), T("set.fileProblem.title")),
+        h("p", {}, T("set.fileProblem.body")),
         h("pre", { class: "err" }, String((r && r.message) || "unknown error")),
         h(
           "div",
           { class: "actions" },
-          btn("Show the file in Finder", { icon: "folder", onclick: () => api.reveal("settings") }),
-          btn("Try again", { icon: "refresh", onclick: () => viewSettings() }),
+          btn(T("set.showFile"), { icon: "folder", onclick: () => api.reveal("settings") }),
+          btn(T("app.tryAgain"), { icon: "refresh", onclick: () => viewSettings() }),
         ),
       ),
     );
@@ -159,20 +159,15 @@ function drawSettingsBody(body) {
     h(
       "div",
       { class: "setintro" },
-      h(
-        "p",
-        {},
-        ico("clock"),
-        h("span", {}, h("b", {}, "Changes apply to the next call."), " A call that is already running keeps the settings it started with."),
-      ),
+      h("p", {}, ico("clock"), h("span", {}, h("b", {}, T("set.intro.next")), T("set.intro.running"))),
       h(
         "p",
         { class: "sub plain" },
-        r.changed ? `${plural(r.changed, "setting")} changed from the defaults. ` : "Everything is on the defaults. ",
-        "To check the microphone, keys and AI, use the ",
-        h("b", {}, "Readiness check"),
-        " on ",
-        h("button", { type: "button", class: "linkbtn", id: "to-home", onclick: () => viewHome() }, "Home"),
+        r.changed ? WingmanI18n.plural(WingmanI18n.lang, "set.intro.changed", r.changed) : T("set.intro.defaults"),
+        T("set.intro.checkA"),
+        h("b", {}, T("ready.title")),
+        T("set.intro.checkB"),
+        h("button", { type: "button", class: "linkbtn", id: "to-home", onclick: () => viewHome() }, T("nav.home")),
         ".",
       ),
     ),
@@ -209,7 +204,7 @@ function drawSettingsBody(body) {
   const panel = h("div", { class: "settab", id: "tabpanel-" + tab, role: "tabpanel", "aria-labelledby": "tab-" + tab, tabindex: "-1" });
   if (tab === "basics") {
     panel.append(windowLanguageBlock(), group("g-main", T("set.tab.basics"), rowsFor("basics")), aboutBlock(), setupGuideBlock());
-    jump.push(["g-lang", T("lang.title")], ["g-main", T("set.tab.basics")], ["g-about", "About you"], ["g-setup", "Setup guide"]);
+    jump.push(["g-lang", T("lang.title")], ["g-main", T("set.tab.basics")], ["g-about", T("set.about")], ["g-setup", T("set.setupGuide")]);
   } else if (tab === "keys") {
     panel.append(keysBlock(r));
     jump.push(["g-keys", T("set.tab.keys")]);
@@ -332,22 +327,22 @@ function micRow() {
         SET.busy.delete("audio.mic.device");
         if (res && res.ok) {
           SET.savedAt["audio.mic.device"] = Date.now();
-          announce("Microphone saved. Applies to the next call.");
+          announce(T("set.mic.saved"));
           setTimeout(() => state.view === "settings" && drawSettings(), 4100);
           await loadSetup();
         } else {
-          SET.errors["audio.mic.device"] = (res && (res.message || res.error)) || "Not saved";
-          fail("Microphone: " + SET.errors["audio.mic.device"]);
+          SET.errors["audio.mic.device"] = (res && (res.message || res.error)) || T("set.notSaved");
+          fail(T("set.mic.failed", { why: SET.errors["audio.mic.device"] }));
         }
         drawSettings();
       },
     },
     mics
       ? [
-          h("option", { value: ":default", selected: cur === ":default" }, "System default" + (mics.defaultInput ? ` (${mics.defaultInput})` : "")),
+          h("option", { value: ":default", selected: cur === ":default" }, T("set.mic.system") + (mics.defaultInput ? ` (${mics.defaultInput})` : "")),
           mics.devices.map((d) => h("option", { value: ":" + d.index, selected: cur === ":" + d.index }, d.name)),
         ]
-      : h("option", {}, "Looking for microphones…"),
+      : h("option", {}, T("set.mic.looking")),
   );
   return h(
     "div",
@@ -355,19 +350,17 @@ function micRow() {
     h(
       "div",
       { class: "txt" },
-      h("label", { class: "lab", for: "set-audio-mic-device" }, "Microphone"),
-      h(
-        "p",
-        { class: "help", id: "set-audio-mic-device-h" },
-        "The microphone Wingman listens to for your voice. Avoid Bluetooth headsets for the first calls.",
-      ),
+      h("label", { class: "lab", for: "set-audio-mic-device" }, T("set.mic.label")),
+      h("p", { class: "help", id: "set-audio-mic-device-h" }, T("set.mic.help")),
       err ? h("p", { class: "errline", role: "alert" }, ico("x"), err) : null,
     ),
     h("div", { class: "ctl" }, sel),
     h(
       "div",
       { class: "st" },
-      SET.savedAt["audio.mic.device"] && Date.now() - SET.savedAt["audio.mic.device"] < 4000 ? h("span", { class: "saved good" }, ico("check"), "Saved") : null,
+      SET.savedAt["audio.mic.device"] && Date.now() - SET.savedAt["audio.mic.device"] < 4000
+        ? h("span", { class: "saved good" }, ico("check"), T("set.saved"))
+        : null,
     ),
   );
 }
@@ -444,7 +437,7 @@ function settingRow(i) {
     inp.addEventListener("keydown", (e) => {
       if (e.key === "Enter") inp.blur();
     });
-    control = h("span", { class: "numwrap" }, inp, i.unit ? h("span", { class: "unit" }, i.unit) : null);
+    control = h("span", { class: "numwrap" }, inp, i.unit ? h("span", { class: "unit" }, T("set.unit." + i.unit.replace(/ /g, "_"))) : null);
   }
   const warn = i.warn && i.value === i.warnWhen;
   return h(
@@ -471,14 +464,14 @@ function settingRow(i) {
               type: "button",
               class: "btn ghost sm",
               disabled: !i.changed || saving,
-              "aria-label": `Reset ${i.label} to the default`,
-              title: "Back to the default",
+              "aria-label": T("set.resetAria", { name: SL(i, "label") || i.label }),
+              title: T("set.resetTitle"),
               onclick: () => reset(i),
             },
             ico("undo"),
-            "Reset",
+            T("set.reset"),
           ),
-      SET.savedAt[i.key] && Date.now() - SET.savedAt[i.key] < 4000 ? h("span", { class: "saved good" }, ico("check"), "Saved") : null,
+      SET.savedAt[i.key] && Date.now() - SET.savedAt[i.key] < 4000 ? h("span", { class: "saved good" }, ico("check"), T("set.saved")) : null,
     ),
   );
 }
@@ -499,11 +492,11 @@ async function save(i, v) {
   if (r.ok && r.state && r.state.ok) {
     SET.data = r.state;
     SET.savedAt[i.key] = Date.now();
-    announce(`${i.label} saved. Applies to the next call.`);
+    announce(T("set.savedAnn", { name: SL(i, "label") || i.label }));
     setTimeout(() => state.view === "settings" && drawSettings(), 4100);
   } else {
-    SET.errors[i.key] = (r.message || "Not saved").replace(/^[^:]+: /, "");
-    fail(`${i.label}: ${SET.errors[i.key]}`);
+    SET.errors[i.key] = (r.message || T("set.notSaved")).replace(/^[^:]+: /, "");
+    fail(`${SL(i, "label") || i.label}: ${SET.errors[i.key]}`);
   }
   drawSettings();
 }
@@ -544,11 +537,11 @@ async function keyAct(provider, fn, okMsg) {
   try {
     r = await fn();
   } catch (e) {
-    r = { ok: false, message: "Could not reach the app." };
+    r = { ok: false, message: T("set.keys.unreachable") };
   }
   KEYS.busy.delete(provider);
   if (r && r.state && r.state.ok) KEYS.data = r.state;
-  KEYS.msg[provider] = r && r.cancelled ? null : { ok: !!(r && r.ok), text: (r && r.message) || (r && r.ok ? okMsg : "Failed.") };
+  KEYS.msg[provider] = r && r.cancelled ? null : { ok: !!(r && r.ok), text: (r && r.message) || (r && r.ok ? okMsg : T("set.keys.failed")) };
   if (KEYS.msg[provider]) (KEYS.msg[provider].ok ? announce : fail)(KEY_NAMES[provider][0] + ": " + KEYS.msg[provider].text);
   if (KEYS.data) H.keys = KEYS.data; // the guided setup on Home reads H.keys
   drawSettings();
@@ -643,7 +636,7 @@ function keysBlock(r) {
   return h(
     "section",
     { class: "setgroup", "aria-labelledby": "g-keys" },
-    h("h2", { id: "g-keys", class: "label" }, "Keys"),
+    h("h2", { id: "g-keys", class: "label" }, T("set.tab.keys")),
     h(
       "div",
       { class: "setlist" },
@@ -653,15 +646,11 @@ function keysBlock(r) {
         ? h(
             "div",
             { class: "keyfile" },
-            h(
-              "p",
-              { class: "help" },
-              "Your keys are still in a plain text file. Move both to the Keychain in one step. Each key is checked in the Keychain first, then its line is removed from the file. No copy of the file is kept.",
-            ),
+            h("p", { class: "help" }, T("set.keys.fileNote")),
             h(
               "div",
               { class: "actions" },
-              btn("Move to Keychain", { icon: "check", cls: "sm", onclick: () => keyAct("migrate", () => api.keysMigrate(), "Moved to the Keychain.") }),
+              btn(T("set.keys.move"), { icon: "check", cls: "sm", onclick: () => keyAct("migrate", () => api.keysMigrate(), T("set.keys.moved")) }),
             ),
           )
         : null,
@@ -672,10 +661,10 @@ function keysBlock(r) {
         h(
           "p",
           { class: "help" },
-          "Keys are stored in the secure key store of this computer (macOS Keychain, or encrypted for your account on Windows), set here. Wingman never shows them: only the last 4 characters.",
+          T("set.keys.storeNote"),
           // Only for keys still in the old plain-text file; most users never had one.
           anyInFile ? h("span", {}, " ") : null,
-          anyInFile ? h("button", { type: "button", class: "linkbtn", onclick: () => api.reveal("keys") }, "Show the old keys file in Finder") : null,
+          anyInFile ? h("button", { type: "button", class: "linkbtn", onclick: () => api.reveal("keys") }, T("set.keys.showOld")) : null,
         ),
       ),
     ),
@@ -698,7 +687,7 @@ function advancedBlock(r) {
         const d = h(
           "details",
           { class: "collapsed adv tune", id: "tune", open },
-          h("summary", {}, ico("chevron"), "Fine-tuning", h("span", { class: "faint" }, "\u00b7 limits and timings, the defaults are fine")),
+          h("summary", {}, ico("chevron"), T("set.group.tune"), h("span", { class: "faint" }, T("set.adv.tuneHint"))),
           list,
         );
         d.addEventListener("toggle", () => {
@@ -708,7 +697,12 @@ function advancedBlock(r) {
         continue;
       }
       body.append(
-        h("section", { class: "setgroup", "aria-labelledby": "g-" + g.id }, h("h2", { id: "g-" + g.id, class: "label", tabindex: "-1" }, g.title), list),
+        h(
+          "section",
+          { class: "setgroup", "aria-labelledby": "g-" + g.id },
+          h("h2", { id: "g-" + g.id, class: "label", tabindex: "-1" }, T("set.group." + g.id)),
+          list,
+        ),
       );
     }
   }
@@ -716,16 +710,16 @@ function advancedBlock(r) {
     h(
       "section",
       { class: "setgroup", "aria-labelledby": "g-file" },
-      h("h2", { id: "g-file", class: "label", tabindex: "-1" }, "Settings file"),
+      h("h2", { id: "g-file", class: "label", tabindex: "-1" }, T("set.adv.file")),
       h(
         "div",
         { class: "setlist" },
         h(
           "div",
           { class: "keyfile" },
-          h("p", { class: "help" }, "Your choices are saved in this file. You can edit it by hand."),
+          h("p", { class: "help" }, T("set.adv.fileNote")),
           r && r.userFile ? h("code", {}, r.userFile) : null,
-          h("div", { class: "actions" }, btn("Show in Finder", { icon: "folder", cls: "sm", onclick: () => api.reveal("settings") })),
+          h("div", { class: "actions" }, btn(T("set.adv.showFinder"), { icon: "folder", cls: "sm", onclick: () => api.reveal("settings") })),
         ),
       ),
     ),
@@ -733,8 +727,8 @@ function advancedBlock(r) {
   const all = h(
     "details",
     { class: "collapsed adv", id: "adv-all" },
-    h("summary", {}, ico("chevron"), "All values (read only)", h("span", { class: "faint" }, "\u00b7 every setting, where each value comes from")),
-    h("div", { id: "adv-body", class: "advbody" }, h("div", { class: "loading" }, "Loading\u2026")),
+    h("summary", {}, ico("chevron"), T("set.adv.all"), h("span", { class: "faint" }, T("set.adv.allHint"))),
+    h("div", { id: "adv-body", class: "advbody" }, h("div", { class: "loading" }, T("set.loadingShort"))),
   );
   all.addEventListener("toggle", () => {
     if (all.open) loadAdvanced();
@@ -743,7 +737,7 @@ function advancedBlock(r) {
   const d = h(
     "details",
     { class: "collapsed adv", id: "adv", open: SET.advOpen || !!SU.acks.advOpen },
-    h("summary", {}, ico("chevron"), "Advanced", h("span", { class: "faint" }, "\u00b7 tuning, the settings file")),
+    h("summary", {}, ico("chevron"), T("set.tab.advanced"), h("span", { class: "faint" }, T("set.adv.hint"))),
     body,
   );
   d.addEventListener("toggle", () => {
@@ -782,9 +776,7 @@ async function loadAdvanced() {
     body.append(h("pre", { class: "err" }, String(r.text || "(no output)").trim()));
     return;
   }
-  body.append(
-    h("p", { class: "sub" }, "Read only. Edit ~/.config/wingman/settings.yaml, or use ", h("code", {}, "pnpm settings"), " in Terminal. Keys are never shown."),
-  );
+  body.append(h("p", { class: "sub" }, T("set.adv.roA"), h("code", {}, "pnpm settings"), T("set.adv.roB")));
   const cfg = h("div", { class: "cfg" });
   for (const [g, rows] of groups)
     cfg.append(
@@ -806,10 +798,10 @@ async function loadAdvanced() {
                 h(
                   "td",
                   { class: "k" },
-                  ov ? h("span", { class: "odot", title: "Overridden by " + x.src }) : null,
+                  ov ? h("span", { class: "odot", title: T("set.adv.overridden", { src: x.src }) }) : null,
                   x.k.includes(".") ? x.k.slice(x.k.indexOf(".") + 1) : x.k,
                 ),
-                h("td", { class: "v" }, ltr(x.v), h("span", { class: "chip src " + (ov ? "warn" : "") + " mono" }, ov ? x.src : "default")),
+                h("td", { class: "v" }, ltr(x.v), h("span", { class: "chip src " + (ov ? "warn" : "") + " mono" }, ov ? x.src : T("set.adv.default"))),
               );
             }),
           ),

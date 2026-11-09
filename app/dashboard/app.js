@@ -7,6 +7,8 @@ const api = window.wingman;
 const $ = (id) => document.getElementById(id);
 // Window texts: T("key", { name: "x" }) in the language chosen at start (boot.js). Catalogs: strings.en.js, strings.he.js. A missing Hebrew key shows English.
 const T = (key, vars) => WingmanI18n.t(WingmanI18n.lang, key, vars);
+/** "1 card" / "3 cards": T() with the .one / .other form (Hebrew has its own words). */
+const TP = (base, n, vars) => WingmanI18n.plural(WingmanI18n.lang, base, n, vars);
 const LANG_KEY = "wingman.window.lang";
 /** The saved choice: "auto" | "en" | "he". Browser storage can be unavailable (private window), so every access is guarded. */
 function windowLangChoice() {
@@ -38,6 +40,12 @@ function h(tag, attrs, ...kids) {
     else if (v !== false && v != null) el.setAttribute(k, v === true ? "" : String(v));
   }
   for (const k of kids.flat(Infinity)) if (k != null && k !== false) el.append(k.nodeType ? k : document.createTextNode(String(k)));
+  // In the Hebrew window, a text of English only (a string the catalog does not translate yet) gets dir="auto": its punctuation, numbers and units keep their order.
+  if (WingmanI18n.lang === "he" && !el.hasAttribute("dir") && !/^(INPUT|SELECT|OPTION|TEXTAREA|CODE|KBD|PRE)$/i.test(tag)) {
+    let own = "";
+    for (const n of el.childNodes) if (n.nodeType === 3) own += n.nodeValue;
+    if (/[A-Za-z]{2}/.test(own) && !/[\u0590-\u05ff]/.test(el.textContent)) el.setAttribute("dir", "auto");
+  }
   return el;
 }
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -212,7 +220,7 @@ function showListError(retry) {
   main.textContent = "";
   main.append(
     errorState(
-      "Could not load your calls",
+      T("calls.loadFailed"),
       retry ||
         (() => {
           loadList()
@@ -325,22 +333,28 @@ const dayStart = (t) => {
   return d.getTime();
 };
 function dayLabel(t) {
-  const diff = Math.round((dayStart(Date.now()) - dayStart(t)) / 86400000),
-    d = new Date(t);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Yesterday";
-  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
+  const diff = Math.round((dayStart(Date.now()) - dayStart(t)) / 86400000);
+  if (diff === 0) return T("day.today");
+  if (diff === 1) return T("day.yesterday");
+  return fullDay(t);
 }
 const fullDay = (t) => {
   const d = new Date(t);
+  if (WingmanI18n.lang === "he")
+    return new Intl.DateTimeFormat("he", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}),
+    }).format(d);
   return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : "");
 };
 /** Duration as "<1 min", "12 min" or "1 h 05 min". */
 function mins(ms) {
   const m = Math.round(ms / 60000);
-  if (ms < 30000) return "<1 min";
-  if (m < 60) return `${Math.max(1, m)} min`;
-  return `${Math.floor(m / 60)} h ${pad(m % 60)} min`;
+  if (ms < 30000) return T("dur.lt1");
+  if (m < 60) return T("dur.min", { n: Math.max(1, m) });
+  return T("dur.hmin", { h: Math.floor(m / 60), m: pad(m % 60) });
 }
 const usd = (n) => (n < 0.01 ? "$" + n.toFixed(4) : "$" + n.toFixed(2));
 /** The other side's label: their name, "Speaker 2" when voices are told apart (stt.speakers), else "Them". */
@@ -450,14 +464,14 @@ function gateStrip() {
     none = g.ph == null,
     final = g.n >= GATE_CALLS;
   const scale = Math.max(TARGET * 2, Math.ceil((g.ph || 0) * 1.15));
-  const verdict = none ? "No ratings yet" : final ? (ok ? "Passed" : "Not passed") : ok ? "On track (final after 5 calls)" : "Below target so far";
+  const verdict = none ? T("ug.noRatings") : final ? (ok ? T("ug.passed") : T("ug.notPassed")) : ok ? T("ug.onTrack", { n: GATE_CALLS }) : T("ug.below");
   const left = Math.max(0, GATE_CALLS - g.n);
   const tick = (TARGET / scale) * 100;
   const lab = h(
     "div",
     { class: "scale", "aria-hidden": "true" },
     h("span", { class: "l" }, "0"),
-    h("span", { class: "t" }, `${TARGET}+ needed`),
+    h("span", { class: "t" }, T("ug.needed", { n: TARGET })),
     h("span", { class: "r" }, String(scale)),
   );
   lab.querySelector(".t").style.insetInlineStart = tick + "%";
@@ -468,12 +482,12 @@ function gateStrip() {
     h(
       "div",
       { class: "stat" },
-      h("h2", { id: "gate-h", class: "label", style: false }, "Card usefulness"),
-      h("div", { class: "big " + (none ? "muted" : ok ? "good" : "bad") }, none ? "–" : ltr(g.ph.toFixed(1)), h("small", {}, "useful / hour")),
+      h("h2", { id: "gate-h", class: "label", style: false }, T("ug.title")),
+      h("div", { class: "big " + (none ? "muted" : ok ? "good" : "bad") }, none ? "–" : ltr(g.ph.toFixed(1)), h("small", {}, T("ug.perHour"))),
     ),
     h(
       "div",
-      { role: "img", "aria-label": none ? "No ratings yet" : `${g.ph.toFixed(1)} useful per hour, target ${TARGET} or more` },
+      { role: "img", "aria-label": none ? T("ug.noRatings") : T("ug.aria", { ph: g.ph.toFixed(1), t: TARGET }) },
       meter(none ? 0 : g.ph / scale, none ? "" : ok ? "good" : "bad", TARGET / scale),
       lab,
     ),
@@ -486,14 +500,14 @@ function gateStrip() {
         !none && ok ? h("span", { class: "capy", "aria-hidden": "true" }) : null,
         chip(verdict, none ? "" : ok ? "good" : "bad", { dot: true }),
       ),
-      h("span", {}, `${g.n} of ${GATE_CALLS} calls rated · ${g.useful} useful in `, ltr(g.hours.toFixed(1) + " h")),
-      h("span", { class: "faint" }, left ? plural(left, "more call") + " for a final result" : "Final result reached"),
+      h("span", {}, T("ug.rated", { n: g.n, total: GATE_CALLS, useful: g.useful }), h("span", { dir: "auto" }, T("dur.hours", { n: g.hours.toFixed(1) }))),
+      h("span", { class: "faint" }, left ? TP("cnt.moreCall", left) : T("ug.final")),
     ),
     h(
       "button",
       { type: "button", class: "btn ghost sm gate-why", "aria-haspopup": "dialog", "aria-expanded": "false", "aria-controls": "gate-pop" },
       ico("help"),
-      "What is this?",
+      T("ug.what"),
     ),
   );
   const why = el.querySelector(".gate-why");
@@ -528,25 +542,19 @@ function gatePopover(anchor, trigger, g, ok, none) {
   const first = state.calls.find((c) => !c.crashed && pendingOf(c) > 0);
   const pop = h(
     "div",
-    { id: "gate-pop", class: "popover", role: "dialog", "aria-label": "How the usefulness score works", tabindex: "-1" },
-    h("h3", {}, "How the usefulness score works"),
-    h(
-      "p",
-      {},
-      `This checks that Wingman's cards really help on real calls. After each call you mark every card Useful or Not useful. The score counts useful cards per hour of live calls. It needs ${TARGET} or more, measured over ${GATE_CALLS} rated live calls.`,
-    ),
+    { id: "gate-pop", class: "popover", role: "dialog", "aria-label": T("ug.popTitle"), tabindex: "-1" },
+    h("h3", {}, T("ug.popTitle")),
+    h("p", {}, T("ug.popBody", { target: TARGET, calls: GATE_CALLS })),
     h(
       "p",
       { class: "sub" },
-      none
-        ? "Nothing is rated yet, so there is no number."
-        : `Right now: ${g.useful} useful in ${g.hours.toFixed(1)} h = ${g.ph.toFixed(1)} per hour, ${ok ? "above" : "below"} the target. Practice calls are not counted.`,
+      none ? T("ug.popNone") : T(ok ? "ug.popAbove" : "ug.popBelow", { useful: g.useful, hours: g.hours.toFixed(1), ph: g.ph.toFixed(1) }),
     ),
     h(
       "div",
       { class: "actions" },
       first
-        ? btn("Rate the next card", {
+        ? btn(T("ug.rateNext"), {
             cls: "primary sm",
             onclick: () => {
               closePopover();
@@ -554,7 +562,7 @@ function gatePopover(anchor, trigger, g, ok, none) {
             },
           })
         : null,
-      btn("Close", { cls: "sm", onclick: () => closePopover(true) }),
+      btn(T("ug.close"), { cls: "sm", onclick: () => closePopover(true) }),
     ),
   );
   pop._trigger = trigger;
@@ -585,28 +593,28 @@ function waitingChips(c) {
   if (c.crashed)
     out.push(
       linkChip(
-        [h("span", { class: "dot" }), "Crashed"],
+        [h("span", { class: "dot" }), T("calls.crashed")],
         "bad",
         stop(() => openCall(c.id, {})),
-        "Crashed call, open details",
+        T("calls.crashedOpen"),
       ),
     );
   if (!c.crashed && p)
     out.push(
       linkChip(
-        [h("span", { class: "ctr" }, p), " to rate"],
+        [h("span", { class: "ctr" }, p), " " + T("calls.toRate")],
         "warn",
         stop(() => openCall(c.id, { tab: "rate", filter: "unrated" })),
-        `${p} to rate, open on Rate`,
+        T("calls.toRateOpen", { n: p }),
       ),
     );
   if (!c.crashed && c.hasSummary)
     out.push(
       linkChip(
-        "Follow-up ready",
+        T("calls.followReady"),
         "info",
         stop(() => openCall(c.id, { tab: "followup" })),
-        "Follow-up ready: summary and email, open the Follow-up tab",
+        T("calls.followReadyOpen"),
       ),
     );
   return out.length ? out : [h("span", { class: "faint" }, "–")];
@@ -619,7 +627,7 @@ function callTable(rows, label) {
     h(
       "table",
       { "aria-label": label },
-      h("thead", {}, h("tr", {}, th("When"), th("Length", "w-len"), th("To do"), th("Useful per h", "num w-num"))),
+      h("thead", {}, h("tr", {}, th(T("calls.col.when")), th(T("calls.col.length"), "w-len"), th(T("calls.col.todo")), th(T("calls.col.useful"), "num w-num"))),
       h(
         "tbody",
         {},
@@ -647,7 +655,7 @@ function callTable(rows, label) {
                 h("span", { class: "tm" }, tm(c.startedAt)),
               ),
             ),
-            h("td", { class: "w-len" }, c.crashed && c.durationMs < 1000 ? h("span", { class: "faint" }, "–") : mins(c.durationMs)),
+            h("td", { class: "w-len" }, c.crashed && c.durationMs < 1000 ? h("span", { class: "faint" }, "–") : h("span", { dir: "auto" }, mins(c.durationMs))),
             h("td", {}, h("div", { class: "wait" }, waitingChips(c))),
             h(
               "td",
@@ -666,14 +674,14 @@ function nextUpCard() {
   if (!c)
     return h(
       "section",
-      { class: "nextup clear", "aria-label": "Next up" },
+      { class: "nextup clear", "aria-label": T("calls.nextUp") },
       h("span", { class: "capy", "aria-hidden": "true" }),
       h(
         "div",
         {},
-        h("div", { class: "eyebrow" }, "Next up"),
-        h("div", { class: "title" }, "You're all caught up"),
-        h("div", { class: "sub" }, "No unrated cards and no summaries waiting."),
+        h("div", { class: "eyebrow" }, T("calls.nextUp")),
+        h("div", { class: "title" }, T("calls.caughtUp")),
+        h("div", { class: "sub" }, T("calls.caughtUpNote")),
       ),
     );
   const p = pendingOf(c);
@@ -681,20 +689,20 @@ function nextUpCard() {
   const go = () => openCall(c.id, { tab, filter: tab === "rate" ? "unrated" : undefined });
   return h(
     "section",
-    { class: "nextup", "aria-label": "Next up" },
+    { class: "nextup", "aria-label": T("calls.nextUp") },
     h(
       "div",
       { class: "grow" },
-      h("div", { class: "eyebrow" }, "Next up"),
+      h("div", { class: "eyebrow" }, T("calls.nextUp")),
       h("div", { class: "title", dir: "auto" }, `${c.name ? c.name + " · " : ""}${dayLabel(c.startedAt)} ${tm(c.startedAt)} · ${mins(c.durationMs)}`),
       h(
         "div",
         { class: "why" },
-        p ? chip(`${plural(p, "card")} to rate`, "warn", { dot: true }) : null,
-        c.hasSummary ? chip("Follow-up ready", "info", { dot: true }) : null,
+        p ? chip(TP("cnt.cardToRate", p), "warn", { dot: true }) : null,
+        c.hasSummary ? chip(T("calls.followReady"), "info", { dot: true }) : null,
       ),
     ),
-    h("button", { type: "button", class: "btn primary", onclick: go }, "Review", ico("chevron")),
+    h("button", { type: "button", class: "btn primary", onclick: go }, T("calls.review"), ico("chevron")),
   );
 }
 /** The Calls list: next-up card, gate strip, transcript search (debounced; stale answers dropped via state.sq), live and practice tables. restoreFocus puts focus back on the last opened row. */
@@ -709,20 +717,20 @@ function viewInbox(restoreFocus) {
   main.textContent = "";
   if (!state.calls.length) {
     main.append(
-      h("h1", { class: "sr" }, "Calls"),
+      h("h1", { class: "sr" }, T("calls.title")),
       h(
         "div",
         { class: "empty-big" },
         h("div", { class: "capy", "aria-hidden": "true" }),
-        h("h2", {}, "No calls yet"),
-        h("span", {}, "Calls show up here after they end. Practice calls too."),
-        btn("Go to Home to start one", { icon: "home", cls: "primary", onclick: () => viewHome() }),
-        btn("Refresh", {
+        h("h2", {}, T("calls.none")),
+        h("span", {}, T("calls.noneNote")),
+        btn(T("calls.goHome"), { icon: "home", cls: "primary", onclick: () => viewHome() }),
+        btn(T("calls.refresh"), {
           icon: "refresh",
           onclick: async () => {
             await loadList();
             viewInbox();
-            announce("Refreshed");
+            announce(T("calls.refreshed"));
           },
         }),
       ),
@@ -732,9 +740,9 @@ function viewInbox(restoreFocus) {
   const input = h("input", {
     type: "search",
     id: "q",
-    placeholder: "Search transcripts",
+    placeholder: T("calls.search"),
     value: state.search,
-    "aria-label": "Search transcripts",
+    "aria-label": T("calls.search"),
     "aria-keyshortcuts": "/",
   });
   const out = h("div", { id: "inbox-out" });
@@ -755,16 +763,16 @@ function viewInbox(restoreFocus) {
       try {
         hits = await api.searchCalls(q);
       } catch (e) {
-        fail("Search failed: " + e.message);
+        fail(T("calls.searchFailed", { why: e.message }));
       }
       if (my !== state.sq) return; // stale response
       state.hits = hits;
       draw();
-      announce(plural(hits.length, "call") + " match");
+      announce(TP("cnt.callMatch", hits.length));
     }, 200);
   });
   main.append(
-    h("div", { class: "page-head" }, h("h1", {}, "Calls")),
+    h("div", { class: "page-head" }, h("h1", {}, T("calls.title"))),
     nextUpCard(),
     ...(gateStats().ph == null ? [] : [gateStrip()]), // shown after the first rating
     h(
@@ -774,12 +782,12 @@ function viewInbox(restoreFocus) {
       btn("", {
         icon: "refresh",
         cls: "icon ghost",
-        aria: "Refresh calls",
-        title: "Refresh",
+        aria: T("calls.refreshAria"),
+        title: T("calls.refresh"),
         onclick: async () => {
           await loadList();
           viewInbox();
-          announce("Refreshed");
+          announce(T("calls.refreshed"));
         },
       }),
       count,
@@ -791,15 +799,15 @@ function viewInbox(restoreFocus) {
     if (state.hits) {
       const byId = new Map(state.calls.map((c) => [c.id, c]));
       const hits = state.hits.filter((x) => byId.has(x.id)).sort((a, b) => byId.get(b.id).startedAt - byId.get(a.id).startedAt);
-      count.textContent = plural(hits.length, "call") + " match";
+      count.textContent = TP("cnt.callMatch", hits.length);
       if (!hits.length) {
-        out.append(h("div", { class: "tblwrap" }, h("div", { class: "empty" }, "No call matches “" + state.search.trim() + "”")));
+        out.append(h("div", { class: "tblwrap" }, h("div", { class: "empty", dir: "auto" }, T("calls.noMatch", { q: state.search.trim() }))));
         return;
       }
       out.append(
         h(
           "div",
-          { class: "results", role: "list", "aria-label": "Search results" },
+          { class: "results", role: "list", "aria-label": T("calls.results") },
           hits.map((x) => {
             const c = byId.get(x.id);
             return h(
@@ -828,14 +836,14 @@ function viewInbox(restoreFocus) {
     }
     const live = state.calls.filter((c) => c.mode === "live" || c.crashed),
       practice = state.calls.filter((c) => c.mode !== "live" && !c.crashed);
-    count.textContent = plural(state.calls.length, "call");
-    out.append(live.length ? callTable(live, "Calls") : h("div", { class: "tblwrap" }, h("div", { class: "empty" }, "No live calls yet")));
+    count.textContent = TP("cnt.call", state.calls.length);
+    out.append(live.length ? callTable(live, T("calls.title")) : h("div", { class: "tblwrap" }, h("div", { class: "empty" }, T("calls.noLive"))));
     if (practice.length) {
       const d = h(
         "details",
         { class: "collapsed" },
-        h("summary", {}, ico("chevron"), `Practice calls (${practice.length})`, h("span", { class: "faint" }, "· not counted in the usefulness score")),
-        callTable(practice, "Practice calls"),
+        h("summary", {}, ico("chevron"), T("calls.practiceN", { n: practice.length }), h("span", { class: "faint" }, T("calls.practiceNote"))),
+        callTable(practice, T("calls.practice")),
       );
       out.append(d);
     }
@@ -896,14 +904,14 @@ async function openCall(id, o = {}) {
   const gen = ++state.gen,
     main = $("main");
   main.textContent = "";
-  main.append(h("div", { class: "loading", role: "status" }, "Loading call…"));
+  main.append(h("div", { class: "loading", role: "status" }, T("call.loading")));
   let d;
   try {
     d = await api.getCall(id);
   } catch (e) {
     if (gen === state.gen) {
       main.textContent = "";
-      main.append(errorState("Could not open this call", () => openCall(id, o), backToList));
+      main.append(errorState(T("call.openFailed"), () => openCall(id, o), backToList));
       ready();
       focusTop();
     }
@@ -943,10 +951,10 @@ function renderCall(tab) {
     main = $("main");
   main.textContent = "";
   const empty = !d.transcript.length && !d.events.length && !d.cards.length;
-  const back = btn("Calls", { icon: "back", cls: "ghost sm", onclick: backToList, title: "Back to Calls (Esc)" });
+  const back = btn(T("call.back"), { icon: "back", cls: "ghost sm", onclick: backToList, title: T("call.backTitle") });
   // The call that is running right now is deleted with "Delete this call" in the call panel, never from here (the handler refuses it too).
   const isLive = !!(state.call && state.call.running && state.call.callId === state.id && state.call.phase !== "idle");
-  const delBtn = isLive ? null : btn("Delete call", { icon: "trash", cls: "danger sm", onclick: deleteCurrent });
+  const delBtn = isLive ? null : btn(T("call.delete"), { icon: "trash", cls: "danger sm", onclick: deleteCurrent });
   const title = s.name ? `${s.name} · ${fullDay(s.startedAt)}, ${tm(s.startedAt)}` : `${fullDay(s.startedAt)}, ${tm(s.startedAt)}`;
   if (s.crashed) {
     main.append(
@@ -956,10 +964,10 @@ function renderCall(tab) {
         { class: "callcrash" },
         h("div", { class: "capy", "aria-hidden": "true" }),
         h("h1", { class: "sr" }, title),
-        h("h2", {}, "This call crashed"),
-        h("span", {}, "Nothing was saved."),
+        h("h2", {}, T("call.crashedTitle")),
+        h("span", {}, T("call.crashedNote")),
         h("span", { class: "faint" }, title),
-        isLive ? null : btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent }),
+        isLive ? null : btn(T("call.delete"), { icon: "trash", cls: "danger", onclick: deleteCurrent }),
       ),
     );
     ready();
@@ -969,9 +977,9 @@ function renderCall(tab) {
   const chips = h(
     "span",
     { class: "chips" },
-    chip(s.mode === "live" ? "Real call" : "Practice", s.mode === "live" ? "good" : "", { dot: true }),
+    chip(s.mode === "live" ? T("call.real") : T("call.practice"), s.mode === "live" ? "good" : "", { dot: true }),
     s.profile ? chip(s.profile, "", { mono: true }) : null,
-    s.noAi ? chip("No AI") : null,
+    s.noAi ? chip(T("call.noAi")) : null,
   );
   main.append(
     h(
@@ -989,9 +997,9 @@ function renderCall(tab) {
         "div",
         { class: "empty-big" },
         h("div", { class: "capy", "aria-hidden": "true" }),
-        h("h2", {}, "Nothing to show"),
-        h("span", {}, "This call has no transcript, cards or events."),
-        isLive ? null : btn("Delete call", { icon: "trash", cls: "danger", onclick: deleteCurrent }),
+        h("h2", {}, T("call.nothing")),
+        h("span", {}, T("call.nothingNote")),
+        isLive ? null : btn(T("call.delete"), { icon: "trash", cls: "danger", onclick: deleteCurrent }),
       ),
     );
     ready();
@@ -1051,14 +1059,14 @@ async function deleteCurrent() {
   try {
     ok = await api.deleteCall(id);
   } catch (e) {
-    fail("Could not delete: " + e.message);
+    fail(T("call.deleteFailed", { why: e.message }));
     return;
   }
   if (ok) {
     state.lastId = null;
     await loadList();
     viewInbox();
-    announce("Call deleted");
+    announce(T("call.deleted"));
   }
 }
 
@@ -1072,20 +1080,27 @@ function renderStats() {
   el.textContent = "";
   const stat = (text, filter, aria) =>
     h("button", { type: "button", class: "statlink", onclick: () => setTab("rate", { filter }, true), "aria-label": aria }, text);
-  const parts = [h("b", {}, mins(s.durationMs))];
+  const parts = [h("b", { dir: "auto" }, mins(s.durationMs))];
   if (s.cardsTotal)
     parts.push(
-      stat(plural(s.cardsTotal, "card"), "all", `${plural(s.cardsTotal, "card")}, open Rate`),
-      stat(`${s.rated} rated`, "rated", `${s.rated} rated, open Rate filtered to rated cards`),
-      stat(`${s.useful} useful`, "useful", `${s.useful} useful, open Rate filtered to useful cards`),
+      stat(TP("cnt.card", s.cardsTotal), "all", T("call.cardsAria", { cards: TP("cnt.card", s.cardsTotal) })),
+      stat(T("call.ratedN", { n: s.rated }), "rated", T("call.ratedAria", { n: s.rated })),
+      stat(T("call.usefulN", { n: s.useful }), "useful", T("call.usefulAria", { n: s.useful })),
     );
-  else parts.push("no cards");
+  else parts.push(T("call.noCards"));
   parts.forEach((x, i) => {
     if (i) el.append(h("span", { class: "sep", "aria-hidden": "true" }, "·"));
     el.append(x);
   });
   if (p)
-    el.append(linkChip([h("span", { class: "ctr" }, p), " to rate"], "warn", () => setTab("rate", { filter: "unrated" }, true), `${p} to rate, open Rate`));
+    el.append(
+      linkChip(
+        [h("span", { class: "ctr" }, p), " " + T("calls.toRate")],
+        "warn",
+        () => setTab("rate", { filter: "unrated" }, true),
+        T("call.toRateAria", { n: p }),
+      ),
+    );
   // tab badges
   const set = (k, text, attn) => {
     const t = $("tab-" + k);
@@ -1197,12 +1212,12 @@ function saveSteps(id, a) {
 /** "Write summary" for a call without one: one small AI call on the saved transcript (the same as `wingman calls summary <id> --generate`). */
 function writeSummaryBtn() {
   const id = state.id,
-    b = btn("Write summary", {
+    b = btn(T("fu.write"), {
       id: "write-summary",
       cls: "primary",
       onclick: async () => {
         b.disabled = true;
-        b.querySelector("span").textContent = "Writing the summary…";
+        b.querySelector("span").textContent = T("fu.writingBtn");
         let r;
         try {
           r = await api.writeSummary(id);
@@ -1215,7 +1230,7 @@ function writeSummaryBtn() {
           return;
         }
         b.disabled = false;
-        b.querySelector("span").textContent = "Write summary";
+        b.querySelector("span").textContent = T("fu.write");
         fail(r && r.error === "preview" ? "This is a preview, nothing was written." : (r && r.error) || "The summary could not be written.");
       },
     });
@@ -1233,20 +1248,16 @@ function tFollowup(pane, d) {
         "div",
         { class: "empty-big" },
         h("div", { class: "capy", "aria-hidden": "true" }),
-        h("h2", {}, d.summaryPending ? "The summary is being written" : "No summary for this call"),
-        d.summaryPending
-          ? h("span", {}, "A long call takes more time. It is finishing in the background. Open this call again in a minute.")
-          : why
-            ? h("span", {}, why)
-            : null,
+        h("h2", {}, d.summaryPending ? T("fu.writing") : T("fu.noSummary")),
+        d.summaryPending ? h("span", {}, T("fu.writingNote")) : why ? h("span", {}, why) : null,
         d.summaryPending ? null : writeSummaryBtn(),
         h(
           "span",
           { class: "faint" },
-          "Or from Terminal: ",
+          T("fu.orTerminal"),
           h("code", {}, "wingman calls summary " + state.id + " --generate"),
           " ",
-          copyBtn("Copy", () => "wingman calls summary " + state.id + " --generate", { cls: "ghost sm", what: "Command", aria: "Copy command" }),
+          copyBtn(T("fu.copy"), () => "wingman calls summary " + state.id + " --generate", { cls: "ghost sm", what: "Command", aria: "Copy command" }),
         ),
       ),
       typeof afterMemory === "function" ? afterMemory(d) : null, // the open loops and a draft from the call notes, even when no summary was written
@@ -1310,24 +1321,18 @@ function tFollowup(pane, d) {
       .slice(0, 3);
     const aside = h(
       "aside",
-      { class: "emailbox", "aria-label": "Follow-up email" },
-      h("div", { class: "eh" }, h("h2", {}, "Follow-up email")),
-      phN ? h("div", { class: "warnrow" }, chip(`${plural(phN, "placeholder")} to fill`, "warn", { icon: "warning" })) : null,
-      email ? h("div", { class: "email" }, emailLines(email)) : h("div", { class: "email muted" }, "No draft"),
-      h(
-        "div",
-        { class: "foot" },
-        "Written by AI, so check it before you send. Never sent anywhere. ",
-        s.model ? ltr(s.model) : null,
-        s.costUsd ? [" · ", ltr("$" + s.costUsd.toFixed(4))] : null,
-      ),
+      { class: "emailbox", "aria-label": T("fu.emailTitle") },
+      h("div", { class: "eh" }, h("h2", {}, T("fu.emailTitle"))),
+      phN ? h("div", { class: "warnrow" }, chip(TP("cnt.placeholder", phN), "warn", { icon: "warning" })) : null,
+      email ? h("div", { class: "email" }, emailLines(email)) : h("div", { class: "email muted" }, T("fu.noDraft")),
+      h("div", { class: "foot" }, T("fu.aiNote"), s.model ? ltr(s.model) : null, s.costUsd ? [" · ", ltr("$" + s.costUsd.toFixed(4))] : null),
     );
     box.append(
       h(
         "div",
         { class: "postcall" },
-        email ? copyBtn("Copy follow-up email", () => email, { cls: "primary lg", what: "Email" }) : null,
-        copyBtn("Copy summary", summaryText, { cls: "lg", what: "Summary" }),
+        email ? copyBtn(T("fu.copyEmail"), () => email, { cls: "primary lg", what: "Email" }) : null,
+        copyBtn(T("fu.copySummary"), summaryText, { cls: "lg", what: "Summary" }),
       ),
       h(
         "div",
@@ -1337,33 +1342,37 @@ function tFollowup(pane, d) {
           { class: "fu-main" },
           frameSection(d),
           typeof afterMemory === "function" ? afterMemory(d) : null,
-          sec("Summary", s.summary.length ? list(s.summary) : none("None")),
+          sec(T("fu.summary"), s.summary.length ? list(s.summary) : none(T("fu.none"))),
           h(
             "section",
             {},
             h(
               "div",
               { class: "rowh" },
-              h("h2", {}, "Next steps", s.nextSteps.length ? progress : null),
+              h("h2", {}, T("fu.nextSteps"), s.nextSteps.length ? progress : null),
               h("span", { class: "grow" }),
-              s.nextSteps.length ? copyBtn("Copy next steps", stepsText, { cls: "ghost sm", what: "Next steps" }) : null,
+              s.nextSteps.length ? copyBtn(T("fu.copySteps"), stepsText, { cls: "ghost sm", what: "Next steps" }) : null,
             ),
-            s.nextSteps.length ? stepsUl : none("No next steps agreed"),
+            s.nextSteps.length ? stepsUl : none(T("fu.noSteps")),
           ),
-          sec("Decisions", s.decisions.length ? list(s.decisions) : none("No decisions"), s.decisions.length || null),
-          sec("Open questions", s.openQuestions.length ? list(s.openQuestions) : none("No open questions"), s.openQuestions.length || null),
+          sec(T("fu.decisions"), s.decisions.length ? list(s.decisions) : none(T("fu.noDecisions")), s.decisions.length || null),
+          sec(T("fu.open"), s.openQuestions.length ? list(s.openQuestions) : none(T("fu.noOpen")), s.openQuestions.length || null),
           capturesSection(d),
           todo.length
             ? h(
                 "section",
                 { class: "rate-opt" },
-                h("h2", {}, "Rate cards", h("span", { class: "n" }, "optional")),
+                h("h2", {}, T("fu.rateCards"), h("span", { class: "n" }, T("fu.optional"))),
                 h(
                   "ul",
                   { class: "bul" },
                   todo.map((c) => h("li", { dir: dirOf(c.say || ""), lang: langOf(c.say || "") }, String(c.say || c.question || "").slice(0, 90))),
                 ),
-                btn(`Rate ${plural(todo.length, "card")}`, { cls: "sm", icon: "rate", onclick: () => setTab("rate", { filter: "unrated" }, true) }),
+                btn(T("fu.rateN", { cards: TP("cnt.card", todo.length) }), {
+                  cls: "sm",
+                  icon: "rate",
+                  onclick: () => setTab("rate", { filter: "unrated" }, true),
+                }),
               )
             : null,
         ),
@@ -1395,9 +1404,9 @@ function frameSection(d) {
   const head = h(
     "div",
     { class: "rowh" },
-    h("h2", {}, "About the call"),
+    h("h2", {}, T("fu.aboutCall")),
     h("span", { class: "grow" }),
-    cf.total ? h("span", { class: "chip " + (all ? "good" : "warn") }, `${cf.done}/${cf.total} covered`) : null,
+    cf.total ? h("span", { class: "chip " + (all ? "good" : "warn") }, T("fu.covered", { done: cf.done, total: cf.total })) : null,
   );
   const topic = f.topic || "";
   const body = h(
@@ -1406,25 +1415,25 @@ function frameSection(d) {
     h(
       "div",
       { class: "fr-line" },
-      chip(KIND_EN[f.kind] || "Other", "info", { dot: true }),
+      chip(T("kind." + (f.kind in KIND_EN ? f.kind : "other")), "info", { dot: true }),
       h("span", { class: "fr-topic", dir: dirOf(topic), lang: langOf(topic) }, rich(topic)),
     ),
     f.goal ? h("div", { class: "fr-goal muted", dir: dirOf(f.goal), lang: langOf(f.goal) }, rich(f.goal)) : null,
     cf.total
       ? h(
           "ul",
-          { class: "fr-list", "aria-label": "Checklist result" },
+          { class: "fr-list", "aria-label": T("fu.checklistAria") },
           f.checklist.map((c) =>
             h(
               "li",
               { class: c.done ? "fr-done" : "fr-miss" },
-              chip(c.done ? "Covered" : "Missed", c.done ? "good" : "warn"),
+              chip(c.done ? T("fu.coveredChip") : T("fu.missedChip"), c.done ? "good" : "warn"),
               h("span", { dir: dirOf(c.item), lang: langOf(c.item) }, rich(c.item)),
             ),
           ),
         )
       : null,
-    cf.missed.length ? h("div", { class: "muted fr-note" }, "Missed must-cover items are added to Open questions.") : null,
+    cf.missed.length ? h("div", { class: "muted fr-note" }, T("fu.missedNote")) : null,
   );
   return h("section", {}, head, body);
 }
@@ -1523,13 +1532,13 @@ function ratebar(d) {
   const all = allCards(d),
     r = all.filter(rateable);
   const cnt = filterCounts(d, all, r);
-  const seg = h("div", { class: "seg", role: "group", "aria-label": "Filter cards", id: "seg" });
+  const seg = h("div", { class: "seg", role: "group", "aria-label": T("rate.filterAria"), id: "seg" });
   for (const [k, t] of [
-    ["all", "All"],
-    ["unrated", "Unrated"],
-    ["rated", "Rated"],
-    ["useful", "Useful"],
-    ["side", "Side notes"],
+    ["all", T("rate.all")],
+    ["unrated", T("rate.unrated")],
+    ["rated", T("rate.rated")],
+    ["useful", T("rate.useful")],
+    ["side", T("rate.side")],
   ]) {
     seg.append(
       h(
@@ -1542,7 +1551,7 @@ function ratebar(d) {
             state.filter = k;
             state.sel = null;
             drawCards();
-            announce(`${t}: ${cnt[k]} cards`);
+            announce(T("rate.announce", { filter: t, n: cnt[k] }));
             e.currentTarget.focus();
           },
         },
@@ -1555,14 +1564,14 @@ function ratebar(d) {
     "div",
     { class: "ratebar" },
     seg,
-    btn("Card types", { cls: "ghost sm", icon: "help", title: "What the card names and colours mean", onclick: () => openShortcuts("types") }),
+    btn(T("rate.types"), { cls: "ghost sm", icon: "help", title: T("rate.typesTitle"), onclick: () => openShortcuts("types") }),
     h("span", { class: "grow" }),
     h(
       "span",
       { class: "hints", "aria-hidden": "true" },
-      h("span", {}, h("kbd", {}, "Y"), " useful"),
-      h("span", {}, h("kbd", {}, "N"), " not useful"),
-      h("span", {}, h("kbd", {}, "U"), " clear"),
+      h("span", {}, h("kbd", {}, "Y"), T("rate.hintUseful")),
+      h("span", {}, h("kbd", {}, "N"), T("rate.hintNot")),
+      h("span", {}, h("kbd", {}, "U"), T("rate.hintClear")),
       h("span", {}, h("kbd", {}, "J"), h("kbd", {}, "K"), " move"),
     ),
   );
@@ -1584,8 +1593,8 @@ function tRate(pane, d) {
         "div",
         { class: "empty-big" },
         h("div", { class: "capy", "aria-hidden": "true" }),
-        h("h2", {}, "No cards in this call"),
-        h("span", {}, "Cards appear while the call is live."),
+        h("h2", {}, T("rate.noCards")),
+        h("span", {}, T("rate.noCardsNote")),
       ),
     );
     return;
@@ -1628,7 +1637,7 @@ function cardEl(c, d, idx, total) {
         h("span", {}, label),
         h("kbd", { class: "k", "aria-hidden": "true" }, key),
       );
-    rt.append(mk("y", "Useful", "Y"), mk("n", "Not useful", "N"));
+    rt.append(mk("y", T("rate.useful1"), "Y"), mk("n", T("rate.not1"), "N"));
   }
   const el = h(
     "article",
@@ -1690,7 +1699,7 @@ function paintCard(el, c) {
   ve.textContent = "";
   if (v) {
     ve.className = "verdict " + (v === "y" ? "good" : "bad");
-    ve.append(ico(v === "y" ? "check" : "x"), v === "y" ? "Useful" : "Not useful");
+    ve.append(ico(v === "y" ? "check" : "x"), v === "y" ? T("rate.useful1") : T("rate.not1"));
   } else ve.className = "verdict";
 }
 const cardEls = () => [...document.querySelectorAll("#cardlist .card")];
@@ -1710,10 +1719,10 @@ function drawCards() {
         "div",
         { class: "empty-big" },
         h("div", { class: "capy", "aria-hidden": "true" }),
-        h("h2", {}, state.filter === "unrated" ? "All rated" : "No cards here"),
-        h("span", {}, state.filter === "unrated" ? "Nothing left to rate on this call." : "Nothing matches this filter."),
+        h("h2", {}, state.filter === "unrated" ? T("rate.allRated") : T("rate.noneHere")),
+        h("span", {}, state.filter === "unrated" ? T("rate.nothingLeft") : T("rate.noMatch")),
         state.filter !== "all"
-          ? btn("Show all cards", {
+          ? btn(T("rate.showAll"), {
               cls: "sm",
               onclick: () => {
                 state.filter = "all";
@@ -1988,33 +1997,29 @@ function tDetails(pane, d, o) {
       "div",
       { class: "kpis" },
       kpi(
-        "Useful per hour",
+        T("kpi.perHour"),
         [s.rated ? ltr(s.perHour.toFixed(1)) : "–"],
-        live ? (s.rated ? `${s.useful} useful in ${s.hours.toFixed(2)} h` : "No ratings yet") : "Practice, not counted",
+        live ? (s.rated ? T("kpi.usefulIn", { n: s.useful, h: s.hours.toFixed(2) }) : T("kpi.noRatings")) : T("kpi.practiceNote"),
         live && s.rated ? (st === "pass" ? "good" : "bad") : "muted",
       ),
-      kpi("Rated", ltr(`${s.rated}/${s.cardsTotal}`), p ? `${p} still to rate` : s.cardsTotal ? "All rated" : "No cards"),
+      kpi(T("kpi.rated"), ltr(`${s.rated}/${s.cardsTotal}`), p ? T("kpi.stillToRate", { n: p }) : s.cardsTotal ? T("kpi.allRated") : T("kpi.noCards")),
+      kpi(T("kpi.prepared"), ltr(Math.round(s.bankShare * 100) + "%"), TP("cnt.question", s.questions) + (m.noCard ? T("kpi.noCardN", { n: m.noCard }) : "")),
       kpi(
-        "Prepared answered",
-        ltr(Math.round(s.bankShare * 100) + "%"),
-        `${plural(s.questions, "question")}` + (m.noCard ? ` · ${m.noCard} without a card` : ""),
-      ),
-      kpi(
-        "To first card (p50)",
+        T("kpi.firstCard"),
         [ltr(sec(m.cardP50))],
         ["p95 ", ltr(sec(m.cardP95)), m.cardP50 != null ? " · " + toneWord(m.cardP50, 1000, 3000) : ""],
         tone(m.cardP50, 1000, 3000),
       ),
-      kpi("Cost", ltr(usd(s.costUsd)), `length ${mins(s.durationMs)}`),
+      kpi(T("kpi.cost"), ltr(usd(s.costUsd)), T("kpi.length", { t: mins(s.durationMs) })),
     ),
   );
   const content = h("div", { id: "sub-out" });
-  const seg = h("div", { class: "seg subnav", role: "group", "aria-label": "Detail section" });
+  const seg = h("div", { class: "seg subnav", role: "group", "aria-label": T("kpi.detailAria") });
   const subs = [
     ["review", T("rev.title")],
-    ["speed", "Speed"],
-    ["cost", "Cost"],
-    ["events", "Events"],
+    ["speed", T("kpi.speed")],
+    ["cost", T("kpi.costTab")],
+    ["events", T("kpi.events")],
   ];
   const draw = (k) => {
     state.sub = k;

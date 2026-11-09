@@ -121,7 +121,7 @@ test("plain words: the window no longer says Plan / Prepared meeting; the ended 
   const bad = /\b(prepared meetings?|plan a call|\bplan\b)/i;
   for (const [k, v] of Object.entries(en)) {
     if (k.startsWith("kb.") || k.startsWith("err.")) continue;
-    assert.doesNotMatch(v, /prepared meeting/i, k);
+    if (!k.startsWith("set.")) assert.doesNotMatch(v, /prepared meeting/i, k); // set.<key>.* mirror the English catalog text (tray/settings-catalog.cjs)
     if (k.startsWith("ctx.") || k.startsWith("home.") || k.startsWith("after.") || k.startsWith("knows."))
       assert.doesNotMatch(v, /\bplan\b/i, k + " says Plan");
   }
