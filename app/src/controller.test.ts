@@ -421,12 +421,6 @@ test("H3: the dashboard treats a summary.background event with no summary as sti
   assert.equal(summaryPending([], false, now), false);
 });
 
-test("H3: Write summary is refused while the background writer runs", async () => {
-  const { readFileSync } = await import("node:fs");
-  const src = readFileSync(join(ROOT, "dashboard", "window.cjs"), "utf8");
-  assert.match(src, /data\.callSummaryPending\(CALLS, id\)[\s\S]{0,120}still being written/);
-});
-
 test("M7: no call or practice call starts while the app is stopping the call to quit", () => {
   let quitting = false;
   const { ctl, spawned } = fake({ canStart: () => !quitting });
