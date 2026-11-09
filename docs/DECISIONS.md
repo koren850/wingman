@@ -79,6 +79,7 @@ Context for all of them: Wingman was first built around one user's live calls. C
 | [71](#adr-71-the-import-layers-are-a-unit-test) | The import layers are a unit test |
 | [72](#adr-72-the-example-pack-is-opt-in) | The example pack is opt-in |
 | [73](#adr-73-memory-patches-repair-two-known-shape-slips) | Memory patches repair two known shape slips |
+| [74](#adr-74-a-direct-question-gets-a-concrete-answer-not-a-skip) | A direct question gets a concrete answer, not a SKIP |
 
 ---
 
@@ -1118,3 +1119,17 @@ Date: 2026-11-09
 **Alternatives.** Ask the model again (costs time and money on every slip). Loosen the whole validator (it would accept wrong content). Fix it only in the prompt (the model keeps slipping in new ways).
 
 **Consequences.** More patches and replies are used. A reply that lacks a field gets a plain default, so its card is lower in rank. The memory floors are still not met; the next recorded run shows the effect.
+
+## ADR 74: A direct question gets a concrete answer, not a SKIP
+
+Date: 2026-11-09
+
+**Context.** In the recorded dev run the model gave no card for 31 of 56 direct questions. The moment rules said silence is the normal answer and "if you are not sure, SKIP". The model also wrote generic "I will check and come back" lines, and English caution notes under Hebrew cards.
+
+**Decision.** The moment rules (used by the moment and the observer calls) now say that a direct question is not small talk. When the call, memory, notes, background or a bank card holds the answer, the model gives a short concrete answer. With part of the answer it gives that part and one hedged clause. With none it writes REPLY that says what to ask or check. SKIP stays for small talk and for what the user already answered. WHY and MORE must be in the language of SAY, and code drops a WHY or MORE line in the other language. An open-loop reminder for a promise needs an owner.
+
+**Why.** A missed direct question is the worst miss: the user waits for help that does not come. The price guard still protects the user: a price, a date or a promise is never in SAY, so it stays a stall.
+
+**Alternatives.** Lower the value floor (it only lets weak cards through). Add a rule in code that forces a card (the code cannot know the answer). Ask the memory updater for a due time on every promise (a bigger change, needs a new recording of the memory).
+
+**Consequences.** The static rules grow by about 100 tokens (cached for 1 hour, so the cost per hour does not change in a visible way). More cards for questions, so precision must be measured again. The dev cassette is stale for these prompts until it is recorded again.

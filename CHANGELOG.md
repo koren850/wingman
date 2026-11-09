@@ -38,6 +38,7 @@ Highlights: a live agent for meetings that builds context as the call goes and s
 - **Fewer false "still unanswered" tips.** No tip while the memory is being updated, none for a question the user answered, and no repeat of a promise that was already offered.
 - **Replies with a missing field are kept.** A card is no longer dropped because its value or aim line is missing. The memory patch reader accepts plain-text facts.
 - **Card language follows the call.** A card in the wrong language for the question is dropped, and a promise tip carries a label in its own language.
+- **Direct questions get an answer.** The live reading no longer skips a direct question when the notes, the memory or a prepared card hold the answer. With no answer it says what to ask or check, not a bare "I will check". Lines under a card (why, more) are always in the card's language. Reminders for promises need a named owner.
 - **Recording tools.** `--pace` above 1 is refused for a real recording unless `--fast-ok` is given, and the evaluation refuses a paced recording for the ship lines.
 
 ### Fixed

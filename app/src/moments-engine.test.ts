@@ -547,3 +547,17 @@ test("check card: the words follow the language of the call, and the app languag
   assert.match(checkNumberWhy("he"), /^מספר/);
   assert.equal(checkNumberSay("1", "2", undefined), checkNumberSay("1", "2"), "no call language yet: the app language decides, as before");
 });
+
+test("language: a MORE line and a WHY line in the other language are dropped from a Hebrew card, an English one is kept", async () => {
+  await e.reset();
+  e.pm.reply(
+    { role: "moment", lastLine: "מסדי" },
+    "ANS\nVALUE: 3\nAIM: me\nSAY: תומכים ב-Postgres וב-MySQL\nWHY: Do not give a specific time or SLA number\nMORE:\n- Do not give a specific time or SLA number\n- גרסה 14 ומעלה",
+  );
+  e.say("them", "אילו מסדי נתונים הכלי יכול לקרוא?");
+  await e.vc.advance(2500);
+  const card = e.screen().find((c) => c.kind === "answer");
+  assert.ok(card, JSON.stringify(e.screen()));
+  assert.deepEqual(card.more, ["גרסה 14 ומעלה"]);
+  assert.equal(card.why, undefined);
+});

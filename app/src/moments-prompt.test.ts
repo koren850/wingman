@@ -35,3 +35,13 @@ test("prompt: without bank candidates there is no bank block; the static part is
   assert.ok(!a.includes("bank_candidates"));
   assert.equal(a.slice(0, MOMENT_RULES.length), b.slice(0, MOMENT_RULES.length));
 });
+
+test("prompt: a direct question gets a concrete answer, a stall must be specific, and cautions follow the card language", () => {
+  assert.match(MOMENT_RULES, /direct question[^\n]*is what ANS is for/);
+  assert.match(MOMENT_RULES, /SKIP a direct question only when the user already answered it/);
+  assert.match(MOMENT_RULES, /say what to ask or check, specifically/);
+  assert.match(MOMENT_RULES, /WHY: [^\n]*in the language of SAY/);
+  assert.match(MOMENT_RULES, /MORE: [^\n]*in the language of SAY/);
+  assert.match(MOMENT_RULES, /never English under a Hebrew card/);
+  assert.match(MOMENT_RULES, /a promise with a clear owner/);
+});

@@ -649,7 +649,10 @@ export function openLoops(mem: SessionMemory): OpenLoopPrompt[] {
   const q = mem.openQuestions
     .filter((x) => x.status === "open")
     .map((x): OpenLoopPrompt => ({ id: x.id, kind: "question", text: x.text, who: x.asker, at: x.at }));
-  const c = mem.commitments.filter((x) => x.status === "open").map((x): OpenLoopPrompt => ({ id: x.id, kind: "promise", text: x.what, who: x.who, at: x.at }));
+  // A promise nobody owns ("who" empty) is not a reminder: the wrap-up still lists it.
+  const c = mem.commitments
+    .filter((x) => x.status === "open" && x.who.trim())
+    .map((x): OpenLoopPrompt => ({ id: x.id, kind: "promise", text: x.what, who: x.who, at: x.at }));
   return [...q, ...c].sort((a, b) => a.at - b.at || (a.kind === b.kind ? 0 : a.kind === "question" ? -1 : 1) || a.id.localeCompare(b.id));
 }
 

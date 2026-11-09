@@ -230,7 +230,11 @@ export function momentCard(
   m: Moment,
   o: { id: string; turnId: string; question: string; ctx?: ContextOutput["record"]; dim?: boolean; done?: boolean; bankTitle?: string },
 ): Card {
-  const more = m.more.map(clean).filter(Boolean);
+  // WHY and MORE follow the language of the card. A line in the other language (an English caution under a Hebrew card) is dropped, not shown.
+  const ref = langOf(m.say) ?? langOf(o.question) ?? st.m.lang;
+  const same = (t: string) => !ref || !wrongTextLanguage(ref, t);
+  const more = m.more.map(clean).filter((t) => t && same(t));
+  const why = m.why && same(m.why) ? clean(m.why) : "";
   const label = pickLabel({ label: m.label, bankTitle: o.bankTitle, topic: st.m.mem.topic.now });
   const val = KIND[m.tag] === "fact" ? (m.val ?? valOfRef(m.ref)) : undefined;
   return {
@@ -243,7 +247,7 @@ export function momentCard(
     at: Date.now(),
     kind: KIND[m.tag],
     value: m.value,
-    ...(m.why ? { why: clean(m.why) } : {}),
+    ...(why ? { why } : {}),
     ...(more.length ? { more } : {}),
     ...(m.ref ? { ref: m.ref } : {}),
     ...(label ? { label } : {}),

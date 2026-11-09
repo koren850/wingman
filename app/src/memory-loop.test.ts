@@ -649,3 +649,16 @@ test("review: openLoopSay labels the card in both languages and cuts long text",
   assert.match(openLoopSay({ kind: "promise", text: "x" }, "he"), /^הבטחה/);
   assert.equal(openLoopSay({ kind: "promise", text: words(30) }, "en").split(" ").length, 4 + 14);
 });
+
+test("openLoops: a promise with no owner is not a reminder, a question and an owned promise are", () => {
+  const m = emptyMemory();
+  m.commitments.push(
+    { id: "c1", who: "", what: "send the plan", at: 1, status: "open" },
+    { id: "c2", who: "Dana", what: "send the plan", at: 2, status: "open" },
+  );
+  m.openQuestions.push({ id: "q1", asker: "Dana", text: "Who owns the DNS records", at: 3, status: "open" } as never);
+  assert.deepEqual(
+    openLoops(m).map((x) => x.id),
+    ["c2", "q1"],
+  );
+});
