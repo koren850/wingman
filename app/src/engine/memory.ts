@@ -506,6 +506,13 @@ export class MemoryLoop {
   }
 
   // ------------------------------------------------------------ changes from outside
+  /** The user's edits of "What Wingman knows" from the window (calls/<id>/user-edits.jsonl, see session/useredit.ts), applied in order. Returns how many were applied. */
+  applyUserEdits(q: { drain(mem: SessionMemory, now: number): { mem: SessionMemory; applied: number; skipped: number } }, now: number): number {
+    const r = q.drain(this.mem, now);
+    if (r.skipped) this.deps.log("events", { type: "memory.useredit.skipped", n: r.skipped });
+    if (r.applied) this.replaceMemory(r.mem, "user");
+    return r.applied;
+  }
   /** The user changed the memory (the call mode): the new memory replaces the old one, is saved and sent to the UI. Returns false when it changed nothing. */
   replaceMemory(next: SessionMemory, why: string): boolean {
     if (next === this.mem) return false;

@@ -1,6 +1,6 @@
 // The user edits "What Wingman knows": change a line, remove a line, add a line. Pure apply plus a small file queue.
 //   - The window validates the edit (shared/memedit.cjs), appends it to calls/<id>/user-edits.jsonl and never touches session.json.
-//   - The engine (the one writer of session.json) drains that queue with `drainUserEdits`, applies each edit with `applyUserEdit`, saves.
+//   - The engine (the one writer of session.json) drains that queue (UserEditQueue, once a second in engine/coach.ts v2Tick) and MemoryLoop.applyUserEdits applies and saves it.
 //   - A removed line goes on a veto list, so the memory updater cannot add the same line back (applyPatch checks it).
 //   - Edits are re-validated here. A bad row in the file is skipped, never fatal.
 import { appendFileSync, closeSync, mkdirSync, openSync, readSync, fstatSync } from "node:fs";

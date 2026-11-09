@@ -35,6 +35,7 @@ import { recentWindow, capTail } from "./rules.ts";
 import { MemoryLoop, engineV2, makeModelRunner, memoryConfigFrom, memoryGate } from "./memory.ts";
 import { emitMemoryView, safe, survived } from "./out.ts";
 import { loadMemory, saveMemory } from "../session/store.ts";
+import { UserEditQueue } from "../session/useredit.ts";
 import { seedForCall } from "../session/callseed.ts";
 import { PEOPLE_FILE } from "../session/people.ts";
 import { CALLS, USER_DATA } from "../env.ts";
@@ -161,6 +162,7 @@ export function addWords(n: number) {
 // ---------------------------------------------------------------- v2: the memory loop, open loops, local tips
 const memCfg = memoryConfigFrom(S, S.notes.model);
 let loop: MemoryLoop | undefined,
+  edits: UserEditQueue | undefined, // what the user changed in "What Wingman knows" during the call
   pulled = 0,
   v2Timer: NodeJS.Timeout | undefined,
   lastLocalTipAt = 0,
@@ -311,6 +313,7 @@ function v2Tick() {
   const l = memoryLoop();
   if (!l || !st.call.consented || st.call.shuttingDown) return;
   pullLines(l);
+  l.applyUserEdits((edits ??= new UserEditQueue(log.dir)), Date.now());
   l.tick();
   const now = Date.now();
   closeCards(cardSched.expire(now));
@@ -446,6 +449,7 @@ export async function flushMemory(maxMs?: number): Promise<void> {
   if (!l) return;
   try {
     pullLines(l);
+    l.applyUserEdits((edits ??= new UserEditQueue(log.dir)), Date.now());
     if (maxMs !== undefined && maxMs > 0) await l.finalPass(maxMs);
   } catch {
     /* the last pass is a bonus */

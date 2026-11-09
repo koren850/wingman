@@ -837,3 +837,37 @@ test(
     assert.equal(existsSync(out), false);
   },
 );
+
+test("user edits during a call: the loop applies the queued edits once, saves them, and a removed line is vetoed", async () => {
+  const { UserEditQueue, queueUserEdit } = await import("./session/useredit.ts");
+  const dir = mkdtempSync(join(tmpdir(), "wm-edits-"));
+  try {
+    const mem: SessionMemory = { ...emptyMemory(1), facts: [{ id: "f1", text: "Budget is 10k", at: 1, src: "call" }] };
+    const saved: SessionMemory[] = [];
+    const loop = new MemoryLoop(
+      { now: () => 1000, run: async () => ({ text: "{}" }), save: (m) => saved.push(m), sendView: () => {}, log: () => {} },
+      { ...DEFAULT_MEMORY_CONFIG, enabled: true },
+      mem,
+    );
+    const q = new UserEditQueue(dir);
+    assert.equal(loop.applyUserEdits(q, 2000), 0, "no file yet: nothing to apply");
+    queueUserEdit(dir, { op: "edit", id: "f1", text: "Budget is 12k" });
+    queueUserEdit(dir, { op: "add", list: "facts", text: "Launch in May" });
+    assert.equal(loop.applyUserEdits(q, 2000), 2);
+    assert.deepEqual(
+      loop.memory.facts.map((f) => f.text),
+      ["Budget is 12k", "Launch in May"],
+    );
+    assert.equal(saved.length, 1, "saved once");
+    assert.equal(loop.applyUserEdits(q, 3000), 0, "each edit is applied once");
+    queueUserEdit(dir, { op: "remove", id: "f2" });
+    assert.equal(loop.applyUserEdits(q, 4000), 1);
+    assert.deepEqual(
+      loop.memory.facts.map((f) => f.text),
+      ["Budget is 12k"],
+    );
+    assert.ok((loop.memory.vetoed ?? []).length >= 1, "a removed line cannot come back from the updater");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
