@@ -279,6 +279,17 @@ export function unflatten(flat: Flat): Record<string, unknown> {
 }
 
 /** Reads a settings YAML into flat keys. An empty file is fine; invalid YAML or a non-mapping top level throws SettingsError. */
+/** Keys that existed and were removed because nothing read them. A settings file or profile that still has one loads; the key is ignored. */
+export const RETIRED_KEYS: ReadonlySet<string> = new Set([
+  "cards.lockoutMs",
+  "frame.enabled",
+  "frame.model",
+  "frame.everyMs",
+  "frame.minNewWords",
+  "frame.timeoutMs",
+  "privacy.storeAudio",
+]);
+
 function readYaml(file: string, label: string, defaults?: Flat): Flat {
   let doc: unknown;
   try {
@@ -290,6 +301,7 @@ function readYaml(file: string, label: string, defaults?: Flat): Flat {
   if (typeof doc !== "object" || Array.isArray(doc))
     throw new SettingsError([{ file, key: "(file)", layer: "user", message: "top level must be a mapping of keys" }]);
   const flat = flatten(doc);
+  if (label !== "defaults") for (const k of RETIRED_KEYS) delete flat[k];
   // A section header with every child commented out ("stt:") parses to null: it means "no overrides", not "set stt to null".
   if (defaults)
     for (const k of Object.keys(flat)) if (flat[k] === null && !(k in defaults) && Object.keys(defaults).some((d) => d.startsWith(`${k}.`))) delete flat[k];

@@ -59,6 +59,15 @@ test("precedence: default < user < profile < env < cli, with source tags", () =>
   assert.equal(e.sources["stt.endpointMs"].layer, "env"); // env beats user
 });
 
+test("a settings file with a retired key still loads; the key is ignored and a typo is still an error", () => {
+  const user = write("retired.yaml", "cards:\n  maxOnScreen: 4\n  lockoutMs: 900\nprivacy:\n  storeAudio: true\nframe:\n  enabled: false\n");
+  const l = load({ userFile: user });
+  assert.equal(l.settings.cards.maxOnScreen, 4);
+  assert.equal(l.sources["cards.lockoutMs"]?.layer ?? "default", "default");
+  const typo = write("typo.yaml", "cards:\n  maxOnScren: 4\n");
+  assert.throws(() => load({ userFile: typo }));
+});
+
 test("existing WINGMAN_* env vars map onto keys", () => {
   const l = load({ env: { WINGMAN_MIC: ":2", WINGMAN_ALLOW_PRIMARY: "1", WINGMAN_SHOW_IN_CAPTURE: "1", WINGMAN_ENDPOINT_MS: "700" } });
   assert.equal(l.settings.audio.mic.device, ":2");
