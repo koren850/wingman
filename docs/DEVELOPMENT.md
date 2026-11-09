@@ -386,7 +386,7 @@ Used for UX checks and for the images in `docs/ux/`. They need the Electron runt
 - **Windows differences.** There is no `audiotee` (macOS system audio only). Keys are kept with Windows data protection (DPAPI, through `src/securestore.cjs`) in `<data folder>\secrets\` instead of the Keychain; this also works under plain node in a dev checkout. The tray uses `brand/wingman.ico` (`shared/platform.cjs`). `shared/entry-guard.cjs` finds the parent process with `tasklist`. 
 - **Install check.** `Wingman --wingman-smoke` (macOS and Windows) checks that the install is complete, tries the key store in a scratch folder (Windows), runs one bundled tool as a child, prints `WINGMAN-SMOKE {json}` and exits 0 or 1. It opens no window and uses no network or key. With `WINGMAN_SMOKE_OUT=<file>` the JSON is also written to a file (a Windows GUI program has no console). `.github/scripts/windows-smoke.ps1` runs it on the unpacked app and on the silently installed app, and also checks the fuses, the Start menu shortcut, a 15 second tray start and the silent uninstall.
 - **Not needed in the app.** The app records the microphone itself (hidden capture window, `tray/capture/`), so users need no `ffmpeg`. Developers still need it for file replay (`--file`) and terminal runs, where it is found on the PATH with `/opt/homebrew/bin` added. Check the real capture page without a microphone with `./node_modules/.bin/electron scripts/capture-selftest.cjs`. `pdftotext` is optional. The `wingman` command-line tool stays a dev feature for now: it needs the checkout.
-- **Unsigned.** There is no Apple Developer account yet, so the app is only ad hoc signed. On first start macOS says it cannot verify the app: open System Settings, Privacy & Security, and choose "Open Anyway". Microphone and system-audio permissions are asked again after each new build, because an ad hoc signature changes with every build.
+- **Unsigned.** There is no Apple Developer account yet, so the app is only ad hoc signed. A downloaded copy shows a macOS warning on first start: open System Settings, Privacy & Security, and choose "Open Anyway". An app you build yourself is not quarantined, so it normally opens without this. Microphone and system-audio permissions are asked again after each new build, because an ad hoc signature changes with every build.
 - **Signing later.** Set `WINGMAN_SIGN=1` plus `CSC_LINK`, `CSC_KEY_PASSWORD` (Developer ID certificate) and `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` (or an App Store Connect API key). `WINGMAN_NOTARIZE=0` signs without notarizing. The entitlements are in `build/entitlements.mac.plist`.
 - **Release.** `.github/workflows/release.yml` runs on a `v*` tag: the `release` job makes a draft release if there is none, the `dmg` job (macOS runner) and the `exe` job (Windows runner) build, check and attach `Wingman-<version>-arm64.dmg` and `Wingman-Setup-<version>-x64.exe`. A public repository has free minutes for both runners. It has not been run yet.
 - **Check a build without showing windows.** Run `dist/mac-arm64/Wingman.app/Contents/MacOS/Wingman` with `WINGMAN_DASHBOARD_SNAPSHOT=<out.png>` (hidden window), or run the offline demo from inside the bundle: `Wingman --wingman-tool run -- --profile demo-en --file silence.wav --no-brief` with `WINGMAN_DEMO=1`, `WINGMAN_STT_SCRIPT=<app>/Contents/Resources/app/data/demo/demo-call.en.json` and every `WINGMAN_*` path pointing at a scratch folder.
@@ -408,11 +408,12 @@ Install Node 24 (nodejs.org or `winget install OpenJS.NodeJS`) and git. Then, in
 ```powershell
 git clone https://github.com/koren850/wingman.git
 cd wingman\app
-corepack enable
+npm install -g pnpm@11.22.0   # pnpm without administrator rights (the version in app/package.json)
 $env:WINGMAN_SKIP_APP = "1"; $env:ELECTRON_SKIP_BINARY_DOWNLOAD = "1"
 pnpm install --frozen-lockfile
 pnpm test:unit        # the unit tests
 pnpm dist             # builds dist\Wingman-Setup-<version>-x64.exe and dist\win-unpacked\
+dist\Wingman-Setup-0.0.1-x64.exe   # run the installer
 ```
 
 electron-builder downloads the Windows Electron files itself. `install.sh` is for macOS only. These Windows steps are what CI runs, but they have not been tried by hand on a real Windows machine.

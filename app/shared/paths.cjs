@@ -4,7 +4,7 @@
 //                      Windows  %APPDATA%\Wingman      Linux  $XDG_DATA_HOME/wingman or ~/.local/share/wingman
 //   WINGMAN_DATA_DIR   replaces that folder (tests, QA, a second profile)
 //   WINGMAN_CALLS_DIR  replaces only the calls folder;  WINGMAN_BRIEFS_DIR only the prepared-meetings folder
-// Layout inside the data folder:  calls/  briefs/ (briefs/attachments/)  entities.json  (same shape as the old <app>/calls and
+// Layout inside the data folder:  calls/  briefs/ (briefs/plans/<id>/)  entities.json  (same shape as the old <app>/calls and
 // <app>/data/private in the repo folder). Settings, keys, profile and pack stay in ~/.config/wingman. app/data/ is for shipped data only.
 const os = require("node:os");
 const path = require("node:path");

@@ -12,7 +12,6 @@ import {
   recentWindow,
   capTail,
   TRANSCRIPT_MAX_CHARS,
-  frameDue,
   llmFailurePolicy,
   SPEND_CAP_PARK_MS,
   isFresh,
@@ -57,7 +56,7 @@ test("11. interview: the 90 s answer clock restarts after a pause of the user, e
   assert.equal(nextAnswerStart({ answerStart: T - 5000, lastThemSpeech: 0, lastMeLineAt: T, now: T + 60_000 }), T + 55_000);
 });
 
-// ---- engine/coach.ts: transcript window and frame pacing ----
+// ---- engine/coach.ts: transcript window ----
 test("coach: wordCount splits on any whitespace and ignores empty pieces", () => {
   assert.equal(wordCount("  שלום   עולם\n hello "), 3);
   assert.equal(wordCount(""), 0);
@@ -85,16 +84,6 @@ test("coach: capTail keeps the newest part of a long transcript and leaves a sho
   const long = "x".repeat(TRANSCRIPT_MAX_CHARS) + "END";
   assert.equal(capTail(long).length, TRANSCRIPT_MAX_CHARS);
   assert.ok(capTail(long).endsWith("END"));
-});
-test("coach: frameDue waits for words and pacing; the first frame comes early; the final look needs only 8 words", () => {
-  const base = { final: false, hasFrame: true, newWords: 100, minNewWords: 60, now: 100_000, lastFrameAt: 50_000, everyMs: 30_000 };
-  assert.equal(frameDue(base), true);
-  assert.equal(frameDue({ ...base, newWords: 59 }), false, "not enough new words");
-  assert.equal(frameDue({ ...base, now: 70_000 }), false, "too soon after the last frame");
-  assert.equal(frameDue({ ...base, hasFrame: false, newWords: 20, now: 50_001 }), true, "first frame: 20 words, no waiting");
-  assert.equal(frameDue({ ...base, hasFrame: false, newWords: 19 }), false);
-  assert.equal(frameDue({ ...base, final: true, newWords: 8, now: 50_001 }), true, "final look ignores the pacing");
-  assert.equal(frameDue({ ...base, final: true, newWords: 7 }), false);
 });
 
 // ---- engine/degrade.ts: what a failed model call does ----

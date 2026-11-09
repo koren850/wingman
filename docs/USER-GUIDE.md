@@ -10,7 +10,7 @@ Wingman is a live agent for your meeting. You can give it context before the mee
 
 A **moment** is a point in the call where a short private nudge would help: a question, an objection, a number that does not fit, a term you may not know, a promise, a topic you planned to cover. Wingman checks the call after each line and decides if a card helps. Most lines are not a moment and get no card.
 
-**Live reading** is the default help engine. **Classic** is the older mode that reacts to questions only; it is a rollback in Settings, Advanced, and it is also what runs when the AI is down. **Scripted** and **recorded** are words you will see in the docs: a scripted number comes from test replies written in advance and shows that the parts work; a recorded number comes from the real AI. Wingman has no recorded quality numbers for live reading yet ([ROADMAP](ROADMAP.md)).
+**Live reading** is the default help engine. **Classic** is the older mode that reacts to questions only; you turn it on with `moments: {engine: legacy}` in the settings file (see "Words used in Wingman" below), and it is also what runs when the AI is down. **Scripted** and **recorded** are words you will see in the docs: a scripted number comes from test replies written in advance and shows that the parts work; a recorded number comes from the real AI. Wingman has no recorded quality numbers for live reading yet ([ROADMAP](ROADMAP.md)).
 
 ## First run
 
@@ -73,7 +73,7 @@ This is the window you read during a call. Put it on the second screen. With liv
 
 #### The classic window
 
-If you switch the help engine to Classic, or the AI is down, the window shows the older layout: what they said, one big answer (**Prepared** in green when it comes from your own answer pack, **AI, unverified** with a dashed border when the AI wrote it), a small "buy time" line, a **More** button with the extra panel (numbered chips for phone numbers, emails and domains, your checklist, the client card and the AI notes), and the key bar. In **Settings, Answer window layout** you can switch between **Focus** (default) and **Full**, which shows everything at once. The rest of this guide applies to both windows.
+If you set the help engine to Classic in the settings file, or the AI is down, the window shows the older layout: what they said, one big answer (**Prepared** in green when it comes from your own answer pack, **AI, unverified** with a dashed border when the AI wrote it), a small "buy time" line, a **More** button with the extra panel (numbered chips for phone numbers, emails and domains, your checklist, the client card and the AI notes), and the key bar. In **Settings, Answer window layout** you can switch between **Focus** (default) and **Full**, which shows everything at once. The rest of this guide applies to both windows.
 
 #### For you cards
 
@@ -173,7 +173,7 @@ The menu-bar icon has: **Open Wingman**, **Start quick call**, **Start prepared 
 
 ## Settings
 
-Settings has five tabs: **Basics** (window language, About you, the setup guide), **Keys**, **Help engine**, **Privacy** and **Advanced** (every other setting, including Live reading or Classic). Plain words are used for every status, and a message that needs an action has a button for it (Open Keys, Allow microphone).
+Settings has five tabs: **Basics** (window language, About you, the setup guide), **Keys**, **Help engine**, **Privacy** and **Advanced** (every other setting). Plain words are used for every status, and a message that needs an action has a button for it (Open Keys, Allow microphone).
 
 ## Update and uninstall
 
@@ -191,7 +191,7 @@ Nothing about you is stored in this repository.
 
 | Folder | What is there |
 |---|---|
-| `~/Library/Application Support/Wingman/` (Mac) or `%APPDATA%\Wingman\` (Windows) | Your data: `calls/` (transcripts, cards, summaries), `briefs/` (prepared meetings, with `briefs/attachments/`), `entities.json` (optional client snapshot). Override with `WINGMAN_DATA_DIR`. |
+| `~/Library/Application Support/Wingman/` (Mac) or `%APPDATA%\Wingman\` (Windows) | Your data: `calls/` (transcripts, cards, summaries), `briefs/` (prepared meetings, one folder each in `briefs/plans/<id>/`, with their files), `entities.json` (optional client snapshot). Override with `WINGMAN_DATA_DIR`. |
 | `~/.config/wingman/` (on Windows `C:\Users\<you>\.config\wingman\`) | `settings.yaml`, `profile.yaml`, `pack/`, and the old `keys.env` if you still have one. |
 | macOS Keychain, service `wingman` (Mac) or `<data folder>/secrets/*.dpapi` (Windows, encrypted) | Your API keys. |
 

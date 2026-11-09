@@ -36,8 +36,8 @@ Your data folder is `~/Library/Application Support/Wingman/` on a Mac and `%APPD
 | What | Where | How long | Protection |
 |---|---|---|---|
 | Per call: `call.json`, `events.jsonl`, `transcript.jsonl`, `cards.jsonl`, `latency.jsonl`, `usage.jsonl`, `summary.json`, `tags.jsonl` | `<data folder>/calls/<id>/` | Until you delete it. The Readiness check lists calls older than `privacy.retentionDays` (30). | Owner-only file permissions (mode 600, umask 077). **Not encrypted**: use FileVault. |
-| **Audio** | Nowhere | Never saved (`privacy.storeAudio` must stay false) | n/a |
-| Prepared meetings and their background files | `<data folder>/briefs/` (files in `briefs/attachments/`) | A meeting with a time stays until 6 hours after it; one without a time stays 14 days after its last edit. A meeting a real call used is kept 7 days as a record, and its background files are deleted when it is used. | Mode 600 |
+| **Audio** | Nowhere | Never saved (there is no setting for it) | n/a |
+| Prepared meetings and their background files | `<data folder>/briefs/` (each meeting in `briefs/plans/<id>/`, with its files in `files/`) | A meeting never expires and a call does not use it up. You can delete it any time. Housekeeping removes a meeting, with its files, after 180 days with no edit and no call. | Mode 600 |
 | Client snapshot (optional) | `<data folder>/entities.json` | Until you delete it | Owner-only |
 | Your settings | `~/.config/wingman/settings.yaml` | Until you delete it | Mode 600; never contains keys |
 | Your profile (name, "about", business, time zone) | `~/.config/wingman/profile.yaml` | Until you delete it | Never in the repo |

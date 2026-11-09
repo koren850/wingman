@@ -11,9 +11,8 @@ import { setupEngine, type Engine } from "../testkit/engine-inproc.ts";
 import { loadSplit } from "../../qa/golden-load.ts";
 import type { Golden } from "../../qa/golden-schema.ts";
 import { loadBank, matchBankFor, matchBankSmart } from "../bank.ts";
-import { detect } from "../detector.ts";
+import { detect, isClearQuestion } from "../detector.ts";
 import { features } from "../moments/intake.ts";
-import { hint } from "../moments/hint.ts";
 import { floorQuestion, addressedElsewhere } from "../moments/floor.ts";
 import type { SttResult } from "../providers/stt/types.ts";
 
@@ -84,7 +83,8 @@ test("floor on golden dev with the AI paused: recall and precision with the lega
   const floor = (useHint: boolean) =>
     replay(dev, (_g, text, f, ctx) => {
       const b = bankOf(text);
-      const level = useHint ? hint(text, { bankScore: b.score, stall: b.stall }).level : undefined;
+      const d = useHint ? detect(text, { bankScore: b.score, stall: b.stall }) : undefined;
+      const level = d ? (!d.isQuestion ? "none" : isClearQuestion(text, d.reason) ? "strong" : "weak") : undefined;
       return floorQuestion(f, {
         addressed: ctx.addressed,
         elsewhere: ctx.elsewhere,

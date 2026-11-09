@@ -21,8 +21,6 @@ privacy:
   requireConsentAck: false
 system:
   caffeinate: false
-frame:
-  enabled: false
 tips:
   enabled: false
 cards:

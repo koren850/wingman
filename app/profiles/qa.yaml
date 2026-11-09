@@ -14,9 +14,6 @@ audio:
     mode: filter # headphones-style: "me" talking over the client is still transcribed
 budget:
   idleStopMin: 0
-frame:
-  everyMs: 30000 # QA calls are only 2-3 minutes long: look twice as often as in a real call
-  minNewWords: 30
 tips:
   minGapMs: 60000 # ... and allow a tip every minute, so a short scripted call can show one or two
 cards:

@@ -1,13 +1,8 @@
-// Intake: structural filter properties and TurnFeatures for Hebrew, English and mixed lines. Hint equals the legacy gate on the labelled lines.
+// Intake: structural filter properties and TurnFeatures for Hebrew, English and mixed lines.
 import "./test-setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { Intake, features, tokenCount, type IntakeLine } from "./moments/intake.ts";
-import { hint } from "./moments/hint.ts";
-import { detect } from "./detector.ts";
-import { DATA } from "./env.ts";
 
 const L = (text: string, at = 0, o: Partial<IntakeLine> = {}): IntakeLine => ({ text, side: "them", at, ...o });
 
@@ -79,29 +74,4 @@ test("features: Hebrew, English, mixed, numbers, question mark, gap", () => {
   assert.equal(features(L("12345")).lang, "none");
   assert.equal(features(L("שלום?‏")).endsWithQuestion, true);
   assert.equal(features({ text: "hi", side: "me", at: 1 }).side, "me");
-});
-
-test("hint: equals the legacy gate on the 60 labelled lines, and is frozen", () => {
-  const rows = readFileSync(join(DATA, "questions.tsv"), "utf8")
-    .split("\n")
-    .map((l) => l.split("\t"))
-    .filter(([t, lab]) => t && (lab?.trim() === "Q" || lab?.trim() === "N"));
-  assert.equal(rows.length, 60);
-  let strong = 0;
-  for (const [text, lab] of rows) {
-    const h = hint(text);
-    const d = detect(text);
-    assert.equal(h.level !== "none", d.isQuestion, text);
-    assert.equal(h.level !== "none", lab.trim() === "Q", text);
-    assert.equal(h.reason, d.reason);
-    assert.ok(Object.isFrozen(h));
-    if (h.level === "strong") strong++;
-  }
-  assert.ok(strong > 0 && strong < 30);
-});
-
-test("hint: a question mark is strong, a bare head word is weak", () => {
-  assert.equal(hint("כמה זה עולה?").level, "strong");
-  assert.equal(hint("what is the price?").level, "strong");
-  assert.equal(hint("טוב אז נדבר מחר").level, "none");
 });

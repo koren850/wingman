@@ -18,7 +18,7 @@ export function nextAnswerStart(o: { answerStart: number; lastThemSpeech: number
   return o.answerStart;
 }
 
-// ---- coach.ts: transcript window and frame pacing ----
+// ---- coach.ts: transcript window ----
 export { wordCount } from "../text-util.ts";
 /** The newest `maxLines` lines from the last `minutes` of the call, oldest first. */
 export function recentWindow<T extends { at: number }>(lines: readonly T[], now: number, minutes: number, maxLines = 80): T[] {
@@ -27,21 +27,6 @@ export function recentWindow<T extends { at: number }>(lines: readonly T[], now:
 export const TRANSCRIPT_MAX_CHARS = 6000;
 /** Keeps the newest part of a transcript when it is longer than the prompt budget. */
 export const capTail = (text: string, max = TRANSCRIPT_MAX_CHARS) => (text.length > max ? text.slice(-max) : text);
-/** Is a call-frame look due? The first frame comes early (at most 20 new words, no waiting) so the first question already knows what the call is about;
- *  the final look at shutdown needs only 8 words and ignores the pacing. */
-export function frameDue(o: {
-  final: boolean;
-  hasFrame: boolean;
-  newWords: number;
-  minNewWords: number;
-  now: number;
-  lastFrameAt: number;
-  everyMs: number;
-}): boolean {
-  const need = o.final ? 8 : o.hasFrame ? o.minNewWords : Math.min(o.minNewWords, 20);
-  if (o.newWords < need) return false;
-  return o.final || !o.hasFrame || o.now - o.lastFrameAt >= o.everyMs;
-}
 
 // ---- degrade.ts: what a failed model call does to the model's health ----
 export const SPEND_CAP_PARK_MS = 6 * 3600_000;

@@ -28,7 +28,7 @@ A **moment** is a point in the call where a short, private nudge would help: a q
 
 ## What you get
 
-- **Live reading is the default.** The AI reads the call as it grows and decides when to help. **Classic** (the older question gate) is a fallback in the advanced settings. A language-neutral floor keeps working, without AI, when the AI is down.
+- **Live reading is the default.** The AI reads the call as it grows and decides when to help. **Classic** (the older question gate) is a fallback you turn on in the settings file: `moments: {engine: legacy}`. A language-neutral floor keeps working, without AI, when the AI is down.
 - **A memory of the call.** A small model keeps short notes: topic, people, numbers, promises, open questions. Every AI call reads them.
 - **Cards that stay short.** Answer, Check, Prompt and Fact cards. A line is shown whole. Low-confidence cards become small chips, and "Fewer like this" teaches Wingman what you do not want.
 - **Your own answers first.** A local pack of prepared answers shows with no AI call. Prices, dates and promises are checked in code, never invented.
@@ -37,7 +37,7 @@ A **moment** is a point in the call where a short, private nudge would help: a q
 
 ## Install
 
-Download the app from the [latest release](https://github.com/koren850/wingman/releases/latest). You install nothing else: no Node, no Homebrew, no ffmpeg. You need a second screen for the answer window, and two API keys for live calls (see [The two keys](#the-two-keys)). The practice call needs no keys.
+Download the app from the [latest release](https://github.com/koren850/wingman/releases/latest). If the release has no file for your system yet, [build from source](#build-from-source) instead. You install nothing else: no Node, no Homebrew, no ffmpeg. You need a second screen for the answer window, and two API keys for live calls (see [The two keys](#the-two-keys)). The practice call needs no keys.
 
 Both downloads are **not signed yet**, so your system warns you once. This is expected. The steps are below.
 
@@ -53,7 +53,7 @@ On macOS 15 and newer, right-click, **Open** no longer works for this. If the st
 
 ### Windows (10 or 11, 64-bit) - beta
 
-Windows is a **beta**: the installer is built and checked, but nobody has yet tested the sound capture on a real Windows PC. It may fail; please report what you see.
+Windows is a **beta**. The installer is built by CI, but it has not been run on a real Windows PC yet, and the sound capture is untested there. There may be no Windows download yet; then build from source (see [DEVELOPMENT.md](docs/DEVELOPMENT.md#building-from-source-on-windows)). It may fail; please report what you see.
 
 1. Download `Wingman-Setup-<version>-x64.exe` and run it.
 2. If Windows shows "Windows protected your PC" (SmartScreen), press **More info**, then **Run anyway**.
@@ -87,7 +87,7 @@ Full steps and pictures: [Getting started](docs/GETTING-STARTED.md). If somethin
 
 Only developers need this. Node is needed to build and run the code, not to use the app.
 
-You need Node 24 or newer, git and (on a Mac) macOS 14.2 or newer. Windows steps are in [DEVELOPMENT.md](docs/DEVELOPMENT.md).
+You need Node 24 or newer, git and (on a Mac) macOS 14.2 or newer. A clean Mac also needs Xcode Command Line Tools, Homebrew and Node 24: see [a Mac with no developer tools](docs/GETTING-STARTED.md#build-from-source-developers-only). Windows steps are in [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ```bash
 git clone https://github.com/koren850/wingman.git

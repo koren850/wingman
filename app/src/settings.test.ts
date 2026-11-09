@@ -23,7 +23,6 @@ test("defaults.yaml is complete and valid; legacy behaviour constants are the de
   assert.equal(s.reflex.dropStaleMs, 4000);
   assert.equal(s.cards.maxPerMinute, 3);
   assert.equal(s.cards.windowMs, 60000);
-  assert.equal(s.cards.lockoutMs, 1500);
   assert.equal(s.stt.flushFallbackMs, 800);
   assert.equal(s.llm.reflex.maxTokens, 200);
   assert.equal(s.llm.reflex.model, "anthropic:claude-haiku-5-5");

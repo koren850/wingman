@@ -46,7 +46,6 @@ export type Conf = "high" | "low";
 export type SurvivedRow = { type: "error.survived"; where: "moments.parse"; reason: string; sample: string };
 
 export type HintLevel = "strong" | "weak" | "none";
-export type Hint = { level: HintLevel; reason: string };
 
 /** Where a moment came from. `observer` moments are not a reply to a direct question, so a late one is dropped. */
 export type MomentSource = "direct" | "observer" | "ask";

@@ -177,7 +177,7 @@ if command -v node >/dev/null 2>&1; then
   fi
 else
   bad "Node is not installed (Wingman needs Node 24 or newer)"; FAILED=1
-  command -v brew >/dev/null && say "  install it yourself:  brew install node@24" || say "  install Homebrew (https://brew.sh) then: brew install node@24 ; or nvm / https://nodejs.org"
+  command -v brew >/dev/null && say "  install it yourself:  brew install node@24 && brew link --overwrite node@24" || say "  install Homebrew (https://brew.sh) then: brew install node@24 && brew link --overwrite node@24 ; or nvm / https://nodejs.org"
 fi
 if [ "$FAILED" = 1 ]; then echo; echo "Fix the missing items above, then run ./install.sh again."; exit 1; fi
 

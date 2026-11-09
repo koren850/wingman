@@ -45,9 +45,7 @@ export const noteModel = (turnId: string, model: string) => {
   capSize(turnModel);
 };
 const decided = new Map<string, { hidden: boolean; reason?: string }>(); // card id -> was it hidden from the overlay (a card keeps its first decision when it is updated, so it never flips)
-const turnsWithCard = new Set<string>();
-let lastCardAt = 0,
-  shownTimes: { id: string; t: number }[] = [];
+let shownTimes: { id: string; t: number }[] = [];
 /** The single exit for every card. Sanitizes text, decides hidden (quiet mode, or the per-minute cap unless priority), appends to cards.jsonl
  *  (hidden cards are logged too, flagged) and prints to the terminal. Health/info/tip cards are never hidden or counted. */
 // "Important cards only" (cards.focus): 2 cards per 2 minutes, and only for clear questions. The detector's weaker cues ("head": a
@@ -99,12 +97,6 @@ export function emitCard(c: Card) {
       if (cap.counted) shownTimes.push({ id: c.id, t: now });
       decided.set(c.id, { hidden, reason });
       capSize(decided);
-      if (!turnsWithCard.has(c.turnId)) {
-        turnsWithCard.add(c.turnId);
-        capSize(turnsWithCard);
-        if (now - lastCardAt < S.cards.lockoutMs) log.write("events", { type: "lockout_would_apply", turnId: c.turnId });
-        lastCardAt = now;
-      }
     }
   }
   const model = !special && c.source !== "calc" ? turnModel.get(c.turnId) : undefined;

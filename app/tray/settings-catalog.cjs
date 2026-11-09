@@ -140,25 +140,6 @@ const ITEMS = [
   },
 
   {
-    key: "frame.enabled",
-    group: "answers",
-    label: "Work out what the call is about",
-    kind: "bool",
-    help: "Every minute or so the AI reads the last few minutes and shows the kind of call, its topic and a checklist at the top of the answer window. Answers and tips then fit the call.",
-  },
-  {
-    key: "frame.everyMs",
-    group: "tune",
-    label: "How often to re-check the call",
-    kind: "number",
-    scale: 1000,
-    min: 10,
-    max: 600,
-    step: 10,
-    unit: "seconds",
-    help: "At most this often, and only after enough new words. A shorter time follows a changing conversation faster and costs slightly more.",
-  },
-  {
     key: "tips.enabled",
     group: "answers",
     label: "Live tips",
@@ -280,7 +261,7 @@ const ITEMS = [
     group: "after",
     label: "Write a summary when the call ends",
     kind: "bool",
-    help: "A Hebrew summary, next steps and a draft follow-up email appear in the call's Follow-up tab. Costs about half a cent.",
+    help: "A summary in the language of the call, next steps and a draft follow-up email appear in the call's Follow-up tab. Costs about half a cent.",
   },
 
   {
@@ -341,9 +322,9 @@ const ITEMS = [
     key: "ui.language",
     main: true,
     group: "audio",
-    label: "Answer window language (the Wingman window is English only)",
+    label: "Answer window language",
     kind: "select",
-    help: "Automatic uses Hebrew, unless the call language is English only. Only the answer window labels change (status, badges, hotkey bar); this Wingman window stays in English; the answers themselves keep the language of the call.",
+    help: "Automatic uses Hebrew, unless the call language is English only. Only the answer window labels change (status, badges, hotkey bar). The Wingman window has its own setting above (Window language). The answers themselves keep the language of the call.",
     options: [
       ["auto", "Automatic"],
       ["he", "Hebrew"],

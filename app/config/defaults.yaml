@@ -95,7 +95,6 @@ cards:
   focus: true # "Important cards only": cards only for clear questions (question mark, direct request, the user's name), at most 2 per 2 minutes
   maxPerMinute: 3 # at most this many NEW cards shown per window (calm screen; price and guarantee cards are exempt)
   windowMs: 60000 # the window for maxPerMinute
-  lockoutMs: 1500 # min gap between new cards (only logged as lockout_would_apply for now, not enforced)
   maxOnScreen: 4 # cards kept in the overlay
   quiet: false # start in quiet mode (cards are logged, not shown). Key q toggles
 
@@ -151,12 +150,7 @@ reminders:
 
 # ---- Call frame: what is this call about? (kind, topic, goal, people, a checklist for this kind of call) ----
 frame:
-  enabled: true # false = no frame: answers and tips do not know what the call is about
-  model: "anthropic:claude-haiku-5-5" # must have a price in budget.prices.llm (about $0.0005 per update)
-  everyMs: 60000 # look again at most this often
-  minNewWords: 40 # ... and only when at least this many new words were said
   windowMin: 3 # the AI reads the last N minutes of the call (tips use the same window)
-  timeoutMs: 10000 # abort a frame call that takes longer than this (ms); the old frame stays
 
 # ---- Live tips: at most one short tip now and then (a question to ask, a term, a reminder) ----
 tips:
@@ -244,7 +238,6 @@ privacy:
   askBeforeCliStart: true # a call started from the command line (wingman start) first asks you in a window in the app; --practice never asks. In the app: "Ask before a call started from the command line starts listening"
   # Spoken-style consent line shown as the first card when requireConsentAck is on (Hebrew; min 10 chars).
   consentText: "אני משתמש בכלי תמלול ועוזר AI שמעבדים את השיחה בענן, רק בשבילי כדי לסכם ולהזכיר לי נקודות. זה בסדר מבחינתך? אם לא, אכבה אותו."
-  storeAudio: false # audio is never saved (must stay false: the schema rejects true)
   retentionDays: 30 # the readiness check lists saved calls older than this
 
 # ---- Interface language ----

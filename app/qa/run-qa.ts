@@ -28,7 +28,7 @@ const noAi = flag("--no-ai"),
 const concurrency = Number(opt("--concurrency", "4")),
   capUsd = Number(opt("--cap", "0.9"));
 const valueFlags = new Set(["--concurrency", "--cap", "--set"]);
-const setArgs = argv.flatMap((a, i) => (a === "--set" && argv[i + 1] ? ["--set", argv[i + 1]] : [])); // forwarded to run.ts, e.g. --set frame.enabled=false (A/B runs)
+const setArgs = argv.flatMap((a, i) => (a === "--set" && argv[i + 1] ? ["--set", argv[i + 1]] : [])); // forwarded to run.ts, e.g. --set memory.<key>=<value> (A/B runs)
 const names =
   flag("--all") || !argv.filter((a, i) => !a.startsWith("--") && !valueFlags.has(argv[i - 1])).length
     ? allScenarioNames()

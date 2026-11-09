@@ -410,15 +410,12 @@ test("attachments: the prompt block is data-only, and a closing tag inside a fil
 test("settings: frame, tips and attachments defaults are valid and priced; the checklist hotkey exists", () => {
   const dir = mkdtempSync(join(tmpdir(), "wingman-fts-"));
   const { settings: s } = loadSettings({ env: {}, userFile: join(dir, "none.yaml") });
-  assert.equal(s.frame.enabled, true);
-  assert.equal(s.frame.everyMs, 60000);
-  assert.equal(s.frame.minNewWords, 40);
   assert.equal(s.tips.enabled, true);
   assert.equal(s.tips.minGapMs, 120000);
   assert.equal(s.tips.afterAnswerMs, 20000);
   assert.equal(s.tips.talkRatio, true);
   assert.equal(s.attachments.maxChars, 40000);
-  assert.ok(s.budget.prices.llm[s.frame.model] && s.budget.prices.llm[s.tips.model]);
+  assert.ok(s.budget.prices.llm[s.tips.model]);
   assert.equal(s.overlay.hotkeys.checklist, "Control+Alt+L");
 });
 

@@ -24,10 +24,6 @@ budget:
 summary:
   model: "scripted:summary" # practice stays offline and free
   minWords: 20
-frame:
-  model: "scripted:frame"
-  everyMs: 10000
-  minNewWords: 8
 tips:
   model: "scripted:tips"
   minGapMs: 10000

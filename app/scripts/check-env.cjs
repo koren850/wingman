@@ -4,7 +4,7 @@ const bad = [];
 const major = Number(process.versions.node.split(".")[0]);
 if (major < 24)
   bad.push(
-    `Node ${process.versions.node} is too old: Wingman needs Node 24 or newer.\n    Fix: brew install node@24   (or: nvm install 24), then run install.sh again.`,
+    `Node ${process.versions.node} is too old: Wingman needs Node 24 or newer.\n    Fix: brew install node@24 && brew link --overwrite node@24   (or: nvm install 24), then run install.sh again.`,
   );
 if (process.platform === "darwin") {
   const v = spawnSync("sw_vers", ["-productVersion"], { encoding: "utf8" }).stdout?.trim() || "";

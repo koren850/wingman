@@ -174,7 +174,6 @@ export const spotter = snapshot
 export const notesOn = S.notes.enabled && !noAi;
 export const notesAbort = new AbortController(); // also used by tips; aborted in shutdown(): no notes call outlives the call
 export const callStart = Date.now();
-export const frameOn = S.frame.enabled && !noAi;
 export const tipsOn = S.tips.enabled && !noAi;
 export const tracker = new FrameTracker();
 export const tipGate = new TipGate({ minGapMs: S.tips.minGapMs, afterAnswerMs: S.tips.afterAnswerMs });

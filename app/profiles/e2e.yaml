@@ -19,10 +19,6 @@ privacy:
   requireConsentAck: false
 system:
   caffeinate: false
-frame:
-  model: "scripted:frame"
-  everyMs: 10000
-  minNewWords: 8
 tips:
   model: "scripted:tips"
   minGapMs: 10000

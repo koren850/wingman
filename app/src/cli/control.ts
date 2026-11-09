@@ -40,7 +40,7 @@ async function waitFor(ctx: Ctx, ok: (s: any) => boolean, ms: number) {
 
 /**
  * wingman start [--quick | --plan <id>] [--practice] [--no-ai] [--no-wait]
- * --quick: a call with NO Plan (never uses up a prepared meeting). --plan <id>: with that prepared meeting (used up when the call goes live).
+ * --quick: a call with NO Plan (never uses up a prepared meeting). --plan <id>: with that prepared meeting (the meeting is kept, not used up).
  * Neither: the app decides safely. No prepared meetings = a quick call; exactly one meeting scheduled within 30 minutes of now = that one;
  * anything else is refused (exit 2) with the list, so a Plan is never picked by guesswork. --practice: offline pretend client; it uses the
  * given meeting, the next one when none is given, or none with --quick; it never uses a meeting up.

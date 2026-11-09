@@ -92,7 +92,7 @@ if (!fs.existsSync(path.join(APP_DIR, "tray", "main.cjs"))) {
     if (!seen) seen = `${n} is Node ${m || "?"}`;
   }
   if (!nodeDir) {
-    stop("Wingman needs Node 24", `Node 24 or newer was not found${seen ? " (" + seen + ")" : ""}.\n\nIn Terminal run:  brew install node@24\nthen open Wingman again (or run ./install.sh in the Wingman folder).`);
+    stop("Wingman needs Node 24", `Node 24 or newer was not found${seen ? " (" + seen + ")" : ""}.\n\nIn Terminal run:  brew install node@24 && brew link --overwrite node@24\nthen open Wingman again (or run ./install.sh in the Wingman folder).`);
   } else {
     process.env.PATH = [nodeDir, "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"].join(":");
     process.chdir(APP_DIR);

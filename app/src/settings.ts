@@ -106,7 +106,6 @@ export const schema = z.strictObject({
     focus: z.boolean(),
     maxPerMinute: int(1, 20),
     windowMs: int(5000, 600000),
-    lockoutMs: int(0, 5000),
     maxOnScreen: int(1, 8),
     quiet: z.boolean(),
   }),
@@ -135,12 +134,7 @@ export const schema = z.strictObject({
   summary: z.strictObject({ enabled: z.boolean(), model: modelRef, minWords: int(0, 100000), timeoutMs: int(2000, 120000) }),
   reminders: z.strictObject({ enabled: z.boolean(), firstAfterMin: int(1, 120), everyMin: int(1, 120) }),
   frame: z.strictObject({
-    enabled: z.boolean(),
-    model: modelRef,
-    everyMs: int(10000, 600000),
-    minNewWords: int(5, 500),
     windowMin: int(1, 10),
-    timeoutMs: int(2000, 30000),
   }),
   flow: z.strictObject({
     enabled: z.boolean(),
@@ -192,7 +186,6 @@ export const schema = z.strictObject({
     requireConsentAck: z.boolean(),
     askBeforeCliStart: z.boolean(),
     consentText: z.string().min(10),
-    storeAudio: z.literal(false),
     retentionDays: int(1, 365),
   }),
   ui: z.strictObject({ language: z.enum(["auto", "he", "en"]) }),

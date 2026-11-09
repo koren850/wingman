@@ -11,7 +11,7 @@ Four parts:
 
 ## What Wingman does, in one minute
 
-Wingman is a live agent for your meeting. It listens to both sides and builds context as the call goes: who is there, what was decided, which numbers were said, what you promised. From that it shows short cards on a second screen. **Live reading** is the default: the AI reads the whole call and decides when a card helps, so you also get help on objections, numbers and promises, not only on questions. **Classic** is the older mode that reacts to questions only. Keep it as a rollback (Settings, Advanced).
+Wingman is a live agent for your meeting. It listens to both sides and builds context as the call goes: who is there, what was decided, which numbers were said, what you promised. From that it shows short cards on a second screen. **Live reading** is the default: the AI reads the whole call and decides when a card helps, so you also get help on objections, numbers and promises, not only on questions. **Classic** is the older mode that reacts to questions only. It is off by default; set `moments: {engine: legacy}` in the settings file to use it. Keep it as a rollback (Settings, Advanced).
 
 A **moment** is a point in the call where a short private nudge would help. Most lines are not a moment and get no card.
 
@@ -21,7 +21,7 @@ Before a meeting you can give it context (an invite, an email, notes). That is o
 
 ## Part 1: Install the app
 
-**Most people: download the app.** Open the [latest release](https://github.com/koren850/wingman/releases/latest) and take the file for your computer. You need no Node, no Homebrew and no ffmpeg. You need a second screen for the answer window. With one screen the answer window stays closed, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it).
+**Most people: download the app.** Open the [latest release](https://github.com/koren850/wingman/releases/latest) and take the file for your computer. If the release has no file for your system yet, build from source (below). You need no Node, no Homebrew and no ffmpeg. You need a second screen for the answer window. With one screen the answer window stays closed, so it cannot end up in a screen share (the call still works and cards are saved; you can allow the main screen in the setup, then never share it).
 
 Both apps are **not signed yet**. Your system shows a warning the first time. It is expected, and the steps below get past it once.
 
@@ -45,7 +45,7 @@ The command removes the "downloaded from the internet" mark from the app. It cha
 
 ### On Windows (10 or 11, 64-bit) - beta
 
-Windows is a **beta**. The installer is built and checked, but the sound capture has not been tested on a real Windows PC yet. It may fail; please report what you see.
+Windows is a **beta**. The installer is built by CI, but it has not been run on a real Windows PC yet, and the sound capture is untested there. There may be no Windows download yet; then build from source (see [Development](DEVELOPMENT.md#building-from-source-on-windows)). It may fail; please report what you see.
 
 1. Download `Wingman-Setup-<version>-x64.exe` and double-click it.
 2. Windows may show a blue box, "Windows protected your PC" (SmartScreen), because the installer is not signed yet. Press **More info**, then **Run anyway**.
@@ -85,14 +85,14 @@ From a terminal (developers): `pnpm keys set deepgram`, `pnpm keys set anthropic
 Node is needed only to build and run the code, never to use the downloaded app. You need macOS 14.2 or newer (or Windows, see [Development](DEVELOPMENT.md#building-the-app-dmg-and-windows-installer)), Node 24 or newer (the installer does not install it), git and pnpm 11 (comes with corepack; run pnpm from `app/` so it uses the pinned version). `ffmpeg` is only for terminal runs and file replay: the app records the microphone itself.
 
 ```bash
-brew install node@24                       # skip if you already have Node 24
+brew install node@24 && brew link --overwrite node@24   # skip if you already have Node 24
 git clone https://github.com/koren850/wingman.git
 cd wingman
 ./install.sh --check                       # only reports what is present; changes nothing
 ./install.sh                               # checks the Mac, installs, builds Wingman.app
 ```
 
-The installer never uses sudo. It asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg` (only needed for terminal runs). It is safe to run again. `./install.sh --dry-run` shows every step; `--uninstall` removes it. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`). A `MISSING` line from `--check` tells you what to install; see [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old-building-from-source) if Node is too old. The app built this way is also ad-hoc signed, so the first start needs the same **Open Anyway** step.
+The installer never uses sudo. It asks before it copies the app to `/Applications`, adds the `wingman` command in `~/.local/bin` or runs `brew install ffmpeg` (only needed for terminal runs). It is safe to run again. `./install.sh --dry-run` shows every step; `--uninstall` removes it. Put `~/.local/bin` on your PATH (`export PATH="$HOME/.local/bin:$PATH"` in `~/.zshrc`). A `MISSING` line from `--check` tells you what to install; see [Troubleshooting](TROUBLESHOOTING.md#node-is-too-old-building-from-source) if Node is too old. An app you build yourself is not quarantined by macOS, so it normally opens without **Open Anyway**. That step is only for the downloaded app.
 
 A Mac with no developer tools: install them first (each step is skipped if you already have it):
 
@@ -108,7 +108,7 @@ brew install poppler                                    # optional: read PDF fil
 
 ## Part 2: Try a practice call
 
-Press **Practice call** in the setup, or next to **Start** on Home. A pretend client plays through the real call loop and the real answer window. It is free, needs no keys, and nothing leaves your Mac. The call is invented: a client called Dana asks about a slow site, backups and a price. It is in English when the interface language is English, in Hebrew otherwise. The speech and the AI replies in the practice call are **scripted**. It shows how the windows work, not how good the AI is.
+Press **Start practice call** in the setup, or **Practice call (offline, free)** next to **Start** on Home. A pretend client plays through the real call loop and the real answer window. It is free, needs no keys, and nothing leaves your Mac. The call is invented: a client called Dana asks about a slow site, backups and a price. It is in English when the interface language is English, in Hebrew otherwise. The speech and the AI replies in the practice call are **scripted**. It shows how the windows work, not how good the AI is.
 
 ![The answer window in the practice call: the newest card large, older ones small (invented example)](ux/answer-window-hero.png)
 
@@ -127,9 +127,9 @@ The Readiness check (Home, **Run readiness check**) tests the microphone, the sy
 
 ## Part 3: Start a real call
 
-**Optional: give Wingman context first.** On Home choose **Add meeting context**. Paste an invite, an email or notes, drop a file (.txt, .md, .docx, .eml, .pdf or .ics), give a web address (https), a calendar link, or choose your next calendar event. **Prepare** shows what Wingman understood. Before the call starts, Wingman shows **What Wingman knows** once: who is joining, the kind of call, and the facts, each with its source line. Untick or edit any line. **Start without review** is one click. If you add no context, this step is skipped.
+**Optional: give Wingman context first.** On Home choose **Add meeting context…**. Paste an invite, an email or notes, drop a file (.txt, .md, .docx, .eml, .pdf or .ics), give a web address (https), a calendar link, or choose your next calendar event. **Prepare** shows what Wingman understood. Before the call starts, Wingman shows **What Wingman knows** once: who is joining, the kind of call, and the facts, each with its source line. Untick or edit any line. **Start without review** is one click. If you add no context, this step is skipped.
 
-Press **Start** on a meeting, or **Quick call** on Home. (Developers on a Mac can also run `wingman start --quick` from a terminal; the app asks you to confirm in a window.) Then talk, or join your call. Wingman builds its memory as you go ("So far" in the live view shows it). When it ends, press **Stop call** and then **Open summary**. Wingman saves the transcript and writes a summary and a follow-up email draft. Everything is in `~/Library/Application Support/Wingman/calls/` on a Mac and `%APPDATA%\Wingman\calls\` on Windows. See [EXAMPLES.md](EXAMPLES.md#d-a-call-summary-and-follow-up-email) for what the summary looks like.
+Press **Start** on a meeting, or **Start a call** (a quick call, with no meeting) on Home. (Developers on a Mac can also run `wingman start --quick` from a terminal; the app asks you to confirm in a window.) Then talk, or join your call. Wingman builds its memory as you go ("So far" in the live view shows it). When it ends, press **Stop call** and then **Open summary**. Wingman saves the transcript and writes a summary and a follow-up email draft. Everything is in `~/Library/Application Support/Wingman/calls/` on a Mac and `%APPDATA%\Wingman\calls\` on Windows. See [EXAMPLES.md](EXAMPLES.md#d-a-call-summary-and-follow-up-email) for what the summary looks like.
 
 Tell the people you talk to that you use a call assistant if the law or your rules ask for it. See [Privacy and security](PRIVACY-AND-SECURITY.md).
 
