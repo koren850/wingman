@@ -1,4 +1,4 @@
-// Answer window state machines (round 16): the sheet value, the recap request, pause owned by main, late rows after the call ended,
+// Answer window state machines: the sheet value, the recap request, pause owned by main, late rows after the call ended,
 // tip timers, the live-line strips and pinned cards. The model parts run as plain code; the page parts replay a sequence of events
 // through the hidden snapshot tool (overlay/snap2.cjs, scenarios "v2-seq-*" in overlay/fixtures-v2.cjs) on macOS only, like the other snapshot tests.
 import "./test-setup.ts";

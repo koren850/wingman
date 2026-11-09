@@ -1141,7 +1141,7 @@ Date: 2026-11-09
 
 Date: 2026-11-09
 
-**Context.** The menu-bar app kept its state in loose flags: `child`, `lingering`, `doctorProc`, a `running` set and a `quitting` boolean. The call phase could be set from any event. The audit of round 16 found real bugs from this: a call could start during the readiness check and take the mic from it; a late "consented" line undid Stop; an old call's output changed the new call's error; a second readiness request got `null`; a Stop during the macOS microphone prompt was lost, so the mic opened after the user pressed Allow with nobody listening; a long call's background summary was shown as a failure.
+**Context.** The menu-bar app kept its state in loose flags: `child`, `lingering`, `doctorProc`, a `running` set and a `quitting` boolean. The call phase could be set from any event. A state audit found real bugs from this: a call could start during the readiness check and take the mic from it; a late "consented" line undid Stop; an old call's output changed the new call's error; a second readiness request got `null`; a Stop during the macOS microphone prompt was lost, so the mic opened after the user pressed Allow with nobody listening; a long call's background summary was shown as a failure.
 
 **Decision.** Each machine has one state value and a table of allowed edges. A change that is not in the table is ignored and logged.
 - The controller holds one slot (`tray/slot.cjs`): `idle`, `doctor` or `call`. `isRunning` and `doctorRunning` are read from it. A start is refused while the check runs. A second check request gets the running check's result.
@@ -1191,7 +1191,7 @@ Date: 2026-11-09. Status: proposed, planned for 0.0.2. Not built.
 
 Date: 2026-11-09
 
-**Context.** A card from the model shows about 1.5 s after the other person stops talking, and the slow cases take 4.6 to 6 s. The audit of round 17 found the time in three places: the final text from speech-to-text, the model's first token, and the stalls when no end-of-speech mark comes. We measured with real services: 20 spoken questions (10 English, 10 Hebrew, macOS text-to-speech) streamed to Deepgram with the app's settings, and short real requests to the model.
+**Context.** A card from the model shows about 1.5 s after the other person stops talking, and the slow cases take 4.6 to 6 s. A latency audit found the time in three places: the final text from speech-to-text, the model's first token, and the stalls when no end-of-speech mark comes. We measured with real services: 20 spoken questions (10 English, 10 Hebrew, macOS text-to-speech) streamed to Deepgram with the app's settings, and short real requests to the model.
 
 **Decision.**
 - Send Deepgram `Finalize` after 500 ms of silence (was 900 ms), and handle buffered finals after 800 ms when no end-of-speech mark comes (was 1500 ms).

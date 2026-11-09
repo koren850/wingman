@@ -491,7 +491,7 @@ live("v2-live-keys", (r) => ({
   ],
 }));
 live("v2-live-aipaused", (r) => ({ rows: [{ ...r.rows[0], ai: "paused" }, ...r.rows.slice(1)], lines: r.lines }));
-// ---- sequences (round 16): each one replays an order of events that used to go wrong; src/overlay-ux.test.ts reads the probe ----
+// ---- sequences: each one replays an order of events that used to go wrong; src/overlay-ux.test.ts reads the probe ----
 const mePartial = (text) => ({ t: now, ch: "me", text, spk: undefined, name: undefined });
 const tipRow = (id, say) => row({ id, turnId: "tips", badge: "tip", tipType: "ask", say });
 const recapRows = (T) => ({

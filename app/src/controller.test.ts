@@ -301,7 +301,7 @@ test("uiLanguageOf: explicit language wins; auto is English only when the call l
   assert.equal(uiLanguageOf(null), "he");
 });
 
-// ---- Round 16: explicit state (tray/slot.cjs, the phase edges in tray/lib.cjs) ----
+// ---- Explicit state (tray/slot.cjs, the phase edges in tray/lib.cjs) ----
 
 test("M4: a late consented after Stop does not bring the call back to live, and a second Stop sends nothing", () => {
   const { ctl, spawned, timers } = fake();

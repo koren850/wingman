@@ -105,7 +105,7 @@ test("overlay: preload bridge functions return nothing; page script is external;
     Mod._load = orig;
   }
   const subs = Object.keys(api).filter((k) => k.startsWith("on"));
-  assert.equal(subs.length, 24); // overlay-ux added onRestore and onNote; features added onNudge; round 16 added onPins
+  assert.equal(subs.length, 24); // overlay-ux added onRestore and onNote; features added onNudge; the pins channel added onPins
   assert.deepEqual(
     Object.keys(api).filter((k) => !k.startsWith("on")),
     ["size", "copy", "shown", "act"],

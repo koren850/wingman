@@ -320,7 +320,7 @@ test("host: a failing gesture script does not stop the system start", async () =
   assert.deepEqual(await p, { fellBack: false });
 });
 
-// ---- Round 16: explicit channel state (tray/capture-chan.cjs) ----
+// ---- Explicit channel state (tray/capture-chan.cjs) ----
 
 test("H1: a stop during the microphone prompt cancels the start; the mic is not opened after Allow", async () => {
   let allow!: () => void;
