@@ -67,7 +67,7 @@ export type Fs = { write: (p: string, data: string) => void; rename: (a: string,
 const realFs: Fs = {
   write(p, data) {
     writeFileSync(p, data, { mode: 0o600 });
-    const fd = openSync(p, "r");
+    const fd = openSync(p, "r+"); // Windows refuses fsync on a read-only handle (EPERM)
     try {
       fsyncSync(fd);
     } finally {

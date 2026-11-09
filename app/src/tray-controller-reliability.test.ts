@@ -191,7 +191,7 @@ test("control socket: accepted starts are still limited", async () => {
   assert.equal((await send("start")).ok, true);
 });
 
-test("control socket: listening does not change the process umask, and the socket ends up 600", { skip: !POSIX }, async () => {
+test("control socket: listening does not change the process umask, and the socket ends up 600", POSIX, async () => {
   const before = process.umask();
   const { s } = server();
   const p = s.start();

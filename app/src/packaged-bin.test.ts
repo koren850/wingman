@@ -83,7 +83,7 @@ test("entry guard: debugging and code-loading switches are refused", () => {
 
 test("entry guard: tools need the run token and a Wingman parent", () => {
   const exe = (p: number) => (p === 100 ? "/Apps/Wingman.app/Contents/MacOS/Wingman" : "/sbin/launchd");
-  const ok = { env: OK_ENV, ppid: 100, execPath: "/Apps/Wingman.app/Contents/MacOS/Wingman", exe };
+  const ok = { env: OK_ENV, ppid: 100, execPath: "/Apps/Wingman.app/Contents/MacOS/Wingman", exe, platform: "darwin" }; // the paths are macOS paths, whatever system runs the test
   assert.equal(guard.callerProblem(ok), null);
   assert.match(String(guard.callerProblem({ ...ok, env: {} })), /only be started by the Wingman app/); // open -a Wingman --args ...
   assert.match(String(guard.callerProblem({ ...ok, env: { WINGMAN_TOOL_TOKEN: "short" } })), /only be started/);

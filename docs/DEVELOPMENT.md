@@ -18,7 +18,7 @@ cd app
 WINGMAN_SKIP_APP=1 pnpm install
 ./node_modules/.bin/tsc --noEmit -p .   # type check
 pnpm test:unit                          # the quick unit tests, no keys
-pnpm test                               # unit plus end-to-end tests (about 1,900 in all)
+pnpm test                               # unit plus end-to-end tests (about 2,000 in all)
 pnpm demo                               # the offline demo call, no keys (1 to 2 minutes)
 pnpm eval                               # detector, bank and guard quality numbers, no keys
 ```
