@@ -5,8 +5,6 @@
 import "../test-setup.ts";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import v8 from "node:v8";
-import vm from "node:vm";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { setupEngine, type Engine } from "../testkit/engine-inproc.ts";
 import { error } from "../testkit/policy-model.ts";
@@ -15,17 +13,8 @@ import { setClockSource } from "../clock.ts";
 import { checkMemory, SESSION_FILE } from "../session/store.ts";
 import { CAPS } from "../session/caps.ts";
 import { loadSplit } from "../../qa/golden-load.ts";
+import { settledHeap } from "../testkit/heap.ts";
 
-/** Heap in use after a full collection, so the number does not depend on when the collector last ran (the whole suite shares one process). */
-function settledHeap(): number {
-  try {
-    v8.setFlagsFromString("--expose-gc");
-    (vm.runInNewContext("gc") as () => void)();
-  } catch {
-    /* without a collector the raw number is used */
-  }
-  return process.memoryUsage().heapUsed;
-}
 import { observeModel } from "./v2-kit.ts";
 
 registerRole("memory", "You keep the memory of a live call");

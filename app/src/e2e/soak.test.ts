@@ -10,6 +10,7 @@
 // fault), each fault is seen by the part that should see it (a bar, a hidden window, a provider switch), each fault ends and the bars clear, timers stay
 // bounded, and the whole run stays under the cost gate. Nothing here touches the network, a key, audio hardware or a real screen.
 import "../test-setup.ts";
+import { settledHeap } from "../testkit/heap.ts";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -296,7 +297,7 @@ test(
       if (pi < probeTimes.length && at(probeTimes[pi][0])) {
         const [, f] = probeTimes[pi++];
         await probe(f());
-        heap.push(process.memoryUsage().heapUsed);
+        heap.push(settledHeap());
       }
     }
     await e.vc.advance(2 * MIN);

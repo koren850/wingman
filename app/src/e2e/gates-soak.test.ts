@@ -9,6 +9,7 @@
 // screen is never empty after the first card (a probe never ends with nothing to show), bars clear, state stays bounded, cost stays under the gate.
 // SCRIPTED: model replies and delays are fixtures; nothing here touches the network, a key, audio hardware or a real screen.
 import "../test-setup.ts";
+import { settledHeap } from "../testkit/heap.ts";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -223,7 +224,7 @@ test(
       if (pi < probeTimes.length && at(probeTimes[pi][0])) {
         const [, f] = probeTimes[pi++];
         await probe(f);
-        heap.push(process.memoryUsage().heapUsed);
+        heap.push(settledHeap());
       }
     }
     await e.vc.advance(2 * MIN);
