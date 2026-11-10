@@ -36,7 +36,7 @@ A **moment** is a point in the call where a short, private nudge would help: a q
 
 ## Install
 
-Download the app from the [latest release](https://github.com/koren850/wingman/releases/latest). If the release has no file for your system yet, [build from source](#build-from-source) instead. You install nothing else: no Node, no Homebrew, no ffmpeg. You need a second screen for the answer window, and two API keys for live calls (see [The two keys](#the-two-keys)). The practice call needs no keys.
+Download the app from the [latest release](https://github.com/koren850/wingman/releases/latest). If the release has no file for your system yet, [build from source](#build-from-source) instead. You install nothing else: no Node, no Homebrew, no ffmpeg. The answer window is best on a second screen (with one screen it stays closed until you allow it), and live calls need two API keys for live calls (see [The two keys](#the-two-keys)). The practice call needs no keys.
 
 Both downloads are **not signed yet**, so your system warns you once. This is expected. The steps are below.
 
@@ -77,8 +77,8 @@ A call costs about $1.50 an hour in total. Speech to text is most of it. These a
 ### First run
 
 1. **Your two keys.** Paste both and press **Check and save**.
-2. **Let Wingman hear.** macOS: allow the microphone, switch on System Audio Recording for Wingman in System Settings (if Wingman is not listed, start a real call once and press Allow when macOS asks), then quit and open Wingman again. Windows: only the microphone switch; the sound of the call needs no permission.
-3. **Ready.** Press **Start a practice call**. A pretend client talks and the cards appear. No keys needed, and nothing leaves your computer. When you are ready, press **Start a real call**.
+2. **Let Wingman hear.** macOS: allow the microphone, switch on System Audio Recording for Wingman in System Settings (if Wingman is not listed, that is normal before your first real call: go on, and press Allow when macOS asks as the first real call starts). If the other side is still not heard in that call, quit and open Wingman again. Windows: only the microphone switch; the sound of the call needs no permission.
+3. **Ready.** Press **Start a practice call**. A pretend client talks and the cards appear. No keys needed, and nothing leaves your computer. It plays in the language of the window you pressed it in. When you are ready, press **Start a real call**.
 
 Full steps and pictures: [Getting started](docs/GETTING-STARTED.md). If something fails: [Troubleshooting](docs/TROUBLESHOOTING.md).
 

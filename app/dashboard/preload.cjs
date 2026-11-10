@@ -1,5 +1,6 @@
 // Preload for the main window (set in window.cjs). Exposes window.wingman (called `api` in the renderer scripts).
 // Each method maps to one ipcMain handler in window.cjs / keys-ipc.cjs; arguments are coerced to plain types here and checked again in main.
+/* global document -- the preload runs in the page world of the window; the page language is the window language (boot.js sets it) */
 const { contextBridge, ipcRenderer } = require("electron");
 // Fixed, narrow surface. The page can ask for named commands; it cannot send arbitrary IPC or stdin.
 // Keys: keysSet is the only way a secret goes main-ward; nothing here ever returns one (status gives last 4 characters).
@@ -27,7 +28,8 @@ contextBridge.exposeInMainWorld("wingman", {
   // start / startNoAi: no argument = a quick call (no Plan); a meeting id = that prepared meeting. practice: { planId } | { quick: true } | nothing (the next meeting).
   start: (planId) => ipcRenderer.invoke("call:cmd", "start", planId ? String(planId) : ""),
   startNoAi: (planId) => ipcRenderer.invoke("call:cmd", "startNoAi", planId ? String(planId) : ""),
-  practice: (o) => ipcRenderer.invoke("call:cmd", "practice", { quick: !!(o && o.quick), planId: o && o.planId ? String(o.planId) : "" }),
+  practice: (o) =>
+    ipcRenderer.invoke("call:cmd", "practice", { quick: !!(o && o.quick), planId: o && o.planId ? String(o.planId) : "", lang: document.documentElement.lang }),
   consent: () => ipcRenderer.invoke("call:cmd", "consent"),
   quiet: (on) => ipcRenderer.invoke("call:cmd", "quiet", !!on),
   confirmClient: () => ipcRenderer.invoke("call:cmd", "client"),

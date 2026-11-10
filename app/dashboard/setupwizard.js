@@ -420,7 +420,14 @@ function wizReadyStep(v) {
     h(
       "div",
       { class: "wiz-actions" },
-      btn(T("wiz.ready.start"), { id: "wiz-start", icon: "phone", onclick: go(() => startFlow({ noAi: false })) }),
+      btn(T("wiz.ready.start"), {
+        id: "wiz-start",
+        icon: "phone",
+        onclick: go(() => {
+          wizRedraw();
+          startFlow({ noAi: false });
+        }),
+      }),
       btn(T("wiz.ready.later"), { id: "wiz-later", cls: "ghost", onclick: go(() => viewHome()) }),
     ),
     noCredit ? h("p", { class: "wiz-err", role: "alert" }, ico("warning"), h("span", {}, T("wiz.ready.nocredit"))) : null,

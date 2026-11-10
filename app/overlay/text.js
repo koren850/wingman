@@ -4,50 +4,9 @@
 (function (root) {
   const bidi = typeof module !== "undefined" && module.exports ? require("../dashboard/bidi.js") : root.WingmanBidi;
 
-  /** Shared bidi tokenizer plus the overlay rule: a short number or word next to an island ("8 Nov", "Node 18", "Facebook Ads") joins it, so word order never flips. */
+  /** The shared bidi tokenizer: a short number or word next to an island ("8 Nov", "Node 18", "Facebook Ads") joins it, so word order never flips. */
   function segments(text) {
-    const out = [];
-    for (const seg of bidi.splitBidi(text)) out.push({ ...seg });
-    // pull a short Latin/number token (e.g. "8 ") from the neutral text into the island next to it
-    for (let i = 0; i < out.length; i++) {
-      const s = out[i];
-      if (s.ltr) continue;
-      const before = out[i - 1],
-        after = out[i + 1];
-      if (after && after.ltr) {
-        const m = /(?:^|[\s(])([A-Za-z0-9]{1,2}) $/.exec(s.text);
-        if (m) {
-          const cut = s.text.length - m[1].length - 1;
-          after.text = m[1] + " " + after.text;
-          s.text = s.text.slice(0, cut);
-        }
-      }
-      if (before && before.ltr) {
-        const m = /^ ([A-Za-z0-9]{1,2})(?=$|[\s).,:;!?])/.exec(s.text);
-        if (m) {
-          before.text += " " + m[1];
-          s.text = s.text.slice(m[0].length);
-        }
-      }
-    }
-    // two islands separated by a single space are one island
-    const merged = [];
-    for (let i = 0; i < out.length; i++) {
-      const s = out[i];
-      if (s.text === "") continue;
-      const last = merged[merged.length - 1];
-      if (last && last.ltr && s.ltr) {
-        last.text += s.text;
-        continue;
-      }
-      if (s.ltr === false && s.text === " " && last && last.ltr && out[i + 1] && out[i + 1].ltr) {
-        last.text += " " + out[i + 1].text;
-        i++;
-        continue;
-      }
-      merged.push(s);
-    }
-    return merged;
+    return bidi.splitBidi(text);
   }
 
   /** True for a line with Latin letters and no Hebrew: it is shown left to right as a whole (an English interview card). */

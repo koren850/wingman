@@ -382,7 +382,7 @@ function create(ctx) {
         return { ok: controller.start({ noAi: true, planId: planArg(arg) }) };
       case "practice": {
         const a = arg && typeof arg === "object" ? arg : {};
-        return { ok: controller.practice({ quick: a.quick === true, planId: planArg(a.planId) }) };
+        return { ok: controller.practice({ quick: a.quick === true, planId: planArg(a.planId), lang: a.lang }) };
       }
       case "consent":
         return { ok: controller.consent() };

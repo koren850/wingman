@@ -1314,7 +1314,7 @@ async function runCheck(offline) {
 }
 /** At launch, when no recent result exists, run the free offline check (no audio, no network, no cost). */
 function autoCheck() {
-  if (H.autoChecked || isRunning()) return;
+  if (H.autoChecked || isRunning() || keysMissing().length) return;
   H.autoChecked = true;
   const d = doc();
   if (checking() || (d && Date.now() - d.at < 6 * 3600 * 1000)) return;

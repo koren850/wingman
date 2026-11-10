@@ -240,7 +240,7 @@ function createController(o) {
     const exp = pid && o.plans ? o.plans.exportBrief(pid) : null;
     if (o2.planId && !exp) return false;
     dropLingering();
-    const en = !!o.uiLanguage && o.uiLanguage() === "en"; // English interface: the English pretend call
+    const en = o2.lang === "en" || o2.lang === "he" ? o2.lang === "en" : !!o.uiLanguage && o.uiLanguage() === "en"; // the language of the window the person pressed Practice in; the tray menu and the control socket pass none, so the setting decides
     const script = path.join(root, "data", "demo", en ? "demo-call.en.json" : "demo-call.json"),
       gapMs = 4500;
     let lines = 16;

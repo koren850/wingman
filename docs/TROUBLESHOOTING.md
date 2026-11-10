@@ -198,7 +198,7 @@ It takes 1 to 2 minutes, prints cards and a call summary, then `Demo done`. If i
 
 ## A bar says "AI paused"
 
-Live reading, the default help engine, could not use the AI: the spend cap (per call or per hour) was reached, the model is not answering, or there is no internet. Prepared cards, sums and the buy-time line still work. The bar goes away by itself when the AI works again (for the hourly cap: when the spend of the last hour is below the cap). To change the cap: the **Money** group in Settings. To see why the model fails: the call's events file (`events.jsonl`, rows `llm.error` and `ai.paused`).
+Live reading, the default help engine, could not use the AI: the spend cap (per call or per hour) was reached, the model is not answering, or there is no internet. Prepared cards, sums and the buy-time line still work. The bar goes away by itself when the AI works again (for the hourly cap: when the spend of the last hour is below the cap). To change the cap: the per-call cap is in Settings, Help engine and the hourly cap in Settings, Advanced. To see why the model fails: the call's events file (`events.jsonl`, rows `llm.error` and `ai.paused`).
 
 ## A context file or web address is refused
 

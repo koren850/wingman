@@ -221,6 +221,18 @@ test("practice call uses the English pretend call when the interface language is
   assert.ok(c.opts.env.WINGMAN_STT_SCRIPT.endsWith("demo-call.en.json"));
 });
 
+test("practice call follows the window language when the window passes one, else the setting", () => {
+  const he = fake({ uiLanguage: () => "he" });
+  assert.equal(he.ctl.practice({ lang: "en" }), true);
+  assert.ok(he.spawned[0].args.includes("demo-en"));
+  const en = fake({ uiLanguage: () => "en" });
+  assert.equal(en.ctl.practice({ lang: "he" }), true);
+  assert.ok(en.spawned[0].args.includes("demo") && !en.spawned[0].args.includes("demo-en"));
+  const other = fake({ uiLanguage: () => "en" });
+  assert.equal(other.ctl.practice({ lang: "fr" }), true);
+  assert.ok(other.spawned[0].args.includes("demo-en"), "an unknown value falls back to the setting");
+});
+
 test("doctor: refused during a call, summarised otherwise", async () => {
   const { ctl, spawned } = fake();
   ctl.start({});

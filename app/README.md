@@ -139,7 +139,6 @@ Invalid settings stop the start with the file, the key and the allowed values, e
 |---|---|---|
 | AI answers to my own questions | `assist.answerMe` | always |
 | Help engine | `moments.engine` | Live reading (Classic is the fallback) |
-| Start early on a stable question | `moments.earlyStart` | off |
 | Keep a memory of the call | `memory.enabled` | on |
 | Look a term up on the web | `lookup.enabled` | off |
 | Use the AI at all | `run.noAi` | on |

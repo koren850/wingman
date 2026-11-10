@@ -71,7 +71,7 @@
     "su.skipped": "{title} skipped. You can come back from Settings, Setup guide.",
     "su.skippedChip": "Skipped",
     "su.ready1": "You're ready. ",
-    "su.ready2": "Press Quick call below, or Start on a saved meeting.",
+    "su.ready2": "Press Start a call below, or Start on a saved meeting.",
     "su.opt": "Make it yours (optional)",
     "su.opt.note": "None of this is needed to start. Each one can be skipped and done later.",
     "su.about": "About you",
@@ -567,9 +567,6 @@
       "On: a card only for clear questions to you (a question mark, a direct request, your name), at most 2 every 2 minutes. Price and date cards and the cards about what you said always show. Off: every likely question gets a card (cards.maxPerMinute).",
     "set.cards.quiet.label": "Start every call in quiet mode",
     "set.cards.quiet.help": "Cards are saved for the review but not shown on the answer window until you switch quiet off.",
-    "set.moments.earlyStart.label": "Start early on a stable question",
-    "set.moments.earlyStart.help":
-      "Off by default. On: a question from the other side starts the AI when the live text stops changing, before the end mark. The card can come about half a second sooner, with a few extra AI calls. Takes effect on the next call.",
     "set.reflex.stall.label": "“Buy time” lines",
     "set.reflex.stall.help":
       "On: when no answer is ready in time, show a line like “Let me check and get back to you”. Off (default): nothing until a real answer is ready. Price, timeline and guarantee cards show either way.",
@@ -1218,12 +1215,12 @@
     "wiz.sys": "System audio",
     "wiz.sys.why": "Hears the other people on the call.",
     "wiz.sys.open": "Open System Audio settings",
-    "wiz.sys.ack": "I switched it on",
+    "wiz.sys.ack": "OK, go on",
     "wiz.sys.acked": "You said it is on",
-    "wiz.sys.restart": "After you switch it on, quit Wingman and open it again. macOS applies the change only to an app that starts again.",
+    "wiz.sys.restart":
+      "If the other side is still not heard in your first real call, quit Wingman and open it again. macOS applies the change only to an app that starts again.",
     "wiz.sys.none": "Nothing to allow",
-    "wiz.sys.missing":
-      "Wingman is not in the list? macOS adds it when a call first tries to listen. Start a call once, press Allow when macOS asks, then check the list again.",
+    "wiz.sys.missing": "Wingman is not in the list? That is normal before your first real call. Go on: macOS asks when the first real call starts.",
     "wiz.perm.check": "Check again",
     "wiz.ready.title": "You are ready",
     "wiz.ready.text": "Start with a practice call. A pretend client talks to you and you see real answer cards. It is free and needs no internet.",

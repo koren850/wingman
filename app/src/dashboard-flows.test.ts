@@ -116,6 +116,21 @@ test("a quick check that finishes after a full check does not replace its result
   assert.equal(state.call.doctor.at, 20);
 });
 
+test("the launch check waits while a key is missing, and runs once the keys are saved", async () => {
+  const ran: boolean[] = [];
+  const { d, state } = home({ api: { runDoctor: async (quick: boolean) => (ran.push(quick), { ok: true, warnings: [], failing: [], at: 9 }) } });
+  state.call.doctor = null;
+  d.run(`H.keys = { providers: { deepgram: { source: "missing" } } }`);
+  d.run("autoCheck()");
+  await tick();
+  assert.equal(ran.length, 0, "no check against a missing key");
+  assert.equal(d.run("H.autoChecked"), false, "the launch check is still to come");
+  d.run(`H.keys = { providers: { deepgram: { source: "keychain" } } }`);
+  d.run("autoCheck()");
+  await tick();
+  assert.equal(ran.length, 1);
+});
+
 test("Stop is sent once for a double click, and again after a refusal; Quiet takes its value from the call state (D-8)", async () => {
   const gate = deferred();
   const sent = { stop: 0, quiet: [] as boolean[] };

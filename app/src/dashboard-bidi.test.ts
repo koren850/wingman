@@ -31,3 +31,18 @@ test("email, phone, URL are single islands without trailing punctuation", () => 
 test("thousands separators stay in one island", () => {
   assert.deepEqual(ltr("האתר עם כ-2,000 מוצרים"), ["2,000"]);
 });
+test("a phrase or a version number next to an island stays one island", () => {
+  const a = "אנחנו על Google Cloud Platform כבר שנה";
+  assert.deepEqual(ltr(a), ["Google Cloud Platform"]);
+  assert.equal(join(a), a);
+  const b = "האתר רץ על PHP 8.2 בשרת";
+  assert.deepEqual(ltr(b), ["PHP 8.2"]);
+  assert.equal(join(b), b);
+});
+test("a percent or a currency sign next to a number keeps every character", () => {
+  for (const s of ["ההנחה היא 100% על המחיר", "המחיר הוא $200 לחודש", "המחיר הוא 200$ לחודש", "עלות של €50 ושל ₪300"]) {
+    assert.equal(join(s), s);
+    assert.ok(splitBidi(s).some((x) => x.ltr));
+  }
+  assert.deepEqual(ltr("ההנחה היא 100% על המחיר"), ["100"]);
+});

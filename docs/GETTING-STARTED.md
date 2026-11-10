@@ -41,7 +41,7 @@ xattr -dr com.apple.quarantine /Applications/Wingman.app
 
 The command removes the "downloaded from the internet" mark from the app. It changes nothing else.
 
-**Permissions.** Wingman asks for **Microphone** (your voice) and **System Audio Recording** (the other side). The first window walks you through both. If Wingman is not in the System Audio Recording list, start a real call once and press **Allow** when macOS asks. After you allow System Audio Recording, quit and reopen Wingman: macOS gives no live status for it. Wingman does not need Screen Recording, Accessibility or Camera.
+**Permissions.** Wingman asks for **Microphone** (your voice) and **System Audio Recording** (the other side). The first window walks you through both. If Wingman is not in the System Audio Recording list, that is normal before your first real call: go on, and press **Allow** when macOS asks as the first real call starts. If the other side is still not heard in that call, quit and reopen Wingman: macOS gives no live status for it. Wingman does not need Screen Recording, Accessibility or Camera.
 
 ### On Windows (10 or 11, 64-bit) - beta
 
@@ -78,7 +78,7 @@ Paste both keys and press **Check and save**. Each key is checked with one small
 
 From a terminal (developers): `pnpm keys set deepgram`, `pnpm keys set anthropic`, `pnpm keys status` (it shows where each key comes from and its last 4 characters, never the whole key). Never put keys in the repo.
 
-**Cost (an estimate from the price table in the config).** A call costs about $1.50 an hour in total. Speech to text with Deepgram Nova-3 (two channels) is about $1.30 to $1.40 of that. The AI is about 5 to 20 cents an hour. In short test calls the whole call cost about $1.40 an hour, and about 90 percent of it was speech to text. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits the AI spend, and Settings, Money has a soft cap per hour. Set a limit in both provider consoles too.
+**Cost (an estimate from the price table in the config).** A call costs about $1.50 an hour in total. Speech to text with Deepgram Nova-3 (two channels) is about $1.30 to $1.40 of that. The AI is about 5 to 20 cents an hour. In short test calls the whole call cost about $1.40 an hour, and about 90 percent of it was speech to text. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits the AI spend, and Settings, Advanced has a soft cap per hour. Set a limit in both provider consoles too.
 
 ### Build from source (developers only)
 
@@ -108,7 +108,7 @@ brew install poppler                                    # optional: read PDF fil
 
 ## Part 2: Try a practice call
 
-Press **Start practice call** in the setup, or **Practice call (offline, free)** next to **Start** on Home. A pretend client plays through the real call loop and the real answer window. It is free, needs no keys, and nothing leaves your Mac. The call is invented: a client called Dana asks about a slow site, backups and a price. It is in English when the interface language is English, in Hebrew otherwise. The speech and the AI replies in the practice call are **scripted**. It shows how the windows work, not how good the AI is.
+Press **Start practice call** in the setup, or **Practice call (offline, free)** next to **Start** on Home. A pretend client plays through the real call loop and the real answer window. It is free, needs no keys, and nothing leaves your Mac. The call is invented: a client called Dana asks about a slow site, backups and a price. It plays in the language of the window you pressed it in (English or Hebrew); from the tray menu it follows the interface language setting. The speech and the AI replies in the practice call are **scripted**. It shows how the windows work, not how good the AI is.
 
 ![The answer window in the practice call: the newest card large, older ones small (invented example)](ux/answer-window-hero.png)
 
