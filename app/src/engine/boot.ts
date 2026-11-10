@@ -173,7 +173,9 @@ export const spotter = snapshot
   : undefined;
 export const notesOn = S.notes.enabled && !noAi;
 export const notesAbort = new AbortController(); // also used by tips; aborted in shutdown(): no notes call outlives the call
-export const callStart = Date.now();
+export let callStart = Date.now();
+/** Tests only: the call started now. The virtual clock starts after boot.ts is imported, so without this every elapsed-time rule (wrap-up cue, time left) sees a huge call length. */
+export const restartCallClock = (): void => void (callStart = Date.now());
 export const tipsOn = S.tips.enabled && !noAi;
 export const tracker = new FrameTracker();
 export const tipGate = new TipGate({ minGapMs: S.tips.minGapMs, afterAnswerMs: S.tips.afterAnswerMs });

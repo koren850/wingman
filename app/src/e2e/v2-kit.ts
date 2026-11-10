@@ -202,7 +202,18 @@ export type MeetingRun = {
   id: string;
   cards: TimelineCard[];
   /** the cards on screen at the end, as the overlay got them */
-  screen: { id: string; turnId?: unknown; source?: unknown; badge?: unknown; kind?: unknown; say?: unknown; more?: unknown; at: number }[];
+  screen: {
+    value?: unknown;
+    conf?: unknown;
+    id: string;
+    turnId?: unknown;
+    source?: unknown;
+    badge?: unknown;
+    kind?: unknown;
+    say?: unknown;
+    more?: unknown;
+    at: number;
+  }[];
   /** the model calls the engine made, with the usage that was booked */
   calls: CallRecord[];
   /** rows of usage.jsonl */

@@ -22,6 +22,7 @@ export async function setupEngine(sets: Record<string, string | number | boolean
   const sched = await import("../moments/scheduler.ts");
   const vc: VClock = createVClock({ start: 1_800_000_000_000 });
   vc.install();
+  boot.restartCallClock(); // callStart was read from the real clock at import
   const pm: PolicyModel = policyModel({ strict: false, fallback: "SKIP" });
   boot.registry.resolve = (async () => pm.model) as never; // every ref resolves to the policy fake; the call's role travels in providerOptions.wingman.role
   // Objects built at import time hold the real clock (default argument `Date.now`). Give the breakers and the supervisor the virtual one.

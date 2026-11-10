@@ -37,6 +37,8 @@ async function main() {
   const e = await setupEngine({
     "llm.reflex.model": "anthropic:claude-haiku-5-5",
     ...(recorded ? { "assist.model": "anthropic:claude-haiku-5-5" } : {}),
+    // The shipped default is reflex.stall=false (no generic "I will check" line). The e2e profile turns it on for the scripted tests; a recorded or replayed run measures the product as shipped.
+    ...(recorded ? { "reflex.stall": false } : {}),
     ...(opts.sets ?? {}),
   });
   if (opts.tailChunk) {
@@ -195,7 +197,18 @@ async function main() {
   const res: MeetingRun = {
     id,
     cards: timelineOf(e, t0),
-    screen: e.screen().map((c) => ({ id: c.id, turnId: c.turnId, badge: c.badge, kind: c.kind, source: c.source, say: c.say, more: c.more, at: c.t - t0 })),
+    screen: e.screen().map((c) => ({
+      id: c.id,
+      turnId: c.turnId,
+      badge: c.badge,
+      kind: c.kind,
+      source: c.source,
+      say: c.say,
+      more: c.more,
+      at: c.t - t0,
+      value: c.value,
+      conf: c.conf,
+    })),
     calls: obs.calls,
     usage,
     snapshots,
