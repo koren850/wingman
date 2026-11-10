@@ -39,7 +39,7 @@ A **moment** is a point in the call where a short, private nudge would help: a q
 
 ## Install
 
-Download the app from the [latest release](https://github.com/koren850/wingman/releases/latest). If the release has no file for your system yet, [build from source](#build-from-source) instead. You install nothing else: no Node, no Homebrew, no ffmpeg. The answer window is best on a second screen (with one screen it stays closed until you allow it), and live calls need two API keys for live calls (see [The two keys](#the-two-keys)). The practice call needs no keys.
+Download the app from the [latest release](https://github.com/koren850/wingman/releases/latest). If the release has no file for your system yet, [build from source](#build-from-source) instead. You install nothing else: no Node, no Homebrew, no ffmpeg. The answer window is best on a second screen (with one screen it stays closed until you allow it), and live calls need two API keys (see [The two keys](#the-two-keys)). The practice call needs no keys.
 
 Both downloads are **not signed yet**, so your system warns you once. This is expected. The steps are below.
 
@@ -75,7 +75,7 @@ Wingman needs two keys. The first window asks for them and checks each with one 
 | Deepgram | Turns the call audio into text | [console.deepgram.com/signup](https://console.deepgram.com/signup), then create a key in the console | About $1.30 to $1.40 an hour of call |
 | Anthropic | The AI (Claude) that reads the call and writes cards | [platform.claude.com](https://platform.claude.com): add credit under Billing, then create a key under [Settings, API keys](https://platform.claude.com/settings/keys) | About 5 to 20 cents an hour |
 
-A call costs about $1.50 an hour in total. Speech to text is most of it. These are estimates; check both price pages. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits the AI spend. Set a spend limit in both consoles too. Keys are kept in the macOS Keychain, or encrypted for your Windows account. They are never saved in a plain file.
+A call costs about $1.40 to $1.50 an hour in total. Speech to text is most of it. These are estimates; check both price pages. A cap per call (`budget.maxUsdPerCall`, $2 by default) limits the AI spend. Set a spend limit in both consoles too. Keys are kept in the macOS Keychain, or encrypted for your Windows account. They are never saved in a plain file.
 
 ### First run
 
@@ -123,7 +123,7 @@ This is an early release (v0.0.1). Read this before you rely on it.
 - Speech to text was right for about 92 percent of the words in English and 77 to 83 percent in Hebrew, on those synthetic voices.
 - Card quality is not proven. A replay of the real AI against 32 invented test meetings passes 3 to 6 of 16 release lines (the result moves between recordings): cost and language pass, but too few cards hit the expected moment (precision 8 to 12 percent, recall about 5 percent), and a model judge rated a quarter to a third of the cards useful. Treat every card as a hint and check it before you say it. The numbers are on the [Roadmap](docs/ROADMAP.md#evidence-so-far).
 
-Cost, measured in short test calls: about $1.40 an hour in total, of which about 90 percent is speech to text. The AI part is about 5 to 20 cents an hour.
+Cost, measured in short test calls: about $1.40 to $1.50 an hour in total, of which about 90 percent is speech to text. The AI part is about 5 to 20 cents an hour.
 
 ## Privacy and responsible use
 
