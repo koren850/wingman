@@ -4,9 +4,9 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.0.1 - unreleased
+## 0.0.1 - 2026-11-10
 
-Initial release. The date is added when the release is published.
+Initial release. This is an early version.
 
 Highlights: a live agent for meetings that builds context as the call goes and shows short cards from what happens, in English and Hebrew, on macOS and Windows, with a practice call that needs no keys. You download the app and paste two keys; no Node, Homebrew or ffmpeg is needed. A first run with the real AI did not pass the quality lines, so card quality is not proven; see [docs/ROADMAP.md](docs/ROADMAP.md#evidence-so-far).
 
@@ -79,5 +79,5 @@ Highlights: a live agent for meetings that builds context as the call goes and s
 
 - The app supports macOS 14.2 or newer (Apple Silicon) and Windows 10 or 11 (64-bit). Windows audio capture, the key store and the tool process were tested with fakes only, not yet on a real Windows machine. There is no Linux app. See [docs/ROADMAP.md](docs/ROADMAP.md).
 - English and Hebrew (including mixed speech) are supported; other languages are not supported yet and show a notice.
-- Builds are unsigned: macOS needs the Open Anyway step and Windows shows SmartScreen. The release workflow is new and may not have run yet.
+- Builds are unsigned: macOS needs the Open Anyway step and Windows shows SmartScreen.
 - A first recorded run with the real AI failed most quality lines (few useful cards, some wrong or in the wrong language). Hebrew speech to text is weaker than English. See [docs/ROADMAP.md](docs/ROADMAP.md#evidence-so-far).

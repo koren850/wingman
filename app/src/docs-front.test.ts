@@ -80,9 +80,9 @@ test("front docs have no internal wording", () => {
   for (const rel of FILES) assert.ok(!banned.test(read(rel)), `${rel} has internal wording: ${banned.exec(read(rel))?.[0]}`);
 });
 
-test("the changelog has one section, 0.0.1, marked unreleased until the release is published", () => {
+test("the changelog has one section, 0.0.1, with its release date", () => {
   const text = read("CHANGELOG.md");
-  assert.match(text, /^## 0\.0\.1 - unreleased\n/m);
+  assert.match(text, /^## 0\.0\.1 - \d{4}-\d{2}-\d{2}\n/m);
   assert.ok(!/^## Unreleased$/m.test(text), "no separate Unreleased section");
 });
 

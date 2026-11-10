@@ -7,7 +7,10 @@
 
 <p align="center"><b>A live agent for your meetings. It listens, builds context as the meeting goes, and shows short help cards from what happens.</b></p>
 
+<p align="center"><b>Early version (v0.0.1).</b> It works end to end, but the cards are still hit and miss. See <a href="#how-good-is-it">How good is it?</a></p>
+
 <p align="center">
+  <img alt="Version 0.0.1, early" src="https://img.shields.io/badge/version-0.0.1%20early-orange.svg">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Platforms: macOS 14.2+ and Windows 10/11" src="https://img.shields.io/badge/platform-macOS%2014.2%2B%20%7C%20Windows%2010%2F11-lightgrey.svg">
 </p>
