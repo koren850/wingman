@@ -6,6 +6,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { performance } from "node:perf_hooks";
+import { readFileSync } from "node:fs";
 import { AudioTee } from "audiotee";
 import { childEnv } from "./env.ts";
 
@@ -373,6 +374,16 @@ export class FileSource extends EventEmitter {
 
 /** Decodes any audio file with ffmpeg to raw 16 kHz s16le PCM (1 or 2 channels). Rejects if ffmpeg is missing or fails. */
 export function decode(file: string, channels: 1 | 2): Promise<Buffer> {
+  // A plain 16 kHz 16-bit PCM WAV with the wanted channel count (the practice call and `pnpm demo` write one) needs no ffmpeg.
+  try {
+    const b = readFileSync(file);
+    const pcmWav =
+      b.length >= 44 && b.toString("latin1", 0, 4) === "RIFF" && b.toString("latin1", 8, 16) === "WAVEfmt " && b.toString("latin1", 36, 40) === "data";
+    if (pcmWav && b.readUInt16LE(20) === 1 && b.readUInt16LE(22) === channels && b.readUInt32LE(24) === 16000 && b.readUInt16LE(34) === 16)
+      return Promise.resolve(b.subarray(44));
+  } catch {
+    /* unreadable here: ffmpeg reports it below */
+  }
   return new Promise((res, rej) => {
     const p = spawn("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", file, "-ac", String(channels), "-ar", "16000", "-f", "s16le", "-"], {
       env: childEnv(),

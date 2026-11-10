@@ -26,3 +26,9 @@ tips:
   model: "scripted:tips"
   minGapMs: 10000
   afterAnswerMs: 2000
+memory:
+  model: "scripted:memory" # no real model: practice sends nothing out, even with a key saved
+assist:
+  model: "scripted:bank"
+flow:
+  model: "scripted:tips"

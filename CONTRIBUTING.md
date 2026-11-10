@@ -4,7 +4,7 @@ Thank you for helping. Wingman is a small project with one maintainer, so short 
 
 ## Set up
 
-You need Node 24 or newer and git. Node is only for developers; people who just use Wingman download the app. To build and run the full app on a Mac you need macOS 14.2 or newer. The unit tests also run on Windows and Linux. `ffmpeg` is optional (file replay and terminal runs; the app itself does not need it).
+You need Node 24 or newer and git. Node is only for developers; people who just use Wingman download the app. To build and run the full app on a Mac you need macOS 14.2 or newer. The unit tests also run on Windows and Linux. `ffmpeg` is optional (file replay and terminal runs; the app itself does not need it). The app does not need ffmpeg, but the tests do.
 
 ```bash
 # clone the repository as shown in the README quick start, then:

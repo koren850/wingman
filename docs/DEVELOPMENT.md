@@ -25,7 +25,7 @@ pnpm eval                               # detector, bank and guard quality numbe
 
 Before you open a pull request, `pnpm check` runs the type check, lint, format check, unit tests and `pnpm eval` in one go.
 
-To build and run the code you need Node 24 or newer, git and pnpm 11 (through `corepack enable`; the version is pinned in `package.json`). The full app and the macOS installer script need macOS 14.2 or newer. `ffmpeg` is optional: it is used only for file replay and terminal runs, because the app records the microphone itself. Poppler (`pdftotext`) is optional, for PDF attachments. The unit tests also run on Linux and Windows. Keys are not needed for unit tests: they use mocks and fake keys, and the real Keychain runner refuses to run under the test runner. For live work, add keys with `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never commit keys.
+To build and run the code you need Node 24 or newer, git and pnpm 11 (through `corepack enable`; the version is pinned in `package.json`). The full app and the macOS installer script need macOS 14.2 or newer. `ffmpeg` is optional: it is used only for file replay and terminal runs, because the app records the microphone itself. The app does not need ffmpeg, but the tests do. Poppler (`pdftotext`) is optional, for PDF attachments. The unit tests also run on Linux and Windows. Keys are not needed for unit tests: they use mocks and fake keys, and the real Keychain runner refuses to run under the test runner. For live work, add keys with `pnpm keys set deepgram` and `pnpm keys set anthropic`. Never commit keys.
 
 ## Try it from the code, with no keys
 
