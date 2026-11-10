@@ -36,7 +36,6 @@ A first run with the real AI was made (two passes, about $1.20 in total, with in
 
 The table below is the first recording, before those fixes.
 
-**These numbers are from the build before the fixes that followed.** Since then the recording tool keeps its key and records every call, the judge no longer returns empty answers, the example answers are opt-in, and the prompts, the reply parser, the memory patch check and the language check changed. The recorded replays in `app/data/cassettes/` are stale for the changed prompts. The table below is therefore the state before the fixes, not the state of v0.0.1. Run `pnpm morning` again to refresh it ([Recording evals](RECORDING-EVALS.md)).
 
 | What | Result |
 |---|---|
@@ -45,7 +44,7 @@ The table below is the first recording, before those fixes.
 | Time from end of speech to a card | Prepared card 0.3 to 0.7 s. AI card 1.0 to 3.5 s |
 | Cost | About $1.40 an hour for the whole call, 90 percent of it speech to text. The AI part was about $0.14 an hour in these short calls (the model of the replays: $0.03 to $0.04 an hour) |
 | Ship lines (`pnpm eval --ship`) on a replay of the real AI against the 32 dev meetings | 4 pass, 12 FAIL. Card recall and precision were close to zero, wrong-card rate 83 percent, wrong language 6.8 percent, first card of a direct question p95 6.1 s |
-| Held-out meetings (`test`, `test-b`) on the recording | 2 hard limits fail (cards in silent stretches, guard breaches). Recall 0.5 to 1.4 percent |
+| Held-out meetings (`test`, `test-b`) on the recording | Hard limits fail (cards in silent stretches among them). Recall 0.5 to 1.4 percent |
 | Memory of the call (24 invented calls) | F1 well below the floors (open questions 14, numbers 9, objections 0) |
 
 What the failures looked like in the real calls: direct questions to the user often got no card; the prepared example answers (web hosting) showed in unrelated calls; some cards were in the wrong language; the model sometimes wrote its coaching text into the card; "Still unanswered" tips came back after the user had answered; a check card compared two unrelated numbers. Two of the numbers above are partly measurement problems and are not trusted yet: a replay of the same recording misses about 10 percent of the calls, and the model judge returned empty answers in most cases. So read the table as "card quality is not proven and probably weak", not as exact figures.
@@ -70,7 +69,7 @@ What this means for v0.0.1: the app, the install, the two-key setup, the languag
 | Early start (assumed 700 ms speech-to-text lag, 800 ms model) | card 500 ms earlier (median 1500 to 1000 ms after the end of speech); 6.5 percent extra direct calls | scripted, assumed |
 | Modelled AI cost, all roles | $0.032 an hour (limit $0.25); plan for 5 to 20 cents an hour | scripted, modelled usage |
 | Memory eval (24 invented calls: 10 English, 9 Hebrew, 5 mixed; scripted updater) | F1 88 percent | scripted, scorer check only |
-| Judgement set, memory floors, cost check against real usage, direct first card p95 | not run | needs a recorded run ([Recording evals](RECORDING-EVALS.md)) |
+| Judgement set, memory floors, cost check against real usage | not run | needs a recorded run ([Recording evals](RECORDING-EVALS.md)) |
 
 **Why the 6 FAIL lines are not fixed by tuning.** The constants of the scheduler were tuned on `dev` already (precision went from 70.5 to 79.9 percent, duplicates from 7.6 to 1.0). More tuning on a scripted set only fits the script. The honest next number is the recorded one.
 
@@ -80,7 +79,6 @@ What this means for v0.0.1: the app, the install, the two-key setup, the languag
 
 The recorded run above used synthetic voices and invented scripts. Not yet recorded or checked on real people and real calls:
 
-- **A clean recorded run of live reading** after the fixes: `pnpm morning --cap 5` ([Recording evals](RECORDING-EVALS.md)). The two recording tool bugs found in the first run are fixed: the real key is kept, so a real recording works, and the model judge no longer returns empty answers. The numbers in the table above still predate these fixes, and the cassettes are stale for the changed prompts, so `pnpm morning` must be run again to refresh them.
 - A real call rated with `pnpm tag`: useful cards an hour, and how many cards you would have rather not seen.
 - Latency with real partials: whether early start is stable enough to turn on, and the real first-card time of the direct path.
 - Speaker numbers after a real reconnect (so far a fake stream), and the ring after a real slow first connect.

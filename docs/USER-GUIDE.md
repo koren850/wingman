@@ -10,7 +10,7 @@ Wingman is a live agent for your meeting. You can give it context before the mee
 
 A **moment** is a point in the call where a short private nudge would help: a question, an objection, a number that does not fit, a term you may not know, a promise, a topic you planned to cover. Wingman checks the call after each line and decides if a card helps. Most lines are not a moment and get no card.
 
-**Live reading** is the default help engine. **Classic** is the older mode that reacts to questions only; you turn it on with `moments: {engine: legacy}` in the settings file (see "Words used in Wingman" below), and it is also what runs when the AI is down. **Scripted** and **recorded** are words you will see in the docs: a scripted number comes from test replies written in advance and shows that the parts work; a recorded number comes from the real AI. Wingman has no recorded quality numbers for live reading yet ([ROADMAP](ROADMAP.md)).
+**Live reading** is the default help engine. **Classic** is the older mode that reacts to questions only; you turn it on with `moments: {engine: legacy}` in the settings file (see "Words used in Wingman" below), and it is also what runs when the AI is down. **Scripted** and **recorded** are words you will see in the docs: a scripted number comes from test replies written in advance and shows that the parts work; a recorded number comes from the real AI. Recorded numbers for live reading exist, and card quality is still the weak part ([ROADMAP](ROADMAP.md#evidence-so-far)).
 
 ## First run
 
@@ -176,6 +176,26 @@ The menu-bar icon has: **Open Wingman**, **Start quick call**, **Start prepared 
 Settings has five tabs: **Basics** (window language, About you, the setup guide), **Keys**, **Help engine**, **Privacy** and **Advanced** (every other setting). Plain words are used for every status, and a message that needs an action has a button for it (Open Keys, Allow microphone).
 
 ## Update and uninstall
+
+### Downloaded app
+
+**Mac.** To update, download the new `.dmg` and drag Wingman to Applications. Replace the old copy. Your data and settings stay.
+
+To uninstall on a Mac:
+
+1. In Wingman, open **Settings, Keys** and press Remove for each key.
+2. Quit Wingman. Drag it from Applications to the Bin.
+3. To delete your data and settings, delete `~/Library/Application Support/Wingman` and `~/.config/wingman`. Also delete any `Wingman-helper-*` folders in `~/Library/Application Support`.
+
+**Windows.** To update, download the new `.exe` and run it. It replaces the old copy. Your data and settings stay.
+
+To uninstall on Windows:
+
+1. In Wingman, open **Settings, Keys** and press Remove for each key.
+2. Quit Wingman. Open **Settings, Apps**, find Wingman and press Uninstall. This keeps your data.
+3. To delete your data and settings, delete `%APPDATA%\Wingman` (your calls, briefs and the encrypted keys) and `C:\Users\<you>\.config\wingman`. Also delete any `Wingman-helper-*` folders in `%APPDATA%`.
+
+### Built from source
 
 ```bash
 wingman update                 # git pull (fast-forward only), install, rebuild the app

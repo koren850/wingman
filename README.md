@@ -8,7 +8,6 @@
 <p align="center"><b>A live agent for your meetings. It listens, builds context as the meeting goes, and shows short help cards from what happens.</b></p>
 
 <p align="center">
-  <a href="https://github.com/koren850/wingman/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/koren850/wingman/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Platforms: macOS 14.2+ and Windows 10/11" src="https://img.shields.io/badge/platform-macOS%2014.2%2B%20%7C%20Windows%2010%2F11-lightgrey.svg">
 </p>
@@ -147,3 +146,5 @@ Other languages are not supported yet: Wingman shows a one-time notice and gives
 ## How it was built
 
 Wingman is a solo project by [koren850](https://github.com/koren850), built with [Claude Code](https://claude.com/claude-code) as the coding agent. The decisions, trade-offs and quality bars are written down in [docs/DECISIONS.md](docs/DECISIONS.md). MIT license, see [LICENSE](LICENSE).
+
+This is an early release. Wingman is not affiliated with Zoom, Microsoft, Google, Anthropic, Deepgram or Clari.

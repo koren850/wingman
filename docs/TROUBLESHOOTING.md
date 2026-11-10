@@ -43,7 +43,7 @@ The first window checks each key with one small request:
 
 Keys are stored in the macOS Keychain, or encrypted for your Windows account. If the store fails, the window says so. Developers: `pnpm keys status` shows where each key comes from and its last 4 characters, never the whole key.
 
-The keys live in the `secrets` folder inside the data folder. If you set `WINGMAN_DATA_DIR`, that folder moves too, and Wingman will not see keys saved under the old folder. Set the variable the same way every time, or save the keys again.
+On Windows, the keys live in the `secrets` folder inside the data folder. If you set `WINGMAN_DATA_DIR`, that folder moves too, and Wingman will not see keys saved under the old folder. Set the variable the same way every time, or save the keys again.
 
 ## Hebrew or English is not recognised
 

@@ -53,9 +53,9 @@ body:
     id: logs
     attributes:
       label: Output of the readiness check or logs
-      description: "`pnpm run doctor` output is useful. Remove anything personal first."
+      description: "From the app: Home, Run readiness check, or Show log in the menu-bar menu. From source: `pnpm run doctor`. Remove anything personal first."
       render: shell
   - type: markdown
     attributes:
       value: |
-        For a problem in a call, run `pnpm diagnose` and attach the file it writes. It has no transcript or card text. Read it before you share it.
+        For a problem in a call, run `pnpm diagnose` (from source) or `wingman diagnose` and attach the file it writes. It has no transcript or card text. Read it before you share it. If you use the downloaded app and have neither command, describe the problem and paste the readiness check.
