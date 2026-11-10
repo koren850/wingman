@@ -2,7 +2,9 @@
 // Top-level script: it runs on import. Exit code 2 on a bad id or usage.
 import { readdirSync, rmSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { CALLS } from "./env.ts";
+import { createRequire } from "node:module";
+import { CALLS, USER_DATA } from "./env.ts";
+import { PEOPLE_FILE } from "./session/people.ts";
 import { rescueBases } from "./log.ts";
 
 const args = process.argv.slice(2);
@@ -21,6 +23,7 @@ function purge(id: string) {
     return;
   }
   rmSync(dir, { recursive: true, force: true });
+  createRequire(import.meta.url)("../dashboard/lib.cjs").dropCallFromPeople(join(USER_DATA, PEOPLE_FILE), id); // its names and promises too
   // existsSync follows the link: false means calls/latest now dangles (it pointed at the folder just deleted), so remove it.
   try {
     if (existsSync(join(CALLS, "latest")) === false) rmSync(join(CALLS, "latest"), { force: true });

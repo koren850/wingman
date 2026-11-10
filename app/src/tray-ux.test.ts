@@ -474,6 +474,27 @@ test("settingsReader: parses the last JSON line, passes a bare environment (no k
   assert.equal(await mk("not json")(), null);
 });
 
+test("settingsReader: the child gets the tray's tool token (the packaged app refuses it without)", async () => {
+  const old = process.env.WINGMAN_TOOL_TOKEN;
+  process.env.WINGMAN_TOOL_TOKEN = "a".repeat(48);
+  try {
+    let env: any;
+    await lib.settingsReader({
+      tsx: "/x/tsx",
+      platform: "darwin",
+      root: "/r",
+      execFile: (_c: string, _a: string[], opts: any, cb: any) => {
+        env = opts.env;
+        cb(null, "{}");
+      },
+    })();
+    assert.equal(env.WINGMAN_TOOL_TOKEN, "a".repeat(48));
+  } finally {
+    if (old === undefined) delete process.env.WINGMAN_TOOL_TOKEN;
+    else process.env.WINGMAN_TOOL_TOKEN = old;
+  }
+});
+
 test("CLI confirmation timeout closes the dialog (abort signal) and a late click stays a no", async () => {
   let signal: AbortSignal | undefined,
     answer: (r: { response: number }) => void = () => {};

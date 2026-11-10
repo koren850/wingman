@@ -301,6 +301,11 @@ app.on("second-instance", () => {
   host && host.open({ view: "home" });
 });
 
+// macOS: opening Wingman again from Applications or the Dock while it runs sends "activate", not a second launch.
+app.on("activate", () => {
+  if (host && !BrowserWindow.getAllWindows().some((w) => w.isVisible())) host.open({ view: "home" });
+});
+
 app.whenReady().then(() => {
   if (!gotLock) return;
   if (!SNAPSHOT) {

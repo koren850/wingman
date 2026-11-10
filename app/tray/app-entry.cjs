@@ -102,10 +102,18 @@ function exitWhenIdle(waitForStdin, maxMs = 0) {
   };
   setTimeout(tick, 100);
 }
-const ONE_SHOT = new Set(["summary", "settings-edit-cli", "profile-edit-cli", "mics-cli", "settings-cli", "doctor"]);
+const ONE_SHOT = new Set(["summary", "settings-edit-cli", "profile-edit-cli", "mics-cli", "settings-cli", "doctor", "export-cli", "features-cli"]);
 /** How long (ms) a short tool may stay open after it has loaded before it is ended. The settings and microphone tools take a moment at most; the summary and the readiness check can run long. */
-const ONE_SHOT_CAP_MS = { "settings-cli": 15000, "settings-edit-cli": 15000, "profile-edit-cli": 15000, "mics-cli": 30000 };
+const ONE_SHOT_CAP_MS = {
+  "settings-cli": 15000,
+  "settings-edit-cli": 15000,
+  "profile-edit-cli": 15000,
+  "mics-cli": 30000,
+  "export-cli": 30000,
+  "features-cli": 30000,
+};
 const STDIN_TOOLS = new Set(["settings-edit-cli", "profile-edit-cli"]); // `write` reads its JSON from stdin
+const STDIN_ALWAYS = new Set(["export-cli", "features-cli"]); // these read their JSON request from stdin on every run
 
 if (toolAt >= 0) {
   const name = String(argv[toolAt + 1] || "");
@@ -120,7 +128,7 @@ if (toolAt >= 0) {
     process.argv = [process.execPath, file, ...afterDash(argv.slice(toolAt + 2))]; // what the tool would see under node
     const toolArgs = afterDash(argv.slice(toolAt + 2));
     import(pathToFileURL(file).href).then(
-      () => ONE_SHOT.has(name) && exitWhenIdle(STDIN_TOOLS.has(name) && toolArgs[0] === "write", ONE_SHOT_CAP_MS[name] || 0),
+      () => ONE_SHOT.has(name) && exitWhenIdle(STDIN_ALWAYS.has(name) || (STDIN_TOOLS.has(name) && toolArgs[0] === "write"), ONE_SHOT_CAP_MS[name] || 0),
       (e) => {
         console.error(`wingman: ${name} failed to start: ${String((e && e.stack) || e).slice(0, 2000)}`);
         finish(1);

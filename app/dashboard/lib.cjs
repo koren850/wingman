@@ -385,10 +385,28 @@ function searchCalls(callsDir, q) {
   return hits;
 }
 
-/** Remove a call folder for good. The id is validated by callDir; the confirm dialog is in window.cjs. */
-function deleteCall(callsDir, id) {
+/** Drop one call's remembered names, topic and open promises from people.json (src/session/people.ts format), so a deleted call does not come back as "last time". Best effort. */
+function dropCallFromPeople(file, id) {
+  try {
+    const idx = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (!idx || typeof idx.people !== "object" || !idx.people) return;
+    for (const [k, p] of Object.entries(idx.people)) {
+      if (!p || !Array.isArray(p.calls)) continue;
+      p.calls = p.calls.filter((c) => !c || c.id !== id);
+      if (!p.calls.length) delete idx.people[k];
+    }
+    fs.writeFileSync(`${file}.${process.pid}.tmp`, JSON.stringify(idx), { mode: 0o600 });
+    fs.renameSync(`${file}.${process.pid}.tmp`, file);
+  } catch {
+    /* no index yet, or unreadable: nothing to drop */
+  }
+}
+
+/** Remove a call folder for good (and what people.json remembers from it). The id is validated by callDir; the confirm dialog is in window.cjs. */
+function deleteCall(callsDir, id, peopleFile = path.join(path.dirname(callsDir), "people.json")) {
   const dir = callDir(callsDir, id);
   fs.rmSync(dir, { recursive: true, force: true });
+  dropCallFromPeople(peopleFile, id);
 }
 
 /** Recent plans: the last few saved, newest first, so an expired or repeated plan can be reused. Pure list handling; the file is read and written in window.cjs. */
@@ -433,6 +451,7 @@ module.exports = {
   setTag,
   searchCalls,
   deleteCall,
+  dropCallFromPeople,
   deleteRefusal,
   idTime,
 };

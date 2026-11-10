@@ -308,6 +308,28 @@ test("people index: a recurring meeting with no name match is found by company a
   assert.equal(pastCallsLike(["levi"], { file, minShared: 1 }).length, 1);
 });
 
+test("deleting a call also drops its names, topic and promises from people.json", () => {
+  const root = tmp();
+  const calls = join(root, "calls");
+  mkdirSync(calls);
+  const file = join(root, PEOPLE_FILE); // deleteCall finds people.json next to the calls folder
+  const id = "01CALLDELETE000000000000AB"; // deleteCall wants a 26-character id
+  makeCall(
+    calls,
+    id,
+    "2026-10-22T10:00:00.000Z",
+    memWith((m) => {
+      m.topic.now = "Renewal for Acme";
+      m.roster.push({ id: "p9", name: "Gil Acme", side: "them" });
+    }),
+  );
+  indexFinishedCalls({ callsDir: calls, file });
+  assert.ok(pastFactsFor(["Gil"], { file }).length > 0);
+  req("../dashboard/lib.cjs").deleteCall(calls, id);
+  assert.deepEqual(pastFactsFor(["Gil"], { file }), []);
+  assert.ok(!JSON.stringify(readIndex(file).people).includes(id));
+});
+
 test("people index: the Settings list shows what is stored and deleting a person is permanent for new calls", async () => {
   const calls = twoCalls();
   const file = join(tmp(), PEOPLE_FILE);

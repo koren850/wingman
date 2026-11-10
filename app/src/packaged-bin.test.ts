@@ -21,6 +21,10 @@ test("packaged: a tsx tool becomes --wingman-tool <name> and keeps its arguments
   ]);
 });
 
+test("packaged: the dashboard's Export and features tools ship (window.cjs starts them)", () => {
+  for (const t of ["export-cli", "features-cli"]) assert.equal(bin.binCommand("tsx", [`src/${t}.ts`], "/x", { packaged: true, execPath: EXE }).args[1], t);
+});
+
 test("packaged: the answer window is the same executable with --wingman-overlay", () => {
   const c = bin.binCommand("electron", ["/x/overlay/main.cjs"], "/x", { packaged: true, execPath: EXE });
   assert.deepEqual(c, { cmd: EXE, args: ["--wingman-overlay", "--"] });

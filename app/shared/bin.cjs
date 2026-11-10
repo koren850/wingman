@@ -22,7 +22,19 @@ function electronExe(root, { path = nodePath, fs = nodeFs, env = process.env } =
 }
 
 /** The tools the packaged app can run (the bundled engine, src/<name>.mjs). Anything else is refused. */
-const PACKED_TOOLS = ["call", "run", "doctor", "summary", "settings-edit-cli", "profile-edit-cli", "mics-cli", "settings-cli", "prepare-cli"];
+const PACKED_TOOLS = [
+  "call",
+  "run",
+  "doctor",
+  "summary",
+  "settings-edit-cli",
+  "profile-edit-cli",
+  "mics-cli",
+  "settings-cli",
+  "prepare-cli",
+  "export-cli",
+  "features-cli",
+];
 
 /** True inside the packaged app: the build writes packaged.json next to the code. A checkout never has it. */
 function isPackaged(root, fs = nodeFs) {

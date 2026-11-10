@@ -578,6 +578,7 @@ function askNative(o, box) {
 /** () => Promise of the settings state JSON (src/settings-edit-cli.ts read), or null. The child gets a bare environment: it never needs a key. */
 function settingsReader(o) {
   const env = { HOME: process.env.HOME || "", PATH: process.env.PATH || "/usr/bin:/bin", TMPDIR: process.env.TMPDIR || "", NO_COLOR: "1", FORCE_COLOR: "0" };
+  if (process.env.WINGMAN_TOOL_TOKEN) env.WINGMAN_TOOL_TOKEN = process.env.WINGMAN_TOOL_TOKEN; // the packaged app refuses a child without it (shared/entry-guard.cjs)
   // Windows needs a few system variables to start any process (and %APPDATA% to find the data folder); none of them is a secret.
   if ((o.platform || process.platform) === "win32")
     for (const k of ["USERPROFILE", "APPDATA", "LOCALAPPDATA", "SystemRoot", "SystemDrive", "TEMP", "TMP", "ComSpec", "PATHEXT", "WINGMAN_DATA_DIR"])

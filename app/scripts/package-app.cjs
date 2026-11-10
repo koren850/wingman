@@ -57,6 +57,12 @@ async function bundleEngine() {
           );
           if (src === before) throw new Error("providers/llm.ts changed: update the provider import list in scripts/package-app.cjs");
         }
+        if (a.path.endsWith("export-cli.ts")) {
+          // import(spec) with a variable cannot be bundled: name the export module so it ships.
+          const before = src;
+          src = src.replace("import(spec)", 'import("./session/export.ts")');
+          if (src === before) throw new Error("export-cli.ts changed: update the export import in scripts/package-app.cjs");
+        }
         return { contents: src, loader: "ts" };
       });
     },
